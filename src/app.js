@@ -20,7 +20,16 @@ app.get('/api/health', (req, res) => {
 
 // Import and Mount Routes
 const authRoutes = require('./modules/auth/auth.routes');
+const productRoutes = require('./modules/inventory/products.routes');
+const woocommerceRoutes = require('./modules/woocommerce/woocommerce.routes');
+const salesRoutes = require('./modules/sales/sales.routes');
+const accountingRoutes = require('./modules/accounting/accounting.routes');
+
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/woocommerce', woocommerceRoutes);
+app.use('/api/sales', salesRoutes);
+app.use('/api/accounting', accountingRoutes);
 
 // Global Error Handler Middleware
 app.use((err, req, res, next) => {
