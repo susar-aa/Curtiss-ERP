@@ -18,7 +18,9 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// TODO: Import and Mount Routes (auth, accounting, inventory, etc.) will go here
+// Import and Mount Routes
+const authRoutes = require('./modules/auth/auth.routes');
+app.use('/api/auth', authRoutes);
 
 // Global Error Handler Middleware
 app.use((err, req, res, next) => {
