@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curtiss ERP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Custom Styles for smooth transitions */
+        .view-hidden { display: none !important; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased h-screen overflow-hidden">
+
+    <!-- ========================================== -->
+    <!-- LOGIN VIEW                                 -->
+    <!-- ========================================== -->
+    <div id="login-view" class="h-screen w-screen flex items-center justify-center bg-slate-100 fade-in">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+            <div class="text-center mb-8">
+                <div class="bg-blue-600 text-white h-12 w-12 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-cube text-2xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800">Curtiss ERP</h1>
+                <p class="text-sm text-slate-500 mt-1">Enter your credentials to access your account</p>
+            </div>
+
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                    <input type="email" id="email" value="admin@curtiss.com" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                    <input type="password" id="password" value="admin123" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex justify-center items-center">
+                    <span id="login-text">Sign In</span>
+                    <i id="login-spinner" class="fas fa-spinner fa-spin ml-2 view-hidden"></i>
+                </button>
+            </form>
+            <div id="login-error" class="mt-4 text-sm text-red-600 text-center view-hidden"></div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- DASHBOARD VIEW                             -->
+    <!-- ========================================== -->
+    <div id="dashboard-view" class="h-screen w-screen flex view-hidden fade-in">
+        
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-900 text-slate-300 flex flex-col transition-all duration-300">
+            <div class="h-16 flex items-center px-6 bg-slate-950 text-white font-bold text-lg tracking-wider">
+                <i class="fas fa-cube mr-3 text-blue-500"></i> CURTISS ERP
+            </div>
+            
+            <nav class="flex-1 overflow-y-auto py-4 space-y-1">
+                <a href="#" class="flex items-center px-6 py-3 bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                    <i class="fas fa-chart-line w-6"></i> Dashboard
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i class="fas fa-boxes w-6"></i> Inventory
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i class="fas fa-file-invoice-dollar w-6"></i> Sales & Invoices
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i class="fas fa-book w-6"></i> Accounting
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i class="fas fa-users w-6"></i> CRM
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i class="fas fa-user-tie w-6"></i> HR & Payroll
+                </a>
+            </nav>
+
+            <div class="p-4 bg-slate-950">
+                <div class="flex items-center mb-3">
+                    <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold mr-3" id="user-initial">A</div>
+                    <div>
+                        <div class="text-sm text-white font-medium" id="user-name">Super Admin</div>
+                        <div class="text-xs text-slate-400" id="user-role">Administrator</div>
+                    </div>
+                </div>
+                <button onclick="logout()" class="w-full py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors text-left px-2">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Log Out
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col bg-slate-50 overflow-hidden">
+            <!-- Topbar -->
+            <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8">
+                <h2 class="text-xl font-semibold text-slate-800">Overview</h2>
+                <div class="flex items-center space-x-4">
+                    <button class="text-slate-400 hover:text-slate-600 relative">
+                        <i class="fas fa-bell text-xl"></i>
+                        <span class="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">3</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard Content Area -->
+            <div class="flex-1 overflow-y-auto p-8">
+                
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex items-center">
+                        <div class="w-12 h-12 rounded-lg bg-green-100 text-green-600 flex items-center justify-center text-xl mr-4">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm text-slate-500 font-medium">Total Revenue</div>
+                            <div class="text-2xl font-bold text-slate-800" id="kpi-revenue">$0.00</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex items-center">
+                        <div class="w-12 h-12 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-xl mr-4">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm text-slate-500 font-medium">Active Customers</div>
+                            <div class="text-2xl font-bold text-slate-800" id="kpi-customers">0</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex items-center">
+                        <div class="w-12 h-12 rounded-lg bg-yellow-100 text-yellow-600 flex items-center justify-center text-xl mr-4">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm text-slate-500 font-medium">Pending Orders</div>
+                            <div class="text-2xl font-bold text-slate-800" id="kpi-orders">0</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex items-center">
+                        <div class="w-12 h-12 rounded-lg bg-red-100 text-red-600 flex items-center justify-center text-xl mr-4">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm text-slate-500 font-medium">Low Stock Alerts</div>
+                            <div class="text-2xl font-bold text-slate-800" id="kpi-stock">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity / Getting Started -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">System Status</h3>
+                    <div class="p-4 bg-blue-50 text-blue-800 rounded-lg border border-blue-100">
+                        <p><i class="fas fa-info-circle mr-2"></i><strong>Welcome to Curtiss ERP!</strong> The frontend interface is now connected to the authentication module. Use the sidebar to navigate through the modules once API integration is fully complete.</p>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- JAVASCRIPT LOGIC                           -->
+    <!-- ========================================== -->
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        
+        // UI Elements
+        const loginView = document.getElementById('login-view');
+        const dashboardView = document.getElementById('dashboard-view');
+        const loginBtnText = document.getElementById('login-text');
+        const loginSpinner = document.getElementById('login-spinner');
+        const errorDiv = document.getElementById('login-error');
+
+        // Check if user is already logged in on page load
+        window.onload = () => {
+            const token = localStorage.getItem('erp_token');
+            const user = JSON.parse(localStorage.getItem('erp_user'));
+            
+            if (token && user) {
+                showDashboard(user);
+            }
+        };
+
+        // Handle Login Submission
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            // UI Loading state
+            loginBtnText.innerText = 'Signing In...';
+            loginSpinner.classList.remove('view-hidden');
+            errorDiv.classList.add('view-hidden');
+            
+            try {
+                // Call the API endpoint we built in Phase 1
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Success! Save token and show dashboard
+                    localStorage.setItem('erp_token', data.token);
+                    localStorage.setItem('erp_user', JSON.stringify(data.data.user));
+                    showDashboard(data.data.user);
+                } else {
+                    // Show error message
+                    throw new Error(data.message || 'Login failed');
+                }
+            } catch (error) {
+                errorDiv.innerText = error.message;
+                errorDiv.classList.remove('view-hidden');
+                
+                // Fallback for demo purposes if backend isn't running yet
+                if (error.message === 'Failed to fetch') {
+                    console.log("Backend not reachable. Triggering mock login for UI demo.");
+                    const mockUser = { name: 'Super Admin', role: 'Admin', email: 'admin@curtiss.com' };
+                    localStorage.setItem('erp_token', 'mock_token_123');
+                    localStorage.setItem('erp_user', JSON.stringify(mockUser));
+                    showDashboard(mockUser);
+                }
+            } finally {
+                // Reset UI state
+                loginBtnText.innerText = 'Sign In';
+                loginSpinner.classList.add('view-hidden');
+            }
+        }
+
+        // Transition to Dashboard
+        function showDashboard(user) {
+            loginView.classList.add('view-hidden');
+            dashboardView.classList.remove('view-hidden');
+            
+            // Populate user info
+            document.getElementById('user-name').innerText = user.name;
+            document.getElementById('user-role').innerText = user.role;
+            document.getElementById('user-initial').innerText = user.name.charAt(0).toUpperCase();
+            
+            // Try to fetch real dashboard KPIs
+            fetchDashboardStats();
+        }
+
+        // Handle Logout
+        function logout() {
+            localStorage.removeItem('erp_token');
+            localStorage.removeItem('erp_user');
+            
+            dashboardView.classList.add('view-hidden');
+            loginView.classList.remove('view-hidden');
+            
+            // Clear inputs
+            document.getElementById('password').value = '';
+        }
+
+        // Fetch KPI data using the Phase 6 Reports API
+        async function fetchDashboardStats() {
+            const token = localStorage.getItem('erp_token');
+            if(!token) return;
+
+            try {
+                const response = await fetch(`${API_URL}/reports/dashboard`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const stats = data.data;
+                    
+                    document.getElementById('kpi-revenue').innerText = `$${parseFloat(stats.total_revenue).toFixed(2)}`;
+                    document.getElementById('kpi-customers').innerText = stats.total_active_customers;
+                    document.getElementById('kpi-orders').innerText = stats.pending_orders;
+                    document.getElementById('kpi-stock').innerText = stats.low_stock_items;
+                }
+            } catch (error) {
+                console.log("Could not fetch real KPI stats. Displaying placeholders.");
+            }
+        }
+    </script>
+</body>
+</html>
