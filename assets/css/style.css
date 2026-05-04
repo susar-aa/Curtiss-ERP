@@ -310,24 +310,26 @@ body {
     #sidebarMenu {
         position: fixed;
         top: 56px; /* Offset for the top navbar */
-        left: 0;
+        right: 0;
+        left: auto;
         bottom: 0;
         z-index: 100;
         padding-top: 15px;
         overflow-y: auto;
         overflow-x: hidden;
-        width: 260px; /* Fixed expanded width */
-        border-right: 1px solid var(--ios-separator);
+        width: 280px; /* Fixed expanded width */
+        border-left: 1px solid var(--ios-separator);
         background-color: var(--ios-surface);
         transition: width 0.3s ease;
     }
     
-    /* Push main content to the right */
+    /* Push main content to the left */
     #mainContent {
-        margin-left: 260px;
+        margin-right: 280px;
+        margin-left: 0;
         width: auto; /* Removes exact percentage calculations */
         flex-grow: 1; /* Naturally fills available remaining space */
-        transition: margin-left 0.3s ease;
+        transition: margin-right 0.3s ease;
         min-height: calc(100vh - 56px);
     }
     
@@ -336,7 +338,8 @@ body {
         width: 70px;
     }
     body.sidebar-minimized #mainContent {
-        margin-left: 70px;
+        margin-right: 70px;
+        margin-left: 0;
     }
     
     body.sidebar-minimized .sidebar-text,

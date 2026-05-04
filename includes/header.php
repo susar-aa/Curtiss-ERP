@@ -6,6 +6,54 @@ if(isset($pdo)) {
     } catch(PDOException $e) {}
 }
 
+// Ensure auth functions exist
+if (!function_exists('hasAccess')) {
+    require_once __DIR__ . '/auth_check.php';
+}
+
+$cur = basename($_SERVER['PHP_SELF']);
+
+// --- Module Group Mappings ---
+$sales_pages     = ['sales_overview.php','create_order.php','orders_list.php','rep_targets.php','online_orders.php'];
+$routes_pages    = ['dispatch.php', 'routes.php', 'route_sales.php', 'meter_readings.php'];
+$pur_pages       = ['purchasing_overview.php','create_po.php','purchase_orders.php','create_grn.php','grn_list.php','stock_ledger.php'];
+$setup_pages     = ['setup_overview.php','products.php','categories.php','suppliers.php','product_gallery.php']; 
+$fin_pages       = ['finance_overview.php','cheques.php','bank_cash.php','pnl_report.php','expenses.php','sales_returns.php', 'aging_reports.php']; 
+$hr_pages        = ['hr_overview.php','employees.php','payroll.php']; 
+$mkt_pages       = ['campaigns.php', 'promotions.php']; 
+$analytics_pages = ['reports.php', 'promo_reports.php', 'agent_claims_report.php', 'category_sales.php', 'product_sales.php', 'area_sales.php']; 
+$tracking_pages  = ['live_tracking.php', 'route_tracking_history.php'];
+
+// --- Recent Pages Tracking ---
+if (!isset($_SESSION['recent_pages'])) {
+    $_SESSION['recent_pages'] = [];
+}
+$page_titles = [
+    'dashboard.php' => 'Dashboard', 'sales_overview.php' => 'Sales Overview', 'create_order.php' => 'Create POS Order',
+    'online_orders.php' => 'E-Commerce Orders', 'orders_list.php' => 'Sales History', 'rep_targets.php' => 'Rep Targets',
+    'dispatch.php' => 'Vehicle Dispatch', 'routes.php' => 'Manage Routes', 'route_sales.php' => 'Route Sales',
+    'meter_readings.php' => 'Meter Readings', 'customers.php' => 'Customers', 'purchasing_overview.php' => 'Purchasing',
+    'purchase_orders.php' => 'Purchase Orders', 'create_grn.php' => 'Receive Goods (GRN)', 'grn_list.php' => 'GRN History',
+    'stock_ledger.php' => 'Stock Ledger', 'setup_overview.php' => 'Catalogue Setup', 'products.php' => 'Products',
+    'categories.php' => 'Categories', 'suppliers.php' => 'Suppliers', 'product_gallery.php' => 'Digital Catalog',
+    'finance_overview.php' => 'Finance Core', 'bank_cash.php' => 'Bank & Cash Ledgers', 'cheques.php' => 'Manage Cheques',
+    'expenses.php' => 'Company Expenses', 'aging_reports.php' => 'AR / AP Aging', 'sales_returns.php' => 'Returns & Credits',
+    'pnl_report.php' => 'Profit & Loss', 'live_tracking.php' => 'Live Location', 'route_tracking_history.php' => 'Route History',
+    'hr_overview.php' => 'HR & Team', 'employees.php' => 'Employees', 'payroll.php' => 'Payroll & Salaries',
+    'campaigns.php' => 'Email Campaigns', 'promotions.php' => 'Promotions', 'reports.php' => 'Sales Analytics',
+    'promo_reports.php' => 'Promos Report', 'agent_claims_report.php' => 'Agent Claims', 'category_sales.php' => 'Category Sales',
+    'product_sales.php' => 'Product Sales', 'area_sales.php' => 'Area Sales', 'users.php' => 'System Users'
+];
+$title = $page_titles[$cur] ?? 'Dashboard';
+
+// Avoid consecutive duplicates
+if (empty($_SESSION['recent_pages']) || $_SESSION['recent_pages'][0]['url'] !== $cur) {
+    array_unshift($_SESSION['recent_pages'], ['url' => $cur, 'title' => $title]);
+    if (count($_SESSION['recent_pages']) > 10) {
+        array_pop($_SESSION['recent_pages']);
+    }
+}
+
 // Execute Notification Queries ONLY for Admins & Supervisors
 $alertCount = 0;
 $alerts = [];
@@ -194,6 +242,36 @@ if(isset($_SESSION['user_role']) && in_array($_SESSION['user_role'], ['admin', '
         }
         .logout-btn:hover { background: rgba(255,59,48,0.15); color: #CC2200; }
         .logout-btn:active { transform: scale(0.96); }
+        
+        /* Top Navigation Dropdown Styling */
+        .candent-topbar .navbar-nav .nav-link {
+            color: #1c1c1e;
+            padding: 6px 12px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        .candent-topbar .navbar-nav .nav-link:hover { background: rgba(60,60,67,0.08); }
+        .candent-topbar .navbar-nav .dropdown-menu {
+            border-radius: 12px;
+            border: 1px solid rgba(60, 60, 67, 0.08);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+            padding: 8px;
+            margin-top: 8px;
+        }
+        .candent-topbar .navbar-nav .dropdown-item {
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            color: rgba(60,60,67,0.85);
+        }
+        .candent-topbar .navbar-nav .dropdown-item:hover { background: rgba(60,60,67,0.08); color: #1c1c1e; }
+        .candent-topbar .navbar-nav .dropdown-header {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: rgba(60,60,67,0.5);
+            padding: 8px 12px 4px;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -208,21 +286,132 @@ if(isset($_SESSION['user_role']) && in_array($_SESSION['user_role'], ['admin', '
 <nav class="navbar navbar-expand-lg candent-topbar sticky-top">
     <div class="container-fluid px-2">
         
-        <div class="d-flex align-items-center">
+        <div class="d-flex align-items-center flex-grow-1">
             <!-- Mobile Sidebar Toggle -->
             <button class="nav-icon-btn d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
                 <i class="bi bi-list fs-4"></i>
             </button>
             
-            <!-- Desktop Sidebar Minimize Button -->
-            <button class="nav-icon-btn d-none d-md-inline-flex me-3" type="button" id="sidebarMinimizeBtn" title="Toggle Sidebar">
-                <i class="bi bi-layout-sidebar fs-5"></i>
+            <!-- Desktop Sidebar Toggle -->
+            <button class="nav-icon-btn d-none d-md-inline-flex me-3" type="button" id="sidebarMinimizeBtn" title="Toggle Quick Actions">
+                <i class="bi bi-layout-sidebar-reverse fs-5"></i>
             </button>
             
             <!-- Candent Brand Logo -->
-            <a class="navbar-brand candent-brand ms-1" href="dashboard.php">
+            <a class="navbar-brand candent-brand ms-1 me-4" href="dashboard.php">
                 <img src="/images/logo/logo.png" alt="Candent" onerror="this.src='https://via.placeholder.com/140x32/ffffff/30C88A?text=CANDENT+SYS'">
             </a>
+            
+            <!-- Desktop Top Menu -->
+            <ul class="navbar-nav flex-row gap-2 d-none d-md-flex align-items-center" style="font-size: 0.9rem; font-weight: 600;">
+                <?php if(hasAccess('dashboard.php')): ?>
+                <li class="nav-item"><a class="nav-link" href="dashboard.php">Dashboard</a></li>
+                <?php endif; ?>
+                
+                <?php if(canViewGroup(array_merge($sales_pages, $routes_pages, ['customers.php']))): ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Operations</a>
+                    <ul class="dropdown-menu">
+                        <?php if(canViewGroup($sales_pages)): ?>
+                        <li><h6 class="dropdown-header">Sales & Orders</h6></li>
+                        <?php if(hasAccess('create_order.php')): ?><li><a class="dropdown-item" href="create_order.php">Create Order (POS)</a></li><?php endif; ?>
+                        <?php if(hasAccess('online_orders.php')): ?><li><a class="dropdown-item" href="online_orders.php">E-Commerce Orders</a></li><?php endif; ?>
+                        <?php if(hasAccess('orders_list.php')): ?><li><a class="dropdown-item" href="orders_list.php">Sales History</a></li><?php endif; ?>
+                        <?php if(hasAccess('rep_targets.php')): ?><li><a class="dropdown-item" href="rep_targets.php">Rep Targets</a></li><?php endif; ?>
+                        <?php endif; ?>
+                        
+                        <?php if(canViewGroup($routes_pages)): ?>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header">Dispatch & Routes</h6></li>
+                        <?php if(hasAccess('dispatch.php')): ?><li><a class="dropdown-item" href="dispatch.php">Vehicle Dispatch</a></li><?php endif; ?>
+                        <?php if(hasAccess('routes.php')): ?><li><a class="dropdown-item" href="routes.php">Manage Routes</a></li><?php endif; ?>
+                        <?php if(hasAccess('route_sales.php')): ?><li><a class="dropdown-item" href="route_sales.php">Route Sales</a></li><?php endif; ?>
+                        <?php if(hasAccess('meter_readings.php')): ?><li><a class="dropdown-item" href="meter_readings.php">Meter Readings</a></li><?php endif; ?>
+                        <?php endif; ?>
+                        
+                        <?php if(hasAccess('customers.php')): ?>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item fw-bold" href="customers.php">Customers</a></li>
+                        <?php endif; ?>
+                    </ul>
+                </li>
+                <?php endif; ?>
+                
+                <?php if(canViewGroup(array_merge($pur_pages, $setup_pages))): ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Inventory</a>
+                    <ul class="dropdown-menu">
+                        <?php if(canViewGroup($pur_pages)): ?>
+                        <li><h6 class="dropdown-header">Purchasing</h6></li>
+                        <?php if(hasAccess('purchase_orders.php')): ?><li><a class="dropdown-item" href="purchase_orders.php">Purchase Orders</a></li><?php endif; ?>
+                        <?php if(hasAccess('create_grn.php')): ?><li><a class="dropdown-item" href="create_grn.php">Receive Goods (GRN)</a></li><?php endif; ?>
+                        <?php if(hasAccess('grn_list.php')): ?><li><a class="dropdown-item" href="grn_list.php">GRN History</a></li><?php endif; ?>
+                        <?php if(hasAccess('stock_ledger.php')): ?><li><a class="dropdown-item" href="stock_ledger.php">Stock Ledger</a></li><?php endif; ?>
+                        <?php endif; ?>
+                        
+                        <?php if(canViewGroup($setup_pages)): ?>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header">Catalogue Setup</h6></li>
+                        <?php if(hasAccess('products.php')): ?><li><a class="dropdown-item" href="products.php">Products</a></li><?php endif; ?>
+                        <?php if(hasAccess('categories.php')): ?><li><a class="dropdown-item" href="categories.php">Categories</a></li><?php endif; ?>
+                        <?php if(hasAccess('suppliers.php')): ?><li><a class="dropdown-item" href="suppliers.php">Suppliers</a></li><?php endif; ?>
+                        <?php endif; ?>
+                    </ul>
+                </li>
+                <?php endif; ?>
+                
+                <?php if(canViewGroup($fin_pages)): ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Finance</a>
+                    <ul class="dropdown-menu">
+                        <?php if(hasAccess('bank_cash.php')): ?><li><a class="dropdown-item" href="bank_cash.php">Bank & Cash Ledgers</a></li><?php endif; ?>
+                        <?php if(hasAccess('cheques.php')): ?><li><a class="dropdown-item" href="cheques.php">Manage Cheques</a></li><?php endif; ?>
+                        <?php if(hasAccess('expenses.php')): ?><li><a class="dropdown-item" href="expenses.php">Company Expenses</a></li><?php endif; ?>
+                        <?php if(hasAccess('aging_reports.php')): ?><li><a class="dropdown-item" href="aging_reports.php">AR / AP Aging</a></li><?php endif; ?>
+                        <?php if(hasAccess('sales_returns.php')): ?><li><a class="dropdown-item" href="sales_returns.php">Returns & Credits</a></li><?php endif; ?>
+                        <?php if(hasAccess('pnl_report.php')): ?><li><a class="dropdown-item" href="pnl_report.php">Profit & Loss</a></li><?php endif; ?>
+                    </ul>
+                </li>
+                <?php endif; ?>
+                
+                <?php if(canViewGroup(array_merge($tracking_pages, $hr_pages, $mkt_pages, $analytics_pages))): ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">More</a>
+                    <ul class="dropdown-menu">
+                        <?php if(canViewGroup($tracking_pages)): ?>
+                        <li><h6 class="dropdown-header">Location Tracking</h6></li>
+                        <?php if(hasAccess('live_tracking.php')): ?><li><a class="dropdown-item" href="live_tracking.php">Live Location</a></li><?php endif; ?>
+                        <?php if(hasAccess('route_tracking_history.php')): ?><li><a class="dropdown-item" href="route_tracking_history.php">Route History</a></li><?php endif; ?>
+                        <li><hr class="dropdown-divider"></li>
+                        <?php endif; ?>
+                        
+                        <?php if(canViewGroup($hr_pages)): ?>
+                        <li><h6 class="dropdown-header">HR & Team</h6></li>
+                        <?php if(hasAccess('employees.php')): ?><li><a class="dropdown-item" href="employees.php">Employees</a></li><?php endif; ?>
+                        <?php if(hasAccess('payroll.php')): ?><li><a class="dropdown-item" href="payroll.php">Payroll & Salaries</a></li><?php endif; ?>
+                        <li><hr class="dropdown-divider"></li>
+                        <?php endif; ?>
+                        
+                        <?php if(canViewGroup($analytics_pages)): ?>
+                        <li><h6 class="dropdown-header">Analytics</h6></li>
+                        <?php if(hasAccess('reports.php')): ?><li><a class="dropdown-item" href="reports.php">Sales Analytics</a></li><?php endif; ?>
+                        <?php if(hasAccess('promo_reports.php')): ?><li><a class="dropdown-item" href="promo_reports.php">Promos Report</a></li><?php endif; ?>
+                        <?php if(hasAccess('agent_claims_report.php')): ?><li><a class="dropdown-item" href="agent_claims_report.php">Agent Claims</a></li><?php endif; ?>
+                        <?php endif; ?>
+                    </ul>
+                </li>
+                <?php endif; ?>
+                
+                <?php if(hasRole(['admin'])): ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Admin</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="users.php">System Users</a></li>
+                        <li><a class="dropdown-item text-danger" href="backup.php" target="_blank">Database Backup</a></li>
+                    </ul>
+                </li>
+                <?php endif; ?>
+            </ul>
         </div>
         
         <div class="d-flex ms-auto align-items-center">
