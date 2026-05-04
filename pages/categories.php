@@ -8,7 +8,7 @@ $message = '';
 
 // --- AUTO DB MIGRATION ---
 try {
-    $pdo->exec("ALTER TABLE categories ADD COLUMN profit_percentage DECIMAL(5,2) DEFAULT 0.00");
+    $pdo->exec("ALTER TABLE categories DROP COLUMN profit_percentage");
 } catch(PDOException $e) {}
 // -------------------------
 
@@ -18,7 +18,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     // ADD CATEGORY
     if ($_POST['action'] == 'add_category') {
         $name = trim($_POST['category_name']);
-        $profit = (float)($_POST['profit_percentage'] ?? 0);
         
         if (!empty($name)) {
             // Check if category already exists
@@ -27,8 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             if ($checkStmt->fetchColumn() > 0) {
                 $message = "<div class='ios-alert' style='background: rgba(255,149,0,0.1); color: #C07000;'><i class='bi bi-exclamation-triangle-fill me-2'></i> A category with this name already exists.</div>";
             } else {
-                $stmt = $pdo->prepare("INSERT INTO categories (name, profit_percentage) VALUES (?, ?)");
-                if ($stmt->execute([$name, $profit])) {
+                $stmt = $pdo->prepare("INSERT INTO categories (name) VALUES (?)");
+                if ($stmt->execute([$name])) {
                     $message = "<div class='ios-alert' style='background: rgba(52,199,89,0.1); color: #1A9A3A;'><i class='bi bi-check-circle-fill me-2'></i> Category added successfully!</div>";
                 } else {
                     $message = "<div class='ios-alert' style='background: rgba(255,59,48,0.1); color: #CC2200;'><i class='bi bi-exclamation-triangle-fill me-2'></i> Error adding category.</div>";
@@ -43,7 +42,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] == 'edit_category') {
         $category_id = (int)$_POST['category_id'];
         $name = trim($_POST['category_name']);
-        $profit = (float)($_POST['profit_percentage'] ?? 0);
         
         if ($category_id && !empty($name)) {
             // Check for duplicates excluding current category
@@ -52,8 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             if ($checkStmt->fetchColumn() > 0) {
                 $message = "<div class='ios-alert' style='background: rgba(255,149,0,0.1); color: #C07000;'><i class='bi bi-exclamation-triangle-fill me-2'></i> Another category with this name already exists.</div>";
             } else {
-                $stmt = $pdo->prepare("UPDATE categories SET name = ?, profit_percentage = ? WHERE id = ?");
-                if ($stmt->execute([$name, $profit, $category_id])) {
+                $stmt = $pdo->prepare("UPDATE categories SET name = ? WHERE id = ?");
+                if ($stmt->execute([$name, $category_id])) {
                     $message = "<div class='ios-alert' style='background: rgba(52,199,89,0.1); color: #1A9A3A;'><i class='bi bi-check-circle-fill me-2'></i> Category updated successfully!</div>";
                 } else {
                     $message = "<div class='ios-alert' style='background: rgba(255,59,48,0.1); color: #CC2200;'><i class='bi bi-exclamation-triangle-fill me-2'></i> Error updating category.</div>";
@@ -127,8 +125,7 @@ include '../includes/sidebar.php';
         <table class="ios-table text-center" id="categoriesTable">
             <thead>
                 <tr class="table-ios-header">
-                    <th class="text-start ps-4" style="width: 35%;">Category Name</th>
-                    <th style="width: 15%;">Profit Margin</th>
+                    <th class="text-start ps-4" style="width: 50%;">Category Name</th>
                     <th style="width: 15%;">Products Count</th>
                     <th style="width: 15%;">Added On</th>
                     <th class="text-end pe-4" style="width: 20%;">Actions</th>
@@ -141,11 +138,6 @@ include '../includes/sidebar.php';
                         <div class="fw-bold" style="font-size: 1.05rem; color: var(--ios-label);">
                             <?php echo htmlspecialchars($c['name']); ?>
                         </div>
-                    </td>
-                    <td>
-                        <span class="ios-badge" style="background: rgba(255,149,0,0.1); color: #C07000; font-weight: bold;">
-                            <?php echo number_format((float)($c['profit_percentage'] ?? 0), 2); ?>%
-                        </span>
                     </td>
                     <td>
                         <?php if($c['product_count'] > 0): ?>
@@ -163,7 +155,7 @@ include '../includes/sidebar.php';
                         <div class="d-flex justify-content-end gap-1">
                             <!-- Edit Button -->
                             <button class="quick-btn quick-btn-secondary" style="padding: 6px 12px;" title="Edit Category" 
-                                onclick='openEditModal(<?php echo json_encode(["id" => $c['id'], "name" => $c['name'], "profit" => $c['profit_percentage']], JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
+                                onclick='openEditModal(<?php echo json_encode(["id" => $c['id'], "name" => $c['name']], JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
                                 <i class="bi bi-pencil-square" style="color: #FF9500;"></i>
                             </button>
 
@@ -221,10 +213,6 @@ include '../includes/sidebar.php';
                         <label class="ios-label-sm">Category Name <span class="text-danger">*</span></label>
                         <input type="text" name="category_name" class="ios-input fw-bold" required placeholder="e.g., Beverages" autofocus>
                     </div>
-                    <div class="mb-4">
-                        <label class="ios-label-sm">Profit Percentage (%)</label>
-                        <input type="number" name="profit_percentage" class="ios-input" step="0.01" min="0" max="100" placeholder="e.g., 20.00" value="0.00">
-                    </div>
                 </div>
                 <div class="modal-footer" style="background: var(--ios-surface);">
                     <button type="button" class="quick-btn quick-btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -252,10 +240,6 @@ include '../includes/sidebar.php';
                         <label class="ios-label-sm">Category Name <span class="text-danger">*</span></label>
                         <input type="text" name="category_name" id="edit_category_name" class="ios-input fw-bold" required>
                     </div>
-                    <div class="mb-4">
-                        <label class="ios-label-sm">Profit Percentage (%)</label>
-                        <input type="number" name="profit_percentage" id="edit_profit_percentage" class="ios-input" step="0.01" min="0" max="100">
-                    </div>
                 </div>
                 <div class="modal-footer" style="background: var(--ios-surface);">
                     <button type="button" class="quick-btn quick-btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -276,7 +260,6 @@ function openAddModal() {
 function openEditModal(data) {
     document.getElementById('edit_category_id').value = data.id;
     document.getElementById('edit_category_name').value = data.name;
-    document.getElementById('edit_profit_percentage').value = data.profit;
     new bootstrap.Modal(document.getElementById('editCategoryModal')).show();
 }
 

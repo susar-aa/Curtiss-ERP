@@ -47,6 +47,7 @@ try {
     // NEW MIGRATIONS FOR PROMOTIONS / FOC SUPPORT
     $pdo->exec("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS is_foc TINYINT(1) DEFAULT 0 AFTER discount");
     $pdo->exec("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS promo_id INT NULL AFTER is_foc");
+    $pdo->exec("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS cost_price DECIMAL(10,2) DEFAULT 0.00 AFTER quantity");
 } catch(PDOException $e) {}
 // ------------------------------------------------
 
@@ -97,7 +98,7 @@ try {
         $sell_price = (float)$item['sell_price'];
         $item_discount = (float)$item['discount'];
 
-        $checkStmt = $pdo->prepare("SELECT stock, name FROM products WHERE id = ? FOR UPDATE");
+        $checkStmt = $pdo->prepare("SELECT stock, name, cost_price FROM products WHERE id = ? FOR UPDATE");
         $checkStmt->execute([$item['product_id']]);
         $productRow = $checkStmt->fetch();
 
@@ -114,6 +115,7 @@ try {
         $stockLogQueue[] = [
             'product_id' => $item['product_id'],
             'qty' => $qty,
+            'cost_price' => (float)$productRow['cost_price'],
             'prev_stock' => (int)$productRow['stock'],
             'new_stock' => (int)$productRow['stock'] - $qty
         ];
@@ -213,7 +215,7 @@ try {
     // -------------------------------------------------------
 
     // 3. Insert New Order Items (With FOC and Promo support)
-    $itemStmt = $pdo->prepare("INSERT INTO order_items (order_id, product_id, supplier_id, quantity, price, discount, is_foc, promo_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $itemStmt = $pdo->prepare("INSERT INTO order_items (order_id, product_id, supplier_id, quantity, cost_price, price, discount, is_foc, promo_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stockStmt = $pdo->prepare("UPDATE products SET stock = stock - ? WHERE id = ?");
     $logStmt = $pdo->prepare("INSERT INTO stock_logs (product_id, type, reference_id, qty_change, previous_stock, new_stock, created_by) VALUES (?, 'sale_out', ?, ?, ?, ?, ?)");
 
@@ -222,11 +224,14 @@ try {
         $is_foc = !empty($item['is_foc']) ? 1 : 0;
         $promo_id = !empty($item['promo_id']) ? (int)$item['promo_id'] : null;
         
+        $logData = $stockLogQueue[$index];
+        
         $itemStmt->execute([
             $order_id, 
             $item['product_id'], 
             $supplier_id, 
             $item['quantity'], 
+            $logData['cost_price'],
             $item['sell_price'], 
             $item['discount'],
             $is_foc,

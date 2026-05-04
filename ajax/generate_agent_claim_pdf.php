@@ -29,9 +29,9 @@ $stmt = $pdo->prepare("
     SELECT 
         c.id as category_id,
         c.name as category_name,
-        c.profit_percentage,
         COALESCE(SUM(oi.quantity), 0) as total_units_sold,
-        COALESCE(SUM(oi.quantity * oi.price), 0) as total_sales_value
+        COALESCE(SUM(oi.quantity * oi.price), 0) as total_sales_value,
+        COALESCE(SUM((oi.price - oi.cost_price) * oi.quantity - IFNULL(oi.discount, 0)), 0) as claimable_profit
     FROM orders o
     JOIN order_items oi ON o.id = oi.order_id
     JOIN products p ON oi.product_id = p.id
@@ -51,9 +51,9 @@ $total_claimable_profit = 0;
 
 foreach($results as $row) {
     $category_name = $row['category_name'] ?: 'Uncategorized';
-    $profit_percentage = (float)$row['profit_percentage'];
     $sales_value = (float)$row['total_sales_value'];
-    $claimable = $sales_value * ($profit_percentage / 100);
+    $claimable = (float)$row['claimable_profit'];
+    $profit_percentage = $sales_value > 0 ? ($claimable / $sales_value) * 100 : 0;
 
     $total_gross_sales += $sales_value;
     $total_claimable_profit += $claimable;

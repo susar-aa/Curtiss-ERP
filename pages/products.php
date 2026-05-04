@@ -143,7 +143,9 @@ try {
 try {
     $pdo->exec("ALTER TABLE products ADD COLUMN supplier_id INT NULL");
     $pdo->exec("ALTER TABLE products ADD COLUMN sku VARCHAR(100) NULL");
-    $pdo->exec("ALTER TABLE products DROP COLUMN cost_price");
+    try {
+        $pdo->exec("ALTER TABLE products ADD COLUMN cost_price DECIMAL(10,2) DEFAULT 0.00");
+    } catch(PDOException $e) {}
     $pdo->exec("ALTER TABLE products ADD COLUMN selling_price DECIMAL(10,2) DEFAULT 0.00");
     $pdo->exec("ALTER TABLE products ADD COLUMN stock INT DEFAULT 0");
 } catch(PDOException $e) {}
@@ -172,13 +174,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         $cat_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
         $supplier_id = !empty($_POST['supplier_id']) ? (int)$_POST['supplier_id'] : null;
         $sku = trim($_POST['sku']);
+        $cost_price = (float)($_POST['cost_price'] ?? 0);
         $selling_price = (float)$_POST['selling_price'];
         $stock = (int)$_POST['stock'];
         $status = $_POST['status'] ?? 'available';
         
         if (!empty($prod_name) && $cat_id) {
-            $stmt = $pdo->prepare("INSERT INTO products (name, category_id, supplier_id, sku, selling_price, stock, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            if ($stmt->execute([$prod_name, $cat_id, $supplier_id, $sku, $selling_price, $stock, $status])) {
+            $stmt = $pdo->prepare("INSERT INTO products (name, category_id, supplier_id, sku, cost_price, selling_price, stock, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            if ($stmt->execute([$prod_name, $cat_id, $supplier_id, $sku, $cost_price, $selling_price, $stock, $status])) {
                 $product_id = $pdo->lastInsertId();
                 $message = "<div class='ios-alert' style='background: rgba(52,199,89,0.1); color: #1A9A3A;'><i class='bi bi-check-circle-fill me-2'></i> Product added successfully!</div>";
                 
@@ -202,13 +205,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         $cat_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
         $supplier_id = !empty($_POST['supplier_id']) ? (int)$_POST['supplier_id'] : null;
         $sku = trim($_POST['sku']);
+        $cost_price = (float)($_POST['cost_price'] ?? 0);
         $selling_price = (float)$_POST['selling_price'];
         $stock = (int)$_POST['stock'];
         $status = $_POST['status'] ?? 'available';
         
         if ($product_id && !empty($prod_name) && $cat_id) {
-            $stmt = $pdo->prepare("UPDATE products SET name = ?, category_id = ?, supplier_id = ?, sku = ?, selling_price = ?, stock = ?, status = ? WHERE id = ?");
-            if ($stmt->execute([$prod_name, $cat_id, $supplier_id, $sku, $selling_price, $stock, $status, $product_id])) {
+            $stmt = $pdo->prepare("UPDATE products SET name = ?, category_id = ?, supplier_id = ?, sku = ?, cost_price = ?, selling_price = ?, stock = ?, status = ? WHERE id = ?");
+            if ($stmt->execute([$prod_name, $cat_id, $supplier_id, $sku, $cost_price, $selling_price, $stock, $status, $product_id])) {
                 $message = "<div class='ios-alert' style='background: rgba(52,199,89,0.1); color: #1A9A3A;'><i class='bi bi-check-circle-fill me-2'></i> Product updated successfully!</div>";
                 
                 // Link newly uploaded images
@@ -430,8 +434,11 @@ include '../includes/sidebar.php';
                         </div>
                     </td>
                     <td>
-                        <div style="font-weight: 800; font-size: 0.95rem; color: #1A9A3A; margin-bottom: 6px;">
+                        <div style="font-weight: 800; font-size: 0.95rem; color: #1A9A3A; margin-bottom: 2px;">
                             Rs <?php echo number_format($p['selling_price'], 2); ?>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--ios-label-2); margin-bottom: 6px;">
+                            Cost: Rs <?php echo number_format($p['cost_price'], 2); ?>
                         </div>
                         <div>
                             <?php if($p['stock'] > 10): ?>
@@ -461,6 +468,7 @@ include '../includes/sidebar.php';
                                 'sku' => $p['sku'],
                                 'category' => $p['category_name'],
                                 'supplier' => $p['supplier_name'] ?: 'None',
+                                'cost' => number_format($p['cost_price'], 2),
                                 'price' => number_format($p['selling_price'], 2),
                                 'stock' => $p['stock'],
                                 'status' => $p['status'],
@@ -476,6 +484,7 @@ include '../includes/sidebar.php';
                                 'sku' => $p['sku'],
                                 'category_id' => $p['category_id'],
                                 'supplier_id' => $p['supplier_id'],
+                                'cost_price' => $p['cost_price'],
                                 'selling_price' => $p['selling_price'],
                                 'stock' => $p['stock'],
                                 'status' => $p['status'],
@@ -574,6 +583,10 @@ include '../includes/sidebar.php';
 
                         <div class="info-card" style="margin-bottom: 0;">
                             <div class="info-row">
+                                <span class="info-label">Cost Price</span>
+                                <span class="info-value text-dark" id="view_cost_price"></span>
+                            </div>
+                            <div class="info-row">
                                 <span class="info-label">Selling Price</span>
                                 <span class="info-value" style="color: #1A9A3A; font-size: 1.4rem; font-weight: 800;" id="view_price"></span>
                             </div>
@@ -637,11 +650,15 @@ include '../includes/sidebar.php';
                     </div>
                     
                     <div class="row g-3 mb-3 pb-3 border-bottom border-secondary border-opacity-10">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label class="ios-label-sm">Cost Price (Rs)</label>
+                            <input type="number" step="0.01" name="cost_price" class="ios-input text-end fw-bold" value="0.00">
+                        </div>
+                        <div class="col-md-4">
                             <label class="ios-label-sm">Selling Price (Rs) <span class="text-danger">*</span></label>
                             <input type="number" step="0.01" name="selling_price" class="ios-input text-end fw-bold text-success" value="0.00" required>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="ios-label-sm">Initial Stock</label>
                             <input type="number" name="stock" class="ios-input text-center fw-bold" value="0">
                         </div>
@@ -723,11 +740,15 @@ include '../includes/sidebar.php';
                     </div>
 
                     <div class="row g-3 mb-3 pb-3 border-bottom border-secondary border-opacity-10">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label class="ios-label-sm">Cost Price (Rs)</label>
+                            <input type="number" step="0.01" name="cost_price" id="edit_cost" class="ios-input text-end fw-bold">
+                        </div>
+                        <div class="col-md-4">
                             <label class="ios-label-sm">Selling Price (Rs) <span class="text-danger">*</span></label>
                             <input type="number" step="0.01" name="selling_price" id="edit_selling" class="ios-input text-end fw-bold text-success" required>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="ios-label-sm">Stock Quantity</label>
                             <input type="number" name="stock" id="edit_stock" class="ios-input text-center fw-bold">
                         </div>
@@ -785,6 +806,7 @@ function openEditModal(data) {
     document.getElementById('edit_sku').value = data.sku;
     document.getElementById('edit_category_id').value = data.category_id;
     document.getElementById('edit_supplier_id').value = data.supplier_id;
+    document.getElementById('edit_cost').value = data.cost_price;
     document.getElementById('edit_selling').value = data.selling_price;
     document.getElementById('edit_stock').value = data.stock;
     document.getElementById('edit_status').value = data.status;
@@ -818,6 +840,7 @@ function openViewModal(data) {
     document.getElementById('view_category').textContent = data.category;
     document.getElementById('view_supplier').textContent = data.supplier;
     document.getElementById('view_sku').textContent = data.sku || 'N/A';
+    document.getElementById('view_cost_price').textContent = 'Rs: ' + data.cost;
     document.getElementById('view_price').textContent = 'Rs: ' + data.price;
     document.getElementById('view_stock').textContent = data.stock;
     document.getElementById('view_status').innerHTML = data.status === 'available' ? '<span class="ios-badge green">Available</span>' : '<span class="ios-badge red">Unavailable</span>';

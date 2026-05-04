@@ -4,9 +4,6 @@ require_once '../includes/auth_check.php';
 requireRole(['admin', 'supervisor']);
 
 // --- AUTO DB MIGRATION ---
-try {
-    $pdo->exec("ALTER TABLE categories ADD COLUMN profit_percentage DECIMAL(5,2) DEFAULT 0.00");
-} catch(PDOException $e) {}
 // -------------------------
 
 // Month filter
@@ -28,9 +25,9 @@ if ($selected_supplier > 0) {
         SELECT 
             c.id as category_id,
             c.name as category_name,
-            c.profit_percentage,
             COALESCE(SUM(oi.quantity), 0) as total_units_sold,
-            COALESCE(SUM(oi.quantity * oi.price), 0) as total_sales_value
+            COALESCE(SUM(oi.quantity * oi.price), 0) as total_sales_value,
+            COALESCE(SUM((oi.price - oi.cost_price) * oi.quantity - IFNULL(oi.discount, 0)), 0) as claimable_profit
         FROM orders o
         JOIN order_items oi ON o.id = oi.order_id
         JOIN products p ON oi.product_id = p.id
@@ -46,9 +43,9 @@ if ($selected_supplier > 0) {
 
     foreach($results as $row) {
         $category_name = $row['category_name'] ?: 'Uncategorized';
-        $profit_percentage = (float)$row['profit_percentage'];
         $sales_value = (float)$row['total_sales_value'];
-        $claimable = $sales_value * ($profit_percentage / 100);
+        $claimable = (float)$row['claimable_profit'];
+        $profit_percentage = $sales_value > 0 ? ($claimable / $sales_value) * 100 : 0;
 
         $total_gross_sales += $sales_value;
         $total_claimable_profit += $claimable;
@@ -256,7 +253,7 @@ include '../includes/sidebar.php';
         </div>
         
         <div class="text-center mt-5 mb-3 no-print">
-            <p class="text-muted small"><i class="bi bi-info-circle-fill"></i> This report shows actual invoiced sales matched against your configured Category Profit Percentages to calculate the exact claimable rebate from your agent.</p>
+            <p class="text-muted small"><i class="bi bi-info-circle-fill"></i> This report shows actual invoiced sales matched against your product cost prices to calculate the exact claimable rebate from your agent.</p>
         </div>
     <?php endif; ?>
 <?php else: ?>

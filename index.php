@@ -113,20 +113,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         $subtotal = 0;
         
         // 1. Verify Stock & Calculate Subtotal
-        foreach ($cart as $item) {
+        foreach ($cart as &$item) {
             $pid = (int)$item['id'];
             $qty = (int)$item['qty'];
             $price = (float)$item['price'];
             
-            $checkStmt = $pdo->prepare("SELECT stock, name FROM products WHERE id = ? FOR UPDATE");
+            $checkStmt = $pdo->prepare("SELECT stock, name, cost_price FROM products WHERE id = ? FOR UPDATE");
             $checkStmt->execute([$pid]);
             $prod = $checkStmt->fetch();
             
             if (!$prod || $prod['stock'] < $qty) {
                 throw new Exception("Not enough stock for: " . ($prod ? $prod['name'] : "Product ID $pid"));
             }
+            $item['cost_price'] = (float)$prod['cost_price'];
             $subtotal += ($qty * $price);
         }
+        unset($item);
         
         // Determine initial payment status based on method
         $payment_status = ($payment_method === 'Cash on Delivery (COD)') ? 'pending' : 'waiting';
@@ -138,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         $order_id = $pdo->lastInsertId();
         
         // 3. Insert Items & Deduct Stock
-        $itemStmt = $pdo->prepare("INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)");
+        $itemStmt = $pdo->prepare("INSERT INTO order_items (order_id, product_id, quantity, cost_price, price) VALUES (?, ?, ?, ?, ?)");
         $stockStmt = $pdo->prepare("UPDATE products SET stock = stock - ? WHERE id = ?");
         $logStmt = $pdo->prepare("INSERT INTO stock_logs (product_id, type, reference_id, qty_change, previous_stock, new_stock) VALUES (?, 'sale_out', ?, ?, (SELECT stock + ? FROM products WHERE id = ?), (SELECT stock FROM products WHERE id = ?))");
         
@@ -146,10 +148,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         foreach ($cart as $item) {
             $pid = (int)$item['id'];
             $qty = (int)$item['qty'];
+            $cost = (float)$item['cost_price'];
             $price = (float)$item['price'];
             $net = $qty * $price;
             
-            $itemStmt->execute([$order_id, $pid, $qty, $price]);
+            $itemStmt->execute([$order_id, $pid, $qty, $cost, $price]);
             $stockStmt->execute([$qty, $pid]);
             $logStmt->execute([$pid, $order_id, -$qty, $qty, $pid, $pid]);
             

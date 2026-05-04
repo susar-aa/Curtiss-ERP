@@ -11,22 +11,17 @@ requireRole(['admin', 'supervisor']); // Restricted to Management
 $selected_month = isset($_GET['month']) ? $_GET['month'] : date('Y-m');
 
 // --- AUTO DB MIGRATION ---
-try {
-    $pdo->exec("ALTER TABLE categories ADD COLUMN profit_percentage DECIMAL(5,2) DEFAULT 0.00");
-} catch(PDOException $e) {}
 // -------------------------
 
 // --- 1. REVENUE & COGS CALCULATION ---
 // We calculate Gross Sales from active invoices
-// Gross profit is now calculated based on the category's profit percentage (Agent Margin)
+// Gross profit is calculated based on (Selling Price - Cost Price)
 $salesStmt = $pdo->prepare("
     SELECT 
         COALESCE(SUM(o.total_amount), 0) as gross_sales,
-        COALESCE(SUM((oi.quantity * oi.price) * (c.profit_percentage / 100)), 0) as gross_profit
+        COALESCE(SUM((oi.quantity * oi.price) - IFNULL(oi.discount, 0) - (oi.quantity * oi.cost_price)), 0) as gross_profit
     FROM orders o
     JOIN order_items oi ON o.id = oi.order_id
-    JOIN products p ON oi.product_id = p.id
-    LEFT JOIN categories c ON p.category_id = c.id
     WHERE DATE_FORMAT(o.created_at, '%Y-%m') = ? AND o.total_amount > 0
 ");
 $salesStmt->execute([$selected_month]);
