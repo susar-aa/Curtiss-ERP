@@ -15,32 +15,32 @@ $route_filter = isset($_GET['route_id']) ? $_GET['route_id'] : '';
 $date_from = isset($_GET['date_from']) ? $_GET['date_from'] : '';
 $date_to = isset($_GET['date_to']) ? $_GET['date_to'] : '';
 
-$whereClause = "rr.rep_id = ?";
+$whereClause = "rs.rep_id = ?";
 $params = [$rep_id];
 
 if ($route_filter !== '') {
-    $whereClause .= " AND rr.route_id = ?";
+    $whereClause .= " AND rs.route_id = ?";
     $params[] = $route_filter;
 }
 if ($date_from !== '') {
-    $whereClause .= " AND rr.assign_date >= ?";
+    $whereClause .= " AND rs.date >= ?";
     $params[] = $date_from;
 }
 if ($date_to !== '') {
-    $whereClause .= " AND rr.assign_date <= ?";
+    $whereClause .= " AND rs.date <= ?";
     $params[] = $date_to;
 }
 
 // Fetch Rep's Route History
 $query = "
-    SELECT rr.*, r.name as route_name,
-           (SELECT COUNT(id) FROM orders WHERE assignment_id = rr.id) as bills_count,
-           (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE assignment_id = rr.id) as gross_sales,
-           (SELECT COALESCE(SUM(amount), 0) FROM route_expenses WHERE assignment_id = rr.id) as total_expenses
-    FROM rep_routes rr 
-    JOIN routes r ON rr.route_id = r.id 
+    SELECT rs.*, r.name as route_name,
+           (SELECT COUNT(id) FROM orders WHERE rep_session_id = rs.id) as bills_count,
+           (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE rep_session_id = rs.id) as gross_sales,
+           (SELECT COALESCE(SUM(amount), 0) FROM route_expenses WHERE rep_session_id = rs.id) as total_expenses
+    FROM rep_sessions rs 
+    JOIN routes r ON rs.route_id = r.id 
     WHERE $whereClause 
-    ORDER BY rr.assign_date DESC, rr.id DESC
+    ORDER BY rs.date DESC, rs.id DESC
     LIMIT 50
 ";
 $stmt = $pdo->prepare($query);
@@ -307,24 +307,28 @@ $routes = $pdo->query("SELECT id, name FROM routes ORDER BY name ASC")->fetchAll
 
             <?php foreach ($history as $h): 
                 // Determine Badge Style
-                if(in_array($h['status'], ['assigned', 'accepted'])) {
+                if($h['status'] == 'active') {
                     $badgeClass = 'warning';
                     $badgeIcon = 'bi-play-circle';
                     $badgeText = 'Active';
-                } elseif(in_array($h['status'], ['completed', 'unloaded'])) {
+                } elseif($h['status'] == 'ended') {
                     $badgeClass = 'success';
                     $badgeIcon = 'bi-check-circle';
-                    $badgeText = 'Closed';
+                    $badgeText = 'Ended';
+                } elseif($h['status'] == 'settled') {
+                    $badgeClass = 'info';
+                    $badgeIcon = 'bi-check-all';
+                    $badgeText = 'Settled';
                 } else {
                     $badgeClass = 'danger';
                     $badgeIcon = 'bi-x-circle';
-                    $badgeText = 'Rejected';
+                    $badgeText = 'Cancelled';
                 }
             ?>
             <div class="route-card">
                 <div class="route-header">
                     <div>
-                        <div class="route-date"><i class="bi bi-calendar-event me-1"></i><?php echo date('D, M d, Y', strtotime($h['assign_date'])); ?></div>
+                        <div class="route-date"><i class="bi bi-calendar-event me-1"></i><?php echo date('D, M d, Y', strtotime($h['date'])); ?></div>
                         <h3 class="route-name"><?php echo htmlspecialchars($h['route_name']); ?></h3>
                     </div>
                     <span class="badge-custom <?php echo $badgeClass; ?>">
@@ -350,8 +354,8 @@ $routes = $pdo->query("SELECT id, name FROM routes ORDER BY name ASC")->fetchAll
                     <?php endif; ?>
                 </div>
 
-                <?php if($h['status'] != 'rejected'): ?>
-                    <a href="todays_bills.php?assignment_id=<?php echo $h['id']; ?>" class="btn-full outline">
+                <?php if($h['status'] != 'cancelled'): ?>
+                    <a href="todays_bills.php?session_id=<?php echo $h['id']; ?>" class="btn-full outline">
                         <i class="bi bi-receipt me-1"></i> View Route Bills
                     </a>
                 <?php endif; ?>

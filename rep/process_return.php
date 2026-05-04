@@ -34,10 +34,10 @@ try {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 } catch(PDOException $e) {}
 
-// --- VERIFY ACTIVE ROUTE ---
-$routeStmt = $pdo->prepare("SELECT id FROM rep_routes WHERE rep_id = ? AND assign_date = CURDATE() AND status = 'accepted' AND start_meter IS NOT NULL ORDER BY id DESC LIMIT 1");
+// --- VERIFY ACTIVE SESSION ---
+$routeStmt = $pdo->prepare("SELECT id FROM rep_sessions WHERE rep_id = ? AND date = CURDATE() AND status = 'active' AND start_meter IS NOT NULL ORDER BY id DESC LIMIT 1");
 $routeStmt->execute([$rep_id]);
-$assignment_id = $routeStmt->fetchColumn();
+$session_id = $routeStmt->fetchColumn();
 
 // --- HANDLE SUBMISSION ---
 $message = '';
@@ -62,15 +62,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['process_return'])) {
             }
 
             // 2. Insert Return Record
-            $stmt = $pdo->prepare("INSERT INTO sales_returns (customer_id, rep_id, assignment_id, total_amount, notes) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$customer_id, $rep_id, $assignment_id, $total_return_value, $notes]);
+            $stmt = $pdo->prepare("INSERT INTO sales_returns (customer_id, rep_id, rep_session_id, total_amount, notes) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$customer_id, $rep_id, $session_id, $total_return_value, $notes]);
             $return_id = $pdo->lastInsertId();
 
             // 3. Issue Credit Note (Reduces Customer Outstanding natively)
             // By setting total=0 and paid=ReturnValue, the formula (total - paid) results in a negative value!
             if ($total_return_value > 0) {
-                $cnStmt = $pdo->prepare("INSERT INTO orders (customer_id, rep_id, assignment_id, subtotal, total_amount, paid_amount, payment_method, payment_status) VALUES (?, ?, ?, 0, 0, ?, 'Credit Note', 'paid')");
-                $cnStmt->execute([$customer_id, $rep_id, $assignment_id, $total_return_value]);
+                $cnStmt = $pdo->prepare("INSERT INTO orders (customer_id, rep_id, rep_session_id, subtotal, total_amount, paid_amount, payment_method, payment_status) VALUES (?, ?, ?, 0, 0, ?, 'Credit Note', 'paid')");
+                $cnStmt->execute([$customer_id, $rep_id, $session_id, $total_return_value]);
             }
 
             // 4. Process Items & Restock if Good

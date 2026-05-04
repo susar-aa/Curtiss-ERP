@@ -10,86 +10,7 @@ requireRole(['rep']); // Strictly for Sales Reps
 
 $rep_id = $_SESSION['user_id'];
 
-// --- AUTO DB MIGRATION FOR ROUTES & EXPENSES ---
-try {
-    $pdo->exec("CREATE TABLE IF NOT EXISTS routes (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        description TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-
-    $pdo->exec("CREATE TABLE IF NOT EXISTS rep_routes (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        rep_id INT NOT NULL,
-        driver_id INT NULL,
-        route_id INT NOT NULL,
-        assign_date DATE NOT NULL,
-        status ENUM('assigned', 'accepted', 'rejected', 'completed', 'unloaded') DEFAULT 'assigned',
-        start_meter DECIMAL(8,1) NULL,
-        end_meter DECIMAL(8,1) NULL,
-        expected_cash DECIMAL(12,2) NULL,
-        actual_cash DECIMAL(12,2) NULL,
-        expected_bank DECIMAL(12,2) NULL,
-        actual_bank DECIMAL(12,2) NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (rep_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (route_id) REFERENCES routes(id) ON DELETE CASCADE,
-        FOREIGN KEY (driver_id) REFERENCES employees(id) ON DELETE SET NULL
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-
-    $pdo->exec("CREATE TABLE IF NOT EXISTS route_loads (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        assignment_id INT NOT NULL,
-        product_id INT NOT NULL,
-        loaded_qty INT NOT NULL,
-        returned_qty INT NULL,
-        short_qty INT NULL,
-        FOREIGN KEY (assignment_id) REFERENCES rep_routes(id) ON DELETE CASCADE,
-        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-
-    $pdo->exec("CREATE TABLE IF NOT EXISTS route_expenses (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        assignment_id INT NOT NULL,
-        type VARCHAR(50) NOT NULL,
-        amount DECIMAL(12,2) NOT NULL,
-        description VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (assignment_id) REFERENCES rep_routes(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-
-    try {
-        $pdo->query("SELECT user_id FROM rep_daily_sessions LIMIT 1");
-    } catch (PDOException $e) {
-        $pdo->exec("DROP TABLE IF EXISTS rep_daily_sessions");
-        $pdo->exec("CREATE TABLE rep_daily_sessions (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT NOT NULL,
-            session_date DATE NOT NULL,
-            start_time DATETIME NULL,
-            end_time DATETIME NULL,
-            status ENUM('active', 'ended') DEFAULT 'active',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY(user_id, session_date)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-    }
-
-    $pdo->exec("CREATE TABLE IF NOT EXISTS rep_location_logs (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        latitude DECIMAL(10,8) NOT NULL,
-        longitude DECIMAL(11,8) NOT NULL,
-        activity_type VARCHAR(50) NOT NULL,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
-
-} catch(PDOException $e) { /* Ignored if already exists */ }
-
-try {
-    $pdo->exec("ALTER TABLE rep_routes DROP INDEX rep_date");
-} catch(PDOException $e) {}
-// ------------------------------------
+// --- 1. HANDLE SESSION ACTIONS ---
 
 // --- Handle Post Actions for Sessions ---
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['route_action'])) {
@@ -550,7 +471,7 @@ try {
                 <span class="ag-text">Vehicle<br>Stock</span>
             </a>
 
-            <?php if($assignment_id && $todays_route['status'] == 'accepted' && !is_null($todays_route['start_meter'])): ?>
+            <?php if($session_id && $active_session['status'] == 'active' && !is_null($active_session['start_meter'])): ?>
                 <a href="#" class="app-grid-btn" data-bs-toggle="modal" data-bs-target="#expensesModal">
                     <div class="ag-icon-wrapper ag-amber"><i class="bi bi-fuel-pump"></i></div>
                     <span class="ag-text">Route<br>Expenses</span>
@@ -563,7 +484,7 @@ try {
             <?php endif; ?>
 
             <!-- Row 2 -->
-            <a href="todays_bills.php<?php echo $assignment_id ? '?assignment_id='.$assignment_id : ''; ?>" class="app-grid-btn">
+            <a href="todays_bills.php<?php echo $session_id ? '?session_id='.$session_id : ''; ?>" class="app-grid-btn">
                 <div class="ag-icon-wrapper ag-purple"><i class="bi bi-list-check"></i></div>
                 <span class="ag-text">Active<br>Bills</span>
             </a>
@@ -582,7 +503,7 @@ try {
 
         <h2 class="section-title">Other Tools</h2>
         <div class="menu-group mb-5">
-            <?php if($assignment_id && $todays_route['status'] == 'accepted' && !is_null($todays_route['start_meter'])): ?>
+            <?php if($session_id && $active_session['status'] == 'active' && !is_null($active_session['start_meter'])): ?>
             <a href="log_unproductive.php" class="menu-item">
                 <div class="menu-icon red"><i class="bi bi-x-circle-fill"></i></div>
                 <div class="menu-content">
@@ -636,7 +557,7 @@ try {
     <!-- ═══════════════════════════════════════
          EXPENSES MODAL
     ═══════════════════════════════════════ -->
-    <?php if ($assignment_id): ?>
+    <?php if ($session_id): ?>
     <div class="modal fade" id="expensesModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-bottom">
             <div class="modal-content">
@@ -658,7 +579,7 @@ try {
                                 <span class="text-danger fw-bold" style="font-family: 'JetBrains Mono', monospace;">-Rs <?php echo number_format($exp['amount'], 2); ?></span>
                                 <form method="POST" onsubmit="return confirm('Delete expense?');" style="margin:0;">
                                     <input type="hidden" name="route_action" value="delete_expense">
-                                    <input type="hidden" name="assignment_id" value="<?php echo $assignment_id; ?>">
+                                    <input type="hidden" name="session_id" value="<?php echo $session_id; ?>">
                                     <input type="hidden" name="expense_id" value="<?php echo $exp['id']; ?>">
                                     <button type="submit" class="btn btn-sm btn-link text-muted p-0"><i class="bi bi-x-circle-fill" style="font-size: 16px;"></i></button>
                                 </form>
@@ -670,7 +591,7 @@ try {
 
                     <form method="POST">
                         <input type="hidden" name="route_action" value="add_expense">
-                        <input type="hidden" name="assignment_id" value="<?php echo $assignment_id; ?>">
+                        <input type="hidden" name="session_id" value="<?php echo $session_id; ?>">
                         
                         <label class="text-muted fw-bold small text-uppercase mb-2 d-block">Type</label>
                         <select name="expense_type" class="clean-input" required>

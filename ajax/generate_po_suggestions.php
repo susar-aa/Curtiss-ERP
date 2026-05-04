@@ -31,8 +31,8 @@ $claim_start = $last_date ? date('Y-m-d', strtotime($last_date . ' + 1 day')) : 
 $claim_end = date('Y-m-d'); // Ends today
 
 // --- 2. CALCULATE ACTUAL WORKING DAYS IN RANGE ---
-// Check dispatch records for actual days worked
-$workDaysStmt = $pdo->prepare("SELECT COUNT(DISTINCT assign_date) FROM rep_routes WHERE assign_date >= ? AND assign_date <= ?");
+// Check session records for actual days worked
+$workDaysStmt = $pdo->prepare("SELECT COUNT(DISTINCT date) FROM rep_sessions WHERE date >= ? AND date <= ? AND status != 'cancelled'");
 $workDaysStmt->execute([$claim_start, $claim_end]);
 $working_days = (int)$workDaysStmt->fetchColumn();
 

@@ -6,7 +6,7 @@
 
 // Database credentials
 $host = 'localhost';
-$db_name = 'curtiss_db';
+$db_name = 'fintrix_db';
 $username = 'suzxlabs';
 $password = 'Susara@200611003614';
 

@@ -11,8 +11,8 @@ requireRole(['rep']); // Strictly for Sales Reps
 $rep_id = $_SESSION['user_id'];
 $message = '';
 
-// Check if filtering by isolated route assignment
-$assignment_id = isset($_GET['assignment_id']) && $_GET['assignment_id'] !== '' ? (int)$_GET['assignment_id'] : null;
+// Check if filtering by isolated route session
+$session_id = isset($_GET['session_id']) && $_GET['session_id'] !== '' ? (int)$_GET['session_id'] : null;
 
 // --- HANDLE DELETE ACTION ---
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'delete_order') {
@@ -53,12 +53,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     }
 }
 
-// --- FETCH ORDERS ISOLATED BY ROUTE ASSIGNMENT ---
+// --- FETCH ORDERS ISOLATED BY ROUTE SESSION ---
 $routeName = "Today's Bills";
-if ($assignment_id) {
-    // Fetch specifically for this dispatch assignment
-    $routeStmt = $pdo->prepare("SELECT r.name FROM rep_routes rr JOIN routes r ON rr.route_id = r.id WHERE rr.id = ?");
-    $routeStmt->execute([$assignment_id]);
+if ($session_id) {
+    // Fetch specifically for this session
+    $routeStmt = $pdo->prepare("SELECT r.name FROM rep_sessions rs JOIN routes r ON rs.route_id = r.id WHERE rs.id = ?");
+    $routeStmt->execute([$session_id]);
     $fetchedName = $routeStmt->fetchColumn();
     if ($fetchedName) $routeName = $fetchedName . " Bills";
     
@@ -66,10 +66,10 @@ if ($assignment_id) {
         SELECT o.*, c.name as customer_name 
         FROM orders o 
         LEFT JOIN customers c ON o.customer_id = c.id 
-        WHERE o.assignment_id = ? 
+        WHERE o.rep_session_id = ? 
         ORDER BY o.created_at DESC
     ");
-    $stmt->execute([$assignment_id]);
+    $stmt->execute([$session_id]);
 } else {
     // Fallback: Fetch all today's orders globally
     $stmt = $pdo->prepare("

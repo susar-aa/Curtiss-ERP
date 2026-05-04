@@ -7,11 +7,11 @@ $rep_id = $_SESSION['user_id'];
 $search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
 
 // 1. Verify Active Route / Started Day
-$routeStmt = $pdo->prepare("SELECT id FROM rep_routes WHERE rep_id = ? AND assign_date = CURDATE() AND status = 'accepted' AND start_meter IS NOT NULL ORDER BY id DESC LIMIT 1");
+$routeStmt = $pdo->prepare("SELECT id FROM rep_sessions WHERE rep_id = ? AND date = CURDATE() AND status = 'active' AND start_meter IS NOT NULL ORDER BY id DESC LIMIT 1");
 $routeStmt->execute([$rep_id]);
-$assignment_id = $routeStmt->fetchColumn();
+$session_id = $routeStmt->fetchColumn();
 
-// 2. Fetch Available Stock (Vehicle or Main Inventory)
+// 2. Fetch Available Stock (Main Inventory for Pre-Sales)
 $vehicle_stock = [];
 $searchSql = "";
 $params = [];
@@ -22,43 +22,20 @@ if ($search_query !== '') {
     $params[] = "%$search_query%";
 }
 
-if ($assignment_id) {
-    // If active route, fetch vehicle stock
-    $stockQuery = "
-        SELECT 
-            p.id as product_id, p.name, p.sku, p.selling_price, p.supplier_id, p.category_id,
-            rl.loaded_qty,
-            (rl.loaded_qty - COALESCE((
-                SELECT SUM(oi.quantity) 
-                FROM order_items oi 
-                JOIN orders o ON oi.order_id = o.id 
-                WHERE o.assignment_id = ? AND oi.product_id = p.id
-            ), 0)) as remaining_qty,
-            (SELECT image_path FROM product_images WHERE product_id = p.id LIMIT 1) as primary_image
-        FROM route_loads rl
-        JOIN products p ON rl.product_id = p.id
-        WHERE rl.assignment_id = ? $searchSql
-        HAVING remaining_qty > 0
-        ORDER BY p.name ASC
-    ";
-    $final_params = array_merge([$assignment_id, $assignment_id], $params);
-} else {
-    // If no active route, fetch main inventory stock (for General Invoicing)
-    $stockQuery = "
-        SELECT 
-            p.id as product_id, p.name, p.sku, p.selling_price, p.supplier_id, p.category_id,
-            p.stock as loaded_qty,
-            p.stock as remaining_qty,
-            (SELECT image_path FROM product_images WHERE product_id = p.id LIMIT 1) as primary_image
-        FROM products p
-        WHERE p.status = 'available' AND p.stock > 0 $searchSql
-        ORDER BY p.name ASC
-    ";
-    $final_params = $params;
-}
+// In the Pre-Sales model, we always view and sell from Main Warehouse stock
+$stockQuery = "
+    SELECT 
+        p.id as product_id, p.name, p.sku, p.selling_price, p.supplier_id, p.category_id,
+        p.stock as loaded_qty,
+        p.stock as remaining_qty,
+        (SELECT image_path FROM product_images WHERE product_id = p.id LIMIT 1) as primary_image
+    FROM products p
+    WHERE p.status = 'available' AND p.stock > 0 $searchSql
+    ORDER BY p.name ASC
+";
 
 $stmt = $pdo->prepare($stockQuery);
-$stmt->execute($final_params);
+$stmt->execute($params);
 $vehicle_stock = $stmt->fetchAll();
 
 // 3. Safely map categories dynamically
@@ -330,7 +307,7 @@ asort($active_categories); // Sort categories alphabetically
             <a href="dashboard.php" class="back-btn"><i class="bi bi-arrow-left"></i></a>
             <div>
                 <h1 class="header-title">Digital Catalog</h1>
-                <span class="header-sub"><?php echo $assignment_id ? 'Live Vehicle Stock' : 'Main Warehouse Stock'; ?></span>
+                <span class="header-sub"><?php echo $session_id ? 'Warehouse Stock (Pre-Sales)' : 'Main Warehouse Stock'; ?></span>
             </div>
         </div>
     </header>
@@ -693,7 +670,7 @@ asort($active_categories); // Sort categories alphabetically
 
         // Send to POS
         cartBtn.addEventListener('click', function() {
-            window.location.href = 'create_order.php<?php echo !$assignment_id ? "?general=true" : ""; ?>';
+            window.location.href = 'create_order.php<?php echo !$session_id ? "?general=true" : ""; ?>';
         });
 
     });

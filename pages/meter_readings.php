@@ -34,12 +34,12 @@ if ($period !== 'custom') {
 if (empty($date_from)) $date_from = date('Y-m-01');
 if (empty($date_to)) $date_to = date('Y-m-t');
 
-// Build SQL Components for filtering by Assignment Date
-$whereClause = "rr.assign_date >= ? AND rr.assign_date <= ?";
+// Build SQL Components for filtering by Date
+$whereClause = "rs.date >= ? AND rs.date <= ?";
 $params = [$date_from, $date_to];
 
 if ($rep_filter !== '') {
-    $whereClause .= " AND rr.rep_id = ?";
+    $whereClause .= " AND rs.rep_id = ?";
     $params[] = $rep_filter;
 }
 
@@ -47,10 +47,10 @@ if ($rep_filter !== '') {
 $kpiStmt = $pdo->prepare("
     SELECT 
         COUNT(id) as total_dispatches,
-        SUM(CASE WHEN status IN ('accepted') AND start_meter IS NOT NULL AND end_meter IS NULL THEN 1 ELSE 0 END) as active_trips,
-        SUM(CASE WHEN end_meter IS NOT NULL AND start_meter IS NOT NULL THEN 1 ELSE 0 END) as completed_trips,
+        SUM(CASE WHEN status = 'active' AND start_meter IS NOT NULL AND end_meter IS NULL THEN 1 ELSE 0 END) as active_trips,
+        SUM(CASE WHEN status = 'ended' AND end_meter IS NOT NULL AND start_meter IS NOT NULL THEN 1 ELSE 0 END) as completed_trips,
         SUM(CASE WHEN end_meter IS NOT NULL AND start_meter IS NOT NULL THEN (end_meter - start_meter) ELSE 0 END) as total_distance
-    FROM rep_routes rr 
+    FROM rep_sessions rs 
     WHERE $whereClause
 ");
 $kpiStmt->execute($params);
@@ -67,10 +67,10 @@ $expStmt = $pdo->prepare("
         COALESCE(SUM(re.amount), 0) as total_expenses,
         COALESCE(SUM(CASE WHEN re.type = 'Fuel' THEN re.amount ELSE 0 END), 0) as total_fuel_expenses
     FROM route_expenses re
-    JOIN rep_routes rr ON re.assignment_id = rr.id
-    WHERE $whereClause
+    JOIN delivery_dispatches dd ON re.dispatch_id = dd.id
+    WHERE dd.date >= ? AND dd.date <= ?
 ");
-$expStmt->execute($params);
+$expStmt->execute([$date_from, $date_to]);
 $expData = $expStmt->fetch();
 
 $total_logged_expenses = (float)$expData['total_expenses'];
@@ -79,11 +79,11 @@ $total_other_expenses = $total_logged_expenses - $total_logged_fuel;
 
 // --- 3. FETCH CHART DATA (Distance by Date) ---
 $chartQuery = "
-    SELECT assign_date, SUM(end_meter - start_meter) as daily_distance 
-    FROM rep_routes rr 
-    WHERE $whereClause AND end_meter IS NOT NULL AND start_meter IS NOT NULL
-    GROUP BY assign_date
-    ORDER BY assign_date ASC
+    SELECT rs.date as assign_date, SUM(rs.end_meter - rs.start_meter) as daily_distance 
+    FROM rep_sessions rs 
+    WHERE $whereClause AND rs.end_meter IS NOT NULL AND rs.start_meter IS NOT NULL
+    GROUP BY rs.date
+    ORDER BY rs.date ASC
 ";
 $stmt = $pdo->prepare($chartQuery);
 $stmt->execute($params);
@@ -126,19 +126,18 @@ $limit = 15;
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset = ($page - 1) * $limit;
 
-$totalRowsStmt = $pdo->prepare("SELECT COUNT(*) FROM rep_routes rr WHERE $whereClause AND start_meter IS NOT NULL");
+$totalRowsStmt = $pdo->prepare("SELECT COUNT(*) FROM rep_sessions rs WHERE $whereClause AND start_meter IS NOT NULL");
 $totalRowsStmt->execute($params);
 $totalRows = $totalRowsStmt->fetchColumn();
 $totalPages = ceil($totalRows / $limit);
 
 $ledgerQuery = "
-    SELECT rr.*, r.name as route_name, u.name as rep_name, e.name as driver_name 
-    FROM rep_routes rr
-    JOIN routes r ON rr.route_id = r.id
-    JOIN users u ON rr.rep_id = u.id
-    LEFT JOIN employees e ON rr.driver_id = e.id
-    WHERE $whereClause AND rr.start_meter IS NOT NULL
-    ORDER BY rr.assign_date DESC, rr.id DESC
+    SELECT rs.*, r.name as route_name, u.name as rep_name, rs.date as assign_date 
+    FROM rep_sessions rs
+    JOIN routes r ON rs.route_id = r.id
+    JOIN users u ON rs.rep_id = u.id
+    WHERE $whereClause AND rs.start_meter IS NOT NULL
+    ORDER BY rs.date DESC, rs.id DESC
     LIMIT $limit OFFSET $offset
 ";
 $ledgerStmt = $pdo->prepare($ledgerQuery);
@@ -528,7 +527,6 @@ include '../includes/sidebar.php';
                     <td class="text-start">
                         <div style="font-weight: 700; font-size: 0.9rem; color: #0055CC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px;"><?php echo htmlspecialchars($r['route_name']); ?></div>
                         <div style="font-size: 0.75rem; color: var(--ios-label-2); margin-top: 2px;"><i class="bi bi-person-badge me-1"></i>Rep: <?php echo htmlspecialchars($r['rep_name']); ?></div>
-                        <div style="font-size: 0.75rem; color: var(--ios-label-2); margin-top: 2px;"><i class="bi bi-person me-1"></i>Drv: <?php echo htmlspecialchars($r['driver_name'] ?: 'Self'); ?></div>
                     </td>
                     <td>
                         <span class="ios-badge outline gray fs-6 px-3"><?php echo number_format($r['start_meter'], 1); ?></span>
@@ -548,10 +546,10 @@ include '../includes/sidebar.php';
                         <?php endif; ?>
                     </td>
                     <td>
-                        <?php if(in_array($r['status'], ['completed', 'unloaded'])): ?>
+                        <?php if($r['status'] == 'ended'): ?>
                             <span class="ios-badge green"><i class="bi bi-check-circle-fill"></i> Closed</span>
-                        <?php elseif($r['status'] == 'accepted'): ?>
-                            <span class="ios-badge blue"><i class="bi bi-play-circle-fill"></i> On Route</span>
+                        <?php elseif($r['status'] == 'active'): ?>
+                            <span class="ios-badge blue"><i class="bi bi-play-circle-fill"></i> Session Active</span>
                         <?php else: ?>
                             <span class="ios-badge gray"><?php echo ucfirst($r['status']); ?></span>
                         <?php endif; ?>

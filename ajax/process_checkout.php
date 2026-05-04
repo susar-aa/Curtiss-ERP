@@ -38,7 +38,7 @@ try {
     $pdo->exec("ALTER TABLE cheques ADD COLUMN IF NOT EXISTS type ENUM('incoming', 'outgoing') DEFAULT 'incoming'");
     $pdo->exec("ALTER TABLE cheques ADD COLUMN IF NOT EXISTS customer_id INT NULL");
     
-    $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS assignment_id INT NULL AFTER rep_id");
+    $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS rep_session_id INT NULL AFTER rep_id");
     
     $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_cash DECIMAL(12,2) DEFAULT 0.00 AFTER paid_amount");
     $pdo->exec("ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid_bank DECIMAL(12,2) DEFAULT 0.00 AFTER paid_cash");

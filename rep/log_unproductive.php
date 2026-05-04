@@ -5,8 +5,8 @@ requireRole(['rep']); // Strictly for Sales Reps
 
 $rep_id = $_SESSION['user_id'];
 
-// Check for active route today
-$routeStmt = $pdo->prepare("SELECT id, route_id, status FROM rep_routes WHERE rep_id = ? AND assign_date = CURDATE() AND status = 'accepted' AND start_meter IS NOT NULL ORDER BY id DESC LIMIT 1");
+// Check for active session today
+$routeStmt = $pdo->prepare("SELECT id, route_id, status FROM rep_sessions WHERE rep_id = ? AND date = CURDATE() AND status = 'active' AND start_meter IS NOT NULL ORDER BY id DESC LIMIT 1");
 $routeStmt->execute([$rep_id]);
 $routeInfo = $routeStmt->fetch();
 

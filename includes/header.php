@@ -102,10 +102,10 @@ if(isset($_SESSION['user_role']) && in_array($_SESSION['user_role'], ['admin', '
     }
 
     // 7. Routes Pending Unload (Operational Bottleneck)
-    $pendingUnload = $pdo->query("SELECT COUNT(*) FROM rep_routes WHERE status = 'completed'")->fetchColumn();
+    $pendingUnload = $pdo->query("SELECT COUNT(*) FROM rep_sessions WHERE status = 'ended'")->fetchColumn();
     if($pendingUnload > 0) {
         $alertCount += $pendingUnload;
-        $alerts[] = ['icon' => 'bi-truck', 'color' => 'info', 'hex' => '#30B0C7', 'text' => "$pendingUnload dispatched route(s) returned and waiting for stock unload verification.", 'link' => 'dispatch.php?status=completed'];
+        $alerts[] = ['icon' => 'bi-truck', 'color' => 'info', 'hex' => '#30B0C7', 'text' => "$pendingUnload rep session(s) ended and waiting for dispatch binding/settlement.", 'link' => 'pending_routes.php'];
     }
 }
 ?>

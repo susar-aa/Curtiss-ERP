@@ -15,19 +15,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['ajax_action'])) {
     
     if ($_POST['ajax_action'] == 'get_route_report') {
         try {
-            $asgStmt = $pdo->prepare("SELECT rr.*, r.name as route_name, u.name as rep_name FROM rep_routes rr JOIN routes r ON rr.route_id = r.id JOIN users u ON rr.rep_id = u.id WHERE rr.id = ?");
+            $asgStmt = $pdo->prepare("SELECT rs.*, r.name as route_name, u.name as rep_name FROM rep_sessions rs JOIN routes r ON rs.route_id = r.id JOIN users u ON rs.rep_id = u.id WHERE rs.id = ?");
             $asgStmt->execute([$assignment_id]);
             $asg = $asgStmt->fetch();
 
-            $ordersStmt = $pdo->prepare("SELECT id, total_amount, payment_method, payment_status, created_at, paid_cash, paid_bank, paid_cheque FROM orders WHERE assignment_id = ?");
+            $ordersStmt = $pdo->prepare("SELECT id, total_amount, payment_method, payment_status, created_at, paid_cash, paid_bank, paid_cheque FROM orders WHERE rep_session_id = ?");
             $ordersStmt->execute([$assignment_id]);
             $orders = $ordersStmt->fetchAll();
 
-            $shortagesStmt = $pdo->prepare("SELECT p.name, rl.short_qty FROM route_loads rl JOIN products p ON rl.product_id = p.id WHERE rl.assignment_id = ? AND rl.short_qty > 0");
-            $shortagesStmt->execute([$assignment_id]);
-            $shortages = $shortagesStmt->fetchAll();
+            // Shortages are now part of the Unload/Dispatch process, not individual rep sessions
+            $shortages = [];
             
-            $expStmt = $pdo->prepare("SELECT * FROM route_expenses WHERE assignment_id = ?");
+            $expStmt = $pdo->prepare("SELECT * FROM route_expenses WHERE rep_session_id = ?");
             $expStmt->execute([$assignment_id]);
             $expenses = $expStmt->fetchAll();
 
@@ -49,40 +48,40 @@ $rep_filter = isset($_GET['rep_id']) ? $_GET['rep_id'] : '';
 $date_from = isset($_GET['date_from']) ? $_GET['date_from'] : '';
 $date_to = isset($_GET['date_to']) ? $_GET['date_to'] : '';
 
-// Only show routes that have ended the day
-$whereClause = "WHERE rr.status IN ('completed', 'unloaded')";
+// Only show sessions that have ended
+$whereClause = "WHERE rs.status = 'ended'";
 $params = [];
 
 if ($rep_filter !== '') {
-    $whereClause .= " AND rr.rep_id = ?";
+    $whereClause .= " AND rs.rep_id = ?";
     $params[] = $rep_filter;
 }
 if ($date_from !== '') {
-    $whereClause .= " AND rr.assign_date >= ?";
+    $whereClause .= " AND rs.date >= ?";
     $params[] = $date_from;
 }
 if ($date_to !== '') {
-    $whereClause .= " AND rr.assign_date <= ?";
+    $whereClause .= " AND rs.date <= ?";
     $params[] = $date_to;
 }
 
 // Get Total Rows
-$totalStmt = $pdo->prepare("SELECT COUNT(*) FROM rep_routes rr $whereClause");
+$totalStmt = $pdo->prepare("SELECT COUNT(*) FROM rep_sessions rs $whereClause");
 $totalStmt->execute($params);
 $totalRows = $totalStmt->fetchColumn();
 $totalPages = ceil($totalRows / $limit);
 
 // Fetch Assignments with Financial Summaries
 $query = "
-    SELECT rr.*, u.name as rep_name, r.name as route_name,
-           (SELECT COUNT(id) FROM orders WHERE assignment_id = rr.id) as total_bills,
-           (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE assignment_id = rr.id) as gross_sales,
-           (SELECT COALESCE(SUM(amount), 0) FROM route_expenses WHERE assignment_id = rr.id) as total_expenses
-    FROM rep_routes rr 
-    JOIN users u ON rr.rep_id = u.id 
-    JOIN routes r ON rr.route_id = r.id 
+    SELECT rs.*, u.name as rep_name, r.name as route_name, rs.date as assign_date,
+           (SELECT COUNT(id) FROM orders WHERE rep_session_id = rs.id) as total_bills,
+           (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE rep_session_id = rs.id) as gross_sales,
+           (SELECT COALESCE(SUM(amount), 0) FROM route_expenses WHERE rep_session_id = rs.id) as total_expenses
+    FROM rep_sessions rs 
+    JOIN users u ON rs.rep_id = u.id 
+    JOIN routes r ON rs.route_id = r.id 
     $whereClause
-    ORDER BY rr.assign_date DESC, u.name ASC
+    ORDER BY rs.date DESC, u.name ASC
     LIMIT $limit OFFSET $offset
 ";
 $stmt = $pdo->prepare($query);
@@ -349,10 +348,10 @@ include '../includes/sidebar.php';
                         </div>
                     </td>
                     <td class="text-center">
-                        <?php if($a['status'] == 'completed'): ?>
-                            <span class="ios-badge orange d-block"><i class="bi bi-hourglass-split"></i> Pending Unload</span>
-                        <?php elseif($a['status'] == 'unloaded'): ?>
-                            <span class="ios-badge green d-block"><i class="bi bi-check2-all"></i> Verified & Closed</span>
+                        <?php if($a['status'] == 'ended'): ?>
+                            <span class="ios-badge green d-block"><i class="bi bi-check2-all"></i> Session Ended</span>
+                        <?php else: ?>
+                            <span class="ios-badge gray d-block"><?php echo ucfirst($a['status']); ?></span>
                         <?php endif; ?>
                     </td>
                     <td class="text-end">

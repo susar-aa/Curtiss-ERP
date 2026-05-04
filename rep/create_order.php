@@ -10,7 +10,7 @@ $is_general = isset($_GET['general']) && $_GET['general'] == 'true';
 // --- 1. Fetch Edit Data (If applicable) ---
 $edit_mode = false;
 $edit_order_data = 'null';
-$order_assignment_id = null;
+$order_session_id = null;
 
 if (isset($_GET['edit_id'])) {
     $edit_id = (int)$_GET['edit_id'];
@@ -25,7 +25,7 @@ if (isset($_GET['edit_id'])) {
     
     if ($order) {
         $edit_mode = true;
-        $order_assignment_id = $order['assignment_id'];
+        $order_session_id = $order['rep_session_id'];
         
         $itemsStmt = $pdo->prepare("
             SELECT oi.*, p.name as product_name, p.sku, p.category_id 
@@ -80,26 +80,26 @@ if (isset($_GET['edit_id'])) {
     }
 }
 
-// --- 2. Verify Active Route / Edit Eligibility ---
+// --- 2. Verify Active Session / Edit Eligibility ---
 $rep_session_id = null;
 $route_id = null;
 $block_message = "";
 
 if ($edit_mode) {
-    if (is_null($order_assignment_id)) {
+    if (is_null($order_session_id)) {
         // Editing a General Invoice (No route)
         $is_general = true;
     } else {
         // Editing an existing route order - fetch its session
         $asgStmt = $pdo->prepare("SELECT route_id, status FROM rep_sessions WHERE id = ?");
-        $asgStmt->execute([$order_assignment_id]);
+        $asgStmt->execute([$order_session_id]);
         $asgInfo = $asgStmt->fetch();
 
-        if ($asgInfo && $asgInfo['status'] === 'ended') {
-            $block_message = "This session has already ended. You can no longer edit this invoice.";
+        if ($asgInfo && ($asgInfo['status'] === 'ended' || $asgInfo['status'] === 'settled')) {
+            $block_message = "This session has already ended or settled. You can no longer edit this invoice.";
         } else {
             // Safe to edit
-            $rep_session_id = $order_assignment_id;
+            $rep_session_id = $order_session_id;
             $route_id = $asgInfo['route_id'] ?? null;
         }
     }

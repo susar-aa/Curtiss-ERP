@@ -110,13 +110,30 @@ $is_readonly = in_array($dispatch['status'], ['dispatched', 'unloaded']);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../assets/css/style.css">
+    <style>
+        @media print {
+            .no-print, header, .navbar, .sidebar, .btn, .breadcrumb { display: none !important; }
+            .card { border: none !important; box-shadow: none !important; }
+            .container-fluid { padding: 0 !important; }
+            body { background: white !important; }
+        }
+    </style>
 </head>
 <body>
+<div class="no-print">
     <?php include '../includes/header.php'; ?>
+</div>
 
     <div class="container-fluid py-4">
         
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <!-- Print Header -->
+        <div class="d-none d-print-block mb-4">
+            <h2 class="fw-bold">DISPATCH MANIFEST: <?php echo $dispatch['dispatch_ref']; ?></h2>
+            <div class="text-muted">Date: <?php echo date('Y-m-d'); ?> | Vehicle: <?php echo htmlspecialchars($dispatch['vehicle_id'] ?? 'N/A'); ?></div>
+            <hr>
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4 no-print">
             <div>
                 <a href="pending_routes.php" class="btn btn-light btn-sm mb-2"><i class="bi bi-arrow-left"></i> Back to Pending</a>
                 <h4 class="mb-0 fw-bold">Dispatch: <?php echo htmlspecialchars($dispatch['dispatch_ref']); ?></h4>

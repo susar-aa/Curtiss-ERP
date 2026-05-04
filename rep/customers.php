@@ -44,10 +44,10 @@ $filter = isset($_GET['filter']) && $_GET['filter'] === 'all' ? 'all' : 'route';
 // --- 1. Fetch Today's Active Route ---
 $routeStmt = $pdo->prepare("
     SELECT r.id as route_id, r.name as route_name 
-    FROM rep_routes rr 
-    JOIN routes r ON rr.route_id = r.id 
-    WHERE rr.rep_id = ? AND rr.assign_date = CURDATE() AND rr.status = 'accepted' AND rr.start_meter IS NOT NULL
-    ORDER BY rr.id DESC LIMIT 1
+    FROM rep_sessions rs 
+    JOIN routes r ON rs.route_id = r.id 
+    WHERE rs.rep_id = ? AND rs.date = CURDATE() AND rs.status = 'active' AND rs.start_meter IS NOT NULL
+    ORDER BY rs.id DESC LIMIT 1
 ");
 $routeStmt->execute([$rep_id]);
 $active_route = $routeStmt->fetch();

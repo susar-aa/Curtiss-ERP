@@ -35,13 +35,13 @@ $recent_sales = $pdo->query("
     LIMIT 6
 ")->fetchAll();
 
-// --- 4. FETCH ACTIVE ROUTES (TODAY) ---
+// --- 4. FETCH ACTIVE REP SESSIONS (TODAY) ---
 $active_routes = $pdo->query("
-    SELECT rr.*, u.name as rep_name, r.name as route_name 
-    FROM rep_routes rr 
-    JOIN users u ON rr.rep_id = u.id 
-    JOIN routes r ON rr.route_id = r.id 
-    WHERE rr.assign_date = CURDATE() AND rr.status IN ('assigned', 'accepted')
+    SELECT rs.*, u.name as rep_name, r.name as route_name 
+    FROM rep_sessions rs 
+    JOIN users u ON rs.rep_id = u.id 
+    LEFT JOIN routes r ON rs.route_id = r.id 
+    WHERE rs.date = CURDATE() AND rs.status = 'active'
 ")->fetchAll();
 
 // --- 5. FETCH REP TARGETS (CURRENT MONTH) ---
@@ -641,17 +641,13 @@ include '../includes/sidebar.php';
                 <a href="routes.php" class="card-link-btn">Manage</a>
             </div>
             <ul class="ios-list">
-                <?php foreach($active_routes as $route): ?>
+                <?php foreach($active_routes as $session): ?>
                 <li>
                     <div>
-                        <div class="item-title"><?php echo htmlspecialchars($route['route_name']); ?></div>
-                        <div class="item-sub"><i class="bi bi-person-badge"></i> <?php echo htmlspecialchars($route['rep_name']); ?></div>
+                        <div class="item-title"><?php echo htmlspecialchars($session['route_name'] ?: 'General Orders'); ?></div>
+                        <div class="item-sub"><i class="bi bi-person-badge"></i> <?php echo htmlspecialchars($session['rep_name']); ?></div>
                     </div>
-                    <?php if($route['status'] == 'accepted'): ?>
-                        <span class="ios-badge green"><i class="bi bi-play-circle-fill"></i> On Route</span>
-                    <?php else: ?>
-                        <span class="ios-badge warning"><i class="bi bi-hourglass-split"></i> Assigned</span>
-                    <?php endif; ?>
+                    <span class="ios-badge green"><i class="bi bi-play-circle-fill"></i> Active Session</span>
                 </li>
                 <?php endforeach; ?>
                 <?php if(empty($active_routes)): ?>
