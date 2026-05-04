@@ -25,9 +25,12 @@ try {
 // --- HANDLE POST ACTIONS ---
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     
-    // Mark Order as Paid (For non-cheque pending orders)
-    if ($_POST['action'] == 'mark_paid') {
+    // Add Payment to Order
+    if ($_POST['action'] == 'add_payment') {
         $order_id = (int)$_POST['order_id'];
+        $pay_amount = (float)$_POST['pay_amount'];
+        $pay_method = $_POST['pay_method'];
+        $pay_ref = trim($_POST['pay_ref']);
         
         $canUpdate = true;
         if ($isRep) {
@@ -37,9 +40,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         }
 
         if ($canUpdate) {
-            $stmt = $pdo->prepare("UPDATE orders SET payment_status = 'paid', paid_amount = total_amount WHERE id = ?");
-            if ($stmt->execute([$order_id])) {
-                $message = "<div class='ios-alert' style='background: rgba(52,199,89,0.1); color: #1A9A3A; padding: 12px 16px; border-radius: 12px; font-weight: 600; margin-bottom: 20px; font-size: 0.9rem;'><i class='bi bi-check-circle-fill me-2'></i> Order #".str_pad($order_id, 6, '0', STR_PAD_LEFT)." marked as PAID successfully!</div>";
+            $stmt = $pdo->prepare("SELECT total_amount, paid_amount FROM orders WHERE id = ?");
+            $stmt->execute([$order_id]);
+            $order = $stmt->fetch();
+            
+            if ($order) {
+                $new_paid = $order['paid_amount'] + $pay_amount;
+                $status = ($new_paid >= $order['total_amount']) ? 'paid' : 'pending';
+                
+                $updateQuery = "UPDATE orders SET paid_amount = ?, payment_status = ?";
+                if ($pay_method == 'Cash') {
+                    $updateQuery .= ", paid_cash = paid_cash + ?";
+                } elseif ($pay_method == 'Bank Transfer') {
+                    $updateQuery .= ", paid_bank = paid_bank + ?";
+                }
+                $updateQuery .= " WHERE id = ?";
+                
+                $pdo->prepare($updateQuery)->execute([$new_paid, $status, $pay_amount, $order_id]);
+                
+                // Add to finance ledger
+                if ($pay_method == 'Cash') {
+                    $pdo->prepare("UPDATE company_finances SET cash_on_hand = cash_on_hand + ? WHERE id = 1")->execute([$pay_amount]);
+                } elseif ($pay_method == 'Bank Transfer') {
+                    $pdo->prepare("UPDATE company_finances SET bank_balance = bank_balance + ? WHERE id = 1")->execute([$pay_amount]);
+                }
+                
+                $desc = "Payment received for Order #$order_id via $pay_method" . ($pay_ref ? " (Ref: $pay_ref)" : "");
+                $pdo->prepare("INSERT INTO finance_logs (type, amount, description, created_by) VALUES (?, ?, ?, ?)")->execute([$pay_method == 'Cash' ? 'cash_in' : 'bank_in', $pay_amount, $desc, $_SESSION['user_id']]);
+
+                $message = "<div class='ios-alert' style='background: rgba(52,199,89,0.1); color: #1A9A3A; padding: 12px 16px; border-radius: 12px; font-weight: 600; margin-bottom: 20px; font-size: 0.9rem;'><i class='bi bi-check-circle-fill me-2'></i> Payment of Rs ".number_format($pay_amount, 2)." recorded successfully!</div>";
             }
         } else {
             $message = "<div class='ios-alert' style='background: rgba(255,59,48,0.1); color: #CC2200; padding: 12px 16px; border-radius: 12px; font-weight: 600; margin-bottom: 20px; font-size: 0.9rem;'><i class='bi bi-exclamation-triangle-fill me-2'></i> Unauthorized action.</div>";
@@ -530,15 +559,11 @@ include '../includes/sidebar.php';
                             </a>
                             <?php endif; ?>
 
-                            <!-- Mark as Paid -->
+                            <!-- Add Payment -->
                             <?php if($o['payment_status'] == 'pending' && $o['payment_method'] !== 'Cheque'): ?>
-                            <form method="POST" class="d-inline" onsubmit="return confirm('Mark this order as paid?');">
-                                <input type="hidden" name="action" value="mark_paid">
-                                <input type="hidden" name="order_id" value="<?php echo $o['id']; ?>">
-                                <button type="submit" class="quick-btn" style="padding: 6px 10px; background: rgba(52,199,89,0.15); color: #1A9A3A;" title="Mark Paid">
-                                    <i class="bi bi-check2-all"></i>
-                                </button>
-                            </form>
+                            <button type="button" class="quick-btn" style="padding: 6px 10px; background: rgba(52,199,89,0.15); color: #1A9A3A;" title="Add Payment" onclick='openPaymentModal(<?php echo $o['id']; ?>, <?php echo $o['total_amount'] - $o['paid_amount']; ?>)'>
+                                <i class="bi bi-cash-coin"></i>
+                            </button>
                             <?php endif; ?>
 
                             <!-- Delete Order (Admins Only) -->
@@ -625,6 +650,47 @@ include '../includes/sidebar.php';
     </div>
 </div>
 
+<!-- ==================== ADD PAYMENT MODAL ==================== -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="">
+                <div class="modal-header">
+                    <h5 class="modal-title" style="font-size: 1.1rem; font-weight: 700;">
+                        <i class="bi bi-cash-coin text-success me-2"></i>Add Payment Record
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="background: var(--ios-bg);">
+                    <input type="hidden" name="action" value="add_payment">
+                    <input type="hidden" name="order_id" id="pay_order_id">
+                    
+                    <div class="mb-3">
+                        <label class="ios-label-sm">Payment Method <span class="text-danger">*</span></label>
+                        <select name="pay_method" class="form-select" style="background: #fff;" required>
+                            <option value="Cash">Cash</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="ios-label-sm">Amount Received (Rs) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" name="pay_amount" id="pay_amount" class="ios-input fw-bold text-success-ios" style="background: #fff;" required>
+                        <div class="form-text" style="font-size: 0.75rem; margin-top: 4px;">Remaining Balance: <span id="pay_balance" class="fw-bold"></span></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="ios-label-sm">Reference (Optional)</label>
+                        <input type="text" name="pay_ref" class="ios-input" placeholder="e.g., Transfer ID" style="background: #fff;">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="quick-btn quick-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="quick-btn quick-btn-primary px-4">Record Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- ==================== LOCATION MAP MODAL ==================== -->
 <div class="modal fade" id="locationModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -678,6 +744,15 @@ function openChequeModal(data) {
     document.getElementById('cheque_amount').value = data.amount;
     
     new bootstrap.Modal(document.getElementById('chequeModal')).show();
+}
+
+function openPaymentModal(orderId, remainingBalance) {
+    document.getElementById('pay_order_id').value = orderId;
+    document.getElementById('pay_amount').value = remainingBalance.toFixed(2);
+    document.getElementById('pay_amount').max = remainingBalance;
+    document.getElementById('pay_balance').innerText = 'Rs ' + remainingBalance.toFixed(2);
+    
+    new bootstrap.Modal(document.getElementById('paymentModal')).show();
 }
 
 let invoiceMap, invoiceMarker;

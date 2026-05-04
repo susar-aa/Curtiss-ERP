@@ -81,6 +81,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['ajax_action'])) {
             $retStmt->execute([$assignment_id]);
             $customer_returns = $retStmt->fetchAll();
 
+            // 7. Fetch associated Dispatched Orders to allow editing
+            $ordersStmt = $pdo->prepare("
+                SELECT o.id, c.name as customer_name, o.total_amount, o.paid_amount, o.payment_method
+                FROM orders o
+                JOIN customers c ON o.customer_id = c.id
+                WHERE o.assignment_id = ?
+            ");
+            $ordersStmt->execute([$assignment_id]);
+            $dispatched_orders = $ordersStmt->fetchAll();
+
             echo json_encode([
                 'success' => true, 
                 'data' => $stock_data,
@@ -91,7 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['ajax_action'])) {
                 'expected_bank' => $expected_bank,
                 'rep_declared_cash' => $asg['rep_declared_cash'],
                 'cheques' => $cheques,
-                'customer_returns' => $customer_returns
+                'customer_returns' => $customer_returns,
+                'dispatched_orders' => $dispatched_orders
             ]);
         } catch(Exception $e) {
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
@@ -163,6 +174,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['ajax_action'])) {
             $sales_data = $salesStmt->fetchAll(PDO::FETCH_ASSOC);
 
             echo json_encode(['success' => true, 'sales_data' => $sales_data, 'trips_analyzed' => $total_trips]);
+        } catch(Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    if ($_POST['ajax_action'] == 'get_pending_orders_manifest') {
+        try {
+            $route_id = (int)$_POST['route_id'];
+            $assign_date = $_POST['assign_date'];
+            
+            // Find all pending orders for this route
+            $stmt = $pdo->prepare("
+                SELECT oi.product_id, p.name as product_name, SUM(oi.quantity) as total_qty, p.stock as current_stock
+                FROM orders o
+                JOIN order_items oi ON o.id = oi.order_id
+                JOIN products p ON oi.product_id = p.id
+                JOIN customers c ON o.customer_id = c.id
+                WHERE c.route_id = ? AND o.order_status = 'pending' AND DATE(o.created_at) <= ?
+                GROUP BY oi.product_id, p.name, p.stock
+            ");
+            $stmt->execute([$route_id, $assign_date]);
+            $manifest = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Get number of bills
+            $billStmt = $pdo->prepare("
+                SELECT COUNT(o.id) FROM orders o
+                JOIN customers c ON o.customer_id = c.id
+                WHERE c.route_id = ? AND o.order_status = 'pending' AND DATE(o.created_at) <= ?
+            ");
+            $billStmt->execute([$route_id, $assign_date]);
+            $bill_count = $billStmt->fetchColumn();
+
+            echo json_encode(['success' => true, 'manifest' => $manifest, 'bill_count' => $bill_count]);
         } catch(Exception $e) {
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
@@ -274,8 +319,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                 }
             }
 
+            // Link pending orders to this assignment and mark as dispatched
+            $linkStmt = $pdo->prepare("
+                UPDATE orders o
+                JOIN customers c ON o.customer_id = c.id
+                SET o.assignment_id = ?, o.order_status = 'dispatched'
+                WHERE c.route_id = ? AND o.order_status = 'pending' AND DATE(o.created_at) <= ?
+            ");
+            $linkStmt->execute([$assignment_id, $route_id, $assign_date]);
+
             $pdo->commit();
-            $message = "<div class='ios-alert' style='background: rgba(52,199,89,0.1); color: #1A9A3A; padding: 12px 16px; border-radius: 12px; font-weight: 600; margin-bottom: 20px; font-size: 0.9rem;'><i class='bi bi-check-circle-fill me-2'></i> Route dispatched and vehicle loaded successfully!</div>";
+            $message = "<div class='ios-alert' style='background: rgba(52,199,89,0.1); color: #1A9A3A; padding: 12px 16px; border-radius: 12px; font-weight: 600; margin-bottom: 20px; font-size: 0.9rem;'><i class='bi bi-check-circle-fill me-2'></i> Route dispatched, vehicle loaded, and orders linked successfully!</div>";
         } catch (Exception $e) {
             $pdo->rollBack();
             $message = "<div class='ios-alert' style='background: rgba(255,59,48,0.1); color: #CC2200; padding: 12px 16px; border-radius: 12px; font-weight: 600; margin-bottom: 20px; font-size: 0.9rem;'><i class='bi bi-exclamation-triangle-fill me-2'></i> Error assigning route: ".$e->getMessage()."</div>";
@@ -331,6 +385,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             // Update Status and Cash
             $pdo->prepare("UPDATE rep_routes SET status = 'unloaded', expected_cash = ?, actual_cash = ?, expected_bank = ? WHERE id = ?")->execute([$expected_cash, $actual_cash, $expected_bank, $assignment_id]);
             
+            // NEW: Mark all associated orders as 'delivered'
+            $pdo->prepare("UPDATE orders SET order_status = 'delivered' WHERE assignment_id = ? AND order_status = 'dispatched'")->execute([$assignment_id]);
+
             // FINALLY: Log to Ledger once verified on unload
             if ($actual_cash > 0) {
                 $pdo->prepare("UPDATE company_finances SET cash_on_hand = cash_on_hand + ? WHERE id = 1")->execute([$actual_cash]);
@@ -727,36 +784,22 @@ include '../includes/sidebar.php';
                     
                     <h6 class="fw-bold mb-3 d-flex justify-content-between align-items-center" style="color: var(--ios-label); font-size: 0.95rem;">
                         <div><i class="bi bi-box-seam me-1"></i> Vehicle Stock Loading Manifest</div>
-                        <button type="button" class="quick-btn quick-btn-ghost" id="btnSuggestStock" style="font-size: 0.75rem; padding: 4px 10px;">
-                            <i class="bi bi-magic text-primary me-1"></i> AI Suggest Load
+                        <button type="button" class="quick-btn quick-btn-ghost" id="btnFetchManifest" style="font-size: 0.75rem; padding: 4px 10px;">
+                            <i class="bi bi-cloud-download text-primary me-1"></i> Fetch Pending Orders
                         </button>
                     </h6>
                     
+                    <div id="manifestSummary" class="mb-3 d-none ios-alert" style="background: rgba(0,122,255,0.1); color: #0055CC; padding: 12px; border-radius: 8px;">
+                        <i class="bi bi-info-circle-fill me-2"></i> Found <span id="pendingBillCount" class="fw-bold">0</span> pending orders for this route.
+                    </div>
+
                     <div id="loadItemsContainer">
-                        <div class="row g-2 mb-2 align-items-end load-row">
-                            <div class="col-md-8">
-                                <label class="ios-label-sm">Product</label>
-                                <select name="product_id[]" class="form-select" style="background: #fff;">
-                                    <option value="">-- Select Product --</option>
-                                    <?php foreach($products as $p): ?>
-                                        <option value="<?php echo $p['id']; ?>"><?php echo htmlspecialchars($p['name']); ?> (Max: <?php echo $p['stock']; ?>)</option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="ios-label-sm">Load Qty</label>
-                                <input type="number" name="load_qty[]" class="ios-input text-center" style="background: #fff;" min="1" placeholder="Qty">
-                            </div>
-                            <div class="col-md-1 text-end">
-                                <button type="button" class="quick-btn" style="padding: 10px; background: rgba(255,59,48,0.1); color: #CC2200; width: 100%; min-height: 42px;" onclick="this.closest('.load-row').remove();">
-                                    <i class="bi bi-x-lg"></i>
-                                </button>
-                            </div>
+                        <!-- Items will be populated here via AJAX -->
+                        <div class="empty-state py-3" id="loadItemsEmptyState">
+                            <i class="bi bi-card-checklist" style="font-size: 2rem; color: var(--ios-label-4);"></i>
+                            <p class="mt-2 text-muted" style="font-size: 0.85rem;">Select a route and click 'Fetch Pending Orders' to generate manifest.</p>
                         </div>
                     </div>
-                    <button type="button" class="quick-btn quick-btn-ghost mt-2" id="addLoadRowBtn">
-                        <i class="bi bi-plus-lg"></i> Add Another Product
-                    </button>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="quick-btn quick-btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -789,6 +832,27 @@ include '../includes/sidebar.php';
                                 <h6 class="fw-bold" style="color: #CC2200; margin-bottom: 6px;"><i class="bi bi-exclamation-triangle-fill me-2"></i>Customer Returns in Vehicle</h6>
                                 <p style="font-size: 0.8rem; color: #CC2200; margin-bottom: 12px; opacity: 0.9;">The rep accepted the following returns. Please collect these physical items from the vehicle.</p>
                                 <div id="unload_returns_list" style="font-size: 0.85rem; font-weight: 600; color: #1c1c1e;"></div>
+                            </div>
+
+                            <!-- Dispatched Orders Edit Section -->
+                            <h6 class="fw-bold mb-2" style="color: var(--ios-label); font-size: 0.95rem;"><i class="bi bi-file-earmark-text text-primary me-2"></i>Dispatched Orders (Finalize/Edit)</h6>
+                            <p style="font-size: 0.8rem; color: var(--ios-label-2); margin-bottom: 12px;">If a customer cut-off any items upon delivery, please <strong>Edit the Invoice</strong> before confirming unload. This ensures stock is returned correctly.</p>
+                            
+                            <div class="table-responsive rounded border mb-4" style="background: #fff; max-height: 200px; overflow-y: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                                <table class="ios-table text-center" style="margin: 0;">
+                                    <thead style="position: sticky; top: 0; z-index: 5;">
+                                        <tr class="table-ios-header">
+                                            <th class="text-start">Inv #</th>
+                                            <th class="text-start">Customer</th>
+                                            <th>Total (Rs)</th>
+                                            <th>Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="unload_orders_tbody">
+                                        <!-- Injected via JS -->
+                                    </tbody>
+                                </table>
                             </div>
 
                             <h6 class="fw-bold mb-2" style="color: var(--ios-label); font-size: 0.95rem;"><i class="bi bi-boxes text-primary me-2"></i>Physical Stock Verification</h6>
@@ -1096,53 +1160,67 @@ include '../includes/sidebar.php';
 </div>
 
 <script>
-document.getElementById('addLoadRowBtn').addEventListener('click', function() {
-    const container = document.getElementById('loadItemsContainer');
-    const newRow = document.querySelector('.load-row').cloneNode(true);
-    newRow.querySelector('select').value = '';
-    newRow.querySelector('input').value = '';
-    container.appendChild(newRow);
-});
-
-let currentAiData = [];
-let currentTrips = 1;
-
-document.getElementById('btnSuggestStock').addEventListener('click', function() {
+document.getElementById('btnFetchManifest').addEventListener('click', function() {
     const routeSelect = document.querySelector('select[name="route_id"]');
+    const dateInput = document.querySelector('input[name="assign_date"]');
     const routeId = routeSelect.value;
+    const assignDate = dateInput.value;
     
     if (!routeId) {
-        alert('Please select a Route from the dropdown first to get AI suggestions.');
+        alert('Please select a Route from the dropdown first to fetch pending orders.');
         return;
     }
 
     const btn = this;
     const originalText = btn.innerHTML;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Analyzing...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Fetching...';
     btn.disabled = true;
 
     fetch('dispatch.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `ajax_action=get_ai_stock_suggestion&route_id=${routeId}`
+        body: `ajax_action=get_pending_orders_manifest&route_id=${routeId}&assign_date=${assignDate}`
     })
     .then(res => res.json())
     .then(result => {
         btn.innerHTML = originalText;
         btn.disabled = false;
 
+        const container = document.getElementById('loadItemsContainer');
+        container.innerHTML = '';
+
         if (result.success) {
-            currentAiData = result.sales_data;
-            currentTrips = result.trips_analyzed;
-            
-            if (currentAiData.length === 0) {
-                alert('Not enough sales data found for this route in the last 3 months to generate suggestions.');
+            const summary = document.getElementById('manifestSummary');
+            summary.classList.remove('d-none');
+            document.getElementById('pendingBillCount').innerText = result.bill_count;
+
+            if (result.manifest.length === 0) {
+                container.innerHTML = `<div class="empty-state py-3"><i class="bi bi-box" style="font-size: 2rem; color: var(--ios-label-4);"></i><p class="mt-2 text-muted" style="font-size: 0.85rem;">No pending orders for this route.</p></div>`;
                 return;
             }
 
-            document.getElementById('ai_trips_badge').innerText = currentTrips + ' Trips Analyzed';
-            renderAiSuggestions();
-            new bootstrap.Modal(document.getElementById('aiSuggestModal')).show();
+            result.manifest.forEach(item => {
+                const rowHtml = `
+                <div class="row g-2 mb-2 align-items-end load-row">
+                    <div class="col-md-8">
+                        <label class="ios-label-sm">Product</label>
+                        <select name="product_id[]" class="form-select" style="background: var(--ios-bg); pointer-events: none;" readonly>
+                            <option value="${item.product_id}" selected>${item.product_name} (Stock: ${item.current_stock})</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="ios-label-sm">Load Qty</label>
+                        <input type="number" name="load_qty[]" class="ios-input text-center fw-bold text-primary" style="background: var(--ios-bg);" value="${item.total_qty}" min="1" readonly>
+                    </div>
+                    <div class="col-md-1 text-end">
+                        <div style="padding: 10px; color: var(--ios-label-3); width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-lock-fill"></i>
+                        </div>
+                    </div>
+                </div>
+                `;
+                container.insertAdjacentHTML('beforeend', rowHtml);
+            });
         } else {
             alert(result.message);
         }
@@ -1150,77 +1228,8 @@ document.getElementById('btnSuggestStock').addEventListener('click', function() 
     .catch(err => {
         btn.innerHTML = originalText;
         btn.disabled = false;
-        alert('Network error while fetching AI suggestions.');
+        alert('Network error while fetching manifest.');
     });
-});
-
-function renderAiSuggestions() {
-    const tbody = document.getElementById('ai_suggestions_tbody');
-    tbody.innerHTML = '';
-    const bufferPercent = parseFloat(document.getElementById('ai_buffer_percent').value) || 0;
-    const multiplier = 1 + (bufferPercent / 100);
-
-    currentAiData.forEach(item => {
-        const avgPerTrip = item.total_sold / currentTrips;
-        const suggestedQty = Math.ceil(avgPerTrip * multiplier);
-        
-        // Ensure product is actually in the dispatch dropdown
-        const selectCheck = document.querySelector(`select[name="product_id[]"] option[value="${item.product_id}"]`);
-        if (!selectCheck) return; // Skip if product is unavailable/out of stock
-        
-        tbody.innerHTML += `
-            <tr data-product-id="${item.product_id}">
-                <td class="text-start fw-bold" style="color: var(--ios-label); font-size: 0.9rem;">${item.product_name}</td>
-                <td>${item.month_1}</td>
-                <td>${item.month_2}</td>
-                <td>${item.month_3}</td>
-                <td class="fw-bold" style="color: #0055CC;">${item.total_sold}</td>
-                <td style="background: rgba(52,199,89,0.05) !important;">
-                    <input type="number" class="ios-input text-center fw-bold ai-suggested-input" value="${suggestedQty}" min="0" style="color: #1A9A3A; width: 80px; margin: 0 auto; padding: 4px; min-height: 32px;">
-                </td>
-            </tr>
-        `;
-    });
-    
-    if(tbody.innerHTML === '') {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-muted py-4">No matching available products found in inventory.</td></tr>';
-    }
-}
-
-document.getElementById('ai_buffer_percent').addEventListener('input', renderAiSuggestions);
-
-document.getElementById('btnApplyAiSuggestion').addEventListener('click', function() {
-    // Save one row as template before clearing
-    const templateRow = document.querySelector('.load-row').cloneNode(true);
-    templateRow.querySelector('select').value = '';
-    templateRow.querySelector('input').value = '';
-
-    const container = document.getElementById('loadItemsContainer');
-    container.innerHTML = '';
-
-    const inputs = document.querySelectorAll('.ai-suggested-input');
-    let added = 0;
-    
-    inputs.forEach(input => {
-        const tr = input.closest('tr');
-        const productId = tr.dataset.productId;
-        const qty = parseInt(input.value) || 0;
-        
-        if (qty > 0) {
-            const newRow = templateRow.cloneNode(true);
-            newRow.querySelector('select').value = productId;
-            newRow.querySelector('input').value = qty;
-            container.appendChild(newRow);
-            added++;
-        }
-    });
-
-    if (added === 0) {
-        container.appendChild(templateRow);
-        alert('No products with quantity > 0 were applied.');
-    } else {
-        bootstrap.Modal.getInstance(document.getElementById('aiSuggestModal')).hide();
-    }
 });
 
 // --- Unload Modal Logic ---
@@ -1349,6 +1358,31 @@ function openUnloadModal(assignmentId) {
                 document.getElementById('unload_returns_list').innerHTML = retHtml;
             } else {
                 document.getElementById('unload_returns_container').classList.add('d-none');
+            }
+
+            // 7. Render Dispatched Orders for Editing
+            const ordersTbody = document.getElementById('unload_orders_tbody');
+            if (result.dispatched_orders && result.dispatched_orders.length > 0) {
+                let ordHtml = '';
+                result.dispatched_orders.forEach(o => {
+                    let pmtStatus = (parseFloat(o.paid_amount) >= parseFloat(o.total_amount)) ? '<span class="ios-badge green">Paid</span>' : '<span class="ios-badge orange">Credit</span>';
+                    ordHtml += `
+                        <tr>
+                            <td class="text-start" style="font-weight: 700; color: var(--accent-dark);">#${String(o.id).padStart(6, '0')}</td>
+                            <td class="text-start" style="font-weight: 600;">${o.customer_name}</td>
+                            <td style="font-weight: 800; color: var(--ios-label);">${parseFloat(o.total_amount).toFixed(2)}</td>
+                            <td>${pmtStatus}</td>
+                            <td>
+                                <a href="create_order.php?edit_id=${o.id}" target="_blank" class="quick-btn" style="padding: 4px 10px; font-size: 0.75rem; background: rgba(0,122,255,0.1); color: #0055CC;">
+                                    <i class="bi bi-pencil-square"></i> Edit
+                                </a>
+                            </td>
+                        </tr>
+                    `;
+                });
+                ordersTbody.innerHTML = ordHtml;
+            } else {
+                ordersTbody.innerHTML = '<tr><td colspan="5" class="py-3 text-center text-muted fw-bold">No orders linked to this dispatch.</td></tr>';
             }
 
         } else {
