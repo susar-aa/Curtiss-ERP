@@ -91,65 +91,36 @@ try {
 } catch(PDOException $e) {}
 // ------------------------------------
 
-// --- Handle Post Actions for Routes & Starting/Ending Day ---
+// --- Handle Post Actions for Sessions ---
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['route_action'])) {
     $action = $_POST['route_action'];
-    $assignment_id = (int)$_POST['assignment_id'];
 
-    if ($action == 'accept') {
-        $pdo->prepare("UPDATE rep_routes SET status = 'accepted' WHERE id = ? AND rep_id = ?")->execute([$assignment_id, $rep_id]);
-    } elseif ($action == 'reject') {
-        $pdo->prepare("UPDATE rep_routes SET status = 'rejected' WHERE id = ? AND rep_id = ?")->execute([$assignment_id, $rep_id]);
-    } elseif ($action == 'start_day') {
+    if ($action == 'start_day') {
+        $route_id = (int)$_POST['route_id'];
         $meter = (float)$_POST['start_meter'];
-        $driver_id = !empty($_POST['driver_id']) ? (int)$_POST['driver_id'] : null;
         $lat = !empty($_POST['latitude']) ? (float)$_POST['latitude'] : null;
         $lng = !empty($_POST['longitude']) ? (float)$_POST['longitude'] : null;
 
-        $pdo->prepare("UPDATE rep_routes SET start_meter = ? WHERE id = ? AND rep_id = ?")->execute([$meter, $assignment_id, $rep_id]);
+        $pdo->prepare("INSERT INTO rep_sessions (rep_id, route_id, start_meter, date, status) VALUES (?, ?, ?, CURDATE(), 'active')")->execute([$rep_id, $route_id, $meter]);
         $pdo->prepare("INSERT INTO rep_daily_sessions (user_id, session_date, start_time, status) VALUES (?, CURDATE(), NOW(), 'active') ON DUPLICATE KEY UPDATE start_time = NOW(), status = 'active'")->execute([$rep_id]);
         
         if ($lat && $lng) {
-            $pdo->prepare("INSERT INTO rep_location_logs (user_id, latitude, longitude, activity_type, timestamp) VALUES (?, ?, ?, 'day_started', NOW())")->execute([$rep_id, $lat, $lng]);
+            $pdo->prepare("INSERT INTO rep_location_logs (user_id, latitude, longitude, activity_type, timestamp) VALUES (?, ?, ?, 'session_started', NOW())")->execute([$rep_id, $lat, $lng]);
         }
-
-        if ($driver_id) {
-            $pdo->prepare("INSERT INTO attendance (employee_id, work_date, status) VALUES (?, CURDATE(), 'present') ON DUPLICATE KEY UPDATE status = 'present'")->execute([$driver_id]);
-        }
-
-        $empStmt = $pdo->prepare("SELECT id FROM employees WHERE user_id = ? OR (name = ? AND designation = 'Sales Rep') LIMIT 1");
-        $empStmt->execute([$rep_id, $_SESSION['user_name']]);
-        $rep_emp_id = $empStmt->fetchColumn();
-
-        if (!$rep_emp_id) {
-            $empCode = 'REP-' . str_pad($rep_id, 3, '0', STR_PAD_LEFT);
-            $pdo->prepare("INSERT INTO employees (user_id, emp_code, name, designation, daily_rate, status) VALUES (?, ?, ?, 'Sales Rep', 0.00, 'active')")->execute([$rep_id, $empCode, $_SESSION['user_name']]);
-            $rep_emp_id = $pdo->lastInsertId();
-        }
-
-        if ($rep_emp_id) {
-            $pdo->prepare("INSERT INTO attendance (employee_id, work_date, status) VALUES (?, CURDATE(), 'present') ON DUPLICATE KEY UPDATE status = 'present'")->execute([$rep_emp_id]);
-        }
-    } elseif ($action == 'add_expense') {
-        $type = $_POST['expense_type'];
-        $amount = (float)$_POST['expense_amount'];
-        $desc = trim($_POST['expense_desc']);
-        $pdo->prepare("INSERT INTO route_expenses (assignment_id, type, amount, description) VALUES (?, ?, ?, ?)")->execute([$assignment_id, $type, $amount, $desc]);
-    } elseif ($action == 'delete_expense') {
-        $expense_id = (int)$_POST['expense_id'];
-        $pdo->prepare("DELETE FROM route_expenses WHERE id = ? AND assignment_id = ?")->execute([$expense_id, $assignment_id]);
     } elseif ($action == 'end_day') {
+        $session_id = (int)$_POST['session_id'];
         $end_meter = (float)$_POST['end_meter'];
-        $actual_cash = (float)($_POST['actual_cash_total_input'] ?? 0);
-        $expected_cash = (float)($_POST['expected_cash_val'] ?? 0);
+        $cash = (float)($_POST['actual_cash_total_input'] ?? 0);
+        $cheque_amt = (float)($_POST['cheque_amount'] ?? 0);
+        $cheque_count = (int)($_POST['cheque_count'] ?? 0);
         $lat = !empty($_POST['latitude']) ? (float)$_POST['latitude'] : null;
         $lng = !empty($_POST['longitude']) ? (float)$_POST['longitude'] : null;
         
-        $pdo->prepare("UPDATE rep_routes SET end_meter = ?, actual_cash = ?, expected_cash = ?, status = 'completed' WHERE id = ? AND rep_id = ?")->execute([$end_meter, $actual_cash, $expected_cash, $assignment_id, $rep_id]);
+        $pdo->prepare("UPDATE rep_sessions SET end_meter = ?, cash_collected = ?, cheque_amount = ?, cheque_count = ?, status = 'ended' WHERE id = ? AND rep_id = ?")->execute([$end_meter, $cash, $cheque_amt, $cheque_count, $session_id, $rep_id]);
         $pdo->prepare("UPDATE rep_daily_sessions SET end_time = NOW(), status = 'ended' WHERE user_id = ? AND session_date = CURDATE()")->execute([$rep_id]);
         
         if ($lat && $lng) {
-            $pdo->prepare("INSERT INTO rep_location_logs (user_id, latitude, longitude, activity_type, timestamp) VALUES (?, ?, ?, 'day_ended', NOW())")->execute([$rep_id, $lat, $lng]);
+            $pdo->prepare("INSERT INTO rep_location_logs (user_id, latitude, longitude, activity_type, timestamp) VALUES (?, ?, ?, 'session_ended', NOW())")->execute([$rep_id, $lat, $lng]);
         }
     }
     header("Location: dashboard.php");
@@ -157,50 +128,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['route_action'])) {
 }
 
 // --- Fetch Key Metrics ---
-$route_expenses = [];
-$total_expenses = 0;
+$today_sales = 0;
+$today_bills = 0;
 $cash_sales = 0;
-$collected_cheques = [];
+$active_session = null;
+$ended_sessions = [];
+$all_routes = [];
 
 try {
-    $routeStmt = $pdo->prepare("
-        SELECT rr.*, r.name as route_name, r.description, e.name as driver_name 
-        FROM rep_routes rr 
-        JOIN routes r ON rr.route_id = r.id 
-        LEFT JOIN employees e ON rr.driver_id = e.id
-        WHERE rr.rep_id = ? AND rr.assign_date = CURDATE()
-        ORDER BY rr.id DESC LIMIT 1
+    // Get all available routes
+    $routeStmt = $pdo->query("SELECT id, name FROM routes ORDER BY name ASC");
+    $all_routes = $routeStmt->fetchAll();
+
+    // Check for an active session today
+    $activeStmt = $pdo->prepare("
+        SELECT rs.*, r.name as route_name 
+        FROM rep_sessions rs 
+        JOIN routes r ON rs.route_id = r.id 
+        WHERE rs.rep_id = ? AND rs.date = CURDATE() AND rs.status = 'active'
+        ORDER BY rs.id DESC LIMIT 1
     ");
-    $routeStmt->execute([$rep_id]);
-    $todays_route = $routeStmt->fetch();
+    $activeStmt->execute([$rep_id]);
+    $active_session = $activeStmt->fetch();
 
-    $assignment_id = $todays_route ? $todays_route['id'] : null;
+    $session_id = $active_session ? $active_session['id'] : null;
 
-    if ($assignment_id) {
-        $stmt = $pdo->prepare("SELECT SUM(total_amount) FROM orders WHERE assignment_id = ?");
-        $stmt->execute([$assignment_id]);
+    if ($session_id) {
+        $stmt = $pdo->prepare("SELECT SUM(total_amount) FROM orders WHERE rep_session_id = ?");
+        $stmt->execute([$session_id]);
         $today_sales = $stmt->fetchColumn() ?: 0;
 
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE assignment_id = ?");
-        $stmt->execute([$assignment_id]);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE rep_session_id = ?");
+        $stmt->execute([$session_id]);
         $today_bills = $stmt->fetchColumn() ?: 0;
-        
-        $stmt = $pdo->prepare("SELECT SUM(paid_cash) FROM orders WHERE assignment_id = ?");
-        $stmt->execute([$assignment_id]);
-        $cash_sales = (float)$stmt->fetchColumn() ?: 0;
-
-        $stmt = $pdo->prepare("SELECT * FROM route_expenses WHERE assignment_id = ? ORDER BY created_at DESC");
-        $stmt->execute([$assignment_id]);
-        $route_expenses = $stmt->fetchAll();
-        foreach($route_expenses as $exp) { $total_expenses += $exp['amount']; }
-        
-        $stmt = $pdo->prepare("
-            SELECT ch.bank_name, ch.amount 
-            FROM cheques ch JOIN orders o ON ch.order_id = o.id 
-            WHERE o.assignment_id = ? AND ch.type = 'incoming'
-        ");
-        $stmt->execute([$assignment_id]);
-        $collected_cheques = $stmt->fetchAll();
     } else {
         $stmt = $pdo->prepare("SELECT SUM(total_amount) FROM orders WHERE rep_id = ? AND DATE(created_at) = CURDATE()");
         $stmt->execute([$rep_id]);
@@ -214,18 +174,6 @@ try {
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE rep_id = ? AND payment_status != 'paid'");
     $stmt->execute([$rep_id]);
     $pending_orders = $stmt->fetchColumn() ?: 0;
-
-    $load_manifest = [];
-    if ($assignment_id) {
-        $loadStmt = $pdo->prepare("
-            SELECT rl.loaded_qty, p.name, p.sku 
-            FROM route_loads rl 
-            JOIN products p ON rl.product_id = p.id 
-            WHERE rl.assignment_id = ?
-        ");
-        $loadStmt->execute([$assignment_id]);
-        $load_manifest = $loadStmt->fetchAll();
-    }
 
 } catch(PDOException $e) {
     die("<div style='padding: 20px; color: red;'>Database Error: " . htmlspecialchars($e->getMessage()) . "</div>");
@@ -528,130 +476,50 @@ try {
         </div>
 
         <!-- ── Dynamic Route Card ── -->
-        <h2 class="section-title">Today's Route</h2>
-        <?php if ($todays_route): ?>
-
-            <!-- State 1: Assigned (Pending) -->
-            <?php if ($todays_route['status'] == 'assigned'): ?>
+        <h2 class="section-title">Today's Route Session</h2>
+        
+        <?php if ($active_session): ?>
+            <!-- Active Session -->
             <div class="route-card">
                 <div class="route-header">
-                    <span class="route-badge pending"><i class="bi bi-clock-history"></i> Awaiting Accept</span>
+                    <span class="route-badge active"><i class="bi bi-broadcast"></i> Session Active</span>
+                    <span class="text-muted small fw-bold" style="font-family: 'JetBrains Mono', monospace;">Start: <?php echo number_format($active_session['start_meter'], 1); ?></span>
                 </div>
                 <div class="route-body">
-                    <h3 class="route-name"><?php echo htmlspecialchars($todays_route['route_name']); ?></h3>
-                    <div class="route-desc">
-                        <i class="bi bi-person"></i> <?php echo htmlspecialchars($todays_route['driver_name'] ?: 'Self-Driven'); ?>
-                    </div>
-
-                    <?php if(!empty($load_manifest)): ?>
-                    <div class="info-box mb-3">
-                        <p class="text-muted fw-bold small text-uppercase mb-2">Load Manifest</p>
-                        <div style="max-height:120px; overflow-y:auto;">
-                            <?php foreach($load_manifest as $m): ?>
-                            <div class="info-row" style="padding: 4px 0;">
-                                <span class="info-label" style="font-size: 13px; font-family: 'Inter', sans-serif;"><?php echo htmlspecialchars($m['name']); ?></span>
-                                <span class="info-value" style="font-size: 13px;"><?php echo $m['loaded_qty']; ?>x</span>
-                            </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-
-                    <div class="action-grid-buttons">
-                        <form method="POST">
-                            <input type="hidden" name="route_action" value="reject">
-                            <input type="hidden" name="assignment_id" value="<?php echo $todays_route['id']; ?>">
-                            <button type="submit" class="btn-action btn-danger-action">Reject</button>
-                        </form>
-                        <form method="POST">
-                            <input type="hidden" name="route_action" value="accept">
-                            <input type="hidden" name="assignment_id" value="<?php echo $todays_route['id']; ?>">
-                            <button type="submit" class="btn-action btn-success-action">Accept</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- State 2: Accepted (Needs Meter) -->
-            <?php elseif ($todays_route['status'] == 'accepted' && is_null($todays_route['start_meter'])): ?>
-            <div class="route-card">
-                <div class="route-header">
-                    <span class="route-badge active"><i class="bi bi-key"></i> Ready to Start</span>
-                </div>
-                <div class="route-body">
-                    <h3 class="route-name"><?php echo htmlspecialchars($todays_route['route_name']); ?></h3>
-                    
-                    <form method="POST" id="startDayForm" class="mt-3">
-                        <input type="hidden" name="route_action" value="start_day">
-                        <input type="hidden" name="assignment_id" value="<?php echo $todays_route['id']; ?>">
-                        <input type="hidden" name="driver_id" value="<?php echo $todays_route['driver_id']; ?>">
-                        <input type="hidden" name="latitude" id="start_lat" value="">
-                        <input type="hidden" name="longitude" id="start_lng" value="">
-                        
-                        <label class="text-muted fw-bold small text-uppercase mb-2 d-block">Start Meter (km)</label>
-                        <input type="text" inputmode="numeric" name="start_meter" class="clean-input mono" required placeholder="e.g. 45200.5">
-                        
-                        <button type="button" class="btn-action btn-primary-action" onclick="processStartDay(this);">Start Day</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- State 3: Active Route -->
-            <?php elseif ($todays_route['status'] == 'accepted' && !is_null($todays_route['start_meter'])): ?>
-            <div class="route-card">
-                <div class="route-header">
-                    <span class="route-badge active"><i class="bi bi-broadcast"></i> Route Active</span>
-                    <span class="text-muted small fw-bold" style="font-family: 'JetBrains Mono', monospace;">Start: <?php echo number_format($todays_route['start_meter'], 1); ?></span>
-                </div>
-                <div class="route-body">
-                    <h3 class="route-name mb-4"><?php echo htmlspecialchars($todays_route['route_name']); ?></h3>
+                    <h3 class="route-name mb-4"><?php echo htmlspecialchars($active_session['route_name']); ?></h3>
                     <button type="button" class="btn-action btn-danger-action" data-bs-toggle="modal" data-bs-target="#endDayModal" style="background: var(--danger); color: white;">
                         End Route & Day
                     </button>
                 </div>
             </div>
-
-            <!-- State 4: Completed -->
-            <?php elseif (in_array($todays_route['status'], ['completed', 'unloaded'])): ?>
+        <?php else: ?>
+            <!-- No Active Session - Start One -->
             <div class="route-card">
                 <div class="route-header">
-                    <span class="route-badge completed"><i class="bi bi-check2-all"></i> Completed</span>
-                    <?php if($todays_route['status'] == 'unloaded'): ?>
-                        <span class="badge bg-success border-0 px-2 py-1"><i class="bi bi-shield-check"></i> Verified</span>
-                    <?php endif; ?>
+                    <span class="route-badge pending"><i class="bi bi-key"></i> Ready to Start</span>
                 </div>
                 <div class="route-body">
-                    <h3 class="route-name mb-3"><?php echo htmlspecialchars($todays_route['route_name']); ?></h3>
-                    <div class="info-box mb-0">
-                        <div class="info-row">
-                            <span class="info-label">Distance</span>
-                            <span class="info-value"><?php echo number_format($todays_route['end_meter'] - $todays_route['start_meter'], 1); ?> km</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Gross Sales</span>
-                            <span class="info-value money">Rs <?php echo number_format($today_sales, 2); ?></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                    <h3 class="route-name mb-2">Start New Session</h3>
+                    <p class="text-muted small mb-3">Select your route and enter your starting meter to begin taking orders.</p>
+                    
+                    <form method="POST" id="startDayForm">
+                        <input type="hidden" name="route_action" value="start_day">
+                        <input type="hidden" name="latitude" id="start_lat" value="">
+                        <input type="hidden" name="longitude" id="start_lng" value="">
+                        
+                        <label class="text-muted fw-bold small text-uppercase mb-2 d-block">Select Route</label>
+                        <select name="route_id" class="clean-input" required>
+                            <option value="">-- Choose Route --</option>
+                            <?php foreach($all_routes as $r): ?>
+                                <option value="<?php echo $r['id']; ?>"><?php echo htmlspecialchars($r['name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
 
-            <!-- State 5: Rejected -->
-            <?php elseif ($todays_route['status'] == 'rejected'): ?>
-            <div class="clean-alert" style="background: var(--danger-bg); border-color: #FECACA;">
-                <i class="bi bi-x-circle-fill" style="color: var(--danger);"></i>
-                <div>
-                    <h6 style="color: var(--danger);">Load Rejected</h6>
-                    <p style="color: #991B1B;">You declined today's dispatch assignment.</p>
-                </div>
-            </div>
-            <?php endif; ?>
-
-        <?php else: ?>
-            <div class="clean-alert" style="background: var(--surface); border-color: var(--border);">
-                <i class="bi bi-truck text-muted"></i>
-                <div>
-                    <h6 class="text-dark">No Active Route</h6>
-                    <p class="text-muted">You haven't been assigned a vehicle dispatch for today.</p>
+                        <label class="text-muted fw-bold small text-uppercase mb-2 d-block mt-2">Start Meter (km)</label>
+                        <input type="text" inputmode="numeric" name="start_meter" class="clean-input mono" required placeholder="e.g. 45200.5">
+                        
+                        <button type="button" class="btn-action btn-primary-action" onclick="processStartDay(this);">Start Day</button>
+                    </form>
                 </div>
             </div>
         <?php endif; ?>
@@ -830,43 +698,34 @@ try {
     <!-- ═══════════════════════════════════════
          END DAY MODAL
     ═══════════════════════════════════════ -->
-    <?php if ($todays_route && $todays_route['status'] == 'accepted' && !is_null($todays_route['start_meter'])): ?>
+    <?php if ($active_session): ?>
     <div class="modal fade" id="endDayModal" tabindex="-1" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-bottom">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title text-danger">End Route</h5>
+                    <h5 class="modal-title text-danger">End Route Session</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
 
                     <!-- Handover Summary -->
                     <div class="info-box mb-4">
-                        <h6 class="fw-bold mb-3" style="font-family: 'Inter', sans-serif;">Expected Handover</h6>
+                        <h6 class="fw-bold mb-3" style="font-family: 'Inter', sans-serif;">Session Summary</h6>
                         <div class="info-row" style="font-family: 'Inter', sans-serif;">
-                            <span class="info-label">Cash Collected</span>
-                            <span class="info-value text-success money">Rs <?php echo number_format($cash_sales, 2); ?></span>
-                        </div>
-                        <div class="info-row" style="font-family: 'Inter', sans-serif;">
-                            <span class="info-label">Expenses</span>
-                            <span class="info-value text-danger expense">-Rs <?php echo number_format($total_expenses, 2); ?></span>
-                        </div>
-                        <div class="info-row" style="border-top: 1px dashed var(--border); margin-top: 4px; font-family: 'Inter', sans-serif;">
-                            <span class="info-label fw-bold text-dark">Net Cash</span>
-                            <span class="info-value fw-bold text-primary fs-5 money">Rs <?php echo number_format(max(0, $cash_sales - $total_expenses), 2); ?></span>
-                            <input type="hidden" id="expected_cash_val" value="<?php echo max(0, $cash_sales - $total_expenses); ?>">
+                            <span class="info-label">Gross Bills Issued</span>
+                            <span class="info-value text-dark money">Rs <?php echo number_format($today_sales, 2); ?></span>
                         </div>
                     </div>
 
                     <form method="POST" id="endDayForm">
                         <input type="hidden" name="route_action" value="end_day">
-                        <input type="hidden" name="assignment_id" value="<?php echo $todays_route['id']; ?>">
+                        <input type="hidden" name="session_id" value="<?php echo $active_session['id']; ?>">
                         <input type="hidden" name="latitude" id="end_lat" value="">
                         <input type="hidden" name="longitude" id="end_lng" value="">
 
                         <!-- Cash denomination calculator -->
                         <div class="info-box mb-4 bg-light border-0">
-                            <h6 class="fw-bold mb-3" style="font-family: 'Inter', sans-serif;">Count Cash Drawer</h6>
+                            <h6 class="fw-bold mb-3" style="font-family: 'Inter', sans-serif;">Cash Collection</h6>
                             <?php
                             $denoms = [5000 => '5,000', 2000 => '2,000', 1000 => '1,000', 500 => '500', 100 => '100', 50 => '50', 20 => '20'];
                             foreach($denoms as $val => $label): ?>
@@ -883,17 +742,21 @@ try {
                             </div>
                             
                             <div class="info-row mt-3 border-top pt-2" style="font-family: 'Inter', sans-serif;">
-                                <span class="info-label fw-bold">Actual Count</span>
+                                <span class="info-label fw-bold">Total Cash</span>
                                 <span class="info-value text-success fs-5 money" id="actual_cash_total">0.00</span>
                                 <input type="hidden" name="actual_cash_total_input" id="actual_cash_total_input" value="0">
                             </div>
-                            <div class="info-row" style="font-family: 'Inter', sans-serif;">
-                                <span class="info-label">Variance</span>
-                                <span class="info-value money" id="cash_diff">0.00</span>
-                            </div>
                         </div>
-                        
-                        <input type="hidden" name="expected_cash_val" id="expected_cash_val_form" value="<?php echo max(0, $cash_sales - $total_expenses); ?>">
+
+                        <!-- Cheque Collection -->
+                        <div class="info-box mb-4">
+                            <h6 class="fw-bold mb-3" style="font-family: 'Inter', sans-serif;">Cheque Collection</h6>
+                            <label class="text-muted fw-bold small text-uppercase mb-2 d-block">Total Cheque Amount (Rs)</label>
+                            <input type="number" step="0.01" name="cheque_amount" class="clean-input mono mb-3" placeholder="0.00">
+
+                            <label class="text-muted fw-bold small text-uppercase mb-2 d-block">Number of Cheques</label>
+                            <input type="number" name="cheque_count" class="clean-input mono mb-2" placeholder="0">
+                        </div>
 
                         <label class="text-muted fw-bold small text-uppercase mb-2 d-block">End Meter (km)</label>
                         <input type="text" inputmode="numeric" name="end_meter" class="clean-input mono mb-4" required placeholder="e.g. 45250.5">

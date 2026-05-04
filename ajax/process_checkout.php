@@ -62,7 +62,7 @@ try {
     $pdo->beginTransaction();
 
     $edit_order_id = !empty($input['edit_order_id']) ? (int)$input['edit_order_id'] : null;
-    $assignment_id = !empty($input['assignment_id']) ? (int)$input['assignment_id'] : null;
+    $rep_session_id = !empty($input['rep_session_id']) ? (int)$input['rep_session_id'] : null;
     $customer_id = !empty($input['customer_id']) ? (int)$input['customer_id'] : null;
     $rep_id = $_SESSION['user_id'];
     
@@ -170,13 +170,13 @@ try {
 
     // 2. Create or Update the Current Order
     if ($edit_order_id) {
-        $stmt = $pdo->prepare("UPDATE orders SET customer_id = ?, assignment_id = ?, subtotal = ?, discount_amount = ?, tax_amount = ?, total_amount = ?, payment_method = ?, payment_status = ?, paid_amount = ?, paid_cash = ?, paid_bank = ?, paid_cheque = ?, latitude = ?, longitude = ? WHERE id = ?");
-        $stmt->execute([$customer_id, $assignment_id, $subtotal, $bill_discount, $tax_amount, $grand_total, $payment_method_str, $payment_status, $current_paid_amount, $applied_cash, $applied_bank, $applied_cheque, $latitude, $longitude, $edit_order_id]);
+        $stmt = $pdo->prepare("UPDATE orders SET customer_id = ?, rep_session_id = ?, subtotal = ?, discount_amount = ?, tax_amount = ?, total_amount = ?, payment_method = ?, payment_status = ?, paid_amount = ?, paid_cash = ?, paid_bank = ?, paid_cheque = ?, latitude = ?, longitude = ? WHERE id = ?");
+        $stmt->execute([$customer_id, $rep_session_id, $subtotal, $bill_discount, $tax_amount, $grand_total, $payment_method_str, $payment_status, $current_paid_amount, $applied_cash, $applied_bank, $applied_cheque, $latitude, $longitude, $edit_order_id]);
         $order_id = $edit_order_id;
         $success_message = 'Invoice updated successfully!';
     } else {
-        $stmt = $pdo->prepare("INSERT INTO orders (customer_id, rep_id, assignment_id, subtotal, discount_amount, tax_amount, total_amount, payment_method, payment_status, paid_amount, paid_cash, paid_bank, paid_cheque, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$customer_id, $rep_id, $assignment_id, $subtotal, $bill_discount, $tax_amount, $grand_total, $payment_method_str, $payment_status, $current_paid_amount, $applied_cash, $applied_bank, $applied_cheque, $latitude, $longitude]);
+        $stmt = $pdo->prepare("INSERT INTO orders (customer_id, rep_id, rep_session_id, subtotal, discount_amount, tax_amount, total_amount, payment_method, payment_status, paid_amount, paid_cash, paid_bank, paid_cheque, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$customer_id, $rep_id, $rep_session_id, $subtotal, $bill_discount, $tax_amount, $grand_total, $payment_method_str, $payment_status, $current_paid_amount, $applied_cash, $applied_bank, $applied_cheque, $latitude, $longitude]);
         $order_id = $pdo->lastInsertId();
         $success_message = 'Invoice generated successfully!';
     }

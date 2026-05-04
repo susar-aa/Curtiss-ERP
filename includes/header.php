@@ -323,7 +323,7 @@ if(isset($_SESSION['user_role']) && in_array($_SESSION['user_role'], ['admin', '
                         <?php if(canViewGroup($routes_pages)): ?>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Dispatch & Routes</h6></li>
-                        <?php if(hasAccess('dispatch.php')): ?><li><a class="dropdown-item" href="dispatch.php">Vehicle Dispatch</a></li><?php endif; ?>
+                        <?php if(hasAccess('pending_routes.php') || hasAccess('dispatch.php')): ?><li><a class="dropdown-item" href="pending_routes.php">Vehicle Dispatch</a></li><?php endif; ?>
                         <?php if(hasAccess('routes.php')): ?><li><a class="dropdown-item" href="routes.php">Manage Routes</a></li><?php endif; ?>
                         <?php if(hasAccess('route_sales.php')): ?><li><a class="dropdown-item" href="route_sales.php">Route Sales</a></li><?php endif; ?>
                         <?php if(hasAccess('meter_readings.php')): ?><li><a class="dropdown-item" href="meter_readings.php">Meter Readings</a></li><?php endif; ?>

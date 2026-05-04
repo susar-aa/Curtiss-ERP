@@ -81,7 +81,7 @@ if (isset($_GET['edit_id'])) {
 }
 
 // --- 2. Verify Active Route / Edit Eligibility ---
-$assignment_id = null;
+$rep_session_id = null;
 $route_id = null;
 $block_message = "";
 
@@ -90,32 +90,32 @@ if ($edit_mode) {
         // Editing a General Invoice (No route)
         $is_general = true;
     } else {
-        // Editing an existing route order - fetch its assignment
-        $asgStmt = $pdo->prepare("SELECT route_id, status FROM rep_routes WHERE id = ?");
+        // Editing an existing route order - fetch its session
+        $asgStmt = $pdo->prepare("SELECT route_id, status FROM rep_sessions WHERE id = ?");
         $asgStmt->execute([$order_assignment_id]);
         $asgInfo = $asgStmt->fetch();
 
-        if ($asgInfo && $asgInfo['status'] === 'unloaded') {
-            $block_message = "This route has already been unloaded and verified by the admin. You can no longer edit this invoice.";
+        if ($asgInfo && $asgInfo['status'] === 'ended') {
+            $block_message = "This session has already ended. You can no longer edit this invoice.";
         } else {
             // Safe to edit
-            $assignment_id = $order_assignment_id;
+            $rep_session_id = $order_assignment_id;
             $route_id = $asgInfo['route_id'] ?? null;
         }
     }
 } else {
     // New Order - Check if we are intentionally creating a General Invoice
     if (!$is_general) {
-        // Check for active route today
-        $routeStmt = $pdo->prepare("SELECT id, route_id, status FROM rep_routes WHERE rep_id = ? AND assign_date = CURDATE() AND status = 'accepted' AND start_meter IS NOT NULL ORDER BY id DESC LIMIT 1");
-        $routeStmt->execute([$rep_id]);
-        $routeInfo = $routeStmt->fetch();
+        // Check for active session today
+        $sessionStmt = $pdo->prepare("SELECT id, route_id FROM rep_sessions WHERE rep_id = ? AND date = CURDATE() AND status = 'active' ORDER BY id DESC LIMIT 1");
+        $sessionStmt->execute([$rep_id]);
+        $sessionInfo = $sessionStmt->fetch();
 
-        if ($routeInfo) {
-            $assignment_id = $routeInfo['id'];
-            $route_id = $routeInfo['route_id'];
+        if ($sessionInfo) {
+            $rep_session_id = $sessionInfo['id'];
+            $route_id = $sessionInfo['route_id'];
         } else {
-            $block_message = "You must accept today's dispatched route and enter your start meter before you can sell from vehicle stock. (Or select 'General Invoice' to sell from main inventory).";
+            $block_message = "You must start a Route Session before taking orders. (Or select 'General Invoice' to sell outside a route).";
         }
     }
 }
@@ -147,31 +147,10 @@ $customers->execute($params);
 $my_customers = $customers->fetchAll();
 
 
-// --- 4. Fetch Available Stock (Vehicle vs General) ---
+// --- 4. Fetch Available Stock (Main Inventory Only for Pre-Sales) ---
 $vehicle_stock = [];
-if ($assignment_id) {
-    // Fetch Route Stock
-    $stockQuery = "
-        SELECT 
-            p.id as product_id, p.name, p.sku, p.selling_price, p.supplier_id, p.category_id,
-            rl.loaded_qty,
-            (rl.loaded_qty - COALESCE((
-                SELECT SUM(oi.quantity) 
-                FROM order_items oi 
-                JOIN orders o ON oi.order_id = o.id 
-                WHERE o.assignment_id = ? AND oi.product_id = p.id
-            ), 0)) as remaining_qty
-        FROM route_loads rl
-        JOIN products p ON rl.product_id = p.id
-        WHERE rl.assignment_id = ?
-        HAVING remaining_qty > 0
-        ORDER BY p.name ASC
-    ";
-    $stmt = $pdo->prepare($stockQuery);
-    $stmt->execute([$assignment_id, $assignment_id]);
-    $vehicle_stock = $stmt->fetchAll();
-} elseif ($is_general) {
-    // Fetch Main Inventory Stock
+if ($rep_session_id || $is_general) {
+    // Pre-sales means we always sell from Main Inventory Stock
     $stockQuery = "
         SELECT 
             p.id as product_id, p.name, p.sku, p.selling_price, p.supplier_id, p.category_id,
@@ -454,7 +433,7 @@ if ($assignment_id) {
     </header>
 
     <div class="page-content">
-        <?php if (!$assignment_id && !$is_general): ?>
+        <?php if (!$rep_session_id && !$is_general): ?>
             <div class="clean-alert error-alert mt-4">
                 <i class="bi bi-x-octagon"></i>
                 <div>
@@ -542,7 +521,7 @@ if ($assignment_id) {
                                 <h4 class="pi-name"><?php echo htmlspecialchars($p['name']); ?></h4>
                                 <div class="pi-meta">
                                     <span class="pi-price">Rs <?php echo number_format($p['selling_price'], 2); ?></span>
-                                    <span class="pi-stock"><?php echo $is_general ? 'WH' : 'Van'; ?>: <?php echo $p['remaining_qty']; ?></span>
+                                    <span class="pi-stock">WH: <?php echo $p['remaining_qty']; ?></span>
                                 </div>
                                 <div class="d-none prod-sku"><?php echo htmlspecialchars($p['sku']); ?></div>
                             </div>
@@ -556,8 +535,8 @@ if ($assignment_id) {
         <?php endif; ?>
     </div>
 
-    <!-- UI Elements Protected by Assignment ID or General Mode -->
-    <?php if ($assignment_id || $is_general): ?>
+    <!-- UI Elements Protected by Session ID or General Mode -->
+    <?php if ($rep_session_id || $is_general): ?>
         
         <!-- Floating Checkout Button -->
         <button type="button" class="floating-cart-btn d-none" data-bs-toggle="offcanvas" data-bs-target="#checkoutCanvas" id="mainCheckoutBtn">
@@ -1393,7 +1372,7 @@ if ($assignment_id) {
 
                 const payload = {
                     edit_order_id: window.editInvoiceData ? window.editInvoiceData.order_id : null,
-                    assignment_id: <?php echo $assignment_id ? $assignment_id : 'null'; ?>,
+                    rep_session_id: <?php echo $rep_session_id ? $rep_session_id : 'null'; ?>,
                     customer_id: selectedCustomerData.id,
                     bill_discount: window.absoluteBillDiscount || 0,
                     tax_amount: window.absoluteTaxAmount || 0,
