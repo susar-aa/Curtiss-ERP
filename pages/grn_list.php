@@ -24,8 +24,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
 
             if (!$grn) throw new Exception("GRN not found.");
             
+            // Calculate pending cheques
+            $pendingChkStmt = $pdo->prepare("SELECT COALESCE(SUM(amount), 0) FROM cheques WHERE grn_id = ? AND status = 'pending'");
+            $pendingChkStmt->execute([$grn_id]);
+            $pending_cheques = $pendingChkStmt->fetchColumn();
+
             // Prevent overpayment
-            $max_payable = $grn['total_amount'] - $grn['paid_amount'];
+            $max_payable = max(0, $grn['total_amount'] - $grn['paid_amount'] - $pending_cheques);
             if ($pay_amount > $max_payable) {
                 $pay_amount = $max_payable; 
             }
@@ -172,7 +177,9 @@ if ($date_to !== '') {
 $metricsQuery = "
     SELECT 
         SUM(g.total_amount) as total_purchases,
-        SUM(CASE WHEN g.payment_status IN ('pending', 'waiting') THEN g.total_amount - g.paid_amount ELSE 0 END) as total_payable
+        SUM(CASE WHEN g.payment_status IN ('pending', 'waiting') THEN 
+            GREATEST(g.total_amount - g.paid_amount - COALESCE((SELECT SUM(amount) FROM cheques WHERE grn_id = g.id AND status = 'pending'), 0), 0)
+        ELSE 0 END) as total_payable
     FROM grns g 
     $whereClause
 ";

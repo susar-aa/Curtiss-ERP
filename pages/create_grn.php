@@ -7,14 +7,11 @@ requireRole(['admin', 'supervisor']);
 try {
     $pdo->exec("CREATE TABLE IF NOT EXISTS grns (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        grn_no VARCHAR(50) NULL,
         supplier_id INT NOT NULL,
         po_id INT NULL,
         reference_no VARCHAR(100) NULL,
         grn_date DATE NOT NULL,
-        subtotal DECIMAL(12,2) DEFAULT 0.00,
-        discount_amount DECIMAL(12,2) DEFAULT 0.00,
-        net_amount DECIMAL(12,2) DEFAULT 0.00,
+        total_amount DECIMAL(12,2) DEFAULT 0.00,
         payment_method VARCHAR(50) DEFAULT 'Credit',
         payment_status ENUM('paid', 'pending', 'waiting') DEFAULT 'pending',
         paid_amount DECIMAL(12,2) DEFAULT 0.00,
@@ -29,12 +26,16 @@ try {
         grn_id INT NOT NULL,
         product_id INT NOT NULL,
         quantity INT NOT NULL,
-        selling_price DECIMAL(12,2) NOT NULL,
+        unit_cost DECIMAL(12,2) NOT NULL,
         FOREIGN KEY (grn_id) REFERENCES grns(id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES products(id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
     
     $pdo->exec("ALTER TABLE grn_items DROP COLUMN cost_price");
+} catch(PDOException $e) {}
+
+try {
+    $pdo->exec("ALTER TABLE grns ADD COLUMN reference_no VARCHAR(100) NULL AFTER po_id");
 } catch(PDOException $e) {}
 // ----------------------------------------
 
@@ -82,14 +83,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         $ref_no = $_POST['reference_no'] ?? '';
         
         $subtotal = (float)$_POST['subtotal'];
-        $discount = (float)$_POST['discount_amount']; // This includes the FOC + Promo Claims + Daily Pay
-        $net_amount = (float)$_POST['net_amount'];
+        $discount = (float)$_POST['discount_amount'];
+        $total_amount = (float)$_POST['net_amount'];
         
         $paid_cash = (float)$_POST['paid_cash'];
         $paid_bank = (float)$_POST['paid_bank'];
         $paid_cheque = (float)$_POST['paid_cheque'];
         
-        $total_paid = $paid_cash + $paid_bank + $paid_cheque;
+        $cleared_paid = $paid_cash + $paid_bank;
+        $total_paid = $cleared_paid + $paid_cheque;
         $cart = json_decode($_POST['cart'], true);
         
         if (empty($cart)) throw new Exception("GRN must contain at least one item.");
@@ -98,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         $payment_status = 'pending';
         $payment_method_arr = [];
         
-        if ($total_paid >= $net_amount && $net_amount > 0) $payment_status = 'paid';
+        if ($total_paid >= $total_amount && $total_amount > 0) $payment_status = 'paid';
         if ($paid_cheque > 0) $payment_status = 'waiting'; 
         
         if ($paid_cash > 0) $payment_method_arr[] = 'Cash';
@@ -108,15 +110,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         $payment_method = empty($payment_method_arr) ? 'Credit' : implode('+', $payment_method_arr);
 
         // 1. Insert GRN
-        $stmt = $pdo->prepare("INSERT INTO grns (supplier_id, po_id, reference_no, grn_date, subtotal, discount_amount, net_amount, payment_method, payment_status, paid_amount, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$supplier_id, $po_id_ref, $ref_no, $grn_date, $subtotal, $discount, $net_amount, $payment_method, $payment_status, $total_paid, $_SESSION['user_id']]);
+        $stmt = $pdo->prepare("INSERT INTO grns (supplier_id, po_id, reference_no, grn_date, subtotal, discount_amount, total_amount, payment_method, payment_status, paid_amount, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$supplier_id, $po_id_ref, $ref_no, $grn_date, $subtotal, $discount, $total_amount, $payment_method, $payment_status, $cleared_paid, $_SESSION['user_id']]);
         $grn_id = $pdo->lastInsertId();
         
         $grn_no = "GRN-" . str_pad($grn_id, 6, '0', STR_PAD_LEFT);
-        $pdo->prepare("UPDATE grns SET grn_no = ? WHERE id = ?")->execute([$grn_no, $grn_id]);
 
         // 2. Insert Items, Update Stock & Price
-        $itemStmt = $pdo->prepare("INSERT INTO grn_items (grn_id, product_id, quantity, selling_price) VALUES (?, ?, ?, ?)");
+        $itemStmt = $pdo->prepare("INSERT INTO grn_items (grn_id, product_id, quantity, unit_cost) VALUES (?, ?, ?, ?)");
         $stockStmt = $pdo->prepare("UPDATE products SET stock = stock + ?, selling_price = ? WHERE id = ?");
         $logStmt = $pdo->prepare("INSERT INTO stock_logs (product_id, type, reference_id, qty_change, previous_stock, new_stock, created_by) VALUES (?, 'grn_in', ?, ?, (SELECT stock - ? FROM products WHERE id = ?), (SELECT stock FROM products WHERE id = ?), ?)");
         

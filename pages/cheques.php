@@ -172,17 +172,16 @@ $query = "
     LEFT JOIN suppliers s ON s.id = COALESCE(ch.supplier_id, g.supplier_id)
     WHERE ch.type = :type
 ";
+$params = ['type' => $type_filter];
+
 if ($status_filter !== 'all') {
     $query .= " AND ch.status = :status";
+    $params['status'] = $status_filter;
 }
 $query .= " ORDER BY ch.banking_date ASC, ch.created_at DESC";
 
 $stmt = $pdo->prepare($query);
-$stmt->execute(['type' => $type_filter, 'status' => $status_filter] + ($status_filter !== 'all' ? [] : ['status'=>'all_remove_this_warning']));
-if($status_filter === 'all'){
-     $stmt = $pdo->prepare(str_replace("AND ch.status = :status", "", $query));
-     $stmt->execute(['type' => $type_filter]);
-}
+$stmt->execute($params);
 
 $cheques = $stmt->fetchAll();
 
