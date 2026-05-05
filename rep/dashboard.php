@@ -408,7 +408,7 @@ try {
                 </div>
                 <div class="route-body">
                     <h3 class="route-name mb-4"><?php echo htmlspecialchars($active_session['route_name']); ?></h3>
-                    <button type="button" class="btn-action btn-danger-action" data-bs-toggle="modal" data-bs-target="#endDayModal" style="background: var(--danger); color: white;">
+                    <button type="button" class="btn-action btn-danger-action" onclick="showEndDayModal()" style="background: var(--danger); color: white;">
                         End Route & Day
                     </button>
                 </div>
@@ -472,7 +472,7 @@ try {
             </a>
 
             <?php if($session_id && $active_session['status'] == 'active' && !is_null($active_session['start_meter'])): ?>
-                <a href="#" class="app-grid-btn" data-bs-toggle="modal" data-bs-target="#expensesModal">
+                <a href="#" class="app-grid-btn" onclick="showExpensesModal()">
                     <div class="ag-icon-wrapper ag-amber"><i class="bi bi-fuel-pump"></i></div>
                     <span class="ag-text">Route<br>Expenses</span>
                 </a>
@@ -553,6 +553,27 @@ try {
 
     </main>
 
+    <!-- ── Updated Bottom Nav (Glassmorphism) ── -->
+    <nav class="bottom-nav">
+        <a href="dashboard.php" class="nav-tab active">
+            <i class="bi bi-house-door-fill"></i> Home
+        </a>
+        <a href="catalog.php" class="nav-tab">
+            <i class="bi bi-grid"></i> Catalog
+        </a>
+        <div class="nav-fab-wrapper">
+            <a href="create_order.php" class="nav-fab">
+                <i class="bi bi-plus-lg"></i>
+            </a>
+            <span class="nav-fab-label">POS</span>
+        </div>
+        <a href="customers.php" class="nav-tab">
+            <i class="bi bi-people-fill"></i> Customers
+        </a>
+        <a href="analytics.php" class="nav-tab">
+            <i class="bi bi-bar-chart-line-fill"></i> Stats
+        </a>
+    </nav>
 
     <!-- ═══════════════════════════════════════
          EXPENSES MODAL
@@ -807,6 +828,30 @@ try {
                     { enableHighAccuracy: true, timeout: 5000 }
                 );
             } else { document.getElementById('endDayForm').submit(); }
+        }
+
+        // ── Modal Triggers ──
+        function showEndDayModal() {
+            if (typeof bootstrap === 'undefined') {
+                alert('Components are still loading. Please wait 1-2 seconds and try again.');
+                return;
+            }
+            const el = document.getElementById('endDayModal');
+            if (el) {
+                const modal = new bootstrap.Modal(el);
+                modal.show();
+            } else {
+                alert('Session data is loading. Please refresh.');
+            }
+        }
+
+        function showExpensesModal() {
+            if (typeof bootstrap === 'undefined') return;
+            const el = document.getElementById('expensesModal');
+            if (el) {
+                const modal = new bootstrap.Modal(el);
+                modal.show();
+            }
         }
 
         // ── Background Location Ping ──
