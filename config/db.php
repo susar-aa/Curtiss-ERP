@@ -136,4 +136,5 @@ try {
 // Ensure updated_at exists for session tracking
 try { $pdo->exec("ALTER TABLE rep_sessions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at;"); } catch(Exception $e) {}
 try { $pdo->exec("ALTER TABLE delivery_dispatches ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at;"); } catch(Exception $e) {}
+try { $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_price DECIMAL(10,2) DEFAULT 0.00 AFTER selling_price;"); } catch(Exception $e) {}
 ?>

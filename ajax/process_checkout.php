@@ -48,6 +48,7 @@ try {
     $pdo->exec("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS is_foc TINYINT(1) DEFAULT 0 AFTER discount");
     $pdo->exec("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS promo_id INT NULL AFTER is_foc");
     $pdo->exec("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS cost_price DECIMAL(10,2) DEFAULT 0.00 AFTER quantity");
+    $pdo->exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_price DECIMAL(10,2) DEFAULT 0.00 AFTER selling_price");
 } catch(PDOException $e) {}
 // ------------------------------------------------
 
