@@ -60,11 +60,16 @@ try {
             date DATE NOT NULL,
             status ENUM('active', 'ended', 'dispatched') DEFAULT 'active',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             FOREIGN KEY (rep_id) REFERENCES users(id) ON DELETE CASCADE,
             FOREIGN KEY (route_id) REFERENCES routes(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 
         try { $pdo->exec("ALTER TABLE orders ADD CONSTRAINT fk_order_session FOREIGN KEY (rep_session_id) REFERENCES rep_sessions(id) ON DELETE SET NULL;"); } catch(Exception $e) {}
+
+        // Add updated_at columns if missing
+        try { $pdo->exec("ALTER TABLE rep_sessions ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at;"); } catch(Exception $e) {}
+        try { $pdo->exec("ALTER TABLE delivery_dispatches ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at;"); } catch(Exception $e) {}
 
         // 4. Create delivery_dispatches
         $pdo->exec("CREATE TABLE IF NOT EXISTS delivery_dispatches (
@@ -81,6 +86,7 @@ try {
             date DATE NOT NULL DEFAULT CURRENT_DATE,
             status ENUM('draft', 'loading', 'dispatched', 'completed') DEFAULT 'draft',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             FOREIGN KEY (driver_id) REFERENCES employees(id) ON DELETE SET NULL,
             FOREIGN KEY (partner_id) REFERENCES employees(id) ON DELETE SET NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
@@ -126,4 +132,8 @@ try {
         $pdo->rollBack();
     }
 }
+
+// Ensure updated_at exists for session tracking
+try { $pdo->exec("ALTER TABLE rep_sessions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at;"); } catch(Exception $e) {}
+try { $pdo->exec("ALTER TABLE delivery_dispatches ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at;"); } catch(Exception $e) {}
 ?>
