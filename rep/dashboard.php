@@ -735,68 +735,45 @@ try {
 
 
     <script>
-        // ── PWA Install ──
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            const btn = document.getElementById('installAppBtn');
-            if(btn) btn.classList.remove('d-none');
-        });
+        // ── Function Definitions (Hoist for safety) ──
+        
+        var deferredPrompt;
         function installApp() {
             if (!deferredPrompt) return;
             deferredPrompt.prompt();
-            deferredPrompt.userChoice.then((r) => {
-                if (r.outcome === 'accepted') document.getElementById('installAppBtn').classList.add('d-none');
+            deferredPrompt.userChoice.then(function(r) {
+                if (r.outcome === 'accepted') {
+                    var btn = document.getElementById('installAppBtn');
+                    if (btn) btn.classList.add('d-none');
+                }
                 deferredPrompt = null;
             });
         }
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
-        }
 
-        // ── Meter formatter ──
-        document.querySelectorAll('.clean-input[name*="meter"]').forEach(input => {
-            input.addEventListener('input', function() {
-                let val = this.value.replace(/[^0-9]/g, '');
-                if (val.length > 7) val = val.substring(0, 7); // Allow up to 7 digits (6 + decimal)
-                
-                if (val.length >= 6) {
-                    // Automatically insert dot before the last digit if 6 or more digits
-                    let main = val.substring(0, val.length - 1);
-                    let decimal = val.substring(val.length - 1);
-                    this.value = main + '.' + decimal;
-                } else {
-                    this.value = val;
-                }
-            });
-        });
-
-        // ── Cash Calculator ──
         function calculateCash() {
-            let total = 0;
-            [5000, 2000, 1000, 500, 100, 50, 20].forEach(d => {
-                const el = document.getElementById('denom_' + d);
+            var total = 0;
+            var denoms = [5000, 2000, 1000, 500, 100, 50, 20];
+            for (var i = 0; i < denoms.length; i++) {
+                var d = denoms[i];
+                var el = document.getElementById('denom_' + d);
                 total += (el ? (parseInt(el.value) || 0) : 0) * d;
-            });
-            const coinsEl = document.getElementById('denom_coins');
+            }
+            var coinsEl = document.getElementById('denom_coins');
             total += coinsEl ? (parseFloat(coinsEl.value) || 0) : 0;
 
             document.getElementById('actual_cash_total').innerText = total.toFixed(2);
             document.getElementById('actual_cash_total_input').value = total.toFixed(2);
 
-            const expectedEl = document.getElementById('expected_cash_val');
-            const expected = expectedEl ? (parseFloat(expectedEl.value) || 0) : 0;
-            const diff = total - expected;
-            const el = document.getElementById('cash_diff');
-            if (el) {
-                el.innerText = (diff >= 0 ? '+' : '') + diff.toFixed(2);
-                el.style.color = diff >= 0 ? 'var(--success)' : 'var(--danger)';
+            var expectedEl = document.getElementById('expected_cash_val');
+            var expected = expectedEl ? (parseFloat(expectedEl.value) || 0) : 0;
+            var diff = total - expected;
+            var diffEl = document.getElementById('cash_diff');
+            if (diffEl) {
+                diffEl.innerText = (diff >= 0 ? '+' : '') + diff.toFixed(2);
+                diffEl.style.color = diff >= 0 ? 'var(--success)' : 'var(--danger)';
             }
         }
-        document.querySelectorAll('.cash-calc').forEach(i => i.addEventListener('input', calculateCash));
 
-        // ── Start Day ──
         function processStartDay(btn) {
             if (!document.querySelector('input[name="start_meter"]').value) {
                 alert('Please enter start meter.'); return;
@@ -806,14 +783,17 @@ try {
             btn.disabled = true;
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    pos => { document.getElementById('start_lat').value = pos.coords.latitude; document.getElementById('start_lng').value = pos.coords.longitude; document.getElementById('startDayForm').submit(); },
-                    () => document.getElementById('startDayForm').submit(),
+                    function(pos) { 
+                        document.getElementById('start_lat').value = pos.coords.latitude; 
+                        document.getElementById('start_lng').value = pos.coords.longitude; 
+                        document.getElementById('startDayForm').submit(); 
+                    },
+                    function() { document.getElementById('startDayForm').submit(); },
                     { enableHighAccuracy: true, timeout: 5000 }
                 );
             } else { document.getElementById('startDayForm').submit(); }
         }
 
-        // ── End Day ──
         function processEndDay(btn) {
             if (!document.querySelector('input[name="end_meter"]').value) {
                 alert('Please enter end meter.'); return;
@@ -823,22 +803,25 @@ try {
             btn.disabled = true;
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    pos => { document.getElementById('end_lat').value = pos.coords.latitude; document.getElementById('end_lng').value = pos.coords.longitude; document.getElementById('endDayForm').submit(); },
-                    () => document.getElementById('endDayForm').submit(),
+                    function(pos) { 
+                        document.getElementById('end_lat').value = pos.coords.latitude; 
+                        document.getElementById('end_lng').value = pos.coords.longitude; 
+                        document.getElementById('endDayForm').submit(); 
+                    },
+                    function() { document.getElementById('endDayForm').submit(); },
                     { enableHighAccuracy: true, timeout: 5000 }
                 );
             } else { document.getElementById('endDayForm').submit(); }
         }
 
-        // ── Modal Triggers ──
         function showEndDayModal() {
             if (typeof bootstrap === 'undefined') {
                 alert('Components are still loading. Please wait 1-2 seconds and try again.');
                 return;
             }
-            const el = document.getElementById('endDayModal');
+            var el = document.getElementById('endDayModal');
             if (el) {
-                const modal = new bootstrap.Modal(el);
+                var modal = new bootstrap.Modal(el);
                 modal.show();
             } else {
                 alert('Session data is loading. Please refresh.');
@@ -847,24 +830,69 @@ try {
 
         function showExpensesModal() {
             if (typeof bootstrap === 'undefined') return;
-            const el = document.getElementById('expensesModal');
+            var el = document.getElementById('expensesModal');
             if (el) {
-                const modal = new bootstrap.Modal(el);
+                var modal = new bootstrap.Modal(el);
                 modal.show();
             }
         }
+
+        // ── Event Listeners ──
+        
+        window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            deferredPrompt = e;
+            var btn = document.getElementById('installAppBtn');
+            if(btn) btn.classList.remove('d-none');
+        });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('sw.js').catch(function(){});
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Meter formatter
+            var meterInputs = document.querySelectorAll('.clean-input[name*="meter"]');
+            for (var i = 0; i < meterInputs.length; i++) {
+                meterInputs[i].addEventListener('input', function() {
+                    var val = this.value.replace(/[^0-9]/g, '');
+                    if (val.length > 7) val = val.substring(0, 7);
+                    
+                    if (val.length >= 6) {
+                        var main = val.substring(0, val.length - 1);
+                        var decimal = val.substring(val.length - 1);
+                        this.value = main + '.' + decimal;
+                    } else {
+                        this.value = val;
+                    }
+                });
+            }
+
+            // Cash calc
+            var cashInputs = document.querySelectorAll('.cash-calc');
+            for (var j = 0; j < cashInputs.length; j++) {
+                cashInputs[j].addEventListener('input', calculateCash);
+            }
+        });
 
         // ── Background Location Ping ──
         <?php if ($active_session && $active_session['status'] == 'active' && !is_null($active_session['start_meter'])): ?>
         function sendLocationPing() {
             if (!navigator.geolocation) return;
-            navigator.geolocation.getCurrentPosition(pos => {
+            navigator.geolocation.getCurrentPosition(function(pos) {
+                var data = { 
+                    latitude: pos.coords.latitude, 
+                    longitude: pos.coords.longitude, 
+                    activity: 'background_ping' 
+                };
                 fetch('../ajax/log_location.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, activity: 'background_ping' })
-                }).catch(() => {});
-            }, () => {}, { enableHighAccuracy: true });
+                    body: JSON.stringify(data)
+                }).catch(function() {});
+            }, function() {}, { enableHighAccuracy: true });
         }
         sendLocationPing();
         setInterval(sendLocationPing, 120000);
