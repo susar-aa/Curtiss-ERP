@@ -738,8 +738,16 @@ try {
         document.querySelectorAll('.clean-input[name*="meter"]').forEach(input => {
             input.addEventListener('input', function() {
                 let val = this.value.replace(/[^0-9]/g, '');
-                if (val.length > 6) val = val.substring(0, 6);
-                this.value = val.length === 6 ? val.substring(0, 5) + '.' + val.substring(5) : val;
+                if (val.length > 7) val = val.substring(0, 7); // Allow up to 7 digits (6 + decimal)
+                
+                if (val.length >= 6) {
+                    // Automatically insert dot before the last digit if 6 or more digits
+                    let main = val.substring(0, val.length - 1);
+                    let decimal = val.substring(val.length - 1);
+                    this.value = main + '.' + decimal;
+                } else {
+                    this.value = val;
+                }
             });
         });
 
@@ -747,14 +755,17 @@ try {
         function calculateCash() {
             let total = 0;
             [5000, 2000, 1000, 500, 100, 50, 20].forEach(d => {
-                total += (parseInt(document.getElementById('denom_' + d)?.value) || 0) * d;
+                const el = document.getElementById('denom_' + d);
+                total += (el ? (parseInt(el.value) || 0) : 0) * d;
             });
-            total += parseFloat(document.getElementById('denom_coins')?.value) || 0;
+            const coinsEl = document.getElementById('denom_coins');
+            total += coinsEl ? (parseFloat(coinsEl.value) || 0) : 0;
 
             document.getElementById('actual_cash_total').innerText = total.toFixed(2);
             document.getElementById('actual_cash_total_input').value = total.toFixed(2);
 
-            const expected = parseFloat(document.getElementById('expected_cash_val')?.value) || 0;
+            const expectedEl = document.getElementById('expected_cash_val');
+            const expected = expectedEl ? (parseFloat(expectedEl.value) || 0) : 0;
             const diff = total - expected;
             const el = document.getElementById('cash_diff');
             if (el) {
@@ -799,7 +810,7 @@ try {
         }
 
         // ── Background Location Ping ──
-        <?php if ($todays_route && $todays_route['status'] == 'accepted' && !is_null($todays_route['start_meter'])): ?>
+        <?php if ($active_session && $active_session['status'] == 'active' && !is_null($active_session['start_meter'])): ?>
         function sendLocationPing() {
             if (!navigator.geolocation) return;
             navigator.geolocation.getCurrentPosition(pos => {
