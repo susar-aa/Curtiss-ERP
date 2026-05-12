@@ -6,7 +6,7 @@
 
 // Database credentials
 $host = 'localhost';
-$db_name = 'fintrix_db';
+$db_name = 'curtiss_erp';
 $username = 'suzxlabs';
 $password = 'Susara@200611003614';
 
