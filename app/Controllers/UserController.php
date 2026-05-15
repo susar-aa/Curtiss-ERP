@@ -3,18 +3,8 @@ class UserController extends Controller {
     private $userModel;
 
     public function __construct() {
-        // 1. Ensure logged in
         if (!isset($_SESSION['user_id'])) { header('Location: ' . APP_URL . '/auth/login'); exit; }
-        
-        // 2. Strict RBAC Protection: Only Admins can manage users
-        if ($_SESSION['role'] !== 'Admin') {
-            die("<div style='padding:40px; font-family:sans-serif; text-align:center; color:#c62828;'>
-                    <h2>Access Denied (403)</h2>
-                    <p>Your current role (<strong>" . htmlspecialchars($_SESSION['role']) . "</strong>) does not have permission to access User Management.</p>
-                    <a href='" . APP_URL . "/dashboard' style='color:#0066cc;'>Return to Dashboard</a>
-                 </div>");
-        }
-        
+        if ($_SESSION['role'] !== 'Admin') { die("Access Denied: Only Admins can manage users."); }
         $this->userModel = $this->model('User');
     }
 
@@ -28,27 +18,38 @@ class UserController extends Controller {
         ];
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'add_user') {
+            
+            // Handle Signature Upload
+            $signaturePath = null;
+            if (isset($_FILES['signature']) && $_FILES['signature']['error'] === UPLOAD_ERR_OK) {
+                $ext = strtolower(pathinfo($_FILES['signature']['name'], PATHINFO_EXTENSION));
+                if (in_array($ext, ['png', 'jpg', 'jpeg'])) {
+                    $signaturePath = 'sig_' . time() . '_' . rand(100,999) . '.' . $ext;
+                    move_uploaded_file($_FILES['signature']['tmp_name'], '../public/uploads/' . $signaturePath);
+                }
+            }
+
             $userData = [
                 'username' => trim($_POST['username']),
                 'email' => trim($_POST['email']),
                 'password' => $_POST['password'],
-                'role' => $_POST['role']
+                'role' => $_POST['role'],
+                'signature_path' => $signaturePath
             ];
 
             if (empty($userData['username']) || empty($userData['password'])) {
                 $data['error'] = 'Username and Password are required.';
             } elseif ($this->userModel->findUserByUsername($userData['username'])) {
-                $data['error'] = 'That username is already taken by another employee.';
+                $data['error'] = 'Username is already taken.';
             } else {
                 if ($this->userModel->createUser($userData)) {
-                    $data['success'] = 'New system user account created successfully!';
-                    $data['users'] = $this->userModel->getAllUsers(); // Refresh table
+                    $data['success'] = 'User account created with signature successfully!';
+                    $data['users'] = $this->userModel->getAllUsers();
                 } else {
-                    $data['error'] = 'Database Error: Failed to create user.';
+                    $data['error'] = 'Failed to create user.';
                 }
             }
         }
-
         $this->view('layouts/main', $data);
     }
 }

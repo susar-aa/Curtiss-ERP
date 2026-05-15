@@ -13,14 +13,16 @@
 <div class="card">
     <div class="header-actions">
         <h2>Record an Expense</h2>
-        <a href="<?= APP_URL ?>/expense" style="color: #666; text-decoration:none;">&larr; Back</a>
+        <!-- FIXED: Changed /expense to /expenses -->
+        <a href="<?= APP_URL ?>/expenses" style="color: #666; text-decoration:none;">&larr; Back</a>
     </div>
 
     <?php if(!empty($data['error'])): ?>
         <div style="padding: 10px; background:#ffebee; color:#c62828; border-radius:4px; margin-bottom:15px;"><?= $data['error'] ?></div>
     <?php endif; ?>
 
-    <form action="<?= APP_URL ?>/expense/create" method="POST">
+    <!-- FIXED: Changed action from /expense/create to /expenses/create -->
+    <form action="<?= APP_URL ?>/expenses/create" method="POST">
         
         <!-- Accounting Logic Section -->
         <div style="background: rgba(239, 108, 0, 0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(239, 108, 0, 0.2);">

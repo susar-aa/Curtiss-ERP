@@ -18,13 +18,13 @@
     <div class="header-actions">
         <h2>Expenses & Accounts Payable</h2>
         <div>
-            <button class="btn btn-outline" onclick="document.getElementById('vendorModal').style.display='flex'">+ New Vendor</button>
-            <a href="<?= APP_URL ?>/expense/create" class="btn">+ Record Expense</a>
+            <!-- REMOVED: The + New Vendor Button -->
+            <a href="<?= APP_URL ?>/expenses/create" class="btn">+ Record Expense</a>
         </div>
     </div>
 
     <?php if(isset($_GET['success'])): ?>
-        <div style="padding: 10px; background:#e8f5e9; color:#2e7d32; border-radius:4px; margin-bottom:15px;">Expense recorded and posted to ledger successfully!</div>
+        <div style="padding: 10px; background:#e8f5e9; color:#2e7d32; border-radius:4px; margin-bottom:15px;">Action completed and posted successfully!</div>
     <?php endif; ?>
     <?php if(!empty($data['success'])): ?>
         <div style="padding: 10px; background:#e8f5e9; color:#2e7d32; border-radius:4px; margin-bottom:15px;"><?= $data['success'] ?></div>
@@ -56,25 +56,4 @@
     </table>
 </div>
 
-<!-- Add Vendor Modal -->
-<div class="modal" id="vendorModal">
-    <div class="modal-content">
-        <h3 style="margin-top:0;">Add New Vendor</h3>
-        <form action="<?= APP_URL ?>/expense" method="POST">
-            <input type="hidden" name="action" value="add_vendor">
-            <label style="font-size: 13px; font-weight:600;">Vendor / Company Name *</label>
-            <input type="text" name="name" class="form-control" required>
-            
-            <label style="font-size: 13px; font-weight:600;">Email</label>
-            <input type="email" name="email" class="form-control">
-            
-            <label style="font-size: 13px; font-weight:600;">Phone</label>
-            <input type="text" name="phone" class="form-control">
-            
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
-                <button type="button" class="btn btn-outline" onclick="document.getElementById('vendorModal').style.display='none'">Cancel</button>
-                <button type="submit" class="btn">Save Vendor</button>
-            </div>
-        </form>
-    </div>
-</div>
+<!-- REMOVED: The Vendor Modal -->

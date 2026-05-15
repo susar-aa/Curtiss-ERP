@@ -10,3 +10,6 @@ define('APP_URL', 'http://localhost/Curtiss-ERP/public');
 
 // Site Name
 define('APP_NAME', 'CURTISS ERP');
+
+// Brevo API Configuration (Replace with your actual API Key from brevo.com)
+define('BREVO_API_KEY', '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');

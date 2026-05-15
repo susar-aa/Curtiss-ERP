@@ -1,6 +1,6 @@
 <?php
+/* STREAMING_CHUNK:Simplifying the Dashboard Controller... */
 class DashboardController extends Controller {
-    private $dashboardModel;
 
     public function __construct() {
         // Ensure user is logged in
@@ -8,25 +8,13 @@ class DashboardController extends Controller {
             header('Location: ' . APP_URL . '/auth/login');
             exit;
         }
-        $this->dashboardModel = $this->model('Dashboard');
     }
 
     public function index() {
-        $revenue = $this->dashboardModel->getTotalRevenue();
-        $expenses = $this->dashboardModel->getTotalExpenses();
-        $profit = $revenue - $expenses;
-        $ar = $this->dashboardModel->getTotalAR();
-        $recent_activity = $this->dashboardModel->getRecentActivity(6);
-
         $data = [
-            'title' => 'Dashboard Overview',
+            'title' => 'Workflow Dashboard',
             'username' => $_SESSION['username'],
             'role' => $_SESSION['role'],
-            'revenue' => $revenue,
-            'expenses' => $expenses,
-            'profit' => $profit,
-            'ar' => $ar,
-            'recent_activity' => $recent_activity,
             'content_view' => 'dashboard/index'
         ];
         

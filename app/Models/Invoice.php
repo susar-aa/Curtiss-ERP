@@ -15,7 +15,7 @@ class Invoice {
     }
 
     public function getInvoiceById($id) {
-        $this->db->query("SELECT i.*, c.name as customer_name, c.email, c.phone, c.address, 
+        $this->db->query("SELECT i.*, c.name as customer_name, c.email, c.phone, c.address, c.whatsapp,
                                  t.tax_name, t.rate_percentage 
                           FROM invoices i 
                           JOIN customers c ON i.customer_id = c.id 
@@ -35,34 +35,52 @@ class Invoice {
         try {
             $this->db->beginTransaction();
 
-            // 1. Calculate Subtotal
+            // 1. Calculate Subtotal with individual Item Discounts
             $subTotal = 0;
-            foreach ($items as $item) {
-                $subTotal += ($item['qty'] * $item['price']);
+            foreach ($items as &$item) {
+                $itemGross = $item['qty'] * $item['price'];
+                $itemDisc = 0;
+                
+                if (isset($item['disc_type']) && $item['disc_type'] === '%') {
+                    $itemDisc = $itemGross * ($item['disc_val'] / 100);
+                } else {
+                    $itemDisc = $item['disc_val'] ?? 0;
+                }
+                
+                $item['calculated_total'] = $itemGross - $itemDisc;
+                $subTotal += $item['calculated_total'];
             }
+
+            // Calculate Global Bill Discount
+            $globalDisc = 0;
+            if (isset($invoiceData['global_discount_type']) && $invoiceData['global_discount_type'] === '%') {
+                $globalDisc = $subTotal * (($invoiceData['global_discount_val'] ?? 0) / 100);
+            } else {
+                $globalDisc = $invoiceData['global_discount_val'] ?? 0;
+            }
+
+            $netSubTotal = $subTotal - $globalDisc;
+            if ($netSubTotal < 0) $netSubTotal = 0;
 
             // 2. Handle Tax Calculations
             $taxAmount = 0;
-            $taxLiabilityAccountId = null;
             $taxRateId = null;
 
             if ($taxData && !empty($taxData['tax_rate_id'])) {
-                // Fetch the specific tax configuration
                 $this->db->query("SELECT * FROM tax_rates WHERE id = :tid");
                 $this->db->bind(':tid', $taxData['tax_rate_id']);
                 $taxConfig = $this->db->single();
 
                 if ($taxConfig) {
-                    $taxAmount = ($subTotal * $taxConfig->rate_percentage) / 100;
-                    $taxLiabilityAccountId = $taxConfig->liability_account_id;
+                    $taxAmount = ($netSubTotal * $taxConfig->rate_percentage) / 100;
                     $taxRateId = $taxConfig->id;
                 }
             }
 
-            $grandTotal = $subTotal + $taxAmount;
+            $grandTotal = $netSubTotal + $taxAmount;
 
             // 3. Post Journal Entry Header
-            $desc = "Auto-generated entry for Invoice #" . $invoiceData['invoice_number'];
+            $desc = "Invoice created: " . $invoiceData['invoice_number'];
             $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
                               VALUES (:date, :ref, :desc, :user, 'Posted')");
             $this->db->bind(':date', $invoiceData['date']);
@@ -73,15 +91,11 @@ class Invoice {
             
             $journalId = $this->db->lastInsertId();
 
-            // 4. Post Journal Lines (Debit AR, Credit Revenue, Credit Tax Liability)
+            // 4. Post Journal Lines (Debit AR, Credit Revenue)
             $lines = [
-                ['account_id' => $arAccountId, 'debit' => $grandTotal, 'credit' => 0], // AR gets full amount including tax
-                ['account_id' => $revenueAccountId, 'debit' => 0, 'credit' => $subTotal] // Revenue only gets subtotal
+                ['account_id' => $arAccountId, 'debit' => $grandTotal, 'credit' => 0], 
+                ['account_id' => $revenueAccountId, 'debit' => 0, 'credit' => $netSubTotal]
             ];
-
-            if ($taxAmount > 0 && $taxLiabilityAccountId) {
-                $lines[] = ['account_id' => $taxLiabilityAccountId, 'debit' => 0, 'credit' => $taxAmount]; // Liability gets tax amount
-            }
 
             foreach ($lines as $line) {
                 $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) 
@@ -92,7 +106,7 @@ class Invoice {
                 $this->db->bind(':cred', $line['credit']);
                 $this->db->execute();
 
-                // Update Chart of Accounts balances instantly
+                // Update ledger balances mathematically
                 $this->db->query("SELECT account_type FROM chart_of_accounts WHERE id = :id");
                 $this->db->bind(':id', $line['account_id']);
                 $acc = $this->db->single();
@@ -113,14 +127,17 @@ class Invoice {
             }
 
             // 5. Create Invoice Header
-            $this->db->query("INSERT INTO invoices (invoice_number, customer_id, invoice_date, due_date, tax_rate_id, total_amount, tax_amount, journal_entry_id, created_by) 
-                              VALUES (:inv_num, :cust_id, :idate, :ddate, :tid, :total, :tamt, :jid, :uid)");
+            $this->db->query("INSERT INTO invoices (invoice_number, customer_id, invoice_date, due_date, tax_rate_id, total_amount, global_discount_val, global_discount_type, tax_amount, journal_entry_id, created_by) 
+                              VALUES (:inv_num, :cust_id, :idate, :ddate, :tid, :total, :gdisc_val, :gdisc_type, :tamt, :jid, :uid)");
+            
             $this->db->bind(':inv_num', $invoiceData['invoice_number']);
             $this->db->bind(':cust_id', $invoiceData['customer_id']);
             $this->db->bind(':idate', $invoiceData['date']);
             $this->db->bind(':ddate', $invoiceData['due_date']);
             $this->db->bind(':tid', $taxRateId);
-            $this->db->bind(':total', $subTotal); // Store subtotal in total_amount column for historical consistency
+            $this->db->bind(':total', $subTotal); 
+            $this->db->bind(':gdisc_val', $invoiceData['global_discount_val'] ?? 0);
+            $this->db->bind(':gdisc_type', $invoiceData['global_discount_type'] ?? 'Rs');
             $this->db->bind(':tamt', $taxAmount);
             $this->db->bind(':jid', $journalId);
             $this->db->bind(':uid', $userId);
@@ -128,24 +145,50 @@ class Invoice {
             
             $invoiceId = $this->db->lastInsertId();
 
-            // 6. Create Invoice Items
+            // 6. Create Invoice Items and Deduct Inventory Stock
             foreach ($items as $item) {
-                $itemTotal = $item['qty'] * $item['price'];
-                $this->db->query("INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, total) 
-                                  VALUES (:iid, :desc, :qty, :price, :total)");
+                $this->db->query("INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_value, discount_type, total) 
+                                  VALUES (:iid, :desc, :qty, :price, :disc_val, :disc_type, :total)");
                 $this->db->bind(':iid', $invoiceId);
                 $this->db->bind(':desc', $item['desc']);
                 $this->db->bind(':qty', $item['qty']);
                 $this->db->bind(':price', $item['price']);
-                $this->db->bind(':total', $itemTotal);
+                $this->db->bind(':disc_val', $item['disc_val'] ?? 0);
+                $this->db->bind(':disc_type', $item['disc_type'] ?? 'Rs');
+                $this->db->bind(':total', $item['calculated_total']);
                 $this->db->execute();
+
+                // Deduct Inventory Quantities
+                if (!empty($item['item_selection'])) {
+                    // String structure: item_id|variation_value_id|is_mix
+                    $parts = explode('|', $item['item_selection']);
+                    $itemId = $parts[0] ?? null;
+                    $varId = isset($parts[1]) && $parts[1] !== 'MIX' && $parts[1] !== '0' ? $parts[1] : null;
+
+                    // Deduct from Main Product Quantity
+                    if ($itemId) {
+                        $this->db->query("UPDATE items SET quantity_on_hand = quantity_on_hand - :qty WHERE id = :id");
+                        $this->db->bind(':qty', $item['qty']);
+                        $this->db->bind(':id', $itemId);
+                        $this->db->execute();
+                    }
+                    
+                    // Deduct from Specific Variation Quantity
+                    if ($varId) {
+                        $this->db->query("UPDATE item_variation_options SET quantity_on_hand = quantity_on_hand - :qty WHERE id = :id");
+                        $this->db->bind(':qty', $item['qty']);
+                        $this->db->bind(':id', $varId);
+                        $this->db->execute();
+                    }
+                }
             }
 
             $this->db->commit();
-            return true;
+            return $invoiceId;
 
         } catch (PDOException $e) {
             $this->db->rollBack();
+            error_log("Invoice Creation Error: " . $e->getMessage());
             return false;
         }
     }

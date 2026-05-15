@@ -21,20 +21,7 @@ class ExpensesController extends Controller {
             'success' => ''
         ];
 
-        // Handle Quick Vendor Add
-        if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'add_vendor') {
-            $vendorData = [
-                'name' => trim($_POST['name']),
-                'email' => trim($_POST['email']),
-                'phone' => trim($_POST['phone']),
-                'address' => trim($_POST['address'])
-            ];
-            if (!empty($vendorData['name'])) {
-                $this->vendorModel->addVendor($vendorData);
-                $data['success'] = 'Vendor added successfully!';
-                $data['vendors'] = $this->vendorModel->getAllVendors(); // Refresh list
-            }
-        }
+        // REMOVED: Vendor Add Logic is now handled by VendorController.php
 
         $this->view('layouts/main', $data);
     }
@@ -56,20 +43,19 @@ class ExpensesController extends Controller {
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $expenseData = [
-                'vendor_id' => $_POST['vendor_id'],
-                'reference' => trim($_POST['reference']),
-                'expense_date' => $_POST['expense_date'],
-                'amount' => floatval($_POST['amount']),
-                'description' => trim($_POST['description'])
+                'vendor_id' => $_POST['vendor_id'] ?? '',
+                'reference' => trim($_POST['reference'] ?? ''),
+                'expense_date' => $_POST['expense_date'] ?? '',
+                'amount' => floatval($_POST['amount'] ?? 0),
+                'description' => trim($_POST['description'] ?? '')
             ];
-            $expenseAccount = $_POST['expense_account'];
-            $paymentAccount = $_POST['payment_account'];
+            $expenseAccount = $_POST['expense_account'] ?? '';
+            $paymentAccount = $_POST['payment_account'] ?? '';
 
             if ($expenseData['amount'] <= 0) {
                 $data['error'] = 'Amount must be greater than zero.';
             } else {
                 if ($this->expenseModel->createExpenseWithAccounting($expenseData, $expenseAccount, $paymentAccount, $_SESSION['user_id'])) {
-                    // Redirects back to the plural route
                     header('Location: ' . APP_URL . '/expenses?success=1');
                     exit;
                 } else {
