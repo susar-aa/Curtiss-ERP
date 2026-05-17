@@ -1,13 +1,15 @@
 <?php
+// Smart Failsafe Data Fetcher
+// Ensures the view never crashes even if the controller doesn't pass the exact data arrays.
 $db = new Database();
 
-// Fetch Catalog
 $catalog_items = $data['catalog_items'] ?? [];
 if (empty($catalog_items)) {
     $db->query("SELECT * FROM items ORDER BY name ASC");
     $catalog_items = $db->resultSet();
 }
 
+// Ensure Variations are loaded for the catalog items to feed the search engine
 foreach($catalog_items as $item) {
     if (!isset($item->variations)) {
         $db->query("SELECT ivo.*, v.name as variation_name, vv.value_name 
@@ -20,13 +22,25 @@ foreach($catalog_items as $item) {
     }
 }
 
-// Fetch Customers WITH Territory Name properly joined
-$db->query("SELECT c.*, m.name as mca_name FROM customers c LEFT JOIN mca_areas m ON c.mca_id = m.id ORDER BY c.name ASC");
+// Fetch Customers WITH Territory Name and Real-Time Outstanding Balance
+$db->query("SELECT c.*, m.name as mca_name,
+               (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = c.id AND status != 'Voided') 
+               - 
+               (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE customer_id = c.id) 
+               - 
+               (SELECT COALESCE(SUM(total_amount), 0) FROM credit_notes WHERE customer_id = c.id) 
+               AS outstanding_balance
+            FROM customers c 
+            LEFT JOIN mca_areas m ON c.mca_id = m.id 
+            ORDER BY c.name ASC");
 $customers = $db->resultSet();
 
+
+// Fetch Employees specifically marked as Reps/Sales (or fallback to all active employees)
 $db->query("SELECT * FROM employees WHERE status = 'Active' AND job_title = 'Rep' ORDER BY first_name ASC");
 $reps = $db->resultSet();
 
+// Automate Accounting Defaults
 $assets = $data['assets'] ?? [];
 if (empty($assets)) {
     $db->query("SELECT * FROM chart_of_accounts WHERE account_type = 'Asset' AND account_name LIKE '%Receivable%' LIMIT 1");
@@ -164,13 +178,17 @@ if (empty($revenues)) {
                                 <option value="<?= $cust->id ?>" 
                                         data-address="<?= htmlspecialchars($cust->address) ?>"
                                         data-phone="<?= htmlspecialchars($cust->phone) ?>"
-                                        data-mca="<?= htmlspecialchars($cust->mca_name ?? $cust->territory ?? '') ?>">
+                                        data-mca="<?= htmlspecialchars($cust->mca_name ?? $cust->territory ?? '') ?>"
+                                        data-outstanding="<?= $cust->outstanding_balance ?? 0 ?>">
                                     <?= htmlspecialchars($cust->name) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
                         <textarea id="billToAddress" class="qb-input" style="width: 100%; height: 60px; border:none; resize:none;" readonly placeholder="Customer address will appear here..."></textarea>
                     </div>
+                    
+                    <!-- NEW: Real-time outstanding balance indicator -->
+                    <div id="customerOutstanding" style="font-size: 11px; padding: 5px; border-radius: 4px; margin-top: 5px; display: none;"></div>
                 </div>
 
                 <div style="display: flex; gap: 10px; align-items: flex-start;">
@@ -314,7 +332,6 @@ if (empty($revenues)) {
 
 <?php if(isset($_GET['wa_id'])): ?>
 <script>
-    // WhatsApp Auto-Sender Logic updated to point to the correct public invoice link!
     document.addEventListener("DOMContentLoaded", function() {
         const waPhone = "<?= htmlspecialchars($_GET['wa_phone']) ?>";
         const waName = "<?= htmlspecialchars($_GET['wa_name']) ?>";
@@ -340,7 +357,6 @@ if (empty($revenues)) {
 
 <?php if(isset($_GET['print_id'])): ?>
 <script>
-    // Print Auto-Opener Logic
     document.addEventListener("DOMContentLoaded", function() {
         const printId = "<?= htmlspecialchars($_GET['print_id']) ?>";
         const printUrl = "<?= APP_URL ?>/sales/show/" + printId;
@@ -350,15 +366,16 @@ if (empty($revenues)) {
 <?php endif; ?>
 
 <script>
+    // Enhanced Catalog Data Engine providing Stock counts and Types
     const catalog = [
         <?php foreach($catalog_items as $item): ?>
             <?php if(!empty($item->variations)): ?>
-                { id: "<?= $item->id ?>|MIX|1", code: "<?= htmlspecialchars($item->item_code ?? '') ?>", name: "<?= htmlspecialchars(addslashes($item->name)) ?> (MIX)", price: <?= $item->price ?? 0 ?> },
+                { id: "<?= $item->id ?>|MIX|1", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= $item->quantity_on_hand ?? 0 ?>, code: "<?= htmlspecialchars($item->item_code ?? '') ?>", name: "<?= htmlspecialchars(addslashes($item->name)) ?> (MIX)", price: <?= $item->price ?? 0 ?> },
                 <?php foreach($item->variations as $var): ?>
-                { id: "<?= $item->id ?>|<?= $var->id ?>|0", code: "<?= htmlspecialchars(addslashes($var->sku ?: ($item->item_code ?? ''))) ?>", name: "<?= htmlspecialchars(addslashes($item->name)) ?> - <?= htmlspecialchars(addslashes($var->variation_name)) ?>: <?= htmlspecialchars(addslashes($var->value_name)) ?>", price: <?= isset($var->price) && $var->price > 0 ? $var->price : ($item->price ?? 0) ?> },
+                { id: "<?= $item->id ?>|<?= $var->id ?>|0", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= $var->quantity_on_hand ?? 0 ?>, code: "<?= htmlspecialchars(addslashes($var->sku ?: ($item->item_code ?? ''))) ?>", name: "<?= htmlspecialchars(addslashes($item->name)) ?> - <?= htmlspecialchars(addslashes($var->variation_name)) ?>: <?= htmlspecialchars(addslashes($var->value_name)) ?>", price: <?= isset($var->price) && $var->price > 0 ? $var->price : ($item->price ?? 0) ?> },
                 <?php endforeach; ?>
             <?php else: ?>
-                { id: "<?= $item->id ?>|0|0", code: "<?= htmlspecialchars($item->item_code ?? '') ?>", name: "<?= htmlspecialchars(addslashes($item->name)) ?>", price: <?= $item->price ?? 0 ?> },
+                { id: "<?= $item->id ?>|0|0", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= $item->quantity_on_hand ?? 0 ?>, code: "<?= htmlspecialchars($item->item_code ?? '') ?>", name: "<?= htmlspecialchars(addslashes($item->name)) ?>", price: <?= $item->price ?? 0 ?> },
             <?php endif; ?>
         <?php endforeach; ?>
     ];
@@ -369,12 +386,32 @@ if (empty($revenues)) {
         
         document.getElementById('billToAddress').value = selected.getAttribute('data-address') || '';
         
-        // Fix: Successfully pulls MCA from the database into the editable field
         const mcaInput = document.getElementById('displayMca');
         if(mcaInput) mcaInput.value = selected.getAttribute('data-mca') || '';
         
         const phoneInput = document.getElementById('displayPhone');
         if(phoneInput) phoneInput.value = selected.getAttribute('data-phone') || '';
+
+        // Handle the real-time outstanding balance
+        const outBal = parseFloat(selected.getAttribute('data-outstanding')) || 0;
+        const outDiv = document.getElementById('customerOutstanding');
+        
+        if (select.value !== "" && (outBal > 0.01 || outBal < -0.01)) {
+            outDiv.style.display = 'block';
+            if (outBal > 0) {
+                outDiv.style.background = '#ffebee';
+                outDiv.style.color = '#c62828';
+                outDiv.style.border = '1px solid #ef9a9a';
+                outDiv.innerHTML = `⚠ Previous Outstanding Balance: Rs <span>${outBal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`;
+            } else {
+                outDiv.style.background = '#e8f5e9';
+                outDiv.style.color = '#2e7d32';
+                outDiv.style.border = '1px solid #a5d6a7';
+                outDiv.innerHTML = `✓ Available Credit (Overpaid): Rs <span>${Math.abs(outBal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`;
+            }
+        } else {
+            outDiv.style.display = 'none';
+        }
     }
 
     function filterSearch(e) {
@@ -388,11 +425,32 @@ if (empty($revenues)) {
 
         filtered.forEach(item => {
             const li = document.createElement('li');
+            
+            // Build Stock Badge
+            let stockBadge = '';
+            if (item.type === 'Service') {
+                stockBadge = `<span style="color:#0066cc; font-size: 11px; font-weight:bold;">Service</span>`;
+            } else if (item.stock > 0) {
+                stockBadge = `<span style="color:#2e7d32; font-size: 11px; font-weight:bold;">Stock: ${item.stock}</span>`;
+            } else {
+                stockBadge = `<span style="color:#c62828; font-size: 11px; font-weight:bold;">Out of Stock</span>`;
+            }
+
             li.innerHTML = `
-                <div><strong>${item.name}</strong><br><span style="font-size: 11px; color: #888;">SKU: ${item.code || 'N/A'}</span></div>
+                <div><strong>${item.name}</strong><br><span style="font-size: 11px; color: #888;">SKU: ${item.code || 'N/A'} | ${stockBadge}</span></div>
                 <div style="color: #0066cc; font-family: monospace; font-weight: bold; font-size: 14px;">Rs: ${item.price.toFixed(2)}</div>
             `;
-            li.onclick = () => { addItemRow(item); e.target.value = ''; resList.style.display = 'none'; document.getElementById('itemSearch').focus(); };
+            
+            li.onclick = () => { 
+                if (item.type !== 'Service' && item.stock <= 0) {
+                    alert("Cannot add item! It is currently out of stock.");
+                    return;
+                }
+                addItemRow(item); 
+                e.target.value = ''; 
+                resList.style.display = 'none'; 
+                document.getElementById('itemSearch').focus(); 
+            };
             resList.appendChild(li);
         });
         resList.style.display = 'block';
@@ -402,17 +460,35 @@ if (empty($revenues)) {
         if(e.target.id !== 'itemSearch') { document.getElementById('searchResults').style.display = 'none'; }
     });
 
+    // Validates the quantity typed by user against available stock
+    function validateQty(input, maxStock) {
+        if (maxStock !== null) {
+            let val = parseFloat(input.value);
+            if (val > maxStock) {
+                alert("Insufficient inventory! Available stock for this item is: " + maxStock);
+                input.value = maxStock;
+            }
+        }
+    }
+
     function addItemRow(item) {
         const tbody = document.getElementById('invoiceBody');
         const tr = document.createElement('tr');
+        
+        let stockHtml = item.type === 'Service' ? '' : `<br><span style="font-size: 10px; color: #888;">Stock: ${item.stock}</span>`;
+        let maxAttr = item.type === 'Service' ? '' : `max="${item.stock}"`;
+
         tr.innerHTML = `
             <td>
-                <input type="text" value="${item.code || 'ITEM'}" readonly style="color:#666; font-size:12px;">
+                <input type="text" value="${item.code || 'ITEM'}" readonly style="color:#666; font-size:12px; width: 100%; border:none; background:transparent;">
                 <input type="hidden" name="item_selection[]" value="${item.id}">
             </td>
-            <td><input type="number" class="num" name="qty[]" value="1" min="0.01" step="0.01" oninput="calcTotals()" required></td>
-            <td><input type="text" name="desc[]" value="${item.name}" required></td>
-            <td><input type="number" class="num" name="price[]" value="${parseFloat(item.price).toFixed(2)}" step="0.01" min="0" oninput="calcTotals()" required></td>
+            <td style="text-align: center;">
+                <input type="number" class="num" name="qty[]" value="1" min="0.01" step="0.01" ${maxAttr} oninput="validateQty(this, ${item.type === 'Service' ? 'null' : item.stock}); calcTotals()" required style="width: 60px; margin-bottom: 2px;">
+                ${stockHtml}
+            </td>
+            <td><input type="text" name="desc[]" value="${item.name}" required style="width: 100%; border:none; background:transparent;"></td>
+            <td><input type="number" class="num" name="price[]" value="${parseFloat(item.price).toFixed(2)}" step="0.01" min="0" oninput="calcTotals()" required style="width: 80px;"></td>
             <td>
                 <div class="discount-cell">
                     <input type="number" class="num" name="item_discount_val[]" value="0.00" step="0.01" oninput="calcTotals()">
@@ -422,13 +498,17 @@ if (empty($revenues)) {
                     </select>
                 </div>
             </td>
-            <td><input type="text" class="num line-total" value="${parseFloat(item.price).toFixed(2)}" readonly style="font-weight:bold; background: transparent; border: none;"></td>
+            <td><input type="text" class="num line-total" value="${parseFloat(item.price).toFixed(2)}" readonly style="font-weight:bold; background: transparent; border: none; width: 100%;"></td>
             <td style="text-align:center;"><button type="button" tabindex="-1" style="background:transparent; color:#c62828; border:none; cursor:pointer; font-weight:bold; font-size: 16px; padding: 4px;" onclick="this.closest('tr').remove(); calcTotals();">&times;</button></td>
         `;
         tbody.insertAdjacentElement('afterbegin', tr);
+        
+        // Trigger validation immediately upon adding in case stock is 0
+        const qtyInput = tr.querySelector('input[name="qty[]"]');
+        validateQty(qtyInput, item.type === 'Service' ? null : item.stock);
+        
         calcTotals();
         
-        // Scroll container to top to see the new item
         document.querySelector('.table-scroll-container').scrollTop = 0;
     }
 
@@ -445,7 +525,8 @@ if (empty($revenues)) {
             let rowNet = rowGross - rowDisc;
             if (rowNet < 0) rowNet = 0; 
             
-            row.querySelector('.line-total').value = rowNet.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            const totalInput = row.querySelector('.line-total');
+            if (totalInput) totalInput.value = rowNet.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             subTotal += rowNet;
         });
 

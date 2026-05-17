@@ -492,7 +492,7 @@
     function sharePortal(id, phone, name) {
         // Obscure the ID slightly to prevent basic URL guessing
         const encodedId = btoa(id);
-        const portalLink = "<?= APP_URL ?>/portal/view/" + encodedId;
+        const portalLink = "<?= APP_URL ?>/portal/show/" + encodedId;
         const msg = `Hello ${name},\n\nYou can view your live account statement, outstanding balances, and download past invoices on our B2B Customer Portal here:\n\n${portalLink}\n\nThank you!`;
         
         if (phone && phone.trim() !== '') {

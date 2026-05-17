@@ -251,6 +251,7 @@
                 <div class="mac-dropdown">
                     <a href="<?= APP_URL ?>/crm">Leads & CRM</a>
                     <a href="<?= APP_URL ?>/customer">Customer Center</a>
+                    <a href="<?= APP_URL ?>/dunning">Dunning & AR Reminders</a>
                     <a href="<?= APP_URL ?>/estimate">Quotes & Estimates</a>
                     <a href="<?= APP_URL ?>/sales">Invoices & AR</a>
                     <a href="<?= APP_URL ?>/creditnote">Credit Notes</a>

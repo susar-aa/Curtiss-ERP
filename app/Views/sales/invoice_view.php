@@ -1,4 +1,24 @@
 <?php
+$db = new Database();
+
+// Failsafe: Fetch the customer's true total outstanding balance for the "Previous Balance" calculation
+$db->query("
+    SELECT 
+        COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) as total_billed
+    FROM invoices WHERE customer_id = :id AND status != 'Voided'
+");
+$db->bind(':id', $data['invoice']->customer_id);
+$billed = $db->single()->total_billed ?? 0;
+
+$db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :id");
+$db->bind(':id', $data['invoice']->customer_id);
+$paid = $db->single()->total_paid ?? 0;
+
+$db->query("SELECT COALESCE(SUM(total_amount), 0) as total_credited FROM credit_notes WHERE customer_id = :id");
+$db->bind(':id', $data['invoice']->customer_id);
+$credited = $db->single()->total_credited ?? 0;
+
+$totalOutstanding = $billed - $paid - $credited;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -52,7 +72,7 @@
         table.items th.num, table.items td.num { text-align: right; }
         
         .totals-section { width: 100%; display: flex; justify-content: flex-end; }
-        .totals-box { width: 280px; font-size: 13px;}
+        .totals-box { width: 300px; font-size: 13px;}
         .totals-row { display: flex; justify-content: space-between; padding: 6px 0; }
         .totals-row.grand-total { border-top: 2px solid #000; font-weight: bold; font-size: 16px; padding-top: 10px; margin-top: 5px;}
         
@@ -168,6 +188,17 @@
                     
                     $netSubTotal = $subTotal - $globalDiscountAmount;
                     if ($netSubTotal < 0) $netSubTotal = 0;
+
+                    // This Invoice's specific final total
+                    $thisInvoiceGrandTotal = $netSubTotal + $data['invoice']->tax_amount;
+
+                    // If this invoice is Unpaid/Draft, it's inherently included in the $totalOutstanding
+                    // To show a true 'Previous Balance', we must subtract this invoice from the total outstanding
+                    $previousBalance = $totalOutstanding;
+                    if (in_array($data['invoice']->status, ['Unpaid', 'Draft'])) {
+                        $previousBalance -= $thisInvoiceGrandTotal;
+                    }
+                    $amountDueNow = $previousBalance + $thisInvoiceGrandTotal;
                 ?>
                 
                 <?php if($data['invoice']->global_discount_val > 0): ?>
@@ -194,9 +225,22 @@
                 <?php endif; ?>
 
                 <div class="totals-row grand-total">
-                    <span>Grand Total:</span>
-                    <span>Rs: <?= number_format($netSubTotal + $data['invoice']->tax_amount, 2) ?></span>
+                    <span>Current Invoice Total:</span>
+                    <span>Rs: <?= number_format($thisInvoiceGrandTotal, 2) ?></span>
                 </div>
+
+                <!-- NEW: Outstanding Balance Integration for Unpaid Invoices -->
+                <?php if(in_array($data['invoice']->status, ['Unpaid', 'Draft']) && ($previousBalance > 0.01 || $previousBalance < -0.01)): ?>
+                    <div class="totals-row" style="margin-top: 15px; color: #555; font-size: 13px;">
+                        <span>Previous Balance:</span>
+                        <span>Rs: <?= number_format($previousBalance, 2) ?></span>
+                    </div>
+                    <div class="totals-row" style="font-size: 16px; font-weight: bold; border-top: 1px dashed #333; padding-top: 8px; margin-top: 4px; color: #c62828;">
+                        <span>Total Amount Due:</span>
+                        <span>Rs: <?= number_format($amountDueNow, 2) ?></span>
+                    </div>
+                <?php endif; ?>
+
             </div>
         </div>
         
