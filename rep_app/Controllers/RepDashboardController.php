@@ -22,10 +22,17 @@ class RepDashboardController extends RepController {
 
         $activeRoute = $this->routeModel->getActiveRoute($_SESSION['user_id']);
         
+        // NEW: Fetch live route stats
+        $routeStats = null;
+        if ($activeRoute) {
+            $routeStats = $this->routeModel->getRouteStats($activeRoute->id);
+        }
+
         $data = [
             'title' => 'Territory Hub',
             'content_view' => 'dashboard',
             'active_route' => $activeRoute,
+            'route_stats' => $routeStats,
             'success' => $_GET['success'] ?? ''
         ];
         $this->view('layout', $data);
@@ -47,34 +54,77 @@ class RepDashboardController extends RepController {
     }
 
     public function start_trip() {
-        error_log("--- Rep App: Executing start_trip() ---");
-        
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $routeName = $_POST['route_name'] ?? 'Unknown Route';
+            $routeName = trim($_POST['route_name']);
             $startMeter = floatval($_POST['start_meter']);
-            
-            // CRITICAL FIX: Empty strings from JS will crash MySQL DECIMAL columns. 
-            // We MUST explicitly convert "" to null to prevent fatal PDO Exceptions.
-            $lat = !empty($_POST['start_lat']) ? $_POST['start_lat'] : null;
-            $lng = !empty($_POST['start_lng']) ? $_POST['start_lng'] : null;
+            $lat = $_POST['start_lat'] ?? null;
+            $lng = $_POST['start_lng'] ?? null;
 
-            error_log("Processed Data -> Route: $routeName, Meter: $startMeter, Lat: $lat, Lng: $lng");
-
-            if ($startMeter <= 0) {
-                error_log("Rep App Error: Invalid Odometer Reading.");
-                header('Location: ' . APP_URL . '/rep/start_route?error=Invalid Odometer Reading');
+            if (empty($routeName) || $startMeter <= 0) {
+                header('Location: ' . APP_URL . '/rep/start_route?error=Invalid Route or Odometer Reading.');
                 exit;
             }
 
             if ($this->routeModel->startRoute($_SESSION['user_id'], $routeName, $startMeter, $lat, $lng)) {
-                error_log("Rep App Success: Route started successfully in database!");
-                header('Location: ' . APP_URL . '/rep?success=Route Started Successfully!'); 
-                exit;
-            } else {
-                error_log("Rep App Error: Database failed to insert the route.");
-                header('Location: ' . APP_URL . '/rep/start_route?error=Database Error: Could not start route.');
+                header('Location: ' . APP_URL . '/rep/dashboard?success=Route Started Successfully!');
                 exit;
             }
         }
+        header('Location: ' . APP_URL . '/rep');
+    }
+
+    // NEW: Display the End Route input form
+    public function end_route() {
+        $activeRoute = $this->routeModel->getActiveRoute($_SESSION['user_id']);
+        if (!$activeRoute) { header('Location: ' . APP_URL . '/rep'); exit; }
+        
+        $data = [
+            'title' => 'End Daily Route',
+            'content_view' => 'end_route',
+            'active_route' => $activeRoute,
+            'error' => $_GET['error'] ?? ''
+        ];
+        $this->view('layout', $data);
+    }
+
+    // NEW: Process the End Route submission
+    public function process_end_route() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $endMeter = floatval($_POST['end_meter']);
+            $lat = $_POST['end_lat'] ?? null;
+            $lng = $_POST['end_lng'] ?? null;
+            
+            $activeRoute = $this->routeModel->getActiveRoute($_SESSION['user_id']);
+            if ($activeRoute) {
+                if ($endMeter < $activeRoute->start_meter) {
+                    header('Location: ' . APP_URL . '/rep/end_route?error=Ending Odometer cannot be less than Starting Odometer.');
+                    exit;
+                }
+                $this->routeModel->endRoute($activeRoute->id, $endMeter, $lat, $lng);
+                header('Location: ' . APP_URL . '/rep/route_summary/' . $activeRoute->id);
+                exit;
+            }
+        }
+        header('Location: ' . APP_URL . '/rep');
+    }
+
+    // NEW: Display the final Route Summary Report
+    public function route_summary($routeId = null) {
+        if (!$routeId) { header('Location: ' . APP_URL . '/rep/history'); exit; }
+        
+        $summary = $this->routeModel->getRouteSummaryData($routeId);
+        
+        // Ensure user can only view their own routes
+        if (!$summary || $summary['route']->user_id != $_SESSION['user_id']) { 
+            die("Unauthorized or Invalid Route"); 
+        }
+        
+        $data = [
+            'title' => 'Route Summary',
+            'content_view' => 'route_summary',
+            'summary' => $summary
+        ];
+        
+        $this->view('layout', $data);
     }
 }

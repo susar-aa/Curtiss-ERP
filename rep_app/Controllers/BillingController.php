@@ -42,11 +42,25 @@ class BillingController extends RepController {
         $this->view('layout', $data);
     }
 
+    // NEW: Activated the Standard Billing Interface
     public function standard() {
-        die("Standard text-based billing interface coming next.");
+        $activeRoute = $this->routeModel->getActiveRoute($_SESSION['user_id']);
+        if (!$activeRoute) { header('Location: ' . APP_URL . '/rep'); exit; }
+
+        require_once '../app/Models/PaymentTerm.php';
+        $termModel = new PaymentTerm();
+
+        $data = [
+            'title' => 'Standard Billing',
+            'content_view' => 'standard_bill',
+            'active_route' => $activeRoute,
+            'products' => $this->catalogModel->getVisualCatalog(), // Reusing catalog payload for fast JSON parsing
+            'customers' => $this->customerModel->getCustomersByTerritory($activeRoute->route_name),
+            'payment_terms' => $termModel->getAllTerms()
+        ];
+        $this->view('layout', $data);
     }
 
-    // NEW: The core engine that processes the POS Checkout and posts all Double-Entries
     public function process_checkout() {
         if ($_SERVER['REQUEST_METHOD'] != 'POST') {
             header('Location: ' . APP_URL . '/rep/billing/catalog');

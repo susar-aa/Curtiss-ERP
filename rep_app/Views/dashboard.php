@@ -68,6 +68,18 @@ $isActive = isset($data['active_route']) && $data['active_route'];
         </div>
     </div>
 
+    <!-- NEW: Live Sales Statistics -->
+    <div class="grid-options" style="margin-bottom: 20px;">
+        <div class="option-card" style="background: rgba(46,125,50,0.05); border-color: rgba(46,125,50,0.2); padding: 15px;">
+            <div class="option-title" style="color: #2e7d32; font-size: 12px; text-transform: uppercase;">Total Sales</div>
+            <div style="font-size: 22px; font-weight: bold; color: #2e7d32; margin-top: 5px;">Rs: <?= number_format($data['route_stats']->total_sales ?? 0, 2) ?></div>
+        </div>
+        <div class="option-card" style="background: rgba(0,102,204,0.05); border-color: rgba(0,102,204,0.2); padding: 15px;">
+            <div class="option-title" style="color: #0066cc; font-size: 12px; text-transform: uppercase;">Bills Made</div>
+            <div style="font-size: 22px; font-weight: bold; color: #0066cc; margin-top: 5px;"><?= $data['route_stats']->bill_count ?? 0 ?></div>
+        </div>
+    </div>
+
     <h3 style="font-size: 16px; margin-bottom: 15px; color: var(--text-dark);">Territory Actions</h3>
     
     <div class="grid-options">
