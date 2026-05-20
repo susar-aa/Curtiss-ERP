@@ -8,8 +8,6 @@ class SalesController extends Controller {
     private $companyModel;
 
     public function __construct() {
-        // Global Auth removed here so customers can view public invoice links. 
-        // Strict auth is applied inside index() and create() below.
         $this->invoiceModel = $this->model('Invoice');
         $this->customerModel = $this->model('Customer');
         $this->itemModel = $this->model('Item');
@@ -27,6 +25,30 @@ class SalesController extends Controller {
             'catalog_items' => $this->itemModel->getAllItems(),
             'customers' => $this->customerModel->getAllCustomers(),
             'invoice_number' => 'INV-' . time(),
+            'editing_invoice' => null,
+            'editing_items' => [],
+            'error' => $_GET['error'] ?? '',
+            'success' => $_GET['success'] ?? ''
+        ];
+        
+        $this->view('layouts/main', $data);
+    }
+
+    public function edit($id = null) {
+        if (!isset($_SESSION['user_id'])) { header('Location: ' . APP_URL . '/auth/login'); exit; }
+        if (!$id) { header('Location: ' . APP_URL . '/sales'); exit; }
+
+        $invoice = $this->invoiceModel->getInvoiceById($id);
+        if (!$invoice) { die("Target invoice record not found."); }
+
+        $data = [
+            'title' => 'Edit Invoice: ' . $invoice->invoice_number,
+            'content_view' => 'sales/index',
+            'catalog_items' => $this->itemModel->getAllItems(),
+            'customers' => $this->customerModel->getAllCustomers(),
+            'invoice_number' => $invoice->invoice_number,
+            'editing_invoice' => $invoice,
+            'editing_items' => $this->invoiceModel->getInvoiceItems($id),
             'error' => $_GET['error'] ?? '',
             'success' => $_GET['success'] ?? ''
         ];
@@ -38,86 +60,124 @@ class SalesController extends Controller {
         if (!isset($_SESSION['user_id'])) { header('Location: ' . APP_URL . '/auth/login'); exit; }
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $invoiceData = [
-                'customer_id' => $_POST['customer_id'] ?? '',
-                'invoice_number' => $_POST['invoice_number'] ?? '',
-                'date' => $_POST['invoice_date'] ?? '',
-                'due_date' => $_POST['due_date'] ?? '',
-                'global_discount_val' => floatval($_POST['global_discount_val'] ?? 0),
-                'global_discount_type' => $_POST['global_discount_type'] ?? 'Rs',
-                'po_number' => trim($_POST['po_number'] ?? ''),
-                'terms' => trim($_POST['terms'] ?? ''),
-                'rep_name' => trim($_POST['rep_name'] ?? ''),
-                'mca' => trim($_POST['mca'] ?? ''),
-                'rep_tp' => trim($_POST['rep_tp'] ?? ''),
-                'customer_message' => trim($_POST['customer_message'] ?? ''),
-                'notes' => trim($_POST['notes'] ?? '')
-            ];
+            $invoiceId = $_POST['editing_invoice_id'] ?? null; 
+            $customerId = $_POST['customer_id'] ?? null;
+            $invoiceNumber = $_POST['invoice_number'] ?? null;
+            $invoiceDate = $_POST['invoice_date'] ?? null;
+            $dueDate = $_POST['due_date'] ?? null;
+            $notes = $_POST['notes'] ?? '';
             
-            $arAccount = $_POST['ar_account'] ?? '';
-            $revAccount = $_POST['revenue_account'] ?? '';
-            $taxData = ['tax_rate_id' => $_POST['tax_rate_id'] ?? null];
-            
-            $items = [];
-            if (isset($_POST['desc'])) {
-                for ($i = 0; $i < count($_POST['desc']); $i++) {
-                    if (!empty($_POST['desc'][$i]) && isset($_POST['qty'][$i]) && $_POST['qty'][$i] > 0 && isset($_POST['price'][$i]) && $_POST['price'][$i] >= 0) {
-                        $items[] = [
-                            'desc' => $_POST['desc'][$i],
-                            'qty' => $_POST['qty'][$i],
-                            'price' => $_POST['price'][$i],
-                            'disc_val' => floatval($_POST['item_discount_val'][$i] ?? 0),
-                            'disc_type' => $_POST['item_discount_type'][$i] ?? 'Rs',
-                            'item_selection' => $_POST['item_selection'][$i] ?? null
-                        ];
-                    }
-                }
+            $arAccountId = $_POST['ar_account'] ?? null;
+            $revenueAccountId = $_POST['revenue_account'] ?? null;
+
+            if (empty($_POST['item_selection'])) {
+                header('Location: ' . APP_URL . '/sales?error=Cannot compile an invoice with zero lines.');
+                exit;
             }
 
-            if (empty($items)) {
-                header('Location: ' . APP_URL . '/sales?error=You must add at least one item to the invoice.');
+            $subtotal = 0;
+            $items = [];
+            foreach ($_POST['item_selection'] as $index => $itemSelection) {
+                $qty = floatval($_POST['qty'][$index] ?? 0);
+                $price = floatval($_POST['price'][$index] ?? 0);
+                $discVal = floatval($_POST['item_discount_val'][$index] ?? 0);
+                $discType = $_POST['item_discount_type'][$index] ?? 'Rs';
+
+                $rowGross = $qty * $price;
+                $rowDisc = ($discType === '%') ? ($rowGross * $discVal / 100) : $discVal;
+                $rowNet = $rowGross - $rowDisc;
+                if($rowNet < 0) $rowNet = 0;
+                
+                $subtotal += $rowNet;
+
+                $items[] = [
+                    'item_selection' => $itemSelection,
+                    'description' => $_POST['desc'][$index] ?? '',
+                    'quantity' => $qty,
+                    'unit_price' => $price,
+                    'discount_value' => $discVal,
+                    'discount_type' => $discType,
+                    'total' => $rowNet
+                ];
+            }
+
+            $globalDiscVal = floatval($_POST['global_discount_val'] ?? 0);
+            $globalDiscType = $_POST['global_discount_type'] ?? 'Rs';
+            $globalDisc = ($globalDiscType === '%') ? ($subtotal * $globalDiscVal / 100) : $globalDiscVal;
+            
+            $grandTotal = $subtotal - $globalDisc;
+            if ($grandTotal < 0) $grandTotal = 0;
+
+            $invoiceData = [
+                'customer_id' => $customerId,
+                'invoice_number' => $invoiceNumber,
+                'invoice_date' => $invoiceDate,
+                'due_date' => $dueDate,
+                'notes' => $notes,
+                'subtotal' => $subtotal,
+                'global_discount_val' => $globalDiscVal,
+                'global_discount_type' => $globalDiscType,
+                'grand_total' => $grandTotal
+            ];
+
+            $userId = $_SESSION['user_id'];
+
+            if ($invoiceId) {
+                try {
+                    $updated = $this->invoiceModel->updateInvoiceWithAccounting($invoiceId, $invoiceData, $items, $arAccountId, $revenueAccountId, $userId);
+                    if ($updated) {
+                        header('Location: ' . APP_URL . '/sales/edit/' . $invoiceId . '?success=1');
+                    } else {
+                        $errorMsg = isset($_SESSION['invoice_error']) ? $_SESSION['invoice_error'] : 'Failed to commit changes safely.';
+                        unset($_SESSION['invoice_error']); // clear single-use session diagnostic
+                        header('Location: ' . APP_URL . '/sales/edit/' . $invoiceId . '?error=' . urlencode($errorMsg));
+                    }
+                } catch (Throwable $t) {
+                    header('Location: ' . APP_URL . '/sales/edit/' . $invoiceId . '?error=' . urlencode("Controller Exception: " . $t->getMessage() . " in " . $t->getFile() . " on line " . $t->getLine()));
+                }
                 exit;
             } else {
-                $invoiceId = $this->invoiceModel->createInvoiceWithAccounting($invoiceData, $items, $arAccount, $revAccount, $_SESSION['user_id'], $taxData);
-                
-                if ($invoiceId) {
-                    if (isset($_POST['save_action']) && $_POST['save_action'] == 'whatsapp') {
-                        $cust = $this->customerModel->getCustomerById($invoiceData['customer_id']);
+                try {
+                    $invoiceId = $this->invoiceModel->createInvoiceWithAccounting($invoiceData, $items, $arAccountId, $revenueAccountId, $userId);
+                    if ($invoiceId) {
+                        $cust = $this->customerModel->getCustomerById($customerId);
                         $phone = !empty($cust->whatsapp) ? $cust->whatsapp : $cust->phone;
                         
-                        header('Location: ' . APP_URL . '/sales?success=1&wa_id=' . $invoiceId . '&wa_phone=' . urlencode($phone) . '&wa_name=' . urlencode($cust->name));
-                    } elseif (isset($_POST['save_action']) && $_POST['save_action'] == 'new') {
-                        header('Location: ' . APP_URL . '/sales?success=1');
-                    } elseif (isset($_POST['save_action']) && $_POST['save_action'] == 'print') {
-                        header('Location: ' . APP_URL . '/sales?success=1&print_id=' . $invoiceId);
+                        if (isset($_POST['save_action']) && $_POST['save_action'] == 'whatsapp') {
+                            header('Location: ' . APP_URL . '/sales?success=1&wa_id=' . $invoiceId . '&wa_phone=' . urlencode($phone) . '&wa_name=' . urlencode($cust->name));
+                        } elseif (isset($_POST['save_action']) && $_POST['save_action'] == 'print') {
+                            header('Location: ' . APP_URL . '/sales?success=1&print_id=' . $invoiceId);
+                        } else {
+                            header('Location: ' . APP_URL . '/sales?success=1');
+                        }
+                        exit;
                     } else {
-                        header('Location: ' . APP_URL . '/sales?success=1');
+                        $errorMsg = isset($_SESSION['invoice_error']) ? $_SESSION['invoice_error'] : 'Failed to create new record entries.';
+                        unset($_SESSION['invoice_error']); // clear single-use session diagnostic
+                        header('Location: ' . APP_URL . '/sales?error=' . urlencode($errorMsg));
+                        exit;
                     }
-                    exit;
-                } else {
-                    header('Location: ' . APP_URL . '/sales?error=Database Error: Failed to create invoice and post ledger entries.');
+                } catch (Throwable $t) {
+                    header('Location: ' . APP_URL . '/sales?error=' . urlencode("Controller Exception: " . $t->getMessage() . " in " . $t->getFile() . " on line " . $t->getLine()));
                     exit;
                 }
             }
         }
-        
-        header('Location: ' . APP_URL . '/sales');
-        exit;
     }
 
     public function show($id = null) {
-        // NOTE: This method is now intentionally public so WhatsApp links function perfectly.
         if (!$id) { header('Location: ' . APP_URL . '/auth/login'); exit; }
-
+        
         $invoice = $this->invoiceModel->getInvoiceById($id);
         if (!$invoice) { die("Invoice not found."); }
+
+        $companyDetails = $this->companyModel->getCompanyDetails();
 
         $data = [
             'invoice' => $invoice,
             'items' => $this->invoiceModel->getInvoiceItems($id),
-            'company' => $this->companyModel->getSettings()
+            'company' => $companyDetails
         ];
-
         $this->view('sales/invoice_view', $data);
     }
 }

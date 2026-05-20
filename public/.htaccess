@@ -1,14 +1,16 @@
-Options -Indexes
-
 <IfModule mod_rewrite.c>
-    Options -Multiviews
     RewriteEngine On
-    
-    # Base URL path (Crucial for subdirectories in XAMPP)
-    RewriteBase /Curtiss-ERP/public/
-    
-    # If the requested file or directory does not exist, route to index.php
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
+    RewriteBase /Curtiss-ERP/
+
+    # 1. Skip if the file or directory actually exists
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # 2. Redirect everything else to public/index.php
+    # This captures the path after public/ and passes it to the router
+    RewriteRule ^public/(.*)$ public/index.php?url=$1 [QSA,L]
+
+    # 3. Handle default case if accessed without public/
+    RewriteRule ^(.*)$ public/index.php?url=$1 [QSA,L]
 </IfModule>

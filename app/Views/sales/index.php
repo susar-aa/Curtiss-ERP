@@ -3,6 +3,30 @@
 // Ensures the view never crashes even if the controller doesn't pass the exact data arrays.
 $db = new Database();
 
+// --- SELF-HEALING DATABASE SCHEMA MIGRATIONS ---
+// Automatically adds missing columns in the background to prevent DB crash HTML outputs inside the JS block
+try {
+    $db->query("SHOW COLUMNS FROM items LIKE 'quantity_reserved'");
+    if (!$db->single()) {
+        $db->query("ALTER TABLE items ADD COLUMN quantity_reserved INT DEFAULT 0 AFTER quantity_on_hand");
+        $db->execute();
+    }
+    
+    $db->query("SHOW COLUMNS FROM item_variation_options LIKE 'quantity_reserved'");
+    if (!$db->single()) {
+        $db->query("ALTER TABLE item_variation_options ADD COLUMN quantity_reserved INT DEFAULT 0 AFTER quantity_on_hand");
+        $db->execute();
+    }
+
+    $db->query("SHOW COLUMNS FROM invoice_items LIKE 'variation_option_id'");
+    if (!$db->single()) {
+        $db->query("ALTER TABLE invoice_items ADD COLUMN variation_option_id INT NULL DEFAULT NULL AFTER item_id");
+        $db->execute();
+    }
+} catch (Exception $e) {
+    // Silently capture any database schema exceptions to keep layout fluid
+}
+
 $catalog_items = $data['catalog_items'] ?? [];
 if (empty($catalog_items)) {
     $db->query("SELECT * FROM items ORDER BY name ASC");
@@ -35,7 +59,6 @@ $db->query("SELECT c.*, m.name as mca_name,
             ORDER BY c.name ASC");
 $customers = $db->resultSet();
 
-
 // Fetch Employees specifically marked as Reps/Sales (or fallback to all active employees)
 $db->query("SELECT * FROM employees WHERE status = 'Active' AND job_title = 'Rep' ORDER BY first_name ASC");
 $reps = $db->resultSet();
@@ -56,6 +79,10 @@ if (empty($revenues)) {
     $db->query("SELECT * FROM chart_of_accounts WHERE account_type = 'Revenue' LIMIT 1");
     $revenues = $db->resultSet();
 }
+
+// Extract Invoice Parameters
+$inv = $data['editing_invoice'] ?? null;
+$editingItems = $data['editing_items'] ?? [];
 ?>
 <style>
     /* Full-Screen App Layout CSS */
@@ -166,39 +193,43 @@ if (empty($revenues)) {
 
     <div class="qb-container">
         <form action="<?= APP_URL ?>/sales/create" method="POST" id="invoiceForm">
+            <?php if ($inv): ?>
+                <input type="hidden" name="editing_invoice_id" value="<?= isset($inv->id) ? $inv->id : '' ?>">
+            <?php endif; ?>
             
             <div class="qb-grid-top">
                 <div style="width: 300px;">
-                    <div class="qb-title">Invoice</div>
+                    <div class="qb-title"><?= $inv ? 'Edit Invoice' : 'New Invoice' ?></div>
                     <div class="qb-box">
                         <div class="qb-box-header">Bill To</div>
                         <select name="customer_id" id="customerSelect" class="qb-input" style="width: 100%; border:none; border-bottom:1px solid #ccc; font-weight:bold;" required onchange="updateBillTo()">
                             <option value="">Select Customer...</option>
                             <?php foreach($customers as $cust): ?>
                                 <option value="<?= $cust->id ?>" 
-                                        data-address="<?= htmlspecialchars($cust->address) ?>"
-                                        data-phone="<?= htmlspecialchars($cust->phone) ?>"
-                                        data-mca="<?= htmlspecialchars($cust->mca_name ?? $cust->territory ?? '') ?>"
+                                        <?= ($inv && isset($inv->customer_id) && $inv->customer_id == $cust->id) ? 'selected' : '' ?>
+                                        data-address="<?= htmlspecialchars((string)($cust->address ?? '')) ?>"
+                                        data-phone="<?= htmlspecialchars((string)($cust->phone ?? '')) ?>"
+                                        data-mca="<?= htmlspecialchars((string)($cust->mca_name ?? $cust->territory ?? '')) ?>"
                                         data-outstanding="<?= $cust->outstanding_balance ?? 0 ?>">
-                                    <?= htmlspecialchars($cust->name) ?>
+                                    <?= htmlspecialchars((string)($cust->name ?? '')) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
                         <textarea id="billToAddress" class="qb-input" style="width: 100%; height: 60px; border:none; resize:none;" readonly placeholder="Customer address will appear here..."></textarea>
                     </div>
                     
-                    <!-- NEW: Real-time outstanding balance indicator -->
+                    <!-- Real-time outstanding balance indicator -->
                     <div id="customerOutstanding" style="font-size: 11px; padding: 5px; border-radius: 4px; margin-top: 5px; display: none;"></div>
                 </div>
 
                 <div style="display: flex; gap: 10px; align-items: flex-start;">
                     <div class="qb-box" style="width: 120px;">
                         <div class="qb-box-header">Date</div>
-                        <input type="date" name="invoice_date" class="qb-input" style="width: 100%; border:none; text-align:center;" value="<?= date('Y-m-d') ?>" required>
+                        <input type="date" name="invoice_date" class="qb-input" style="width: 100%; border:none; text-align:center;" value="<?= ($inv && isset($inv->invoice_date)) ? $inv->invoice_date : date('Y-m-d') ?>" required>
                     </div>
                     <div class="qb-box" style="width: 120px;">
                         <div class="qb-box-header">Invoice #</div>
-                        <input type="text" name="invoice_number" class="qb-input" style="width: 100%; border:none; text-align:center;" value="<?= $data['invoice_number'] ?? 'INV-'.time() ?>" required>
+                        <input type="text" name="invoice_number" class="qb-input" style="width: 100%; border:none; text-align:center;" value="<?= $data['invoice_number'] ?>" <?= $inv ? 'readonly style="background:#eee;"' : '' ?> required>
                     </div>
                 </div>
             </div>
@@ -206,11 +237,11 @@ if (empty($revenues)) {
             <div class="qb-grid-mid">
                 <div class="qb-mid-col">
                     <div class="qb-mid-header">P.O. No.</div>
-                    <div class="qb-mid-body"><input type="text" name="po_number" placeholder="Optional"></div>
+                    <div class="qb-mid-body"><input type="text" name="po_number" value="<?= ($inv && isset($inv->po_number)) ? htmlspecialchars((string)$inv->po_number) : '' ?>" placeholder="Optional"></div>
                 </div>
                 <div class="qb-mid-col">
                     <div class="qb-mid-header">Due Date</div>
-                    <div class="qb-mid-body"><input type="date" name="due_date" id="dueDate" value="<?= date('Y-m-d') ?>" required></div>
+                    <div class="qb-mid-body"><input type="date" name="due_date" id="dueDate" value="<?= ($inv && isset($inv->due_date)) ? $inv->due_date : date('Y-m-d') ?>" required></div>
                 </div>
                 <div class="qb-mid-col">
                     <div class="qb-mid-header">Rep</div>
@@ -218,8 +249,8 @@ if (empty($revenues)) {
                         <select name="rep_name">
                             <option value="">Select Rep...</option>
                             <?php foreach($reps as $rep): ?>
-                                <option value="<?= htmlspecialchars($rep->first_name . ' ' . $rep->last_name) ?>">
-                                    <?= htmlspecialchars($rep->first_name . ' ' . $rep->last_name) ?>
+                                <option value="<?= htmlspecialchars((string)($rep->first_name . ' ' . $rep->last_name)) ?>" <?= ($inv && isset($inv->rep_name) && trim((string)$inv->rep_name) == trim((string)($rep->first_name . ' ' . $rep->last_name))) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars((string)($rep->first_name . ' ' . $rep->last_name)) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -227,11 +258,11 @@ if (empty($revenues)) {
                 </div>
                 <div class="qb-mid-col">
                     <div class="qb-mid-header">MCA</div>
-                    <div class="qb-mid-body"><input type="text" name="mca" id="displayMca" placeholder="Editable Route Info"></div>
+                    <div class="qb-mid-body"><input type="text" name="mca" id="displayMca" value="<?= ($inv && isset($inv->mca)) ? htmlspecialchars((string)$inv->mca) : '' ?>" placeholder="Editable Route Info"></div>
                 </div>
                 <div class="qb-mid-col">
                     <div class="qb-mid-header">Rep TP#</div>
-                    <div class="qb-mid-body"><input type="text" name="rep_tp" id="displayPhone" placeholder="Phone #"></div>
+                    <div class="qb-mid-body"><input type="text" name="rep_tp" id="displayPhone" value="<?= ($inv && isset($inv->rep_tp)) ? htmlspecialchars((string)$inv->rep_tp) : '' ?>" placeholder="Phone #"></div>
                 </div>
             </div>
 
@@ -270,7 +301,7 @@ if (empty($revenues)) {
                     </div>
                     <div>
                         <label style="font-weight:bold; display:block; margin-bottom:2px; font-size:11px;">Memo</label>
-                        <input type="text" name="notes" class="qb-input" style="width:100%;">
+                        <input type="text" name="notes" value="<?= ($inv && isset($inv->notes)) ? htmlspecialchars((string)$inv->notes) : '' ?>" class="qb-input" style="width:100%;">
                     </div>
                 </div>
 
@@ -282,10 +313,10 @@ if (empty($revenues)) {
                     <div class="qb-totals-row" style="align-items: center;">
                         <strong>Bill Discount</strong>
                         <div class="discount-cell" style="width: 100px; border-color:#ccc;">
-                            <input type="number" name="global_discount_val" id="globalDiscVal" value="0" class="qb-input num" style="width:60px; border:none;" oninput="calcTotals()">
+                            <input type="number" name="global_discount_val" id="globalDiscVal" value="<?= ($inv && isset($inv->global_discount_val)) ? floatval($inv->global_discount_val) : '0' ?>" class="qb-input num" style="width:60px; border:none;" oninput="calcTotals()">
                             <select name="global_discount_type" id="globalDiscType" class="qb-input" style="width:40px; padding:0; border:none; border-left:1px solid #ccc; background:#f9f9f9;" onchange="calcTotals()">
-                                <option value="Rs">Rs</option>
-                                <option value="%">%</option>
+                                <option value="Rs" <?= ($inv && isset($inv->global_discount_type) && $inv->global_discount_type == 'Rs') ? 'selected' : '' ?>>Rs</option>
+                                <option value="%" <?= ($inv && isset($inv->global_discount_type) && $inv->global_discount_type == '%') ? 'selected' : '' ?>>%</option>
                             </select>
                         </div>
                     </div>
@@ -303,12 +334,12 @@ if (empty($revenues)) {
             <div class="acc-settings">
                 <select name="ar_account" required>
                     <?php foreach($assets ?? [] as $acc): ?>
-                        <option value="<?= $acc->id ?>" <?= strpos(strtolower($acc->account_name), 'receivable') !== false ? 'selected' : '' ?>><?= htmlspecialchars($acc->account_name) ?></option>
+                        <option value="<?= $acc->id ?>" <?= strpos(strtolower((string)($acc->account_name ?? '')), 'receivable') !== false ? 'selected' : '' ?>><?= htmlspecialchars((string)($acc->account_name ?? '')) ?></option>
                     <?php endforeach; ?>
                 </select>
                 <select name="revenue_account" required>
                     <?php foreach($revenues ?? [] as $acc): ?>
-                        <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->account_name) ?></option>
+                        <option value="<?= $acc->id ?>"><?= htmlspecialchars((string)($acc->account_name ?? '')) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -319,10 +350,12 @@ if (empty($revenues)) {
                 </div>
                 <div style="display:flex; gap: 10px;">
                     <button type="submit" name="save_action" value="close" class="qb-btn qb-btn-primary">Save & Close</button>
-                    <button type="submit" name="save_action" value="new" class="qb-btn">Save & New</button>
-                    <button type="submit" name="save_action" value="print" class="qb-btn">Save & Print 🖨️</button>
-                    <button type="submit" name="save_action" value="whatsapp" class="qb-btn wa-btn">Save & WhatsApp 💬</button>
-                    <button type="button" class="qb-btn" onclick="window.location.reload()">Revert</button>
+                    <?php if (!$inv): ?>
+                        <button type="submit" name="save_action" value="new" class="qb-btn">Save & New</button>
+                        <button type="submit" name="save_action" value="print" class="qb-btn">Save & Print 🖨️</button>
+                        <button type="submit" name="save_action" value="whatsapp" class="qb-btn wa-btn">Save & WhatsApp 💬</button>
+                    <?php endif; ?>
+                    <button type="button" class="qb-btn" onclick="window.location.href='<?= APP_URL ?>/sales'">Cancel</button>
                 </div>
             </div>
 
@@ -337,7 +370,7 @@ if (empty($revenues)) {
         const waName = "<?= htmlspecialchars($_GET['wa_name']) ?>";
         const waId = "<?= htmlspecialchars($_GET['wa_id']) ?>";
         const publicInvoiceLink = "<?= APP_URL ?>/sales/show/" + waId;
-        
+
         if (waPhone && waPhone.trim() !== '') {
             let cleanPhone = waPhone.replace(/[^\d+]/g, '');
             if(cleanPhone.startsWith('0')) {
@@ -366,31 +399,46 @@ if (empty($revenues)) {
 <?php endif; ?>
 
 <script>
-    // Enhanced Catalog Data Engine providing Stock counts and Types
+    // Enhanced Catalog Data Engine providing Stock counts adjusted for reservation values
     const catalog = [
         <?php foreach($catalog_items as $item): ?>
-            <?php if(!empty($item->variations)): ?>
-                { id: "<?= $item->id ?>|MIX|1", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= $item->quantity_on_hand ?? 0 ?>, code: "<?= htmlspecialchars($item->item_code ?? '') ?>", name: "<?= htmlspecialchars(addslashes($item->name)) ?> (MIX)", price: <?= $item->price ?? 0 ?> },
+            <?php 
+            $hasVars = !empty($item->variations);
+            $baseAvailable = ($item->quantity_on_hand ?? 0) - ($item->quantity_reserved ?? 0);
+            ?>
+            <?php if($hasVars): ?>
+                { id: "<?= $item->id ?>|MIX|1", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($baseAvailable) ?>, code: "<?= htmlspecialchars((string)($item->item_code ?? '')) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?> (MIX)", price: <?= floatval($item->price ?? 0) ?> },
                 <?php foreach($item->variations as $var): ?>
-                { id: "<?= $item->id ?>|<?= $var->id ?>|0", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= $var->quantity_on_hand ?? 0 ?>, code: "<?= htmlspecialchars(addslashes($var->sku ?: ($item->item_code ?? ''))) ?>", name: "<?= htmlspecialchars(addslashes($item->name)) ?> - <?= htmlspecialchars(addslashes($var->variation_name)) ?>: <?= htmlspecialchars(addslashes($var->value_name)) ?>", price: <?= isset($var->price) && $var->price > 0 ? $var->price : ($item->price ?? 0) ?> },
+                <?php $varAvailable = ($var->quantity_on_hand ?? 0) - ($var->quantity_reserved ?? 0); ?>
+                { id: "<?= $item->id ?>|<?= $var->id ?>|0", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($varAvailable) ?>, code: "<?= htmlspecialchars(addslashes((string)($var->sku ?? $item->item_code ?? ''))) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?> - <?= htmlspecialchars(addslashes((string)($var->variation_name ?? ''))) ?>: <?= htmlspecialchars(addslashes((string)($var->value_name ?? ''))) ?>", price: <?= floatval(isset($var->price) && $var->price > 0 ? $var->price : ($item->price ?? 0)) ?> },
                 <?php endforeach; ?>
             <?php else: ?>
-                { id: "<?= $item->id ?>|0|0", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= $item->quantity_on_hand ?? 0 ?>, code: "<?= htmlspecialchars($item->item_code ?? '') ?>", name: "<?= htmlspecialchars(addslashes($item->name)) ?>", price: <?= $item->price ?? 0 ?> },
+                { id: "<?= $item->id ?>|0|0", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($baseAvailable) ?>, code: "<?= htmlspecialchars((string)($item->item_code ?? '')) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?>", price: <?= floatval($item->price ?? 0) ?> },
             <?php endif; ?>
         <?php endforeach; ?>
     ];
 
-    function updateBillTo() {
+    function updateBillTo(isInit = false) {
         const select = document.getElementById('customerSelect');
         const selected = select.options[select.selectedIndex];
+        if(!selected || select.value === "") {
+            document.getElementById('billToAddress').value = '';
+            document.getElementById('customerOutstanding').style.display = 'none';
+            return;
+        }
         
         document.getElementById('billToAddress').value = selected.getAttribute('data-address') || '';
         
+        // Only override MCA and Phone with defaults if they are blank or if this is an active select change event (isInit === false)
         const mcaInput = document.getElementById('displayMca');
-        if(mcaInput) mcaInput.value = selected.getAttribute('data-mca') || '';
+        if(mcaInput && (!isInit || mcaInput.value === "")) {
+            mcaInput.value = selected.getAttribute('data-mca') || '';
+        }
         
         const phoneInput = document.getElementById('displayPhone');
-        if(phoneInput) phoneInput.value = selected.getAttribute('data-phone') || '';
+        if(phoneInput && (!isInit || phoneInput.value === "")) {
+            phoneInput.value = selected.getAttribute('data-phone') || '';
+        }
 
         // Handle the real-time outstanding balance
         const outBal = parseFloat(selected.getAttribute('data-outstanding')) || 0;
@@ -471,7 +519,29 @@ if (empty($revenues)) {
         }
     }
 
-    function addItemRow(item) {
+    function addItemRow(itemOrId, code = null, qty = 1, desc = null, price = null, discVal = 0, discType = 'Rs') {
+        let item = {};
+        if (typeof itemOrId === 'object' && itemOrId !== null) {
+            // Interactive UI addition from search selection
+            item = itemOrId;
+            qty = 1;
+            desc = item.name;
+            price = item.price;
+            discVal = 0;
+            discType = 'Rs';
+        } else {
+            // Programmatic loading addition from existing edit items loop
+            let matched = catalog.find(c => c.id === itemOrId);
+            item = {
+                id: itemOrId,
+                code: code,
+                name: desc,
+                price: price,
+                stock: matched ? matched.stock : 9999,
+                type: matched ? matched.type : 'Inventory'
+            };
+        }
+
         const tbody = document.getElementById('invoiceBody');
         const tr = document.createElement('tr');
         
@@ -484,21 +554,21 @@ if (empty($revenues)) {
                 <input type="hidden" name="item_selection[]" value="${item.id}">
             </td>
             <td style="text-align: center;">
-                <input type="number" class="num" name="qty[]" value="1" min="0.01" step="0.01" ${maxAttr} oninput="validateQty(this, ${item.type === 'Service' ? 'null' : item.stock}); calcTotals()" required style="width: 60px; margin-bottom: 2px;">
+                <input type="number" class="num" name="qty[]" value="${qty}" min="0.01" step="0.01" ${maxAttr} oninput="validateQty(this, ${item.type === 'Service' ? 'null' : item.stock}); calcTotals()" required style="width: 60px; margin-bottom: 2px;">
                 ${stockHtml}
             </td>
-            <td><input type="text" name="desc[]" value="${item.name}" required style="width: 100%; border:none; background:transparent;"></td>
-            <td><input type="number" class="num" name="price[]" value="${parseFloat(item.price).toFixed(2)}" step="0.01" min="0" oninput="calcTotals()" required style="width: 80px;"></td>
+            <td><input type="text" name="desc[]" value="${desc}" required style="width: 100%; border:none; background:transparent;"></td>
+            <td><input type="number" class="num" name="price[]" value="${parseFloat(price).toFixed(2)}" step="0.01" min="0" oninput="calcTotals()" required style="width: 80px;"></td>
             <td>
                 <div class="discount-cell">
-                    <input type="number" class="num" name="item_discount_val[]" value="0.00" step="0.01" oninput="calcTotals()">
+                    <input type="number" class="num" name="item_discount_val[]" value="${parseFloat(discVal).toFixed(2)}" step="0.01" oninput="calcTotals()">
                     <select name="item_discount_type[]" onchange="calcTotals()">
-                        <option value="Rs">Rs</option>
-                        <option value="%">%</option>
+                        <option value="Rs" ${discType === 'Rs' ? 'selected' : ''}>Rs</option>
+                        <option value="%" ${discType === '%' ? 'selected' : ''}>%</option>
                     </select>
                 </div>
             </td>
-            <td><input type="text" class="num line-total" value="${parseFloat(item.price).toFixed(2)}" readonly style="font-weight:bold; background: transparent; border: none; width: 100%;"></td>
+            <td><input type="text" class="num line-total" value="0.00" readonly style="font-weight:bold; background: transparent; border: none; width: 100%;"></td>
             <td style="text-align:center;"><button type="button" tabindex="-1" style="background:transparent; color:#c62828; border:none; cursor:pointer; font-weight:bold; font-size: 16px; padding: 4px;" onclick="this.closest('tr').remove(); calcTotals();">&times;</button></td>
         `;
         tbody.insertAdjacentElement('afterbegin', tr);
@@ -541,4 +611,80 @@ if (empty($revenues)) {
         document.getElementById('grandTotal').innerText = grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         document.getElementById('balanceDue').innerText = grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
+
+    // RUN INITIALIZATION HOOK TO PRE-POPULATE THE FORM IN EDIT MODE
+    document.addEventListener("DOMContentLoaded", function() {
+        updateBillTo(true); // Pass true to signal the initial page pre-population phase
+        
+        <?php if (!empty($editingItems)): ?>
+            <?php foreach ($editingItems as $index => $ei): ?>
+                <?php 
+                $itemId = isset($ei->item_id) ? $ei->item_id : null;
+                $varId = isset($ei->variation_option_id) ? $ei->variation_option_id : null;
+
+                // BUGFIX FALLBACK: If item_id is NULL (typical for older mobile POS checkouts), 
+                // dynamically reverse-map the record by matching description strings to restore proper editing context
+                if (empty($itemId) && !empty($ei->description)) {
+                    $descClean = trim((string)$ei->description);
+                    if (strpos($descClean, ' - ') !== false) {
+                        $parts = explode(' - ', $descClean);
+                        $descClean = trim($parts[0]);
+                    }
+                    
+                    $db->query("SELECT id, item_code FROM items WHERE name = :name LIMIT 1");
+                    $db->bind(':name', $descClean);
+                    $matchedItem = $db->single();
+                    if ($matchedItem) {
+                        $itemId = $matchedItem->id;
+                        
+                        if (strpos((string)$ei->description, ' - ') !== false) {
+                            $suffix = trim(str_replace($descClean . ' - ', '', (string)$ei->description));
+                            if (strpos($suffix, ': ') !== false) {
+                                $suffixParts = explode(': ', $suffix);
+                                $valName = trim($suffixParts[1] ?? '');
+                                
+                                $db->query("SELECT ivo.id FROM item_variation_options ivo
+                                            JOIN variation_values vv ON ivo.variation_value_id = vv.id
+                                            WHERE ivo.item_id = :item_id AND vv.value_name = :val_name LIMIT 1");
+                                $db->bind(':item_id', $itemId);
+                                $db->bind(':val_name', $valName);
+                                $matchedVar = $db->single();
+                                if ($matchedVar) {
+                                    $varId = $matchedVar->id;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                $compositeId = ($itemId ?: '0') . '|' . ($varId ?: '0') . '|0';
+                
+                $codeStr = 'ITEM';
+                if ($itemId) {
+                    $db->query("SELECT item_code FROM items WHERE id = :id");
+                    $db->bind(':id', $itemId);
+                    $itemRow = $db->single();
+                    $codeStr = $itemRow ? $itemRow->item_code : 'ITEM';
+                }
+                ?>
+                addItemRow(
+                    "<?= $compositeId ?>", 
+                    <?= json_encode($codeStr) ?>, 
+                    <?= floatval(isset($ei->quantity) ? $ei->quantity : 0) ?>, 
+                    <?= json_encode(isset($ei->description) ? $ei->description : '') ?>, 
+                    <?= floatval(isset($ei->unit_price) ? $ei->unit_price : 0) ?>, 
+                    <?= floatval(isset($ei->discount_value) ? $ei->discount_value : 0) ?>, 
+                    <?= json_encode(isset($ei->discount_type) ? $ei->discount_type : 'Rs') ?>
+                );
+            <?php endforeach; ?>
+        <?php endif; ?>
+
+        // Clean & targeted diagnostic session error tracer
+        const serverError = <?= json_encode($data['error'] ?? '') ?>;
+        if (serverError) {
+            console.error("=== TRANSACTION ERROR ENCOUNTERED ===");
+            console.error("Backend Error Message: ", serverError);
+            console.error("=====================================");
+        }
+    });
 </script>

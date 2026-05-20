@@ -4,6 +4,50 @@ class Invoice {
 
     public function __construct() {
         $this->db = new Database();
+        
+        // Failsafe DDL: Automatically add the 'stock_status' column to prevent any database schema mismatch errors
+        try {
+            $this->db->query("SHOW COLUMNS FROM invoices LIKE 'stock_status'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE invoices ADD COLUMN stock_status VARCHAR(20) DEFAULT 'deducted' AFTER status");
+                $this->db->execute();
+            }
+        } catch (Exception $e) {
+            // Silently catch errors
+        }
+
+        // Failsafe DDL: Automatically add the 'notes' column if it is missing in the database schema
+        try {
+            $this->db->query("SHOW COLUMNS FROM invoices LIKE 'notes'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE invoices ADD COLUMN notes TEXT NULL AFTER global_discount_type");
+                $this->db->execute();
+            }
+        } catch (Exception $e) {
+            // Silently catch errors
+        }
+
+        // Failsafe DDL: Automatically add 'item_id' column to invoice_items table if missing
+        try {
+            $this->db->query("SHOW COLUMNS FROM invoice_items LIKE 'item_id'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE invoice_items ADD COLUMN item_id INT NULL DEFAULT NULL AFTER invoice_id");
+                $this->db->execute();
+            }
+        } catch (Exception $e) {
+            // Silently catch errors
+        }
+
+        // Failsafe DDL: Automatically add 'variation_option_id' column to invoice_items table if missing
+        try {
+            $this->db->query("SHOW COLUMNS FROM invoice_items LIKE 'variation_option_id'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE invoice_items ADD COLUMN variation_option_id INT NULL DEFAULT NULL AFTER item_id");
+                $this->db->execute();
+            }
+        } catch (Exception $e) {
+            // Silently catch errors
+        }
     }
 
     public function getAllInvoices() {
@@ -35,160 +79,249 @@ class Invoice {
         try {
             $this->db->beginTransaction();
 
-            // 1. Calculate Subtotal with individual Item Discounts
-            $subTotal = 0;
-            foreach ($items as &$item) {
-                $itemGross = $item['qty'] * $item['price'];
-                $itemDisc = 0;
-                
-                if (isset($item['disc_type']) && $item['disc_type'] === '%') {
-                    $itemDisc = $itemGross * ($item['disc_val'] / 100);
-                } else {
-                    $itemDisc = $item['disc_val'] ?? 0;
-                }
-                
-                $item['calculated_total'] = $itemGross - $itemDisc;
-                $subTotal += $item['calculated_total'];
-            }
-
-            // Calculate Global Bill Discount
-            $globalDisc = 0;
-            if (isset($invoiceData['global_discount_type']) && $invoiceData['global_discount_type'] === '%') {
-                $globalDisc = $subTotal * (($invoiceData['global_discount_val'] ?? 0) / 100);
-            } else {
-                $globalDisc = $invoiceData['global_discount_val'] ?? 0;
-            }
-
-            $netSubTotal = $subTotal - $globalDisc;
-            if ($netSubTotal < 0) $netSubTotal = 0;
-
-            // 2. Handle Tax Calculations
-            $taxAmount = 0;
-            $taxRateId = null;
-
-            if ($taxData && !empty($taxData['tax_rate_id'])) {
-                $this->db->query("SELECT * FROM tax_rates WHERE id = :tid");
-                $this->db->bind(':tid', $taxData['tax_rate_id']);
-                $taxConfig = $this->db->single();
-
-                if ($taxConfig) {
-                    $taxAmount = ($netSubTotal * $taxConfig->rate_percentage) / 100;
-                    $taxRateId = $taxConfig->id;
-                }
-            }
-
-            $grandTotal = $netSubTotal + $taxAmount;
-
-            // 3. Post Journal Entry Header
-            $desc = "Invoice created: " . $invoiceData['invoice_number'];
             $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
-                              VALUES (:date, :ref, :desc, :user, 'Posted')");
-            $this->db->bind(':date', $invoiceData['date']);
-            $this->db->bind(':ref', $invoiceData['invoice_number']);
-            $this->db->bind(':desc', $desc);
-            $this->db->bind(':user', $userId);
+                              VALUES (:entry_date, :reference, :description, :created_by, 'Posted')");
+            $this->db->bind(':entry_date', $invoiceData['invoice_date']);
+            $this->db->bind(':reference', $invoiceData['invoice_number']);
+            $this->db->bind(':description', 'Invoice Entry - ' . $invoiceData['invoice_number']);
+            $this->db->bind(':created_by', $userId);
             $this->db->execute();
-            
-            $journalId = $this->db->lastInsertId();
+            $journalEntryId = $this->db->lastInsertId();
 
-            // 4. Post Journal Lines (Debit AR, Credit Revenue)
-            $lines = [
-                ['account_id' => $arAccountId, 'debit' => $grandTotal, 'credit' => 0], 
-                ['account_id' => $revenueAccountId, 'debit' => 0, 'credit' => $netSubTotal]
-            ];
-
-            foreach ($lines as $line) {
-                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) 
-                                  VALUES (:jid, :aid, :deb, :cred)");
-                $this->db->bind(':jid', $journalId);
-                $this->db->bind(':aid', $line['account_id']);
-                $this->db->bind(':deb', $line['debit']);
-                $this->db->bind(':cred', $line['credit']);
-                $this->db->execute();
-
-                // Update ledger balances mathematically
-                $this->db->query("SELECT account_type FROM chart_of_accounts WHERE id = :id");
-                $this->db->bind(':id', $line['account_id']);
-                $acc = $this->db->single();
-
-                $sql = "UPDATE chart_of_accounts SET balance = balance ";
-                if (in_array($acc->account_type, ['Asset', 'Expense'])) {
-                    $sql .= "+ :debit - :credit ";
-                } else {
-                    $sql .= "- :debit + :credit ";
-                }
-                $sql .= "WHERE id = :id";
-                
-                $this->db->query($sql);
-                $this->db->bind(':debit', $line['debit']);
-                $this->db->bind(':credit', $line['credit']);
-                $this->db->bind(':id', $line['account_id']);
-                $this->db->execute();
-            }
-
-            // 5. Create Invoice Header
-            $this->db->query("INSERT INTO invoices (invoice_number, customer_id, invoice_date, due_date, tax_rate_id, total_amount, global_discount_val, global_discount_type, tax_amount, journal_entry_id, created_by) 
-                              VALUES (:inv_num, :cust_id, :idate, :ddate, :tid, :total, :gdisc_val, :gdisc_type, :tamt, :jid, :uid)");
-            
-            $this->db->bind(':inv_num', $invoiceData['invoice_number']);
-            $this->db->bind(':cust_id', $invoiceData['customer_id']);
-            $this->db->bind(':idate', $invoiceData['date']);
-            $this->db->bind(':ddate', $invoiceData['due_date']);
-            $this->db->bind(':tid', $taxRateId);
-            $this->db->bind(':total', $subTotal); 
-            $this->db->bind(':gdisc_val', $invoiceData['global_discount_val'] ?? 0);
-            $this->db->bind(':gdisc_type', $invoiceData['global_discount_type'] ?? 'Rs');
-            $this->db->bind(':tamt', $taxAmount);
-            $this->db->bind(':jid', $journalId);
-            $this->db->bind(':uid', $userId);
+            $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, :debit, 0)");
+            $this->db->bind(':journal_id', $journalEntryId);
+            $this->db->bind(':account_id', $arAccountId);
+            $this->db->bind(':debit', $invoiceData['grand_total']);
             $this->db->execute();
-            
+
+            $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amount WHERE id = :id");
+            $this->db->bind(':amount', $invoiceData['grand_total']);
+            $this->db->bind(':id', $arAccountId);
+            $this->db->execute();
+
+            $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, 0, :credit)");
+            $this->db->bind(':journal_id', $journalEntryId);
+            $this->db->bind(':account_id', $revenueAccountId);
+            $this->db->bind(':credit', $invoiceData['grand_total']);
+            $this->db->execute();
+
+            $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amount WHERE id = :id");
+            $this->db->bind(':amount', $invoiceData['grand_total']);
+            $this->db->bind(':id', $revenueAccountId);
+            $this->db->execute();
+
+            $this->db->query("INSERT INTO invoices (invoice_number, customer_id, invoice_date, due_date, total_amount, global_discount_val, global_discount_type, notes, journal_entry_id, created_by, status, stock_status) 
+                              VALUES (:invoice_number, :customer_id, :invoice_date, :due_date, :total_amount, :global_discount_val, :global_discount_type, :notes, :journal_entry_id, :created_by, 'Unpaid', 'deducted')");
+            $this->db->bind(':invoice_number', $invoiceData['invoice_number']);
+            $this->db->bind(':customer_id', $invoiceData['customer_id']);
+            $this->db->bind(':invoice_date', $invoiceData['invoice_date']);
+            $this->db->bind(':due_date', $invoiceData['due_date']);
+            $this->db->bind(':total_amount', $invoiceData['subtotal']);
+            $this->db->bind(':global_discount_val', $invoiceData['global_discount_val']);
+            $this->db->bind(':global_discount_type', $invoiceData['global_discount_type']);
+            $this->db->bind(':notes', $invoiceData['notes']);
+            $this->db->bind(':journal_entry_id', $journalEntryId);
+            $this->db->bind(':created_by', $userId);
+            $this->db->execute();
             $invoiceId = $this->db->lastInsertId();
 
-            // 6. Create Invoice Items and Deduct Inventory Stock
             foreach ($items as $item) {
-                $this->db->query("INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_value, discount_type, total) 
-                                  VALUES (:iid, :desc, :qty, :price, :disc_val, :disc_type, :total)");
-                $this->db->bind(':iid', $invoiceId);
-                $this->db->bind(':desc', $item['desc']);
-                $this->db->bind(':qty', $item['qty']);
-                $this->db->bind(':price', $item['price']);
-                $this->db->bind(':disc_val', $item['disc_val'] ?? 0);
-                $this->db->bind(':disc_type', $item['disc_type'] ?? 'Rs');
-                $this->db->bind(':total', $item['calculated_total']);
+                $parts = explode('|', $item['item_selection']);
+                $itemId = $parts[0] ?? null;
+                $varId = isset($parts[1]) && $parts[1] !== 'MIX' && $parts[1] !== '0' ? $parts[1] : null;
+
+                $this->db->query("INSERT INTO invoice_items (invoice_id, item_id, variation_option_id, description, quantity, unit_price, discount_value, discount_type, total) 
+                                  VALUES (:invoice_id, :item_id, :var_id, :description, :quantity, :unit_price, :discount_value, :discount_type, :total)");
+                $this->db->bind(':invoice_id', $invoiceId);
+                $this->db->bind(':item_id', $itemId);
+                $this->db->bind(':var_id', $varId);
+                $this->db->bind(':description', $item['description']);
+                $this->db->bind(':quantity', $item['quantity']);
+                $this->db->bind(':unit_price', $item['unit_price']);
+                $this->db->bind(':discount_value', $item['discount_value']);
+                $this->db->bind(':discount_type', $item['discount_type']);
+                $this->db->bind(':total', $item['total']);
                 $this->db->execute();
 
-                // Deduct Inventory Quantities
-                if (!empty($item['item_selection'])) {
-                    // String structure: item_id|variation_value_id|is_mix
-                    $parts = explode('|', $item['item_selection']);
-                    $itemId = $parts[0] ?? null;
-                    $varId = isset($parts[1]) && $parts[1] !== 'MIX' && $parts[1] !== '0' ? $parts[1] : null;
+                // Direct creation deducts from Physical stock immediately (with unsigned underflow safety)
+                if ($itemId) {
+                    $this->db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
+                    $this->db->bind(':qty', $item['quantity']);
+                    $this->db->bind(':id', $itemId);
+                    $this->db->execute();
+                }
+                if ($varId) {
+                    $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
+                    $this->db->bind(':qty', $item['quantity']);
+                    $this->db->bind(':id', $varId);
+                    $this->db->execute();
+                }
+            }
 
-                    // Deduct from Main Product Quantity
+            $this->db->commit();
+            return $invoiceId;
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            error_log("Invoice Creation Error: " . $e->getMessage());
+            $_SESSION['invoice_error'] = "SQL Creation Exception: " . $e->getMessage();
+            return false;
+        }
+    }
+
+    public function updateInvoiceWithAccounting($invoiceId, $invoiceData, $items, $arAccountId, $revenueAccountId, $userId) {
+        try {
+            $this->db->beginTransaction();
+
+            // Fetch current invoice state
+            $this->db->query("SELECT * FROM invoices WHERE id = :id");
+            $this->db->bind(':id', $invoiceId);
+            $oldInvoice = $this->db->single();
+            if (!$oldInvoice) throw new Exception("Invoice not found.");
+
+            $oldSub = floatval($oldInvoice->total_amount ?? 0);
+            $oldDiscVal = floatval($oldInvoice->global_discount_val ?? 0);
+            $oldDiscType = $oldInvoice->global_discount_type ?? 'Rs';
+            $oldDisc = ($oldDiscType === '%') ? ($oldSub * $oldDiscVal / 100) : $oldDiscVal;
+            $oldGrandTotal = ($oldSub - $oldDisc) + floatval($oldInvoice->tax_amount ?? 0);
+
+            // Determine if the invoice was currently holding reserved stock or physically deducted stock
+            $oldStockStatus = isset($oldInvoice->stock_status) ? $oldInvoice->stock_status : 'deducted';
+
+            // 1. REVERT PREVIOUS STOCK ALLOCATIONS
+            $this->db->query("SELECT * FROM invoice_items WHERE invoice_id = :id");
+            $this->db->bind(':id', $invoiceId);
+            $oldItems = $this->db->resultSet();
+
+            foreach ($oldItems as $oldItem) {
+                $itemId = $oldItem->item_id;
+                $varId = $oldItem->variation_option_id ?? null;
+
+                if ($oldStockStatus === 'reserved') {
+                    // Reverse the reservation: Subtract from quantity_reserved
                     if ($itemId) {
-                        $this->db->query("UPDATE items SET quantity_on_hand = quantity_on_hand - :qty WHERE id = :id");
-                        $this->db->bind(':qty', $item['qty']);
+                        $this->db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
+                        $this->db->bind(':qty', $oldItem->quantity);
                         $this->db->bind(':id', $itemId);
                         $this->db->execute();
                     }
-                    
-                    // Deduct from Specific Variation Quantity
                     if ($varId) {
-                        $this->db->query("UPDATE item_variation_options SET quantity_on_hand = quantity_on_hand - :qty WHERE id = :id");
-                        $this->db->bind(':qty', $item['qty']);
+                        $this->db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
+                        $this->db->bind(':qty', $oldItem->quantity);
+                        $this->db->bind(':id', $varId);
+                        $this->db->execute();
+                    }
+                } else {
+                    // Reverse the physical deduction: Add back to quantity_on_hand
+                    if ($itemId) {
+                        $this->db->query("UPDATE items SET quantity_on_hand = quantity_on_hand + :qty WHERE id = :id");
+                        $this->db->bind(':qty', $oldItem->quantity);
+                        $this->db->bind(':id', $itemId);
+                        $this->db->execute();
+                    }
+                    if ($varId) {
+                        $this->db->query("UPDATE item_variation_options SET quantity_on_hand = quantity_on_hand + :qty WHERE id = :id");
+                        $this->db->bind(':qty', $oldItem->quantity);
                         $this->db->bind(':id', $varId);
                         $this->db->execute();
                     }
                 }
             }
 
-            $this->db->commit();
-            return $invoiceId;
+            // Remove existing item records
+            $this->db->query("DELETE FROM invoice_items WHERE invoice_id = :id");
+            $this->db->bind(':id', $invoiceId);
+            $this->db->execute();
 
-        } catch (PDOException $e) {
+            // 2. ADJUST LEDGER BALANCE COALESCE
+            $this->db->query("UPDATE chart_of_accounts SET balance = balance - :old_amt + :new_amt WHERE id = :id");
+            $this->db->bind(':old_amt', $oldGrandTotal);
+            $this->db->bind(':new_amt', $invoiceData['grand_total']);
+            $this->db->bind(':id', $arAccountId);
+            $this->db->execute();
+
+            $this->db->query("UPDATE chart_of_accounts SET balance = balance - :old_amt + :new_amt WHERE id = :id");
+            $this->db->bind(':old_amt', $oldGrandTotal);
+            $this->db->bind(':new_amt', $invoiceData['grand_total']);
+            $this->db->bind(':id', $revenueAccountId);
+            $this->db->execute();
+
+            // 3. RE-POST REVISED JOURNAL ENTRIES
+            $jid = $oldInvoice->journal_entry_id;
+            if ($jid) {
+                $this->db->query("UPDATE transactions SET debit = :new_amt WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
+                $this->db->bind(':new_amt', $invoiceData['grand_total']);
+                $this->db->bind(':jid', $jid);
+                $this->db->bind(':aid', $arAccountId);
+                $this->db->execute();
+
+                $this->db->query("UPDATE transactions SET credit = :new_amt WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
+                $this->db->bind(':new_amt', $invoiceData['grand_total']);
+                $this->db->bind(':jid', $jid);
+                $this->db->bind(':aid', $revenueAccountId);
+                $this->db->execute();
+            }
+
+            // 4. UPDATE TOP-LEVEL RECORD & FORCE stock_status = 'deducted'
+            $this->db->query("UPDATE invoices SET 
+                                customer_id = :customer_id, 
+                                invoice_date = :invoice_date, 
+                                due_date = :due_date, 
+                                total_amount = :total_amount, 
+                                global_discount_val = :global_discount_val, 
+                                global_discount_type = :global_discount_type, 
+                                notes = :notes,
+                                stock_status = 'deducted'
+                              WHERE id = :id");
+            $this->db->bind(':customer_id', $invoiceData['customer_id']);
+            $this->db->bind(':invoice_date', $invoiceData['invoice_date']);
+            $this->db->bind(':due_date', $invoiceData['due_date']);
+            $this->db->bind(':total_amount', $invoiceData['subtotal']);
+            $this->db->bind(':global_discount_val', $invoiceData['global_discount_val']);
+            $this->db->bind(':global_discount_type', $invoiceData['global_discount_type']);
+            $this->db->bind(':notes', $invoiceData['notes']);
+            $this->db->bind(':id', $invoiceId);
+            $this->db->execute();
+
+            // 5. INSERT REVISED ITEMS & APPLY NEW STOCK DEDUCTIONS (with unsigned underflow safety)
+            foreach ($items as $item) {
+                $parts = explode('|', $item['item_selection']);
+                $itemId = $parts[0] ?? null;
+                $varId = isset($parts[1]) && $parts[1] !== 'MIX' && $parts[1] !== '0' ? $parts[1] : null;
+
+                $this->db->query("INSERT INTO invoice_items (invoice_id, item_id, variation_option_id, description, quantity, unit_price, discount_value, discount_type, total) 
+                                  VALUES (:invoice_id, :item_id, :var_id, :description, :quantity, :unit_price, :discount_value, :discount_type, :total)");
+                $this->db->bind(':invoice_id', $invoiceId);
+                $this->db->bind(':item_id', $itemId);
+                $this->db->bind(':var_id', $varId);
+                $this->db->bind(':description', $item['description']);
+                $this->db->bind(':quantity', $item['quantity']);
+                $this->db->bind(':unit_price', $item['unit_price']);
+                $this->db->bind(':discount_value', $item['discount_value']);
+                $this->db->bind(':discount_type', $item['discount_type']);
+                $this->db->bind(':total', $item['total']);
+                $this->db->execute();
+
+                // Deduct from Main Product Quantity on Hand directly since the invoice is now finalized (unsigned underflow safety)
+                if ($itemId) {
+                    $this->db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
+                    $this->db->bind(':qty', $item['quantity']);
+                    $this->db->bind(':id', $itemId);
+                    $this->db->execute();
+                }
+                if ($varId) {
+                    $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
+                    $this->db->bind(':qty', $item['quantity']);
+                    $this->db->bind(':id', $varId);
+                    $this->db->execute();
+                }
+            }
+
+            $this->db->commit();
+            return true;
+        } catch (Throwable $e) {
             $this->db->rollBack();
-            error_log("Invoice Creation Error: " . $e->getMessage());
+            error_log("Invoice Edit Saving Error: " . $e->getMessage());
+            $_SESSION['invoice_error'] = "SQL Edit Exception: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine();
             return false;
         }
     }

@@ -1,4 +1,10 @@
 <?php
+
+// Enable error reporting to prevent blank 500 errors in the future
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -250,6 +256,7 @@
                 <div class="mac-menu-item">Sales & CRM</div>
                 <div class="mac-dropdown">
                     <a href="<?= APP_URL ?>/crm">Leads & CRM</a>
+                    <a href="<?php echo APP_URL; ?>/RepTracking/index">📍 Rep Route Tracking</a>
                     <a href="<?= APP_URL ?>/customer">Customer Center</a>
                     <a href="<?= APP_URL ?>/dunning">Dunning & AR Reminders</a>
                     <a href="<?= APP_URL ?>/estimate">Quotes & Estimates</a>

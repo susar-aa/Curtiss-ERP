@@ -1,4 +1,5 @@
 <?php
+
 class RepAppRouter {
     protected $currentController = 'RepDashboardController';
     protected $currentMethod = 'index';

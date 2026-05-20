@@ -158,14 +158,27 @@ foreach ($customers as $c) {
 <script>
     // Build Base-Only Catalog using Secure Native JSON output from PHP
     const catalogDb = <?= json_encode(array_map(function($prod) {
+        $hasVars = !empty($prod->variations);
+        $totalReserved = $prod->quantity_reserved ?? 0;
+        $availableStock = ($prod->quantity_on_hand ?? 0) - $totalReserved;
+        
+        // Setup variation available stocks
+        if ($hasVars) {
+            foreach($prod->variations as $v) {
+                $vReserved = $v->quantity_reserved ?? 0;
+                $v->available_stock = ($v->quantity_on_hand ?? 0) - $vReserved;
+            }
+        }
+        $prod->available_stock = $availableStock;
+
         return [
             'id' => $prod->id,
             'type' => $prod->type ?? 'Inventory',
             'name' => $prod->name,
             'code' => $prod->item_code ?? '',
             'price' => $prod->price ?? 0,
-            'quantity_on_hand' => $prod->quantity_on_hand ?? 0,
-            'has_variations' => !empty($prod->variations),
+            'available_stock' => $availableStock,
+            'has_variations' => $hasVars,
             'rawProd' => $prod // Embeds the entire product object perfectly without string escapes
         ];
     }, $products)); ?>;
@@ -193,10 +206,10 @@ foreach ($customers as $c) {
                 stockBadge = `<span style="color:#0066cc; font-size: 11px; font-weight:bold;">Service</span>`;
             } else if (item.has_variations) {
                 stockBadge = `<span style="color:#0066cc; font-size: 11px; font-weight:bold;">Variations Available</span>`;
-            } else if (item.quantity_on_hand > 0) {
-                stockBadge = `<span style="color:#2e7d32; font-size: 11px; font-weight:bold;">Stock: ${item.quantity_on_hand}</span>`;
+            } else if (item.available_stock > 0) {
+                stockBadge = `<span style="color:#2e7d32; font-size: 11px; font-weight:bold;">Available: ${item.available_stock}</span>`;
             } else {
-                stockBadge = `<span style="color:#c62828; font-size: 11px; font-weight:bold;">Out of Stock</span>`;
+                stockBadge = `<span style="color:#c62828; font-size: 11px; font-weight:bold;">Out of Stock (Reserved)</span>`;
             }
 
             li.innerHTML = `
@@ -314,41 +327,51 @@ foreach ($customers as $c) {
             return;
         }
 
-        // Safe assign directly (no JSON.parse required)
-        currentProd = prod;
+        // Safe assign directly (both native JSON objects and parsed strings)
+        const prodObj = (typeof prod === 'string') ? JSON.parse(prod) : prod;
+        currentProd = prodObj;
         
-        document.getElementById('pmTitle').innerText = prod.name;
+        document.getElementById('pmTitle').innerText = prodObj.name;
         document.getElementById('pmDiscVal').value = 0;
         document.getElementById('pmDiscType').value = 'Rs';
         
-        const isService = prod.type === 'Service';
-        document.getElementById('pmStockInfo').innerText = isService ? 'Service Item' : `Total Stock: ${prod.quantity_on_hand}`;
+        const isService = prodObj.type === 'Service';
+        document.getElementById('pmStockInfo').innerText = isService ? 'Service Item' : `Available Stock: ${prodObj.available_stock}`;
         
         const container = document.getElementById('pmVariantsContainer');
         container.innerHTML = '';
 
-        if (prod.variations && prod.variations.length > 0) {
-            prod.variations.forEach(v => {
-                let cartItemId = `${prod.id}_${v.id}`;
+        if (prodObj.variations && prodObj.variations.length > 0) {
+            prodObj.variations.forEach(v => {
+                let cartItemId = `${prodObj.id}_${v.id}`;
                 let cartItem = cart.find(c => c.cartItemId === cartItemId);
-                let price = cartItem ? cartItem.price : (v.price || prod.price);
+                let price = cartItem ? cartItem.price : (v.price || prodObj.price);
+                let stockLimit = isService ? '' : `max="${v.available_stock}"`;
                 container.innerHTML += `
                     <div class="pm-row">
-                        <div class="pm-row-header"><span>${v.variation_name}: ${v.value_name}</span></div>
+                        <div class="pm-row-header">
+                            <span>${v.variation_name}: ${v.value_name}</span>
+                            <span style="font-size:12px; font-weight:bold; color:${(!isService && v.available_stock <= 0) ? '#c62828' : 'var(--text-muted)'};">Stock: ${isService ? 'N/A' : v.available_stock}</span>
+                        </div>
                         <div class="pm-inputs">
                             <div class="pm-input-group"><label>Price</label><input type="number" id="pmPrice_${v.id}" value="${parseFloat(price).toFixed(2)}" step="0.01"></div>
-                            <div class="pm-input-group"><label>QTY</label><input type="number" id="pmQty_${v.id}" value="${cartItem ? cartItem.qty : 0}" min="0"></div>
+                            <div class="pm-input-group"><label>QTY</label><input type="number" id="pmQty_${v.id}" value="${cartItem ? cartItem.qty : 0}" min="0" ${stockLimit} oninput="validateModalQty(this, ${isService})"></div>
                         </div>
                     </div>
                 `;
             });
         } else {
-            let cartItem = cart.find(c => c.cartItemId === `${prod.id}_0`);
+            let cartItem = cart.find(c => c.cartItemId === `${prodObj.id}_0`);
+            let stockLimit = isService ? '' : `max="${prodObj.available_stock}"`;
             container.innerHTML += `
                 <div class="pm-row">
+                    <div class="pm-row-header">
+                        <span>Standard Item</span>
+                        <span style="font-size:12px; font-weight:bold; color:${(!isService && prodObj.available_stock <= 0) ? '#c62828' : 'var(--text-muted)'};">Stock: ${isService ? 'N/A' : prodObj.available_stock}</span>
+                    </div>
                     <div class="pm-inputs">
-                        <div class="pm-input-group"><label>Price</label><input type="number" id="pmPrice_base" value="${parseFloat(cartItem ? cartItem.price : prod.price).toFixed(2)}" step="0.01"></div>
-                        <div class="pm-input-group"><label>QTY</label><input type="number" id="pmQty_base" value="${cartItem ? cartItem.qty : 0}" min="0"></div>
+                        <div class="pm-input-group"><label>Price</label><input type="number" id="pmPrice_base" value="${parseFloat(cartItem ? cartItem.price : prodObj.price).toFixed(2)}" step="0.01"></div>
+                        <div class="pm-input-group"><label>QTY</label><input type="number" id="pmQty_base" value="${cartItem ? cartItem.qty : 0}" min="0" ${stockLimit} oninput="validateModalQty(this, ${isService})"></div>
                     </div>
                 </div>
             `;

@@ -178,7 +178,7 @@ class BillingController extends RepController {
             $db->execute();
             $invoiceId = $db->lastInsertId();
 
-            // 6. Create Invoice Items and Deduct Inventory
+            // 6. Create Invoice Items and Reserve Inventory
             foreach ($payload['cart'] as $item) {
                 $rowGross = $item['qty'] * $item['price'];
                 $rowDiscAmount = ($item['disc_type'] === '%') ? ($rowGross * $item['disc_val'] / 100) : $item['disc_val'];
@@ -195,15 +195,15 @@ class BillingController extends RepController {
                 $db->bind(':tot', $rowNet);
                 $db->execute();
 
-                // Deduct Inventory
+                // Reserve Inventory instead of deducting physical stock balance
                 if (!empty($item['itemId'])) {
-                    $db->query("UPDATE items SET quantity_on_hand = quantity_on_hand - :qty WHERE id = :id");
+                    $db->query("UPDATE items SET quantity_reserved = quantity_reserved + :qty WHERE id = :id");
                     $db->bind(':qty', $item['qty']);
                     $db->bind(':id', $item['itemId']);
                     $db->execute();
                 }
                 if (!empty($item['varId'])) {
-                    $db->query("UPDATE item_variation_options SET quantity_on_hand = quantity_on_hand - :qty WHERE id = :id");
+                    $db->query("UPDATE item_variation_options SET quantity_reserved = quantity_reserved + :qty WHERE id = :id");
                     $db->bind(':qty', $item['qty']);
                     $db->bind(':id', $item['varId']);
                     $db->execute();
