@@ -151,16 +151,13 @@ if ($successInvoiceId && !$successCustomer) {
             <label>🏦 Bank Transfer</label>
             <input type="number" id="payBank" class="pay-input-box pay-bank" value="0.00" onfocus="if(this.value=='0.00')this.value='';" onblur="if(this.value=='')this.value='0.00';" oninput="calcCheckout()">
         </div>
-        <div class="pay-input-row" style="margin-bottom:0;">
-            <label>💳 Cheque (PDC)</label>
-            <input type="number" id="payCheque" class="pay-input-box pay-cheque" value="0.00" onfocus="if(this.value=='0.00')this.value='';" onblur="if(this.value=='')this.value='0.00';" oninput="calcCheckout()">
-        </div>
-        
-        <div id="chequeDetailsBox" style="display:none; margin-top:15px; padding:15px; background:#fff8e1; border:1px dashed #ffb300; border-radius:6px;">
-            <label style="font-size:11px; font-weight:bold; color:#f57c00; text-transform:uppercase; margin-bottom:5px; display:block;">PDC Cheque Details</label>
-            <input type="text" id="co_cq_bank" class="form-control" placeholder="Bank Name" style="margin-bottom:8px; border-color:#ffecb3;">
-            <input type="text" id="co_cq_num" class="form-control" placeholder="Cheque Number" style="margin-bottom:8px; border-color:#ffecb3;">
-            <input type="date" id="co_cq_date" class="form-control" style="border-color:#ffecb3;" value="<?= date('Y-m-d') ?>">
+        <!-- PDC CHEQUES SECTION -->
+        <div style="margin-top: 15px; border-top: 1px dashed #ddd; padding-top: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <label style="font-weight: bold; font-size: 13px; color: var(--text-dark); margin: 0;">💳 Cheques (PDC)</label>
+                <button type="button" class="btn" onclick="addRepChequeRow()" style="padding: 4px 8px; font-size: 11px; margin: 0; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">➕ Add Cheque</button>
+            </div>
+            <div id="rep-cheques-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
         </div>
     </div>
 
@@ -293,15 +290,21 @@ if ($successInvoiceId && !$successCustomer) {
         const taxType = document.getElementById('coTaxType').value;
         let tax = (taxType === '%') ? (currentBill * taxVal / 100) : taxVal;
 
-        let payable = currentBill + tax;
+        const payable = currentBill + tax;
 
-        let outstanding = typeof globalSelectedCustomerOutstanding !== 'undefined' ? globalSelectedCustomerOutstanding : 0;
+        const outstanding = typeof globalSelectedCustomerOutstanding !== 'undefined' ? globalSelectedCustomerOutstanding : 0;
 
-        let cash = parseFloat(document.getElementById('payCash').value) || 0;
-        let bank = parseFloat(document.getElementById('payBank').value) || 0;
-        let cheque = parseFloat(document.getElementById('payCheque').value) || 0;
+        const cash = parseFloat(document.getElementById('payCash').value) || 0;
+        const bank = parseFloat(document.getElementById('payBank').value) || 0;
         
-        document.getElementById('chequeDetailsBox').style.display = (cheque > 0) ? 'block' : 'none';
+        let cheque = 0;
+        const repChequeInputs = document.querySelectorAll('.rep-cheque-amount');
+        for (let i = 0; i < repChequeInputs.length; i++) {
+            let val = parseFloat(repChequeInputs[i].value);
+            if (!isNaN(val) && val > 0) {
+                cheque += val;
+            }
+        }
         
         const collectionBox = document.getElementById('creditCollectionBox');
         if (outstanding > 0) {
@@ -310,8 +313,8 @@ if ($successInvoiceId && !$successCustomer) {
             collectionBox.style.display = 'none';
         }
 
-        let collections = cash + bank + cheque;
-        let projectedOutstanding = outstanding + payable - collections;
+        const collections = cash + bank + cheque;
+        const projectedOutstanding = outstanding + payable - collections;
 
         document.getElementById('coSubtotal').innerText = `Rs ${subtotal.toFixed(2)}`;
         document.getElementById('coPayable').innerText = payable.toFixed(2);
@@ -326,6 +329,40 @@ if ($successInvoiceId && !$successCustomer) {
         }
     }
 
+    function addRepChequeRow() {
+        const container = document.getElementById('rep-cheques-container');
+        const div = document.createElement('div');
+        div.className = 'rep-cheque-card';
+        div.style.padding = '10px 12px';
+        div.style.background = '#fff8e1';
+        div.style.border = '1px dashed #ffb300';
+        div.style.borderRadius = '6px';
+        div.style.position = 'relative';
+        div.style.marginTop = '8px';
+        
+        const today = new Date().toISOString().split('T')[0];
+        
+        div.innerHTML = 
+            '<button type="button" onclick="removeRepChequeRow(this)" style="position: absolute; top: 5px; right: 5px; background: none; border: none; font-size: 14px; color: #d32f2f; cursor: pointer; padding: 2px;">✕</button>' +
+            '<label style="font-size: 10px; font-weight: bold; color: #f57c00; display: block; margin-bottom: 2px; text-transform: uppercase;">Cheque Amount</label>' +
+            '<input type="number" class="rep-cheque-amount form-control" value="0.00" onfocus="if(this.value==\'0.00\')this.value=\'\';" onblur="if(this.value==\'\')this.value=\'0.00\';" oninput="calcCheckout()" style="margin-bottom: 6px; border-color: #ffecb3; height: 32px; font-size: 13px;">' +
+            '<label style="font-size: 10px; font-weight: bold; color: #f57c00; display: block; margin-bottom: 2px; text-transform: uppercase;">Bank Name</label>' +
+            '<input type="text" class="rep-cheque-bank form-control" placeholder="Bank Name" style="margin-bottom: 6px; border-color: #ffecb3; height: 32px; font-size: 13px;">' +
+            '<label style="font-size: 10px; font-weight: bold; color: #f57c00; display: block; margin-bottom: 2px; text-transform: uppercase;">Cheque Number</label>' +
+            '<input type="text" class="rep-cheque-number form-control" placeholder="Cheque Number" style="margin-bottom: 6px; border-color: #ffecb3; height: 32px; font-size: 13px;">' +
+            '<label style="font-size: 10px; font-weight: bold; color: #f57c00; display: block; margin-bottom: 2px; text-transform: uppercase;">Banking Date</label>' +
+            '<input type="date" class="rep-cheque-date form-control" style="border-color: #ffecb3; height: 32px; font-size: 13px;" value="' + today + '">';
+            
+        container.appendChild(div);
+        calcCheckout();
+    }
+
+    function removeRepChequeRow(btn) {
+        const card = btn.parentNode;
+        card.parentNode.removeChild(card);
+        calcCheckout();
+    }
+
     function submitCheckout() {
         if (cart.length === 0) { alert('Cart is empty!'); return; }
         
@@ -334,6 +371,22 @@ if ($successInvoiceId && !$successCustomer) {
         
         const termId = document.getElementById('coPaymentTerm').value;
         if (!termId) { alert('ERROR: You must select an Invoice Payment Term.'); return; }
+
+        // Validate cheque inputs
+        const chequeCards = document.querySelectorAll('.rep-cheque-card');
+        for (let i = 0; i < chequeCards.length; i++) {
+            const card = chequeCards[i];
+            const amt = parseFloat(card.querySelector('.rep-cheque-amount').value) || 0;
+            const bank = card.querySelector('.rep-cheque-bank').value.trim();
+            const num = card.querySelector('.rep-cheque-number').value.trim();
+            const date = card.querySelector('.rep-cheque-date').value.trim();
+            if (amt > 0) {
+                if (!bank || !num || !date) {
+                    alert("Please provide all Cheque Details (Bank Name, Cheque Number, and Date) for each entered cheque.");
+                    return;
+                }
+            }
+        }
 
         const submitBtn = document.getElementById('confirmSubmitBtn');
         submitBtn.disabled = true;
@@ -357,6 +410,26 @@ if ($successInvoiceId && !$successCustomer) {
     }
     
     function finalizeSubmit(lat, lng, customerId, termId) {
+        let chequeTotal = 0;
+        const chequesList = [];
+        const chequeCards = document.querySelectorAll('.rep-cheque-card');
+        for (let i = 0; i < chequeCards.length; i++) {
+            const card = chequeCards[i];
+            const amt = parseFloat(card.querySelector('.rep-cheque-amount').value) || 0;
+            const bank = card.querySelector('.rep-cheque-bank').value.trim();
+            const num = card.querySelector('.rep-cheque-number').value.trim();
+            const date = card.querySelector('.rep-cheque-date').value.trim();
+            if (amt > 0) {
+                chequesList.push({
+                    amount: amt,
+                    bank: bank || 'Unknown',
+                    number: num || 'Unknown',
+                    date: date || new Date().toISOString().split('T')[0]
+                });
+                chequeTotal += amt;
+            }
+        }
+
         const payload = {
             customer_id: customerId,
             payment_term_id: termId,
@@ -372,13 +445,9 @@ if ($successInvoiceId && !$successCustomer) {
             arrears_collections: {
                 cash: parseFloat(document.getElementById('payCash').value) || 0,
                 bank: parseFloat(document.getElementById('payBank').value) || 0,
-                cheque: parseFloat(document.getElementById('payCheque').value) || 0
+                cheque: chequeTotal
             },
-            cheque_details: {
-                bank: document.getElementById('co_cq_bank').value,
-                number: document.getElementById('co_cq_num').value,
-                date: document.getElementById('co_cq_date').value
-            },
+            cheques: chequesList,
             location: {
                 lat: lat,
                 lng: lng

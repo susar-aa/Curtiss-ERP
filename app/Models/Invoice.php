@@ -110,10 +110,11 @@ class Invoice {
             $this->db->bind(':id', $revenueAccountId);
             $this->db->execute();
 
-            $this->db->query("INSERT INTO invoices (invoice_number, customer_id, invoice_date, due_date, total_amount, global_discount_val, global_discount_type, notes, journal_entry_id, created_by, status, stock_status) 
-                              VALUES (:invoice_number, :customer_id, :invoice_date, :due_date, :total_amount, :global_discount_val, :global_discount_type, :notes, :journal_entry_id, :created_by, 'Unpaid', 'deducted')");
+            $this->db->query("INSERT INTO invoices (invoice_number, customer_id, rep_route_id, invoice_date, due_date, total_amount, global_discount_val, global_discount_type, notes, journal_entry_id, created_by, status, stock_status) 
+                              VALUES (:invoice_number, :customer_id, :rep_route_id, :invoice_date, :due_date, :total_amount, :global_discount_val, :global_discount_type, :notes, :journal_entry_id, :created_by, 'Unpaid', 'deducted')");
             $this->db->bind(':invoice_number', $invoiceData['invoice_number']);
             $this->db->bind(':customer_id', $invoiceData['customer_id']);
+            $this->db->bind(':rep_route_id', $invoiceData['rep_route_id'] ?? null);
             $this->db->bind(':invoice_date', $invoiceData['invoice_date']);
             $this->db->bind(':due_date', $invoiceData['due_date']);
             $this->db->bind(':total_amount', $invoiceData['subtotal']);
@@ -130,8 +131,8 @@ class Invoice {
                 $itemId = $parts[0] ?? null;
                 $varId = isset($parts[1]) && $parts[1] !== 'MIX' && $parts[1] !== '0' ? $parts[1] : null;
 
-                $this->db->query("INSERT INTO invoice_items (invoice_id, item_id, variation_option_id, description, quantity, unit_price, discount_value, discount_type, total) 
-                                  VALUES (:invoice_id, :item_id, :var_id, :description, :quantity, :unit_price, :discount_value, :discount_type, :total)");
+                $this->db->query("INSERT INTO invoice_items (invoice_id, item_id, variation_option_id, description, quantity, loaded_quantity, unit_price, discount_value, discount_type, total) 
+                                  VALUES (:invoice_id, :item_id, :var_id, :description, :quantity, :quantity, :unit_price, :discount_value, :discount_type, :total)");
                 $this->db->bind(':invoice_id', $invoiceId);
                 $this->db->bind(':item_id', $itemId);
                 $this->db->bind(':var_id', $varId);
@@ -288,8 +289,8 @@ class Invoice {
                 $itemId = $parts[0] ?? null;
                 $varId = isset($parts[1]) && $parts[1] !== 'MIX' && $parts[1] !== '0' ? $parts[1] : null;
 
-                $this->db->query("INSERT INTO invoice_items (invoice_id, item_id, variation_option_id, description, quantity, unit_price, discount_value, discount_type, total) 
-                                  VALUES (:invoice_id, :item_id, :var_id, :description, :quantity, :unit_price, :discount_value, :discount_type, :total)");
+                $this->db->query("INSERT INTO invoice_items (invoice_id, item_id, variation_option_id, description, quantity, loaded_quantity, unit_price, discount_value, discount_type, total) 
+                                  VALUES (:invoice_id, :item_id, :var_id, :description, :quantity, :quantity, :unit_price, :discount_value, :discount_type, :total)");
                 $this->db->bind(':invoice_id', $invoiceId);
                 $this->db->bind(':item_id', $itemId);
                 $this->db->bind(':var_id', $varId);

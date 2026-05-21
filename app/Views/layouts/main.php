@@ -257,6 +257,7 @@ error_reporting(E_ALL);
                 <div class="mac-dropdown">
                     <a href="<?= APP_URL ?>/crm">Leads & CRM</a>
                     <a href="<?php echo APP_URL; ?>/RepTracking/index">📍 Rep Route Tracking</a>
+                    <a href="<?= APP_URL ?>/delivery">🚚 Arranged Deliveries</a>
                     <a href="<?= APP_URL ?>/customer">Customer Center</a>
                     <a href="<?= APP_URL ?>/dunning">Dunning & AR Reminders</a>
                     <a href="<?= APP_URL ?>/estimate">Quotes & Estimates</a>
@@ -289,6 +290,7 @@ error_reporting(E_ALL);
                     <a href="<?= APP_URL ?>/hrm">HRM & Employees</a>
                     <a href="<?= APP_URL ?>/hrm/payroll">Run Payroll</a>
                     <a href="<?= APP_URL ?>/project">Projects & Tasks</a>
+                    <a href="<?= APP_URL ?>/vehicle">🚚 Vehicle Management</a>
                 </div>
             </div>
 

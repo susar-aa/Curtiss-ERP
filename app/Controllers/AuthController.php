@@ -9,7 +9,14 @@ class AuthController extends Controller {
     public function login() {
         // Check if already logged in
         if (isset($_SESSION['user_id'])) {
-            header('Location: ' . APP_URL . '/dashboard');
+            $role = strtolower($_SESSION['role'] ?? '');
+            if ($role === 'driver') {
+                header('Location: ' . APP_URL . '/driver');
+            } elseif ($role === 'rep') {
+                header('Location: ' . APP_URL . '/rep');
+            } else {
+                header('Location: ' . APP_URL . '/dashboard');
+            }
             exit;
         }
 
@@ -70,7 +77,15 @@ class AuthController extends Controller {
         $_SESSION['user_id'] = $user->id;
         $_SESSION['username'] = $user->username;
         $_SESSION['role'] = $user->role;
-        header('Location: ' . APP_URL . '/dashboard');
+        
+        $role = strtolower($user->role);
+        if ($role === 'driver') {
+            header('Location: ' . APP_URL . '/driver');
+        } elseif ($role === 'rep') {
+            header('Location: ' . APP_URL . '/rep');
+        } else {
+            header('Location: ' . APP_URL . '/dashboard');
+        }
         exit;
     }
 

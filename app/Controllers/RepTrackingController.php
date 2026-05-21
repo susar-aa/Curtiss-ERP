@@ -8,10 +8,27 @@ class RepTrackingController extends Controller {
     }
 
     public function index() {
+        $vehicleModel = $this->model('Vehicle');
+        $employeeModel = $this->model('Employee');
+
+        // Fetch all vehicles
+        $vehicles = $vehicleModel->getAllVehicles();
+
+        // Fetch all employees to separate drivers and all employees (for partners)
+        $allEmployees = $employeeModel->getAllEmployees();
+
+        // Filter drivers where job_title is "Driver" (case-insensitive) and status is "Active"
+        $drivers = array_filter($allEmployees, function($emp) {
+            return strtolower($emp->job_title) === 'driver' && $emp->status === 'Active';
+        });
+
         $data = [
             'title' => 'Rep Route Tracking',
             'content_view' => 'rep-tracking/index',
-            'routes' => $this->trackingModel->getAllRoutes()
+            'routes' => $this->trackingModel->getAllRoutes(),
+            'vehicles' => $vehicles,
+            'drivers' => $drivers,
+            'employees' => $allEmployees
         ];
         
         $this->view('layouts/main', $data);

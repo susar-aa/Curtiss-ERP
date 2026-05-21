@@ -117,7 +117,8 @@ class SalesController extends Controller {
                 'subtotal' => $subtotal,
                 'global_discount_val' => $globalDiscVal,
                 'global_discount_type' => $globalDiscType,
-                'grand_total' => $grandTotal
+                'grand_total' => $grandTotal,
+                'rep_route_id' => !empty($_POST['rep_route_id']) ? intval($_POST['rep_route_id']) : null
             ];
 
             $userId = $_SESSION['user_id'];
@@ -148,7 +149,11 @@ class SalesController extends Controller {
                         } elseif (isset($_POST['save_action']) && $_POST['save_action'] == 'print') {
                             header('Location: ' . APP_URL . '/sales?success=1&print_id=' . $invoiceId);
                         } else {
-                            header('Location: ' . APP_URL . '/sales?success=1');
+                            if (!empty($_POST['rep_route_id'])) {
+                                header('Location: ' . APP_URL . '/RepTracking?success=Invoice+created+successfully&route_id=' . intval($_POST['rep_route_id']));
+                            } else {
+                                header('Location: ' . APP_URL . '/sales?success=1');
+                            }
                         }
                         exit;
                     } else {

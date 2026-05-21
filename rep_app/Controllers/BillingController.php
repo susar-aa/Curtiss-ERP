@@ -161,8 +161,8 @@ class BillingController extends RepController {
             $daysDue = $term ? $term->days_due : 0;
             $dueDate = date('Y-m-d', strtotime("+$daysDue days"));
 
-            $db->query("INSERT INTO invoices (invoice_number, customer_id, invoice_date, due_date, total_amount, global_discount_val, global_discount_type, tax_amount, journal_entry_id, created_by, rep_route_id, latitude, longitude) 
-                        VALUES (:inv, :cid, CURDATE(), :due, :total, :gdval, :gdtype, :tax, :jid, :uid, :route, :lat, :lng)");
+            $db->query("INSERT INTO invoices (invoice_number, customer_id, invoice_date, due_date, total_amount, global_discount_val, global_discount_type, tax_amount, journal_entry_id, created_by, rep_route_id, latitude, longitude, stock_status) 
+                        VALUES (:inv, :cid, CURDATE(), :due, :total, :gdval, :gdtype, :tax, :jid, :uid, :route, :lat, :lng, 'reserved')");
             $db->bind(':inv', $invoiceNumber);
             $db->bind(':cid', $customerId);
             $db->bind(':due', $dueDate);
@@ -184,9 +184,11 @@ class BillingController extends RepController {
                 $rowDiscAmount = ($item['disc_type'] === '%') ? ($rowGross * $item['disc_val'] / 100) : $item['disc_val'];
                 $rowNet = $rowGross - $rowDiscAmount;
 
-                $db->query("INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_value, discount_type, total) 
-                            VALUES (:iid, :desc, :qty, :price, :dval, :dtype, :tot)");
+                $db->query("INSERT INTO invoice_items (invoice_id, item_id, variation_option_id, description, quantity, loaded_quantity, unit_price, discount_value, discount_type, total) 
+                            VALUES (:iid, :item_id, :var_id, :desc, :qty, :qty, :price, :dval, :dtype, :tot)");
                 $db->bind(':iid', $invoiceId);
+                $db->bind(':item_id', !empty($item['itemId']) ? $item['itemId'] : null);
+                $db->bind(':var_id', !empty($item['varId']) ? $item['varId'] : null);
                 $db->bind(':desc', $item['name']);
                 $db->bind(':qty', $item['qty']);
                 $db->bind(':price', $item['price']);
@@ -213,7 +215,7 @@ class BillingController extends RepController {
             // 7. Process Arrears & Collections
             $collections = $payload['arrears_collections'];
             
-            $processCollection = function($amount, $assetAccId, $methodStr, $chequeDetails = null) use ($db, $userId, $customerId, $arAcc, $invoiceNumber) {
+            $processCollection = function($amount, $assetAccId, $methodStr, $chequeDetails = null) use ($db, $userId, $customerId, $arAcc, $invoiceNumber, $routeId) {
                 if ($amount <= 0 || !$assetAccId) return;
 
                 $db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
@@ -244,25 +246,27 @@ class BillingController extends RepController {
                 $db->execute();
 
                 if ($methodStr === 'Cheque' && $chequeDetails) {
-                    $db->query("INSERT INTO cheques (customer_id, bank_name, cheque_number, amount, banking_date, status, created_by) 
-                                VALUES (:cid, :bn, :cn, :amt, :bdate, 'Pending', :uid)");
+                    $db->query("INSERT INTO cheques (customer_id, bank_name, cheque_number, amount, banking_date, status, rep_route_id, created_by) 
+                                VALUES (:cid, :bn, :cn, :amt, :bdate, 'Pending', :route_id, :uid)");
                     $db->bind(':cid', $customerId);
                     $db->bind(':bn', $chequeDetails['bank'] ?? 'Unknown');
                     $db->bind(':cn', $chequeDetails['number'] ?? 'Unknown');
                     $db->bind(':amt', $amount);
                     $db->bind(':bdate', $chequeDetails['date'] ?: date('Y-m-d'));
+                    $db->bind(':route_id', $routeId);
                     $db->bind(':uid', $userId);
                     $db->execute();
                 }
 
                 // Log Customer Payment History (so it shows in profile)
-                $db->query("INSERT INTO customer_payments (customer_id, amount, payment_date, payment_method, reference, journal_entry_id, created_by) 
-                            VALUES (:cid, :amt, CURDATE(), :method, :ref, :jid, :uid)");
+                $db->query("INSERT INTO customer_payments (customer_id, amount, payment_date, payment_method, reference, journal_entry_id, rep_route_id, created_by) 
+                            VALUES (:cid, :amt, CURDATE(), :method, :ref, :jid, :route_id, :uid)");
                 $db->bind(':cid', $customerId);
                 $db->bind(':amt', $amount);
                 $db->bind(':method', $methodStr);
                 $db->bind(':ref', $chequeDetails['number'] ?? '');
                 $db->bind(':jid', $payJid);
+                $db->bind(':route_id', $routeId);
                 $db->bind(':uid', $userId);
                 $db->execute();
             };
@@ -270,13 +274,33 @@ class BillingController extends RepController {
             $processCollection($collections['cash'], $cashAcc, 'Cash');
             $processCollection($collections['bank'], $bankAcc, 'Bank Transfer');
             
-            $cqBank = $payload['cheque_details']['bank'] ?? null;
-            $cqNum = $payload['cheque_details']['number'] ?? null;
-            $cqDate = $payload['cheque_details']['date'] ?? null;
-            $processCollection($collections['cheque'], $chequeAcc, 'Cheque', ['bank' => $cqBank, 'number' => $cqNum, 'date' => $cqDate]);
+            $totalChequeAmount = 0.0;
+            if (isset($payload['cheques']) && is_array($payload['cheques'])) {
+                foreach ($payload['cheques'] as $chequeObj) {
+                    $amt = floatval($chequeObj['amount'] ?? 0);
+                    if ($amt > 0) {
+                        $totalChequeAmount += $amt;
+                        $processCollection($amt, $chequeAcc, 'Cheque', [
+                            'bank' => $chequeObj['bank'] ?? 'Unknown',
+                            'number' => $chequeObj['number'] ?? 'Unknown',
+                            'date' => $chequeObj['date'] ?? date('Y-m-d')
+                        ]);
+                    }
+                }
+            } else {
+                // Fallback to legacy single cheque details if present
+                $cqAmt = floatval($collections['cheque'] ?? 0);
+                if ($cqAmt > 0) {
+                    $totalChequeAmount += $cqAmt;
+                    $cqBank = $payload['cheque_details']['bank'] ?? null;
+                    $cqNum = $payload['cheque_details']['number'] ?? null;
+                    $cqDate = $payload['cheque_details']['date'] ?? null;
+                    $processCollection($cqAmt, $chequeAcc, 'Cheque', ['bank' => $cqBank, 'number' => $cqNum, 'date' => $cqDate]);
+                }
+            }
 
             // Auto-Allocate Payments to Oldest Unpaid Invoices
-            $totalCollected = $collections['cash'] + $collections['bank'] + $collections['cheque'];
+            $totalCollected = $collections['cash'] + $collections['bank'] + $totalChequeAmount;
             if ($totalCollected > 0) {
                 $db->query("SELECT id, total_amount, tax_amount, global_discount_val, global_discount_type FROM invoices WHERE customer_id = :cid AND status IN ('Unpaid', 'Draft') ORDER BY invoice_date ASC");
                 $db->bind(':cid', $customerId);

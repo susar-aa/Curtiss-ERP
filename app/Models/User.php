@@ -7,7 +7,10 @@ class User {
     }
 
     public function getAllUsers() {
-        $this->db->query("SELECT id, username, email, role, signature_path, created_at FROM users ORDER BY created_at DESC");
+        $this->db->query("SELECT u.id, u.username, u.email, u.role, u.signature_path, u.created_at, u.employee_id, e.first_name, e.last_name 
+                          FROM users u 
+                          LEFT JOIN employees e ON u.employee_id = e.id 
+                          ORDER BY u.created_at DESC");
         return $this->db->resultSet();
     }
 
@@ -30,13 +33,14 @@ class User {
     }
 
     public function createUser($data) {
-        $this->db->query("INSERT INTO users (username, email, password_hash, role, signature_path) 
-                          VALUES (:username, :email, :password, :role, :sig)");
+        $this->db->query("INSERT INTO users (username, email, password_hash, role, signature_path, employee_id) 
+                          VALUES (:username, :email, :password, :role, :sig, :employee_id)");
         $this->db->bind(':username', $data['username']);
         $this->db->bind(':email', $data['email']);
         $this->db->bind(':password', password_hash($data['password'], PASSWORD_DEFAULT));
         $this->db->bind(':role', $data['role']);
         $this->db->bind(':sig', $data['signature_path']);
+        $this->db->bind(':employee_id', $data['employee_id']);
         return $this->db->execute();
     }
 

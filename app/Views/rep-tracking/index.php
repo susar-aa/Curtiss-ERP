@@ -124,6 +124,9 @@ error_reporting(E_ALL);
                 
                 <!-- NEW: Delivery Arrange Button -->
                 <button id="btnArrangeDelivery" onclick="openDeliveryModal()" style="padding: 10px 15px; border: none; background: #2e7d32; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 5px;">🚚 Arrange Delivery</button>
+                
+                <!-- NEW: Add Invoice Button -->
+                <button id="btnAddInvoice" onclick="redirectToAddInvoice()" style="padding: 10px 15px; border: none; background: #0066cc; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 5px;">➕ Add Invoice</button>
             </div>
         </div>
 
@@ -183,21 +186,46 @@ error_reporting(E_ALL);
                 <input type="date" id="daDate" value="<?= date('Y-m-d') ?>">
             </div>
             <div>
-                <label>Vehicle Number</label>
-                <input type="text" id="daVehicle" placeholder="e.g. WP NB-4589">
+                <label>Vehicle Number *</label>
+                <select id="daVehicle" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: transparent; color: inherit;">
+                    <option value="">-- Select Vehicle --</option>
+                    <?php foreach($data['vehicles'] as $v): ?>
+                        <?php if($v->status === 'Active'): ?>
+                            <option value="<?= htmlspecialchars($v->vehicle_number) ?>"><?= htmlspecialchars($v->vehicle_number) ?> (<?= htmlspecialchars($v->model) ?>)</option>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </select>
+                <?php if(empty($data['vehicles'])): ?>
+                    <p style="font-size:11px; color:#c62828; margin:5px 0 0 0;">⚠️ No vehicles registered. Please add vehicles in Fleet Management.</p>
+                <?php endif; ?>
             </div>
             <div>
-                <label>Driver Name</label>
-                <input type="text" id="daDriver" placeholder="e.g. Priyantha Silva">
+                <label>Driver Name *</label>
+                <select id="daDriver" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: transparent; color: inherit;">
+                    <option value="">-- Select Driver --</option>
+                    <?php foreach($data['drivers'] as $d): ?>
+                        <option value="<?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?>"><?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <?php if(empty($data['drivers'])): ?>
+                    <p style="font-size:11px; color:#c62828; margin:5px 0 0 0;">⚠️ No active drivers found. Please register employees with the 'Driver' role.</p>
+                <?php endif; ?>
             </div>
             <div>
                 <label>Partner / Helper</label>
-                <input type="text" id="daPartner" placeholder="e.g. K. Perera">
+                <select id="daPartner" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: transparent; color: inherit;">
+                    <option value="">-- No Partner (Driver Only) --</option>
+                    <?php foreach($data['employees'] as $e): ?>
+                        <?php if($e->status === 'Active'): ?>
+                            <option value="<?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?>"><?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?> (<?= htmlspecialchars($e->job_title) ?>)</option>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </select>
             </div>
         </div>
         <div class="modal-footer">
-            <button class="qb-btn" onclick="closeDeliveryModal()" style="border:1px solid #ccc; padding:6px 14px; border-radius:4px; font-size:12px;">Cancel</button>
-            <button class="qb-btn" onclick="confirmArrangeDelivery()" style="background:#2e7d32; color:#fff; border-color:#2e7d32; padding:6px 14px; border-radius:4px; font-size:12px;">Go to Spreadsheet Summary &rarr;</button>
+            <button class="qb-btn" onclick="closeDeliveryModal()" style="border:1px solid #ccc; padding:6px 14px; border-radius:4px; font-size:12px; cursor:pointer;">Cancel</button>
+            <button class="qb-btn" onclick="confirmArrangeDelivery()" style="background:#2e7d32; color:#fff; border-color:#2e7d32; padding:6px 14px; border-radius:4px; font-size:12px; cursor:pointer;">Go to Spreadsheet Summary &rarr;</button>
         </div>
     </div>
 </div>
@@ -314,10 +342,64 @@ error_reporting(E_ALL);
         const driver = document.getElementById('daDriver').value;
         const partner = document.getElementById('daPartner').value;
 
+        if (!vehicle) {
+            alert("Please select a vehicle.");
+            return;
+        }
+        if (!driver) {
+            alert("Please select a driver.");
+            return;
+        }
+
         closeDeliveryModal();
 
-        // Redirect to the spreadsheet summary page with query presets
-        const summaryUrl = `<?= APP_URL ?>/RepTracking/delivery_arrange/${currentRouteId}?date=${encodeURIComponent(date)}&vehicle=${encodeURIComponent(vehicle)}&driver=${encodeURIComponent(driver)}&partner=${encodeURIComponent(partner)}`;
-        window.open(summaryUrl, '_blank');
+        const payload = {
+            rep_route_id: currentRouteId,
+            delivery_date: date,
+            vehicle_number: vehicle,
+            driver_name: driver,
+            partner_name: partner
+        };
+
+        // Post the arrangement to the deliveries endpoint via AJAX
+        fetch('<?= APP_URL ?>/delivery/arrange', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert("🚚 Success: " + data.message);
+                window.location.href = '<?= APP_URL ?>/delivery';
+            } else {
+                alert("⚠️ Error: " + data.message);
+            }
+        })
+        .catch(err => {
+            alert("Failed to arrange delivery. Connection or database transaction error.");
+            console.error(err);
+        });
     }
+
+    // --- 5. NEW: Redirect to Invoice Creation ---
+    function redirectToAddInvoice() {
+        if (currentRouteId) {
+            window.location.href = '<?= APP_URL ?>/sales?rep_route_id=' + currentRouteId;
+        }
+    }
+
+    // --- 6. NEW: Auto-select route on page load if route_id is passed in URL ---
+    window.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const routeId = urlParams.get('route_id');
+        if (routeId) {
+            const routeEl = document.getElementById('route_' + routeId);
+            if (routeEl) {
+                routeEl.click();
+            }
+        }
+    });
 </script>

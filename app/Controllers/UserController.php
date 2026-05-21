@@ -1,11 +1,14 @@
 <?php
 class UserController extends Controller {
     private $userModel;
+    private $employeeModel;
 
     public function __construct() {
         if (!isset($_SESSION['user_id'])) { header('Location: ' . APP_URL . '/auth/login'); exit; }
-        if ($_SESSION['role'] !== 'Admin') { die("Access Denied: Only Admins can manage users."); }
+        // Support both "Admin" and "admin" role checks dynamically
+        if (strtolower($_SESSION['role']) !== 'admin') { die("Access Denied: Only Admins can manage users."); }
         $this->userModel = $this->model('User');
+        $this->employeeModel = $this->model('Employee');
     }
 
     public function index() {
@@ -13,6 +16,7 @@ class UserController extends Controller {
             'title' => 'User Management',
             'content_view' => 'users/index',
             'users' => $this->userModel->getAllUsers(),
+            'employees' => $this->employeeModel->getAllEmployees(),
             'error' => '',
             'success' => ''
         ];
@@ -34,7 +38,8 @@ class UserController extends Controller {
                 'email' => trim($_POST['email']),
                 'password' => $_POST['password'],
                 'role' => $_POST['role'],
-                'signature_path' => $signaturePath
+                'signature_path' => $signaturePath,
+                'employee_id' => !empty($_POST['employee_id']) ? intval($_POST['employee_id']) : null
             ];
 
             if (empty($userData['username']) || empty($userData['password'])) {

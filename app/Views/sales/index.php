@@ -191,8 +191,33 @@ $editingItems = $data['editing_items'] ?? [];
         <div style="padding: 10px; background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; margin-bottom:5px; font-weight:bold; flex-shrink:0;">Invoice successfully saved and posted to ledger!</div>
     <?php endif; ?>
 
+    <?php
+    $rep_route_id = $_GET['rep_route_id'] ?? '';
+    $rep_route_name = '';
+    if (!empty($rep_route_id)) {
+        try {
+            $db->query("SELECT r.route_name, e.first_name, e.last_name 
+                        FROM rep_daily_routes r 
+                        JOIN employees e ON r.user_id = e.user_id 
+                        WHERE r.id = :id");
+            $db->bind(':id', $rep_route_id);
+            $routeInfo = $db->single();
+            if ($routeInfo) {
+                $rep_route_name = $routeInfo->route_name . ' (' . $routeInfo->first_name . ' ' . $routeInfo->last_name . ')';
+            }
+        } catch(Exception $e) {}
+    }
+    ?>
+
+    <?php if (!empty($rep_route_name)): ?>
+        <div style="padding: 10px; background:#e0f7fa; color:#006064; border:1px solid #b2ebf2; margin-bottom:10px; font-weight:bold; border-radius: 4px; display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+            <span>📍 Adding Invoice to Rep Route: <strong><?= htmlspecialchars($rep_route_name) ?></strong></span>
+        </div>
+    <?php endif; ?>
+
     <div class="qb-container">
         <form action="<?= APP_URL ?>/sales/create" method="POST" id="invoiceForm">
+            <input type="hidden" name="rep_route_id" value="<?= htmlspecialchars((string)$rep_route_id) ?>">
             <?php if ($inv): ?>
                 <input type="hidden" name="editing_invoice_id" value="<?= isset($inv->id) ? $inv->id : '' ?>">
             <?php endif; ?>

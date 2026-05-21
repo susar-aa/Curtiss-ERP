@@ -79,8 +79,17 @@
             </div>
 
             <div class="grid-2">
-                <div class="form-group"><label>Department</label><input type="text" name="department" class="form-control"></div>
-                <div class="form-group"><label>Job Title</label><input type="text" name="job_title" class="form-control"></div>
+                <div class="form-group"><label>Department</label><input type="text" name="department" class="form-control" placeholder="e.g. Operations"></div>
+                <div class="form-group">
+                    <label>Job Title / Role *</label>
+                    <select name="job_title" class="form-control" required>
+                        <option value="Driver">Driver</option>
+                        <option value="Rep">Rep</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Accountant">Accountant</option>
+                        <option value="Office">Office</option>
+                    </select>
+                </div>
             </div>
 
             <div class="grid-2">

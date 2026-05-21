@@ -21,6 +21,7 @@ class RepTracking {
             FROM rep_daily_routes r
             LEFT JOIN users u ON r.user_id = u.id
             LEFT JOIN employees e ON u.email = e.email
+            WHERE r.id NOT IN (SELECT rep_route_id FROM deliveries)
             ORDER BY r.start_time DESC
         ");
         return $this->db->resultSet();
