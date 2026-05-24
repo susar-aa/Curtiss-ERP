@@ -155,7 +155,8 @@ $editingItems = $data['editing_items'] ?? [];
         background: #fff;
     }
 
-    .qb-table { width: 100%; border-collapse: collapse; }
+    /* CRITICAL FIX: Fixed table-layout ensures strict obedience to percentage widths and prevents horizontal squishing of Rate */
+    .qb-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .qb-table thead th { position: sticky; top: 0; background: #7a7a7a; color: #fff; padding: 4px; text-align: left; font-size: 11px; font-weight: bold; border-right: 1px solid #999; border-bottom: 1px solid #555; z-index: 10;}
     .qb-table td { padding: 2px; border-bottom: 1px solid #ccc; border-right: 1px solid #ccc; vertical-align: top;}
     .qb-table input { width: 100%; border: none; background: transparent; padding: 4px; font-size: 12px; font-family: Arial; box-sizing: border-box;}
@@ -181,6 +182,16 @@ $editingItems = $data['editing_items'] ?? [];
     .wa-btn { background: #25D366; color: #fff; border-color: #1da851; }
     .wa-btn:hover { background: #20ba56; }
     .acc-settings { display: none; } 
+
+    /* PREVENT WHEEL SPINNER OVERLAP CLIPPING ON RIGHT-ALIGNED RATE FIELDS */
+    .qb-wrapper input::-webkit-outer-spin-button,
+    .qb-wrapper input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    .qb-wrapper input[type=number] {
+        -moz-appearance: textfield;
+    }
 </style>
 
 <div class="qb-wrapper">
@@ -303,9 +314,9 @@ $editingItems = $data['editing_items'] ?? [];
                             <th style="width: 15%;">Item Code</th>
                             <th style="width: 8%;">Qty</th>
                             <th style="width: 35%;">Description</th>
-                            <th style="width: 12%; text-align:right;">Rate (Rs:)</th>
-                            <th style="width: 15%; text-align:right;">Discount</th>
-                            <th style="width: 12%; text-align:right;">Amount (Rs:)</th>
+                            <th style="width: 12%; text-align:right; min-width: 95px;">Rate (Rs:)</th>
+                            <th style="width: 15%; text-align:right; min-width: 105px;">Discount</th>
+                            <th style="width: 12%; text-align:right; min-width: 105px;">Amount (Rs:)</th>
                             <th style="width: 30px; background:#c62828;"></th>
                         </tr>
                     </thead>
@@ -573,6 +584,17 @@ $editingItems = $data['editing_items'] ?? [];
         let stockHtml = item.type === 'Service' ? '' : `<br><span style="font-size: 10px; color: #888;">Stock: ${item.stock}</span>`;
         let maxAttr = item.type === 'Service' ? '' : `max="${item.stock}"`;
 
+        // Diagnostic Console Trace Log
+        console.log("[addItemRow] Appending line item details in Canvas workspace:", {
+            item_id: item.id,
+            sku: item.code || code,
+            quantity: qty,
+            name: desc,
+            price_parsed: parseFloat(price).toFixed(2),
+            item_discount: discVal,
+            discount_type: discType
+        });
+
         tr.innerHTML = `
             <td>
                 <input type="text" value="${item.code || 'ITEM'}" readonly style="color:#666; font-size:12px; width: 100%; border:none; background:transparent;">
@@ -583,7 +605,7 @@ $editingItems = $data['editing_items'] ?? [];
                 ${stockHtml}
             </td>
             <td><input type="text" name="desc[]" value="${desc}" required style="width: 100%; border:none; background:transparent;"></td>
-            <td><input type="number" class="num" name="price[]" value="${parseFloat(price).toFixed(2)}" step="0.01" min="0" oninput="calcTotals()" required style="width: 80px;"></td>
+            <td><input type="number" class="num" name="price[]" value="${parseFloat(price).toFixed(2)}" step="0.01" min="0" oninput="calcTotals()" required style="width: 100%; text-align: right; box-sizing: border-box; padding-right: 4px;"></td>
             <td>
                 <div class="discount-cell">
                     <input type="number" class="num" name="item_discount_val[]" value="${parseFloat(discVal).toFixed(2)}" step="0.01" oninput="calcTotals()">
@@ -593,7 +615,7 @@ $editingItems = $data['editing_items'] ?? [];
                     </select>
                 </div>
             </td>
-            <td><input type="text" class="num line-total" value="0.00" readonly style="font-weight:bold; background: transparent; border: none; width: 100%;"></td>
+            <td><input type="text" class="num line-total" value="0.00" readonly style="font-weight:bold; background: transparent; border: none; width: 100%; text-align: right; padding-right: 4px;"></td>
             <td style="text-align:center;"><button type="button" tabindex="-1" style="background:transparent; color:#c62828; border:none; cursor:pointer; font-weight:bold; font-size: 16px; padding: 4px;" onclick="this.closest('tr').remove(); calcTotals();">&times;</button></td>
         `;
         tbody.insertAdjacentElement('afterbegin', tr);
@@ -631,6 +653,13 @@ $editingItems = $data['editing_items'] ?? [];
         
         let grandTotal = subTotal - globalDisc;
         if (grandTotal < 0) grandTotal = 0;
+
+        // Diagnostic Console Trace Log for Calculations
+        console.log("[calcTotals] Invoicing state sum totals mapped in Canvas:", {
+            sub_total: subTotal,
+            discount_deducted: globalDisc,
+            grand_total: grandTotal
+        });
 
         document.getElementById('subTotal').innerText = subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         document.getElementById('grandTotal').innerText = grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});

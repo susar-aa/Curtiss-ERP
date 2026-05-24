@@ -1,307 +1,806 @@
 <?php
-$isEdit = isset($data['item']);
-$actionUrl = $isEdit ? APP_URL . '/inventory/edit/' . $data['item']->id : APP_URL . '/inventory/create';
-$item = $isEdit ? $data['item'] : null;
+// ==========================================
+// FORM SAFETY & FALLBACK ENGINE
+// ==========================================
+
+// Safely solve Line 39 Undefined Array Key Warning
+$title = $data['title'] ?? 'Product Catalog Form';
+$item = $data['item'] ?? null;
+
+// Populate current variables (support edit mapping / create defaults)
+$item_id = $item ? ($item->id ?? '') : '';
+$item_code = $item ? ($item->item_code ?? '') : '';
+$name = $item ? ($item->name ?? '') : '';
+$selling_price = $item ? ($item->selling_price ?? '') : '';
+$description = $item ? ($item->description ?? '') : '';
+
+// Retrieve potential fallback features to prevent omissions
+$barcode = $item ? ($item->barcode ?? '') : '';
+$cost_price = $item ? ($item->cost_price ?? '') : '';
+$wholesale_price = $item ? ($item->wholesale_price ?? '') : ''; // WholesaleX B2B Price field
+$alert_qty = $item ? ($item->alert_qty ?? '5') : '5';
+$category_id = $item ? ($item->category_id ?? '') : '';
+$brand = $item ? ($item->brand ?? '') : '';
+$unit = $item ? ($item->unit ?? 'pcs') : 'pcs';
+$status = $item ? ($item->status ?? 'active') : 'active';
+$sync_woo = $item ? ($item->sync_woo ?? '1') : '1';
+$image_path = $item ? ($item->image_path ?? '') : '';
+$weight = $item ? ($item->weight ?? '') : ''; // RESOLVED: Fixed the undefined $weight warning
+
+// Retrieve Relational Warehouse and Vendor variables
+$warehouse_id = $item ? ($item->warehouse_id ?? '') : '';
+$vendor_id = $item ? ($item->vendor_id ?? '') : '';
+
+$is_edit = !empty($item_id);
+$form_action = $is_edit ? APP_URL . '/inventory/edit/' . $item_id : APP_URL . '/inventory/add';
+
+// Dynamically use WooCommerce categories loaded from controller with fallback
+$categories = $data['categories'] ?? [];
+$vendors = $data['vendors'] ?? [];
+$warehouses = $data['warehouses'] ?? [];
 ?>
-<style>
-    .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--mac-border); padding-bottom: 15px;}
-    .btn { padding: 10px 20px; background: #0066cc; color: #fff; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 14px;}
-    .btn-outline { background: transparent; border: 1px solid #0066cc; color: #0066cc; }
-    .btn-danger { background: #ffebee; color: #c62828; border: none; }
-    .btn-small { padding: 4px 8px; font-size: 11px; cursor: pointer; border-radius: 4px;}
-    
-    .form-group { margin-bottom: 15px; }
-    .form-group label { display: block; margin-bottom: 5px; font-size: 13px; font-weight: 600; }
-    .form-control { width: 100%; padding: 10px 12px; border: 1px solid var(--mac-border); border-radius: 4px; background: transparent; color: var(--text-main); box-sizing: border-box;}
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
-    .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 20px; }
-    
-    /* Variation specific styles */
-    .var-box { background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--mac-border); position: relative;}
-    .var-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--mac-border); padding-bottom: 10px; margin-bottom: 10px;}
-    .var-header strong { color: #0066cc; font-size: 14px;}
-    .var-item-row { display: flex; align-items: center; gap: 15px; margin-bottom: 8px; padding: 10px; border-radius: 4px; background: #fff; border: 1px solid var(--mac-border);}
-    @media (prefers-color-scheme: dark) { .var-item-row { background: #1e1e2d; } }
-
-    /* Image Gallery Styles */
-    .img-upload-box { background: rgba(0,102,204,0.02); border: 2px dashed #0066cc; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 20px;}
-    .gallery { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
-    .gallery-img-wrapper { position: relative; width: 100px; height: 100px; border-radius: 8px; border: 1px solid var(--mac-border); overflow: hidden; background: #fff;}
-    .gallery-img-wrapper img { width: 100%; height: 100%; object-fit: cover; }
-    .gallery-img-wrapper .del-btn { position: absolute; top: 2px; right: 2px; background: #c62828; color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;}
-    
-    .var-img-preview { width: 36px; height: 36px; border-radius: 4px; object-fit: cover; border: 1px solid #ccc; background:#eee;}
-</style>
-
-<div class="card" style="max-width: 900px; margin: 0 auto;">
-    <div class="header-actions">
-        <h2 style="margin:0;"><?= $data['title'] ?></h2>
-        <a href="<?= APP_URL ?>/inventory" class="btn btn-outline">&larr; Back to Inventory</a>
-    </div>
-
-    <?php if(!empty($data['error'])): ?>
-        <div style="padding: 10px; background:#ffebee; color:#c62828; border-radius:4px; margin-bottom:15px;"><?= $data['error'] ?></div>
-    <?php endif; ?>
-
-    <!-- NEW: enctype allows robust multiple file uploading -->
-    <form action="<?= $actionUrl ?>" method="POST" id="itemForm" enctype="multipart/form-data">
-        
-        <div class="form-group">
-            <label>Product / Service Name *</label>
-            <input type="text" name="name" class="form-control" value="<?= htmlspecialchars($item->name ?? '') ?>" required>
-        </div>
-        
-        <!-- NEW: Image Upload Engine -->
-        <div class="img-upload-box">
-            <label style="font-weight: bold; color: #0066cc; margin-bottom: 10px; display:block;">Product Image Gallery (PNG, JPG)</label>
-            <input type="file" name="product_images[]" class="form-control" accept=".png, .jpg, .jpeg" multiple style="max-width: 400px; margin: auto; background: #fff;">
-            <p style="font-size: 11px; color: #666;">Upload multiple images. They will be automatically resized and optimized for fast loading.</p>
-            
-            <?php if($isEdit && !empty($item->general_images)): ?>
-                <div class="gallery" id="existingGallery">
-                    <?php foreach($item->general_images as $img): ?>
-                        <div class="gallery-img-wrapper" id="img_wrap_<?= $img->id ?>">
-                            <img src="<?= APP_URL ?>/uploads/products/<?= htmlspecialchars($img->image_path) ?>" alt="Product">
-                            <button type="button" class="del-btn" onclick="markImageForDeletion(<?= $img->id ?>)">X</button>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-            <!-- Hidden inputs for deleted images will be injected here by JS -->
-            <div id="deletedImagesContainer"></div>
-        </div>
-
-        <div class="grid-4">
-            <div class="form-group">
-                <label>Category</label>
-                <select name="category_id" class="form-control">
-                    <option value="">-- Uncategorized --</option>
-                    <?php foreach($data['categories'] as $cat): ?>
-                        <option value="<?= $cat->id ?>" <?= ($item && $item->category_id == $cat->id) ? 'selected' : '' ?>><?= htmlspecialchars($cat->name) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Preferred Supplier (Vendor)</label>
-                <select name="vendor_id" class="form-control">
-                    <option value="">-- No Supplier Linked --</option>
-                    <?php foreach($data['vendors'] as $ven): ?>
-                        <option value="<?= $ven->id ?>" <?= ($item && $item->vendor_id == $ven->id) ? 'selected' : '' ?>><?= htmlspecialchars($ven->name) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Warehouse (Location)</label>
-                <select name="warehouse_id" class="form-control">
-                    <option value="">-- No Location --</option>
-                    <?php foreach($data['warehouses'] as $wh): ?>
-                        <option value="<?= $wh->id ?>" <?= ($item && $item->warehouse_id == $wh->id) ? 'selected' : ($wh->is_default && !$isEdit ? 'selected' : '') ?>><?= htmlspecialchars($wh->name) ?><?= $wh->is_default ? ' (Default)' : '' ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Primary SKU / Item Code</label>
-                <input type="text" name="item_code" class="form-control" value="<?= htmlspecialchars($item->item_code ?? '') ?>">
-            </div>
-        </div>
-
-        <div class="grid-2">
-            <div class="form-group">
-                <label>Item Type</label>
-                <select name="type" id="f_type" class="form-control" onchange="toggleInventory(this.value)">
-                    <option value="Inventory" <?= ($item && $item->type == 'Inventory') ? 'selected' : '' ?>>Inventory (Track Stock via GRN)</option>
-                    <option value="Service" <?= ($item && $item->type == 'Service') ? 'selected' : '' ?>>Service (No tracking)</option>
-                </select>
-            </div>
-            <div class="form-group" style="display:flex; align-items:flex-end; padding-bottom:10px;">
-                <label style="cursor:pointer; color:#6a1b9a; display:flex; align-items:center; gap:8px; font-weight:bold;">
-                    <input type="checkbox" name="is_variable_pricing" id="f_variable" value="1" onchange="toggleVariablePricingUI()" style="width:16px; height:16px;" <?= ($item && $item->is_variable_pricing) ? 'checked' : '' ?>> 
-                    Enable Variable Pricing
-                </label>
-            </div>
-        </div>
-
-        <!-- Standard Pricing -->
-        <div class="grid-2" id="mainPricingDiv">
-            <div class="form-group">
-                <label>Standard Sales Price (Rs:)</label>
-                <input type="number" name="price" step="0.01" min="0" class="form-control" value="<?= htmlspecialchars($item->price ?? '0.00') ?>">
-            </div>
-            <div class="form-group">
-                <label>Standard Cost (Rs:)</label>
-                <input type="number" name="cost" step="0.01" min="0" class="form-control" value="<?= htmlspecialchars($item->cost ?? '0.00') ?>">
-            </div>
-        </div>
-
-        <div id="qtyDiv" style="background: rgba(198, 40, 40, 0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(198, 40, 40, 0.2);">
-            <div class="form-group" style="margin-bottom:0;">
-                <label style="color:#c62828;">Minimum Stock Alert Level</label>
-                <input type="number" name="min_stock" step="1" min="0" class="form-control" value="<?= htmlspecialchars($item->minimum_stock_level ?? 10) ?>">
-                <p style="font-size: 11px; color:#666; margin: 5px 0 0 0;">You will be alerted when stock falls to this amount. Default is 10. Actual Stock levels will update automatically when you process Purchase Orders / GRNs.</p>
-            </div>
-        </div>
-
-        <!-- Dynamic Checkbox Variations Section -->
-        <div style="margin-top: 25px; border-top: 1px solid var(--mac-border); padding-top: 25px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <div>
-                    <h3 style="color:#0066cc; margin:0;">Product Variations & Specific Images</h3>
-                    <p style="font-size:12px; color:#666; margin: 0;">Assign different SKUs and Images to each variation color, size, etc.</p>
-                </div>
-                <button type="button" class="btn btn-small btn-outline" onclick="addVariationSelector()">+ Add Attribute Group</button>
-            </div>
-            <div id="variationsContainer"></div>
-        </div>
-        
-        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 30px; border-top: 1px solid var(--mac-border); padding-top: 20px;">
-            <a href="<?= APP_URL ?>/inventory" class="btn btn-outline">Cancel</a>
-            <button type="submit" class="btn" style="font-size: 16px; padding: 12px 24px;"><?= $isEdit ? 'Update Product Details' : 'Save New Product' ?></button>
-        </div>
-    </form>
-</div>
-
-<script>
-    const variationsTree = <?= json_encode($data['variations_tree'] ?? []) ?>;
-    const existingVariations = <?= json_encode($item->variations ?? []) ?>;
-    const existingVarImages = <?= json_encode($item->var_images ?? (object)[]) ?>;
-    const appUrl = '<?= APP_URL ?>';
-
-    document.addEventListener('DOMContentLoaded', () => {
-        toggleVariablePricingUI();
-        toggleInventory(document.getElementById('f_type').value);
-        
-        if (existingVariations && existingVariations.length > 0) {
-            const groupedVars = {};
-            existingVariations.forEach(v => {
-                if(!groupedVars[v.variation_id]) groupedVars[v.variation_id] = [];
-                groupedVars[v.variation_id].push(v);
-            });
-            
-            for (const [varId, valuesArray] of Object.entries(groupedVars)) {
-                const rowId = 'var_group_' + varId + '_' + Date.now();
-                document.getElementById('variationsContainer').insertAdjacentHTML('beforeend', `<div id="${rowId}"></div>`);
-                renderVariationCheckboxes(varId, rowId, valuesArray);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo htmlspecialchars($title); ?> - Curtiss ERP</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        primary: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
             }
         }
-    });
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen pb-12">
 
-    function markImageForDeletion(imageId) {
-        document.getElementById('img_wrap_' + imageId).style.display = 'none';
-        const container = document.getElementById('deletedImagesContainer');
-        container.insertAdjacentHTML('beforeend', `<input type="hidden" name="deleted_images[]" value="${imageId}">`);
-    }
-
-    function addVariationSelector() {
-        const container = document.getElementById('variationsContainer');
-        const rowId = 'var_group_' + Date.now();
+    <div class="max-w-5xl w-full mx-auto px-4 py-8">
         
-        let html = `<div id="${rowId}" style="margin-bottom: 15px; display:flex; gap:10px;">
-                        <select class="form-control" onchange="renderVariationCheckboxes(this.value, '${rowId}')">
-                            <option value="">Select Variation Group...</option>`;
-        variationsTree.forEach(v => { html += `<option value="${v.id}">${v.name}</option>`; });
-        html += `       </select>
-                        <button type="button" class="btn btn-danger" style="padding: 4px 12px;" onclick="document.getElementById('${rowId}').remove()">X</button>
-                    </div>`;
-        container.insertAdjacentHTML('beforeend', html);
-    }
+        <!-- Navigation Breadcrumbs -->
+        <a href="<?php echo APP_URL; ?>/inventory" class="inline-flex items-center gap-2 text-slate-500 hover:text-primary-600 font-semibold text-sm transition-colors mb-6 group">
+            <i class="fa-solid fa-arrow-left transition-transform group-hover:-translate-x-1"></i> Back to Product Catalog
+        </a>
 
-    function renderVariationCheckboxes(varId, containerId, existingValues = []) {
-        if(!varId) return;
-        const variation = variationsTree.find(v => v.id == varId);
-        const container = document.getElementById(containerId);
-        let isVarPricing = document.getElementById('f_variable').checked;
-
-        let html = `
-            <div class="var-box">
-                <button type="button" class="btn btn-danger btn-small" style="position:absolute; top:10px; right:10px;" onclick="document.getElementById('${containerId}').remove()">Remove Group</button>
-                <div class="var-header">
-                    <strong>${variation.name}</strong>
-                    <label style="cursor:pointer; font-size:12px; font-weight:normal;"><input type="checkbox" onchange="toggleSelectAll(this, '${varId}')"> Select All Values</label>
-                </div>
-                <div style="display:flex; flex-direction:column;">
-        `;
-
-        variation.values.forEach(val => {
-            let exist = existingValues.find(ev => ev.variation_value_id == val.id);
-            let checked = exist ? 'checked' : '';
-            let pPrice = exist && exist.price ? parseFloat(exist.price).toFixed(2) : '0.00';
-            let pCost = exist && exist.cost ? parseFloat(exist.cost).toFixed(2) : '0.00';
-            let pSku = exist && exist.sku ? exist.sku : '';
+        <!-- Form Card Container -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
             
-            // Render specific variation image if it exists
-            let imgHtml = '';
-            if (existingVarImages[val.id]) {
-                imgHtml = `
-                    <div style="position:relative; margin-right: 10px;" id="var_img_wrap_${existingVarImages[val.id].id}">
-                        <img src="${appUrl}/uploads/products/${existingVarImages[val.id].image_path}" class="var-img-preview" alt="Var Img">
-                        <button type="button" style="position:absolute; top:-5px; right:-5px; background:#c62828; color:#fff; border:none; border-radius:50%; width:16px; height:16px; font-size:9px; cursor:pointer; padding:0;" onclick="markImageForDeletion(${existingVarImages[val.id].id})">X</button>
+            <!-- Header section -->
+            <div class="p-6 md:p-8 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight text-slate-900"><?php echo htmlspecialchars($title); ?></h1>
+                    <p class="text-slate-500 text-xs mt-1">Configure retail, cost, B2B wholesale prices, upload images, select suppliers, and map custom product attributes.</p>
+                </div>
+                <div class="w-12 h-12 rounded-2xl bg-primary-50 text-primary-600 flex items-center justify-center border border-primary-100">
+                    <i class="fa-solid <?php echo $is_edit ? 'fa-pen-to-square' : 'fa-plus'; ?> text-xl"></i>
+                </div>
+            </div>
+
+            <!-- Form Body Fields -->
+            <form action="<?php echo $form_action; ?>" method="POST" id="productForm" class="p-6 md:p-8 space-y-8" enctype="multipart/form-data">
+                
+                <!-- Hidden inputs for variations and image compression base64 -->
+                <input type="hidden" name="variations_json" id="variationsJson" value="[]">
+                <input type="hidden" name="compressed_image_base64" id="compressedImageBase64" value="">
+
+                <!-- Section 1: Product Media Dropzone with Compressor -->
+                <div>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-image text-primary-500"></i> Product Image (Auto-Compressing Dropzone)
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                        <div class="md:col-span-2">
+                            <!-- Drag and drop zone -->
+                            <div id="dropzone" class="border-2 border-dashed border-slate-300 hover:border-primary-500 bg-slate-50/50 hover:bg-primary-50/10 rounded-2xl p-6 transition-all duration-200 cursor-pointer text-center relative">
+                                <input type="file" id="imageFileInput" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer">
+                                <div class="space-y-2">
+                                    <div class="h-10 w-10 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center mx-auto shadow-inner group-hover:scale-110 transition-transform">
+                                        <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-700">Drag & drop product photo or <span class="text-primary-600 hover:underline">browse files</span></p>
+                                    <p class="text-[10px] text-slate-400">Supports PNG, JPG, JPEG up to 10MB (automatically compressed to fast-loading size)</p>
+                                </div>
+                            </div>
+
+                            <!-- Upload & Compression Progress Bar -->
+                            <div id="progressWrapper" class="mt-4 bg-slate-100 rounded-full h-2.5 overflow-hidden hidden border border-slate-200">
+                                <div id="progressBar" class="bg-gradient-to-r from-primary-500 to-purple-500 h-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <p id="progressText" class="text-[11px] text-slate-500 font-semibold mt-1.5 hidden"></p>
+                        </div>
+
+                        <!-- Image Preview Slot -->
+                        <div class="flex justify-center">
+                            <div class="relative w-36 h-36 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shadow-inner">
+                                <img id="previewImage" src="<?php echo !empty($image_path) ? (filter_var($image_path, FILTER_VALIDATE_URL) ? $image_path : APP_URL . '/' . $image_path) : 'https://placehold.co/300?text=No+Product+Image'; ?>" class="object-cover w-full h-full">
+                                <button type="button" id="removeImageBtn" class="absolute bottom-2 right-2 p-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow-md transition-colors text-xs hidden">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                `;
+                </div>
+
+                <!-- Section 2: Core Product Identification -->
+                <div>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
+                        <i class="fa-solid fa-barcode mr-1 text-primary-500"></i> Core Product Identification
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        
+                        <!-- SKU Code -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Product SKU / Code *</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-hashtag absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="text" name="item_code" id="mainItemCode" value="<?php echo htmlspecialchars($item_code); ?>" placeholder="e.g. FCON-PEN-01" required
+                                       class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono font-bold">
+                            </div>
+                        </div>
+
+                        <!-- Barcode EAN/UPC -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Barcode UPC/EAN</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-barcode absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="text" name="barcode" value="<?php echo htmlspecialchars($barcode); ?>" placeholder="e.g. 4791234567890" 
+                                       class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono">
+                            </div>
+                        </div>
+
+                        <!-- Product Status Option -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Catalog Status</label>
+                            <select name="status" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer">
+                                <option value="active" <?php echo $status === 'active' ? 'selected' : ''; ?>>Active / Published</option>
+                                <option value="draft" <?php echo $status === 'draft' ? 'selected' : ''; ?>>Draft Listing</option>
+                                <option value="inactive" <?php echo $status === 'inactive' ? 'selected' : ''; ?>>Suspended / Inactive</option>
+                            </select>
+                        </div>
+
+                        <!-- Item Name/Title -->
+                        <div class="md:col-span-3">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Item Name / Product Title *</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-tag absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="text" name="name" id="mainProductName" value="<?php echo htmlspecialchars($name); ?>" placeholder="e.g. Falcon Luxury Blue Ink Pen" required
+                                       class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-semibold">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Catalog Categorization & Database Relations -->
+                <div>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
+                        <i class="fa-solid fa-warehouse mr-1 text-primary-500"></i> Organization, Category & Database storage relations
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        
+                        <!-- WooCommerce Category list -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Category (WooCommerce Live)</label>
+                            <select name="category_id" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-semibold">
+                                <option value="">General Stationery</option>
+                                <?php foreach ($categories as $cat): ?>
+                                    <option value="<?php echo $cat->id; ?>" <?php echo $category_id == $cat->id ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($cat->name); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Supplier Selection from Database Vendors data -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Supplier / Vendor (ERP Database)</label>
+                            <select name="vendor_id" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-semibold">
+                                <option value="">Select Supplier</option>
+                                <?php foreach ($vendors as $v): ?>
+                                    <option value="<?php echo $v->id; ?>" <?php echo $vendor_id == $v->id ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($v->name); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Warehouse Selection from Database warehouses data -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Warehouse Storage Bin</label>
+                            <select name="warehouse_id" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-semibold">
+                                <option value="">Select Warehouse</option>
+                                <?php foreach ($warehouses as $wh): ?>
+                                    <option value="<?php echo $wh->id; ?>" <?php echo $warehouse_id == $wh->id ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($wh->name); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Brand/Manufacturer -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Brand / Manufacturer</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-building-flag absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="text" name="brand" value="<?php echo htmlspecialchars($brand); ?>" placeholder="e.g. Falcon Stationery" 
+                                       class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Dynamic Variations Builder (Attributes system like before) -->
+                <div>
+                    <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-diagram-project text-primary-500 animate-pulse"></i> Attributes & Variation Manager
+                        </h3>
+                        <div class="text-xs text-slate-400 italic">No stock inputs required (Managed via GRN/PO transactions)</div>
+                    </div>
+
+                    <!-- Step-by-Step interactive builder panel -->
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200 mb-6 space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                            <!-- 1. Selection Group -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">1. Select Variation Attribute</label>
+                                <select id="attrGroupSelect" onchange="handleGroupSelectChange()" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none cursor-pointer">
+                                    <option value="">-- Select Attribute Group --</option>
+                                    <option value="Color">Color (e.g. Red, Blue, Green)</option>
+                                    <option value="Size">Size (e.g. Small, Medium, Large)</option>
+                                    <option value="Pack">Pack Quantity (e.g. Box of 10, Pack of 50)</option>
+                                    <option value="Material">Material (e.g. Glass, Wooden, Steel)</option>
+                                    <option value="Custom">Custom Attribute Group...</option>
+                                </select>
+                            </div>
+
+                            <!-- Custom Group Text Box -->
+                            <div id="customGroupWrapper" class="hidden">
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Custom Group Name</label>
+                                <input type="text" id="customGroupName" placeholder="e.g. Style, Thickness" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-semibold">
+                            </div>
+
+                            <!-- Attribute value tags input -->
+                            <div id="attrValuesWrapper" class="md:col-span-2 hidden">
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">2. Enter Values (Press Enter or Add Comma to separate)</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-keyboard absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                    <input type="text" id="attrValuesInput" placeholder="Type and hit Enter (e.g. Black, White, Matte)" class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Rendered Interactive Attribute Tags -->
+                        <div id="attributeTagsContainer" class="flex flex-wrap gap-2 pt-2"></div>
+                    </div>
+
+                    <!-- Variations table list (No stock column) -->
+                    <div class="border border-slate-200 rounded-xl overflow-hidden bg-slate-50 shadow-inner">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase font-mono tracking-wider">
+                                    <th class="py-3 px-4 w-[25%]">Attribute option value</th>
+                                    <th class="py-3 px-4 w-[25%]">Variation SKU *</th>
+                                    <th class="py-3 px-4 w-[15%] text-right">Cost Price (LKR)</th>
+                                    <th class="py-3 px-4 w-[15%] text-right">Retail Price (LKR)</th>
+                                    <th class="py-3 px-4 w-[15%] text-right">B2B base Price (LKR)</th>
+                                    <th class="py-3 px-4 w-[5%] text-right">Remove</th>
+                                </tr>
+                            </thead>
+                            <tbody id="variationsTableBody" class="divide-y divide-slate-200">
+                                <!-- Dynamic variation rows populated via JS -->
+                                <tr id="noVariationsRow">
+                                    <td colspan="6" class="py-8 text-center text-slate-400 italic">No variations created. Product will be synced as a simple standard product.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Section 5: Pricing, Costing & WholesaleX B2B (Locked/Disabled if variations exist) -->
+                <div class="relative transition-all duration-300" id="basePricingContainer">
+                    
+                    <!-- Pricing Lock Alert Overlay -->
+                    <div id="basePricingAlert" class="bg-purple-50 border border-purple-200 text-purple-950 p-4 rounded-xl text-xs flex items-center gap-3.5 mb-6 hidden">
+                        <i class="fa-solid fa-lock text-purple-600 text-base animate-bounce"></i>
+                        <div>
+                            <strong class="font-bold">Base Pricing Deactivated:</strong> Product pricing is currently managed at the **variation level** above. Remove variations to reactive base catalog prices.
+                        </div>
+                    </div>
+
+                    <div id="basePricingSection" class="space-y-6">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center justify-between">
+                            <span><i class="fa-solid fa-wallet mr-1 text-primary-500"></i> Base Pricing, Costing & WholesaleX B2B Price</span>
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            
+                            <!-- Cost Price -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cost Price (Purchase)</label>
+                                <div class="relative">
+                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rs.</span>
+                                    <input type="number" step="0.01" name="cost_price" id="costPriceInput" value="<?php echo htmlspecialchars($cost_price); ?>" oninput="calculateMarkupProfit()" placeholder="0.00" 
+                                           class="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono font-bold">
+                                </div>
+                            </div>
+
+                            <!-- Selling Price (LKR Retail) -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Retail Price (LKR) *</label>
+                                <div class="relative">
+                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rs.</span>
+                                    <input type="number" step="0.01" name="selling_price" id="sellingPriceInput" value="<?php echo htmlspecialchars($selling_price); ?>" oninput="calculateMarkupProfit()" placeholder="0.00" required
+                                           class="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono font-bold">
+                                </div>
+                            </div>
+
+                            <!-- B2B Wholesale Price (WholesaleX) -->
+                            <div>
+                                <label class="block text-xs font-bold text-purple-700 uppercase tracking-wider mb-2">B2B User Base Price *</label>
+                                <div class="relative">
+                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400 text-xs font-bold">Rs.</span>
+                                    <input type="number" step="0.01" name="wholesale_price" id="wholesalePriceInput" value="<?php echo htmlspecialchars($wholesale_price); ?>" oninput="calculateMarkupProfit()" placeholder="0.00" 
+                                           class="w-full pl-9 pr-3 py-2.5 bg-purple-50/20 border border-purple-200 focus:border-purple-500 rounded-xl text-sm focus:ring-2 focus:ring-purple-500/20 focus:outline-none font-mono font-bold text-purple-850">
+                                </div>
+                            </div>
+
+                            <!-- Markup margin calculator -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Estimated retail markup</label>
+                                <div class="relative">
+                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold"><i class="fa-solid fa-percent"></i></span>
+                                    <input type="text" id="marginMarkupOutput" placeholder="0%" disabled
+                                           class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-bold text-primary-600">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 6: Non-Stock Physical Properties -->
+                <div>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
+                        <i class="fa-solid fa-scale-balanced mr-1 text-primary-500"></i> Physical Specifications & Reorder Alerts
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        
+                        <!-- Minimum Reorder Alert Threshold -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Alert Quantity Limit</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-triangle-exclamation absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="number" name="alert_qty" value="<?php echo htmlspecialchars($alert_qty); ?>" placeholder="5" 
+                                       class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono">
+                            </div>
+                        </div>
+
+                        <!-- Unit of Measure -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Unit of Measure (UOM)</label>
+                            <select name="unit" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-bold">
+                                <option value="pcs" <?php echo $unit === 'pcs' ? 'selected' : ''; ?>>Pieces (pcs)</option>
+                                <option value="pack" <?php echo $unit === 'pack' ? 'selected' : ''; ?>>Packs (pack)</option>
+                                <option value="box" <?php echo $unit === 'box' ? 'selected' : ''; ?>>Boxes (box)</option>
+                                <option value="kg" <?php echo $unit === 'kg' ? 'selected' : ''; ?>>Kilograms (kg)</option>
+                            </select>
+                        </div>
+
+                        <!-- Physical Item Weight -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Weight (grams / kg)</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-scale-balanced absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="text" name="weight" value="<?php echo htmlspecialchars($weight); ?>" placeholder="e.g. 150g" 
+                                       class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 7: Integration Settings & Detailed Description Logs -->
+                <div>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
+                        <i class="fa-brands fa-wordpress-simple mr-1 text-purple-600 animate-pulse"></i> WooCommerce Integration Master Toggle
+                    </h3>
+                    
+                    <div class="bg-purple-50/50 border border-purple-100 p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                            <span class="text-purple-950 font-bold text-sm block">WooCommerce Active Synchronization</span>
+                            <span class="text-purple-700/80 text-xs block mt-0.5">When checked, any save action directly updates the product details and stock status on WooCommerce in real time.</span>
+                        </div>
+                        <label class="inline-flex items-center cursor-pointer select-none">
+                            <input type="checkbox" name="sync_woo" value="1" <?php echo $sync_woo == '1' ? 'checked' : ''; ?> class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 relative"></div>
+                        </label>
+                    </div>
+
+                    <!-- Description Textarea -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Item Specifications Description & Metadata</label>
+                        <textarea name="description" rows="4" placeholder="Enter product characteristics, properties, notes, or compatibility features for WooCommerce..."
+                                  class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none placeholder-slate-400 leading-relaxed"><?php echo htmlspecialchars($description); ?></textarea>
+                    </div>
+                </div>
+
+                <!-- Form Footer Actions -->
+                <div class="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
+                    <a href="<?php echo APP_URL; ?>/inventory" class="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 text-sm font-semibold rounded-xl transition-colors">
+                        Cancel
+                    </a>
+                    <button type="submit" class="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold rounded-xl shadow-md shadow-primary-500/30 transition-all duration-200 transform hover:-translate-y-0.5 flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-save"></i> Save Product Entry
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- Client side dynamic compressor, calculators, variations serializer scripts -->
+    <script>
+        // Variations Tracker State
+        let variations = [];
+        let activeTags = [];
+
+        /**
+         * Dynamic Margin Profit calculation on form inputs
+         */
+        function calculateMarkupProfit() {
+            const costInput = document.getElementById('costPriceInput');
+            const sellInput = document.getElementById('sellingPriceInput');
+            const costVal = parseFloat(costInput.value) || 0;
+            const sellVal = parseFloat(sellInput.value) || 0;
+            const output = document.getElementById('marginMarkupOutput');
+
+            if (costVal > 0 && sellVal > 0) {
+                const profit = sellVal - costVal;
+                const markup = (profit / costVal) * 100;
+                output.value = "+" + markup.toFixed(1) + "%";
+            } else if (costVal === 0 && sellVal > 0) {
+                output.value = "100.0% (No Cost)";
+            } else {
+                output.value = "0.0%";
+            }
+        }
+
+        /**
+         * Disable/Hide base prices when variations exist (Variations have different prices)
+         */
+        function toggleBasePricingSection() {
+            const pricingSection = document.getElementById('basePricingSection');
+            const pricingAlert = document.getElementById('basePricingAlert');
+            const costInput = document.getElementById('costPriceInput');
+            const sellInput = document.getElementById('sellingPriceInput');
+            const wholesaleInput = document.getElementById('wholesalePriceInput');
+
+            // Count valid variation rows
+            const hasVariations = variations.filter(v => v !== null).length > 0;
+
+            if (hasVariations) {
+                pricingSection.classList.add('opacity-40', 'pointer-events-none');
+                pricingAlert.classList.remove('hidden');
+                
+                // Remove HTML5 constraint required flags during active variation syncing
+                costInput.removeAttribute('required');
+                sellInput.removeAttribute('required');
+                wholesaleInput.removeAttribute('required');
+            } else {
+                pricingSection.classList.remove('opacity-40', 'pointer-events-none');
+                pricingAlert.classList.add('hidden');
+                
+                costInput.setAttribute('required', 'required');
+                sellInput.setAttribute('required', 'required');
+                wholesaleInput.setAttribute('required', 'required');
+            }
+        }
+
+        // ==========================================
+        // CLIENT-SIDE IMAGE COMPRESSOR & DROPZONE
+        // ==========================================
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('imageFileInput');
+        const previewImage = document.getElementById('previewImage');
+        const removeImageBtn = document.getElementById('removeImageBtn');
+        const progressWrapper = document.getElementById('progressWrapper');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const base64Input = document.getElementById('compressedImageBase64');
+
+        // Drag/Drop Events
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropzone.classList.add('border-primary-500', 'bg-primary-50/10');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('border-primary-500', 'bg-primary-50/10');
+            }, false);
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length) handleImageUpload(files[0]);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleImageUpload(e.target.files[0]);
+        });
+
+        function handleImageUpload(file) {
+            if (!file.type.match('image.*')) {
+                alert('Oops! Only image files (PNG, JPG, JPEG) are accepted.');
+                return;
             }
 
-            html += `
-                <div class="var-item-row">
-                    <input type="hidden" name="var_ids[${val.id}]" value="${varId}">
-                    
-                    <label style="width: 150px; cursor:pointer; font-weight:bold; font-size:14px; margin:0; color:#333; display:flex; align-items:center;">
-                        <input type="checkbox" name="var_val_ids[]" value="${val.id}" class="cb-group-${varId}" ${checked} onchange="toggleRowPricing(this, '${val.id}')" style="margin-right:8px;"> 
-                        ${val.value_name}
-                    </label>
-                    
-                    <div style="display: flex; gap: 10px; flex: 1; align-items:center;">
-                        <!-- NEW: Specific Image Upload -->
-                        <div id="img_upload_${val.id}" style="display: ${checked ? 'flex' : 'none'}; align-items:center; flex: 1;">
-                            ${imgHtml}
-                            <input type="file" name="var_image[${val.id}]" class="form-control" accept=".png, .jpg, .jpeg" style="padding:4px; font-size:11px; background:#fff;">
-                        </div>
+            progressWrapper.classList.remove('hidden');
+            progressText.classList.remove('hidden');
+            progressBar.style.width = '20%';
+            progressText.innerText = "Analyzing file parameters...";
 
-                        <!-- SKU is ALWAYS visible if the variation is checked -->
-                        <input type="text" name="var_sku[${val.id}]" class="form-control" style="padding:6px; font-size:13px; width: 140px; display: ${checked ? 'block' : 'none'};" id="sku_input_${val.id}" placeholder="Barcode / SKU" value="${pSku}">
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(event) {
+                progressBar.style.width = '50%';
+                progressText.innerText = "Compressing size to fast-loading specifications...";
+
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Compression scale bounds limit dimensions to 1000px max
+                    const max_size = 1000;
+                    if (width > height) {
+                        if (width > max_size) {
+                            height *= max_size / width;
+                            width = max_size;
+                        }
+                    } else {
+                        if (height > max_size) {
+                            width *= max_size / height;
+                            height = max_size;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Export dynamically to low footprint high-quality JPEG 0.7
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                    
+                    setTimeout(() => {
+                        progressBar.style.width = '100%';
+                        progressText.innerText = "Compression complete! Ready to save.";
                         
-                        <!-- Pricing only shows if Variable Pricing is enabled globally -->
-                        <div id="pricing_row_${val.id}" style="display: ${isVarPricing && exist ? 'flex' : 'none'}; gap: 10px; flex: 1.5;">
-                            <input type="number" name="var_price[${val.id}]" step="0.01" class="form-control" style="padding:6px; font-size:13px;" placeholder="Override Price" value="${pPrice}">
-                            <input type="number" name="var_cost[${val.id}]" step="0.01" class="form-control" style="padding:6px; font-size:13px;" placeholder="Override Cost" value="${pCost}">
-                        </div>
-                    </div>
-                </div>
+                        previewImage.src = compressedBase64;
+                        base64Input.value = compressedBase64;
+                        removeImageBtn.classList.remove('hidden');
+                        
+                        setTimeout(() => {
+                            progressWrapper.classList.add('hidden');
+                            progressText.classList.add('hidden');
+                        }, 1200);
+                    }, 600);
+                };
+            };
+        }
+
+        removeImageBtn.addEventListener('click', () => {
+            previewImage.src = 'https://placehold.co/300?text=No+Product+Image';
+            base64Input.value = '';
+            fileInput.value = '';
+            removeImageBtn.classList.add('hidden');
+        });
+
+        // ==========================================
+        // DYNAMIC VARIATIONS & ATTRIBUTES SYSTEM
+        // ==========================================
+        const selectGroup = document.getElementById('attrGroupSelect');
+        const customGroupWrapper = document.getElementById('customGroupWrapper');
+        const attrValuesWrapper = document.getElementById('attrValuesWrapper');
+        const valuesInput = document.getElementById('attrValuesInput');
+        const tagsContainer = document.getElementById('attributeTagsContainer');
+        const tableBody = document.getElementById('variationsTableBody');
+        const noVariationsRow = document.getElementById('noVariationsRow');
+
+        /**
+         * Handle attribute selection changes
+         */
+        function handleGroupSelectChange() {
+            const val = selectGroup.value;
+            if (val === '') {
+                customGroupWrapper.classList.add('hidden');
+                attrValuesWrapper.classList.add('hidden');
+                tagsContainer.classList.add('hidden');
+            } else if (val === 'Custom') {
+                customGroupWrapper.classList.remove('hidden');
+                attrValuesWrapper.classList.remove('hidden');
+                tagsContainer.classList.remove('hidden');
+            } else {
+                customGroupWrapper.classList.add('hidden');
+                attrValuesWrapper.classList.remove('hidden');
+                tagsContainer.classList.remove('hidden');
+            }
+            // Clear current tag states
+            activeTags = [];
+            renderTags();
+        }
+
+        // Listener for tag enter keypress
+        valuesInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                const rawVal = valuesInput.value.replace(',', '').trim();
+                if (rawVal !== '' && !activeTags.includes(rawVal)) {
+                    activeTags.push(rawVal);
+                    renderTags();
+                    valuesInput.value = '';
+                }
+            }
+        });
+
+        /**
+         * Renders clickable attribute values as tags
+         */
+        function renderTags() {
+            tagsContainer.innerHTML = '';
+            activeTags.forEach(tag => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = "px-3 py-1.5 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer";
+                btn.innerHTML = `<i class="fa-solid fa-plus-circle text-[10px]"></i> Add <strong>${escapeHtml(tag)}</strong>`;
+                btn.onclick = () => {
+                    addVariationRow({ attribute: tag });
+                };
+                tagsContainer.appendChild(btn);
+            });
+        }
+
+        function updateNoVariationsVisibility() {
+            const activeCount = variations.filter(v => v !== null).length;
+            if (activeCount === 0) {
+                noVariationsRow.classList.remove('hidden');
+            } else {
+                noVariationsRow.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Add Variation Product row (Stock column completely removed)
+         */
+        function addVariationRow(existing = null) {
+            const index = variations.length;
+            const mainSku = document.getElementById('mainItemCode').value || 'SKU';
+            const defaultCostPrice = document.getElementById('costPriceInput').value || '0.00';
+            const defaultSellPrice = document.getElementById('sellingPriceInput').value || '0.00';
+            const defaultWholePrice = document.getElementById('wholesalePriceInput').value || '0.00';
+
+            const rowData = {
+                id: existing ? (existing.id || '') : '',
+                attribute: existing ? (existing.attribute || '') : '',
+                sku: existing ? (existing.sku || `${mainSku}-${index + 1}`) : `${mainSku}-${index + 1}`,
+                cost_price: existing ? (existing.cost_price || defaultCostPrice) : defaultCostPrice,
+                price: existing ? (existing.price || defaultSellPrice) : defaultSellPrice,
+                wholesale_price: existing ? (existing.wholesale_price || defaultWholePrice) : defaultWholePrice
+            };
+
+            variations.push(rowData);
+
+            const row = document.createElement('tr');
+            row.id = `variation-row-${index}`;
+            row.className = "hover:bg-slate-100/50 transition-colors";
+            row.innerHTML = `
+                <td class="py-3 px-4 font-bold text-slate-800">
+                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-primary-50 text-primary-700 border border-primary-150">
+                        ${escapeHtml(rowData.attribute)}
+                    </span>
+                    <input type="hidden" value="${escapeHtml(rowData.attribute)}" oninput="updateVariationValue(${index}, 'attribute', this.value)">
+                </td>
+                <td class="py-3 px-4">
+                    <input type="text" value="${escapeHtml(rowData.sku)}" oninput="updateVariationValue(${index}, 'sku', this.value)" placeholder="e.g. SKU-RED" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                </td>
+                <td class="py-3 px-4 text-right">
+                    <input type="number" step="0.01" value="${rowData.cost_price}" oninput="updateVariationValue(${index}, 'cost_price', this.value)" placeholder="0.00" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-right focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                </td>
+                <td class="py-3 px-4 text-right">
+                    <input type="number" step="0.01" value="${rowData.price}" oninput="updateVariationValue(${index}, 'price', this.value)" placeholder="0.00" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-right focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                </td>
+                <td class="py-3 px-4 text-right">
+                    <input type="number" step="0.01" value="${rowData.wholesale_price}" oninput="updateVariationValue(${index}, 'wholesale_price', this.value)" placeholder="0.00" class="w-full bg-purple-50/30 border border-purple-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-right text-purple-750 focus:ring-1 focus:ring-purple-500 focus:outline-none font-bold">
+                </td>
+                <td class="py-3 px-4 text-right">
+                    <button type="button" onclick="removeVariationRow(${index})" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-lg transition-colors cursor-pointer"><i class="fa-solid fa-trash-can"></i></button>
+                </td>
             `;
+
+            tableBody.appendChild(row);
+            updateNoVariationsVisibility();
+            toggleBasePricingSection();
+            serializeVariations();
+        }
+
+        function updateVariationValue(index, field, value) {
+            if (variations[index]) {
+                variations[index][field] = value;
+                serializeVariations();
+            }
+        }
+
+        function removeVariationRow(index) {
+            const row = document.getElementById(`variation-row-${index}`);
+            if (row) row.remove();
+            
+            variations[index] = null; // Mark as deleted to keep indexing consistent
+            serializeVariations();
+            
+            const activeVariations = variations.filter(v => v !== null);
+            if (activeVariations.length === 0) {
+                variations = [];
+                updateNoVariationsVisibility();
+            }
+            toggleBasePricingSection();
+        }
+
+        function serializeVariations() {
+            const filtered = variations.filter(v => v !== null);
+            document.getElementById('variationsJson').value = JSON.stringify(filtered);
+        }
+
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // ==========================================
+        // INITIALIZATIONS
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            calculateMarkupProfit();
+
+            // Populate existing variations in Edit Mode
+            <?php if ($is_edit && isset($item->variations_json) && !empty($item->variations_json)): ?>
+                const savedVariations = <?php echo $item->variations_json; ?>;
+                if (Array.isArray(savedVariations)) {
+                    savedVariations.forEach(item => addVariationRow(item));
+                }
+            <?php endif; ?>
         });
 
-        html += `</div></div>`;
-        container.innerHTML = html;
-    }
-
-    function toggleSelectAll(masterCb, varId) {
-        let checkboxes = document.querySelectorAll(`.cb-group-${varId}`);
-        checkboxes.forEach(cb => {
-            cb.checked = masterCb.checked;
-            toggleRowPricing(cb, cb.value);
+        // Form submission parameters mapping
+        document.getElementById('productForm').addEventListener('submit', (e) => {
+            serializeVariations();
         });
-    }
+    </script>
 
-    function toggleVariablePricingUI() {
-        let isVar = document.getElementById('f_variable').checked;
-        document.getElementById('mainPricingDiv').style.display = isVar ? 'none' : 'grid';
-        
-        document.querySelectorAll('input[name="var_val_ids[]"]').forEach(cb => {
-            toggleRowPricing(cb, cb.value);
-        });
-    }
-
-    function toggleRowPricing(cb, valId) {
-        let isVar = document.getElementById('f_variable').checked;
-        let pricingDiv = document.getElementById(`pricing_row_${valId}`);
-        let skuInput = document.getElementById(`sku_input_${valId}`);
-        let imgUpload = document.getElementById(`img_upload_${valId}`);
-        
-        if(skuInput) skuInput.style.display = cb.checked ? 'block' : 'none';
-        if(imgUpload) imgUpload.style.display = cb.checked ? 'flex' : 'none';
-        if(pricingDiv) pricingDiv.style.display = (isVar && cb.checked) ? 'flex' : 'none';
-    }
-
-    function toggleInventory(type) {
-        document.getElementById('qtyDiv').style.display = (type === 'Service') ? 'none' : 'block';
-    }
-</script>
+</body>
+</html>

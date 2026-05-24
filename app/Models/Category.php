@@ -1,53 +1,71 @@
 <?php
+
 class Category {
     private $db;
 
     public function __construct() {
         $this->db = new Database();
+        $this->ensureWooCategoryIdColumn();
     }
 
-    public function getAllCategories() {
+    /**
+     * Self-healing migration checking for and appending woo_category_id column dynamically
+     */
+    private function ensureWooCategoryIdColumn() {
+        try {
+            $this->db->query("DESCRIBE item_categories");
+            $columns = $this->db->resultSet();
+            if ($columns) {
+                $fields = array_map(function($col) {
+                    return strtolower($col->Field ?? $col->field ?? '');
+                }, $columns);
+
+                if (!in_array('woo_category_id', $fields)) {
+                    $this->db->query("ALTER TABLE item_categories ADD woo_category_id INT NULL DEFAULT NULL");
+                    $this->db->execute();
+                }
+                
+                if (!in_array('description', $fields)) {
+                    $this->db->query("ALTER TABLE item_categories ADD description TEXT NULL");
+                    $this->db->execute();
+                }
+            }
+        } catch (Exception $e) {
+            // Safe fallback
+        }
+    }
+
+    public function getCategories() {
         $this->db->query("SELECT * FROM item_categories ORDER BY name ASC");
         return $this->db->resultSet();
     }
 
-    public function getCategoriesPaginated($search = '', $limit = 10, $offset = 0) {
-        $this->db->query("SELECT c.*, (SELECT COUNT(*) FROM items WHERE category_id = c.id) as item_count 
-                          FROM item_categories c 
-                          WHERE c.name LIKE :search OR c.description LIKE :search 
-                          ORDER BY c.name ASC 
-                          LIMIT :limit OFFSET :offset");
-        $this->db->bind(':search', "%$search%");
-        $this->db->bind(':limit', $limit, PDO::PARAM_INT);
-        $this->db->bind(':offset', $offset, PDO::PARAM_INT);
-        return $this->db->resultSet();
+    public function getCategoryById($id) {
+        $this->db->query("SELECT * FROM item_categories WHERE id = :id");
+        $this->db->bind(':id', $id);
+        return $this->db->single();
     }
 
-    public function getTotalCategories($search = '') {
-        $this->db->query("SELECT COUNT(*) as total FROM item_categories WHERE name LIKE :search OR description LIKE :search");
-        $this->db->bind(':search', "%$search%");
-        $row = $this->db->single();
-        return $row->total ?? 0;
-    }
-
-    public function addCategory($name, $description = '') {
-        $this->db->query("INSERT INTO item_categories (name, description) VALUES (:name, :desc)");
+    public function addCategory($name, $description, $wooCategoryId = null) {
+        $this->db->query("INSERT INTO item_categories (name, description, woo_category_id) VALUES (:name, :description, :woo_category_id)");
         $this->db->bind(':name', $name);
-        $this->db->bind(':desc', $description);
-        try { return $this->db->execute(); } catch (PDOException $e) { return false; }
+        $this->db->bind(':description', $description);
+        $this->db->bind(':woo_category_id', $wooCategoryId);
+        return $this->db->execute();
     }
 
-    public function updateCategory($id, $name, $description = '') {
-        $this->db->query("UPDATE item_categories SET name = :name, description = :desc WHERE id = :id");
+    public function updateCategory($id, $name, $description, $wooCategoryId = null) {
+        $this->db->query("UPDATE item_categories SET name = :name, description = :description, woo_category_id = :woo_category_id WHERE id = :id");
         $this->db->bind(':id', $id);
         $this->db->bind(':name', $name);
-        $this->db->bind(':desc', $description);
-        try { return $this->db->execute(); } catch (PDOException $e) { return false; }
+        $this->db->bind(':description', $description);
+        $this->db->bind(':woo_category_id', $wooCategoryId);
+        return $this->db->execute();
     }
 
     public function deleteCategory($id) {
         $this->db->query("DELETE FROM item_categories WHERE id = :id");
         $this->db->bind(':id', $id);
-        try { return $this->db->execute(); } catch (PDOException $e) { return false; }
+        return $this->db->execute();
     }
 }

@@ -1,162 +1,333 @@
 <?php
+// ==========================================
+// VARIABLE SAFETY & ROBUST FALLBACK ENGINE
+// ==========================================
+$categories = $data['categories'] ?? [];
+$title = $data['title'] ?? 'Category Management';
+
+// Capture flash messages safely
+$flashSuccess = $_SESSION['flash_success'] ?? $_GET['flash_success'] ?? null;
+if (isset($_SESSION['flash_success'])) {
+    unset($_SESSION['flash_success']);
+}
+$flashError = $_SESSION['flash_error'] ?? $_GET['flash_error'] ?? null;
+if (isset($_SESSION['flash_error'])) {
+    unset($_SESSION['flash_error']);
+}
 ?>
-<style>
-    .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .btn { padding: 8px 16px; background: #0066cc; color: #fff; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 14px;}
-    .btn-outline { background: transparent; border: 1px solid #0066cc; color: #0066cc; }
-    .btn-danger { background: #ffebee; color: #c62828; border: none; }
-    .btn-small { padding: 4px 8px; font-size: 11px; margin-right: 5px; cursor: pointer; border-radius: 4px;}
-    
-    .quick-links { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; background: rgba(0,0,0,0.02); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--mac-border); }
-    .btn-quick { padding: 6px 12px; background: #fff; color: #555; border: 1px solid var(--mac-border); border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; transition: 0.2s; }
-    .btn-quick:hover { background: rgba(0,102,204,0.05); color: #0066cc; border-color: #0066cc; }
-    .btn-quick.active { background: #0066cc; color: #fff; border-color: #0066cc; }
-    
-    .kpi-card { background: #fff; padding: 20px; border-radius: 8px; border: 1px solid var(--mac-border); border-left: 4px solid #6a1b9a; margin-bottom: 20px; width: 300px;}
-    @media (prefers-color-scheme: dark) { .kpi-card { background: #1e1e2d; } }
-    .kpi-title { font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 5px; font-weight: bold; }
-    .kpi-val { font-size: 24px; font-weight: bold; color: var(--text-main); }
-    
-    .search-bar { width: 100%; padding: 10px 15px; border: 1px solid var(--mac-border); border-radius: 8px; font-size: 14px; margin-bottom: 15px; background: transparent; color: var(--text-main); box-sizing: border-box; }
-    
-    .data-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);}
-    @media (prefers-color-scheme: dark) { .data-table { background: #1e1e2d; } }
-    .data-table th, .data-table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--mac-border); font-size: 14px;}
-    .data-table th { background-color: rgba(0,0,0,0.02); font-weight: 600; color:#555;}
-    
-    .pagination { display: flex; justify-content: flex-end; gap: 5px; margin-top: 15px; }
-    .page-btn { padding: 6px 12px; border: 1px solid var(--mac-border); border-radius: 4px; background: #fff; color: #333; text-decoration: none; font-size: 12px;}
-    .page-btn.active { background: #0066cc; color: #fff; border-color: #0066cc; }
-    
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
-    .modal-content { background: var(--mac-bg); padding: 25px; border-radius: 12px; width: 450px; border: 1px solid var(--mac-border); }
-    .form-group { margin-bottom: 15px; }
-    .form-group label { display: block; margin-bottom: 5px; font-size: 13px; font-weight: 600; }
-    .form-control { width: 100%; padding: 8px 12px; border: 1px solid var(--mac-border); border-radius: 4px; background: transparent; color: var(--text-main); box-sizing: border-box;}
-</style>
-
-<div class="header-actions">
-    <div>
-        <h2 style="margin: 0 0 5px 0;">Product Categories</h2>
-        <p style="margin: 0; color: #666; font-size: 14px;">Organize your inventory catalog.</p>
-    </div>
-    <button class="btn" onclick="openModal('add')">+ Add Category</button>
-</div>
-
-<!-- Quick Navigation Links -->
-<div class="quick-links">
-    <span style="font-size: 11px; color: #888; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Related:</span>
-    <a href="<?= APP_URL ?>/inventory" class="btn-quick">📦 Products</a>
-    <a href="<?= APP_URL ?>/category" class="btn-quick active">📁 Categories</a>
-    <a href="<?= APP_URL ?>/variation" class="btn-quick">✨ Variations</a>
-</div>
-
-<div class="kpi-card">
-    <div class="kpi-title">Total Active Categories</div>
-    <div class="kpi-val"><?= $data['total_cats'] ?></div>
-</div>
-
-<?php if(!empty($data['error'])): ?><div style="padding: 10px; background:#ffebee; color:#c62828; border-radius:4px; margin-bottom:15px;"><?= $data['error'] ?></div><?php endif; ?>
-<?php if(!empty($data['success'])): ?><div style="padding: 10px; background:#e8f5e9; color:#2e7d32; border-radius:4px; margin-bottom:15px;"><?= $data['success'] ?></div><?php endif; ?>
-
-<input type="text" id="searchInput" class="search-bar" placeholder="🔍 Search Categories... (Type to search live)" value="<?= htmlspecialchars($data['search']) ?>">
-
-<div id="tableContainer">
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Category Name</th>
-                <th>Description</th>
-                <th style="text-align: center;">Items Linked</th>
-                <th style="text-align: center;">Actions</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody">
-            <?php if(empty($data['categories'])): ?>
-            <tr><td colspan="4" style="text-align: center; color: #888; padding: 20px;">No categories found.</td></tr>
-            <?php else: foreach($data['categories'] as $cat): ?>
-            <tr>
-                <td><strong><?= htmlspecialchars($cat->name) ?></strong></td>
-                <td style="color:#666; font-size:13px;"><?= htmlspecialchars($cat->description) ?: '<em style="color:#aaa;">No description</em>' ?></td>
-                <td style="text-align: center;">
-                    <span style="background: rgba(0,0,0,0.05); padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size:11px;"><?= $cat->item_count ?> Items</span>
-                </td>
-                <td style="text-align: center;">
-                    <button class="btn btn-small btn-outline" onclick="openModal('edit', '<?= $cat->id ?>', '<?= htmlspecialchars(addslashes($cat->name)) ?>', '<?= htmlspecialchars(addslashes($cat->description)) ?>')">Edit</button>
-                    <form action="<?= APP_URL ?>/category" method="POST" style="display:inline;">
-                        <input type="hidden" name="action" value="delete_category">
-                        <input type="hidden" name="category_id" value="<?= $cat->id ?>">
-                        <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this category? Items inside it will become Uncategorized.');">Del</button>
-                    </form>
-                </td>
-            </tr>
-            <?php endforeach; endif; ?>
-        </tbody>
-    </table>
-
-    <div class="pagination" id="paginationContainer">
-        <?php if($data['total_pages'] > 1): ?>
-            <?php for($i = 1; $i <= $data['total_pages']; $i++): ?>
-                <a href="?page=<?= $i ?>&search=<?= urlencode($data['search']) ?>" class="page-btn <?= ($data['page'] == $i) ? 'active' : '' ?>"><?= $i ?></a>
-            <?php endfor; ?>
-        <?php endif; ?>
-    </div>
-</div>
-
-<!-- Modal Form -->
-<div class="modal" id="catModal">
-    <div class="modal-content">
-        <h3 id="modalTitle" style="margin-top:0;">Add Category</h3>
-        <form action="<?= APP_URL ?>/category?page=<?= $data['page'] ?>&search=<?= urlencode($data['search']) ?>" method="POST">
-            <input type="hidden" name="action" id="formAction" value="add_category">
-            <input type="hidden" name="category_id" id="formCatId" value="">
-            
-            <div class="form-group"><label>Category Name *</label><input type="text" name="name" id="f_name" class="form-control" required></div>
-            <div class="form-group"><label>Description</label><textarea name="description" id="f_desc" class="form-control" rows="3"></textarea></div>
-            
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                <button type="button" class="btn btn-outline" onclick="document.getElementById('catModal').style.display='none'">Cancel</button>
-                <button type="submit" class="btn" id="modalSubmitBtn">Save Category</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-    // Live Search DOM Injection
-    let searchTimeout = null;
-    document.getElementById('searchInput').addEventListener('input', function(e) {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            const query = encodeURIComponent(e.target.value);
-            const url = `?search=${query}&page=1`;
-            fetch(url)
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    document.getElementById('tableBody').innerHTML = doc.getElementById('tableBody').innerHTML;
-                    document.getElementById('paginationContainer').innerHTML = doc.getElementById('paginationContainer').innerHTML;
-                    window.history.pushState({}, '', url);
-                });
-        }, 300);
-    });
-
-    function openModal(mode, id = '', name = '', desc = '') {
-        document.getElementById('catModal').style.display = 'flex';
-        if (mode === 'add') {
-            document.getElementById('modalTitle').innerText = 'Add Category';
-            document.getElementById('formAction').value = 'add_category';
-            document.getElementById('modalSubmitBtn').innerText = 'Save Category';
-            document.getElementById('f_name').value = '';
-            document.getElementById('f_desc').value = '';
-        } else {
-            document.getElementById('modalTitle').innerText = 'Edit Category';
-            document.getElementById('formAction').value = 'edit_category';
-            document.getElementById('formCatId').value = id;
-            document.getElementById('modalSubmitBtn').innerText = 'Update Changes';
-            document.getElementById('f_name').value = name;
-            document.getElementById('f_desc').value = desc;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo htmlspecialchars($title); ?> - Curtiss ERP</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
         }
-    }
-</script>
+    </script>
+    <style>
+        /* FORCE SCROLLING ENGINE OVERRIDES */
+        html, body {
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            height: auto !important;
+            min-height: 100vh !important;
+        }
+
+        /* TOP NAV HOVER GAP REMOVAL BRIDGE OVERRIDES */
+        /* Targets hover dropdown structures globally to prevent loss of focus */
+        .group:hover > div,
+        .group:hover > ul {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        /* Virtual hit-area bridge to cover physical spacing gaps between button trigger and content container */
+        .group > div::before,
+        .group > ul::before {
+            content: '';
+            position: absolute;
+            top: -24px;
+            left: 0;
+            right: 0;
+            height: 24px;
+            background: transparent !important;
+            z-index: 10;
+        }
+
+        nav, header {
+            position: relative;
+            z-index: 40 !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen">
+
+    <!-- Included Unified System Top Menu Bar from Layouts Folder -->
+    <?php include '../app/Views/layouts/main.php'; ?>
+
+    <!-- Main Workspace Container -->
+    <div class="p-8 max-w-[1400px] mx-auto space-y-6">
+
+        <!-- Inline Status Alerts -->
+        <div id="alert-container">
+            <?php if ($flashSuccess): ?>
+                <div id="success-alert" class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-4 mb-4 shadow-sm animate-fade-in">
+                    <div class="bg-emerald-100 text-emerald-600 p-2 rounded-full mt-0.5 shrink-0">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-emerald-800 font-semibold text-sm">Action Successful</h4>
+                        <p class="text-emerald-600 text-xs mt-0.5"><?php echo htmlspecialchars($flashSuccess); ?></p>
+                    </div>
+                    <button onclick="document.getElementById('success-alert').style.display='none'" class="ml-auto text-emerald-400 hover:text-emerald-600 cursor-pointer">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($flashError): ?>
+                <div id="error-alert" class="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-4 mb-4 shadow-sm animate-fade-in">
+                    <div class="bg-rose-100 text-rose-600 p-2 rounded-full mt-0.5 shrink-0">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-rose-800 font-semibold text-sm">Sync Notification</h4>
+                        <p class="text-rose-600 text-xs mt-0.5"><?php echo htmlspecialchars($flashError); ?></p>
+                    </div>
+                    <button onclick="document.getElementById('error-alert').style.display='none'" class="ml-auto text-rose-400 hover:text-rose-600 cursor-pointer">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Section Title and Sync Actions Toolbar -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-slate-950">Category Management</h1>
+                <p class="text-xs text-slate-500 mt-1">Organize products, manage catalog classifications, and sync active categories with WooCommerce.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <!-- Sync categories action trigger -->
+                <button onclick="triggerCategoriesSync()" id="sync-btn" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 hover:border-slate-400 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-2 transition cursor-pointer">
+                    <i id="sync-icon" class="fa-solid fa-rotate"></i>
+                    <span>Sync with WooCommerce</span>
+                </button>
+                <button onclick="openAddModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow transition-all transform hover:-translate-y-0.5 cursor-pointer">
+                    <i class="fa-solid fa-plus mr-1"></i> Add New Category
+                </button>
+            </div>
+        </div>
+
+        <!-- Mapped Categories Table Registry -->
+        <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <table class="w-full text-sm border-collapse">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs font-semibold uppercase tracking-wider">
+                    <tr>
+                        <th class="py-3.5 px-6 text-left w-[12%]">Local ID</th>
+                        <th class="py-3.5 px-6 text-left w-[30%]">Category Name</th>
+                        <th class="py-3.5 px-6 text-left w-[38%]">Description</th>
+                        <th class="py-3.5 px-6 text-center w-[12%]">WooCommerce ID</th>
+                        <th class="py-3.5 px-6 text-right w-[8%]">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-sm">
+                    <?php if (empty($categories)): ?>
+                        <tr>
+                            <td colspan="5" class="py-12 text-center text-slate-400 italic">
+                                <div class="flex flex-col items-center gap-2">
+                                    <i class="fa-solid fa-folder-open text-2xl text-slate-300"></i>
+                                    <span>No categories found in ERP. Click 'Add New Category' above to register one.</span>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($categories as $cat): ?>
+                            <?php 
+                            $wooId = $cat->woo_category_id ?? null;
+                            $has_synced = !empty($wooId);
+                            ?>
+                            <tr class="hover:bg-slate-50/50 transition-colors group">
+                                <td class="py-3.5 px-6 font-mono font-bold text-slate-500">#<?php echo $cat->id; ?></td>
+                                <td class="py-3.5 px-6 font-semibold text-slate-900"><?php echo htmlspecialchars($cat->name); ?></td>
+                                <td class="py-3.5 px-6 text-slate-500"><?php echo htmlspecialchars($cat->description ?? '-'); ?></td>
+                                <td class="py-3.5 px-6 text-center">
+                                    <?php if ($has_synced): ?>
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-150">
+                                            <i class="fa-solid fa-circle-check text-[9px]"></i> Sync (#<?php echo $wooId; ?>)
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                                            <i class="fa-solid fa-circle-notch text-[9px]"></i> Local
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="py-3.5 px-6 text-right whitespace-nowrap">
+                                    <div class="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onclick="openEditModal(<?php echo $cat->id; ?>, '<?php echo addslashes($cat->name); ?>', '<?php echo addslashes($cat->description ?? ''); ?>', <?php echo $has_synced ? 'true' : 'false'; ?>)" 
+                                                class="text-indigo-600 hover:text-indigo-850 hover:underline font-semibold cursor-pointer">Edit</button>
+                                        <span class="text-slate-300">|</span>
+                                        <a href="<?php echo APP_URL; ?>/category/delete/<?php echo $cat->id; ?>" 
+                                           onclick="return confirm('Delete category? WooCommerce mapping will also be un-synced.');"
+                                           class="text-rose-600 hover:text-rose-800 hover:underline font-semibold">Delete</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modals Configuration -->
+    <!-- 1. Add Category Modal -->
+    <div id="addModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-fade-in">
+            <div class="bg-slate-50 border-b border-slate-150 p-5 flex justify-between items-center">
+                <h3 class="font-bold text-slate-900 text-sm">Add New Category</h3>
+                <button onclick="closeAddModal()" class="text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-solid fa-xmark text-base"></i></button>
+            </div>
+            <form action="<?php echo APP_URL; ?>/category/add" method="POST" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Category Name *</label>
+                    <input type="text" name="name" required placeholder="e.g. Executive writing tools" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description</label>
+                    <textarea name="description" rows="3" placeholder="Category details and specifications..." class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"></textarea>
+                </div>
+                <div class="bg-purple-50 border border-purple-100 p-3.5 rounded-lg flex items-center justify-between">
+                    <div>
+                        <span class="text-purple-950 font-bold text-xs block">WooCommerce Active Sync</span>
+                        <span class="text-purple-700/80 text-[10px] block mt-0.5">Sync Category to WooCommerce store</span>
+                    </div>
+                    <label class="inline-flex items-center cursor-pointer select-none">
+                        <input type="checkbox" name="sync_woo" value="1" checked class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600 relative"></div>
+                    </label>
+                </div>
+                <div class="flex gap-2 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeAddModal()" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition cursor-pointer">Cancel</button>
+                    <button type="submit" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow transition cursor-pointer">Save Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. Edit Category Modal -->
+    <div id="editModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-fade-in">
+            <div class="bg-slate-50 border-b border-slate-150 p-5 flex justify-between items-center">
+                <h3 class="font-bold text-slate-900 text-sm">Edit Category</h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-solid fa-xmark text-base"></i></button>
+            </div>
+            <form id="editForm" action="" method="POST" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Category Name *</label>
+                    <input type="text" name="name" id="editName" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description</label>
+                    <textarea name="description" id="editDescription" rows="3" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"></textarea>
+                </div>
+                <div class="bg-purple-50 border border-purple-100 p-3.5 rounded-lg flex items-center justify-between">
+                    <div>
+                        <span class="text-purple-950 font-bold text-xs block">WooCommerce Active Sync</span>
+                        <span class="text-purple-700/80 text-[10px] block mt-0.5">Sync changes dynamically with WooCommerce</span>
+                    </div>
+                    <label class="inline-flex items-center cursor-pointer select-none">
+                        <input type="checkbox" name="sync_woo" id="editSyncWoo" value="1" class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600 relative"></div>
+                    </label>
+                </div>
+                <div class="flex gap-2 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeEditModal()" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition cursor-pointer">Cancel</button>
+                    <button type="submit" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow transition cursor-pointer">Update Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- UI Core Logic -->
+    <script>
+        function openAddModal() {
+            document.getElementById('addModal').classList.remove('hidden');
+        }
+        function closeAddModal() {
+            document.getElementById('addModal').classList.add('hidden');
+        }
+
+        function openEditModal(id, name, description, isSynced) {
+            document.getElementById('editForm').action = `<?php echo APP_URL; ?>/category/edit/${id}`;
+            document.getElementById('editName').value = name;
+            document.getElementById('editDescription').value = description;
+            document.getElementById('editSyncWoo').checked = isSynced;
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        /**
+         * Trigger Background Categories Sync & Display Status Messages
+         */
+        function triggerCategoriesSync() {
+            const btn = document.getElementById('sync-btn');
+            const icon = document.getElementById('sync-icon');
+            btn.disabled = true;
+            icon.classList.add('animate-spin');
+
+            fetch('<?php echo APP_URL; ?>/category/ajaxSyncCategories')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Dynamic Redirect with Success Parameter to update local state
+                        window.location.href = '<?php echo APP_URL; ?>/category?flash_success=' + encodeURIComponent(`WooCommerce categories synchronized successfully! Added: ${data.imported}, Updated: ${data.updated}.`);
+                    } else {
+                        showInlineError(data.message || 'Synchronization encountered an issue.');
+                    }
+                })
+                .catch(err => {
+                    showInlineError('Connection breakdown: ' + err.message);
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    icon.classList.remove('animate-spin');
+                });
+        }
+
+        function showInlineError(message) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `
+                <div id="error-alert" class="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-4 mb-4 shadow-sm animate-fade-in">
+                    <div class="bg-rose-100 text-rose-600 p-2 rounded-full mt-0.5 shrink-0">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-rose-800 font-semibold text-sm">Sync Notification</h4>
+                        <p class="text-rose-600 text-xs mt-0.5">${message}</p>
+                    </div>
+                    <button onclick="this.parentElement.style.display='none'" class="ml-auto text-rose-400 hover:text-rose-600 cursor-pointer">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+            `;
+        }
+    </script>
+
+</body>
+</html>
