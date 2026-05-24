@@ -57,14 +57,8 @@ class SalesController extends Controller {
      * Display all sales invoices
      */
     public function index() {
-        $this->db->query("SELECT * FROM sales_invoices ORDER BY id DESC");
-        $invoices = $this->db->resultSet() ?: [];
-
-        $data = [
-            'title' => 'Sales & Invoices Hub',
-            'invoices' => $invoices
-        ];
-        $this->view('sales/index', $data);
+        header('Location: ' . APP_URL . '/sales/create');
+        exit;
     }
 
     /**
@@ -137,7 +131,7 @@ class SalesController extends Controller {
             'items' => $items,
             'invoice_number' => $invoiceNumber
         ];
-        $this->view('sales/create', $data);
+        $this->view('sales/index', $data);
     }
 
     /**

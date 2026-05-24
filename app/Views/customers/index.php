@@ -64,6 +64,7 @@
     .form-control { width: 100%; padding: 10px 12px; border: 1px solid var(--mac-border); border-radius: 6px; background: transparent; color: var(--text-main); box-sizing: border-box; outline:none; font-size: 14px;}
     .form-control:focus { border-color: #0066cc; }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .truncate-text { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 </style>
 
 <?php if(!empty($data['error'])): ?>
@@ -112,7 +113,10 @@
                    data-outstanding="<?= $c->outstanding_balance ?>">
                     <div>
                         <strong class="c-name"><?= htmlspecialchars($c->name) ?></strong>
-                        <span class="text-sub c-contact"><?= htmlspecialchars($c->email ?: $c->phone ?: 'No contact info') ?></span>
+                        <span class="text-sub c-contact">📞 <?= htmlspecialchars($c->phone ?: 'No phone') ?></span>
+                        <span class="text-sub c-email" style="font-size: 10px; opacity: 0.8;"><?= htmlspecialchars($c->email ?: 'No email') ?></span>
+                        <span class="text-sub c-route" style="font-weight: 500;">📍 Route: <?= htmlspecialchars($c->mca_name ?: 'Unassigned') ?></span>
+                        <span class="text-sub c-address truncate-text" style="font-style: italic;">🏠 <?= htmlspecialchars($c->address ?: 'No address') ?></span>
                     </div>
                     <div style="text-align: right;">
                         <span style="font-size: 10px; color: <?= $isActive ? 'rgba(255,255,255,0.7)' : '#888' ?>;">Unpaid</span><br>
@@ -448,10 +452,17 @@
         items.forEach(item => {
             const name = item.querySelector('.c-name').innerText.toLowerCase();
             const contact = item.querySelector('.c-contact').innerText.toLowerCase();
+            const email = item.querySelector('.c-email') ? item.querySelector('.c-email').innerText.toLowerCase() : '';
+            const routeText = item.querySelector('.c-route') ? item.querySelector('.c-route').innerText.toLowerCase() : '';
+            const address = item.querySelector('.c-address') ? item.querySelector('.c-address').innerText.toLowerCase() : '';
             const route = item.getAttribute('data-route');
             const outstanding = parseFloat(item.getAttribute('data-outstanding'));
 
-            let matchesSearch = name.includes(query) || contact.includes(query);
+            let matchesSearch = name.includes(query) || 
+                                contact.includes(query) || 
+                                email.includes(query) || 
+                                routeText.includes(query) || 
+                                address.includes(query);
             let matchesRoute = routeFilter === "" || route === routeFilter;
             let matchesStatus = true;
 

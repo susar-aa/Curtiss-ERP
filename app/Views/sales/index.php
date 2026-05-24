@@ -236,21 +236,11 @@ $editingItems = $data['editing_items'] ?? [];
             <div class="qb-grid-top">
                 <div style="width: 300px;">
                     <div class="qb-title"><?= $inv ? 'Edit Invoice' : 'New Invoice' ?></div>
-                    <div class="qb-box">
+                    <div class="qb-box" style="position: relative;">
                         <div class="qb-box-header">Bill To</div>
-                        <select name="customer_id" id="customerSelect" class="qb-input" style="width: 100%; border:none; border-bottom:1px solid #ccc; font-weight:bold;" required onchange="updateBillTo()">
-                            <option value="">Select Customer...</option>
-                            <?php foreach($customers as $cust): ?>
-                                <option value="<?= $cust->id ?>" 
-                                        <?= ($inv && isset($inv->customer_id) && $inv->customer_id == $cust->id) ? 'selected' : '' ?>
-                                        data-address="<?= htmlspecialchars((string)($cust->address ?? '')) ?>"
-                                        data-phone="<?= htmlspecialchars((string)($cust->phone ?? '')) ?>"
-                                        data-mca="<?= htmlspecialchars((string)($cust->mca_name ?? $cust->territory ?? '')) ?>"
-                                        data-outstanding="<?= $cust->outstanding_balance ?? 0 ?>">
-                                    <?= htmlspecialchars((string)($cust->name ?? '')) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <input type="hidden" name="customer_id" id="customerIdInput" required>
+                        <input type="text" id="customerSearch" class="qb-input" style="width: 100%; border:none; border-bottom:1px solid #ccc; font-weight:bold; padding: 6px;" placeholder="🔍 Search Customer by Name, Route, Address..." onkeyup="filterCustomerSearch(event)" autocomplete="off" required>
+                        <ul id="customerSearchResults" class="search-results" style="width: 100%;"></ul>
                         <textarea id="billToAddress" class="qb-input" style="width: 100%; height: 60px; border:none; resize:none;" readonly placeholder="Customer address will appear here..."></textarea>
                     </div>
                     
@@ -265,7 +255,7 @@ $editingItems = $data['editing_items'] ?? [];
                     </div>
                     <div class="qb-box" style="width: 120px;">
                         <div class="qb-box-header">Invoice #</div>
-                        <input type="text" name="invoice_number" class="qb-input" style="width: 100%; border:none; text-align:center;" value="<?= $data['invoice_number'] ?>" <?= $inv ? 'readonly style="background:#eee;"' : '' ?> required>
+                        <input type="text" name="invoice_number" class="qb-input" style="width: 100%; border:none; text-align:center;" value="<?= htmlspecialchars((string)($data['invoice_number'] ?? '')) ?>" <?= $inv ? 'readonly style="background:#eee;"' : '' ?> required>
                     </div>
                 </div>
             </div>
@@ -454,33 +444,96 @@ $editingItems = $data['editing_items'] ?? [];
         <?php endforeach; ?>
     ];
 
-    function updateBillTo(isInit = false) {
-        const select = document.getElementById('customerSelect');
-        const selected = select.options[select.selectedIndex];
-        if(!selected || select.value === "") {
-            document.getElementById('billToAddress').value = '';
-            document.getElementById('customerOutstanding').style.display = 'none';
+    const customers = [
+        <?php foreach($customers as $c): ?>
+        {
+            id: "<?= $c->id ?>",
+            name: <?= json_encode((string)($c->name ?? '')) ?>,
+            phone: <?= json_encode((string)($c->phone ?? '')) ?>,
+            address: <?= json_encode((string)($c->address ?? '')) ?>,
+            mca: <?= json_encode((string)($c->mca_name ?? $c->territory ?? '')) ?>,
+            outstanding: <?= floatval($c->outstanding_balance ?? 0) ?>
+        },
+        <?php endforeach; ?>
+    ];
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    function filterCustomerSearch(e) {
+        const val = e.target.value.toLowerCase().trim();
+        const resList = document.getElementById('customerSearchResults');
+        resList.innerHTML = '';
+        if(!val) { resList.style.display = 'none'; return; }
+
+        const filtered = customers.filter(c => 
+            c.name.toLowerCase().includes(val) || 
+            c.phone.toLowerCase().includes(val) || 
+            c.mca.toLowerCase().includes(val) || 
+            c.address.toLowerCase().includes(val)
+        ).slice(0, 10);
+
+        if(filtered.length === 0) {
+            const li = document.createElement('li');
+            li.style.padding = '8px 10px';
+            li.style.color = '#888';
+            li.innerText = 'No customers found';
+            resList.appendChild(li);
+            resList.style.display = 'block';
             return;
         }
+
+        filtered.forEach(cust => {
+            const li = document.createElement('li');
+            li.style.padding = '8px 10px';
+            li.style.borderBottom = '1px solid #eee';
+            li.style.cursor = 'pointer';
+            li.style.display = 'flex';
+            li.style.flexDirection = 'column';
+            
+            li.innerHTML = `
+                <div style="width: 100%;">
+                    <strong style="font-size: 12px; color: #111;">${escapeHtml(cust.name)}</strong>
+                    <div style="font-size: 10px; color: #666; margin-top: 3px; line-height: 1.3;">
+                        ${cust.phone ? `📞 ${escapeHtml(cust.phone)}<br>` : ''}
+                        ${cust.mca ? `📍 Route: <strong>${escapeHtml(cust.mca)}</strong><br>` : ''}
+                        ${cust.address ? `<span style="font-style: italic; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px;">🏠 ${escapeHtml(cust.address)}</span>` : ''}
+                    </div>
+                </div>
+            `;
+            
+            li.onclick = () => {
+                selectCustomer(cust);
+            };
+            resList.appendChild(li);
+        });
+        resList.style.display = 'block';
+    }
+
+    function selectCustomer(cust) {
+        document.getElementById('customerIdInput').value = cust.id;
+        document.getElementById('customerSearch').value = cust.name;
+        document.getElementById('customerSearchResults').style.display = 'none';
         
-        document.getElementById('billToAddress').value = selected.getAttribute('data-address') || '';
+        document.getElementById('billToAddress').value = cust.address || '';
         
-        // Only override MCA and Phone with defaults if they are blank or if this is an active select change event (isInit === false)
         const mcaInput = document.getElementById('displayMca');
-        if(mcaInput && (!isInit || mcaInput.value === "")) {
-            mcaInput.value = selected.getAttribute('data-mca') || '';
+        if(mcaInput) {
+            mcaInput.value = cust.mca || '';
         }
         
         const phoneInput = document.getElementById('displayPhone');
-        if(phoneInput && (!isInit || phoneInput.value === "")) {
-            phoneInput.value = selected.getAttribute('data-phone') || '';
+        if(phoneInput) {
+            phoneInput.value = cust.phone || '';
         }
 
         // Handle the real-time outstanding balance
-        const outBal = parseFloat(selected.getAttribute('data-outstanding')) || 0;
+        const outBal = parseFloat(cust.outstanding) || 0;
         const outDiv = document.getElementById('customerOutstanding');
         
-        if (select.value !== "" && (outBal > 0.01 || outBal < -0.01)) {
+        if (cust.id !== "" && (outBal > 0.01 || outBal < -0.01)) {
             outDiv.style.display = 'block';
             if (outBal > 0) {
                 outDiv.style.background = '#ffebee';
@@ -542,6 +595,7 @@ $editingItems = $data['editing_items'] ?? [];
 
     document.addEventListener('click', function(e) {
         if(e.target.id !== 'itemSearch') { document.getElementById('searchResults').style.display = 'none'; }
+        if(e.target.id !== 'customerSearch') { document.getElementById('customerSearchResults').style.display = 'none'; }
     });
 
     // Validates the quantity typed by user against available stock
@@ -668,7 +722,13 @@ $editingItems = $data['editing_items'] ?? [];
 
     // RUN INITIALIZATION HOOK TO PRE-POPULATE THE FORM IN EDIT MODE
     document.addEventListener("DOMContentLoaded", function() {
-        updateBillTo(true); // Pass true to signal the initial page pre-population phase
+        <?php if ($inv && isset($inv->customer_id)): ?>
+            const initialCustomerId = "<?= $inv->customer_id ?>";
+            const initialCust = customers.find(c => c.id === initialCustomerId);
+            if (initialCust) {
+                selectCustomer(initialCust);
+            }
+        <?php endif; ?>
         
         <?php if (!empty($editingItems)): ?>
             <?php foreach ($editingItems as $index => $ei): ?>

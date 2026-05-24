@@ -2,8 +2,9 @@
 // ==========================================
 // FORM SAFETY & FALLBACK ENGINE
 // ==========================================
+$db = new Database();
 
-// Safely solve Line 39 Undefined Array Key Warning
+// Safely solve potential undefined variable warnings
 $title = $data['title'] ?? 'Product Catalog Form';
 $item = $data['item'] ?? null;
 
@@ -25,7 +26,7 @@ $unit = $item ? ($item->unit ?? 'pcs') : 'pcs';
 $status = $item ? ($item->status ?? 'active') : 'active';
 $sync_woo = $item ? ($item->sync_woo ?? '1') : '1';
 $image_path = $item ? ($item->image_path ?? '') : '';
-$weight = $item ? ($item->weight ?? '') : ''; // RESOLVED: Fixed the undefined $weight warning
+$weight = $item ? ($item->weight ?? '') : '';
 
 // Retrieve Relational Warehouse and Vendor variables
 $warehouse_id = $item ? ($item->warehouse_id ?? '') : '';
@@ -38,6 +39,20 @@ $form_action = $is_edit ? APP_URL . '/inventory/edit/' . $item_id : APP_URL . '/
 $categories = $data['categories'] ?? [];
 $vendors = $data['vendors'] ?? [];
 $warehouses = $data['warehouses'] ?? [];
+
+// Dynamic self-healing fetch of synced WooCommerce attributes and terms
+$synced_attributes = [];
+try {
+    $db->query("SELECT * FROM product_attributes ORDER BY name ASC");
+    $synced_attributes = $db->resultSet() ?: [];
+    foreach ($synced_attributes as $attr) {
+        $db->query("SELECT * FROM product_attribute_terms WHERE attribute_id = :id ORDER BY name ASC");
+        $db->bind(':id', $attr->id);
+        $attr->terms = $db->resultSet() ?: [];
+    }
+} catch (Exception $e) {
+    // Fail-safe empty array fallback
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -130,7 +145,7 @@ $warehouses = $data['warehouses'] ?? [];
                         <!-- Image Preview Slot -->
                         <div class="flex justify-center">
                             <div class="relative w-36 h-36 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shadow-inner">
-                                <img id="previewImage" src="<?php echo !empty($image_path) ? (filter_var($image_path, FILTER_VALIDATE_URL) ? $image_path : APP_URL . '/' . $image_path) : 'https://placehold.co/300?text=No+Product+Image'; ?>" class="object-cover w-full h-full">
+                                <img id="previewImage" src="<?php echo !empty($image_path) ? (filter_var($image_path, FILTER_VALIDATE_URL) ? $image_path : APP_URL . '/' . $image_path) : 'https://placehold.co/300?text=No+Product+Image'; ?>" class="object-cover w-full h-full" onerror="this.src='https://placehold.co/300?text=No+Product+Image'">
                                 <button type="button" id="removeImageBtn" class="absolute bottom-2 right-2 p-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow-md transition-colors text-xs hidden">
                                     <i class="fa-solid fa-trash-can"></i>
                                 </button>
@@ -169,7 +184,7 @@ $warehouses = $data['warehouses'] ?? [];
                         <!-- Product Status Option -->
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Catalog Status</label>
-                            <select name="status" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer">
+                            <select name="status" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-semibold">
                                 <option value="active" <?php echo $status === 'active' ? 'selected' : ''; ?>>Active / Published</option>
                                 <option value="draft" <?php echo $status === 'draft' ? 'selected' : ''; ?>>Draft Listing</option>
                                 <option value="inactive" <?php echo $status === 'inactive' ? 'selected' : ''; ?>>Suspended / Inactive</option>
@@ -246,49 +261,58 @@ $warehouses = $data['warehouses'] ?? [];
                     </div>
                 </div>
 
-                <!-- Section 4: Dynamic Variations Builder (Attributes system like before) -->
+                <!-- Section 4: Dynamic Synced WooCommerce Variations Builder -->
                 <div>
                     <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <i class="fa-solid fa-diagram-project text-primary-500 animate-pulse"></i> Attributes & Variation Manager
+                            <i class="fa-solid fa-diagram-project text-primary-500 animate-pulse"></i> WooCommerce Synced Attributes & Variations
                         </h3>
                         <div class="text-xs text-slate-400 italic">No stock inputs required (Managed via GRN/PO transactions)</div>
                     </div>
 
-                    <!-- Step-by-Step interactive builder panel -->
+                    <!-- Step-by-Step interactive builder panel linked with dynamic databases -->
                     <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200 mb-6 space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-                            <!-- 1. Selection Group -->
+                            <!-- 1. Database Synced Attribute Select Dropdown -->
                             <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">1. Select Variation Attribute</label>
-                                <select id="attrGroupSelect" onchange="handleGroupSelectChange()" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none cursor-pointer">
-                                    <option value="">-- Select Attribute Group --</option>
-                                    <option value="Color">Color (e.g. Red, Blue, Green)</option>
-                                    <option value="Size">Size (e.g. Small, Medium, Large)</option>
-                                    <option value="Pack">Pack Quantity (e.g. Box of 10, Pack of 50)</option>
-                                    <option value="Material">Material (e.g. Glass, Wooden, Steel)</option>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">1. Select WooCommerce Attribute</label>
+                                <select id="attrGroupSelect" onchange="handleAttributeSelectionChange()" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none cursor-pointer font-semibold">
+                                    <option value="">-- Choose Synced Attribute --</option>
+                                    <?php foreach ($synced_attributes as $attr): ?>
+                                        <option value="<?php echo $attr->id; ?>">
+                                            <?php echo htmlspecialchars($attr->name); ?> (pa_<?php echo htmlspecialchars($attr->slug); ?>)
+                                        </option>
+                                    <?php endforeach; ?>
                                     <option value="Custom">Custom Attribute Group...</option>
                                 </select>
                             </div>
 
-                            <!-- Custom Group Text Box -->
+                            <!-- Custom Group Text Box (Fallback option) -->
                             <div id="customGroupWrapper" class="hidden">
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Custom Group Name</label>
-                                <input type="text" id="customGroupName" placeholder="e.g. Style, Thickness" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-semibold">
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Custom Attribute Name</label>
+                                <input type="text" id="customGroupName" placeholder="e.g. Style, Size" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-semibold">
                             </div>
 
-                            <!-- Attribute value tags input -->
-                            <div id="attrValuesWrapper" class="md:col-span-2 hidden">
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">2. Enter Values (Press Enter or Add Comma to separate)</label>
+                            <!-- Custom Values Entry Field -->
+                            <div id="customValuesWrapper" class="md:col-span-2 hidden">
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Type custom options (Press Enter to separate)</label>
                                 <div class="relative">
                                     <i class="fa-solid fa-keyboard absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                                    <input type="text" id="attrValuesInput" placeholder="Type and hit Enter (e.g. Black, White, Matte)" class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none">
+                                    <input type="text" id="customValuesInput" placeholder="Type value and hit Enter (e.g. Black, White)" class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none">
+                                </div>
+                            </div>
+
+                            <!-- Informational Term Selection Field -->
+                            <div id="syncedTermsWrapper" class="md:col-span-2">
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">2. Click a synced term to add as variation</label>
+                                <div id="syncedTermsContainer" class="flex flex-wrap gap-2 bg-white/70 border border-slate-200 rounded-xl p-3 min-h-[42px] items-center text-slate-400 italic text-xs">
+                                    Select a synced attribute on the left to show available terms list.
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Rendered Interactive Attribute Tags -->
-                        <div id="attributeTagsContainer" class="flex flex-wrap gap-2 pt-2"></div>
+                        <!-- Rendered Interactive Custom Tags (Only shown if custom selected) -->
+                        <div id="attributeTagsContainer" class="flex flex-wrap gap-2 pt-2 hidden"></div>
                     </div>
 
                     <!-- Variations table list (No stock column) -->
@@ -455,9 +479,12 @@ $warehouses = $data['warehouses'] ?? [];
 
     <!-- Client side dynamic compressor, calculators, variations serializer scripts -->
     <script>
+        // WooCommerce Synced Attributes & Terms data set
+        const syncedAttributes = <?php echo json_encode($synced_attributes); ?>;
+
         // Variations Tracker State
         let variations = [];
-        let activeTags = [];
+        let activeCustomTags = [];
 
         /**
          * Dynamic Margin Profit calculation on form inputs
@@ -571,7 +598,6 @@ $warehouses = $data['warehouses'] ?? [];
                     let width = img.width;
                     let height = img.height;
 
-                    // Compression scale bounds limit dimensions to 1000px max
                     const max_size = 1000;
                     if (width > height) {
                         if (width > max_size) {
@@ -591,7 +617,6 @@ $warehouses = $data['warehouses'] ?? [];
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    // Export dynamically to low footprint high-quality JPEG 0.7
                     const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
                     
                     setTimeout(() => {
@@ -619,58 +644,81 @@ $warehouses = $data['warehouses'] ?? [];
         });
 
         // ==========================================
-        // DYNAMIC VARIATIONS & ATTRIBUTES SYSTEM
+        // DYNAMIC SYNCED ATTRIBUTES & VARIATIONS
         // ==========================================
         const selectGroup = document.getElementById('attrGroupSelect');
         const customGroupWrapper = document.getElementById('customGroupWrapper');
-        const attrValuesWrapper = document.getElementById('attrValuesWrapper');
-        const valuesInput = document.getElementById('attrValuesInput');
+        const customValuesWrapper = document.getElementById('customValuesWrapper');
+        const customValuesInput = document.getElementById('customValuesInput');
+        const syncedTermsWrapper = document.getElementById('syncedTermsWrapper');
+        const syncedTermsContainer = document.getElementById('syncedTermsContainer');
         const tagsContainer = document.getElementById('attributeTagsContainer');
         const tableBody = document.getElementById('variationsTableBody');
         const noVariationsRow = document.getElementById('noVariationsRow');
 
         /**
-         * Handle attribute selection changes
+         * Handle Synced Attribute Selection Changes
          */
-        function handleGroupSelectChange() {
+        function handleAttributeSelectionChange() {
             const val = selectGroup.value;
+
+            // Reset layouts
+            customGroupWrapper.classList.add('hidden');
+            customValuesWrapper.classList.add('hidden');
+            tagsContainer.classList.add('hidden');
+            syncedTermsWrapper.classList.add('hidden');
+            syncedTermsContainer.innerHTML = '';
+            activeCustomTags = [];
+
             if (val === '') {
-                customGroupWrapper.classList.add('hidden');
-                attrValuesWrapper.classList.add('hidden');
-                tagsContainer.classList.add('hidden');
+                syncedTermsWrapper.classList.remove('hidden');
+                syncedTermsContainer.innerHTML = 'Select a synced attribute on the left to show available terms list.';
             } else if (val === 'Custom') {
                 customGroupWrapper.classList.remove('hidden');
-                attrValuesWrapper.classList.remove('hidden');
+                customValuesWrapper.classList.remove('hidden');
                 tagsContainer.classList.remove('hidden');
+                renderCustomTags();
             } else {
-                customGroupWrapper.classList.add('hidden');
-                attrValuesWrapper.classList.remove('hidden');
-                tagsContainer.classList.remove('hidden');
+                syncedTermsWrapper.classList.remove('hidden');
+                
+                // Fetch attribute terms from matched local synced array
+                const attrObj = syncedAttributes.find(a => a.id == val);
+                if (attrObj && attrObj.terms && attrObj.terms.length > 0) {
+                    attrObj.terms.forEach(term => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = "px-3 py-1.5 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer";
+                        btn.innerHTML = `<i class="fa-solid fa-plus-circle text-[10px]"></i> Add ${escapeHtml(term.name)}`;
+                        btn.onclick = () => {
+                            addVariationRow({ attribute: term.name });
+                        };
+                        syncedTermsContainer.appendChild(btn);
+                    });
+                } else {
+                    syncedTermsContainer.innerHTML = '<span class="text-amber-600 font-semibold"><i class="fa-solid fa-circle-exclamation mr-1"></i> No terms exist for this attribute. Please sync attributes or add a Custom Attribute group.</span>';
+                }
             }
-            // Clear current tag states
-            activeTags = [];
-            renderTags();
         }
 
-        // Listener for tag enter keypress
-        valuesInput.addEventListener('keydown', (e) => {
+        // Listener for custom tags entry
+        customValuesInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ',') {
                 e.preventDefault();
-                const rawVal = valuesInput.value.replace(',', '').trim();
-                if (rawVal !== '' && !activeTags.includes(rawVal)) {
-                    activeTags.push(rawVal);
-                    renderTags();
-                    valuesInput.value = '';
+                const rawVal = customValuesInput.value.replace(',', '').trim();
+                if (rawVal !== '' && !activeCustomTags.includes(rawVal)) {
+                    activeCustomTags.push(rawVal);
+                    renderCustomTags();
+                    customValuesInput.value = '';
                 }
             }
         });
 
         /**
-         * Renders clickable attribute values as tags
+         * Renders custom clickable attributes values as tags
          */
-        function renderTags() {
+        function renderCustomTags() {
             tagsContainer.innerHTML = '';
-            activeTags.forEach(tag => {
+            activeCustomTags.forEach(tag => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = "px-3 py-1.5 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer";
@@ -692,7 +740,7 @@ $warehouses = $data['warehouses'] ?? [];
         }
 
         /**
-         * Add Variation Product row (Stock column completely removed)
+         * Appends an interactive variation item row
          */
         function addVariationRow(existing = null) {
             const index = variations.length;
