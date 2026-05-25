@@ -4,6 +4,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 ?>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
     /* 3-Pane Layout System */
     .app-workspace { display: flex; height: calc(100vh - 80px); background: #f4f5f7; border-radius: 8px; overflow: hidden; border: 1px solid var(--mac-border); position: relative;}
@@ -69,12 +71,34 @@ error_reporting(E_ALL);
     .modal-body input { width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px;}
     .modal-body input:focus { border-color: #0066cc; outline: none; }
     .modal-footer { padding: 15px 20px; background: #f5f5f5; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 10px;}
+
+    /* Route path map */
+    .pane-map-section { border-top: 1px solid var(--mac-border); display: flex; flex-direction: column; min-height: 280px; max-height: 42%; background: #eef1f4; }
+    @media (prefers-color-scheme: dark) { .pane-map-section { background: #151520; } }
+    .map-section-header { padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; background: var(--surface); border-bottom: 1px solid var(--mac-border); flex-shrink: 0; }
+    .map-section-header h4 { margin: 0; font-size: 13px; color: var(--text-dark, #333); }
+    .map-legend { display: flex; gap: 12px; font-size: 11px; color: #666; flex-wrap: wrap; }
+    .map-legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .legend-start { background: #2e7d32; }
+    .legend-invoice { background: #0066cc; }
+    .legend-end { background: #c62828; }
+    #routePathMap { flex: 1; min-height: 220px; width: 100%; }
+    .map-empty-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.85); color: #666; font-size: 13px; font-weight: 600; text-align: center; padding: 20px; z-index: 500; pointer-events: none; }
+    @media (prefers-color-scheme: dark) { .map-empty-overlay { background: rgba(18,18,18,0.9); color: #aaa; } }
+    .map-wrap { position: relative; flex: 1; min-height: 220px; }
+    .path-step-list { max-height: 72px; overflow-y: auto; padding: 6px 20px 10px; font-size: 11px; color: #555; background: var(--surface); border-top: 1px solid var(--mac-border); flex-shrink: 0; }
+    .path-step-list ol { margin: 0; padding-left: 18px; }
+    .path-step-list li { margin-bottom: 2px; }
+    .path-step-start { color: #2e7d32; font-weight: bold; }
+    .path-step-invoice { color: #0066cc; }
+    .path-step-end { color: #c62828; font-weight: bold; }
 </style>
 
 <div class="header-actions" style="margin-bottom: 15px;">
     <div>
         <h2 style="margin: 0 0 5px 0;">Rep Route Tracking & Audits</h2>
-        <p style="margin: 0; color: #666; font-size: 14px;">Click a route to view its bills. Click a bill to view the invoice.</p>
+        <p style="margin: 0; color: #666; font-size: 14px;">Click a route to view bills and the GPS path from day start through each invoice to day end.</p>
     </div>
 </div>
 
@@ -156,6 +180,25 @@ error_reporting(E_ALL);
                 Loading Bills... ⏳
             </div>
         </div>
+
+        <!-- Route GPS path map -->
+        <div class="pane-map-section" id="mapSection" style="display:none;">
+            <div class="map-section-header">
+                <h4>📍 Route Path <span id="pathPointCount" style="font-weight:normal; color:#888;"></span></h4>
+                <div class="map-legend">
+                    <span><i class="legend-dot legend-start"></i> Day start</span>
+                    <span><i class="legend-dot legend-invoice"></i> Invoice</span>
+                    <span><i class="legend-dot legend-end"></i> Day end</span>
+                </div>
+            </div>
+            <div class="map-wrap">
+                <div id="mapEmptyOverlay" class="map-empty-overlay">Select a route to load its path.</div>
+                <div id="routePathMap"></div>
+            </div>
+            <div class="path-step-list" id="pathStepList" style="display:none;">
+                <ol id="pathStepOl"></ol>
+            </div>
+        </div>
     </div>
 
     <!-- Right Pane: Invoice Slide-Out Viewer -->
@@ -232,6 +275,143 @@ error_reporting(E_ALL);
 
 <script>
     let currentRouteId = null;
+    let routeMap = null;
+    let routeMapLayers = [];
+
+    const pathGreenIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34]
+    });
+    const pathRedIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34]
+    });
+    const pathBlueIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34]
+    });
+
+    function initRoutePathMap() {
+        if (routeMap !== null) return;
+        routeMap = L.map('routePathMap', { zoomControl: true }).setView([7.8731, 80.7718], 8);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(routeMap);
+    }
+
+    function clearRoutePathMap() {
+        routeMapLayers.forEach(layer => routeMap.removeLayer(layer));
+        routeMapLayers = [];
+    }
+
+    function formatPathTime(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function loadRoutePath(routeId) {
+        document.getElementById('mapSection').style.display = 'flex';
+        document.getElementById('mapEmptyOverlay').style.display = 'flex';
+        document.getElementById('mapEmptyOverlay').innerText = 'Loading route path...';
+        document.getElementById('pathStepList').style.display = 'none';
+
+        initRoutePathMap();
+        clearRoutePathMap();
+
+        fetch('<?= APP_URL ?>/RepTracking/api_get_route_path/' + routeId)
+            .then(r => r.json())
+            .then(data => {
+                if (data.status !== 'success' || !data.path) {
+                    document.getElementById('mapEmptyOverlay').innerText = 'Could not load route path.';
+                    return;
+                }
+                renderRoutePath(data.path);
+            })
+            .catch(() => {
+                document.getElementById('mapEmptyOverlay').innerText = 'Failed to load route path.';
+            });
+    }
+
+    function renderRoutePath(path) {
+        const wps = path.waypoints || [];
+        document.getElementById('pathPointCount').innerText = wps.length
+            ? `(${wps.length} point${wps.length === 1 ? '' : 's'})`
+            : '(no GPS data)';
+
+        const stepOl = document.getElementById('pathStepOl');
+        stepOl.innerHTML = '';
+
+        if (wps.length === 0) {
+            document.getElementById('mapEmptyOverlay').style.display = 'flex';
+            document.getElementById('mapEmptyOverlay').innerHTML =
+                'No GPS points recorded for this route.<br><span style="font-weight:normal;font-size:12px;">Start day, invoices, and end day must capture location on the rep app.</span>';
+            document.getElementById('pathStepList').style.display = 'none';
+            setTimeout(() => routeMap.invalidateSize(), 100);
+            return;
+        }
+
+        document.getElementById('mapEmptyOverlay').style.display = 'none';
+        document.getElementById('pathStepList').style.display = 'block';
+
+        const latlngs = [];
+        wps.forEach((wp, idx) => {
+            const latlng = [wp.lat, wp.lng];
+            latlngs.push(latlng);
+
+            let icon = pathBlueIcon;
+            let stepClass = 'path-step-invoice';
+            let stepLabel = '';
+
+            if (wp.type === 'start') {
+                icon = pathGreenIcon;
+                stepClass = 'path-step-start';
+                stepLabel = `Day Start — ${formatPathTime(wp.time)}`;
+            } else if (wp.type === 'end') {
+                icon = pathRedIcon;
+                stepClass = 'path-step-end';
+                stepLabel = `Day End — ${formatPathTime(wp.time)}`;
+            } else {
+                stepLabel = `${wp.sequence}. ${wp.label} — ${wp.detail} (${formatPathTime(wp.time)})`;
+            }
+
+            const popupHtml = wp.type === 'invoice'
+                ? `<strong>${wp.label}</strong><br>${wp.detail}<br>${formatPathTime(wp.time)}<br>Rs ${parseFloat(wp.amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`
+                : `<strong>${wp.label}</strong><br>${wp.detail || ''}<br>${formatPathTime(wp.time)}`;
+
+            const marker = L.marker(latlng, { icon }).bindPopup(popupHtml);
+            marker.addTo(routeMap);
+            routeMapLayers.push(marker);
+
+            const li = document.createElement('li');
+            li.className = stepClass;
+            li.textContent = stepLabel || wp.label;
+            if (wp.type === 'invoice' && wp.id) {
+                li.style.cursor = 'pointer';
+                li.title = 'Click to preview invoice';
+                li.onclick = () => openInvoiceSlider(wp.id);
+            }
+            stepOl.appendChild(li);
+        });
+
+        if (latlngs.length >= 2) {
+            const line = L.polyline(latlngs, {
+                color: '#0066cc',
+                weight: 4,
+                opacity: 0.75,
+                dashArray: latlngs.length > 2 ? null : '8, 8'
+            });
+            line.addTo(routeMap);
+            routeMapLayers.push(line);
+        }
+
+        const bounds = L.latLngBounds(latlngs);
+        routeMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+        setTimeout(() => routeMap.invalidateSize(), 150);
+    }
 
     // --- 1. Master/Left Pane Logic ---
     function loadRouteDetails(routeId, el) {
@@ -257,6 +437,8 @@ error_reporting(E_ALL);
 
         // Close slider if open
         closeInvoiceSlider();
+
+        loadRoutePath(routeId);
 
         // AJAX Fetch Bills
         fetch('<?= APP_URL ?>/RepTracking/api_get_route_details/' + routeId)

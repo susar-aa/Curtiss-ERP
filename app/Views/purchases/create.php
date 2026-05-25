@@ -21,6 +21,7 @@ $actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "cre
     /* Enhance optgroup styling in standard browsers */
     optgroup { font-weight: bold; color: #0066cc; background: rgba(0,102,204,0.05); }
     option { font-weight: normal; color: #333; background: #fff;}
+    .line-row-num { text-align: center; color: #888; font-weight: bold; font-size: 12px; vertical-align: middle; width: 40px; }
 </style>
 
 <div class="card">
@@ -67,6 +68,7 @@ $actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "cre
         <table class="po-table" id="linesTable">
             <thead>
                 <tr>
+                    <th class="line-row-num">#</th>
                     <th style="width: 50%;">Product / Variation</th>
                     <th style="width: 15%; text-align:right;">Qty</th>
                     <th style="width: 15%; text-align:right;">Unit Cost (Rs:)</th>
@@ -77,7 +79,7 @@ $actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "cre
             <tbody id="poBody">
                 <?php if($isEdit || !empty($data['prefilled_items'])): ?>
                     <?php $loopItems = $isEdit ? $data['items'] : $data['prefilled_items']; ?>
-                    <?php foreach($loopItems as $item): ?>
+                    <?php $lineNum = 1; foreach($loopItems as $item): ?>
                         
                         <?php 
                             // Determine the exact value string to pre-select
@@ -96,6 +98,7 @@ $actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "cre
                         ?>
 
                         <tr>
+                            <td class="line-row-num"><?= $lineNum++ ?></td>
                             <td>
                                 <select name="item_selection[]" class="item-select" onchange="autoFillSelection(this)" required>
                                     <option value="">Select Product...</option>
@@ -129,6 +132,7 @@ $actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "cre
                 <?php else: ?>
                     <!-- Standard Blank Row -->
                     <tr>
+                        <td class="line-row-num">1</td>
                         <td>
                             <select name="item_selection[]" class="item-select" onchange="autoFillSelection(this)" required>
                                 <option value="">Select Product...</option>
@@ -237,10 +241,18 @@ $actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "cre
         calcTotals();
     }
 
+    function renumberLineRows(tbodyId) {
+        document.querySelectorAll(`#${tbodyId} tr`).forEach((tr, i) => {
+            const cell = tr.querySelector('.line-row-num');
+            if (cell) cell.textContent = i + 1;
+        });
+    }
+
     function addRow() {
         const tbody = document.getElementById('poBody');
         const tr = document.createElement('tr');
         tr.innerHTML = `
+            <td class="line-row-num"></td>
             <td>
                 <select name="item_selection[]" class="item-select" onchange="autoFillSelection(this)" required>${catalogOptions}</select>
                 <input type="hidden" name="desc[]" class="desc-hidden">
@@ -251,10 +263,15 @@ $actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "cre
             <td><button type="button" class="btn" style="padding: 4px 8px; font-size:10px; background:#c62828; color:#fff;" onclick="removeRow(this)">X</button></td>
         `;
         tbody.appendChild(tr);
-        filterProducts(); // Apply current vendor filter
+        filterProducts();
+        renumberLineRows('poBody');
     }
 
-    function removeRow(btn) { btn.closest('tr').remove(); calcTotals(); }
+    function removeRow(btn) {
+        btn.closest('tr').remove();
+        renumberLineRows('poBody');
+        calcTotals();
+    }
 
     function calcTotals() {
         let grandTotal = 0;
@@ -273,5 +290,6 @@ $actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "cre
     document.addEventListener("DOMContentLoaded", () => {
         calcTotals();
         filterProducts();
+        renumberLineRows('poBody');
     });
 </script>

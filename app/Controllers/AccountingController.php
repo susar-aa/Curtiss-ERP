@@ -69,11 +69,7 @@ class AccountingController extends Controller {
                 else { $data['error'] = 'Failed to update account.'; }
             }
             elseif ($_POST['action'] == 'delete_account') {
-                if ($this->coaModel->deleteAccount($_POST['account_id'])) { 
-                    $data['success'] = 'Account deleted successfully.'; 
-                } else { 
-                    $data['error'] = 'Failed to delete account. It may have ledger transactions linked to it.'; 
-                }
+                $data['error'] = 'Audit Trail Protection: General Ledger accounts cannot be deleted to preserve financial audit history.';
             }
         }
 
@@ -81,6 +77,84 @@ class AccountingController extends Controller {
         $data['accounts'] = $allAccounts;
         $data['main_accounts'] = array_filter($allAccounts, function($a) { return empty($a->parent_id); });
         
+        $this->view('layouts/main', $data);
+    }
+
+    /**
+     * Reusable, filterable Account Ledger History view
+     */
+    public function history($id = null) {
+        $allAccounts = $this->coaModel->getAccounts();
+        
+        if (!$id && !empty($allAccounts)) {
+            $id = $allAccounts[0]->id;
+        }
+
+        $selectedAccount = null;
+        if ($id) {
+            $selectedAccount = $this->coaModel->getAccountById($id);
+        }
+
+        $transactions = [];
+        $priorBalance = 0.00;
+        $startDate = $_GET['start_date'] ?? '';
+        $endDate = $_GET['end_date'] ?? '';
+        $quickRange = $_GET['quick_range'] ?? '';
+
+        if ($selectedAccount) {
+            // Handle Quick Date Ranges
+            if (!empty($quickRange)) {
+                $today = date('Y-m-d');
+                if ($quickRange === 'today') {
+                    $startDate = $today;
+                    $endDate = $today;
+                } elseif ($quickRange === 'last_week') {
+                    $startDate = date('Y-m-d', strtotime('-7 days'));
+                    $endDate = $today;
+                } elseif ($quickRange === 'last_month') {
+                    $startDate = date('Y-m-d', strtotime('-30 days'));
+                    $endDate = $today;
+                }
+            }
+
+            // Calculate Prior Balance (for starting running total in ledger)
+            if (!empty($startDate)) {
+                $priorSum = $this->coaModel->getPriorBalance($id, $startDate);
+                $pDeb = floatval($priorSum->total_debit ?? 0);
+                $pCred = floatval($priorSum->total_credit ?? 0);
+
+                if (in_array($selectedAccount->account_type, ['Asset', 'Expense'])) {
+                    $priorBalance = $pDeb - $pCred;
+                } else {
+                    $priorBalance = $pCred - $pDeb;
+                }
+            }
+
+            // Fetch filtered ledger lines
+            $filters = [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'search' => trim($_GET['search'] ?? ''),
+                'tx_type' => $_GET['tx_type'] ?? 'all'
+            ];
+            $transactions = $this->coaModel->getAccountHistory($id, $filters);
+        }
+
+        $data = [
+            'title' => 'Account Ledger History',
+            'content_view' => 'accounting/history',
+            'all_accounts' => $allAccounts,
+            'selected_account' => $selectedAccount,
+            'transactions' => $transactions,
+            'prior_balance' => $priorBalance,
+            'selected_id' => $id,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'quick_range' => $quickRange,
+            'search' => $_GET['search'] ?? '',
+            'tx_type' => $_GET['tx_type'] ?? 'all'
+        ];
+
         $this->view('layouts/main', $data);
     }
 

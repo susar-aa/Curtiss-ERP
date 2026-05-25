@@ -120,6 +120,9 @@ $totalOutstanding = $billed - $paid - $credited;
                     <div><strong>Invoice No:</strong> <?= htmlspecialchars($data['invoice']->invoice_number) ?></div>
                     <div><strong>Date:</strong> <?= date('d/m/Y', strtotime($data['invoice']->invoice_date)) ?></div>
                     <div><strong>Due Date:</strong> <?= date('d/m/Y', strtotime($data['invoice']->due_date)) ?></div>
+                    <?php if(!empty($data['invoice']->cheque_date)): ?>
+                        <div><strong>Cheque Date:</strong> <?= date('d/m/Y', strtotime($data['invoice']->cheque_date)) ?></div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -144,6 +147,7 @@ $totalOutstanding = $billed - $paid - $credited;
         <table class="items">
             <thead>
                 <tr>
+                    <th style="width: 40px;">#</th>
                     <th>Description</th>
                     <th class="num" style="width: 10%;">Qty</th>
                     <th class="num" style="width: 15%;">Unit Price</th>
@@ -152,8 +156,9 @@ $totalOutstanding = $billed - $paid - $credited;
                 </tr>
             </thead>
             <tbody>
-                <?php foreach($data['items'] as $item): ?>
+                <?php $rowNum = 1; foreach($data['items'] as $item): ?>
                 <tr>
+                    <td style="text-align:center; color:#888;"><?= $rowNum++ ?></td>
                     <td><?= htmlspecialchars($item->description) ?></td>
                     <td class="num"><?= number_format($item->quantity, 0) ?></td>
                     <td class="num"><?= number_format($item->unit_price, 2) ?></td>

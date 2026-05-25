@@ -20,6 +20,12 @@ class Database {
             $this->dbh = new PDO($dsn, $this->user, $this->pass, $options);
         } catch (PDOException $e) {
             $this->error = $e->getMessage();
+            // Return JSON error if this is an AJAX request
+            if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Database connection failed']);
+                exit;
+            }
             die("Database Connection Failed: " . $this->error . "<br><br>Make sure you have created the 'curtiss_erp' database in phpMyAdmin!");
         }
     }
@@ -74,7 +80,14 @@ class Database {
     }
 
     public function rollBack() {
-        return $this->dbh->rollBack();
+        if ($this->dbh->inTransaction()) {
+            return $this->dbh->rollBack();
+        }
+        return false;
+    }
+
+    public function inTransaction() {
+        return $this->dbh->inTransaction();
     }
 
     public function lastInsertId() {

@@ -183,6 +183,9 @@ class Delivery {
             $this->db->bind(':route_id', $delivery->rep_route_id);
             $invoices = $this->db->resultSet();
 
+            require_once '../app/Models/FIFO.php';
+            $fifo = new FIFO();
+
             foreach ($invoices as $invoice) {
                 $this->db->query("SELECT * FROM invoice_items WHERE invoice_id = :iid");
                 $this->db->bind(':iid', $invoice->id);
@@ -229,6 +232,9 @@ class Delivery {
                                 $this->db->bind(':id', $varId);
                                 $this->db->execute();
                             }
+
+                            // Deplete via FIFO batches
+                            $fifo->depleteStock($itemId, $varId, $qty, $item->id, null);
                         }
                         $this->db->query("UPDATE invoices SET stock_status = 'deducted' WHERE id = :iid");
                         $this->db->bind(':iid', $invoice->id);

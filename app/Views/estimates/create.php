@@ -56,6 +56,7 @@
         <table class="estimate-table" id="linesTable">
             <thead>
                 <tr>
+                    <th style="width:40px;">#</th>
                     <th style="width: 50%;">Product / Service</th>
                     <th style="width: 15%; text-align:right;">Qty</th>
                     <th style="width: 15%; text-align:right;">Price (Rs:)</th>
@@ -65,6 +66,7 @@
             </thead>
             <tbody id="estimateBody">
                 <tr>
+                    <td class="line-row-num" style="text-align:center; color:#888; font-weight:bold;">1</td>
                     <td>
                         <select name="desc[]" onchange="autoFillPrice(this)" required>
                             <option value="">Select Product...</option>
@@ -114,10 +116,18 @@
         calcTotals();
     }
 
+    function renumberLineRows(tbodyId) {
+        document.querySelectorAll(`#${tbodyId} tr`).forEach((tr, i) => {
+            const cell = tr.querySelector('.line-row-num');
+            if (cell) cell.textContent = i + 1;
+        });
+    }
+
     function addRow() {
         const tbody = document.getElementById('estimateBody');
         const tr = document.createElement('tr');
         tr.innerHTML = `
+            <td class="line-row-num" style="text-align:center; color:#888; font-weight:bold;"></td>
             <td><select name="desc[]" onchange="autoFillPrice(this)" required>${catalogOptions}</select></td>
             <td><input type="number" name="qty[]" step="1" min="1" value="1" onchange="calcTotals()" required></td>
             <td><input type="number" name="price[]" step="0.01" min="0" value="0.00" onchange="calcTotals()" required></td>
@@ -125,9 +135,14 @@
             <td><button type="button" class="btn btn-danger" style="padding: 4px 8px; font-size:10px;" onclick="removeRow(this)">X</button></td>
         `;
         tbody.appendChild(tr);
+        renumberLineRows('estimateBody');
     }
 
-    function removeRow(btn) { btn.closest('tr').remove(); calcTotals(); }
+    function removeRow(btn) {
+        btn.closest('tr').remove();
+        renumberLineRows('estimateBody');
+        calcTotals();
+    }
 
     function calcTotals() {
         let grandTotal = 0;

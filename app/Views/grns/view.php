@@ -56,6 +56,9 @@
                 <div style="font-size: 14px;">
                     <strong>GRN Number:</strong> <?= htmlspecialchars($data['grn']->grn_number) ?><br>
                     <strong>Date Received:</strong> <?= date('F j, Y', strtotime($data['grn']->grn_date)) ?><br>
+                    <?php if(!empty($data['grn']->receipt_number)): ?>
+                        <strong>Supplier Invoice:</strong> <?= htmlspecialchars($data['grn']->receipt_number) ?><br>
+                    <?php endif; ?>
                     <?php if($data['grn']->po_number): ?>
                         <strong>PO Reference:</strong> <?= htmlspecialchars($data['grn']->po_number) ?>
                     <?php endif; ?>
@@ -76,21 +79,55 @@
             </div>
         </div>
 
+        <?php
+        // Enrich GRN items with pricing data from items table
+        $db = new Database();
+        foreach ($data['items'] as $grnItem) {
+            $grnItem->retail_price = 0;
+            $grnItem->wholesale_price = 0;
+            if (!empty($grnItem->item_id)) {
+                $db->query("SELECT price, wholesale_price FROM items WHERE id = :id");
+                $db->bind(':id', $grnItem->item_id);
+                $itemPrices = $db->single();
+                if ($itemPrices) {
+                    $grnItem->retail_price = floatval($itemPrices->price ?? 0);
+                    $grnItem->wholesale_price = floatval($itemPrices->wholesale_price ?? 0);
+                }
+            }
+        }
+        ?>
         <table class="items">
             <thead>
                 <tr>
+                    <th style="width: 30px;">#</th>
                     <th>Item / Variation Description</th>
-                    <th class="num">Qty Received</th>
+                    <th class="num">Qty</th>
+                    <th class="num">Unit Cost</th>
+                    <th class="num" style="color: #1565c0;">Retail Price</th>
+                    <th class="num" style="color: #7b1fa2;">Wholesale B2B</th>
+                    <th class="num">Line Total</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach($data['items'] as $item): ?>
+                <?php $rowNum = 1; $grandTotal = 0; foreach($data['items'] as $item): ?>
+                <?php $lineTotal = floatval($item->quantity) * floatval($item->unit_cost); $grandTotal += $lineTotal; ?>
                 <tr>
+                    <td style="text-align:center; color:#888;"><?= $rowNum++ ?></td>
                     <td><strong style="color:#2e7d32;">✓</strong> <?= htmlspecialchars($item->description) ?></td>
                     <td class="num" style="font-weight:bold;"><?= number_format($item->quantity, 0) ?></td>
+                    <td class="num"><?= number_format($item->unit_cost, 2) ?></td>
+                    <td class="num" style="color: #1565c0;"><?= number_format($item->retail_price, 2) ?></td>
+                    <td class="num" style="color: #7b1fa2; font-weight: bold;"><?= number_format($item->wholesale_price, 2) ?></td>
+                    <td class="num" style="font-weight:bold;"><?= number_format($lineTotal, 2) ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
+            <tfoot>
+                <tr style="border-top: 2px solid #2e7d32;">
+                    <td colspan="6" style="text-align: right; font-weight: bold; padding: 12px;">Grand Total (Cost):</td>
+                    <td class="num" style="font-weight: bold; font-size: 16px; color: #2e7d32;"><?= number_format($grandTotal, 2) ?></td>
+                </tr>
+            </tfoot>
         </table>
 
         <?php if(!empty($data['grn']->notes)): ?>

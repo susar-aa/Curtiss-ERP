@@ -196,9 +196,13 @@
                                 <td>
                                     <strong><?= $l->type ?></strong>
                                     
-                                    <!-- NEW: Clickable Invoice Link Logic -->
+                                    <!-- Clickable Link Logic for Invoices and Credit/Return Notes -->
                                     <?php if($l->type == 'Invoice'): ?>
                                         <a href="<?= APP_URL ?>/sales/show/<?= $l->id ?>" target="_blank" style="color:#0066cc; font-size: 11px; margin-left: 5px; font-weight:bold; text-decoration:none;">
+                                            <?= htmlspecialchars($l->ref) ?> ↗
+                                        </a>
+                                    <?php elseif($l->type == 'Credit Note'): ?>
+                                        <a href="<?= APP_URL ?>/creditnote/show/<?= $l->id ?>" target="_blank" style="color:#ff3b30; font-size: 11px; margin-left: 5px; font-weight:bold; text-decoration:none;">
                                             <?= htmlspecialchars($l->ref) ?> ↗
                                         </a>
                                     <?php else: ?>

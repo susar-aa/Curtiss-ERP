@@ -129,6 +129,7 @@ class SalesController extends Controller {
         $data = [
             'title' => 'Create Bill & Invoice',
             'items' => $items,
+            'catalog_items' => $items,
             'invoice_number' => $invoiceNumber
         ];
         $this->view('sales/index', $data);
@@ -138,118 +139,138 @@ class SalesController extends Controller {
      * Process and store invoices
      * Enforces the Wholesale Price inside calculations and persists the data.
      */
+    /**
+     * Process and store invoices
+     * Enforces the Wholesale Price inside calculations and persists the data using the robust ledger engine.
+     */
     public function store() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
             $invoiceNumber = trim($_POST['invoice_number'] ?? '');
-            $customerName = trim($_POST['customer_name'] ?? 'Walk-In Customer');
-            $customerPhone = trim($_POST['customer_phone'] ?? '');
-            $discount = floatval($_POST['discount'] ?? 0.00);
-
-            // Fetch product and quantity arrays from post request
-            $itemIds = $_POST['item_id'] ?? [];
+            $customerId = intval($_POST['customer_id'] ?? 0);
+            
+            $itemSelections = $_POST['item_selection'] ?? [];
             $qtys = $_POST['qty'] ?? [];
+            $descs = $_POST['desc'] ?? [];
+            $prices = $_POST['price'] ?? [];
+            $discVals = $_POST['item_discount_val'] ?? [];
+            $discTypes = $_POST['item_discount_type'] ?? [];
 
-            if (empty($itemIds)) {
+            if (empty($itemSelections)) {
                 $_SESSION['flash_error'] = "Invoice creation failed: Please select at least one item to bill.";
                 header('Location: ' . APP_URL . '/sales/create');
                 exit;
             }
 
-            try {
-                $this->db->beginTransaction();
+            // 1. Resolve Accounts Receivable (AR) Account
+            $arAccountId = null;
+            if (!empty($_POST['ar_account'])) {
+                $arAccountId = intval($_POST['ar_account']);
+            } else {
+                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' AND (account_name LIKE '%Receivable%' OR account_code LIKE '1100%') LIMIT 1");
+                $arRow = $this->db->single();
+                $arAccountId = $arRow ? $arRow->id : null;
+            }
 
-                $subtotal = 0.00;
-                $invoiceItemsPayload = [];
+            // 2. Resolve Revenue Account
+            $revenueAccountId = null;
+            if (!empty($_POST['revenue_account'])) {
+                $revenueAccountId = intval($_POST['revenue_account']);
+            } else {
+                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' AND (account_name LIKE '%Sales%' OR account_name LIKE '%Revenue%' OR account_code LIKE '4000%') LIMIT 1");
+                $revRow = $this->db->single();
+                $revenueAccountId = $revRow ? $revRow->id : null;
+            }
 
-                foreach ($itemIds as $index => $itemId) {
-                    $qty = intval($qtys[$index] ?? 1);
-                    
-                    // Fetch details from model
-                    $item = $this->itemModel->getItemById($itemId);
-                    if ($item) {
-                        // Enforce wholesale pricing check with recursive retail fallbacks
-                        $price = 0.00;
-                        if (is_object($item)) {
-                            if (isset($item->wholesale_price) && floatval($item->wholesale_price) > 0) {
-                                $price = floatval($item->wholesale_price);
-                            } elseif (isset($item->selling_price) && floatval($item->selling_price) > 0) {
-                                $price = floatval($item->selling_price);
-                            } elseif (isset($item->price) && floatval($item->price) > 0) {
-                                $price = floatval($item->price);
-                            } elseif (isset($item->regular_price) && floatval($item->regular_price) > 0) {
-                                $price = floatval($item->regular_price);
-                            }
-                        } elseif (is_array($item)) {
-                            if (isset($item['wholesale_price']) && floatval($item['wholesale_price']) > 0) {
-                                $price = floatval($item['wholesale_price']);
-                            } elseif (isset($item['selling_price']) && floatval($item['selling_price']) > 0) {
-                                $price = floatval($item['selling_price']);
-                            } elseif (isset($item['price']) && floatval($item['price']) > 0) {
-                                $price = floatval($item['price']);
-                            } elseif (isset($item['regular_price']) && floatval($item['regular_price']) > 0) {
-                                $price = floatval($item['regular_price']);
-                            }
-                        }
-
-                        $lineTotal = $price * $qty;
-                        $subtotal += $lineTotal;
-
-                        $invoiceItemsPayload[] = [
-                            'item_id' => is_object($item) ? $item->id : $item['id'],
-                            'sku' => is_object($item) ? $item->item_code : $item['item_code'],
-                            'name' => is_object($item) ? $item->name : $item['name'],
-                            'billing_price' => $price,
-                            'qty' => $qty,
-                            'total' => $lineTotal
-                        ];
-                    }
-                }
-
-                $grandTotal = max(0.00, $subtotal - $discount);
-
-                // 1. Insert Sales Invoice
-                $this->db->query("INSERT INTO sales_invoices (invoice_number, customer_name, customer_phone, billing_type, subtotal, discount, grand_total) 
-                                  VALUES (:invoice_num, :cust_name, :cust_phone, 'wholesale', :sub, :disc, :grand)");
-                $this->db->bind(':invoice_num', $invoiceNumber);
-                $this->db->bind(':cust_name', $customerName);
-                $this->db->bind(':cust_phone', $customerPhone);
-                $this->db->bind(':sub', $subtotal);
-                $this->db->bind(':disc', $discount);
-                $this->db->bind(':grand', $grandTotal);
-                $this->db->execute();
-                
-                $invoiceId = $this->db->lastInsertId();
-
-                // 2. Insert invoice lines & update stocks
-                foreach ($invoiceItemsPayload as $line) {
-                    $this->db->query("INSERT INTO sales_invoice_items (invoice_id, item_id, sku, name, billing_price, qty, total) 
-                                      VALUES (:inv_id, :item_id, :sku, :name, :price, :qty, :total)");
-                    $this->db->bind(':inv_id', $invoiceId);
-                    $this->db->bind(':item_id', $line['item_id']);
-                    $this->db->bind(':sku', $line['sku']);
-                    $this->db->bind(':name', $line['name']);
-                    $this->db->bind(':price', $line['billing_price']);
-                    $this->db->bind(':qty', $line['qty']);
-                    $this->db->bind(':total', $line['total']);
-                    $this->db->execute();
-
-                    // Safely update ERP item inventory level
-                    $this->db->query("UPDATE items SET qty = GREATEST(0, qty - :deduction) WHERE id = :id");
-                    $this->db->bind(':deduction', $line['qty']);
-                    $this->db->bind(':id', $line['item_id']);
-                    $this->db->execute();
-                }
-
-                $this->db->commit();
-                $_SESSION['flash_success'] = "Invoice {$invoiceNumber} created and recorded successfully!";
-                header('Location: ' . APP_URL . '/sales/invoice/' . $invoiceId);
+            if (!$arAccountId || !$revenueAccountId) {
+                $_SESSION['flash_error'] = "Accounting Configuration Error: AR or Sales Revenue account could not be resolved.";
+                header('Location: ' . APP_URL . '/sales/create');
                 exit;
+            }
+
+            try {
+                $subtotal = 0.00;
+                $itemsPayload = [];
+
+                foreach ($itemSelections as $index => $compositeId) {
+                    $qty = floatval($qtys[$index] ?? 1);
+                    $price = floatval($prices[$index] ?? 0.00);
+                    $discVal = floatval($discVals[$index] ?? 0.00);
+                    $discType = $discTypes[$index] ?? 'Rs';
+
+                    $lineGross = $qty * $price;
+                    $lineDisc = ($discType === '%') ? ($lineGross * $discVal / 100) : $discVal;
+                    $lineTotal = max(0.00, $lineGross - $lineDisc);
+
+                    $subtotal += $lineTotal;
+
+                    $itemsPayload[] = [
+                        'item_selection' => $compositeId,
+                        'description' => $descs[$index] ?? 'Product',
+                        'quantity' => $qty,
+                        'unit_price' => $price,
+                        'discount_value' => $discVal,
+                        'discount_type' => $discType,
+                        'total' => $lineTotal
+                    ];
+                }
+
+                $globalDiscountVal = floatval($_POST['global_discount_val'] ?? 0.00);
+                $globalDiscountType = $_POST['global_discount_type'] ?? 'Rs';
+                $globalDiscount = ($globalDiscountType === '%') ? ($subtotal * $globalDiscountVal / 100) : $globalDiscountVal;
+                $grandTotal = max(0.00, $subtotal - $globalDiscount);
+
+                $invoiceData = [
+                    'customer_id' => $customerId,
+                    'invoice_number' => $invoiceNumber,
+                    'invoice_date' => $_POST['invoice_date'] ?? date('Y-m-d'),
+                    'due_date' => $_POST['due_date'] ?? date('Y-m-d'),
+                    'subtotal' => $subtotal,
+                    'global_discount_val' => $globalDiscountVal,
+                    'global_discount_type' => $globalDiscountType,
+                    'notes' => trim($_POST['notes'] ?? ''),
+                    'rep_route_id' => !empty($_POST['rep_route_id']) ? intval($_POST['rep_route_id']) : null,
+                    'grand_total' => $grandTotal
+                ];
+
+                // Load Invoice Model
+                $invoiceModel = $this->model('Invoice');
+
+                // Create the true Double-Entry and FIFO Stock depleted invoice!
+                $invoiceId = $invoiceModel->createInvoiceWithAccounting(
+                    $invoiceData,
+                    $itemsPayload,
+                    $arAccountId,
+                    $revenueAccountId,
+                    $_SESSION['user_id']
+                );
+
+                if ($invoiceId) {
+                    // Check if Save & Print, Save & WhatsApp or Save & Close
+                    $saveAction = $_POST['save_action'] ?? 'close';
+                    
+                    $this->db->query("SELECT phone, name FROM customers WHERE id = :id");
+                    $this->db->bind(':id', $customerId);
+                    $custRow = $this->db->single();
+                    $custPhone = $custRow ? $custRow->phone : '';
+                    $custName = $custRow ? $custRow->name : '';
+
+                    if ($saveAction === 'print') {
+                        header('Location: ' . APP_URL . '/sales/create?print_id=' . $invoiceId);
+                    } elseif ($saveAction === 'whatsapp') {
+                        header('Location: ' . APP_URL . '/sales/create?wa_id=' . $invoiceId . '&wa_phone=' . urlencode($custPhone) . '&wa_name=' . urlencode($custName));
+                    } else {
+                        $_SESSION['flash_success'] = "Invoice {$invoiceNumber} successfully created and posted to general ledger!";
+                        header('Location: ' . APP_URL . '/sales/show/' . $invoiceId);
+                    }
+                    exit;
+                } else {
+                    throw new Exception($_SESSION['invoice_error'] ?? "Failed to save invoice.");
+                }
 
             } catch (Exception $e) {
-                $this->db->rollBack();
-                $_SESSION['flash_error'] = "Billing Error: " . $e->getMessage();
+                $_SESSION['flash_error'] = "Accounting Engine Error: " . $e->getMessage();
                 header('Location: ' . APP_URL . '/sales/create');
                 exit;
             }
@@ -257,26 +278,34 @@ class SalesController extends Controller {
     }
 
     /**
+     * Print / public view for invoices (main invoices table).
+     */
+    public function show($id = null) {
+        if (!$id) {
+            header('Location: ' . APP_URL . '/sales/create');
+            exit;
+        }
+
+        $invoiceModel = $this->model('Invoice');
+        $companyModel = $this->model('Company');
+        $invoice = $invoiceModel->getInvoiceById($id);
+
+        if (!$invoice) {
+            die('Invoice not found.');
+        }
+
+        $data = [
+            'invoice' => $invoice,
+            'items' => $invoiceModel->getInvoiceItems($id),
+            'company' => $companyModel->getSettings(),
+        ];
+        $this->view('sales/invoice_view', $data);
+    }
+
+    /**
      * Render the generated dynamic Invoice details
      */
     public function invoice($id) {
-        $this->db->query("SELECT * FROM sales_invoices WHERE id = :id");
-        $this->db->bind(':id', $id);
-        $invoice = $this->db->single();
-
-        if (!$invoice) {
-            die("Invoice not found.");
-        }
-
-        $this->db->query("SELECT * FROM sales_invoice_items WHERE invoice_id = :id");
-        $this->db->bind(':id', $id);
-        $items = $this->db->resultSet() ?: [];
-
-        $data = [
-            'title' => 'Invoice Details - ' . $invoice->invoice_number,
-            'invoice' => $invoice,
-            'items' => $items
-        ];
-        $this->view('sales/invoice', $data);
+        $this->show($id);
     }
 }

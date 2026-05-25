@@ -89,12 +89,20 @@ if ($successInvoiceId && !$successCustomer) {
 
         <div class="co-card" style="margin: 15px 0 0 0;">
             <label style="font-size:11px; font-weight:bold; color:var(--text-muted); text-transform:uppercase; display:block; margin-bottom:5px;">Invoice Payment Term *</label>
-            <select id="coPaymentTerm" class="form-control" style="width: 100%; padding: 12px; font-size: 15px; font-weight: bold; background: var(--surface); color: var(--text-dark); border: 1px solid var(--border); border-radius: 8px; outline: none;">
+            <select id="coPaymentTerm" class="form-control" onchange="toggleTermChequeDate()" style="width: 100%; padding: 12px; font-size: 15px; font-weight: bold; background: var(--surface); color: var(--text-dark); border: 1px solid var(--border); border-radius: 8px; outline: none;">
                 <option value="">Select Term...</option>
-                <?php foreach($paymentTerms as $pt): ?>
-                    <option value="<?= $pt->id ?>"><?= htmlspecialchars($pt->name) ?></option>
+                <?php foreach($paymentTerms as $pt):
+                    $isChequeTerm = (stripos($pt->name, 'cheque') !== false || stripos($pt->name, 'check') !== false);
+                ?>
+                    <option value="<?= $pt->id ?>" data-is-cheque="<?= $isChequeTerm ? '1' : '0' ?>"><?= htmlspecialchars($pt->name) ?></option>
                 <?php endforeach; ?>
             </select>
+        </div>
+
+        <div class="co-card" id="coChequeDateWrap" style="margin: 15px 0 0 0; display: none; border-color: #ffecb3; background: #fff8e1;">
+            <label style="font-size:11px; font-weight:bold; color:#f57c00; text-transform:uppercase; display:block; margin-bottom:5px;">Cheque Date (written on cheque) *</label>
+            <input type="date" id="coTermChequeDate" class="form-control" style="width: 100%; padding: 12px; font-size: 15px; font-weight: bold; border: 1px solid #ffecb3; border-radius: 8px;">
+            <div style="font-size: 11px; color: #888; margin-top: 6px;">Required when payment term is Cheque. Shown on the printed invoice.</div>
         </div>
     </div>
 
@@ -329,6 +337,24 @@ if ($successInvoiceId && !$successCustomer) {
         }
     }
 
+    function isChequePaymentTermSelected() {
+        const sel = document.getElementById('coPaymentTerm');
+        if (!sel || !sel.value) return false;
+        const opt = sel.options[sel.selectedIndex];
+        return opt && opt.getAttribute('data-is-cheque') === '1';
+    }
+
+    function toggleTermChequeDate() {
+        const wrap = document.getElementById('coChequeDateWrap');
+        const input = document.getElementById('coTermChequeDate');
+        if (!wrap || !input) return;
+        const show = isChequePaymentTermSelected();
+        wrap.style.display = show ? 'block' : 'none';
+        if (show && !input.value) {
+            input.value = new Date().toISOString().split('T')[0];
+        }
+    }
+
     function addRepChequeRow() {
         const container = document.getElementById('rep-cheques-container');
         const div = document.createElement('div');
@@ -371,6 +397,14 @@ if ($successInvoiceId && !$successCustomer) {
         
         const termId = document.getElementById('coPaymentTerm').value;
         if (!termId) { alert('ERROR: You must select an Invoice Payment Term.'); return; }
+
+        if (isChequePaymentTermSelected()) {
+            const chequeDate = document.getElementById('coTermChequeDate').value.trim();
+            if (!chequeDate) {
+                alert('Please enter the Cheque Date (date written on the cheque).');
+                return;
+            }
+        }
 
         // Validate cheque inputs
         const chequeCards = document.querySelectorAll('.rep-cheque-card');
@@ -433,6 +467,7 @@ if ($successInvoiceId && !$successCustomer) {
         const payload = {
             customer_id: customerId,
             payment_term_id: termId,
+            term_cheque_date: isChequePaymentTermSelected() ? document.getElementById('coTermChequeDate').value : null,
             cart: cart,
             discounts: {
                 val: parseFloat(document.getElementById('coGlobalDiscVal').value) || 0,

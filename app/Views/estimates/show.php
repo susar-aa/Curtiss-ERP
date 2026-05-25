@@ -74,6 +74,7 @@
         <table class="items">
             <thead>
                 <tr>
+                    <th style="width:40px;">#</th>
                     <th>Description</th>
                     <th class="num" style="width: 10%;">Qty</th>
                     <th class="num" style="width: 20%;">Unit Price</th>
@@ -81,8 +82,9 @@
                 </tr>
             </thead>
             <tbody>
-                <?php foreach($data['items'] as $item): ?>
+                <?php $rowNum = 1; foreach($data['items'] as $item): ?>
                 <tr>
+                    <td style="text-align:center; color:#888;"><?= $rowNum++ ?></td>
                     <td><?= htmlspecialchars($item->description) ?></td>
                     <td class="num"><?= number_format($item->quantity, 0) ?></td>
                     <td class="num">Rs: <?= number_format($item->unit_price, 2) ?></td>

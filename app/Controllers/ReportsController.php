@@ -141,4 +141,16 @@ class ReportController extends Controller {
         $data = ['title' => 'A/R Aging Summary', 'company' => $company, 'aging_data' => $agingData, 'totals' => $totals];
         $this->view('reports/ar_aging', $data);
     }
+
+    public function fifo_profit() {
+        $invoices = $this->reportModel->getFIFOSalesData();
+        $company = $this->companyModel->getSettings();
+
+        $data = [
+            'title' => 'FIFO Profit & Margin Report',
+            'company' => $company,
+            'invoices' => $invoices
+        ];
+        $this->view('reports/fifo_profit', $data);
+    }
 }

@@ -68,8 +68,39 @@
                 </tr>
             </tfoot>
         </table>
+
+        <?php if (!empty($data['invoice_detail'])): ?>
+        <h3 style="margin-top: 40px; font-size: 16px; color: #333;">Open Invoice Detail</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Invoice #</th>
+                    <th>Customer</th>
+                    <th>Invoice Date</th>
+                    <th>Due Date</th>
+                    <th>Days Overdue</th>
+                    <th>Status</th>
+                    <th>Amount (Rs)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($data['invoice_detail'] as $inv): ?>
+                <tr>
+                    <td><?= htmlspecialchars($inv->invoice_number) ?></td>
+                    <td><?= htmlspecialchars($inv->customer_name) ?></td>
+                    <td><?= date('M j, Y', strtotime($inv->invoice_date)) ?></td>
+                    <td><?= date('M j, Y', strtotime($inv->due_date)) ?></td>
+                    <td class="<?= $inv->days_overdue > 30 ? 'danger' : '' ?>"><?= intval($inv->days_overdue) ?></td>
+                    <td><?= htmlspecialchars($inv->status) ?></td>
+                    <td style="text-align: right;"><?= number_format($inv->total_amount, 2) ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php endif; ?>
     </div>
     <div class="text-center" style="margin-top: 20px;">
+        <a href="<?= APP_URL ?>/report" style="padding: 10px 20px; background: #666; color: #fff; text-decoration: none; border-radius: 4px; margin-right: 8px;">← Reports Hub</a>
         <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer; background: #0066cc; color: #fff; border: none; border-radius: 4px;">Print Report</button>
     </div>
 </body>

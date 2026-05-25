@@ -27,22 +27,92 @@ try {
     // Silently capture any database schema exceptions to keep layout fluid
 }
 
-$catalog_items = $data['catalog_items'] ?? [];
+$catalog_items = $data['catalog_items'] ?? $data['items'] ?? [];
 if (empty($catalog_items)) {
     $db->query("SELECT * FROM items ORDER BY name ASC");
     $catalog_items = $db->resultSet();
 }
 
-// Ensure Variations are loaded for the catalog items to feed the search engine
-foreach($catalog_items as $item) {
-    if (!isset($item->variations)) {
-        $db->query("SELECT ivo.*, v.name as variation_name, vv.value_name 
-                    FROM item_variation_options ivo
-                    JOIN variations v ON ivo.variation_id = v.id
-                    JOIN variation_values vv ON ivo.variation_value_id = vv.id
-                    WHERE ivo.item_id = :id");
-        $db->bind(':id', $item->id);
-        $item->variations = $db->resultSet();
+// Enforce Wholesale B2B pricing preference and load variations from JSON if needed
+foreach ($catalog_items as $key => $item) {
+    $billingPrice = 0.00;
+    if (is_object($item)) {
+        if (isset($item->wholesale_price) && floatval($item->wholesale_price) > 0) {
+            $billingPrice = floatval($item->wholesale_price);
+        } elseif (isset($item->selling_price) && floatval($item->selling_price) > 0) {
+            $billingPrice = floatval($item->selling_price);
+        } elseif (isset($item->price) && floatval($item->price) > 0) {
+            $billingPrice = floatval($item->price);
+        } elseif (isset($item->regular_price) && floatval($item->regular_price) > 0) {
+            $billingPrice = floatval($item->regular_price);
+        }
+        $item->price = $billingPrice;
+        $item->selling_price = $billingPrice;
+        $item->regular_price = $billingPrice;
+        $item->wholesale_price = $billingPrice;
+
+        if (!isset($item->variations) || empty($item->variations)) {
+            $db->query("SELECT ivo.*, v.name as variation_name, vv.value_name 
+                        FROM item_variation_options ivo
+                        JOIN variations v ON ivo.variation_id = v.id
+                        JOIN variation_values vv ON ivo.variation_value_id = vv.id
+                        WHERE ivo.item_id = :id");
+            $db->bind(':id', $item->id);
+            $item->variations = $db->resultSet() ?: [];
+
+            if (empty($item->variations) && !empty($item->variations_json)) {
+                $decoded = json_decode($item->variations_json);
+                if (is_array($decoded)) {
+                    $item->variations = [];
+                    foreach ($decoded as $v) {
+                        $vObj = new stdClass();
+                        $vObj->id = $v->id ?? 0;
+                        $vObj->variation_name = 'Option';
+                        $vObj->value_name = $v->attribute ?? '';
+                        $vObj->sku = $v->sku ?? '';
+                        $vObj->quantity_on_hand = $v->qty ?? $item->quantity_on_hand ?? 0;
+                        $vObj->quantity_reserved = $v->quantity_reserved ?? 0;
+
+                        $vPrice = 0.00;
+                        if (isset($v->wholesale_price) && floatval($v->wholesale_price) > 0) {
+                            $vPrice = floatval($v->wholesale_price);
+                        } elseif (isset($v->price) && floatval($v->price) > 0) {
+                            $vPrice = floatval($v->price);
+                        } else {
+                            $vPrice = $billingPrice;
+                        }
+                        $vObj->price = $vPrice;
+                        $item->variations[] = $vObj;
+                    }
+                }
+            } else if (!empty($item->variations)) {
+                foreach ($item->variations as $var) {
+                    $varPrice = 0.00;
+                    if (isset($var->wholesale_price) && floatval($var->wholesale_price) > 0) {
+                        $varPrice = floatval($var->wholesale_price);
+                    } elseif (isset($var->price) && floatval($var->price) > 0) {
+                        $varPrice = floatval($var->price);
+                    } else {
+                        $varPrice = $billingPrice;
+                    }
+                    $var->price = $varPrice;
+                }
+            }
+        }
+    } elseif (is_array($item)) {
+        if (isset($item['wholesale_price']) && floatval($item['wholesale_price']) > 0) {
+            $billingPrice = floatval($item['wholesale_price']);
+        } elseif (isset($item['selling_price']) && floatval($item['selling_price']) > 0) {
+            $billingPrice = floatval($item['selling_price']);
+        } elseif (isset($item['price']) && floatval($item['price']) > 0) {
+            $billingPrice = floatval($item['price']);
+        } elseif (isset($item['regular_price']) && floatval($item['regular_price']) > 0) {
+            $billingPrice = floatval($item['regular_price']);
+        }
+        $catalog_items[$key]['price'] = $billingPrice;
+        $catalog_items[$key]['selling_price'] = $billingPrice;
+        $catalog_items[$key]['regular_price'] = $billingPrice;
+        $catalog_items[$key]['wholesale_price'] = $billingPrice;
     }
 }
 
@@ -198,8 +268,15 @@ $editingItems = $data['editing_items'] ?? [];
     <?php if(!empty($data['error'])): ?>
         <div style="padding: 10px; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; margin-bottom:5px; font-weight:bold; flex-shrink:0;"><?= $data['error'] ?></div>
     <?php endif; ?>
-    <?php if(isset($_GET['success'])): ?>
-        <div style="padding: 10px; background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; margin-bottom:5px; font-weight:bold; flex-shrink:0;">Invoice successfully saved and posted to ledger!</div>
+    <?php if(isset($_SESSION['flash_success'])): ?>
+        <div style="padding: 10px; background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; margin-bottom:5px; font-weight:bold; flex-shrink:0;">
+            <?= $_SESSION['flash_success']; unset($_SESSION['flash_success']); ?>
+        </div>
+    <?php endif; ?>
+    <?php if(isset($_SESSION['flash_error'])): ?>
+        <div style="padding: 10px; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; margin-bottom:5px; font-weight:bold; flex-shrink:0;">
+            <?= $_SESSION['flash_error']; unset($_SESSION['flash_error']); ?>
+        </div>
     <?php endif; ?>
 
     <?php
@@ -227,7 +304,7 @@ $editingItems = $data['editing_items'] ?? [];
     <?php endif; ?>
 
     <div class="qb-container">
-        <form action="<?= APP_URL ?>/sales/create" method="POST" id="invoiceForm">
+        <form action="<?= APP_URL ?>/sales/store" method="POST" id="invoiceForm">
             <input type="hidden" name="rep_route_id" value="<?= htmlspecialchars((string)$rep_route_id) ?>">
             <?php if ($inv): ?>
                 <input type="hidden" name="editing_invoice_id" value="<?= isset($inv->id) ? $inv->id : '' ?>">
@@ -301,13 +378,14 @@ $editingItems = $data['editing_items'] ?? [];
                 <table class="qb-table">
                     <thead>
                         <tr>
-                            <th style="width: 15%;">Item Code</th>
-                            <th style="width: 8%;">Qty</th>
-                            <th style="width: 35%;">Description</th>
-                            <th style="width: 12%; text-align:right; min-width: 95px;">Rate (Rs:)</th>
-                            <th style="width: 15%; text-align:right; min-width: 105px;">Discount</th>
-                            <th style="width: 12%; text-align:right; min-width: 105px;">Amount (Rs:)</th>
-                            <th style="width: 30px; background:#c62828;"></th>
+                            <th style="width: 30px; text-align:center;">#</th>
+                            <th style="width: 12%;">Item Code</th>
+                            <th style="width: 7%;">Qty</th>
+                            <th style="width: 32%;">Description</th>
+                            <th style="width: 13%; text-align:right;">Rate (Rs:)</th>
+                            <th style="width: 14%; text-align:right;">Discount</th>
+                            <th style="width: 14%; text-align:right;">Amount (Rs:)</th>
+                            <th style="width: 28px; background:#c62828;"></th>
                         </tr>
                     </thead>
                     <tbody id="invoiceBody">
@@ -609,6 +687,13 @@ $editingItems = $data['editing_items'] ?? [];
         }
     }
 
+    function renumberInvoiceRows() {
+        document.querySelectorAll('#invoiceBody tr').forEach((tr, i) => {
+            const cell = tr.querySelector('.line-row-num');
+            if (cell) cell.textContent = i + 1;
+        });
+    }
+
     function addItemRow(itemOrId, code = null, qty = 1, desc = null, price = null, discVal = 0, discType = 'Rs') {
         let item = {};
         if (typeof itemOrId === 'object' && itemOrId !== null) {
@@ -650,6 +735,7 @@ $editingItems = $data['editing_items'] ?? [];
         });
 
         tr.innerHTML = `
+            <td class="line-row-num" style="text-align:center; color:#888; font-weight:bold; vertical-align:middle;"></td>
             <td>
                 <input type="text" value="${item.code || 'ITEM'}" readonly style="color:#666; font-size:12px; width: 100%; border:none; background:transparent;">
                 <input type="hidden" name="item_selection[]" value="${item.id}">
@@ -670,9 +756,10 @@ $editingItems = $data['editing_items'] ?? [];
                 </div>
             </td>
             <td><input type="text" class="num line-total" value="0.00" readonly style="font-weight:bold; background: transparent; border: none; width: 100%; text-align: right; padding-right: 4px;"></td>
-            <td style="text-align:center;"><button type="button" tabindex="-1" style="background:transparent; color:#c62828; border:none; cursor:pointer; font-weight:bold; font-size: 16px; padding: 4px;" onclick="this.closest('tr').remove(); calcTotals();">&times;</button></td>
+            <td style="text-align:center;"><button type="button" tabindex="-1" style="background:transparent; color:#c62828; border:none; cursor:pointer; font-weight:bold; font-size: 16px; padding: 4px;" onclick="this.closest('tr').remove(); renumberInvoiceRows(); calcTotals();">&times;</button></td>
         `;
         tbody.insertAdjacentElement('afterbegin', tr);
+        renumberInvoiceRows();
         
         // Trigger validation immediately upon adding in case stock is 0
         const qtyInput = tr.querySelector('input[name="qty[]"]');
@@ -791,6 +878,7 @@ $editingItems = $data['editing_items'] ?? [];
                     <?= json_encode(isset($ei->discount_type) ? $ei->discount_type : 'Rs') ?>
                 );
             <?php endforeach; ?>
+            renumberInvoiceRows();
         <?php endif; ?>
 
         // Clean & targeted diagnostic session error tracer

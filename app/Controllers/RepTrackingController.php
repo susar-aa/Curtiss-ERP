@@ -46,6 +46,22 @@ class RepTrackingController extends Controller {
         exit;
     }
 
+    // API: chronological GPS path (start → invoices → end)
+    public function api_get_route_path($routeId) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            die("Invalid Request");
+        }
+
+        $path = $this->trackingModel->getRoutePath($routeId);
+        header('Content-Type: application/json');
+        if (!$path) {
+            echo json_encode(['status' => 'error', 'message' => 'Route not found']);
+            exit;
+        }
+        echo json_encode(['status' => 'success', 'path' => $path]);
+        exit;
+    }
+
     // NEW: Endpoint to generate and show the Loading Report
     public function print_loading($routeId) {
         $data = [

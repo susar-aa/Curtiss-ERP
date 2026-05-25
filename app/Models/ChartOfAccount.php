@@ -52,6 +52,60 @@ class ChartOfAccount {
         try { return $this->db->execute(); } catch (PDOException $e) { return false; }
     }
 
+    /**
+     * Compute cumulative prior transaction sums before a starting date
+     */
+    public function getPriorBalance($accountId, $startDate) {
+        $this->db->query("SELECT SUM(t.debit) as total_debit, SUM(t.credit) as total_credit 
+                          FROM transactions t 
+                          JOIN journal_entries je ON t.journal_entry_id = je.id 
+                          WHERE t.account_id = :account_id AND je.entry_date < :start_date");
+        $this->db->bind(':account_id', $accountId);
+        $this->db->bind(':start_date', $startDate);
+        $row = $this->db->single();
+        return $row ? $row : (object)['total_debit' => 0, 'total_credit' => 0];
+    }
+
+    /**
+     * Fetch filtered chronological transaction entries for account ledger
+     */
+    public function getAccountHistory($accountId, $filters = []) {
+        $sql = "SELECT t.*, je.entry_date, je.reference, je.description 
+                FROM transactions t 
+                JOIN journal_entries je ON t.journal_entry_id = je.id 
+                WHERE t.account_id = :account_id";
+        
+        $params = [':account_id' => $accountId];
+
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND je.entry_date >= :start_date";
+            $params[':start_date'] = $filters['start_date'];
+        }
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND je.entry_date <= :end_date";
+            $params[':end_date'] = $filters['end_date'];
+        }
+        if (!empty($filters['search'])) {
+            $sql .= " AND (je.reference LIKE :search OR je.description LIKE :search)";
+            $params[':search'] = '%' . $filters['search'] . '%';
+        }
+        if (isset($filters['tx_type'])) {
+            if ($filters['tx_type'] === 'debit') {
+                $sql .= " AND t.debit > 0";
+            } elseif ($filters['tx_type'] === 'credit') {
+                $sql .= " AND t.credit > 0";
+            }
+        }
+
+        $sql .= " ORDER BY je.entry_date ASC, t.id ASC";
+
+        $this->db->query($sql);
+        foreach ($params as $param => $val) {
+            $this->db->bind($param, $val);
+        }
+        return $this->db->resultSet() ?: [];
+    }
+
     // --- Bank Reconciliation Methods ---
     public function getUnclearedTransactions($accountId) {
         $this->db->query("SELECT t.*, je.entry_date, je.reference, je.description 

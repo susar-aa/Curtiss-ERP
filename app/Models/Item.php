@@ -295,6 +295,30 @@ class Item {
         return $this->db->single();
     }
 
+    /**
+     * Variation options for an item (PO mix resolver, GRN create, etc.).
+     */
+    public function getItemVariations($itemId) {
+        if (!$itemId) {
+            return [];
+        }
+
+        try {
+            $this->db->query("
+                SELECT ivo.*, v.name AS variation_name, vv.value_name
+                FROM item_variation_options ivo
+                JOIN variations v ON ivo.variation_id = v.id
+                JOIN variation_values vv ON ivo.variation_value_id = vv.id
+                WHERE ivo.item_id = :id
+                ORDER BY v.name ASC, vv.value_name ASC
+            ");
+            $this->db->bind(':id', $itemId);
+            return $this->db->resultSet() ?: [];
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
     public function getItemByCode($item_code) {
         $this->db->query("SELECT *, {$this->priceColumn} AS selling_price, {$this->wholesalePriceColumn} AS wholesale_price, {$this->itemCodeColumn} AS item_code, {$this->qtyColumn} AS qty, {$this->descColumn} AS description FROM items WHERE {$this->itemCodeColumn} = :item_code");
         $this->db->bind(':item_code', $item_code);

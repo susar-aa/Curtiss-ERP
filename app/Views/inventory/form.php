@@ -31,6 +31,8 @@ $weight = $item ? ($item->weight ?? '') : '';
 // Retrieve Relational Warehouse and Vendor variables
 $warehouse_id = $item ? ($item->warehouse_id ?? '') : '';
 $vendor_id = $item ? ($item->vendor_id ?? '') : '';
+$retail_margin = $item ? ($item->retail_margin ?? '') : '';
+$wholesale_margin = $item ? ($item->wholesale_margin ?? '') : '';
 
 $is_edit = !empty($item_id);
 $form_action = $is_edit ? APP_URL . '/inventory/edit/' . $item_id : APP_URL . '/inventory/add';
@@ -320,18 +322,20 @@ try {
                         <table class="w-full text-left text-xs border-collapse">
                             <thead>
                                 <tr class="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase font-mono tracking-wider">
-                                    <th class="py-3 px-4 w-[25%]">Attribute option value</th>
-                                    <th class="py-3 px-4 w-[25%]">Variation SKU *</th>
-                                    <th class="py-3 px-4 w-[15%] text-right">Cost Price (LKR)</th>
-                                    <th class="py-3 px-4 w-[15%] text-right">Retail Price (LKR)</th>
-                                    <th class="py-3 px-4 w-[15%] text-right">B2B base Price (LKR)</th>
+                                    <th class="py-3 px-4 w-[20%]">Attribute option value</th>
+                                    <th class="py-3 px-4 w-[15%]">Variation SKU *</th>
+                                    <th class="py-3 px-4 w-[12%] text-right">Cost Price (LKR)</th>
+                                    <th class="py-3 px-4 w-[12%] text-right">Retail Margin %</th>
+                                    <th class="py-3 px-4 w-[12%] text-right">Retail Price (LKR)</th>
+                                    <th class="py-3 px-4 w-[12%] text-right">Wholesale Margin %</th>
+                                    <th class="py-3 px-4 w-[12%] text-right">B2B base Price (LKR)</th>
                                     <th class="py-3 px-4 w-[5%] text-right">Remove</th>
                                 </tr>
                             </thead>
                             <tbody id="variationsTableBody" class="divide-y divide-slate-200">
                                 <!-- Dynamic variation rows populated via JS -->
                                 <tr id="noVariationsRow">
-                                    <td colspan="6" class="py-8 text-center text-slate-400 italic">No variations created. Product will be synced as a simple standard product.</td>
+                                    <td colspan="8" class="py-8 text-center text-slate-400 italic">No variations created. Product will be synced as a simple standard product.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -353,7 +357,7 @@ try {
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center justify-between">
                             <span><i class="fa-solid fa-wallet mr-1 text-primary-500"></i> Base Pricing, Costing & WholesaleX B2B Price</span>
                         </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
                             
                             <!-- Cost Price -->
                             <div>
@@ -365,13 +369,33 @@ try {
                                 </div>
                             </div>
 
+                            <!-- Retail Margin % -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Retail Margin %</label>
+                                <div class="relative">
+                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">%</span>
+                                    <input type="number" step="0.1" name="retail_margin" id="retailMarginInput" value="<?php echo htmlspecialchars($retail_margin); ?>" oninput="calculatePriceFromMargin('retail')" placeholder="0.0" 
+                                           class="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono font-bold">
+                                </div>
+                            </div>
+
                             <!-- Selling Price (LKR Retail) -->
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Retail Price (LKR) *</label>
                                 <div class="relative">
                                     <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rs.</span>
-                                    <input type="number" step="0.01" name="selling_price" id="sellingPriceInput" value="<?php echo htmlspecialchars($selling_price); ?>" oninput="calculateMarkupProfit()" placeholder="0.00" required
+                                    <input type="number" step="0.01" name="selling_price" id="sellingPriceInput" value="<?php echo htmlspecialchars($selling_price); ?>" oninput="calculateMarginFromPrice('retail')" placeholder="0.00" required
                                            class="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono font-bold">
+                                </div>
+                            </div>
+
+                            <!-- Wholesale Margin % -->
+                            <div>
+                                <label class="block text-xs font-bold text-purple-700 uppercase tracking-wider mb-2">Wholesale Margin %</label>
+                                <div class="relative">
+                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400 text-xs font-bold">%</span>
+                                    <input type="number" step="0.1" name="wholesale_margin" id="wholesaleMarginInput" value="<?php echo htmlspecialchars($wholesale_margin); ?>" oninput="calculatePriceFromMargin('wholesale')" placeholder="0.0" 
+                                           class="w-full pl-9 pr-3 py-2.5 bg-purple-50/20 border border-purple-200 focus:border-purple-500 rounded-xl text-sm focus:ring-2 focus:ring-purple-500/20 focus:outline-none font-mono font-bold text-purple-850">
                                 </div>
                             </div>
 
@@ -380,18 +404,8 @@ try {
                                 <label class="block text-xs font-bold text-purple-700 uppercase tracking-wider mb-2">B2B User Base Price *</label>
                                 <div class="relative">
                                     <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400 text-xs font-bold">Rs.</span>
-                                    <input type="number" step="0.01" name="wholesale_price" id="wholesalePriceInput" value="<?php echo htmlspecialchars($wholesale_price); ?>" oninput="calculateMarkupProfit()" placeholder="0.00" 
+                                    <input type="number" step="0.01" name="wholesale_price" id="wholesalePriceInput" value="<?php echo htmlspecialchars($wholesale_price); ?>" oninput="calculateMarginFromPrice('wholesale')" placeholder="0.00" 
                                            class="w-full pl-9 pr-3 py-2.5 bg-purple-50/20 border border-purple-200 focus:border-purple-500 rounded-xl text-sm focus:ring-2 focus:ring-purple-500/20 focus:outline-none font-mono font-bold text-purple-850">
-                                </div>
-                            </div>
-
-                            <!-- Markup margin calculator -->
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Estimated retail markup</label>
-                                <div class="relative">
-                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold"><i class="fa-solid fa-percent"></i></span>
-                                    <input type="text" id="marginMarkupOutput" placeholder="0%" disabled
-                                           class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-bold text-primary-600">
                                 </div>
                             </div>
                         </div>
@@ -486,24 +500,57 @@ try {
         let variations = [];
         let activeCustomTags = [];
 
-        /**
-         * Dynamic Margin Profit calculation on form inputs
-         */
-        function calculateMarkupProfit() {
-            const costInput = document.getElementById('costPriceInput');
-            const sellInput = document.getElementById('sellingPriceInput');
-            const costVal = parseFloat(costInput.value) || 0;
-            const sellVal = parseFloat(sellInput.value) || 0;
-            const output = document.getElementById('marginMarkupOutput');
+        function calculatePriceFromMargin(type) {
+            const costVal = parseFloat(document.getElementById('costPriceInput').value) || 0;
+            if (type === 'retail') {
+                const marginVal = parseFloat(document.getElementById('retailMarginInput').value) || 0;
+                if (costVal > 0) {
+                    const price = costVal + (costVal * marginVal / 100);
+                    document.getElementById('sellingPriceInput').value = price.toFixed(2);
+                }
+            } else if (type === 'wholesale') {
+                const marginVal = parseFloat(document.getElementById('wholesaleMarginInput').value) || 0;
+                if (costVal > 0) {
+                    const price = costVal + (costVal * marginVal / 100);
+                    document.getElementById('wholesalePriceInput').value = price.toFixed(2);
+                }
+            }
+        }
 
-            if (costVal > 0 && sellVal > 0) {
-                const profit = sellVal - costVal;
-                const markup = (profit / costVal) * 100;
-                output.value = "+" + markup.toFixed(1) + "%";
-            } else if (costVal === 0 && sellVal > 0) {
-                output.value = "100.0% (No Cost)";
-            } else {
-                output.value = "0.0%";
+        function calculateMarginFromPrice(type) {
+            const costVal = parseFloat(document.getElementById('costPriceInput').value) || 0;
+            if (type === 'retail') {
+                const priceVal = parseFloat(document.getElementById('sellingPriceInput').value) || 0;
+                if (costVal > 0) {
+                    const margin = ((priceVal - costVal) / costVal) * 100;
+                    document.getElementById('retailMarginInput').value = margin.toFixed(1);
+                }
+            } else if (type === 'wholesale') {
+                const priceVal = parseFloat(document.getElementById('wholesalePriceInput').value) || 0;
+                if (costVal > 0) {
+                    const margin = ((priceVal - costVal) / costVal) * 100;
+                    document.getElementById('wholesaleMarginInput').value = margin.toFixed(1);
+                }
+            }
+        }
+
+        function calculateMarkupProfit() {
+            const costVal = parseFloat(document.getElementById('costPriceInput').value) || 0;
+            const retailMarginVal = parseFloat(document.getElementById('retailMarginInput').value) || 0;
+            const wholesaleMarginVal = parseFloat(document.getElementById('wholesaleMarginInput').value) || 0;
+
+            if (costVal > 0) {
+                if (retailMarginVal > 0) {
+                    calculatePriceFromMargin('retail');
+                } else {
+                    calculateMarginFromPrice('retail');
+                }
+
+                if (wholesaleMarginVal > 0) {
+                    calculatePriceFromMargin('wholesale');
+                } else {
+                    calculateMarginFromPrice('wholesale');
+                }
             }
         }
 
@@ -739,6 +786,56 @@ try {
             }
         }
 
+        function calculateVarPriceFromMargin(index, type) {
+            const costInput = document.getElementById(`var-cost-${index}`);
+            const marginInput = document.getElementById(`var-${type}-margin-${index}`);
+            const priceInput = document.getElementById(`var-${type}-price-${index}`);
+
+            const costVal = parseFloat(costInput.value) || 0;
+            const marginVal = parseFloat(marginInput.value) || 0;
+
+            if (costVal > 0) {
+                const price = costVal + (costVal * marginVal / 100);
+                priceInput.value = price.toFixed(2);
+                updateVariationValue(index, type === 'retail' ? 'price' : 'wholesale_price', priceInput.value);
+            }
+        }
+
+        function calculateVarMarginFromPrice(index, type) {
+            const costInput = document.getElementById(`var-cost-${index}`);
+            const marginInput = document.getElementById(`var-${type}-margin-${index}`);
+            const priceInput = document.getElementById(`var-${type}-price-${index}`);
+
+            const costVal = parseFloat(costInput.value) || 0;
+            const priceVal = parseFloat(priceInput.value) || 0;
+
+            if (costVal > 0) {
+                const margin = ((priceVal - costVal) / costVal) * 100;
+                marginInput.value = margin.toFixed(1);
+                updateVariationValue(index, type === 'retail' ? 'retail_margin' : 'wholesale_margin', marginInput.value);
+            }
+        }
+
+        function calculateVarRowMaster(index) {
+            const retailMarginInput = document.getElementById(`var-retail-margin-${index}`);
+            const wholesaleMarginInput = document.getElementById(`var-wholesale-margin-${index}`);
+
+            const retailMarginVal = parseFloat(retailMarginInput.value) || 0;
+            const wholesaleMarginVal = parseFloat(wholesaleMarginInput.value) || 0;
+
+            if (retailMarginVal > 0) {
+                calculateVarPriceFromMargin(index, 'retail');
+            } else {
+                calculateVarMarginFromPrice(index, 'retail');
+            }
+
+            if (wholesaleMarginVal > 0) {
+                calculateVarPriceFromMargin(index, 'wholesale');
+            } else {
+                calculateVarMarginFromPrice(index, 'wholesale');
+            }
+        }
+
         /**
          * Appends an interactive variation item row
          */
@@ -755,8 +852,21 @@ try {
                 sku: existing ? (existing.sku || `${mainSku}-${index + 1}`) : `${mainSku}-${index + 1}`,
                 cost_price: existing ? (existing.cost_price || defaultCostPrice) : defaultCostPrice,
                 price: existing ? (existing.price || defaultSellPrice) : defaultSellPrice,
-                wholesale_price: existing ? (existing.wholesale_price || defaultWholePrice) : defaultWholePrice
+                wholesale_price: existing ? (existing.wholesale_price || defaultWholePrice) : defaultWholePrice,
+                retail_margin: existing ? (existing.retail_margin || '') : '',
+                wholesale_margin: existing ? (existing.wholesale_margin || '') : ''
             };
+
+            // Calculate default margins if empty
+            const costVal = parseFloat(rowData.cost_price) || 0;
+            if (costVal > 0) {
+                if (!rowData.retail_margin && parseFloat(rowData.price) > 0) {
+                    rowData.retail_margin = (((parseFloat(rowData.price) - costVal) / costVal) * 100).toFixed(1);
+                }
+                if (!rowData.wholesale_margin && parseFloat(rowData.wholesale_price) > 0) {
+                    rowData.wholesale_margin = (((parseFloat(rowData.wholesale_price) - costVal) / costVal) * 100).toFixed(1);
+                }
+            }
 
             variations.push(rowData);
 
@@ -774,13 +884,19 @@ try {
                     <input type="text" value="${escapeHtml(rowData.sku)}" oninput="updateVariationValue(${index}, 'sku', this.value)" placeholder="e.g. SKU-RED" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono focus:ring-1 focus:ring-primary-500 focus:outline-none">
                 </td>
                 <td class="py-3 px-4 text-right">
-                    <input type="number" step="0.01" value="${rowData.cost_price}" oninput="updateVariationValue(${index}, 'cost_price', this.value)" placeholder="0.00" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-right focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                    <input type="number" step="0.01" id="var-cost-${index}" value="${rowData.cost_price}" oninput="updateVariationValue(${index}, 'cost_price', this.value); calculateVarRowMaster(${index});" placeholder="0.00" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-right focus:ring-1 focus:ring-primary-500 focus:outline-none">
                 </td>
                 <td class="py-3 px-4 text-right">
-                    <input type="number" step="0.01" value="${rowData.price}" oninput="updateVariationValue(${index}, 'price', this.value)" placeholder="0.00" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-right focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                    <input type="number" step="0.1" id="var-retail-margin-${index}" value="${rowData.retail_margin}" oninput="updateVariationValue(${index}, 'retail_margin', this.value); calculateVarPriceFromMargin(${index}, 'retail');" placeholder="0.0" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-right focus:ring-1 focus:ring-primary-500 focus:outline-none">
                 </td>
                 <td class="py-3 px-4 text-right">
-                    <input type="number" step="0.01" value="${rowData.wholesale_price}" oninput="updateVariationValue(${index}, 'wholesale_price', this.value)" placeholder="0.00" class="w-full bg-purple-50/30 border border-purple-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-right text-purple-750 focus:ring-1 focus:ring-purple-500 focus:outline-none font-bold">
+                    <input type="number" step="0.01" id="var-retail-price-${index}" value="${rowData.price}" oninput="updateVariationValue(${index}, 'price', this.value); calculateVarMarginFromPrice(${index}, 'retail');" placeholder="0.00" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-right focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                </td>
+                <td class="py-3 px-4 text-right">
+                    <input type="number" step="0.1" id="var-wholesale-margin-${index}" value="${rowData.wholesale_margin}" oninput="updateVariationValue(${index}, 'wholesale_margin', this.value); calculateVarPriceFromMargin(${index}, 'wholesale');" placeholder="0.0" class="w-full bg-purple-50/20 border border-purple-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-right text-purple-750 focus:ring-1 focus:ring-purple-500 focus:outline-none font-bold">
+                </td>
+                <td class="py-3 px-4 text-right">
+                    <input type="number" step="0.01" id="var-wholesale-price-${index}" value="${rowData.wholesale_price}" oninput="updateVariationValue(${index}, 'wholesale_price', this.value); calculateVarMarginFromPrice(${index}, 'wholesale');" placeholder="0.00" class="w-full bg-purple-50/30 border border-purple-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-right text-purple-750 focus:ring-1 focus:ring-purple-500 focus:outline-none font-bold">
                 </td>
                 <td class="py-3 px-4 text-right">
                     <button type="button" onclick="removeVariationRow(${index})" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-lg transition-colors cursor-pointer"><i class="fa-solid fa-trash-can"></i></button>

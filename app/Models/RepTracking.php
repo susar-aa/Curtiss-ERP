@@ -58,14 +58,90 @@ class RepTracking {
 
     public function getRouteLoadingItems($routeId) {
         $this->db->query("
-            SELECT ii.description as item_name, SUM(ii.quantity) as total_qty 
-            FROM invoice_items ii 
-            JOIN invoices i ON ii.invoice_id = i.id 
-            WHERE i.rep_route_id = :rid AND i.status != 'Voided' 
-            GROUP BY ii.description 
-            ORDER BY ii.description ASC
+            SELECT ii.description as item_name,
+                   SUM(ii.quantity) as total_qty,
+                   COALESCE(ic.name, 'Uncategorized') as category_name
+            FROM invoice_items ii
+            JOIN invoices i ON ii.invoice_id = i.id
+            LEFT JOIN items it ON ii.item_id = it.id
+            LEFT JOIN item_categories ic ON it.category_id = ic.id
+            WHERE i.rep_route_id = :rid AND i.status != 'Voided'
+            GROUP BY ii.description, COALESCE(ic.id, 0), COALESCE(ic.name, 'Uncategorized')
+            ORDER BY category_name ASC, ii.description ASC
         ");
         $this->db->bind(':rid', $routeId);
         return $this->db->resultSet();
+    }
+
+    /**
+     * Chronological GPS path: day start → each invoice → day end.
+     */
+    public function getRoutePath($routeId) {
+        $route = $this->getRouteById($routeId);
+        if (!$route) {
+            return null;
+        }
+
+        $waypoints = [];
+
+        if (!empty($route->start_lat) && !empty($route->start_lng)) {
+            $waypoints[] = [
+                'type' => 'start',
+                'lat' => (float) $route->start_lat,
+                'lng' => (float) $route->start_lng,
+                'time' => $route->start_time,
+                'label' => 'Day Start',
+                'detail' => $route->route_name,
+            ];
+        }
+
+        $this->db->query("
+            SELECT i.id, i.invoice_number, i.created_at, i.latitude, i.longitude, c.name as customer_name,
+            (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total
+            FROM invoices i
+            JOIN customers c ON i.customer_id = c.id
+            WHERE i.rep_route_id = :rid AND i.status != 'Voided'
+              AND i.latitude IS NOT NULL AND i.longitude IS NOT NULL
+            ORDER BY i.created_at ASC
+        ");
+        $this->db->bind(':rid', $routeId);
+        $bills = $this->db->resultSet();
+
+        $seq = 1;
+        foreach ($bills as $bill) {
+            $waypoints[] = [
+                'type' => 'invoice',
+                'id' => (int) $bill->id,
+                'lat' => (float) $bill->latitude,
+                'lng' => (float) $bill->longitude,
+                'time' => $bill->created_at,
+                'label' => $bill->invoice_number,
+                'detail' => $bill->customer_name,
+                'amount' => (float) $bill->true_grand_total,
+                'sequence' => $seq++,
+            ];
+        }
+
+        if (!empty($route->end_lat) && !empty($route->end_lng)) {
+            $waypoints[] = [
+                'type' => 'end',
+                'lat' => (float) $route->end_lat,
+                'lng' => (float) $route->end_lng,
+                'time' => $route->end_time,
+                'label' => 'Day End',
+                'detail' => $route->status === 'Completed' ? 'Route completed' : 'Last recorded position',
+            ];
+        }
+
+        return [
+            'route_id' => (int) $routeId,
+            'route_name' => $route->route_name,
+            'rep_name' => trim($route->first_name . ' ' . $route->last_name),
+            'status' => $route->status,
+            'start_time' => $route->start_time,
+            'end_time' => $route->end_time,
+            'waypoints' => $waypoints,
+            'point_count' => count($waypoints),
+        ];
     }
 }

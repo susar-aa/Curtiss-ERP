@@ -48,6 +48,16 @@ class Invoice {
         } catch (Exception $e) {
             // Silently catch errors
         }
+
+        try {
+            $this->db->query("SHOW COLUMNS FROM invoices LIKE 'cheque_date'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE invoices ADD COLUMN cheque_date DATE NULL AFTER due_date");
+                $this->db->execute();
+            }
+        } catch (Exception $e) {
+            // Silently catch errors
+        }
     }
 
     public function getAllInvoices() {
@@ -126,6 +136,9 @@ class Invoice {
             $this->db->execute();
             $invoiceId = $this->db->lastInsertId();
 
+            require_once '../app/Models/FIFO.php';
+            $fifo = new FIFO();
+
             foreach ($items as $item) {
                 $parts = explode('|', $item['item_selection']);
                 $itemId = $parts[0] ?? null;
@@ -143,6 +156,7 @@ class Invoice {
                 $this->db->bind(':discount_type', $item['discount_type']);
                 $this->db->bind(':total', $item['total']);
                 $this->db->execute();
+                $invoiceItemId = $this->db->lastInsertId();
 
                 // Direct creation deducts from Physical stock immediately (with unsigned underflow safety)
                 if ($itemId) {
@@ -157,6 +171,9 @@ class Invoice {
                     $this->db->bind(':id', $varId);
                     $this->db->execute();
                 }
+
+                // Deplete via FIFO batches
+                $fifo->depleteStock($itemId, $varId, $item['quantity'], $invoiceItemId, null);
             }
 
             $this->db->commit();
@@ -193,6 +210,9 @@ class Invoice {
             $this->db->bind(':id', $invoiceId);
             $oldItems = $this->db->resultSet();
 
+            require_once '../app/Models/FIFO.php';
+            $fifo = new FIFO();
+
             foreach ($oldItems as $oldItem) {
                 $itemId = $oldItem->item_id;
                 $varId = $oldItem->variation_option_id ?? null;
@@ -225,6 +245,9 @@ class Invoice {
                         $this->db->bind(':id', $varId);
                         $this->db->execute();
                     }
+
+                    // Revert FIFO batch allocations
+                    $fifo->revertDepletion($oldItem->id, null);
                 }
             }
 
@@ -301,6 +324,7 @@ class Invoice {
                 $this->db->bind(':discount_type', $item['discount_type']);
                 $this->db->bind(':total', $item['total']);
                 $this->db->execute();
+                $newInvoiceItemId = $this->db->lastInsertId();
 
                 // Deduct from Main Product Quantity on Hand directly since the invoice is now finalized (unsigned underflow safety)
                 if ($itemId) {
@@ -315,6 +339,9 @@ class Invoice {
                     $this->db->bind(':id', $varId);
                     $this->db->execute();
                 }
+
+                // Deplete new items via FIFO batches
+                $fifo->depleteStock($itemId, $varId, $item['quantity'], $newInvoiceItemId, null);
             }
 
             $this->db->commit();

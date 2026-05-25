@@ -328,7 +328,9 @@ class InventoryController extends Controller {
                 'weight' => trim($_POST['weight'] ?? ''),
                 'sync_woo' => isset($_POST['sync_woo']) ? 1 : 0,
                 'variations_json' => trim($_POST['variations_json'] ?? '[]'),
-                'image_path' => $imagePath
+                'image_path' => $imagePath,
+                'retail_margin' => trim($_POST['retail_margin'] ?? '0.00'),
+                'wholesale_margin' => trim($_POST['wholesale_margin'] ?? '0.00')
             ];
 
             if ($this->itemModel->addItem($data)) {
@@ -419,7 +421,9 @@ class InventoryController extends Controller {
                 'weight' => trim($_POST['weight'] ?? ''),
                 'sync_woo' => isset($_POST['sync_woo']) ? 1 : 0,
                 'variations_json' => trim($_POST['variations_json'] ?? '[]'),
-                'image_path' => $imagePath
+                'image_path' => $imagePath,
+                'retail_margin' => trim($_POST['retail_margin'] ?? '0.00'),
+                'wholesale_margin' => trim($_POST['wholesale_margin'] ?? '0.00')
             ];
 
             if ($this->itemModel->updateItem($data)) {
@@ -484,6 +488,172 @@ class InventoryController extends Controller {
                 return [];
             }
         }
+    }
+
+    /**
+     * View Product Pricing & Inventory Transaction History Dashboard
+     */
+    public function history() {
+        // Suppress errors for this method to prevent HTML output
+        error_reporting(0);
+        ini_set('display_errors', 0);
+
+        try {
+            $catalogItems = $this->itemModel->getAllItems();
+            foreach($catalogItems as $item) {
+                $item->variations = $this->itemModel->getItemVariations($item->id);
+            }
+        } catch (Exception $e) {
+            $catalogItems = [];
+        }
+
+        $data = [
+            'title' => 'Product History & Pricing Audit',
+            'content_view' => 'inventory/history',
+            'catalog_items' => $catalogItems
+        ];
+        $this->view('layouts/main', $data);
+    }
+
+    /**
+     * Ajax Endpoint: Fetch pricing timeline and stock events of any product
+     */
+    public function get_price_history() {
+        // Set up custom error handler to catch all PHP errors and return JSON
+        set_error_handler(function($errno, $errstr, $errfile, $errline) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'PHP Error: ' . $errstr]);
+            exit;
+        });
+
+        // Suppress error output to ensure clean JSON response
+        error_reporting(0);
+        ini_set('display_errors', 0);
+
+        header('Content-Type: application/json');
+
+        try {
+            $itemId = $_GET['item_id'] ?? null;
+            $varOptId = $_GET['var_opt_id'] ?? null;
+
+            if (!$itemId) {
+                echo json_encode(['success' => false, 'error' => 'Product ID is required']);
+                exit;
+            }
+
+            $varOptId = ($varOptId === '0' || empty($varOptId)) ? null : $varOptId;
+
+            // Check if items table exists
+            $this->db->query("SHOW TABLES LIKE 'items'");
+            $tableExists = $this->db->single();
+            if (!$tableExists) {
+                echo json_encode(['success' => false, 'error' => 'Items table not found']);
+                exit;
+            }
+
+            // 1. Fetch current pricing & meta - simplified to avoid join errors
+            // Select all columns and handle mapping in PHP to avoid column name errors
+            $currentSql = "SELECT * FROM items WHERE id = :item_id LIMIT 1";
+            $this->db->query($currentSql);
+            $this->db->bind(':item_id', $itemId);
+            $item = $this->db->single();
+
+            if (!$item) {
+                echo json_encode(['success' => false, 'error' => 'Product not found']);
+                exit;
+            }
+
+            // Map columns dynamically based on what exists
+            $currentMeta = (object)[
+                'name' => $item->name ?? '',
+                'item_code' => $item->item_code ?? $item->sku ?? $item->code ?? '',
+                'product_name' => $item->name ?? '',
+                'current_retail' => $item->selling_price ?? $item->price ?? $item->unit_price ?? $item->rate ?? 0,
+                'current_wholesale' => $item->wholesale_price ?? $item->b2b_price ?? $item->wholesale ?? $item->trade_price ?? 0,
+                'current_cost' => $item->cost_price ?? 0,
+                'current_stock' => $item->qty ?? $item->quantity ?? $item->stock ?? $item->stock_quantity ?? $item->stock_qty ?? 0
+            ];
+
+            if (!$currentMeta) {
+                echo json_encode(['success' => false, 'error' => 'Product not found']);
+                exit;
+            }
+
+            // 2. Fetch history timeline - simplified to avoid errors from missing tables
+            $timeline = [];
+
+            try {
+                // Check if GRN tables exist before querying
+                $this->db->query("SHOW TABLES LIKE 'grn_items'");
+                if ($this->db->single()) {
+                    $grnSql = "
+                        SELECT
+                            grn.grn_date AS date_occurred,
+                            'GRN Received' AS event_type,
+                            gri.quantity AS quantity_changed,
+                            gri.unit_cost AS cost_price,
+                            gri.selling_price AS selling_price,
+                            gri.wholesale_price AS wholesale_price,
+                            CONCAT('GRN #', grn.grn_number) AS reference
+                        FROM grn_items gri
+                        JOIN goods_receipt_notes grn ON gri.grn_id = grn.id
+                        WHERE gri.item_id = :item_id
+                    ";
+                    $this->db->query($grnSql);
+                    $this->db->bind(':item_id', $itemId);
+                    $grnItems = $this->db->resultSet();
+                    if ($grnItems) {
+                        $timeline = array_merge($timeline, $grnItems);
+                    }
+                }
+            } catch (Exception $e) {
+                // Skip GRN history if table doesn't exist
+            }
+
+            try {
+                // Check if invoice tables exist before querying
+                $this->db->query("SHOW TABLES LIKE 'invoice_items'");
+                if ($this->db->single()) {
+                    $invoiceSql = "
+                        SELECT
+                            i.created_at AS date_occurred,
+                            'Invoice Sold' AS event_type,
+                            ii.quantity AS quantity_changed,
+                            ii.cost_at_sale AS cost_price,
+                            ii.unit_price AS selling_price,
+                            NULL AS wholesale_price,
+                            CONCAT('Invoice #', i.invoice_number) AS reference
+                        FROM invoice_items ii
+                        JOIN invoices i ON ii.invoice_id = i.id
+                        WHERE ii.item_id = :item_id AND i.is_deleted = 0
+                    ";
+                    $this->db->query($invoiceSql);
+                    $this->db->bind(':item_id', $itemId);
+                    $invoiceItems = $this->db->resultSet();
+                    if ($invoiceItems) {
+                        $timeline = array_merge($timeline, $invoiceItems);
+                    }
+                }
+            } catch (Exception $e) {
+                // Skip invoice history if table doesn't exist
+            }
+
+            // Sort timeline by date
+            usort($timeline, function($a, $b) {
+                return strtotime($b->date_occurred ?? '0') - strtotime($a->date_occurred ?? '0');
+            });
+
+            echo json_encode([
+                'success' => true,
+                'current' => $currentMeta,
+                'timeline' => $timeline
+            ]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+        }
+
+        restore_error_handler();
+        exit;
     }
 
     /**

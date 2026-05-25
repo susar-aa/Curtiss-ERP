@@ -79,6 +79,9 @@
                 <td>
                     <strong><?= htmlspecialchars($grn->grn_number) ?></strong><br>
                     <span style="font-size: 11px; color: #888;">Rcvd: <?= date('M d, Y', strtotime($grn->grn_date)) ?></span>
+                    <?php if(!empty($grn->receipt_number)): ?>
+                        <br><span style="font-size: 11px; color: #2e7d32;">Inv: <?= htmlspecialchars($grn->receipt_number) ?></span>
+                    <?php endif; ?>
                 </td>
                 <td>
                     <span style="color:#0066cc; font-weight:bold;"><?= htmlspecialchars($grn->vendor_name) ?></span><br>

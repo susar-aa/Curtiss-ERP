@@ -1,20 +1,23 @@
-<?php
-?>
 <style>
     .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .btn { padding: 8px 16px; background: #2e7d32; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+    .btn { padding: 8px 16px; background: #2e7d32; color: #fff; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 13px; font-weight: 600; }
+    .btn:hover { background: #1b5e20; }
+    .btn-outline { background: transparent; border: 1px solid #2e7d32; color: #2e7d32; }
+    .btn-outline:hover { background: #e8f5e9; }
     .form-group { margin-bottom: 15px; }
     .form-group label { display: block; margin-bottom: 5px; font-size: 13px; font-weight: 500; }
     .form-control { width: 100%; padding: 8px 12px; border: 1px solid var(--mac-border); border-radius: 4px; background: transparent; color: var(--text-main); box-sizing: border-box; }
     .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; }
+    .line-row-num { text-align: center; color: #888; font-weight: bold; font-size: 12px; vertical-align: middle; }
     .po-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    .po-table th, .po-table td { padding: 10px; border-bottom: 1px solid var(--mac-border); vertical-align: top;}
+    .po-table th, .po-table td { padding: 10px; border-bottom: 1px solid var(--mac-border); vertical-align: middle;}
     .po-table th { background-color: rgba(0,0,0,0.02); text-align: left; }
     .po-table input, .po-table select { width: 100%; border: 1px solid transparent; background: transparent; color: var(--text-main); padding: 5px; box-sizing: border-box; }
-    .po-table input:focus, .po-table select:focus { border: 1px solid #0066cc; outline: none; border-radius: 4px;}
+    .po-table input:focus { border: 1px solid #2e7d32; outline: none; border-radius: 4px;}
     
-    optgroup { font-weight: bold; color: #2e7d32; background: rgba(46,125,50,0.05); }
-    option { font-weight: normal; color: #333; background: #fff;}
+    .price-badge { font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 4px; display: inline-block; }
+    .price-retail { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; }
+    .price-wholesale { background: #f3e5f5; color: #7b1fa2; border: 1px solid #ce93d8; }
 </style>
 
 <div class="card">
@@ -41,7 +44,7 @@
         <div class="grid-4">
             <div class="form-group">
                 <label>Supplier / Vendor *</label>
-                <select name="vendor_id" id="vendorSelect" class="form-control" onchange="filterProducts()" required <?= $data['linked_po'] ? 'style="pointer-events:none; background:rgba(0,0,0,0.02);"' : '' ?>>
+                <select name="vendor_id" id="vendorSelect" class="form-control" onchange="onVendorChange()" required <?= $data['linked_po'] ? 'style="pointer-events:none; background:rgba(0,0,0,0.02);"' : '' ?>>
                     <option value="">Select Vendor...</option>
                     <?php foreach($data['vendors'] as $ven): ?>
                         <option value="<?= $ven->id ?>" <?= $data['prefilled_vendor'] == $ven->id ? 'selected' : '' ?>><?= htmlspecialchars($ven->name) ?></option>
@@ -56,35 +59,43 @@
                 <label>Receipt Date</label>
                 <input type="date" name="grn_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
             </div>
+            <div class="form-group">
+                <label>Supplier Invoice / Receipt No.</label>
+                <input type="text" name="receipt_number" class="form-control" placeholder="Invoice number from supplier">
+            </div>
         </div>
 
         <table class="po-table" id="linesTable">
             <thead>
                 <tr>
-                    <th style="width: 40%;">Specific Product / Variation Received</th>
-                    <th style="width: 15%; text-align:right;">Qty Received</th>
-                    <th style="width: 15%; text-align:right;">Unit Cost (Rs:)</th>
-                    <th style="width: 25%; text-align:right;">New Selling Price (Rs:)</th>
-                    <th style="width: 5%;"></th>
+                    <th style="width: 30px;">#</th>
+                    <th style="width: 30%;">Specific Product / Variation Received</th>
+                    <th style="width: 8%; text-align:right;">Qty</th>
+                    <th style="width: 12%; text-align:right;">Unit Cost (Rs:)</th>
+                    <th style="width: 10%; text-align:right;">Retail Margin %</th>
+                    <th style="width: 10%; text-align:right;">Wholesale Margin %</th>
+                    <th style="width: 14%; text-align:right; color: #1565c0;">Retail Price (Calculated)</th>
+                    <th style="width: 14%; text-align:right; color: #7b1fa2;">Wholesale B2B (Calculated)</th>
+                    <th style="width: 4%;"></th>
                 </tr>
             </thead>
             <tbody id="poBody">
                 <?php if(!empty($data['prefilled_items'])): ?>
-                    <?php foreach($data['prefilled_items'] as $item): ?>
+                    <?php $lineNum = 1; foreach($data['prefilled_items'] as $item): ?>
                         <?php 
-                            // If the PO had a MIX, force the user to pick explicitly by leaving the value blank!
-                            $selectedValue = $item->is_mix ? "" : "{$item->item_id}|{$item->item_variation_option_id}";
-                            
-                            // Find the current Selling Price from the Catalog Data
-                            $sellPrice = 0.00;
+                            $retailMargin = 0.0;
+                            $wholesaleMargin = 0.0;
+                            $displayName = $item->description;
                             if ($item->item_id) {
                                 foreach($data['catalog_items'] as $catItem) {
                                     if ($catItem->id == $item->item_id) {
-                                        $sellPrice = $catItem->price; // Base Price
+                                        $retailMargin = floatval($catItem->retail_margin ?? 0);
+                                        $wholesaleMargin = floatval($catItem->wholesale_margin ?? 0);
+                                        $displayName = $catItem->name;
                                         if ($item->item_variation_option_id && !empty($catItem->variations)) {
                                             foreach($catItem->variations as $v) {
                                                 if ($v->id == $item->item_variation_option_id) {
-                                                    $sellPrice = $v->price ?? $catItem->price; // Specific Variation Price
+                                                    $displayName = "{$catItem->name} - {$v->variation_name}: {$v->value_name}";
                                                 }
                                             }
                                         }
@@ -93,68 +104,49 @@
                             }
                         ?>
                         <tr>
-                            <td>
-                                <select name="item_selection[]" class="item-select" onchange="autoFillSelection(this)" required>
-                                    <option value="">Select Specific Variation...</option>
-                                    <?php foreach($data['catalog_items'] as $catItem): ?>
-                                        <?php if(!empty($catItem->variations)): ?>
-                                            <optgroup label="<?= htmlspecialchars($catItem->name) ?>" data-vendor="<?= $catItem->vendor_id ?>">
-                                                <?php foreach($catItem->variations as $var): ?>
-                                                    <option value="<?= $catItem->id ?>|<?= $var->id ?>" data-price="<?= $var->cost ?? $catItem->cost ?>" data-selling-price="<?= $var->price ?? $catItem->price ?>" data-name="<?= htmlspecialchars($catItem->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>" <?= $selectedValue === "{$catItem->id}|{$var->id}" ? 'selected' : '' ?>>
-                                                        <?= htmlspecialchars($catItem->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </optgroup>
-                                        <?php else: ?>
-                                            <option class="base-opt" value="<?= $catItem->id ?>|0" data-price="<?= $catItem->cost ?>" data-selling-price="<?= $catItem->price ?>" data-vendor="<?= $catItem->vendor_id ?>" data-name="<?= htmlspecialchars($catItem->name) ?>" <?= $selectedValue === "{$catItem->id}|" ? 'selected' : '' ?>>
-                                                <?= htmlspecialchars($catItem->name) ?>
-                                            </option>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </select>
-                                <input type="hidden" name="desc[]" class="desc-hidden" value="<?= htmlspecialchars($item->description) ?>">
-                                <?php if($item->is_mix): ?>
-                                    <div style="font-size:11px; color:#e65100; margin-top:4px;">⚠️ Please resolve MIX: Select the exact variant received. Add more rows if multiple variants arrived.</div>
-                                <?php endif; ?>
+                            <td class="line-row-num"><?= $lineNum++ ?></td>
+                            <td style="position: relative; overflow: visible;">
+                                <input type="text" class="form-control autocomplete-search-input" value="<?= htmlspecialchars($displayName) ?>" placeholder="Type product name/SKU..." autocomplete="off" style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 6px 10px; background: transparent; color: var(--text-main); font-size:12px;" required>
+                                <div class="autocomplete-suggestions-wrapper" style="position: absolute; top: calc(100% + 2px); left: 10px; right: 10px; background: #ffffff; border: 1px solid var(--mac-border); border-radius: 6px; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 9999; display: none;"></div>
+                                <input type="hidden" name="item_selection[]" class="item-selection-hidden" value="<?= $item->item_id ?>|<?= $item->item_variation_option_id ?: '0' ?>" required>
+                                <input type="hidden" name="desc[]" class="desc-hidden" value="<?= htmlspecialchars($displayName) ?>">
                             </td>
-                            <td><input type="number" name="qty[]" step="1" min="1" value="<?= $item->quantity ?>" required></td>
-                            <td><input type="number" name="price[]" step="0.01" min="0" value="<?= number_format($item->unit_price, 2, '.', '') ?>" required></td>
-                            <td>
-                                <input type="number" name="selling_price[]" step="0.01" min="0" value="<?= number_format($sellPrice, 2, '.', '') ?>" required>
-                                <div style="font-size:10px; color:#888; text-align:right;">Updates product catalog</div>
+                            <td><input type="number" name="qty[]" step="1" min="1" value="<?= $item->quantity ?>" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px;"></td>
+                            <td><input type="number" name="price[]" step="0.01" min="0" value="<?= number_format($item->unit_price, 2, '.', '') ?>" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; font-weight:600; text-align:right;"></td>
+                            <td><input type="number" name="retail_margin[]" step="0.1" value="<?= number_format($retailMargin, 1, '.', '') ?>" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; text-align:right;"></td>
+                            <td><input type="number" name="wholesale_margin[]" step="0.1" value="<?= number_format($wholesaleMargin, 1, '.', '') ?>" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; text-align:right;"></td>
+                            <td style="text-align: right; vertical-align: middle;">
+                                <span class="price-badge price-retail display-retail">0.00</span>
+                                <input type="hidden" name="selling_price[]" value="0.00">
                             </td>
-                            <td><button type="button" class="btn btn-danger" style="padding: 4px 8px; font-size:10px; background:#c62828;" onclick="removeRow(this)">X</button></td>
+                            <td style="text-align: right; vertical-align: middle;">
+                                <span class="price-badge price-wholesale display-wholesale">0.00</span>
+                                <input type="hidden" name="wholesale_price[]" value="0.00">
+                            </td>
+                            <td><button type="button" class="btn btn-danger" style="padding: 4px 8px; font-size:10px; background:#c62828; color:#fff;" onclick="removeRow(this)">X</button></td>
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
                     <!-- Blank Row -->
                     <tr>
-                        <td>
-                            <select name="item_selection[]" class="item-select" onchange="autoFillSelection(this)" required>
-                                <option value="">Select Specific Variation...</option>
-                                <?php foreach($data['catalog_items'] as $item): ?>
-                                    <?php if(!empty($item->variations)): ?>
-                                        <optgroup label="<?= htmlspecialchars($item->name) ?>" data-vendor="<?= $item->vendor_id ?>">
-                                            <?php foreach($item->variations as $var): ?>
-                                                <option value="<?= $item->id ?>|<?= $var->id ?>" data-price="<?= $var->cost ?? $item->cost ?>" data-selling-price="<?= $var->price ?? $item->price ?>" data-name="<?= htmlspecialchars($item->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>">
-                                                    <?= htmlspecialchars($item->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </optgroup>
-                                    <?php else: ?>
-                                        <option class="base-opt" value="<?= $item->id ?>|0" data-price="<?= $item->cost ?>" data-selling-price="<?= $item->price ?>" data-vendor="<?= $item->vendor_id ?>" data-name="<?= htmlspecialchars($item->name) ?>">
-                                            <?= htmlspecialchars($item->name) ?>
-                                        </option>
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            </select>
+                        <td class="line-row-num">1</td>
+                        <td style="position: relative; overflow: visible;">
+                            <input type="text" class="form-control autocomplete-search-input" placeholder="Type product name/SKU..." autocomplete="off" style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 6px 10px; background: transparent; color: var(--text-main); font-size:12px;" required>
+                            <div class="autocomplete-suggestions-wrapper" style="position: absolute; top: calc(100% + 2px); left: 10px; right: 10px; background: #ffffff; border: 1px solid var(--mac-border); border-radius: 6px; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 9999; display: none;"></div>
+                            <input type="hidden" name="item_selection[]" class="item-selection-hidden" required>
                             <input type="hidden" name="desc[]" class="desc-hidden">
                         </td>
-                        <td><input type="number" name="qty[]" step="1" min="1" value="1" required></td>
-                        <td><input type="number" name="price[]" step="0.01" min="0" value="0.00" required></td>
-                        <td>
-                            <input type="number" name="selling_price[]" step="0.01" min="0" value="0.00" required>
-                            <div style="font-size:10px; color:#888; text-align:right;">Updates product catalog</div>
+                        <td><input type="number" name="qty[]" step="1" min="1" value="1" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px;"></td>
+                        <td><input type="number" name="price[]" step="0.01" min="0" value="0.00" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; font-weight:600; text-align:right;"></td>
+                        <td><input type="number" name="retail_margin[]" step="0.1" value="0.0" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; text-align:right;"></td>
+                        <td><input type="number" name="wholesale_margin[]" step="0.1" value="0.0" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; text-align:right;"></td>
+                        <td style="text-align: right; vertical-align: middle;">
+                            <span class="price-badge price-retail display-retail">0.00</span>
+                            <input type="hidden" name="selling_price[]" value="0.00">
+                        </td>
+                        <td style="text-align: right; vertical-align: middle;">
+                            <span class="price-badge price-wholesale display-wholesale">0.00</span>
+                            <input type="hidden" name="wholesale_price[]" value="0.00">
                         </td>
                         <td></td>
                     </tr>
@@ -162,7 +154,7 @@
             </tbody>
         </table>
         
-        <button type="button" class="btn btn-outline" style="margin-top: 10px; font-size:12px; background:transparent; border:1px solid #2e7d32; color:#2e7d32;" onclick="addRow()">+ Add Received Item</button>
+        <button type="button" class="btn btn-outline" style="margin-top: 10px; font-size:12px;" onclick="addRow()">+ Add Received Item</button>
 
         <div class="form-group" style="margin-top: 20px;">
             <label>Inspection Notes / Damages</label>
@@ -176,75 +168,211 @@
 </div>
 
 <script>
-    const catalogOptions = `
-        <option value="">Select Specific Variation...</option>
-        <?php foreach($data['catalog_items'] as $item): ?>
-            <?php if(!empty($item->variations)): ?>
-                <optgroup label="<?= htmlspecialchars($item->name) ?>" data-vendor="<?= $item->vendor_id ?>">
-                    <?php foreach($item->variations as $var): ?>
-                        <option value="<?= $item->id ?>|<?= $var->id ?>" data-price="<?= $var->cost ?? $item->cost ?>" data-selling-price="<?= $var->price ?? $item->price ?>" data-name="<?= htmlspecialchars($item->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>">
-                            <?= htmlspecialchars($item->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </optgroup>
-            <?php else: ?>
-                <option class="base-opt" value="<?= $item->id ?>|0" data-price="<?= $item->cost ?>" data-selling-price="<?= $item->price ?>" data-vendor="<?= $item->vendor_id ?>" data-name="<?= htmlspecialchars($item->name) ?>">
-                    <?= htmlspecialchars($item->name) ?>
-                </option>
-            <?php endif; ?>
-        <?php endforeach; ?>
-    `;
-
-    function filterProducts() {
-        const vendorId = document.getElementById('vendorSelect').value;
-        document.querySelectorAll('.item-select').forEach(select => {
-            select.querySelectorAll('optgroup, option.base-opt').forEach(group => {
-                if (group.getAttribute('data-vendor') === vendorId || vendorId === "" || !group.getAttribute('data-vendor')) {
-                    group.style.display = '';
-                } else {
-                    group.style.display = 'none';
-                }
+    // Injected catalog items with preloaded variations
+    const catalogItems = <?= json_encode($data['catalog_items']) ?>;
+    
+    // Generate flattened list of searchable elements (main items + variation options)
+    const searchableItems = [];
+    catalogItems.forEach(item => {
+        if (item.variations && item.variations.length > 0) {
+            item.variations.forEach(v => {
+                searchableItems.push({
+                    item_id: item.id,
+                    var_opt_id: v.id,
+                    display_name: `${item.name} - ${v.variation_name}: ${v.value_name}`,
+                    sku: v.sku || item.item_code || '',
+                    vendor_id: item.vendor_id,
+                    cost: parseFloat(v.cost ?? item.cost ?? 0),
+                    price: parseFloat(v.price ?? item.price ?? 0),
+                    retail_margin: parseFloat(item.retail_margin ?? 0),
+                    wholesale_margin: parseFloat(item.wholesale_margin ?? 0),
+                    wholesale_price: parseFloat(item.wholesale_price ?? 0)
+                });
             });
+        } else {
+            searchableItems.push({
+                item_id: item.id,
+                var_opt_id: 0,
+                display_name: item.name,
+                sku: item.item_code || '',
+                vendor_id: item.vendor_id,
+                cost: parseFloat(item.cost ?? 0),
+                price: parseFloat(item.price ?? 0),
+                retail_margin: parseFloat(item.retail_margin ?? 0),
+                wholesale_margin: parseFloat(item.wholesale_margin ?? 0),
+                wholesale_price: parseFloat(item.wholesale_price ?? 0)
+            });
+        }
+    });
+
+    function onVendorChange() {
+        const tbody = document.getElementById('poBody');
+        tbody.innerHTML = ''; // Clear all current lines to prevent vendor mixing
+        addRow(); // Insert a single clean row
+    }
+
+    function initAutocomplete(row) {
+        const input = row.querySelector('.autocomplete-search-input');
+        const wrapper = row.querySelector('.autocomplete-suggestions-wrapper');
+        const hiddenSelection = row.querySelector('.item-selection-hidden');
+        const hiddenDesc = row.querySelector('.desc-hidden');
+
+        input.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            const vendorId = document.getElementById('vendorSelect').value;
+            
+            wrapper.innerHTML = '';
+            
+            if (!vendorId) {
+                wrapper.innerHTML = '<div style="padding: 8px 12px; font-size:11px; color:#c62828; font-weight:600;">⚠️ Select Supplier / Vendor first</div>';
+                wrapper.style.display = 'block';
+                return;
+            }
+
+            if (query.length < 1) {
+                wrapper.style.display = 'none';
+                return;
+            }
+
+            // Filter by selected vendor and search string
+            const matches = searchableItems.filter(item => 
+                parseInt(item.vendor_id) === parseInt(vendorId) && 
+                (item.display_name.toLowerCase().includes(query) || item.sku.toLowerCase().includes(query))
+            ).slice(0, 10);
+
+            if (matches.length === 0) {
+                wrapper.innerHTML = '<div style="padding: 8px 12px; font-size:11px; color:#888; font-style:italic;">No vendor products found</div>';
+                wrapper.style.display = 'block';
+                return;
+            }
+
+            matches.forEach(m => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'autocomplete-suggestion-item';
+                itemDiv.style.padding = '8px 12px';
+                itemDiv.style.fontSize = '12px';
+                itemDiv.style.cursor = 'pointer';
+                itemDiv.style.borderBottom = '1px solid #f5f5f7';
+                itemDiv.style.display = 'flex';
+                itemDiv.style.justifyContent = 'space-between';
+                itemDiv.style.alignItems = 'center';
+                
+                itemDiv.innerHTML = `
+                    <span style="font-weight: 500; color: #333;">${escapeHtml(m.display_name)}</span>
+                    <span style="font-size: 10px; color:#888; font-family:monospace;">${escapeHtml(m.sku)}</span>
+                `;
+                
+                itemDiv.addEventListener('mouseover', () => {
+                    itemDiv.style.background = '#e8f5e9';
+                    itemDiv.style.color = '#2e7d32';
+                });
+                itemDiv.addEventListener('mouseout', () => {
+                    itemDiv.style.background = '';
+                    itemDiv.style.color = '';
+                });
+
+                itemDiv.addEventListener('click', () => {
+                    input.value = m.display_name;
+                    hiddenSelection.value = `${m.item_id}|${m.var_opt_id}`;
+                    hiddenDesc.value = m.display_name;
+                    wrapper.style.display = 'none';
+
+                    // Populate prices, margins and costs
+                    row.querySelector('input[name="price[]"]').value = m.cost.toFixed(2);
+                    row.querySelector('input[name="retail_margin[]"]').value = m.retail_margin.toFixed(1);
+                    row.querySelector('input[name="wholesale_margin[]"]').value = m.wholesale_margin.toFixed(1);
+                    
+                    calculateRowPrices(row);
+                });
+
+                wrapper.appendChild(itemDiv);
+            });
+
+            wrapper.style.display = 'block';
+        });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!input.contains(e.target) && !wrapper.contains(e.target)) {
+                wrapper.style.display = 'none';
+            }
         });
     }
 
-    function autoFillSelection(selectElement) {
-        const selectedOption = selectElement.options[selectElement.selectedIndex];
-        const price = selectedOption.getAttribute('data-price') || 0;
-        const sellPrice = selectedOption.getAttribute('data-selling-price') || 0;
-        const name = selectedOption.getAttribute('data-name') || '';
+    function calculateRowPrices(row) {
+        const cost = parseFloat(row.querySelector('input[name="price[]"]').value) || 0;
+        const retailMargin = parseFloat(row.querySelector('input[name="retail_margin[]"]').value) || 0;
+        const wholesaleMargin = parseFloat(row.querySelector('input[name="wholesale_margin[]"]').value) || 0;
+
+        const calculatedRetail = cost + (cost * retailMargin / 100);
+        const calculatedWholesale = cost + (cost * wholesaleMargin / 100);
+
+        row.querySelector('.display-retail').textContent = calculatedRetail.toFixed(2);
+        row.querySelector('.display-wholesale').textContent = calculatedWholesale.toFixed(2);
         
-        const tr = selectElement.closest('tr');
-        tr.querySelector('input[name="price[]"]').value = parseFloat(price).toFixed(2);
-        
-        const sellInput = tr.querySelector('input[name="selling_price[]"]');
-        if(sellInput) {
-            sellInput.value = parseFloat(sellPrice).toFixed(2);
-        }
-        
-        tr.querySelector('.desc-hidden').value = name;
+        // Populate inputs to submit
+        row.querySelector('input[name="selling_price[]"]').value = calculatedRetail.toFixed(2);
+        row.querySelector('input[name="wholesale_price[]"]').value = calculatedWholesale.toFixed(2);
+    }
+
+    function renumberLineRows(tbodyId) {
+        document.querySelectorAll(`#${tbodyId} tr`).forEach((tr, i) => {
+            const cell = tr.querySelector('.line-row-num');
+            if (cell) cell.textContent = i + 1;
+        });
     }
 
     function addRow() {
         const tbody = document.getElementById('poBody');
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>
-                <select name="item_selection[]" class="item-select" onchange="autoFillSelection(this)" required>${catalogOptions}</select>
+            <td class="line-row-num"></td>
+            <td style="position: relative; overflow: visible;">
+                <input type="text" class="form-control autocomplete-search-input" placeholder="Type product name/SKU..." autocomplete="off" style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 6px 10px; background: transparent; color: var(--text-main); font-size:12px;" required>
+                <div class="autocomplete-suggestions-wrapper" style="position: absolute; top: calc(100% + 2px); left: 10px; right: 10px; background: #ffffff; border: 1px solid var(--mac-border); border-radius: 6px; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 9999; display: none;"></div>
+                <input type="hidden" name="item_selection[]" class="item-selection-hidden" required>
                 <input type="hidden" name="desc[]" class="desc-hidden">
             </td>
-            <td><input type="number" name="qty[]" step="1" min="1" value="1" required></td>
-            <td><input type="number" name="price[]" step="0.01" min="0" value="0.00" required></td>
-            <td>
-                <input type="number" name="selling_price[]" step="0.01" min="0" value="0.00" required>
-                <div style="font-size:10px; color:#888; text-align:right;">Updates product catalog</div>
+            <td><input type="number" name="qty[]" step="1" min="1" value="1" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px;"></td>
+            <td><input type="number" name="price[]" step="0.01" min="0" value="0.00" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; font-weight:600; text-align:right;"></td>
+            <td><input type="number" name="retail_margin[]" step="0.1" value="0.0" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; text-align:right;"></td>
+            <td><input type="number" name="wholesale_margin[]" step="0.1" value="0.0" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; text-align:right;"></td>
+            <td style="text-align: right; vertical-align: middle;">
+                <span class="price-badge price-retail display-retail">0.00</span>
+                <input type="hidden" name="selling_price[]" value="0.00">
+            </td>
+            <td style="text-align: right; vertical-align: middle;">
+                <span class="price-badge price-wholesale display-wholesale">0.00</span>
+                <input type="hidden" name="wholesale_price[]" value="0.00">
             </td>
             <td><button type="button" class="btn btn-danger" style="padding: 4px 8px; font-size:10px; background:#c62828; color:#fff;" onclick="removeRow(this)">X</button></td>
         `;
         tbody.appendChild(tr);
-        filterProducts();
+        initAutocomplete(tr);
+        renumberLineRows('poBody');
     }
 
-    function removeRow(btn) { btn.closest('tr').remove(); }
-    document.addEventListener("DOMContentLoaded", filterProducts);
+    function removeRow(btn) {
+        btn.closest('tr').remove();
+        renumberLineRows('poBody');
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        // Initialize autocomplete on any prefilled rows
+        document.querySelectorAll('#poBody tr').forEach(row => {
+            initAutocomplete(row);
+            calculateRowPrices(row);
+        });
+        renumberLineRows('poBody');
+    });
 </script>

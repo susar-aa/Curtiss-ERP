@@ -24,9 +24,9 @@ class App {
                 }
             }
 
-            // Look in controllers for first value
             if (isset($url[0])) {
-                $controllerName = ucwords($url[0]) . 'Controller';
+                $cleanControllerName = str_replace('-', '', ucwords($url[0], '-'));
+                $controllerName = $cleanControllerName . 'Controller';
                 if (file_exists('../app/Controllers/' . $controllerName . '.php')) {
                     $this->controller = $controllerName;
                     unset($url[0]);

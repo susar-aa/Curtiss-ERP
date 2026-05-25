@@ -86,7 +86,11 @@ foreach($data['accounts'] as $acc) {
                 <!-- PARENT ROW -->
                 <?php $parent = $node['parent']; ?>
                 <tr class="coa-row row-parent">
-                    <td><?= htmlspecialchars($parent->account_code) ?> - <?= htmlspecialchars($parent->account_name) ?></td>
+                    <td>
+                        <a href="<?= APP_URL ?>/accounting/history/<?= $parent->id ?>" style="text-decoration:none; color:#0066cc; font-weight:bold;">
+                            📁 <?= htmlspecialchars($parent->account_code) ?> - <?= htmlspecialchars($parent->account_name) ?>
+                        </a>
+                    </td>
                     <td><span class="badge type-<?= $parent->account_type ?>"><?= $parent->account_type ?></span></td>
                     <td style="text-align: right; font-family:monospace; font-size: 14px;">Rs: <?= number_format($parent->balance, 2) ?></td>
                     <td style="text-align: center;">
@@ -95,18 +99,18 @@ foreach($data['accounts'] as $acc) {
                     </td>
                     <td style="text-align: center;">
                         <button class="btn btn-outline btn-small" onclick="openModal('edit', '<?= $parent->id ?>', '<?= addslashes($parent->account_code) ?>', '<?= addslashes($parent->account_name) ?>', '<?= $parent->account_type ?>', '', <?= $parent->is_active ?>)">Edit</button>
-                        <form action="<?= APP_URL ?>/accounting/coa" method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="delete_account">
-                            <input type="hidden" name="account_id" value="<?= $parent->id ?>">
-                            <button type="submit" class="btn btn-danger btn-small" onclick="return confirm('Delete this account? All sub-accounts will be deleted too.');">Del</button>
-                        </form>
                     </td>
                 </tr>
 
                 <!-- SUB-ACCOUNT ROWS -->
                 <?php foreach($node['children'] as $child): ?>
                 <tr class="coa-row row-child">
-                    <td><span class="sub-indicator">↳</span> <?= htmlspecialchars($child->account_code) ?> - <?= htmlspecialchars($child->account_name) ?></td>
+                    <td>
+                        <span class="sub-indicator">↳</span> 
+                        <a href="<?= APP_URL ?>/accounting/history/<?= $child->id ?>" style="text-decoration:none; color:inherit; font-weight:500;">
+                            📄 <?= htmlspecialchars($child->account_code) ?> - <?= htmlspecialchars($child->account_name) ?>
+                        </a>
+                    </td>
                     <td><span class="badge type-<?= $child->account_type ?>"><?= $child->account_type ?></span></td>
                     <td style="text-align: right; font-family:monospace; font-size: 14px;">Rs: <?= number_format($child->balance, 2) ?></td>
                     <td style="text-align: center;">
@@ -115,11 +119,6 @@ foreach($data['accounts'] as $acc) {
                     </td>
                     <td style="text-align: center;">
                         <button class="btn btn-outline btn-small" onclick="openModal('edit', '<?= $child->id ?>', '<?= addslashes($child->account_code) ?>', '<?= addslashes($child->account_name) ?>', '<?= $child->account_type ?>', '<?= $child->parent_id ?>', <?= $child->is_active ?>)">Edit</button>
-                        <form action="<?= APP_URL ?>/accounting/coa" method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="delete_account">
-                            <input type="hidden" name="account_id" value="<?= $child->id ?>">
-                            <button type="submit" class="btn btn-danger btn-small" onclick="return confirm('Delete this sub-account?');">Del</button>
-                        </form>
                     </td>
                 </tr>
                 <?php endforeach; ?>

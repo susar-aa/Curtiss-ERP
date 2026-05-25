@@ -92,6 +92,7 @@ class GRNController extends Controller {
                 'vendor_id' => $_POST['vendor_id'],
                 'po_id' => !empty($_POST['po_id']) ? $_POST['po_id'] : null,
                 'grn_number' => $_POST['grn_number'],
+                'receipt_number' => trim($_POST['receipt_number'] ?? '') ?: null,
                 'grn_date' => $_POST['grn_date'],
                 'notes' => trim($_POST['notes'])
             ];
@@ -108,7 +109,10 @@ class GRNController extends Controller {
                             'desc' => $_POST['desc'][$i],
                             'qty' => $_POST['qty'][$i],
                             'price' => $_POST['price'][$i],
-                            'selling_price' => floatval($_POST['selling_price'][$i] ?? 0)
+                            'selling_price' => floatval($_POST['selling_price'][$i] ?? 0),
+                            'wholesale_price' => floatval($_POST['wholesale_price'][$i] ?? 0),
+                            'retail_margin' => floatval($_POST['retail_margin'][$i] ?? 0),
+                            'wholesale_margin' => floatval($_POST['wholesale_margin'][$i] ?? 0)
                         ];
                     }
                 }

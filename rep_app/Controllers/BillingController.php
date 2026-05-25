@@ -73,6 +73,16 @@ class BillingController extends RepController {
         }
 
         $db = new Database();
+
+        try {
+            $db->query("SHOW COLUMNS FROM invoices LIKE 'cheque_date'");
+            if (!$db->single()) {
+                $db->query("ALTER TABLE invoices ADD COLUMN cheque_date DATE NULL AFTER due_date");
+                $db->execute();
+            }
+        } catch (Exception $e) {
+            // Ignore schema migration errors
+        }
         
         try {
             $db->beginTransaction();
@@ -155,17 +165,26 @@ class BillingController extends RepController {
             $db->execute();
 
             // 5. Create Database Invoice Record
-            $db->query("SELECT days_due FROM payment_terms WHERE id = :tid");
+            $db->query("SELECT name, days_due FROM payment_terms WHERE id = :tid");
             $db->bind(':tid', $termId);
             $term = $db->single();
             $daysDue = $term ? $term->days_due : 0;
             $dueDate = date('Y-m-d', strtotime("+$daysDue days"));
 
-            $db->query("INSERT INTO invoices (invoice_number, customer_id, invoice_date, due_date, total_amount, global_discount_val, global_discount_type, tax_amount, journal_entry_id, created_by, rep_route_id, latitude, longitude, stock_status) 
-                        VALUES (:inv, :cid, CURDATE(), :due, :total, :gdval, :gdtype, :tax, :jid, :uid, :route, :lat, :lng, 'reserved')");
+            $chequeDate = null;
+            if ($term && (stripos($term->name, 'cheque') !== false || stripos($term->name, 'check') !== false)) {
+                $chequeDate = !empty($payload['term_cheque_date']) ? $payload['term_cheque_date'] : null;
+                if (!$chequeDate) {
+                    throw new Exception('Cheque Date is required when payment term is Cheque.');
+                }
+            }
+
+            $db->query("INSERT INTO invoices (invoice_number, customer_id, invoice_date, due_date, cheque_date, total_amount, global_discount_val, global_discount_type, tax_amount, journal_entry_id, created_by, rep_route_id, latitude, longitude, stock_status) 
+                        VALUES (:inv, :cid, CURDATE(), :due, :cdate, :total, :gdval, :gdtype, :tax, :jid, :uid, :route, :lat, :lng, 'reserved')");
             $db->bind(':inv', $invoiceNumber);
             $db->bind(':cid', $customerId);
             $db->bind(':due', $dueDate);
+            $db->bind(':cdate', $chequeDate);
             $db->bind(':total', $subTotal);
             $db->bind(':gdval', $globalDiscVal);
             $db->bind(':gdtype', $globalDiscType);
