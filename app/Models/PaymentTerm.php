@@ -4,25 +4,97 @@ class PaymentTerm {
 
     public function __construct() {
         $this->db = new Database();
+        $this->updateSchema();
+    }
+
+    /**
+     * Self-healing DB routine to gracefully add new QuickBooks-style terms columns
+     */
+    private function updateSchema() {
+        $columns = [
+            'term_type' => "VARCHAR(20) DEFAULT 'standard'",
+            'net_due_days' => "INT DEFAULT 0",
+            'discount_percent' => "DECIMAL(5,2) DEFAULT 0.00",
+            'discount_days' => "INT DEFAULT 0",
+            'net_due_day_of_month' => "INT DEFAULT 31",
+            'due_next_month_within_days' => "INT DEFAULT 5",
+            'discount_day_of_month' => "INT DEFAULT 10",
+            'is_inactive' => "TINYINT DEFAULT 0"
+        ];
+
+        foreach ($columns as $col => $type) {
+            $this->db->query("SHOW COLUMNS FROM payment_terms LIKE :col");
+            $this->db->bind(':col', $col);
+            if (!$this->db->single()) {
+                // Column is missing, add it
+                $this->db->query("ALTER TABLE payment_terms ADD COLUMN {$col} {$type}");
+                $this->db->execute();
+            }
+        }
     }
 
     public function getAllTerms() {
-        $this->db->query("SELECT * FROM payment_terms ORDER BY days_due ASC");
+        $this->db->query("SELECT * FROM payment_terms ORDER BY is_inactive ASC, days_due ASC");
         return $this->db->resultSet();
     }
 
+    public function getTermById($id) {
+        $this->db->query("SELECT * FROM payment_terms WHERE id = :id");
+        $this->db->bind(':id', $id);
+        return $this->db->single();
+    }
+
     public function addTerm($data) {
-        $this->db->query("INSERT INTO payment_terms (name, days_due) VALUES (:name, :days)");
+        $this->db->query("INSERT INTO payment_terms (
+                            name, days_due, term_type, net_due_days, discount_percent, 
+                            discount_days, net_due_day_of_month, due_next_month_within_days, 
+                            discount_day_of_month, is_inactive
+                          ) VALUES (
+                            :name, :days_due, :term_type, :net_due_days, :discount_percent, 
+                            :discount_days, :net_due_day_of_month, :due_next_month_within_days, 
+                            :discount_day_of_month, :is_inactive
+                          )");
+        
         $this->db->bind(':name', $data['name']);
-        $this->db->bind(':days', $data['days_due']);
+        $this->db->bind(':days_due', $data['days_due']);
+        $this->db->bind(':term_type', $data['term_type']);
+        $this->db->bind(':net_due_days', $data['net_due_days']);
+        $this->db->bind(':discount_percent', $data['discount_percent']);
+        $this->db->bind(':discount_days', $data['discount_days']);
+        $this->db->bind(':net_due_day_of_month', $data['net_due_day_of_month']);
+        $this->db->bind(':due_next_month_within_days', $data['due_next_month_within_days']);
+        $this->db->bind(':discount_day_of_month', $data['discount_day_of_month']);
+        $this->db->bind(':is_inactive', $data['is_inactive']);
+        
         return $this->db->execute();
     }
 
     public function updateTerm($data) {
-        $this->db->query("UPDATE payment_terms SET name = :name, days_due = :days WHERE id = :id");
+        $this->db->query("UPDATE payment_terms SET 
+                            name = :name, 
+                            days_due = :days_due, 
+                            term_type = :term_type, 
+                            net_due_days = :net_due_days, 
+                            discount_percent = :discount_percent, 
+                            discount_days = :discount_days, 
+                            net_due_day_of_month = :net_due_day_of_month, 
+                            due_next_month_within_days = :due_next_month_within_days, 
+                            discount_day_of_month = :discount_day_of_month, 
+                            is_inactive = :is_inactive 
+                          WHERE id = :id");
+        
         $this->db->bind(':id', $data['id']);
         $this->db->bind(':name', $data['name']);
-        $this->db->bind(':days', $data['days_due']);
+        $this->db->bind(':days_due', $data['days_due']);
+        $this->db->bind(':term_type', $data['term_type']);
+        $this->db->bind(':net_due_days', $data['net_due_days']);
+        $this->db->bind(':discount_percent', $data['discount_percent']);
+        $this->db->bind(':discount_days', $data['discount_days']);
+        $this->db->bind(':net_due_day_of_month', $data['net_due_day_of_month']);
+        $this->db->bind(':due_next_month_within_days', $data['due_next_month_within_days']);
+        $this->db->bind(':discount_day_of_month', $data['discount_day_of_month']);
+        $this->db->bind(':is_inactive', $data['is_inactive']);
+        
         return $this->db->execute();
     }
 

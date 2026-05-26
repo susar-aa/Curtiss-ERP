@@ -58,6 +58,16 @@ class Invoice {
         } catch (Exception $e) {
             // Silently catch errors
         }
+
+        try {
+            $this->db->query("SHOW COLUMNS FROM invoices LIKE 'payment_term_id'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE invoices ADD COLUMN payment_term_id INT NULL DEFAULT NULL AFTER due_date");
+                $this->db->execute();
+            }
+        } catch (Exception $e) {
+            // Silently catch errors
+        }
     }
 
     public function getAllInvoices() {
@@ -120,13 +130,14 @@ class Invoice {
             $this->db->bind(':id', $revenueAccountId);
             $this->db->execute();
 
-            $this->db->query("INSERT INTO invoices (invoice_number, customer_id, rep_route_id, invoice_date, due_date, total_amount, global_discount_val, global_discount_type, notes, journal_entry_id, created_by, status, stock_status) 
-                              VALUES (:invoice_number, :customer_id, :rep_route_id, :invoice_date, :due_date, :total_amount, :global_discount_val, :global_discount_type, :notes, :journal_entry_id, :created_by, 'Unpaid', 'deducted')");
+            $this->db->query("INSERT INTO invoices (invoice_number, customer_id, rep_route_id, invoice_date, due_date, payment_term_id, total_amount, global_discount_val, global_discount_type, notes, journal_entry_id, created_by, status, stock_status) 
+                              VALUES (:invoice_number, :customer_id, :rep_route_id, :invoice_date, :due_date, :payment_term_id, :total_amount, :global_discount_val, :global_discount_type, :notes, :journal_entry_id, :created_by, 'Unpaid', 'deducted')");
             $this->db->bind(':invoice_number', $invoiceData['invoice_number']);
             $this->db->bind(':customer_id', $invoiceData['customer_id']);
             $this->db->bind(':rep_route_id', $invoiceData['rep_route_id'] ?? null);
             $this->db->bind(':invoice_date', $invoiceData['invoice_date']);
             $this->db->bind(':due_date', $invoiceData['due_date']);
+            $this->db->bind(':payment_term_id', $invoiceData['payment_term_id'] ?? null);
             $this->db->bind(':total_amount', $invoiceData['subtotal']);
             $this->db->bind(':global_discount_val', $invoiceData['global_discount_val']);
             $this->db->bind(':global_discount_type', $invoiceData['global_discount_type']);
@@ -290,6 +301,7 @@ class Invoice {
                                 customer_id = :customer_id, 
                                 invoice_date = :invoice_date, 
                                 due_date = :due_date, 
+                                payment_term_id = :payment_term_id,
                                 total_amount = :total_amount, 
                                 global_discount_val = :global_discount_val, 
                                 global_discount_type = :global_discount_type, 
@@ -299,6 +311,7 @@ class Invoice {
             $this->db->bind(':customer_id', $invoiceData['customer_id']);
             $this->db->bind(':invoice_date', $invoiceData['invoice_date']);
             $this->db->bind(':due_date', $invoiceData['due_date']);
+            $this->db->bind(':payment_term_id', $invoiceData['payment_term_id'] ?? null);
             $this->db->bind(':total_amount', $invoiceData['subtotal']);
             $this->db->bind(':global_discount_val', $invoiceData['global_discount_val']);
             $this->db->bind(':global_discount_type', $invoiceData['global_discount_type']);

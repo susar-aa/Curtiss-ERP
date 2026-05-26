@@ -58,12 +58,15 @@ class AuthController extends Controller {
                     $loggedInUser = $this->userModel->login($data['username'], $data['password']);
 
                     if ($loggedInUser) {
+                        $this->logActivity('Login', 'Auth', "User '{$loggedInUser->username}' successfully logged in.");
                         $this->createUserSession($loggedInUser);
                     } else {
+                        $this->logActivity('Login Failed', 'Auth', "Failed login attempt for username: '{$data['username']}' (Incorrect Password)");
                         $data['password_err'] = 'Password incorrect. (Check console)';
                         $data['debug_console'] = "Auth Failed! Hash mismatch for user: " . $data['username'];
                     }
                 } else {
+                    $this->logActivity('Login Failed', 'Auth', "Failed login attempt for unknown username: '{$data['username']}'");
                     $data['username_err'] = 'No user found with that username.';
                 }
             }
@@ -90,6 +93,9 @@ class AuthController extends Controller {
     }
 
     public function logout() {
+        if (isset($_SESSION['username'])) {
+            $this->logActivity('Logout', 'Auth', "User '{$_SESSION['username']}' logged out.");
+        }
         unset($_SESSION['user_id']);
         unset($_SESSION['username']);
         unset($_SESSION['role']);

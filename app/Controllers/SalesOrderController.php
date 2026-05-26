@@ -42,6 +42,7 @@ class SalesOrderController extends Controller {
                 po_number VARCHAR(50) NULL,
                 order_date DATE NOT NULL,
                 due_date DATE NOT NULL,
+                payment_term_id INT NULL DEFAULT NULL,
                 status VARCHAR(50) DEFAULT 'Pending',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )");
@@ -62,6 +63,13 @@ class SalesOrderController extends Controller {
                 FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id) ON DELETE CASCADE
             )");
             $this->db->execute();
+
+            // Self-healing migration for sales_orders payment_term_id
+            $this->db->query("SHOW COLUMNS FROM sales_orders LIKE 'payment_term_id'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE sales_orders ADD COLUMN payment_term_id INT NULL DEFAULT NULL AFTER due_date");
+                $this->db->execute();
+            }
         } catch (Exception $e) {
             // Fallback silently
         }
@@ -100,10 +108,15 @@ class SalesOrderController extends Controller {
         $nextId = $lastRow ? ($lastRow->id + 1) : 1;
         $orderNumber = 'SO-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
 
+        // Fetch all payment terms
+        $termModel = $this->model('PaymentTerm');
+        $paymentTerms = $termModel->getAllTerms();
+
         $data = [
             'title' => 'Create Sales Order',
             'content_view' => 'sales_orders/create',
             'catalog_items' => $items,
+            'payment_terms' => $paymentTerms,
             'order_number' => $orderNumber,
             'error' => ''
         ];
@@ -190,8 +203,8 @@ class SalesOrderController extends Controller {
                 $grandTotal = max(0.00, $subtotal - $globalDiscount);
 
                 // Insert Sales Order (No Stock depletion, No ledger entries)
-                $this->db->query("INSERT INTO sales_orders (order_number, customer_id, customer_name, customer_phone, billing_type, subtotal, discount, grand_total, notes, rep_name, mca, rep_tp, po_number, order_date, due_date, status) 
-                                  VALUES (:order_num, :cust_id, :cust_name, :cust_phone, 'wholesale', :sub, :disc, :grand, :notes, :rep, :mca, :rep_tp, :po, :o_date, :d_date, 'Pending')");
+                $this->db->query("INSERT INTO sales_orders (order_number, customer_id, customer_name, customer_phone, billing_type, subtotal, discount, grand_total, notes, rep_name, mca, rep_tp, po_number, order_date, due_date, payment_term_id, status) 
+                                  VALUES (:order_num, :cust_id, :cust_name, :cust_phone, 'wholesale', :sub, :disc, :grand, :notes, :rep, :mca, :rep_tp, :po, :o_date, :d_date, :term_id, 'Pending')");
                 $this->db->bind(':order_num', $orderNumber);
                 $this->db->bind(':cust_id', $customerId);
                 $this->db->bind(':cust_name', $customerName);
@@ -206,6 +219,7 @@ class SalesOrderController extends Controller {
                 $this->db->bind(':po', $_POST['po_number'] ?? '');
                 $this->db->bind(':o_date', $_POST['invoice_date'] ?? date('Y-m-d'));
                 $this->db->bind(':d_date', $_POST['due_date'] ?? date('Y-m-d'));
+                $this->db->bind(':term_id', !empty($_POST['payment_term_id']) ? intval($_POST['payment_term_id']) : null);
                 $this->db->execute();
                 
                 $orderId = $this->db->lastInsertId();
@@ -228,6 +242,7 @@ class SalesOrderController extends Controller {
                 }
 
                 $this->db->commit();
+                $this->logActivity('Create Sales Order', 'Sales Order', "Saved Sales Order {$orderNumber} for Customer ID {$customerId} totaling Rs: " . number_format($grandTotal, 2));
                 $_SESSION['flash_success'] = "Sales Order {$orderNumber} successfully saved (Inventory unchanged)!";
                 header('Location: ' . APP_URL . '/salesorder/show/' . $orderId);
                 exit;

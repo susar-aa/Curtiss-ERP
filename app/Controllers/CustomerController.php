@@ -67,6 +67,7 @@ class CustomerController extends Controller {
 
                 if (!empty($updateData['name'])) {
                     if ($this->customerModel->updateCustomer($updateData)) {
+                        $this->logActivity('Update Customer', 'Customer', "Updated profile details for Customer ID {$updateData['id']} ({$updateData['name']})");
                         header('Location: ' . APP_URL . '/customer/index/' . $updateData['id'] . '?success=1'); exit;
                     } else { $data['error'] = 'Failed to update customer details.'; }
                 }
@@ -87,6 +88,7 @@ class CustomerController extends Controller {
 
                 if ($paymentData['amount'] > 0 && !empty($paymentData['asset_account_id'])) {
                     if ($this->customerModel->recordPayment($paymentData, $_SESSION['user_id'])) {
+                        $this->logActivity('Record Payment', 'Billing', "Recorded payment of Rs: " . number_format($paymentData['amount'], 2) . " for Customer ID {$paymentData['customer_id']} via {$paymentData['method']}");
                         header('Location: ' . APP_URL . '/customer/index/' . $paymentData['customer_id'] . '?success=payment'); exit;
                     } else { $data['error'] = 'Failed to process payment double-entry logic.'; }
                 } else { $data['error'] = 'Invalid payment amount or missing ledger accounts.'; }

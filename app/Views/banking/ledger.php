@@ -32,11 +32,12 @@
                 <th>Description</th>
                 <th class="num-col" style="width: 150px;">Debit (Rs:)</th>
                 <th class="num-col" style="width: 150px;">Credit (Rs:)</th>
+                <th style="width: 100px; text-align: center;">Status</th>
             </tr>
         </thead>
         <tbody>
             <?php if(empty($data['transactions'])): ?>
-                <tr><td colspan="5" style="text-align: center; color: #888; padding: 30px;">No transactions found for this account.</td></tr>
+                <tr><td colspan="6" style="text-align: center; color: #888; padding: 30px;">No transactions found for this account.</td></tr>
             <?php else: foreach($data['transactions'] as $t): ?>
                 <tr>
                     <td><?= date('M d, Y', strtotime($t->entry_date)) ?></td>
@@ -44,6 +45,13 @@
                     <td><?= htmlspecialchars($t->description) ?></td>
                     <td class="num-col debit"><?= $t->debit > 0 ? number_format($t->debit, 2) : '-' ?></td>
                     <td class="num-col credit"><?= $t->credit > 0 ? number_format($t->credit, 2) : '-' ?></td>
+                    <td style="text-align: center;">
+                        <?php if ($t->is_cleared): ?>
+                            <span style="background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">✓ Cleared</span>
+                        <?php else: ?>
+                            <span style="background: #fff3e0; color: #ef6c00; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">Uncleared</span>
+                        <?php endif; ?>
+                    </td>
                 </tr>
             <?php endforeach; endif; ?>
         </tbody>

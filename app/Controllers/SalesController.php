@@ -126,10 +126,15 @@ class SalesController extends Controller {
         $nextId = $lastRow ? ($lastRow->id + 1) : 1;
         $invoiceNumber = 'INV-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
 
+        // Fetch all payment terms
+        $termModel = $this->model('PaymentTerm');
+        $paymentTerms = $termModel->getAllTerms();
+
         $data = [
             'title' => 'Create Bill & Invoice',
             'items' => $items,
             'catalog_items' => $items,
+            'payment_terms' => $paymentTerms,
             'invoice_number' => $invoiceNumber
         ];
         $this->view('sales/index', $data);
@@ -226,6 +231,7 @@ class SalesController extends Controller {
                     'invoice_number' => $invoiceNumber,
                     'invoice_date' => $_POST['invoice_date'] ?? date('Y-m-d'),
                     'due_date' => $_POST['due_date'] ?? date('Y-m-d'),
+                    'payment_term_id' => !empty($_POST['payment_term_id']) ? intval($_POST['payment_term_id']) : null,
                     'subtotal' => $subtotal,
                     'global_discount_val' => $globalDiscountVal,
                     'global_discount_type' => $globalDiscountType,
@@ -247,6 +253,8 @@ class SalesController extends Controller {
                 );
 
                 if ($invoiceId) {
+                    $this->logActivity('Create Invoice', 'Billing', "Created and posted Invoice {$invoiceNumber} for Customer ID {$customerId} totaling Rs: " . number_format($grandTotal, 2));
+                    
                     // Check if Save & Print, Save & WhatsApp or Save & Close
                     $saveAction = $_POST['save_action'] ?? 'close';
                     

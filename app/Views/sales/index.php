@@ -343,6 +343,19 @@ $editingItems = $data['editing_items'] ?? [];
                     <div class="qb-mid-body"><input type="text" name="po_number" value="<?= ($inv && isset($inv->po_number)) ? htmlspecialchars((string)$inv->po_number) : '' ?>" placeholder="Optional"></div>
                 </div>
                 <div class="qb-mid-col">
+                    <div class="qb-mid-header">Terms</div>
+                    <div class="qb-mid-body">
+                        <select name="payment_term_id" id="paymentTermSelect" onchange="calculateDueDateOffset()" style="width: 100%; border: none; text-align: center; background: transparent; font-size: 12px;">
+                            <option value="">Select Term...</option>
+                            <?php foreach($data['payment_terms'] as $term): ?>
+                                <option value="<?= $term->id ?>" data-days="<?= $term->days_due ?>" <?= ($inv && isset($inv->payment_term_id) && $inv->payment_term_id == $term->id) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($term->name) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="qb-mid-col">
                     <div class="qb-mid-header">Due Date</div>
                     <div class="qb-mid-body"><input type="date" name="due_date" id="dueDate" value="<?= ($inv && isset($inv->due_date)) ? $inv->due_date : date('Y-m-d') ?>" required></div>
                 </div>
@@ -807,8 +820,36 @@ $editingItems = $data['editing_items'] ?? [];
         document.getElementById('balanceDue').innerText = grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
 
+    function calculateDueDateOffset() {
+        const termSelect = document.getElementById('paymentTermSelect');
+        const invoiceDateInput = document.querySelector('input[name="invoice_date"]');
+        const dueDateInput = document.getElementById('dueDate');
+        
+        if (!termSelect || !invoiceDateInput || !dueDateInput) return;
+        
+        const selectedOpt = termSelect.options[termSelect.selectedIndex];
+        if (!selectedOpt || selectedOpt.value === '') return;
+        
+        const days = parseInt(selectedOpt.getAttribute('data-days')) || 0;
+        const invDate = new Date(invoiceDateInput.value);
+        if (isNaN(invDate.getTime())) return;
+        
+        invDate.setDate(invDate.getDate() + days);
+        
+        const year = invDate.getFullYear();
+        const month = String(invDate.getMonth() + 1).padStart(2, '0');
+        const day = String(invDate.getDate()).padStart(2, '0');
+        
+        dueDateInput.value = `${year}-${month}-${day}`;
+    }
+
     // RUN INITIALIZATION HOOK TO PRE-POPULATE THE FORM IN EDIT MODE
     document.addEventListener("DOMContentLoaded", function() {
+        const invoiceDateInput = document.querySelector('input[name="invoice_date"]');
+        if (invoiceDateInput) {
+            invoiceDateInput.addEventListener('change', calculateDueDateOffset);
+        }
+
         <?php if ($inv && isset($inv->customer_id)): ?>
             const initialCustomerId = "<?= $inv->customer_id ?>";
             const initialCust = customers.find(c => c.id === initialCustomerId);

@@ -19,6 +19,21 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= APP_NAME ?> - <?= $data['title'] ?? 'Dashboard' ?></title>
     
+    <!-- PWA Manifest & Mobile App Support -->
+    <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
+    <meta name="theme-color" content="#0066cc">
+    <link rel="apple-touch-icon" href="<?= APP_URL ?>/icon-192.png">
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('<?= APP_URL ?>/service-worker.js')
+                    .then((reg) => console.log('PWA Service Worker registered successfully:', reg.scope))
+                    .catch((err) => console.log('PWA Service Worker registration failed:', err));
+            });
+        }
+    </script>
+    
     <!-- Phosphor Icons for a clean, modern look (replacing emojis) -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
@@ -524,6 +539,13 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Locations and bins</div>
                             </div>
                         </a>
+                        <a href="<?= APP_URL ?>/warehouse/transfer" class="mega-list-item text-primary">
+                            <div class="icon-wrapper text-primary"><i class="ph ph-arrows-left-right"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title text-primary">Stock Transfer</div>
+                                <div class="desc">Move stock between depots</div>
+                            </div>
+                        </a>
                         <a href="<?= APP_URL ?>/inventory/history" class="mega-list-item">
                             <div class="icon-wrapper text-primary"><i class="ph ph-chart-bar"></i></div>
                             <div class="mega-list-item-content">
@@ -722,6 +744,13 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                             <div class="mega-list-item-content">
                                 <div class="title">Tax Rates & Rules</div>
                                 <div class="desc">Manage VAT/GST</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/paymentterm" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-handshake"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Payment Terms</div>
+                                <div class="desc">Standard & Date-Driven</div>
                             </div>
                         </a>
                         <a href="<?= APP_URL ?>/accounting/close_year" class="mega-list-item">

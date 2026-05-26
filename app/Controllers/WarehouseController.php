@@ -44,4 +44,77 @@ class WarehouseController extends Controller {
 
         $this->view('layouts/main', $data);
     }
+
+    /**
+     * View past transfers list and create new transfer
+     */
+    public function transfer() {
+        $transferModel = $this->model('WarehouseTransfer');
+        $transfers = $transferModel->getAllTransfers();
+
+        $data = [
+            'title' => 'Warehouse Stock Transfer',
+            'content_view' => 'warehouses/transfer',
+            'transfers' => $transfers,
+            'error' => $_SESSION['flash_error'] ?? '',
+            'success' => $_SESSION['flash_success'] ?? ''
+        ];
+        unset($_SESSION['flash_error'], $_SESSION['flash_success']);
+
+        $this->view('layouts/main', $data);
+    }
+
+    /**
+     * Store a newly created stock transfer
+     */
+    public function storeTransfer() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . APP_URL . '/warehouse/transfer');
+            exit;
+        }
+
+        $itemId = intval($_POST['item_id']);
+        $fromWh = intval($_POST['from_warehouse_id']);
+        $toWh = intval($_POST['to_warehouse_id']);
+        $qty = intval($_POST['qty']); // Transfer partial stock quantity
+        $date = trim($_POST['transfer_date']);
+        $notes = trim($_POST['notes']);
+
+        if (!$itemId || !$toWh || !$date || $qty <= 0) {
+            $_SESSION['flash_error'] = 'Invalid transfer payload. Please fill out all required fields and enter a valid quantity.';
+            header('Location: ' . APP_URL . '/warehouse/transfer');
+            exit;
+        }
+
+        if ($fromWh === $toWh) {
+            $_SESSION['flash_error'] = 'Source and Destination Warehouses cannot be the same.';
+            header('Location: ' . APP_URL . '/warehouse/transfer');
+            exit;
+        }
+
+        // Generate a standard unique transfer reference
+        $transferNum = 'TRF-' . strtoupper(substr(uniqid(), 5));
+
+        $transferModel = $this->model('WarehouseTransfer');
+        $payload = [
+            'transfer_number' => $transferNum,
+            'item_id' => $itemId,
+            'qty' => $qty,
+            'from_warehouse_id' => $fromWh,
+            'to_warehouse_id' => $toWh,
+            'transfer_date' => $date,
+            'notes' => $notes,
+            'created_by' => $_SESSION['user_id']
+        ];
+
+        if ($transferModel->createTransfer($payload)) {
+            $this->logActivity('Warehouse Transfer', 'Supply Chain', "Transferred {$qty} unit(s) of Item ID {$itemId} from Warehouse ID {$fromWh} to Warehouse ID {$toWh} (Ref: {$transferNum})");
+            $_SESSION['flash_success'] = "Stock transfer record posted successfully: " . $transferNum;
+        } else {
+            $_SESSION['flash_error'] = 'Failed to execute stock transfer transaction.';
+        }
+
+        header('Location: ' . APP_URL . '/warehouse/transfer');
+        exit;
+    }
 }

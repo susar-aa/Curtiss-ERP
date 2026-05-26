@@ -7,11 +7,13 @@
     .data-table th, .data-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--mac-border); font-size: 13px; }
     .data-table th { background-color: rgba(0,0,0,0.03); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; font-size: 11px; color: #666; }
     
-    .badge { padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; letter-spacing: 0.5px; }
-    .action-CREATE { background: #e8f5e9; color: #2e7d32; }
-    .action-UPDATE { background: #fff3e0; color: #ef6c00; }
-    .action-DELETE { background: #ffebee; color: #c62828; }
-    .action-LOGIN { background: #e3f2fd; color: #1565c0; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; letter-spacing: 0.5px; display: inline-block; }
+    .action-default { background: #f0f0f0; color: #333; }
+    .action-create, .action-create-invoice, .action-create-sales-order, .action-create-credit-note, .action-warehouse-transfer { background: #e8f5e9; color: #2e7d32; }
+    .action-update, .action-update-customer { background: #fff3e0; color: #ef6c00; }
+    .action-delete, .action-login-failed { background: #ffebee; color: #c62828; }
+    .action-login { background: #e3f2fd; color: #1565c0; }
+    .action-logout { background: #eceff1; color: #37474f; }
     
     .module-badge { font-weight: 600; color: #555; }
 </style>
@@ -40,13 +42,17 @@
             <?php if(empty($data['logs'])): ?>
                 <tr><td colspan="6" style="text-align: center; color: #888; padding: 30px;">No audit logs found.</td></tr>
             <?php else: foreach($data['logs'] as $log): ?>
+                <?php
+                $cleanAct = strtolower(str_replace(' ', '-', $log->action));
+                $actionClass = 'action-' . $cleanAct;
+                ?>
                 <tr>
                     <td style="color: #888;"><?= date('M d, Y H:i:s', strtotime($log->created_at)) ?></td>
                     <td>
                         <strong><?= htmlspecialchars($log->username ?? 'System') ?></strong><br>
                         <span style="font-size: 10px; color: #888;"><?= htmlspecialchars($log->role ?? 'N/A') ?></span>
                     </td>
-                    <td><span class="badge action-<?= strtoupper(htmlspecialchars($log->action)) ?>"><?= htmlspecialchars($log->action) ?></span></td>
+                    <td><span class="badge <?= $actionClass ?>"><?= htmlspecialchars($log->action) ?></span></td>
                     <td class="module-badge"><?= htmlspecialchars($log->module) ?></td>
                     <td><?= htmlspecialchars($log->description) ?></td>
                     <td style="font-size: 11px; color: #888; font-family: monospace;"><?= htmlspecialchars($log->ip_address) ?></td>

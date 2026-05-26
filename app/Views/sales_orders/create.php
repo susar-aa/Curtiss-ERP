@@ -175,6 +175,19 @@ $reps = $db->resultSet();
                     <div class="qb-mid-body"><input type="text" name="po_number" placeholder="Optional"></div>
                 </div>
                 <div class="qb-mid-col">
+                    <div class="qb-mid-header">Terms</div>
+                    <div class="qb-mid-body">
+                        <select name="payment_term_id" id="paymentTermSelect" onchange="calculateDueDateOffset()" style="width: 100%; border: none; text-align: center; background: transparent; font-size: 12px;">
+                            <option value="">Select Term...</option>
+                            <?php foreach($data['payment_terms'] as $term): ?>
+                                <option value="<?= $term->id ?>" data-days="<?= $term->days_due ?>">
+                                    <?= htmlspecialchars($term->name) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="qb-mid-col">
                     <div class="qb-mid-header">Expected Due Date</div>
                     <div class="qb-mid-body"><input type="date" name="due_date" id="dueDate" value="<?= date('Y-m-d') ?>" required></div>
                 </div>
@@ -495,4 +508,34 @@ $reps = $db->resultSet();
         document.getElementById('subTotal').innerText = subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         document.getElementById('grandTotal').innerText = grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
+
+    function calculateDueDateOffset() {
+        const termSelect = document.getElementById('paymentTermSelect');
+        const invoiceDateInput = document.querySelector('input[name="invoice_date"]');
+        const dueDateInput = document.getElementById('dueDate');
+        
+        if (!termSelect || !invoiceDateInput || !dueDateInput) return;
+        
+        const selectedOpt = termSelect.options[termSelect.selectedIndex];
+        if (!selectedOpt || selectedOpt.value === '') return;
+        
+        const days = parseInt(selectedOpt.getAttribute('data-days')) || 0;
+        const invDate = new Date(invoiceDateInput.value);
+        if (isNaN(invDate.getTime())) return;
+        
+        invDate.setDate(invDate.getDate() + days);
+        
+        const year = invDate.getFullYear();
+        const month = String(invDate.getMonth() + 1).padStart(2, '0');
+        const day = String(invDate.getDate()).padStart(2, '0');
+        
+        dueDateInput.value = `${year}-${month}-${day}`;
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const invoiceDateInput = document.querySelector('input[name="invoice_date"]');
+        if (invoiceDateInput) {
+            invoiceDateInput.addEventListener('change', calculateDueDateOffset);
+        }
+    });
 </script>
