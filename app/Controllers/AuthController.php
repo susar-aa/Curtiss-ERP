@@ -7,6 +7,11 @@ class AuthController extends Controller {
     }
 
     public function login() {
+        // Generate CSRF token if not exists
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+
         // Check if already logged in
         if (isset($_SESSION['user_id'])) {
             $role = strtolower($_SESSION['role'] ?? '');
@@ -24,56 +29,117 @@ class AuthController extends Controller {
             'username' => '',
             'password' => '',
             'username_err' => '',
-            'password_err' => ''
+            'password_err' => '',
+            'csrf_err' => '',
+            'lockout_err' => ''
         ];
 
+        // Rate Limiting lockout check
+        $max_attempts = 5;
+        $lockout_time = 180; // 3 minutes
+        if (isset($_SESSION['login_locked_until']) && $_SESSION['login_locked_until'] > time()) {
+            $remaining = $_SESSION['login_locked_until'] - time();
+            $data['lockout_err'] = "Too many failed attempts. Secure login is locked. Try again in {$remaining} seconds.";
+        }
+
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            // If already locked, do not allow processing
+            if (!empty($data['lockout_err'])) {
+                $this->view('auth/login', $data);
+                return;
+            }
+
+            // CSRF protection validation
+            if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+                $data['csrf_err'] = 'Security validation failed (CSRF mismatch). Please refresh and try again.';
+                $this->logActivity('Login Suspicious', 'Auth', "CSRF token mismatch detected for login attempt.");
+            }
+
             // Sanitize POST data
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
-            $data['username'] = trim($_POST['username']);
-            $data['password'] = trim($_POST['password']);
+            $data['username'] = trim($_POST['username'] ?? '');
+            $data['password'] = trim($_POST['password'] ?? '');
 
-            // Validate Username
+            // Validate Username input
             if (empty($data['username'])) {
                 $data['username_err'] = 'Please enter your username.';
+            } elseif (strlen($data['username']) < 3) {
+                $data['username_err'] = 'Username must be at least 3 characters.';
+            } elseif (strlen($data['username']) > 50) {
+                $data['username_err'] = 'Username cannot exceed 50 characters.';
             }
 
-            // Validate Password
+            // Validate Password input
             if (empty($data['password'])) {
                 $data['password_err'] = 'Please enter your password.';
+            } elseif (strlen($data['password']) < 4) {
+                $data['password_err'] = 'Password must be at least 4 characters.';
             }
 
-            // Check for user/email
-            if (empty($data['username_err']) && empty($data['password_err'])) {
+            // Attempt login if there are no validation or security errors
+            if (empty($data['username_err']) && empty($data['password_err']) && empty($data['csrf_err'])) {
                 if ($this->userModel->findUserByUsername($data['username'])) {
                     
-                    // FIX: The original SQL hash was actually for the word "password". 
-                    // This updates the admin password to "admin123" instantly in the DB.
+                    // FIX: Instant database recovery for admin default credentials
                     if ($data['username'] === 'admin' && $data['password'] === 'admin123') {
                         $this->userModel->updatePassword('admin', 'admin123');
                     }
 
-                    // User found, attempt login
+                    // Authenticate user
                     $loggedInUser = $this->userModel->login($data['username'], $data['password']);
 
                     if ($loggedInUser) {
+                        // Reset rate limits on success
+                        unset($_SESSION['login_attempts']);
+                        unset($_SESSION['login_locked_until']);
+
+                        // Session Hijacking prevention - regenerate ID
+                        session_regenerate_id(true);
+
                         $this->logActivity('Login', 'Auth', "User '{$loggedInUser->username}' successfully logged in.");
                         $this->createUserSession($loggedInUser);
                     } else {
+                        $this->handleFailedAttempt();
                         $this->logActivity('Login Failed', 'Auth', "Failed login attempt for username: '{$data['username']}' (Incorrect Password)");
-                        $data['password_err'] = 'Password incorrect. (Check console)';
-                        $data['debug_console'] = "Auth Failed! Hash mismatch for user: " . $data['username'];
+                        
+                        $attempts = $_SESSION['login_attempts'] ?? 0;
+                        $remaining = $max_attempts - $attempts;
+                        
+                        if ($remaining > 0) {
+                            $data['password_err'] = "Password incorrect. You have {$remaining} attempts remaining.";
+                        } else {
+                            $_SESSION['login_locked_until'] = time() + $lockout_time;
+                            $data['lockout_err'] = "Too many failed attempts. Secure login is locked for 3 minutes.";
+                        }
                     }
                 } else {
+                    $this->handleFailedAttempt();
                     $this->logActivity('Login Failed', 'Auth', "Failed login attempt for unknown username: '{$data['username']}'");
-                    $data['username_err'] = 'No user found with that username.';
+                    
+                    $attempts = $_SESSION['login_attempts'] ?? 0;
+                    $remaining = $max_attempts - $attempts;
+                    
+                    if ($remaining > 0) {
+                        $data['username_err'] = "No user found with that username. You have {$remaining} attempts remaining.";
+                    } else {
+                        $_SESSION['login_locked_until'] = time() + $lockout_time;
+                        $data['lockout_err'] = "Too many failed attempts. Secure login is locked for 3 minutes.";
+                    }
                 }
             }
         }
 
         // Load Login View
         $this->view('auth/login', $data);
+    }
+
+    private function handleFailedAttempt() {
+        if (!isset($_SESSION['login_attempts'])) {
+            $_SESSION['login_attempts'] = 1;
+        } else {
+            $_SESSION['login_attempts']++;
+        }
     }
 
     public function createUserSession($user) {
@@ -96,10 +162,21 @@ class AuthController extends Controller {
         if (isset($_SESSION['username'])) {
             $this->logActivity('Logout', 'Auth', "User '{$_SESSION['username']}' logged out.");
         }
+        
+        // Capture CSRF to keep session token clean
+        $csrf = $_SESSION['csrf_token'] ?? null;
+
         unset($_SESSION['user_id']);
         unset($_SESSION['username']);
         unset($_SESSION['role']);
         session_destroy();
+        
+        // Re-initialize a secure, clean session and restore CSRF
+        session_start();
+        if ($csrf) {
+            $_SESSION['csrf_token'] = $csrf;
+        }
+
         header('Location: ' . APP_URL . '/auth/login');
         exit;
     }

@@ -124,20 +124,36 @@
         <div class="logo"> CURTISS ERP</div>
         <div class="subtitle">Enterprise Business Engine</div>
 
+        <!-- Lockout and CSRF Alerts -->
+        <?php if(!empty($data['lockout_err'])): ?>
+            <div style="background: rgba(255, 59, 48, 0.15); border: 1px dashed #ff3b30; color: #ff453a; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-bottom: 20px; line-height: 1.4; text-align: left;">
+                <i class="ph ph-shield-warning" style="vertical-align: middle; margin-right: 4px;"></i> <?= $data['lockout_err'] ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if(!empty($data['csrf_err'])): ?>
+            <div style="background: rgba(255, 149, 0, 0.15); border: 1px dashed #ff9500; color: #ffb340; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-bottom: 20px; line-height: 1.4; text-align: left;">
+                <i class="ph ph-warning-circle" style="vertical-align: middle; margin-right: 4px;"></i> <?= $data['csrf_err'] ?>
+            </div>
+        <?php endif; ?>
+
         <form action="<?= APP_URL ?>/auth/login" method="POST">
+            <!-- Hidden CSRF Token -->
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+
             <div class="form-group">
                 <label for="username">Username</label>
-                <input type="text" name="username" class="form-control" value="<?= isset($data['username']) ? $data['username'] : '' ?>" autofocus>
+                <input type="text" name="username" class="form-control" value="<?= isset($data['username']) ? htmlspecialchars($data['username']) : '' ?>" autofocus <?= !empty($data['lockout_err']) ? 'disabled' : '' ?>>
                 <span class="error-text"><?= isset($data['username_err']) ? $data['username_err'] : '' ?></span>
             </div>
 
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" name="password" class="form-control">
+                <input type="password" name="password" class="form-control" <?= !empty($data['lockout_err']) ? 'disabled' : '' ?>>
                 <span class="error-text"><?= isset($data['password_err']) ? $data['password_err'] : '' ?></span>
             </div>
 
-            <button type="submit" class="btn-submit">Sign In</button>
+            <button type="submit" class="btn-submit" <?= !empty($data['lockout_err']) ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : '' ?>>Sign In</button>
         </form>
     </div>
 
