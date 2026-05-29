@@ -36,7 +36,7 @@ class BillingController extends RepController {
             'active_route' => $activeRoute,
             'categories' => $this->catalogModel->getCategories(),
             'products' => $this->catalogModel->getVisualCatalog(),
-            'customers' => $this->customerModel->getCustomersByTerritory($activeRoute->route_name),
+            'customers' => $this->customerModel->getAllCustomers(),
             'payment_terms' => $termModel->getAllTerms()
         ];
         $this->view('layout', $data);
@@ -55,7 +55,7 @@ class BillingController extends RepController {
             'content_view' => 'standard_bill',
             'active_route' => $activeRoute,
             'products' => $this->catalogModel->getVisualCatalog(), // Reusing catalog payload for fast JSON parsing
-            'customers' => $this->customerModel->getCustomersByTerritory($activeRoute->route_name),
+            'customers' => $this->customerModel->getAllCustomers(),
             'payment_terms' => $termModel->getAllTerms()
         ];
         $this->view('layout', $data);
@@ -237,33 +237,6 @@ class BillingController extends RepController {
             $processCollection = function($amount, $assetAccId, $methodStr, $chequeDetails = null) use ($db, $userId, $customerId, $arAcc, $invoiceNumber, $routeId) {
                 if ($amount <= 0 || !$assetAccId) return;
 
-                $db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
-                $db->bind(':ref', "PMT-" . time() . rand(10,99));
-                $db->bind(':desc', "POS Collection ($methodStr) for/around $invoiceNumber");
-                $db->bind(':uid', $userId);
-                $db->execute();
-                $payJid = $db->lastInsertId();
-
-                $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, 0)");
-                $db->bind(':jid', $payJid);
-                $db->bind(':aid', $assetAccId);
-                $db->bind(':deb', $amount);
-                $db->execute();
-                $db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :aid");
-                $db->bind(':amt', $amount);
-                $db->bind(':aid', $assetAccId);
-                $db->execute();
-
-                $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :cred)");
-                $db->bind(':jid', $payJid);
-                $db->bind(':aid', $arAcc);
-                $db->bind(':cred', $amount);
-                $db->execute();
-                $db->query("UPDATE chart_of_accounts SET balance = balance - :amt WHERE id = :aid");
-                $db->bind(':amt', $amount);
-                $db->bind(':aid', $arAcc);
-                $db->execute();
-
                 if ($methodStr === 'Cheque' && $chequeDetails) {
                     $db->query("INSERT INTO cheques (customer_id, bank_name, cheque_number, amount, banking_date, status, rep_route_id, created_by) 
                                 VALUES (:cid, :bn, :cn, :amt, :bdate, 'Pending', :route_id, :uid)");
@@ -277,14 +250,13 @@ class BillingController extends RepController {
                     $db->execute();
                 }
 
-                // Log Customer Payment History (so it shows in profile)
+                // Log Customer Payment History (so it shows in profile) - KEEP journal_entry_id as NULL to wait for finalization
                 $db->query("INSERT INTO customer_payments (customer_id, amount, payment_date, payment_method, reference, journal_entry_id, rep_route_id, created_by) 
-                            VALUES (:cid, :amt, CURDATE(), :method, :ref, :jid, :route_id, :uid)");
+                            VALUES (:cid, :amt, CURDATE(), :method, :ref, NULL, :route_id, :uid)");
                 $db->bind(':cid', $customerId);
                 $db->bind(':amt', $amount);
                 $db->bind(':method', $methodStr);
                 $db->bind(':ref', $chequeDetails['number'] ?? '');
-                $db->bind(':jid', $payJid);
                 $db->bind(':route_id', $routeId);
                 $db->bind(':uid', $userId);
                 $db->execute();

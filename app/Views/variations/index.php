@@ -112,13 +112,10 @@ foreach ($synced_attributes as $attr) {
                     </div>
                     <h1 class="text-3xl font-bold tracking-tight text-slate-900">Attribute Management</h1>
                 </div>
-                <p class="text-slate-500 text-sm ml-13">Configure and synchronize global product attribute taxonomies and terms directly with WooCommerce store attributes.</p>
+                <p class="text-slate-500 text-sm ml-13">Configure and manage global product attribute taxonomies and terms locally.</p>
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
-                <button onclick="syncAllAttributes()" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-purple-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5 cursor-pointer">
-                    <i class="fa-solid fa-rotate text-sm" id="global-sync-icon"></i> <span>Fetch WooCommerce Attributes</span>
-                </button>
                 <button onclick="openAddAttributeModal()" class="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-primary-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5 cursor-pointer">
                     <i class="fa-solid fa-plus"></i> Add New Attribute
                 </button>
@@ -126,7 +123,7 @@ foreach ($synced_attributes as $attr) {
         </div>
 
         <!-- Overview Metrics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Card 1: Total Global Attributes -->
             <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm relative overflow-hidden">
                 <div class="absolute -right-6 -top-6 w-20 h-20 bg-purple-50 rounded-full opacity-50"></div>
@@ -146,27 +143,11 @@ foreach ($synced_attributes as $attr) {
                  <div class="absolute -right-6 -top-6 w-20 h-20 bg-indigo-50 rounded-full opacity-50"></div>
                 <div class="flex justify-between items-start relative z-10">
                     <div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Synced Terms</p>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Terms</p>
                         <h3 class="text-2xl font-black text-indigo-600" id="metric-total-terms"><?php echo $total_terms; ?> Terms</h3>
                     </div>
                     <div class="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg">
                         <i class="fa-solid fa-diagram-project"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card 3: Connection Health -->
-            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm relative overflow-hidden">
-                <div class="absolute -right-6 -top-6 w-20 h-20 bg-emerald-50 rounded-full opacity-50"></div>
-                <div class="flex justify-between items-start relative z-10">
-                    <div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Woo REST connection</p>
-                        <h3 class="text-sm font-black text-slate-800 mt-2 flex items-center gap-1.5">
-                            <span class="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span> Live Integration
-                        </h3>
-                    </div>
-                    <div class="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg">
-                        <i class="fa-solid fa-server"></i>
                     </div>
                 </div>
             </div>
@@ -184,7 +165,7 @@ foreach ($synced_attributes as $attr) {
 
                 <div class="space-y-2">
                     <?php if (empty($synced_attributes)): ?>
-                        <p class="text-xs text-slate-400 italic text-center py-6">No attributes found. Click 'Fetch WooCommerce Attributes' to sync.</p>
+                        <p class="text-xs text-slate-400 italic text-center py-6">No attributes found. Click 'Add New Attribute' above to register one.</p>
                     <?php else: ?>
                         <?php foreach ($synced_attributes as $index => $attr): ?>
                             <div onclick="selectAttribute(<?php echo $attr->id; ?>)" id="attr-card-<?php echo $attr->id; ?>" 
@@ -194,15 +175,9 @@ foreach ($synced_attributes as $attr) {
                                     <span class="text-[10px] text-slate-500 font-mono mt-0.5 block">Slug: pa_<?php echo htmlspecialchars($attr->slug); ?></span>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <?php if (!empty($attr->woo_attr_id)): ?>
-                                        <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[9px] font-bold">Synced</span>
-                                    <?php else: ?>
-                                        <span class="px-2 py-0.5 bg-slate-200 text-slate-600 rounded text-[9px]">Local</span>
-                                    <?php endif; ?>
-                                    
                                     <div class="flex items-center opacity-0 group-hover:opacity-100 attr-actions">
-                                        <button onclick="event.stopPropagation(); openEditAttributeModal(<?php echo $attr->id; ?>, '<?php echo addslashes($attr->name); ?>', '<?php echo addslashes($attr->slug); ?>', <?php echo !empty($attr->woo_attr_id) ? 'true' : 'false'; ?>)" class="p-1 text-slate-400 hover:text-indigo-600"><i class="fa-solid fa-pen text-xs"></i></button>
-                                        <a href="<?php echo APP_URL; ?>/variation/deleteAttribute/<?php echo $attr->id; ?>" onclick="event.stopPropagation(); return confirm('Delete attribute? Terms & WooCommerce taxonomy will be removed.');" class="p-1 text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash text-xs"></i></a>
+                                        <button onclick="event.stopPropagation(); openEditAttributeModal(<?php echo $attr->id; ?>, '<?php echo addslashes($attr->name); ?>', '<?php echo addslashes($attr->slug); ?>')" class="p-1 text-slate-400 hover:text-indigo-600"><i class="fa-solid fa-pen text-xs"></i></button>
+                                        <a href="<?php echo APP_URL; ?>/variation/deleteAttribute/<?php echo $attr->id; ?>" onclick="event.stopPropagation(); return confirm('Are you sure you want to delete this attribute and all its terms?');" class="p-1 text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash text-xs"></i></a>
                                     </div>
                                 </div>
                             </div>
@@ -240,12 +215,9 @@ foreach ($synced_attributes as $attr) {
                                             <span class="text-[10px] text-slate-400 font-mono mt-0.5 block">Slug: <?php echo htmlspecialchars($term->slug); ?></span>
                                         </div>
                                         <div class="flex items-center gap-2">
-                                            <?php if (!empty($term->woo_term_id)): ?>
-                                                <span class="h-2 w-2 rounded-full bg-emerald-500" title="WooCommerce Synced"></span>
-                                            <?php endif; ?>
                                             <div class="flex items-center opacity-0 group-hover:opacity-100 transition-all">
-                                                <button onclick="openEditTermModal(<?php echo $term->id; ?>, '<?php echo addslashes($term->name); ?>', '<?php echo addslashes($term->slug); ?>', <?php echo !empty($term->woo_term_id) ? 'true' : 'false'; ?>)" class="p-1.5 text-slate-400 hover:text-indigo-600 cursor-pointer"><i class="fa-solid fa-pen text-xs"></i></button>
-                                                <a href="<?php echo APP_URL; ?>/variation/deleteTerm/<?php echo $term->id; ?>" onclick="return confirm('Delete attribute term? WooCommerce mapping will also be un-synced.');" class="p-1.5 text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash text-xs"></i></a>
+                                                <button onclick="openEditTermModal(<?php echo $term->id; ?>, '<?php echo addslashes($term->name); ?>', '<?php echo addslashes($term->slug); ?>')" class="p-1.5 text-slate-400 hover:text-indigo-600 cursor-pointer"><i class="fa-solid fa-pen text-xs"></i></button>
+                                                <a href="<?php echo APP_URL; ?>/variation/deleteTerm/<?php echo $term->id; ?>" onclick="return confirm('Are you sure you want to delete this attribute term?');" class="p-1.5 text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash text-xs"></i></a>
                                             </div>
                                         </div>
                                     </div>
@@ -255,24 +227,6 @@ foreach ($synced_attributes as $attr) {
                     </div>
                 <?php endforeach; ?>
 
-            </div>
-        </div>
-
-        <!-- Live Synchronization Terminal Logging Console -->
-        <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-xl" id="sync-console-container">
-            <div class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center">
-                <div>
-                    <h3 class="font-bold text-sm tracking-wide text-slate-200 uppercase flex items-center gap-2">
-                        <i class="fa-solid fa-terminal text-primary-500"></i> WooCommerce Sync Operations Console
-                    </h3>
-                    <p class="text-[11px] text-slate-500 mt-0.5">Real-time terminal diagnostic logging for global taxonomies and variable attributes</p>
-                </div>
-                <button onclick="clearTerminalLogs()" class="text-[10px] text-slate-400 hover:text-rose-400 font-semibold px-3 py-1.5 bg-slate-800 hover:bg-rose-950/20 border border-slate-700 rounded-md transition flex items-center gap-1.5 cursor-pointer">
-                    <i class="fa-solid fa-trash-can text-[9px]"></i> Clear Console Logs
-                </button>
-            </div>
-            <div class="p-6 font-mono text-[11px] space-y-2 max-h-60 overflow-y-auto bg-slate-950 text-slate-400 custom-scrollbar" id="terminalConsole">
-                <div class="text-slate-500">[System] Attributes Hub active. Awaiting synchronization requests...</div>
             </div>
         </div>
 
@@ -295,16 +249,6 @@ foreach ($synced_attributes as $attr) {
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Slug (Unique identifier; pa_{slug})</label>
                     <input type="text" name="slug" placeholder="e.g. ruling-size" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono">
                 </div>
-                <div class="bg-purple-50/50 border border-purple-100 p-4 rounded-xl flex items-center justify-between">
-                    <div>
-                        <span class="text-purple-950 font-bold text-xs block">WooCommerce Active Sync</span>
-                        <span class="text-purple-700/80 text-[10px] block mt-0.5">Sync Attribute taxonomy to WooCommerce</span>
-                    </div>
-                    <label class="inline-flex items-center cursor-pointer select-none">
-                        <input type="checkbox" name="sync_woo" value="1" checked class="sr-only peer">
-                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 relative"></div>
-                    </label>
-                </div>
                 <div class="flex gap-2 pt-4 border-t border-slate-100">
                     <button type="button" onclick="closeAddAttributeModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition cursor-pointer">Cancel</button>
                     <button type="submit" class="flex-1 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-primary-500/30 transition cursor-pointer">Save Attribute</button>
@@ -323,21 +267,11 @@ foreach ($synced_attributes as $attr) {
             <form id="editAttributeForm" action="" method="POST" class="p-6 space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Attribute Name *</label>
-                    <input type="text" name="name" id="editAttrName" required class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-semibold">
+                    <input type="text" name="name" id="editAttrName" required class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-semibold font-mono">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Slug</label>
                     <input type="text" name="slug" id="editAttrSlug" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono">
-                </div>
-                <div class="bg-purple-50/50 border border-purple-100 p-4 rounded-xl flex items-center justify-between">
-                    <div>
-                        <span class="text-purple-950 font-bold text-xs block">WooCommerce Active Sync</span>
-                        <span class="text-purple-700/80 text-[10px] block mt-0.5">Sync changes dynamically with WooCommerce</span>
-                    </div>
-                    <label class="inline-flex items-center cursor-pointer select-none">
-                        <input type="checkbox" name="sync_woo" id="editAttrSyncWoo" value="1" class="sr-only peer">
-                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 relative"></div>
-                    </label>
                 </div>
                 <div class="flex gap-2 pt-4 border-t border-slate-100">
                     <button type="button" onclick="closeEditAttributeModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition cursor-pointer">Cancel</button>
@@ -358,21 +292,11 @@ foreach ($synced_attributes as $attr) {
                 <input type="hidden" name="attribute_id" id="addTermParentId" value="">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Term Option Value *</label>
-                    <input type="text" name="name" required placeholder="e.g. Large, 200 Pages" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-semibold font-mono">
+                    <input type="text" name="name" required placeholder="e.g. Large, 200 Pages" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-semibold">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Slug</label>
                     <input type="text" name="slug" placeholder="e.g. large" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono">
-                </div>
-                <div class="bg-purple-50/50 border border-purple-100 p-4 rounded-xl flex items-center justify-between">
-                    <div>
-                        <span class="text-purple-950 font-bold text-xs block">WooCommerce Active Sync</span>
-                        <span class="text-purple-700/80 text-[10px] block mt-0.5">Sync Term directly to WooCommerce Attribute</span>
-                    </div>
-                    <label class="inline-flex items-center cursor-pointer select-none">
-                        <input type="checkbox" name="sync_woo" value="1" checked class="sr-only peer">
-                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 relative"></div>
-                    </label>
                 </div>
                 <div class="flex gap-2 pt-4 border-t border-slate-100">
                     <button type="button" onclick="closeAddTermModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition cursor-pointer">Cancel</button>
@@ -397,16 +321,6 @@ foreach ($synced_attributes as $attr) {
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Slug</label>
                     <input type="text" name="slug" id="editTermSlug" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono">
-                </div>
-                <div class="bg-purple-50/50 border border-purple-100 p-4 rounded-xl flex items-center justify-between">
-                    <div>
-                        <span class="text-purple-950 font-bold text-xs block">WooCommerce Active Sync</span>
-                        <span class="text-purple-700/80 text-[10px] block mt-0.5">Sync changes dynamically with WooCommerce</span>
-                    </div>
-                    <label class="inline-flex items-center cursor-pointer select-none">
-                        <input type="checkbox" name="sync_woo" id="editTermSyncWoo" value="1" class="sr-only peer">
-                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 relative"></div>
-                    </label>
                 </div>
                 <div class="flex gap-2 pt-4 border-t border-slate-100">
                     <button type="button" onclick="closeEditTermModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition cursor-pointer">Cancel</button>
@@ -473,11 +387,10 @@ foreach ($synced_attributes as $attr) {
         }
 
         // Edit Attribute Modals
-        function openEditAttributeModal(id, name, slug, isSynced) {
+        function openEditAttributeModal(id, name, slug) {
             document.getElementById('editAttributeForm').action = `<?php echo APP_URL; ?>/variation/editAttribute/${id}`;
             document.getElementById('editAttrName').value = name;
             document.getElementById('editAttrSlug').value = slug;
-            document.getElementById('editAttrSyncWoo').checked = isSynced;
             document.getElementById('editAttributeModal').classList.remove('hidden');
         }
         function closeEditAttributeModal() {
@@ -495,65 +408,14 @@ foreach ($synced_attributes as $attr) {
         }
 
         // Edit Term Modals
-        function openEditTermModal(id, name, slug, isSynced) {
+        function openEditTermModal(id, name, slug) {
             document.getElementById('editTermForm').action = `<?php echo APP_URL; ?>/variation/editTerm/${id}`;
             document.getElementById('editTermName').value = name;
             document.getElementById('editTermSlug').value = slug;
-            document.getElementById('editTermSyncWoo').checked = isSynced;
             document.getElementById('editTermModal').classList.remove('hidden');
         }
         function closeEditTermModal() {
             document.getElementById('editTermModal').classList.add('hidden');
-        }
-
-        /**
-         * Pull global attributes and their term definitions dynamically from WooCommerce
-         */
-        function syncAllAttributes() {
-            const syncIcon = document.getElementById('global-sync-icon');
-            syncIcon.classList.add('animate-spin');
-            appendLog("[Attributes Sync] Initiating global WooCommerce attributes and terms list import...", 'text-purple-400 font-bold');
-
-            fetch('<?php echo APP_URL; ?>/variation/ajaxSyncAttributes')
-                .then(res => {
-                    if (!res.ok) throw new Error(`HTTP Error Status: ${res.status}`);
-                    return res.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        appendLog(`[Attributes Sync] Success! Retrieved & synced ${data.imported_attributes} attributes and ${data.imported_terms} unique terms into ERP tables.`, 'text-emerald-400 font-bold');
-                        if (data.logs && Array.isArray(data.logs)) {
-                            data.logs.forEach(log => appendLog(log, 'text-slate-300'));
-                        }
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 2200);
-                    } else {
-                        appendLog(`[Error] Attribute pull failed: ${data.message}`, 'text-rose-400 font-bold');
-                    }
-                })
-                .catch(err => {
-                    appendLog(`[Fatal Error] Attributes connection breakdown: ${err.message}`, 'text-rose-400 font-bold');
-                })
-                .finally(() => {
-                    syncIcon.classList.remove('animate-spin');
-                });
-        }
-
-        function appendLog(text, colorClass = 'text-slate-300') {
-            const logger = document.getElementById('terminalConsole');
-            const div = document.createElement('div');
-            div.className = `${colorClass} font-mono text-[10px] leading-relaxed`;
-            
-            const timestamp = new Date().toTimeString().split(' ')[0];
-            div.innerHTML = `<span class="text-slate-600">[${timestamp}]</span> ${text}`;
-            
-            logger.appendChild(div);
-            logger.scrollTop = logger.scrollHeight; // Auto Scroll
-        }
-
-        function clearTerminalLogs() {
-            document.getElementById('terminalConsole').innerHTML = `<div class="text-slate-600 italic">[Console Cleared] Awaiting sync triggers...</div>`;
         }
     </script>
 

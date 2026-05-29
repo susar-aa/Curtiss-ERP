@@ -228,7 +228,240 @@ if ($successInvoiceId && !$successCustomer) {
 </div>
 <?php endif; ?>
 
+<!-- Free Issue Bottom Sheet overlay -->
+<div class="sheet-overlay" id="freeIssueSheetOverlay" style="z-index: 6000;">
+    <div class="bottom-sheet" id="freeIssueSheet" style="max-height: 85vh; display: flex; flex-direction: column; padding: 25px 20px;">
+        <div class="sheet-handle" onclick="closeFreeIssueSheet()"></div>
+        <h3 style="margin-top:0; color:#ef6c00; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">🎁 Free Issue Items</h3>
+        
+        <!-- Search Products for Free Issue -->
+        <div style="position: relative; margin-bottom: 15px;">
+            <input type="text" id="freeItemSearch" placeholder="Search product to add as free issue..." onkeyup="filterFreeSearch(event)" style="width:100%; padding:12px 15px; border:2px solid #ef6c00; border-radius:8px; font-size:14px; font-weight:bold; outline:none; background:var(--surface); color:var(--text-dark);" autocomplete="off">
+            <ul id="freeSearchResults" class="search-results" style="left:0; right:0; max-height: 180px; display:none; position:absolute; z-index:1000; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-radius: 8px; border: 1px solid var(--border); background: var(--surface); padding-left: 0; margin-top: 5px;"></ul>
+        </div>
+
+        <!-- Free Issue Cart Items -->
+        <div id="freeCartList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; min-height: 150px; max-height: 300px; margin-bottom: 15px; padding-bottom: 10px;">
+            <div style="text-align: center; color: var(--text-muted); padding: 20px; font-size: 13px;">No free issue items added yet. Search above to add!</div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: auto;">
+            <button class="btn-primary" type="button" style="flex: 1; background: transparent; color: var(--text-muted); border: 1px solid var(--border); box-shadow: none;" onclick="closeFreeIssueSheet()">Cancel</button>
+            <button class="btn-primary" type="button" style="flex: 1.5; background: #ef6c00; border-color: #ef6c00;" onclick="confirmFreeIssueCart()">Confirm Free Issue</button>
+        </div>
+    </div>
+</div>
+
 <script>
+    // Unified product registry for free issue system
+    window.globalFreeProducts = <?= json_encode(array_map(function($prod) {
+        $hasVars = !empty($prod->variations);
+        $totalReserved = $prod->quantity_reserved ?? 0;
+        $availableStock = ($prod->quantity_on_hand ?? 0) - $totalReserved;
+        
+        if ($hasVars) {
+            foreach($prod->variations as $v) {
+                $vReserved = $v->quantity_reserved ?? 0;
+                $v->available_stock = ($v->quantity_on_hand ?? 0) - $vReserved;
+            }
+        }
+        $prod->available_stock = $availableStock;
+
+        return [
+            'id' => $prod->id,
+            'type' => $prod->type ?? 'Inventory',
+            'name' => $prod->name,
+            'code' => $prod->item_code ?? '',
+            'price' => $prod->price ?? 0,
+            'available_stock' => $availableStock,
+            'has_variations' => $hasVars,
+            'rawProd' => $prod
+        ];
+    }, $products)); ?>;
+
+    let freeCart = [];
+
+    function openFreeIssueSheet() {
+        if (!globalSelectedCustomerId) {
+            alert("Please select a billing customer first.");
+            openCustomerSheet();
+            return;
+        }
+        freeCart = []; // Reset free issue temp cart on open
+        renderFreeCartUI();
+        document.getElementById('freeItemSearch').value = '';
+        document.getElementById('freeSearchResults').innerHTML = '';
+        document.getElementById('freeSearchResults').style.display = 'none';
+
+        document.getElementById('freeIssueSheetOverlay').style.display = 'flex';
+        setTimeout(() => { document.getElementById('freeIssueSheet').classList.add('open'); }, 10);
+    }
+
+    function closeFreeIssueSheet() {
+        document.getElementById('freeIssueSheet').classList.remove('open');
+        setTimeout(() => { document.getElementById('freeIssueSheetOverlay').style.display = 'none'; }, 300);
+    }
+
+    function filterFreeSearch(e) {
+        const val = e.target.value.toLowerCase().trim();
+        const resList = document.getElementById('freeSearchResults');
+        resList.innerHTML = '';
+        if(!val) { resList.style.display = 'none'; return; }
+
+        const filtered = window.globalFreeProducts.filter(i => i.name.toLowerCase().includes(val) || (i.code && i.code.toLowerCase().includes(val))).slice(0, 10);
+        if(filtered.length === 0) { resList.style.display = 'none'; return; }
+
+        filtered.forEach(item => {
+            const li = document.createElement('li');
+            li.style.padding = '10px 12px';
+            li.style.cursor = 'pointer';
+            li.style.borderBottom = '1px solid var(--border)';
+            li.style.display = 'flex';
+            li.style.justifyContent = 'space-between';
+            li.style.alignItems = 'center';
+            li.style.listStyle = 'none';
+            
+            li.innerHTML = `
+                <div>
+                    <div style="font-weight:bold; font-size:13px; color:var(--text-dark);">${item.name}</div>
+                    <span style="font-size: 10px; color: var(--text-muted);">${item.code ? 'SKU: '+item.code : ''}</span>
+                </div>
+                <div style="color: #ef6c00; font-weight: bold; font-size: 12px;">Add Free</div>
+            `;
+            li.onclick = () => {
+                addFreeItemToTempCart(item);
+                e.target.value = '';
+                resList.style.display = 'none';
+            };
+            resList.appendChild(li);
+        });
+        resList.style.display = 'block';
+    }
+
+    function addFreeItemToTempCart(item) {
+        if (item.has_variations && item.rawProd.variations) {
+            item.rawProd.variations.forEach(v => {
+                let cartItemId = `${item.id}_${v.id}_free`;
+                let existing = freeCart.find(f => f.cartItemId === cartItemId);
+                if (!existing) {
+                    freeCart.push({
+                        cartItemId: cartItemId,
+                        itemId: item.id,
+                        varId: v.id,
+                        name: `${item.name} - ${v.variation_name}: ${v.value_name} (FREE)`,
+                        price: 0,
+                        qty: 1,
+                        disc_val: 0,
+                        disc_type: 'Rs',
+                        type: item.type,
+                        rawProd: item.rawProd
+                    });
+                } else {
+                    existing.qty += 1;
+                }
+            });
+        } else {
+            let cartItemId = `${item.id}_0_free`;
+            let existing = freeCart.find(f => f.cartItemId === cartItemId);
+            if (!existing) {
+                freeCart.push({
+                    cartItemId: cartItemId,
+                    itemId: item.id,
+                    varId: null,
+                    name: `${item.name} (FREE)`,
+                    price: 0,
+                    qty: 1,
+                    disc_val: 0,
+                    disc_type: 'Rs',
+                    type: item.type,
+                    rawProd: item.rawProd
+                });
+            } else {
+                existing.qty += 1;
+            }
+        }
+        renderFreeCartUI();
+    }
+
+    function changeFreeQty(cartItemId, delta) {
+        let item = freeCart.find(f => f.cartItemId === cartItemId);
+        if (item) {
+            item.qty += delta;
+            if (item.qty <= 0) {
+                freeCart = freeCart.filter(f => f.cartItemId !== cartItemId);
+            }
+            renderFreeCartUI();
+        }
+    }
+
+    function renderFreeCartUI() {
+        const listDiv = document.getElementById('freeCartList');
+        listDiv.innerHTML = '';
+
+        if (freeCart.length === 0) {
+            listDiv.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px 20px; font-size: 13px;">No free issue items added yet. Search above to add!</div>';
+            return;
+        }
+
+        freeCart.forEach(item => {
+            listDiv.innerHTML += `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(239, 108, 0, 0.05); border: 1px solid rgba(239, 108, 0, 0.15); border-radius: 8px;">
+                    <div style="flex: 1; padding-right: 10px;">
+                        <div style="font-weight: bold; font-size: 13px; color: var(--text-dark);">${item.name}</div>
+                        <span style="font-size: 10px; color: #ef6c00; font-weight: bold;">FREE ISSUE</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button type="button" onclick="changeFreeQty('${item.cartItemId}', -1)" style="width: 28px; height: 28px; border-radius: 50%; border: 1px solid #ef6c00; background: white; color: #ef6c00; font-weight: bold; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; line-height: 1;">-</button>
+                        <span style="font-weight: bold; font-size: 14px; min-width: 20px; text-align: center;">${item.qty}</span>
+                        <button type="button" onclick="changeFreeQty('${item.cartItemId}', 1)" style="width: 28px; height: 28px; border-radius: 50%; border: 1px solid #ef6c00; background: white; color: #ef6c00; font-weight: bold; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; line-height: 1;">+</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function confirmFreeIssueCart() {
+        if (freeCart.length === 0) {
+            alert("No free issue items added to confirm.");
+            return;
+        }
+
+        freeCart.forEach(item => {
+            let mainCartItemId = item.varId ? `${item.itemId}_${item.varId}_free` : `${item.itemId}_0_free`;
+            let existingIndex = cart.findIndex(c => c.cartItemId === mainCartItemId);
+            let mainItem = {
+                cartItemId: mainCartItemId,
+                itemId: item.itemId,
+                varId: item.varId,
+                name: item.name,
+                price: 0,
+                qty: item.qty,
+                disc_val: 0,
+                disc_type: 'Rs',
+                type: item.type,
+                rawProd: item.rawProd,
+                is_free: true
+            };
+
+            if (existingIndex >= 0) {
+                cart[existingIndex] = mainItem;
+            } else {
+                cart.push(mainItem);
+            }
+        });
+
+        if (typeof updateCartUI === 'function') {
+            updateCartUI();
+        }
+        
+        closeFreeIssueSheet();
+        
+        if (document.getElementById('checkoutOverlay').style.display === 'flex') {
+            renderCheckoutItems();
+            calcCheckout();
+        }
+    }
+
     function openCheckout() {
         document.getElementById('checkoutOverlay').style.display = 'flex';
         renderCheckoutItems();
@@ -254,11 +487,17 @@ if ($successInvoiceId && !$successCustomer) {
             let rowNet = rowGross - rowDisc;
             if (rowNet < 0) rowNet = 0;
 
+            let discBadge = rowDisc > 0 ? ` &nbsp;|&nbsp; <span style="color:#c62828; font-weight:bold;">Disc: -Rs ${rowDisc.toFixed(2)}</span>` : '';
+            if (item.is_free) {
+                rowNet = 0;
+                discBadge = ` &nbsp;|&nbsp; <span style="color:#ef6c00; font-weight:bold;">FREE ISSUE</span>`;
+            }
+
             list.innerHTML += `
                 <div class="co-item-row">
-                    <div style="flex:1;" onclick="editCartItem('${item.cartItemId}')">
+                    <div style="flex:1;" ${item.is_free ? '' : `onclick="editCartItem('${item.cartItemId}')"`}>
                         <div style="font-weight:bold; color:var(--text-dark); font-size:14px; margin-bottom:4px;">${item.name}</div>
-                        <div style="font-size:12px; color:var(--text-muted);">${item.qty}x @ Rs ${parseFloat(item.price).toFixed(2)}</div>
+                        <div style="font-size:12px; color:var(--text-muted);">${item.qty}x @ Rs ${parseFloat(item.price).toFixed(2)}${discBadge}</div>
                     </div>
                     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:5px;">
                         <div style="font-weight:bold; font-size:14px; color:var(--text-dark);">Rs ${rowNet.toFixed(2)}</div>
@@ -284,6 +523,7 @@ if ($successInvoiceId && !$successCustomer) {
             let rowDisc = (item.disc_type === '%') ? (rowGross * item.disc_val / 100) : parseFloat(item.disc_val);
             let rowNet = rowGross - rowDisc;
             if(rowNet < 0) rowNet = 0;
+            if(item.is_free) rowNet = 0;
             subtotal += rowNet;
         });
 

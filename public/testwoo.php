@@ -137,7 +137,7 @@ $maskedSecret = substr(WC_CONSUMER_SECRET, 0, 6) . '************************' . 
                 <a href="<?php echo APP_URL; ?>/dashboard" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition border border-slate-700 flex items-center gap-2">
                     <i class="fa-solid fa-gauge"></i> Back to ERP Dashboard
                 </a>
-                <a href="test_woo_sync.php" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition flex items-center gap-2 shadow-lg shadow-indigo-900/30">
+                <a href="testwoo.php" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition flex items-center gap-2 shadow-lg shadow-indigo-900/30">
                     <i class="fa-solid fa-rotate"></i> Refresh State
                 </a>
             </div>
@@ -244,7 +244,7 @@ $maskedSecret = substr(WC_CONSUMER_SECRET, 0, 6) . '************************' . 
                     <p class="text-xs text-slate-400 mb-4">Query your live WooCommerce inventory instantly without leaving the ERP interface. Great for verifying item status.</p>
                 </div>
                 
-                <form action="test_woo_sync.php" method="POST" class="space-y-4">
+                <form action="testwoo.php" method="POST" class="space-y-4">
                     <input type="hidden" name="action" value="search_sku">
                     <div>
                         <label class="block text-xs text-slate-400 mb-1.5 font-semibold">Enter Target Product SKU / Code</label>
@@ -268,7 +268,7 @@ $maskedSecret = substr(WC_CONSUMER_SECRET, 0, 6) . '************************' . 
                 </div>
                 <p class="text-xs text-slate-400 mb-4">Run a manual test synchronization with WooCommerce. If the SKU exists, it updates the details. Otherwise, it creates a new product.</p>
 
-                <form action="test_woo_sync.php" method="POST" class="space-y-3">
+                <form action="testwoo.php" method="POST" class="space-y-3">
                     <input type="hidden" name="action" value="custom_sync">
                     <div class="grid grid-cols-2 gap-3">
                         <div>
@@ -310,7 +310,7 @@ $maskedSecret = substr(WC_CONSUMER_SECRET, 0, 6) . '************************' . 
                     </h3>
                     <p class="text-[11px] text-slate-500 mt-0.5">Real-time status tracking output for WooCommerce pipeline actions</p>
                 </div>
-                <form action="test_woo_sync.php" method="POST" onsubmit="return confirm('Clear local diagnostic sync logs?');">
+                <form action="testwoo.php" method="POST" onsubmit="return confirm('Clear local diagnostic sync logs?');">
                     <input type="hidden" name="action" value="clear_logs">
                     <button type="submit" class="text-[10px] text-slate-400 hover:text-rose-400 font-semibold px-3 py-1.5 bg-slate-800 hover:bg-rose-950/30 border border-slate-700/60 rounded-md transition duration-150 flex items-center gap-1.5">
                         <i class="fa-solid fa-trash-can text-[9px]"></i> Clear System Log File

@@ -27,6 +27,7 @@ $status = $item ? ($item->status ?? 'active') : 'active';
 $sync_woo = $item ? ($item->sync_woo ?? '1') : '1';
 $image_path = $item ? ($item->image_path ?? '') : '';
 $weight = $item ? ($item->weight ?? '') : '';
+$sample_code = $item ? ($item->sample_code ?? '') : '';
 
 // Retrieve Relational Warehouse and Vendor variables
 $warehouse_id = $item ? ($item->warehouse_id ?? '') : '';
@@ -161,7 +162,7 @@ try {
                     <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
                         <i class="fa-solid fa-barcode mr-1 text-primary-500"></i> Core Product Identification
                     </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                         
                         <!-- SKU Code -->
                         <div>
@@ -170,6 +171,16 @@ try {
                                 <i class="fa-solid fa-hashtag absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                                 <input type="text" name="item_code" id="mainItemCode" value="<?php echo htmlspecialchars($item_code); ?>" placeholder="e.g. FCON-PEN-01" required
                                        class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono font-bold">
+                            </div>
+                        </div>
+
+                        <!-- Sample Code -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Sample Code</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-vial absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="text" name="sample_code" value="<?php echo htmlspecialchars($sample_code ?? ''); ?>" placeholder="e.g. SMP-001" 
+                                       class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono">
                             </div>
                         </div>
 
@@ -185,11 +196,10 @@ try {
 
                         <!-- Product Status Option -->
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Catalog Status</label>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Status</label>
                             <select name="status" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-semibold">
-                                <option value="active" <?php echo $status === 'active' ? 'selected' : ''; ?>>Active / Published</option>
-                                <option value="draft" <?php echo $status === 'draft' ? 'selected' : ''; ?>>Draft Listing</option>
-                                <option value="inactive" <?php echo $status === 'inactive' ? 'selected' : ''; ?>>Suspended / Inactive</option>
+                                <option value="active" <?php echo $status === 'active' ? 'selected' : ''; ?>>Active</option>
+                                <option value="inactive" <?php echo $status === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
                             </select>
                         </div>
 
@@ -212,9 +222,9 @@ try {
                     </h3>
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                         
-                        <!-- WooCommerce Category list -->
+                        <!-- Category list -->
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Category (WooCommerce Live)</label>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Category</label>
                             <select name="category_id" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-semibold">
                                 <option value="">General Stationery</option>
                                 <?php foreach ($categories as $cat): ?>
@@ -263,11 +273,11 @@ try {
                     </div>
                 </div>
 
-                <!-- Section 4: Dynamic Synced WooCommerce Variations Builder -->
+                <!-- Section 4: Product Attributes & Variations Builder -->
                 <div>
                     <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <i class="fa-solid fa-diagram-project text-primary-500 animate-pulse"></i> WooCommerce Synced Attributes & Variations
+                            <i class="fa-solid fa-diagram-project text-primary-500 animate-pulse"></i> Product Attributes & Variations
                         </h3>
                         <div class="text-xs text-slate-400 italic">No stock inputs required (Managed via GRN/PO transactions)</div>
                     </div>
@@ -277,7 +287,7 @@ try {
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                             <!-- 1. Database Synced Attribute Select Dropdown -->
                             <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">1. Select WooCommerce Attribute</label>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">1. Select Product Attribute</label>
                                 <select id="attrGroupSelect" onchange="handleAttributeSelectionChange()" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none cursor-pointer font-semibold">
                                     <option value="">-- Choose Synced Attribute --</option>
                                     <?php foreach ($synced_attributes as $attr): ?>
@@ -452,27 +462,16 @@ try {
                     </div>
                 </div>
 
-                <!-- Section 7: Integration Settings & Detailed Description Logs -->
+                <!-- Section 7: Description Specifications & Notes -->
                 <div>
                     <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
-                        <i class="fa-brands fa-wordpress-simple mr-1 text-purple-600 animate-pulse"></i> WooCommerce Integration Master Toggle
+                        <i class="fa-solid fa-file-lines mr-1 text-primary-500"></i> Specifications & Notes
                     </h3>
                     
-                    <div class="bg-purple-50/50 border border-purple-100 p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                        <div>
-                            <span class="text-purple-950 font-bold text-sm block">WooCommerce Active Synchronization</span>
-                            <span class="text-purple-700/80 text-xs block mt-0.5">When checked, any save action directly updates the product details and stock status on WooCommerce in real time.</span>
-                        </div>
-                        <label class="inline-flex items-center cursor-pointer select-none">
-                            <input type="checkbox" name="sync_woo" value="1" <?php echo $sync_woo == '1' ? 'checked' : ''; ?> class="sr-only peer">
-                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 relative"></div>
-                        </label>
-                    </div>
-
                     <!-- Description Textarea -->
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Item Specifications Description & Metadata</label>
-                        <textarea name="description" rows="4" placeholder="Enter product characteristics, properties, notes, or compatibility features for WooCommerce..."
+                        <textarea name="description" rows="4" placeholder="Enter product characteristics, properties, notes, or compatibility features..."
                                   class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none placeholder-slate-400 leading-relaxed"><?php echo htmlspecialchars($description); ?></textarea>
                     </div>
                 </div>
@@ -953,7 +952,7 @@ try {
 
             // Populate existing variations in Edit Mode
             <?php if ($is_edit && isset($item->variations_json) && !empty($item->variations_json)): ?>
-                const savedVariations = <?php echo $item->variations_json; ?>;
+                const savedVariations = <?php echo html_entity_decode($item->variations_json, ENT_QUOTES, 'UTF-8'); ?>;
                 if (Array.isArray(savedVariations)) {
                     savedVariations.forEach(item => addVariationRow(item));
                 }

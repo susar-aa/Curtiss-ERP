@@ -430,7 +430,7 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Send tailored pricing</div>
                             </div>
                         </a>
-                        <a href="<?= APP_URL ?>/salesorder/create" class="mega-list-item">
+                        <a href="<?= APP_URL ?>/sales/create?type=sales_order" class="mega-list-item">
                             <div class="icon-wrapper text-primary"><i class="ph ph-pencil-simple"></i></div>
                             <div class="mega-list-item-content">
                                 <div class="title text-primary">Create Sales Order</div>

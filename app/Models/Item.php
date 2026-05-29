@@ -136,7 +136,8 @@ class Item {
                     'unit' => "ALTER TABLE items ADD unit VARCHAR(20) NOT NULL DEFAULT 'pcs'",
                     'status' => "ALTER TABLE items ADD status VARCHAR(20) NOT NULL DEFAULT 'active'",
                     'weight' => "ALTER TABLE items ADD weight VARCHAR(50) NULL",
-                    'sync_woo' => "ALTER TABLE items ADD sync_woo TINYINT NOT NULL DEFAULT 1"
+                    'sync_woo' => "ALTER TABLE items ADD sync_woo TINYINT NOT NULL DEFAULT 1",
+                    'sample_code' => "ALTER TABLE items ADD sample_code VARCHAR(100) NULL"
                 ];
 
                 foreach ($migrations as $col => $sql) {
@@ -329,11 +330,11 @@ class Item {
         $this->db->query("INSERT INTO items (
             {$this->itemCodeColumn}, name, {$this->priceColumn}, {$this->wholesalePriceColumn}, {$this->qtyColumn}, {$this->descColumn},
             barcode, category_id, brand, warehouse, alert_qty, unit, status, weight, sync_woo, variations_json, image_path,
-            cost_price, warehouse_id, vendor_id
+            cost_price, warehouse_id, vendor_id, sample_code
         ) VALUES (
             :item_code, :name, :price, :wholesale_price, :qty, :description,
             :barcode, :category_id, :brand, :warehouse, :alert_qty, :unit, :status, :weight, :sync_woo, :variations_json, :image_path,
-            :cost_price, :warehouse_id, :vendor_id
+            :cost_price, :warehouse_id, :vendor_id, :sample_code
         )");
 
         $this->db->bind(':item_code', $data['item_code']);
@@ -356,6 +357,7 @@ class Item {
         $this->db->bind(':cost_price', $data['cost_price'] ?? '0.00');
         $this->db->bind(':warehouse_id', $data['warehouse_id'] ?? null);
         $this->db->bind(':vendor_id', $data['vendor_id'] ?? null);
+        $this->db->bind(':sample_code', $data['sample_code'] ?? null);
 
         return $this->db->execute();
     }
@@ -381,7 +383,8 @@ class Item {
             image_path = :image_path,
             cost_price = :cost_price,
             warehouse_id = :warehouse_id,
-            vendor_id = :vendor_id
+            vendor_id = :vendor_id,
+            sample_code = :sample_code
             WHERE id = :id");
 
         $this->db->bind(':id', $data['id']);
@@ -405,6 +408,7 @@ class Item {
         $this->db->bind(':cost_price', $data['cost_price'] ?? '0.00');
         $this->db->bind(':warehouse_id', $data['warehouse_id'] ?? null);
         $this->db->bind(':vendor_id', $data['vendor_id'] ?? null);
+        $this->db->bind(':sample_code', $data['sample_code'] ?? null);
 
         return $this->db->execute();
     }

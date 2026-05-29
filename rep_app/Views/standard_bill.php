@@ -80,10 +80,15 @@ foreach ($customers as $c) {
             <div id="activeCustomerOws" style="font-weight: bold; font-size: 15px;">Rs: 0.00</div>
         </div>
     </div>
-    <div class="search-container">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="itemSearch" class="search-input" placeholder="Search item code or name..." onkeyup="filterSearch(event)" autocomplete="off">
-        <ul id="searchResults" class="search-results"></ul>
+    <div class="search-container" style="display: flex; gap: 10px; align-items: center;">
+        <div style="position: relative; flex: 1;">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="itemSearch" class="search-input" placeholder="Search item code or name..." onkeyup="filterSearch(event)" autocomplete="off">
+            <ul id="searchResults" class="search-results"></ul>
+        </div>
+        <button type="button" class="btn" onclick="openFreeIssueSheet()" style="background: #ef6c00; color: white; border: none; padding: 12px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; white-space: nowrap; box-sizing: border-box; height: 48px; display: flex; align-items: center; gap: 5px;">
+            🎁 Free Issue
+        </button>
     </div>
 </div>
 
@@ -332,8 +337,15 @@ foreach ($customers as $c) {
         currentProd = prodObj;
         
         document.getElementById('pmTitle').innerText = prodObj.name;
-        document.getElementById('pmDiscVal').value = 0;
-        document.getElementById('pmDiscType').value = 'Rs';
+        
+        let firstFound = cart.find(c => c.itemId == prodObj.id);
+        if (firstFound) {
+            document.getElementById('pmDiscVal').value = firstFound.disc_val;
+            document.getElementById('pmDiscType').value = firstFound.disc_type;
+        } else {
+            document.getElementById('pmDiscVal').value = 0;
+            document.getElementById('pmDiscType').value = 'Rs';
+        }
         
         const isService = prodObj.type === 'Service';
         document.getElementById('pmStockInfo').innerText = isService ? 'Service Item' : `Available Stock: ${prodObj.available_stock}`;
@@ -469,6 +481,12 @@ foreach ($customers as $c) {
             let rowDisc = (item.disc_type === '%') ? (rowGross * item.disc_val / 100) : parseFloat(item.disc_val);
             let rowNet = rowGross - rowDisc;
             if(rowNet < 0) rowNet = 0;
+            
+            let discBadge = rowDisc > 0 ? `<span style="color:#c62828;">(-Rs ${rowDisc.toFixed(2)})</span>` : '';
+            if (item.is_free) {
+                rowNet = 0;
+                discBadge = `<span style="color:#ef6c00; font-weight:bold;">(FREE ISSUE)</span>`;
+            }
             totalAmt += rowNet;
 
             // Render Standard Invoice Line Item
@@ -479,12 +497,12 @@ foreach ($customers as $c) {
                         <div class="line-item-meta">
                             <span>${item.qty} QTY</span>
                             <span>@ Rs ${parseFloat(item.price).toFixed(2)}</span>
-                            ${rowDisc > 0 ? `<span style="color:#c62828;">(-Rs ${rowDisc.toFixed(2)})</span>` : ''}
+                            ${discBadge}
                         </div>
                     </div>
                     <div style="display:flex; flex-direction:column; align-items:flex-end;">
                         <div class="line-item-price">Rs ${rowNet.toFixed(2)}</div>
-                        <button class="edit-btn" onclick="editCartItem('${item.cartItemId}')">Edit QTY</button>
+                        ${item.is_free ? `<button class="edit-btn" style="background:rgba(198,40,40,0.1); color:#c62828;" onclick="removeFromCart('${item.cartItemId}')">Delete</button>` : `<button class="edit-btn" onclick="editCartItem('${item.cartItemId}')">Edit QTY</button>`}
                     </div>
                 </div>
             `;

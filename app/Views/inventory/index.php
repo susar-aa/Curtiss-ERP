@@ -150,20 +150,10 @@ if ($flashError) {
                     </div>
                     <h1 class="text-3xl font-bold tracking-tight text-slate-900">Inventory Catalog</h1>
                 </div>
-                <p class="text-slate-500 text-sm ml-13">View physical stock, track alert levels, and sync catalog parameters with WooCommerce.</p>
+                <p class="text-slate-500 text-sm ml-13">View physical stock, track alert levels, and manage catalog parameters locally.</p>
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
-                <!-- WooCommerce CSV Importer Trigger -->
-                <button onclick="openCsvModal()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-emerald-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5 cursor-pointer">
-                    <i class="fa-solid fa-file-csv text-lg"></i>
-                    <span>Import WooCommerce CSV</span>
-                </button>
-                
-                <a href="<?php echo APP_URL; ?>/test_woo_sync.php" class="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl border border-slate-200 shadow-sm transition-all duration-200 flex items-center gap-2">
-                    <i class="fa-solid fa-tower-broadcast text-orange-500"></i> Diagnostics Dashboard
-                </a>
-                
                 <a href="<?php echo APP_URL; ?>/inventory/add" class="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-primary-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5">
                     <i class="fa-solid fa-plus"></i> Add New Product
                 </a>
@@ -331,8 +321,9 @@ if ($flashError) {
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-200">
                                 <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider w-[10%]">Image</th>
-                                <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider w-[15%]">Product SKU</th>
-                                <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider w-[35%]">Product Details</th>
+                                <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider w-[12%]">Product SKU</th>
+                                <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider w-[12%]">Sample Code</th>
+                                <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider w-[26%]">Product Details</th>
                                 <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right w-[15%]">Retail Price</th>
                                 <th class="py-4 px-6 text-xs font-bold text-purple-700 uppercase tracking-wider text-right w-[15%]">B2B Base Price</th>
                                 <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center w-[8%]">Stock</th>
@@ -386,6 +377,11 @@ if ($flashError) {
                                                 <?php echo htmlspecialchars($sku); ?>
                                             </div>
                                         </td>
+                                        <td class="py-4 px-6 align-top">
+                                            <div class="text-xs font-mono font-bold text-slate-600 select-all">
+                                                <?php echo htmlspecialchars($item->sample_code ?? '-'); ?>
+                                            </div>
+                                        </td>
                                         <td class="py-4 px-6 align-top whitespace-normal">
                                             <div class="text-sm font-bold text-slate-900 mb-1 leading-tight"><?php echo htmlspecialchars($item->name ?? 'Unnamed Item'); ?></div>
                                             <?php if (!empty($item->description)): ?>
@@ -416,18 +412,6 @@ if ($flashError) {
                                                    class="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors" title="Edit Catalog Entry">
                                                     <i class="fa-solid fa-pen-to-square"></i>
                                                 </a>
-                                                
-                                                <!-- Sync Trigger -->
-                                                <form action="<?php echo APP_URL; ?>/test_woo_sync.php" method="POST" class="inline">
-                                                    <input type="hidden" name="action" value="custom_sync">
-                                                    <input type="hidden" name="sync_sku" value="<?php echo htmlspecialchars($sku); ?>">
-                                                    <input type="hidden" name="sync_name" value="<?php echo htmlspecialchars($item->name ?? ''); ?>">
-                                                    <input type="hidden" name="sync_price" value="<?php echo $price; ?>">
-                                                    <input type="hidden" name="sync_qty" value="<?php echo $qty; ?>">
-                                                    <button type="submit" class="p-2 text-purple-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer" title="Direct Push to WooCommerce">
-                                                        <i class="fa-brands fa-wordpress"></i>
-                                                    </button>
-                                                </form>
                                             </div>
                                         </td>
                                     </tr>

@@ -178,9 +178,12 @@ class WooCommerceService {
     public function syncItem($item, $base64Image = null) {
         $sku = !empty($item->item_code) ? $item->item_code : ($item->sku ?? '');
         if (empty($sku)) {
-            $this->log("Sync skipped: Item ID {$item->id} has no SKU.");
+            $this->log("Sync skipped: Item ID " . ($item->id ?? 'unknown') . " has no SKU.");
             return false;
         }
+
+        $this->log("----------------------------------------");
+        $this->log("START SYNC: SKU '{$sku}' (Item ID: " . ($item->id ?? 'unknown') . ")");
 
         // Parent Meta Data
         $metaData = [];
@@ -210,13 +213,61 @@ class WooCommerceService {
             $categoriesPayload[] = ['id' => (int)$item->category_id];
         }
 
+        // Parse variations_json, handling potential HTML entities encoding
         $has_variations = false;
         $variations_list = [];
         if (!empty($item->variations_json)) {
-            $decoded_vars = json_decode($item->variations_json, true);
+            $json_str = html_entity_decode($item->variations_json, ENT_QUOTES, 'UTF-8');
+            $this->log("variations_json (decoded): " . $json_str);
+            
+            $decoded_vars = json_decode($json_str, true);
+            if (!is_array($decoded_vars)) {
+                $decoded_vars = json_decode($item->variations_json, true);
+            }
+
             if (is_array($decoded_vars) && !empty($decoded_vars)) {
                 $has_variations = true;
                 $variations_list = $decoded_vars;
+                $this->log("Parsed variations count: " . count($variations_list));
+            } else {
+                $this->log("variations_json exists but failed to decode or is empty. JSON: " . $item->variations_json);
+            }
+        } else {
+            $this->log("No variations_json found for SKU: '{$sku}'");
+        }
+
+        // Handle Image Upload logic
+        $imagesPayload = [];
+        if (!empty($base64Image)) {
+            $this->log("Image Upload: Uploading user-provided compressed base64 image...");
+            $uploadedImageId = $this->uploadMedia($base64Image, $sku . '.jpg');
+            if ($uploadedImageId) {
+                $imagesPayload[] = ['id' => (int)$uploadedImageId];
+            }
+        } elseif (!empty($item->image_path)) {
+            if (filter_var($item->image_path, FILTER_VALIDATE_URL)) {
+                $this->log("Image Upload: image_path is an external URL: " . $item->image_path);
+                $imagesPayload[] = ['src' => $item->image_path];
+            } else {
+                $existingProduct = $this->getProductBySku($sku);
+                if (!$existingProduct || empty($existingProduct->images)) {
+                    $this->log("Image Upload: No existing product images on WooCommerce. Preparing local image upload...");
+                    $localPath = dirname(__DIR__, 2) . '/public/' . $item->image_path;
+                    if (file_exists($localPath)) {
+                        $this->log("Image Upload: Reading local file: $localPath");
+                        $fileData = file_get_contents($localPath);
+                        $mimeType = mime_content_type($localPath);
+                        $localBase64 = 'data:' . $mimeType . ';base64,' . base64_encode($fileData);
+                        $uploadedImageId = $this->uploadMedia($localBase64, $sku . '.jpg');
+                        if ($uploadedImageId) {
+                            $imagesPayload[] = ['id' => (int)$uploadedImageId];
+                        }
+                    } else {
+                        $this->log("Image Upload WARNING: Local image path '$localPath' does not exist.");
+                    }
+                } else {
+                    $this->log("Image Upload: Skipping upload. Existing product already has " . count($existingProduct->images) . " images on WooCommerce.");
+                }
             }
         }
 
@@ -232,6 +283,11 @@ class WooCommerceService {
             'categories'    => $categoriesPayload,
             'meta_data'     => $metaData
         ];
+
+        if (!empty($imagesPayload)) {
+            $productData['images'] = $imagesPayload;
+            $this->log("Product images payload set: " . json_encode($imagesPayload));
+        }
 
         if ($has_variations) {
             $options = [];
@@ -256,26 +312,39 @@ class WooCommerceService {
             ];
         }
 
+        $this->log("Preparing to send product request. Payload: " . json_encode($productData));
+
         $existingProduct = $this->getProductBySku($sku);
         $productId = null;
 
         if ($existingProduct) {
+            $this->log("Product '{$sku}' exists on WooCommerce with ID: {$existingProduct->id}. Sending PUT update request.");
             $endpoint = 'products/' . $existingProduct->id;
             $result = $this->sendRequest($endpoint, 'PUT', $productData);
             if ($result) {
                 $productId = $existingProduct->id;
+                $this->log("SUCCESS: Updated product ID {$productId} (SKU: {$sku}) on WooCommerce.");
+            } else {
+                $this->log("ERROR: Failed to update product ID {$existingProduct->id} (SKU: {$sku})");
             }
         } else {
+            $this->log("Product '{$sku}' does not exist on WooCommerce. Sending POST create request.");
             $endpoint = 'products';
             $result = $this->sendRequest($endpoint, 'POST', $productData);
             if ($result) {
                 $productId = $result->id;
+                $this->log("SUCCESS: Created product ID {$productId} (SKU: {$sku}) on WooCommerce.");
+            } else {
+                $this->log("ERROR: Failed to create product (SKU: {$sku})");
             }
         }
 
         if ($productId && $has_variations) {
             $this->syncVariations($productId, $variations_list);
         }
+
+        $this->log("END SYNC: SKU '{$sku}' (Woo ID: " . ($productId ?? 'FAILED') . ")");
+        $this->log("----------------------------------------");
 
         return $productId;
     }
@@ -285,16 +354,25 @@ class WooCommerceService {
      * Automatically updates existing variants, creates new ones, and purges orphans.
      */
     public function syncVariations($productId, $variationsList) {
-        if (!$productId || !is_array($variationsList)) return false;
+        if (!$productId || !is_array($variationsList)) {
+            $this->log("syncVariations skipped: invalid parent ID or list empty.");
+            return false;
+        }
+
+        $this->log("syncVariations: Processing " . count($variationsList) . " variations for WooCommerce Product ID: {$productId}");
 
         $existingVars = $this->getProductVariations($productId);
         $matchedSkus = [];
 
         foreach ($variationsList as $v) {
             $vSku = $v['sku'] ?? '';
-            if (empty($vSku)) continue;
+            if (empty($vSku)) {
+                $this->log("syncVariations WARNING: Variation SKU is empty for variation data: " . json_encode($v));
+                continue;
+            }
 
             $matchedSkus[] = $vSku;
+            $this->log("syncVariations: Preparing SKU '{$vSku}' ('{$v['attribute']}') - Price: {$v['price']}");
 
             // Build Variation Payload with Cost, Retail and WholesaleX B2B Prices
             $variationData = [
@@ -340,14 +418,20 @@ class WooCommerceService {
             }
 
             if ($matchedVarId) {
+                $this->log("syncVariations: Updating variation SKU '{$vSku}' (Woo ID: {$matchedVarId}) via PUT");
                 $result = $this->sendRequest("products/{$productId}/variations/{$matchedVarId}", 'PUT', $variationData);
                 if ($result) {
                     $this->log("SUCCESS: Updated WooCommerce Variation ID {$matchedVarId} (SKU: {$vSku}) under Parent #{$productId}");
+                } else {
+                    $this->log("ERROR: Failed to update WooCommerce Variation ID {$matchedVarId} (SKU: {$vSku})");
                 }
             } else {
+                $this->log("syncVariations: Creating variation SKU '{$vSku}' via POST");
                 $result = $this->sendRequest("products/{$productId}/variations", 'POST', $variationData);
                 if ($result) {
                     $this->log("SUCCESS: Created WooCommerce Variation ID {$result->id} (SKU: {$vSku}) under Parent #{$productId}");
+                } else {
+                    $this->log("ERROR: Failed to create WooCommerce Variation for SKU: {$vSku}");
                 }
             }
         }
@@ -357,15 +441,94 @@ class WooCommerceService {
             foreach ($existingVars as $ev) {
                 $evSku = $ev->sku ?? '';
                 if (!empty($evSku) && !in_array($evSku, $matchedSkus)) {
+                    $this->log("syncVariations: Purging orphan variation ID {$ev->id} (SKU: {$evSku})");
                     $deleteResult = $this->sendRequest("products/{$productId}/variations/{$ev->id}?force=true", 'DELETE');
                     if ($deleteResult) {
                         $this->log("SUCCESS: Purged Orphan Variation ID {$ev->id} (SKU: {$evSku}) under Parent #{$productId}");
+                    } else {
+                        $this->log("ERROR: Failed to purge orphan variation ID {$ev->id} (SKU: {$evSku})");
                     }
                 }
             }
         }
 
         return true;
+    }
+
+    /**
+     * Upload an image to the WordPress Media Library using core WP REST API and WooCommerce credentials
+     */
+    private function uploadMedia($base64Image, $fileName = 'image.jpg') {
+        if (empty($base64Image)) return null;
+
+        // Parse base64
+        if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $type)) {
+            $base64Image = substr($base64Image, strpos($base64Image, ',') + 1);
+            $ext = strtolower($type[1]);
+        } else {
+            $ext = 'jpg';
+        }
+        
+        $fileName = 'prod_img_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+
+        $binary = base64_decode($base64Image);
+        if (!$binary) {
+            $this->log("Media Upload Error: Failed to base64 decode image data.");
+            return null;
+        }
+
+        // WP Media Endpoint - replacing WooCommerce base endpoint /wc/v3/ with /wp/v2/media
+        $url = str_replace('/wc/v3/', '/wp/v2/media', $this->apiUrl);
+        if ($url === $this->apiUrl) {
+            $url = rtrim(WC_STORE_URL, '/') . '/../../wp/v2/media';
+        }
+        $url = preg_replace('/([^:])(\/{2,})/', '$1/', $url);
+
+        $this->log("Attempting to upload media to: $url (Size: " . strlen($binary) . " bytes)");
+
+        $ch = curl_init();
+        $credentials = base64_encode($this->consumerKey . ':' . $this->consumerSecret);
+        
+        $mimeType = 'image/' . ($ext === 'png' ? 'png' : 'jpeg');
+
+        $headers = [
+            'Authorization: Basic ' . $credentials,
+            'Content-Type: ' . $mimeType,
+            'Content-Disposition: attachment; filename="' . $fileName . '"',
+            'User-Agent: Curtiss-ERP-Sync/1.0'
+        ];
+
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $binary);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($error) {
+            $this->log("Media Upload cURL Error: " . $error);
+            return null;
+        }
+
+        if ($httpCode < 200 || $httpCode >= 300) {
+            $this->log("Media Upload HTTP Error $httpCode on POST $url. Response: " . $response);
+            return null;
+        }
+
+        $resObj = json_decode($response);
+        if ($resObj && !empty($resObj->id)) {
+            $this->log("SUCCESS: Uploaded image to WP Media Library. Media ID: {$resObj->id}");
+            return $resObj->id;
+        }
+
+        $this->log("Media Upload Error: Response did not contain a valid media ID. Response: " . $response);
+        return null;
     }
 
     /**

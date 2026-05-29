@@ -272,16 +272,16 @@
             <span class="kpi-card-title">Odometer & Mileage Audit</span>
             <div class="kpi-row">
                 <span>Start Odometer:</span>
-                <strong><?= number_format($d->start_meter, 1) ?> KM</strong>
+                <strong><?= number_format($d->start_meter, 0) ?> KM</strong>
             </div>
             <div class="kpi-row">
                 <span>End Odometer:</span>
-                <strong><?= number_format($d->end_meter, 1) ?> KM</strong>
+                <strong><?= number_format($d->end_meter, 0) ?> KM</strong>
             </div>
             <?php $dist = max(0, $d->end_meter - $d->start_meter); ?>
             <div class="kpi-row" style="border-top: 1px dashed #ccc; padding-top: 4px; margin-top: 6px; font-weight: bold;">
                 <span>Distance Traveled:</span>
-                <strong><?= number_format($dist, 1) ?> KM</strong>
+                <strong><?= number_format($dist, 0) ?> KM</strong>
             </div>
         </div>
     </div>

@@ -17,7 +17,8 @@ class RepTracking {
             SELECT r.*, COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name,
                 (SELECT COUNT(*) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as bill_count,
                 (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) 
-                 FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales
+                 FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales,
+                (SELECT COUNT(*) FROM customer_payments WHERE rep_route_id = r.id AND journal_entry_id IS NULL) as unfinalized_count
             FROM rep_daily_routes r
             LEFT JOIN users u ON r.user_id = u.id
             LEFT JOIN employees e ON u.email = e.email
@@ -143,5 +144,108 @@ class RepTracking {
             'waypoints' => $waypoints,
             'point_count' => count($waypoints),
         ];
+    }
+
+    public function getRouteCollections($routeId) {
+        $this->db->query("
+            SELECT cp.*, c.name as customer_name
+            FROM customer_payments cp
+            JOIN customers c ON cp.customer_id = c.id
+            WHERE cp.rep_route_id = :rid
+            ORDER BY cp.created_at ASC
+        ");
+        $this->db->bind(':rid', $routeId);
+        return $this->db->resultSet() ?: [];
+    }
+
+    public function finalizePayments($paymentIds, $userId, $bankAllocations = []) {
+        if (empty($paymentIds)) return true;
+
+        // Resolve necessary account IDs based on codes
+        $this->db->query("SELECT id, account_code FROM chart_of_accounts WHERE account_code IN ('1000', '1010', '1600', '1605', '1200')");
+        $accounts = $this->db->resultSet();
+        $accMap = [];
+        foreach ($accounts as $a) {
+            $accMap[$a->account_code] = $a->id;
+        }
+
+        $cashAcc = $accMap['1000'] ?? null;
+        $chequeAcc = $accMap['1010'] ?? null;
+        $tempBankAcc = $accMap['1605'] ?? $accMap['1600'] ?? null;
+        $arAcc = $accMap['1200'] ?? null;
+
+        if (!$arAcc) {
+            throw new Exception("Accounts Receivable account (1200) not found in Chart of Accounts.");
+        }
+
+        foreach ($paymentIds as $pid) {
+            // Fetch payment details
+            $this->db->query("SELECT * FROM customer_payments WHERE id = :id AND journal_entry_id IS NULL");
+            $this->db->bind(':id', $pid);
+            $payment = $this->db->single();
+            if (!$payment) continue;
+
+            $amount = floatval($payment->amount);
+            $method = $payment->payment_method;
+
+            // Map payment method to asset account
+            $assetAccId = null;
+            if ($method === 'Cash') {
+                $assetAccId = $cashAcc;
+            } elseif ($method === 'Bank Transfer') {
+                // Read granular target bank allocation for this specific payment
+                $selectedBankAccId = isset($bankAllocations[$pid]) ? $bankAllocations[$pid] : null;
+                $assetAccId = !empty($selectedBankAccId) ? $selectedBankAccId : $tempBankAcc;
+            } elseif ($method === 'Cheque') {
+                $assetAccId = $chequeAcc;
+            }
+
+            if (!$assetAccId) {
+                continue; // Skip if no valid account mapped
+            }
+
+            // Create Journal Entry
+            $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
+                              VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
+            $refStr = "FINAL-PMT-" . $payment->id;
+            $descStr = "Finalized Route Collection (" . $method . ") for Customer ID: " . $payment->customer_id;
+            $this->db->bind(':ref', $refStr);
+            $this->db->bind(':desc', $descStr);
+            $this->db->bind(':uid', $userId);
+            $this->db->execute();
+            $jid = $this->db->lastInsertId();
+
+            // Transaction 1: Debit Asset Account (Cash / Bank / Cheque)
+            $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :amount, 0)");
+            $this->db->bind(':jid', $jid);
+            $this->db->bind(':aid', $assetAccId);
+            $this->db->bind(':amount', $amount);
+            $this->db->execute();
+
+            $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :aid");
+            $this->db->bind(':amt', $amount);
+            $this->db->bind(':aid', $assetAccId);
+            $this->db->execute();
+
+            // Transaction 2: Credit Accounts Receivable (1200)
+            $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :amount)");
+            $this->db->bind(':jid', $jid);
+            $this->db->bind(':aid', $arAcc);
+            $this->db->bind(':amount', $amount);
+            $this->db->execute();
+
+            $this->db->query("UPDATE chart_of_accounts SET balance = balance - :amt WHERE id = :aid");
+            $this->db->bind(':amt', $amount);
+            $this->db->bind(':aid', $arAcc);
+            $this->db->execute();
+
+            // Link payment to generated journal entry to mark it as finalized
+            $this->db->query("UPDATE customer_payments SET journal_entry_id = :jid WHERE id = :pid");
+            $this->db->bind(':jid', $jid);
+            $this->db->bind(':pid', $pid);
+            $this->db->execute();
+        }
+
+        return true;
     }
 }

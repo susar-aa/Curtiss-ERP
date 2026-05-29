@@ -46,7 +46,7 @@
 
     <form id="endTripForm">
         <label class="form-label" style="text-align:center; margin-top:10px;">Ending Odometer (KM)</label>
-        <input type="text" id="odoDisplay" class="form-input odo-input" placeholder="00000.0" inputmode="numeric" required>
+        <input type="text" id="odoDisplay" class="form-input odo-input" placeholder="000000" inputmode="numeric" required>
         
         <input type="hidden" name="end_meter" id="actualMeterValue">
         <input type="hidden" name="end_lat" id="gpsLat">
@@ -71,20 +71,8 @@
         try {
             let val = this.value.replace(/[^0-9]/g, '');
             if (val.length > 6) { val = val.substring(0, 6); }
-            if (val.length > 0) {
-                if (val.length === 1) {
-                    this.value = '0.' + val;
-                    actualMeterValue.value = '0.' + val;
-                } else {
-                    let mainPart = val.slice(0, -1);
-                    let decimalPart = val.slice(-1);
-                    this.value = mainPart + '.' + decimalPart;
-                    actualMeterValue.value = this.value;
-                }
-            } else {
-                this.value = '';
-                actualMeterValue.value = '';
-            }
+            this.value = val;
+            actualMeterValue.value = val;
         } catch (err) { console.log(err); }
     });
 

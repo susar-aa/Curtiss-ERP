@@ -129,6 +129,13 @@ if ($successInvoiceId && !$successCustomer) {
         </div>
     </div>
 
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">Categories</span>
+        <button type="button" onclick="openFreeIssueSheet()" style="background: #ef6c00; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 5px rgba(239, 108, 0, 0.2);">
+            🎁 Add Free Issue
+        </button>
+    </div>
+
     <!-- Swipeable Category Nav -->
     <div class="cat-scroll">
         <div class="cat-pill active" onclick="filterCat('all', this)">All Items</div>
@@ -586,6 +593,7 @@ if ($successInvoiceId && !$successCustomer) {
             let rowDisc = (i.disc_type === '%') ? (rowGross * i.disc_val / 100) : parseFloat(i.disc_val);
             let rowNet = rowGross - rowDisc;
             if(rowNet < 0) rowNet = 0;
+            if(i.is_free) rowNet = 0;
             totalAmt += rowNet;
         });
         

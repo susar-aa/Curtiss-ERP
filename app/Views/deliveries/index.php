@@ -973,9 +973,9 @@ error_reporting(E_ALL);
         const startMeter = parseFloat(d.start_meter || 0);
         const endMeter = parseFloat(d.end_meter || 0);
         const diffMeter = Math.max(0, endMeter - startMeter);
-        document.getElementById('bpStartMeter').innerText = startMeter.toFixed(1) + ' KM';
-        document.getElementById('bpEndMeter').innerText = endMeter.toFixed(1) + ' KM';
-        document.getElementById('bpDistance').innerText = diffMeter.toFixed(1) + ' KM';
+        document.getElementById('bpStartMeter').innerText = startMeter.toFixed(0) + ' KM';
+        document.getElementById('bpEndMeter').innerText = endMeter.toFixed(0) + ' KM';
+        document.getElementById('bpDistance').innerText = diffMeter.toFixed(0) + ' KM';
 
         // 4. Render Cash Denominations
         let cashDenoms = {};

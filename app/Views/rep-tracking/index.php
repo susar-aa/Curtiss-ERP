@@ -42,12 +42,12 @@ error_reporting(E_ALL);
     .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); }
     .empty-state span { font-size: 50px; margin-bottom: 15px; opacity: 0.5;}
 
-    /* Right Pane: Slide-out Invoice Mini-View */
+    /* Right Pane: Slide-out Invoice Mini-View (Granular Side-by-Side Split View) */
     .pane-right-slider { 
-        position: absolute; top: 0; right: 0; bottom: 0; width: 500px; 
-        background: var(--surface); border-left: 1px solid var(--border); 
-        box-shadow: -5px 0 25px rgba(0,0,0,0.1); transform: translateX(100%); 
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 50;
+        position: absolute; top: 0; right: 0; bottom: 0; width: 50%; 
+        background: var(--surface); border-left: 1px solid var(--mac-border); 
+        box-shadow: -10px 0 35px rgba(0,0,0,0.15); transform: translateX(100%); 
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 150;
         display: flex; flex-direction: column;
     }
     .pane-right-slider.open { transform: translateX(0); }
@@ -93,38 +93,96 @@ error_reporting(E_ALL);
     .path-step-start { color: #2e7d32; font-weight: bold; }
     .path-step-invoice { color: #0066cc; }
     .path-step-end { color: #c62828; font-weight: bold; }
+
+    /* Target Bank account selection styling in Route Tracking footer */
+    #collectionsFooter {
+        background: #ffffff !important;
+        border-top: 1px solid var(--mac-border) !important;
+    }
+    #targetBankAccount {
+        border: 1px solid #cbd5e1;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    #targetBankAccount:focus {
+        border-color: #0066cc;
+        outline: none;
+    }
+    @media (prefers-color-scheme: dark) {
+        #collectionsFooter {
+            background: #1e1e2d !important;
+            border-top-color: #2d2d3d !important;
+        }
+        #targetBankAccount {
+            background: #12121a !important;
+            color: #f1f5f9 !important;
+            border-color: #3f3f46 !important;
+        }
+        #bankAccountSelectorContainer {
+            background: rgba(255,255,255,0.03) !important;
+            border-color: #2d2d3d !important;
+        }
+        #bankAccountSelectorContainer span {
+            color: #e2e8f0 !important;
+        }
+    }
 </style>
 
 <div class="header-actions" style="margin-bottom: 15px;">
     <div>
         <h2 style="margin: 0 0 5px 0;">Rep Route Tracking & Audits</h2>
-        <p style="margin: 0; color: #666; font-size: 14px;">Click a route to view bills and the GPS path from day start through each invoice to day end.</p>
+        <p style="margin: 0; color: #666; font-size: 14px;">Click a route to view sales orders and the GPS path from day start through each sales order to day end.</p>
     </div>
 </div>
 
 <div class="app-workspace">
     <!-- Left Pane: Routes Master List -->
-    <div class="pane-left" style="overflow-y: auto;">
-        <?php foreach($data['routes'] as $route): ?>
-            <div class="route-item" id="route_<?= $route->id ?>" onclick="loadRouteDetails(<?= $route->id ?>, this)">
-                <div class="r-title"><span class="status-dot status-<?= $route->status ?>"></span> <?= htmlspecialchars($route->route_name) ?></div>
-                <div class="r-sub">Rep: <?= htmlspecialchars($route->first_name . ' ' . $route->last_name) ?></div>
-                <div class="r-meta">
-                    <span><?= date('M d, Y', strtotime($route->start_time)) ?></span>
-                    <strong style="color: <?= $route->status == 'Completed' ? 'inherit' : '#ef6c00' ?>;">Rs: <?= number_format($route->total_sales, 2) ?></strong>
+    <div class="pane-left">
+        <!-- Filter Tabs for Route Status -->
+        <div style="display: flex; border-bottom: 1px solid var(--mac-border); background: var(--surface); padding: 8px; gap: 4px; flex-shrink: 0; position: sticky; top: 0; z-index: 20;">
+            <button type="button" class="left-tab-btn active" id="btnLeftActive" onclick="filterLeftPane('active', this)" style="flex: 1; padding: 8px 2px; font-size: 11px; font-weight: bold; border-radius: 6px; border: none; background: #0066cc; color: white; cursor: pointer; white-space: nowrap; transition: 0.2s;">
+                ⚡ Active
+            </button>
+            <button type="button" class="left-tab-btn" id="btnLeftPendingGL" onclick="filterLeftPane('pending_finalization', this)" style="flex: 1; padding: 8px 2px; font-size: 11px; font-weight: bold; border-radius: 6px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; white-space: nowrap; transition: 0.2s;">
+                📄 Pending GL
+            </button>
+            <button type="button" class="left-tab-btn" id="btnLeftPendingDelivery" onclick="filterLeftPane('pending_delivery', this)" style="flex: 1; padding: 8px 2px; font-size: 11px; font-weight: bold; border-radius: 6px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; white-space: nowrap; transition: 0.2s;">
+                🚚 Pending Del
+            </button>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto;" id="routeListItemsContainer">
+            <?php foreach($data['routes'] as $route): ?>
+                <?php 
+                    if ($route->status === 'Active') {
+                        $dataType = 'active';
+                    } elseif ($route->status === 'Completed' && $route->unfinalized_count > 0) {
+                        $dataType = 'pending_finalization';
+                    } else {
+                        $dataType = 'pending_delivery';
+                    }
+                ?>
+                <div class="route-item" id="route_<?= $route->id ?>" data-route-type="<?= $dataType ?>" onclick="loadRouteDetails(<?= $route->id ?>, this)">
+                    <div class="r-title"><span class="status-dot status-<?= $route->status ?>"></span> <?= htmlspecialchars($route->route_name) ?></div>
+                    <div class="r-sub">Rep: <?= htmlspecialchars($route->first_name . ' ' . $route->last_name) ?></div>
+                    <div class="r-meta">
+                        <span><?= date('M d, Y', strtotime($route->start_time)) ?></span>
+                        <strong style="color: <?= $route->status == 'Completed' ? 'inherit' : '#ef6c00' ?>;">Rs: <?= number_format($route->total_sales, 2) ?></strong>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Hidden data payload to populate the middle header quickly -->
-            <div id="route_data_<?= $route->id ?>" style="display:none;" 
-                 data-rep="<?= htmlspecialchars($route->first_name . ' ' . $route->last_name) ?>"
-                 data-rname="<?= htmlspecialchars($route->route_name) ?>"
-                 data-start="<?= $route->start_meter ?>"
-                 data-end="<?= $route->end_meter ?: 'Active' ?>"
-                 data-sales="<?= number_format($route->total_sales, 2) ?>"
-                 data-bills="<?= $route->bill_count ?>">
-            </div>
-        <?php endforeach; ?>
+                
+                <!-- Hidden data payload to populate the middle header quickly -->
+                <div id="route_data_<?= $route->id ?>" style="display:none;" 
+                     data-rep="<?= htmlspecialchars($route->first_name . ' ' . $route->last_name) ?>"
+                     data-rname="<?= htmlspecialchars($route->route_name) ?>"
+                     data-start="<?= $route->start_meter ?>"
+                     data-end="<?= $route->end_meter ?: 'Active' ?>"
+                     data-sales="<?= number_format($route->total_sales, 2) ?>"
+                     data-bills="<?= $route->bill_count ?>"
+                     data-status="<?= $route->status ?>"
+                     data-unfinalized="<?= $route->unfinalized_count ?>">
+                </div>
+            <?php endforeach; ?>
+        </div>
     </div>
 
     <!-- Middle Pane: Bills Detail List -->
@@ -150,8 +208,17 @@ error_reporting(E_ALL);
                 <button id="btnArrangeDelivery" onclick="openDeliveryModal()" style="padding: 10px 15px; border: none; background: #2e7d32; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 5px;">🚚 Arrange Delivery</button>
                 
                 <!-- NEW: Add Invoice Button -->
-                <button id="btnAddInvoice" onclick="redirectToAddInvoice()" style="padding: 10px 15px; border: none; background: #0066cc; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 5px;">➕ Add Invoice</button>
+                <button id="btnAddInvoice" onclick="redirectToAddInvoice()" style="padding: 10px 15px; border: none; background: #0066cc; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 5px;">➕ Add Sales Order</button>
+
+                <!-- NEW: View Map Button -->
+                <button id="btnViewMap" onclick="openMapModal()" style="padding: 10px 15px; border: none; background: #ef6c00; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 5px; display: none; align-items: center; gap: 4px;">📍 View Map</button>
             </div>
+        </div>
+
+        <!-- Tabs for Switching Views -->
+        <div id="routeTabs" style="display: none; padding: 10px 25px; background: rgba(0,0,0,0.02); border-bottom: 1px solid var(--mac-border); gap: 15px;">
+            <button id="tabInvoices" class="btn" style="background: #0066cc; color: white; padding: 6px 12px; font-size: 13px;" onclick="switchRouteTab('invoices')">📄 Route Sales Orders</button>
+            <button id="tabCollections" class="btn" style="background: transparent; color: #0066cc; border: 1px solid #0066cc; padding: 6px 12px; font-size: 13px;" onclick="switchRouteTab('collections')">💰 Route Collections & GL Finalization</button>
         </div>
 
         <div style="flex:1; overflow-y:auto; position:relative;">
@@ -160,10 +227,43 @@ error_reporting(E_ALL);
                 Click a route on the left to load its bills.
             </div>
 
+            <!-- COLLECTIONS VIEW -->
+            <div id="collectionsWrapper" style="display: none; padding: 20px 25px;">
+                <div id="collectionsOverview" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <!-- Dynamically populated stats -->
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h4 style="margin: 0; color: var(--text-dark);">Itemized Payments Collected</h4>
+                    <button class="btn" onclick="toggleSelectAllCollections(this)" id="btnSelectAllCollections" style="background: transparent; border: 1px solid #ccc; font-size: 11px; padding: 4px 8px; cursor: pointer;">Select All Unfinalized</button>
+                </div>
+
+                <div id="collectionsList" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 70px;">
+                    <!-- AJAX populated cards -->
+                </div>
+
+                <!-- Sticky Post Action Footer -->
+                <div id="collectionsFooter" style="position: absolute; bottom: 0; left: 0; right: 0; background: var(--surface); padding: 15px 25px; border-top: 1px solid var(--mac-border); display: none; justify-content: space-between; align-items: center; z-index: 100; gap: 15px; flex-wrap: wrap;">
+                    <div style="font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 20px; flex: 1;">
+                        <div>
+                            Selected: <strong id="selectedCollectionsCount" style="color: #0066cc;">0</strong> payment(s) to post to General Ledger
+                        </div>
+                        
+                        <!-- Target Commercial Bank Validation Status Warning -->
+                        <div id="bankAccountSelectorContainer" style="display: none; align-items: center; gap: 6px; background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold;">
+                            <span>⚠️ Target bank required for checked Bank Transfer payments.</span>
+                        </div>
+                    </div>
+                    <button class="btn" id="btnPostGL" style="background: #2e7d32; color: #fff; padding: 8px 16px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px;" onclick="postSelectedCollectionsGL()">
+                        ⚡ Post GL Updates & Finalize
+                    </button>
+                </div>
+            </div>
+
             <table class="data-table" id="billsTable" style="display: none;">
                 <thead>
                     <tr>
-                        <th>Invoice #</th>
+                        <th>Sales Order #</th>
                         <th>Time</th>
                         <th>Customer</th>
                         <th style="text-align:right;">Grand Total (Rs)</th>
@@ -181,22 +281,35 @@ error_reporting(E_ALL);
             </div>
         </div>
 
-        <!-- Route GPS path map -->
-        <div class="pane-map-section" id="mapSection" style="display:none;">
-            <div class="map-section-header">
-                <h4>📍 Route Path <span id="pathPointCount" style="font-weight:normal; color:#888;"></span></h4>
-                <div class="map-legend">
-                    <span><i class="legend-dot legend-start"></i> Day start</span>
-                    <span><i class="legend-dot legend-invoice"></i> Invoice</span>
-                    <span><i class="legend-dot legend-end"></i> Day end</span>
+        </div>
+    </div>
+
+    <!-- Dynamic GPS Route Map Modal -->
+    <div class="modal-backdrop" id="mapModalBackdrop" style="display: none; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="modal-panel" style="max-width: 950px; width: 90%; height: 80vh; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--mac-border); box-shadow: 0 15px 40px rgba(0,0,0,0.3); border-radius: 12px; overflow: hidden;">
+            <div style="background: #3f51b5; color: #fff; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span>📍 GPS Route Path Tracking Map</span>
+                    <span id="modalRouteName" style="background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; font-size: 11px;"></span>
+                    <span id="pathPointCount" style="font-weight: normal; font-size: 11px; opacity: 0.85;"></span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: normal;">
+                        <span style="display: inline-flex; align-items: center; gap: 3px;"><i class="legend-dot legend-start" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #2e7d32;"></i> Day Start</span>
+                        <span style="display: inline-flex; align-items: center; gap: 3px;"><i class="legend-dot legend-invoice" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #0066cc;"></i> Sales Order</span>
+                        <span style="display: inline-flex; align-items: center; gap: 3px;"><i class="legend-dot legend-end" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c62828;"></i> Day End</span>
+                    </div>
+                    <button class="close-slider" onclick="closeMapModal()" style="border: none; background: transparent; color: #fff; font-size: 20px; cursor: pointer; padding: 0;">✕</button>
                 </div>
             </div>
-            <div class="map-wrap">
-                <div id="mapEmptyOverlay" class="map-empty-overlay">Select a route to load its path.</div>
-                <div id="routePathMap"></div>
-            </div>
-            <div class="path-step-list" id="pathStepList" style="display:none;">
-                <ol id="pathStepOl"></ol>
+            <div style="flex: 1; display: flex; flex-direction: column; position: relative; background: #eef1f4;">
+                <div style="flex: 1; position: relative; min-height: 350px;">
+                    <div id="mapEmptyOverlay" class="map-empty-overlay" style="display: flex; position: absolute; inset: 0; align-items: center; justify-content: center; background: rgba(255,255,255,0.85); color: #666; font-size: 13px; font-weight: 600; text-align: center; padding: 20px; z-index: 500; pointer-events: none;">Select a route to load its path.</div>
+                    <div id="routePathMap" style="height: 100%; width: 100%;"></div>
+                </div>
+                <div class="path-step-list" id="pathStepList" style="max-height: 120px; overflow-y: auto; padding: 12px 20px; background: var(--surface); border-top: 1px solid var(--mac-border); display: none;">
+                    <ol id="pathStepOl" style="margin: 0; padding-left: 20px; font-family: monospace; font-size: 11px;"></ol>
+                </div>
             </div>
         </div>
     </div>
@@ -204,10 +317,10 @@ error_reporting(E_ALL);
     <!-- Right Pane: Invoice Slide-Out Viewer -->
     <div class="pane-right-slider" id="invoiceSlider">
         <div class="slider-header">
-            <span>Invoice Mini-View</span>
+            <span>Sales Order Mini-View</span>
             <div>
                 <!-- Edit Invoice Button -->
-                <a id="btnEditInvoice" href="#" style="background: rgba(255,255,255,0.2); color: #fff; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; margin-right: 15px; border: 1px solid rgba(255,255,255,0.4);">✏️ Edit in Sales</a>
+                <a id="btnEditInvoice" href="#" style="background: rgba(255,255,255,0.2); color: #fff; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; margin-right: 15px; border: 1px solid rgba(255,255,255,0.4);">✏️ Edit Sales Order</a>
                 <button class="close-slider" onclick="closeInvoiceSlider()">✕</button>
             </div>
         </div>
@@ -274,6 +387,7 @@ error_reporting(E_ALL);
 </div>
 
 <script>
+    const globalBankAccounts = <?php echo json_encode($data['bank_accounts'] ?? []); ?>;
     let currentRouteId = null;
     let routeMap = null;
     let routeMapLayers = [];
@@ -314,7 +428,6 @@ error_reporting(E_ALL);
     }
 
     function loadRoutePath(routeId) {
-        document.getElementById('mapSection').style.display = 'flex';
         document.getElementById('mapEmptyOverlay').style.display = 'flex';
         document.getElementById('mapEmptyOverlay').innerText = 'Loading route path...';
         document.getElementById('pathStepList').style.display = 'none';
@@ -391,7 +504,7 @@ error_reporting(E_ALL);
             li.textContent = stepLabel || wp.label;
             if (wp.type === 'invoice' && wp.id) {
                 li.style.cursor = 'pointer';
-                li.title = 'Click to preview invoice';
+                li.title = 'Click to preview sales order';
                 li.onclick = () => openInvoiceSlider(wp.id);
             }
             stepOl.appendChild(li);
@@ -430,22 +543,52 @@ error_reporting(E_ALL);
         document.getElementById('mhSales').innerText = d.getAttribute('data-sales');
         document.getElementById('mhBills').innerText = d.getAttribute('data-bills');
         
+        const status = d.getAttribute('data-status');
+        const unfinalized = parseInt(d.getAttribute('data-unfinalized')) || 0;
+
+        // Do not show route route collection finalization system until rep end the route
+        if (status !== 'Completed') {
+            document.getElementById('tabCollections').style.display = 'none';
+            switchRouteTab('invoices');
+        } else {
+            document.getElementById('tabCollections').style.display = 'inline-block';
+        }
+
+        // Show Arrange Delivery only for completed & finalized routes
+        if (status === 'Completed' && unfinalized === 0) {
+            document.getElementById('btnArrangeDelivery').style.display = 'inline-block';
+        } else {
+            document.getElementById('btnArrangeDelivery').style.display = 'none';
+        }
+
+        document.getElementById('routeTabs').style.display = 'flex';
         document.getElementById('midHeader').style.visibility = 'visible';
         document.getElementById('midEmptyState').style.display = 'none';
-        document.getElementById('billsTable').style.display = 'none';
         document.getElementById('midLoader').style.display = 'block';
+
+        if (currentRouteTab === 'collections') {
+            document.getElementById('billsTable').style.display = 'none';
+            document.getElementById('collectionsWrapper').style.display = 'block';
+            loadRouteCollections(routeId);
+        } else {
+            document.getElementById('billsTable').style.display = 'none';
+            document.getElementById('collectionsWrapper').style.display = 'none';
+        }
 
         // Close slider if open
         closeInvoiceSlider();
 
-        loadRoutePath(routeId);
+        // Show View Map Button
+        document.getElementById('btnViewMap').style.display = 'inline-flex';
 
         // AJAX Fetch Bills
         fetch('<?= APP_URL ?>/RepTracking/api_get_route_details/' + routeId)
             .then(response => response.json())
             .then(data => {
                 document.getElementById('midLoader').style.display = 'none';
-                document.getElementById('billsTable').style.display = 'table';
+                if (currentRouteTab === 'invoices') {
+                    document.getElementById('billsTable').style.display = 'table';
+                }
                 
                 const tbody = document.getElementById('billsTableBody');
                 tbody.innerHTML = '';
@@ -483,7 +626,7 @@ error_reporting(E_ALL);
         const iframe = document.getElementById('invoiceIframe');
         
         // Update Edit button URL path
-        document.getElementById('btnEditInvoice').href = '<?= APP_URL ?>/sales/edit/' + invoiceId;
+        document.getElementById('btnEditInvoice').href = '<?= APP_URL ?>/sales/edit/' + invoiceId + '?type=sales_order';
 
         // Point the iframe to the existing invoice view
         iframe.src = '<?= APP_URL ?>/sales/show/' + invoiceId;
@@ -566,10 +709,379 @@ error_reporting(E_ALL);
         });
     }
 
-    // --- 5. NEW: Redirect to Invoice Creation ---
+    // --- Tabs & Collections Finalization Engine ---
+    let currentRouteTab = 'invoices';
+
+    function switchRouteTab(tabName) {
+        currentRouteTab = tabName;
+        const btnInv = document.getElementById('tabInvoices');
+        const btnCol = document.getElementById('tabCollections');
+        const tblInv = document.getElementById('billsTable');
+        const wrpCol = document.getElementById('collectionsWrapper');
+
+        if (tabName === 'invoices') {
+            btnInv.style.background = '#0066cc';
+            btnInv.style.color = 'white';
+            btnCol.style.background = 'transparent';
+            btnCol.style.color = '#0066cc';
+            
+            tblInv.style.display = 'table';
+            wrpCol.style.display = 'none';
+        } else {
+            btnCol.style.background = '#0066cc';
+            btnCol.style.color = 'white';
+            btnInv.style.background = 'transparent';
+            btnInv.style.color = '#0066cc';
+            
+            tblInv.style.display = 'none';
+            wrpCol.style.display = 'block';
+            
+            if (currentRouteId) {
+                loadRouteCollections(currentRouteId);
+            }
+        }
+    }
+
+    function loadRouteCollections(routeId) {
+        const listDiv = document.getElementById('collectionsList');
+        const overviewDiv = document.getElementById('collectionsOverview');
+        listDiv.innerHTML = '<div style="text-align:center; padding:30px; font-weight:bold; color:var(--primary);">Loading Collections... ⏳</div>';
+        
+        fetch('<?= APP_URL ?>/RepTracking/api_get_route_collections/' + routeId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    listDiv.innerHTML = '<div style="text-align:center; padding:30px; color:#c62828;">Failed to load collections.</div>';
+                    return;
+                }
+                
+                const cols = data.collections || [];
+                if (cols.length === 0) {
+                    listDiv.innerHTML = '<div style="text-align:center; padding:30px; color:#888;">No customer payments collected on this route.</div>';
+                    overviewDiv.innerHTML = '';
+                    document.getElementById('collectionsFooter').style.display = 'none';
+                    return;
+                }
+                
+                document.getElementById('collectionsFooter').style.display = 'flex';
+                
+                // Build overview stats
+                let cashTotal = 0, bankTotal = 0, chequeTotal = 0;
+                cols.forEach(c => {
+                    let amt = parseFloat(c.amount || 0);
+                    if (c.payment_method === 'Cash') cashTotal += amt;
+                    else if (c.payment_method === 'Bank Transfer') bankTotal += amt;
+                    else if (c.payment_method === 'Cheque') chequeTotal += amt;
+                });
+                
+                overviewDiv.innerHTML = `
+                    <div class="stat-box" style="flex: 1; min-width: 120px;"><span>💵 Total Cash</span><strong>Rs ${cashTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong></div>
+                    <div class="stat-box" style="flex: 1; min-width: 120px;"><span>🏦 Total Bank</span><strong>Rs ${bankTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong></div>
+                    <div class="stat-box" style="flex: 1; min-width: 120px;"><span>🎫 Total Cheques</span><strong>Rs ${chequeTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong></div>
+                    <div class="stat-box" style="flex: 1; min-width: 140px; background: rgba(46, 125, 50, 0.05); border-color: rgba(46, 125, 50, 0.2);"><span>💰 Total Collected</span><strong style="color: #2e7d32;">Rs ${(cashTotal + bankTotal + chequeTotal).toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong></div>
+                `;
+                
+                listDiv.innerHTML = '';
+                cols.forEach(c => {
+                    let isFinalized = c.journal_entry_id !== null;
+                    let assetAccName = c.payment_method === 'Cash' ? '1000 - Cash Account' : (c.payment_method === 'Cheque' ? '1010 - Cheque Clearing Account' : '1600 - Bank Current Account');
+                    let amtFormatted = parseFloat(c.amount).toLocaleString('en-IN', {minimumFractionDigits: 2});
+                    
+                    let bankSelectHtml = '';
+                    if (c.payment_method === 'Bank Transfer' && !isFinalized) {
+                        let bankOptionsHtml = '<option value="">-- Choose Commercial Bank --</option>';
+                        globalBankAccounts.forEach(b => {
+                            if (b.account_code !== '1605') {
+                                bankOptionsHtml += `<option value="${b.id}">${b.account_name} (${b.account_code})</option>`;
+                            }
+                        });
+                        bankSelectHtml = `
+                            <div style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.02); border: 1px dashed var(--mac-border); border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 12px; font-weight: bold; color: var(--text-dark);">🏦 Target Commercial Bank:</span>
+                                </div>
+                                <select class="payment-bank-select" data-payment-id="${c.id}" style="padding: 6px; border-radius: 4px; border: 1px solid var(--mac-border); font-size: 11px; font-weight: bold; cursor: pointer; color: var(--text-dark); background: #fff;" onchange="updateSelectedCollectionsStats()">
+                                    ${bankOptionsHtml}
+                                </select>
+                            </div>
+                        `;
+                    }
+
+                    let cardHtml = `
+                        <div style="background: var(--surface); border: 1px solid ${isFinalized ? '#c8e6c9' : '#b3e5fc'}; border-radius: 8px; padding: 15px; position: relative; transition: box-shadow 0.2s;">
+                            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 15px;">
+                                <div style="display: flex; gap: 12px; align-items: center;">
+                                    ${isFinalized 
+                                        ? `<span style="color:#2e7d32; font-size: 20px;" title="Finalized in General Ledger">✅</span>`
+                                        : `<input type="checkbox" class="collection-checkbox" value="${c.id}" data-method="${c.payment_method}" onchange="updateSelectedCollectionsStats()" style="width: 18px; height: 18px; cursor: pointer;">`
+                                    }
+                                    <div>
+                                        <span style="font-weight: bold; font-size: 14px; color: var(--text-dark);">${c.customer_name}</span>
+                                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 3px;">
+                                            Date: <strong>${c.payment_date}</strong> &nbsp;|&nbsp; 
+                                            Method: <strong style="color: #0066cc;">${c.payment_method}</strong>
+                                            ${c.reference ? `&nbsp;|&nbsp; Ref: <strong>${c.reference}</strong>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-weight: bold; font-size: 16px; font-family: monospace;">Rs ${amtFormatted}</div>
+                                    ${isFinalized 
+                                        ? `<span class="badge" style="background:#e8f5e9; color:#2e7d32; display:inline-block; margin-top:5px; padding: 3px 8px; border-radius: 12px; font-size: 10px;">GL Finalized (JE: ${c.journal_entry_id})</span>`
+                                        : `<span class="badge" style="background:#e1f5fe; color:#0288d1; display:inline-block; margin-top:5px; padding: 3px 8px; border-radius: 12px; font-size: 10px;">GL Pending</span>`
+                                    }
+                                </div>
+                            </div>
+
+                            ${bankSelectHtml}
+
+                            <!-- Double Entry and Account Balance Preview -->
+                            <div style="margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.02); border: 1px dashed ${isFinalized ? '#a5d6a7' : '#90caf9'}; border-radius: 6px; font-family: monospace; font-size: 12px; color: #475569;">
+                                <div style="font-weight: bold; color: ${isFinalized ? '#2e7d32' : '#0369a1'}; margin-bottom: 5px; text-transform: uppercase;">
+                                    ${isFinalized ? 'Posted Double Entry (General Ledger)' : 'GL Double-Entry Preview (Post-Finalization)'}
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                                    <span>DEBIT: ${assetAccName}</span>
+                                    <span style="font-weight: bold; color: #16a34a;">+ Rs ${amtFormatted}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                    <span>CREDIT: 1200 - Accounts Receivable (Customer Sub-ledger)</span>
+                                    <span style="font-weight: bold; color: #dc2626;">- Rs ${amtFormatted}</span>
+                                </div>
+                                <div style="border-top: 1px dotted #ccc; margin-top: 5px; padding-top: 5px; font-size: 11px; color: #64748b; font-style: italic;">
+                                    ${isFinalized 
+                                        ? `Double entry successfully posted on route closing. General Ledger balances updated.` 
+                                        : `Finalizing this will credit customer accounts receivable and debit rep collection accounts in real-time.`
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    listDiv.innerHTML += cardHtml;
+                });
+                
+                updateSelectedCollectionsStats();
+            });
+    }
+
+    function toggleSelectAllCollections(btn) {
+        const checkboxes = document.querySelectorAll('.collection-checkbox');
+        const anyUnchecked = Array.from(checkboxes).some(cb => !cb.checked);
+        
+        checkboxes.forEach(cb => {
+            cb.checked = anyUnchecked;
+        });
+        
+        btn.innerText = anyUnchecked ? "Deselect All" : "Select All Unfinalized";
+        updateSelectedCollectionsStats();
+    }
+
+    function updateSelectedCollectionsStats() {
+        const checkboxes = document.querySelectorAll('.collection-checkbox:checked');
+        const count = checkboxes.length;
+        document.getElementById('selectedCollectionsCount').innerText = count;
+        
+        let missingBankSelection = false;
+        let hasBankTransfer = false;
+        
+        checkboxes.forEach(cb => {
+            if (cb.getAttribute('data-method') === 'Bank Transfer') {
+                hasBankTransfer = true;
+                const paymentId = cb.value;
+                const selectEl = document.querySelector(`.payment-bank-select[data-payment-id="${paymentId}"]`);
+                if (selectEl) {
+                    if (!selectEl.value) {
+                        missingBankSelection = true;
+                        selectEl.style.borderColor = '#c62828';
+                        selectEl.style.background = '#ffebee';
+                    } else {
+                        selectEl.style.borderColor = 'var(--mac-border)';
+                        selectEl.style.background = '#fff';
+                    }
+                }
+            }
+        });
+        
+        const container = document.getElementById('bankAccountSelectorContainer');
+        if (hasBankTransfer && missingBankSelection) {
+            container.style.display = 'flex';
+        } else {
+            container.style.display = 'none';
+        }
+        
+        const btnPost = document.getElementById('btnPostGL');
+        
+        if (count > 0) {
+            if (missingBankSelection) {
+                btnPost.disabled = true;
+                btnPost.style.opacity = '0.5';
+                btnPost.style.cursor = 'not-allowed';
+                btnPost.innerText = "🛑 Select Target Bank(s)";
+            } else {
+                btnPost.disabled = false;
+                btnPost.style.opacity = '1';
+                btnPost.style.cursor = 'pointer';
+                btnPost.innerText = "⚡ Post GL Updates & Finalize";
+            }
+        } else {
+            btnPost.disabled = true;
+            btnPost.style.opacity = '0.5';
+            btnPost.style.cursor = 'not-allowed';
+            btnPost.innerText = "⚡ Post GL Updates & Finalize";
+        }
+    }
+
+    function updateGLPostingButtonState() {
+        updateSelectedCollectionsStats();
+    }
+
+    function postSelectedCollectionsGL() {
+        const checkboxes = document.querySelectorAll('.collection-checkbox:checked');
+        const ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        
+        if (ids.length === 0) return;
+        
+        // Construct bank allocations mapping
+        const bankAllocations = {};
+        let missingSelection = false;
+        let firstMissingSelect = null;
+        
+        checkboxes.forEach(cb => {
+            if (cb.getAttribute('data-method') === 'Bank Transfer') {
+                const paymentId = cb.value;
+                const selectEl = document.querySelector(`.payment-bank-select[data-payment-id="${paymentId}"]`);
+                if (selectEl) {
+                    if (!selectEl.value) {
+                        missingSelection = true;
+                        if (!firstMissingSelect) {
+                            firstMissingSelect = selectEl;
+                        }
+                        selectEl.style.borderColor = '#c62828';
+                        selectEl.style.background = '#ffebee';
+                    } else {
+                        bankAllocations[paymentId] = parseInt(selectEl.value);
+                    }
+                }
+            }
+        });
+        
+        if (missingSelection) {
+            alert("⚠️ Validation Error: You have selected Bank Transfer collections that do not have a Target Commercial Bank selected. Please specify a bank account for each checked Bank Transfer payment card.");
+            if (firstMissingSelect) {
+                firstMissingSelect.focus();
+                firstMissingSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return;
+        }
+        
+        if (!confirm(`Are you sure you want to finalize and post GL double entries for the ${ids.length} selected collections? This will immediately update your Chart of Accounts balances.`)) {
+            return;
+        }
+
+        const btnPost = document.getElementById('btnPostGL');
+        btnPost.disabled = true;
+        btnPost.innerText = "Posting... ⚡";
+
+        fetch('<?= APP_URL ?>/RepTracking/api_finalize_collections', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                payment_ids: ids,
+                bank_allocations: bankAllocations
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert("🎉 Success: " + data.message);
+                window.location.href = '<?= APP_URL ?>/RepTracking?route_id=' + currentRouteId;
+            } else {
+                alert("⚠️ Error posting collections: " + data.message);
+                btnPost.disabled = false;
+                btnPost.innerText = "⚡ Post GL Updates & Finalize";
+                updateSelectedCollectionsStats();
+            }
+        })
+        .catch(err => {
+            alert("Failed to finalize collections. Connection or database transaction error.");
+            btnPost.disabled = false;
+            btnPost.innerText = "⚡ Post GL Updates & Finalize";
+            updateSelectedCollectionsStats();
+        });
+    }
+
+    // --- 5. NEW: Redirect to Sales Order Creation ---
     function redirectToAddInvoice() {
         if (currentRouteId) {
-            window.location.href = '<?= APP_URL ?>/sales?rep_route_id=' + currentRouteId;
+            window.location.href = '<?= APP_URL ?>/sales/create?type=sales_order&rep_route_id=' + currentRouteId;
+        }
+    }
+
+    function openMapModal() {
+        if (!currentRouteId) return;
+        document.getElementById('modalRouteName').innerText = document.getElementById('mhRouteName').innerText;
+        document.getElementById('mapModalBackdrop').style.display = 'flex';
+        
+        // Trigger GPS route path load
+        loadRoutePath(currentRouteId);
+        
+        // Leaflet needs size invalidation when container is shown dynamically
+        setTimeout(() => {
+            if (routeMap) {
+                routeMap.invalidateSize();
+            }
+        }, 300);
+    }
+
+    function closeMapModal() {
+        document.getElementById('mapModalBackdrop').style.display = 'none';
+    }
+
+    // Left pane routing tabs system
+    let currentLeftFilter = 'active';
+    function filterLeftPane(type, btn) {
+        currentLeftFilter = type;
+        
+        document.querySelectorAll('.left-tab-btn').forEach(b => {
+            b.style.background = 'transparent';
+            b.style.color = 'var(--text-muted)';
+            b.classList.remove('active');
+        });
+        
+        if (btn) {
+            btn.style.background = '#0066cc';
+            btn.style.color = 'white';
+            btn.classList.add('active');
+        }
+
+        const items = document.querySelectorAll('.route-item');
+        let firstVisible = null;
+        
+        items.forEach(item => {
+            if (item.getAttribute('data-route-type') === type) {
+                item.style.display = 'block';
+                if (!firstVisible) firstVisible = item;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        const activeSelected = document.querySelector('.route-item.active');
+        if (activeSelected && activeSelected.style.display === 'none') {
+            activeSelected.classList.remove('active');
+            document.getElementById('midHeader').style.visibility = 'hidden';
+            document.getElementById('routeTabs').style.display = 'none';
+            document.getElementById('midEmptyState').style.display = 'flex';
+            document.getElementById('billsTable').style.display = 'none';
+            document.getElementById('collectionsWrapper').style.display = 'none';
+            document.getElementById('mapSection').style.display = 'none';
+            currentRouteId = null;
+        }
+
+        if (firstVisible) {
+            firstVisible.click();
         }
     }
 
@@ -580,8 +1092,18 @@ error_reporting(E_ALL);
         if (routeId) {
             const routeEl = document.getElementById('route_' + routeId);
             if (routeEl) {
+                const type = routeEl.getAttribute('data-route-type');
+                let btnId = 'btnLeftActive';
+                if (type === 'pending_finalization') btnId = 'btnLeftPendingGL';
+                else if (type === 'pending_delivery') btnId = 'btnLeftPendingDelivery';
+                
+                const btn = document.getElementById(btnId);
+                filterLeftPane(type, btn);
                 routeEl.click();
+                return;
             }
         }
+        
+        filterLeftPane('active', document.getElementById('btnLeftActive'));
     });
 </script>

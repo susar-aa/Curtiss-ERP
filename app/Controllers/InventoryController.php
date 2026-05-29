@@ -2,7 +2,7 @@
 
 class InventoryController extends Controller {
     private $itemModel;
-    private $wooService;
+    private $categoryModel;
     private $db;
 
     public function __construct() {
@@ -12,10 +12,8 @@ class InventoryController extends Controller {
         }
         
         $this->itemModel = $this->model('Item');
+        $this->categoryModel = $this->model('Category');
         $this->db = new Database(); // Added to check for database relations
-        
-        require_once '../app/Services/WooCommerceService.php';
-        $this->wooService = new WooCommerceService();
     }
 
     /**
@@ -281,7 +279,7 @@ class InventoryController extends Controller {
             // Compress & save locally uploaded photo
             $imagePath = '';
             if (!empty($_POST['compressed_image_base64'])) {
-                $base64 = $_POST['compressed_image_base64'];
+                $base64 = html_entity_decode($_POST['compressed_image_base64'], ENT_QUOTES, 'UTF-8');
                 if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
                     $base64 = substr($base64, strpos($base64, ',') + 1);
                     $ext = strtolower($type[1]);
@@ -327,18 +325,14 @@ class InventoryController extends Controller {
                 'status' => trim($_POST['status'] ?? 'active'),
                 'weight' => trim($_POST['weight'] ?? ''),
                 'sync_woo' => isset($_POST['sync_woo']) ? 1 : 0,
-                'variations_json' => trim($_POST['variations_json'] ?? '[]'),
+                'variations_json' => html_entity_decode(trim($_POST['variations_json'] ?? '[]'), ENT_QUOTES, 'UTF-8'),
                 'image_path' => $imagePath,
                 'retail_margin' => trim($_POST['retail_margin'] ?? '0.00'),
-                'wholesale_margin' => trim($_POST['wholesale_margin'] ?? '0.00')
+                'wholesale_margin' => trim($_POST['wholesale_margin'] ?? '0.00'),
+                'sample_code' => trim($_POST['sample_code'] ?? '')
             ];
 
             if ($this->itemModel->addItem($data)) {
-                $newItem = $this->itemModel->getItemByCode($data['item_code']);
-                if ($newItem && $data['sync_woo'] === 1) {
-                    $this->wooService->syncItem($newItem, $_POST['compressed_image_base64'] ?? null);
-                }
-                
                 header('Location: ' . APP_URL . '/inventory');
                 exit;
             } else {
@@ -346,7 +340,7 @@ class InventoryController extends Controller {
             }
         } else {
             // Dynamic Selections
-            $categories = $this->wooService->getCategories();
+            $categories = $this->categoryModel->getCategories();
             $vendors = $this->getVendorsDropdown();
             $warehouses = $this->getWarehousesDropdown();
 
@@ -373,7 +367,7 @@ class InventoryController extends Controller {
 
             // Update compressed photo if modified
             if (!empty($_POST['compressed_image_base64'])) {
-                $base64 = $_POST['compressed_image_base64'];
+                $base64 = html_entity_decode($_POST['compressed_image_base64'], ENT_QUOTES, 'UTF-8');
                 if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
                     $base64 = substr($base64, strpos($base64, ',') + 1);
                     $ext = strtolower($type[1]);
@@ -420,18 +414,14 @@ class InventoryController extends Controller {
                 'status' => trim($_POST['status'] ?? 'active'),
                 'weight' => trim($_POST['weight'] ?? ''),
                 'sync_woo' => isset($_POST['sync_woo']) ? 1 : 0,
-                'variations_json' => trim($_POST['variations_json'] ?? '[]'),
+                'variations_json' => html_entity_decode(trim($_POST['variations_json'] ?? '[]'), ENT_QUOTES, 'UTF-8'),
                 'image_path' => $imagePath,
                 'retail_margin' => trim($_POST['retail_margin'] ?? '0.00'),
-                'wholesale_margin' => trim($_POST['wholesale_margin'] ?? '0.00')
+                'wholesale_margin' => trim($_POST['wholesale_margin'] ?? '0.00'),
+                'sample_code' => trim($_POST['sample_code'] ?? '')
             ];
 
             if ($this->itemModel->updateItem($data)) {
-                $updatedItem = $this->itemModel->getItemById($id);
-                if ($updatedItem && $data['sync_woo'] === 1) {
-                    $this->wooService->syncItem($updatedItem, $_POST['compressed_image_base64'] ?? null);
-                }
-
                 header('Location: ' . APP_URL . '/inventory');
                 exit;
             } else {
@@ -441,7 +431,7 @@ class InventoryController extends Controller {
             $item = $this->itemModel->getItemById($id);
             
             // Dynamic Selections
-            $categories = $this->wooService->getCategories();
+            $categories = $this->categoryModel->getCategories();
             $vendors = $this->getVendorsDropdown();
             $warehouses = $this->getWarehousesDropdown();
 
@@ -660,15 +650,7 @@ class InventoryController extends Controller {
      * Sync Stock specifically when changes are made
      */
     public function adjustStock($id, $newQty) {
-        if ($this->itemModel->updateStockOnly($id, $newQty)) {
-            $item = $this->itemModel->getItemById($id);
-            if ($item) {
-                $sku = !empty($item->item_code) ? $item->item_code : ($item->sku ?? '');
-                $this->wooService->updateStock($sku, $newQty);
-            }
-            return true;
-        }
-        return false;
+        return $this->itemModel->updateStockOnly($id, $newQty);
     }
 }
 

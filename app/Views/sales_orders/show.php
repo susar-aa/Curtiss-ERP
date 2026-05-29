@@ -71,6 +71,7 @@
         <div class="controls">
             <?php if(isset($_SESSION['user_id'])): ?>
                 <a href="<?= APP_URL ?>/sales" class="btn" style="background:#fff; color:#7994b5; border: 1px solid #7994b5;">&larr; Back to Invoices</a>
+                <a href="<?= APP_URL ?>/sales/edit/<?= $data['order']->id ?>?type=sales_order" class="btn" style="background:#f0ad4e; color:#fff; border: none;">✏️ Edit Order</a>
             <?php endif; ?>
             <button onclick="window.print()" class="btn" style="background:#7994b5;">Print / PDF (A4)</button>
         </div>

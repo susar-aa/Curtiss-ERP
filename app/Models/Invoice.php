@@ -296,7 +296,7 @@ class Invoice {
                 $this->db->execute();
             }
 
-            // 4. UPDATE TOP-LEVEL RECORD & FORCE stock_status = 'deducted'
+            // 4. UPDATE TOP-LEVEL RECORD & PRESERVE stock_status
             $this->db->query("UPDATE invoices SET 
                                 customer_id = :customer_id, 
                                 invoice_date = :invoice_date, 
@@ -306,7 +306,7 @@ class Invoice {
                                 global_discount_val = :global_discount_val, 
                                 global_discount_type = :global_discount_type, 
                                 notes = :notes,
-                                stock_status = 'deducted'
+                                stock_status = :stock_status
                               WHERE id = :id");
             $this->db->bind(':customer_id', $invoiceData['customer_id']);
             $this->db->bind(':invoice_date', $invoiceData['invoice_date']);
@@ -316,10 +316,11 @@ class Invoice {
             $this->db->bind(':global_discount_val', $invoiceData['global_discount_val']);
             $this->db->bind(':global_discount_type', $invoiceData['global_discount_type']);
             $this->db->bind(':notes', $invoiceData['notes']);
+            $this->db->bind(':stock_status', $oldStockStatus);
             $this->db->bind(':id', $invoiceId);
             $this->db->execute();
 
-            // 5. INSERT REVISED ITEMS & APPLY NEW STOCK DEDUCTIONS (with unsigned underflow safety)
+            // 5. INSERT REVISED ITEMS & APPLY STOCK RESERVATIONS OR DEDUCTIONS
             foreach ($items as $item) {
                 $parts = explode('|', $item['item_selection']);
                 $itemId = $parts[0] ?? null;
@@ -339,22 +340,38 @@ class Invoice {
                 $this->db->execute();
                 $newInvoiceItemId = $this->db->lastInsertId();
 
-                // Deduct from Main Product Quantity on Hand directly since the invoice is now finalized (unsigned underflow safety)
-                if ($itemId) {
-                    $this->db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
-                    $this->db->bind(':qty', $item['quantity']);
-                    $this->db->bind(':id', $itemId);
-                    $this->db->execute();
-                }
-                if ($varId) {
-                    $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
-                    $this->db->bind(':qty', $item['quantity']);
-                    $this->db->bind(':id', $varId);
-                    $this->db->execute();
-                }
+                if ($oldStockStatus === 'reserved') {
+                    // Update Reserved Quantities
+                    if ($itemId) {
+                        $this->db->query("UPDATE items SET quantity_reserved = quantity_reserved + :qty WHERE id = :id");
+                        $this->db->bind(':qty', $item['quantity']);
+                        $this->db->bind(':id', $itemId);
+                        $this->db->execute();
+                    }
+                    if ($varId) {
+                        $this->db->query("UPDATE item_variation_options SET quantity_reserved = quantity_reserved + :qty WHERE id = :id");
+                        $this->db->bind(':qty', $item['quantity']);
+                        $this->db->bind(':id', $varId);
+                        $this->db->execute();
+                    }
+                } else {
+                    // Deduct from Main Product Quantity on Hand directly since the invoice is now finalized (unsigned underflow safety)
+                    if ($itemId) {
+                        $this->db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
+                        $this->db->bind(':qty', $item['quantity']);
+                        $this->db->bind(':id', $itemId);
+                        $this->db->execute();
+                    }
+                    if ($varId) {
+                        $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
+                        $this->db->bind(':qty', $item['quantity']);
+                        $this->db->bind(':id', $varId);
+                        $this->db->execute();
+                    }
 
-                // Deplete new items via FIFO batches
-                $fifo->depleteStock($itemId, $varId, $item['quantity'], $newInvoiceItemId, null);
+                    // Deplete new items via FIFO batches
+                    $fifo->depleteStock($itemId, $varId, $item['quantity'], $newInvoiceItemId, null);
+                }
             }
 
             $this->db->commit();

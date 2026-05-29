@@ -13,13 +13,9 @@ class CustomersController extends RepController {
         // Find if the rep is currently on an active route
         $activeRoute = $this->routeModel->getActiveRoute($_SESSION['user_id']);
         
-        if ($activeRoute) {
-            $customers = $this->customerModel->getCustomersByTerritory($activeRoute->route_name);
-            $subtitle = "Filtering by Active Route: " . $activeRoute->route_name;
-        } else {
-            $customers = $this->customerModel->getAllCustomers();
-            $subtitle = "Showing All Database Customers (No Route Started)";
-        }
+        // Show all customers in the database (whole territory) as requested
+        $customers = $this->customerModel->getAllCustomers();
+        $subtitle = "Showing All Territory Customers";
 
         $data = [
             'title' => 'Territory Shops',

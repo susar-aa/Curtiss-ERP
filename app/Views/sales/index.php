@@ -305,6 +305,7 @@ $editingItems = $data['editing_items'] ?? [];
 
     <div class="qb-container">
         <form action="<?= APP_URL ?>/sales/store" method="POST" id="invoiceForm">
+            <input type="hidden" name="type" value="<?= htmlspecialchars((string)($data['type'] ?? 'invoice')) ?>">
             <input type="hidden" name="rep_route_id" value="<?= htmlspecialchars((string)$rep_route_id) ?>">
             <?php if ($inv): ?>
                 <input type="hidden" name="editing_invoice_id" value="<?= isset($inv->id) ? $inv->id : '' ?>">
@@ -312,7 +313,7 @@ $editingItems = $data['editing_items'] ?? [];
             
             <div class="qb-grid-top">
                 <div style="width: 300px;">
-                    <div class="qb-title"><?= $inv ? 'Edit Invoice' : 'New Invoice' ?></div>
+                    <div class="qb-title"><?= htmlspecialchars($data['title'] ?? ($inv ? 'Edit Invoice' : 'New Invoice')) ?></div>
                     <div class="qb-box" style="position: relative;">
                         <div class="qb-box-header">Bill To</div>
                         <input type="hidden" name="customer_id" id="customerIdInput" required>

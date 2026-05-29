@@ -1,18 +1,21 @@
 <?php
-// Build the Hierarchical Tree Data Structure
+// Build the Hierarchical Tree Data Structure supporting 3 levels (Main -> Sub-Account -> Sub-Sub-Account)
+$accountsMap = [];
+foreach($data['accounts'] as $acc) {
+    $acc->children = [];
+    $accountsMap[$acc->id] = $acc;
+}
+
 $tree = [];
 foreach($data['accounts'] as $acc) {
     if (empty($acc->parent_id)) {
-        $tree[$acc->id] = ['parent' => $acc, 'children' => []];
-    }
-}
-foreach($data['accounts'] as $acc) {
-    if (!empty($acc->parent_id)) {
-        if (isset($tree[$acc->parent_id])) {
-            $tree[$acc->parent_id]['children'][] = $acc;
+        $tree[] = $accountsMap[$acc->id];
+    } else {
+        $parent = $accountsMap[$acc->parent_id] ?? null;
+        if ($parent) {
+            $parent->children[] = $accountsMap[$acc->id];
         } else {
-            // Fallback if parent is somehow missing
-            $tree[$acc->id] = ['parent' => $acc, 'children' => []];
+            $tree[] = $accountsMap[$acc->id];
         }
     }
 }
@@ -81,10 +84,9 @@ foreach($data['accounts'] as $acc) {
         <tbody id="tableBody">
             <?php if(empty($tree)): ?>
                 <tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">No accounts found. Add one above.</td></tr>
-            <?php else: foreach($tree as $node): ?>
+            <?php else: foreach($tree as $parent): ?>
                 
-                <!-- PARENT ROW -->
-                <?php $parent = $node['parent']; ?>
+                <!-- PARENT ROW (Level 1) -->
                 <tr class="coa-row row-parent">
                     <td>
                         <a href="<?= APP_URL ?>/accounting/history/<?= $parent->id ?>" style="text-decoration:none; color:#0066cc; font-weight:bold;">
@@ -102,8 +104,8 @@ foreach($data['accounts'] as $acc) {
                     </td>
                 </tr>
 
-                <!-- SUB-ACCOUNT ROWS -->
-                <?php foreach($node['children'] as $child): ?>
+                <!-- SUB-ACCOUNT ROWS (Level 2) -->
+                <?php foreach($parent->children as $child): ?>
                 <tr class="coa-row row-child">
                     <td>
                         <span class="sub-indicator">↳</span> 
@@ -121,8 +123,50 @@ foreach($data['accounts'] as $acc) {
                         <button class="btn btn-outline btn-small" onclick="openModal('edit', '<?= $child->id ?>', '<?= addslashes($child->account_code) ?>', '<?= addslashes($child->account_name) ?>', '<?= $child->account_type ?>', '<?= $child->parent_id ?>', <?= $child->is_active ?>)">Edit</button>
                     </td>
                 </tr>
+
+                <!-- SUB-SUB-ACCOUNT ROWS (Level 3 - e.g. Vehicles under Travel/Fuel) -->
+                <?php foreach($child->children as $subsub): ?>
+                <tr class="coa-row row-child level-3-row" style="background: rgba(0,0,0,0.01);">
+                    <td style="padding-left: 55px;">
+                        <span class="sub-indicator" style="color: #888; font-weight: bold; margin-right: 5px;">↳ ↳ 🚗</span> 
+                        <a href="<?= APP_URL ?>/accounting/history/<?= $subsub->id ?>" style="text-decoration:none; color:inherit; font-weight:500; font-style: italic; color: #475569;">
+                            <?= htmlspecialchars($subsub->account_code) ?> - <?= htmlspecialchars($subsub->account_name) ?>
+                        </a>
+                    </td>
+                    <td><span class="badge type-<?= $subsub->account_type ?>" style="opacity: 0.85;"><?= $subsub->account_type ?></span></td>
+                    <td style="text-align: right; font-family:monospace; font-size: 13px; color: #475569;">Rs: <?= number_format($subsub->balance, 2) ?></td>
+                    <td style="text-align: center;">
+                        <?php if($subsub->is_active): ?><span style="color: #2e7d32; font-size: 11px;">● Active</span>
+                        <?php else: ?><span style="color: #c62828; font-size: 11px;">● Inactive</span><?php endif; ?>
+                    </td>
+                    <td style="text-align: center;">
+                        <button class="btn btn-outline btn-small" onclick="openModal('edit', '<?= $subsub->id ?>', '<?= addslashes($subsub->account_code) ?>', '<?= addslashes($subsub->account_name) ?>', '<?= $subsub->account_type ?>', '<?= $subsub->parent_id ?>', <?= $subsub->is_active ?>)">Edit</button>
+                    </td>
+                </tr>
                 <?php endforeach; ?>
 
+                <!-- CUSTOMER ACCOUNTS UNDER AR (Virtual sub-sub accounts) -->
+                <?php if (($child->account_code == '1200' || stripos($child->account_name, 'Receivable') !== false) && !empty($data['customers'])): ?>
+                    <?php foreach($data['customers'] as $cust): ?>
+                        <?php if (floatval($cust->outstanding_balance) != 0): ?>
+                        <tr class="coa-row row-child customer-sub-row" style="background: rgba(99, 102, 241, 0.02);">
+                            <td style="padding-left: 60px;">
+                                <span class="sub-indicator" style="color: #6366f1; font-weight: bold; margin-right: 5px;">↳ 👤</span>
+                                <span style="font-weight: 600; color: #4f46e5;"><?= htmlspecialchars($cust->name) ?></span>
+                                <span style="font-size: 10px; color: #64748b; font-style: italic; margin-left: 6px;">(Customer Ledger)</span>
+                            </td>
+                            <td><span class="badge" style="background: #e0e7ff; color: #4338ca;">Customer AR</span></td>
+                            <td style="text-align: right; font-family:monospace; font-size: 13px; color: #4338ca; font-weight: 600;">Rs: <?= number_format($cust->outstanding_balance, 2) ?></td>
+                            <td style="text-align: center;"><span style="color: #4f46e5; font-size: 11px;">● Outstanding</span></td>
+                            <td style="text-align: center;">
+                                <a href="<?= APP_URL ?>/customer/edit/<?= $cust->id ?>" class="btn btn-outline btn-small" style="border-color: #4f46e5; color: #4f46e5; display: inline-block; padding: 3px 8px; font-size: 11px;">View Profile</a>
+                            </td>
+                        </tr>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+
+                <?php endforeach; ?>
             <?php endforeach; endif; ?>
         </tbody>
     </table>
@@ -140,7 +184,7 @@ foreach($data['accounts'] as $acc) {
                 <label>Parent Account</label>
                 <select name="parent_id" id="formParent" class="form-control">
                     <option value="">-- No Parent (Make Main Account) --</option>
-                    <?php foreach($data['main_accounts'] as $acc): ?>
+                    <?php foreach($data['accounts'] as $acc): ?>
                         <option value="<?= $acc->id ?>"><?= $acc->account_code ?> - <?= htmlspecialchars($acc->account_name) ?></option>
                     <?php endforeach; ?>
                 </select>

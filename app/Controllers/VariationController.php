@@ -2,7 +2,6 @@
 
 class VariationController extends Controller {
     private $itemModel;
-    private $wooService;
     private $db;
 
     public function __construct() {
@@ -15,9 +14,6 @@ class VariationController extends Controller {
         $this->db = new Database();
 
         $this->ensureTaxonomyDatabaseTables();
-
-        require_once '../app/Services/WooCommerceService.php';
-        $this->wooService = new WooCommerceService();
     }
 
     /**
@@ -104,7 +100,7 @@ class VariationController extends Controller {
         }
 
         $data = [
-            'title' => 'Variation Sync Hub',
+            'title' => 'Variation Hub',
             'variations' => $flatVariations,
             'total_parents' => count($variableItems),
             'search' => $search,
@@ -115,212 +111,32 @@ class VariationController extends Controller {
     }
 
     /**
-     * AJAX Endpoint: Sync variations from WooCommerce Variable parent products
-     * and persist them directly into local database items table variations_json column.
+     * AJAX Endpoint: Sync variations from WooCommerce Variable parent products.
+     * Stubbed to use local database catalog normally.
      */
     public function ajaxSyncVariations() {
         header('Content-Type: application/json');
-        @set_time_limit(0);
-        @ini_set('memory_limit', '1024M'); // High limit for heavy recursive variations loops
-
-        $logs = [];
-        $updatedCount = 0;
-        $failedCount = 0;
-
-        try {
-            // Get all products currently logged in the local items database
-            $localItems = $this->itemModel->getItems();
-            
-            $this->db->beginTransaction();
-
-            foreach ($localItems as $item) {
-                $sku = $item->item_code;
-                if (empty($sku)) continue;
-
-                // Match with WooCommerce to verify if it is a variable product type
-                $wcProduct = $this->wooService->getProductBySku($sku);
-                if ($wcProduct && ($wcProduct->type ?? '') === 'variable') {
-                    $logs[] = "Found Variable Product on WooCommerce: '{$wcProduct->name}' (SKU: {$sku}). Fetching variations...";
-                    
-                    $wcVariations = $this->wooService->getProductVariations($wcProduct->id);
-                    if (is_array($wcVariations) && !empty($wcVariations)) {
-                        $varsArray = [];
-                        foreach ($wcVariations as $variation) {
-                            $vSku = trim($variation->sku ?? '');
-                            if (empty($vSku)) {
-                                $vSku = $sku . '-' . ($variation->id ?? '');
-                            }
-
-                            // Parse variation attribute option labels
-                            $attrLabels = [];
-                            if (!empty($variation->attributes) && is_array($variation->attributes)) {
-                                foreach ($variation->attributes as $attr) {
-                                    if (!empty($attr->option)) {
-                                        $attrLabels[] = ucfirst($attr->option);
-                                    }
-                                }
-                            }
-                            $attrOption = !empty($attrLabels) ? implode(', ', $attrLabels) : 'Default';
-
-                            // Extract WholesaleX price
-                            $vWholesalePrice = $this->wooService->extractWholesalePrice($variation);
-
-                            $varsArray[] = [
-                                'id' => $variation->id ?? '',
-                                'attribute' => $attrOption,
-                                'sku' => $vSku,
-                                'cost_price' => 0.00,
-                                'price' => floatval($variation->regular_price ?? $variation->price ?? 0),
-                                'wholesale_price' => floatval($vWholesalePrice)
-                            ];
-                        }
-
-                        // Save variations JSON directly to the items table
-                        $variationsJson = json_encode($varsArray);
-                        
-                        $this->db->query("UPDATE items SET variations_json = :vars WHERE id = :id");
-                        $this->db->bind(':id', $item->id);
-                        $this->db->bind(':vars', $variationsJson);
-                        
-                        if ($this->db->execute()) {
-                            $updatedCount++;
-                            $logs[] = "SUCCESS: Synced & saved " . count($varsArray) . " variations in database for SKU '{$sku}'";
-                        } else {
-                            $failedCount++;
-                        }
-                    } else {
-                        $logs[] = "No variations found on WooCommerce for variable SKU '{$sku}'.";
-                    }
-                }
-            }
-
-            $this->db->commit();
-
-            echo json_encode([
-                'success' => true,
-                'updated' => $updatedCount,
-                'failed' => $failedCount,
-                'logs' => $logs
-            ]);
-
-        } catch (Exception $e) {
-            if ($this->db) {
-                $this->db->rollBack();
-            }
-            echo json_encode([
-                'success' => false,
-                'message' => 'Variations Database Sync Failure: ' . $e->getMessage(),
-                'logs' => ['[Fatal Database Error] ' . $e->getMessage()]
-            ]);
-        }
+        echo json_encode([
+            'success' => true,
+            'updated' => 0,
+            'failed' => 0,
+            'logs' => ['[Variations Sync] WooCommerce integration is disabled. Variations are managed locally.']
+        ]);
         exit;
     }
 
     /**
-     * AJAX Endpoint: Pull and Sync Global attribute definitions and Terms
-     * dynamically from WooCommerce. Saves them directly to the ERP tables.
+     * AJAX Endpoint: Pull and Sync Global attribute definitions and Terms.
+     * Stubbed to use local database catalog normally.
      */
     public function ajaxSyncAttributes() {
         header('Content-Type: application/json');
-        @set_time_limit(0);
-        
-        $logs = [];
-        $importedAttributes = 0;
-        $importedTerms = 0;
-
-        try {
-            $this->db->beginTransaction();
-
-            // 1. Fetch WooCommerce Global Attributes list
-            $wcAttributes = $this->wooService->getGlobalAttributes();
-
-            if (empty($wcAttributes) || !is_array($wcAttributes)) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'No attributes found on WooCommerce. Sync canceled.',
-                    'logs' => ['[Sync] Attribute taxonomies pull completed. WooCommerce returned empty list.']
-                ]);
-                exit;
-            }
-
-            foreach ($wcAttributes as $attr) {
-                $attrName = trim($attr->name);
-                $attrSlug = trim($attr->slug);
-                $wooAttrId = intval($attr->id);
-
-                // Check if attribute already exists locally
-                $this->db->query("SELECT id FROM product_attributes WHERE woo_attr_id = :woo_id OR slug = :slug");
-                $this->db->bind(':woo_id', $wooAttrId);
-                $this->db->bind(':slug', $attrSlug);
-                $localAttr = $this->db->single();
-
-                if ($localAttr) {
-                    $attrId = $localAttr->id;
-                    $this->db->query("UPDATE product_attributes SET name = :name, slug = :slug, woo_attr_id = :woo_id WHERE id = :id");
-                    $this->db->bind(':name', $attrName);
-                    $this->db->bind(':slug', $attrSlug);
-                    $this->db->bind(':woo_id', $wooAttrId);
-                    $this->db->bind(':id', $attrId);
-                    $this->db->execute();
-                    $logs[] = "Updated attribute schema: '{$attrName}' (#{$wooAttrId})";
-                } else {
-                    $this->db->query("INSERT INTO product_attributes (name, slug, woo_attr_id) VALUES (:name, :slug, :woo_id)");
-                    $this->db->bind(':name', $attrName);
-                    $this->db->bind(':slug', $attrSlug);
-                    $this->db->bind(':woo_id', $wooAttrId);
-                    $this->db->execute();
-                    $attrId = $this->db->lastInsertId();
-                    $importedAttributes++;
-                    $logs[] = "SUCCESS: Created global attribute: '{$attrName}' (#{$wooAttrId})";
-                }
-
-                // 2. Query terms for each attribute (A3, A4, Red, Blue, Pack of 12)
-                $wcTerms = $this->wooService->getAttributeTerms($wooAttrId);
-                if (is_array($wcTerms)) {
-                    foreach ($wcTerms as $term) {
-                        $termName = trim($term->name);
-                        $termSlug = trim($term->slug);
-                        $wooTermId = intval($term->id);
-
-                        // Check if term already exists locally for this attribute
-                        $this->db->query("SELECT id FROM product_attribute_terms WHERE woo_term_id = :term_id OR (attribute_id = :attr_id AND slug = :slug)");
-                        $this->db->bind(':term_id', $wooTermId);
-                        $this->db->bind(':attr_id', $attrId);
-                        $this->db->bind(':slug', $termSlug);
-                        $localTerm = $this->db->single();
-
-                        if (!$localTerm) {
-                            $this->db->query("INSERT INTO product_attribute_terms (attribute_id, name, slug, woo_term_id) VALUES (:attr_id, :name, :slug, :term_id)");
-                            $this->db->bind(':attr_id', $attrId);
-                            $this->db->bind(':name', $termName);
-                            $this->db->bind(':slug', $termSlug);
-                            $this->db->bind(':term_id', $wooTermId);
-                            $this->db->execute();
-                            $importedTerms++;
-                        }
-                    }
-                    $logs[] = "Synchronized " . count($wcTerms) . " terms for attribute '{$attrName}'";
-                }
-            }
-
-            $this->db->commit();
-
-            echo json_encode([
-                'success' => true,
-                'imported_attributes' => $importedAttributes,
-                'imported_terms' => $importedTerms,
-                'logs' => $logs
-            ]);
-        } catch (Exception $e) {
-            if ($this->db) {
-                $this->db->rollBack();
-            }
-            echo json_encode([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'logs' => ['[Error] Attribute pull failed: ' . $e->getMessage()]
-            ]);
-        }
+        echo json_encode([
+            'success' => true,
+            'imported_attributes' => 0,
+            'imported_terms' => 0,
+            'logs' => ['[Attributes Sync] WooCommerce integration is disabled. Attribute operations are managed locally.']
+        ]);
         exit;
     }
 
@@ -384,106 +200,218 @@ class VariationController extends Controller {
     }
 
     /**
-     * AJAX Endpoint: Individual Variable Parent Sync Push/Pull Broker
+     * AJAX Endpoint: Individual Variable Parent Sync Push/Pull Broker.
+     * Stubbed to use local database catalog normally.
      */
     public function ajaxItemSync() {
         header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'logs' => ['[Item Sync] WooCommerce integration is disabled. Item variations are persisted locally.']
+        ]);
+        exit;
+    }
 
-        $sku = isset($_GET['sku']) ? trim($_GET['sku']) : '';
-        $direction = isset($_GET['direction']) ? trim($_GET['direction']) : 'pull';
-        
-        if (empty($sku)) {
-            echo json_encode([
-                'success' => false,
-                'message' => 'SKU is a required parameter for syncing variable products.'
-            ]);
-            exit;
-        }
+    /**
+     * Add Attribute locally
+     */
+    public function addAttribute() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
-        $item = $this->itemModel->getItemByCode($sku);
-        if (!$item) {
-            echo json_encode([
-                'success' => false,
-                'message' => "Product SKU '{$sku}' not found in the local ERP database."
-            ]);
-            exit;
-        }
+            $name = trim($_POST['name'] ?? '');
+            $slug = trim($_POST['slug'] ?? '');
 
-        $logs = [];
-
-        try {
-            if ($direction === 'pull') {
-                // Pull variations from WooCommerce to Local DB
-                $wcProduct = $this->wooService->getProductBySku($sku);
-                if ($wcProduct && ($wcProduct->type ?? '') === 'variable') {
-                    $wcVariations = $this->wooService->getProductVariations($wcProduct->id);
-                    $varsArray = [];
-                    
-                    if (is_array($wcVariations) && !empty($wcVariations)) {
-                        foreach ($wcVariations as $variation) {
-                            $vSku = trim($variation->sku ?? '');
-                            if (empty($vSku)) {
-                                $vSku = $sku . '-' . ($variation->id ?? '');
-                            }
-
-                            $attrLabels = [];
-                            if (!empty($variation->attributes) && is_array($variation->attributes)) {
-                                foreach ($variation->attributes as $attr) {
-                                    if (!empty($attr->option)) {
-                                        $attrLabels[] = ucfirst($attr->option);
-                                    }
-                                }
-                            }
-                            $attrOption = !empty($attrLabels) ? implode(', ', $attrLabels) : 'Default';
-
-                            // Extract WholesaleX price
-                            $vWholesalePrice = $this->wooService->extractWholesalePrice($variation);
-
-                            $varsArray[] = [
-                                'id' => $variation->id ?? '',
-                                'attribute' => $attrOption,
-                                'sku' => $vSku,
-                                'cost_price' => 0.00,
-                                'price' => floatval($variation->regular_price ?? $variation->price ?? 0),
-                                'wholesale_price' => floatval($vWholesalePrice)
-                            ];
-                        }
-
-                        $variationsJson = json_encode($varsArray);
-                        
-                        $this->db->query("UPDATE items SET variations_json = :vars WHERE id = :id");
-                        $this->db->bind(':id', $item->id);
-                        $this->db->bind(':vars', $variationsJson);
-                        $this->db->execute();
-
-                        $logs[] = "SUCCESS: Pulled " . count($varsArray) . " child variations from WooCommerce into ERP for Parent SKU '{$sku}'";
-                    } else {
-                        $logs[] = "No variations exist on WooCommerce for Parent ID #{$wcProduct->id}";
-                    }
-                } else {
-                    $logs[] = "Product on WooCommerce is not a Variable product type.";
-                }
-            } else {
-                // Push local variations from ERP to WooCommerce
-                $productId = $this->wooService->syncItem($item);
-                if ($productId) {
-                    $logs[] = "SUCCESS: Synchronized variable Parent product and variable attributes to WooCommerce Product ID #{$productId}";
-                } else {
-                    throw new Exception("WooCommerce REST API Parent synchronization rejected the request.");
-                }
+            if (empty($name)) {
+                die("Attribute Name is required.");
             }
 
-            echo json_encode([
-                'success' => true,
-                'logs' => $logs
-            ]);
+            if (empty($slug)) {
+                $slug = $this->slugify($name);
+            }
 
-        } catch (Exception $e) {
-            echo json_encode([
-                'success' => false,
-                'message' => $e->getMessage()
-            ]);
+            try {
+                $this->db->query("INSERT INTO product_attributes (name, slug) VALUES (:name, :slug)");
+                $this->db->bind(':name', $name);
+                $this->db->bind(':slug', $slug);
+                if ($this->db->execute()) {
+                    $_SESSION['flash_success'] = "Attribute '{$name}' created successfully.";
+                } else {
+                    $_SESSION['flash_error'] = "Failed to save the attribute.";
+                }
+            } catch (Exception $e) {
+                $_SESSION['flash_error'] = "Database error: " . $e->getMessage();
+            }
+
+            header('Location: ' . APP_URL . '/variation');
+            exit;
         }
+    }
+
+    /**
+     * Edit Attribute locally
+     */
+    public function editAttribute($id) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+
+            $name = trim($_POST['name'] ?? '');
+            $slug = trim($_POST['slug'] ?? '');
+
+            if (empty($name)) {
+                die("Attribute Name is required.");
+            }
+
+            if (empty($slug)) {
+                $slug = $this->slugify($name);
+            }
+
+            try {
+                $this->db->query("UPDATE product_attributes SET name = :name, slug = :slug WHERE id = :id");
+                $this->db->bind(':name', $name);
+                $this->db->bind(':slug', $slug);
+                $this->db->bind(':id', $id);
+                if ($this->db->execute()) {
+                    $_SESSION['flash_success'] = "Attribute updated to '{$name}' successfully.";
+                } else {
+                    $_SESSION['flash_error'] = "Failed to update the attribute.";
+                }
+            } catch (Exception $e) {
+                $_SESSION['flash_error'] = "Database error: " . $e->getMessage();
+            }
+
+            header('Location: ' . APP_URL . '/variation');
+            exit;
+        }
+    }
+
+    /**
+     * Delete Attribute locally
+     */
+    public function deleteAttribute($id) {
+        try {
+            $this->db->query("DELETE FROM product_attributes WHERE id = :id");
+            $this->db->bind(':id', $id);
+            if ($this->db->execute()) {
+                $_SESSION['flash_success'] = "Attribute and its terms deleted successfully.";
+            } else {
+                $_SESSION['flash_error'] = "Failed to delete the attribute.";
+            }
+        } catch (Exception $e) {
+            $_SESSION['flash_error'] = "Database error: " . $e->getMessage();
+        }
+
+        header('Location: ' . APP_URL . '/variation');
         exit;
+    }
+
+    /**
+     * Add Term locally
+     */
+    public function addTerm() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+
+            $attrId = intval($_POST['attribute_id'] ?? 0);
+            $name = trim($_POST['name'] ?? '');
+            $slug = trim($_POST['slug'] ?? '');
+
+            if ($attrId === 0 || empty($name)) {
+                die("Attribute ID and Term Name are required.");
+            }
+
+            if (empty($slug)) {
+                $slug = $this->slugify($name);
+            }
+
+            try {
+                $this->db->query("INSERT INTO product_attribute_terms (attribute_id, name, slug) VALUES (:attr_id, :name, :slug)");
+                $this->db->bind(':attr_id', $attrId);
+                $this->db->bind(':name', $name);
+                $this->db->bind(':slug', $slug);
+                if ($this->db->execute()) {
+                    $_SESSION['flash_success'] = "Term option '{$name}' added successfully.";
+                } else {
+                    $_SESSION['flash_error'] = "Failed to save the term.";
+                }
+            } catch (Exception $e) {
+                $_SESSION['flash_error'] = "Database error: " . $e->getMessage();
+            }
+
+            header('Location: ' . APP_URL . '/variation');
+            exit;
+        }
+    }
+
+    /**
+     * Edit Term locally
+     */
+    public function editTerm($id) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+
+            $name = trim($_POST['name'] ?? '');
+            $slug = trim($_POST['slug'] ?? '');
+
+            if (empty($name)) {
+                die("Term Name is required.");
+            }
+
+            if (empty($slug)) {
+                $slug = $this->slugify($name);
+            }
+
+            try {
+                $this->db->query("UPDATE product_attribute_terms SET name = :name, slug = :slug WHERE id = :id");
+                $this->db->bind(':name', $name);
+                $this->db->bind(':slug', $slug);
+                $this->db->bind(':id', $id);
+                if ($this->db->execute()) {
+                    $_SESSION['flash_success'] = "Term option updated to '{$name}' successfully.";
+                } else {
+                    $_SESSION['flash_error'] = "Failed to update the term.";
+                }
+            } catch (Exception $e) {
+                $_SESSION['flash_error'] = "Database error: " . $e->getMessage();
+            }
+
+            header('Location: ' . APP_URL . '/variation');
+            exit;
+        }
+    }
+
+    /**
+     * Delete Term locally
+     */
+    public function deleteTerm($id) {
+        try {
+            $this->db->query("DELETE FROM product_attribute_terms WHERE id = :id");
+            $this->db->bind(':id', $id);
+            if ($this->db->execute()) {
+                $_SESSION['flash_success'] = "Term option deleted successfully.";
+            } else {
+                $_SESSION['flash_error'] = "Failed to delete the term.";
+            }
+        } catch (Exception $e) {
+            $_SESSION['flash_error'] = "Database error: " . $e->getMessage();
+        }
+
+        header('Location: ' . APP_URL . '/variation');
+        exit;
+    }
+
+    /**
+     * Slugify helper
+     */
+    private function slugify($text) {
+        $text = preg_replace('~[^\pL\d]+~u', '-', $text);
+        if (function_exists('iconv')) {
+            $text = @iconv('utf-8', 'us-ascii//TRANSLIT', $text);
+        }
+        $text = preg_replace('~[^-\w]+~', '', $text);
+        $text = trim($text, '-');
+        $text = preg_replace('~-+~', '-', $text);
+        $text = strtolower($text);
+        return empty($text) ? 'n-a' : $text;
     }
 }

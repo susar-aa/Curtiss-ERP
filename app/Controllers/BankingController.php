@@ -11,55 +11,178 @@ class BankingController extends Controller {
 
     // Displays the list of all Bank/Cash accounts
     public function index() {
-        $accounts = $this->coaModel->getAccounts();
+        $db = new Database();
         
-        // Filter to only show Asset accounts (usually where Bank/Cash is categorized)
-        $bankAccounts = array_filter($accounts, function($a) { 
-            return $a->account_type == 'Asset'; 
-        });
+        // Self-heal: Ensure 1600 parent exists
+        $db->query("SELECT * FROM chart_of_accounts WHERE account_code = '1600'");
+        $parent = $db->single();
+        if (!$parent) {
+            $db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, parent_id, balance) 
+                        VALUES ('1600', 'Bank Current Account', 'Asset', NULL, 0)");
+            $db->execute();
+            $parentId = $db->lastInsertId();
+        } else {
+            $parentId = $parent->id;
+        }
+
+        // Self-heal: Ensure 1605 temporary bank account exists under 1600 parent
+        $db->query("SELECT * FROM chart_of_accounts WHERE account_code = '1605'");
+        $tempAcc = $db->single();
+        if (!$tempAcc) {
+            $db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, parent_id, balance) 
+                        VALUES ('1605', 'Temporary Bank Account', 'Asset', :pid, 0)");
+            $db->bind(':pid', $parentId);
+            $db->execute();
+            $tempAccId = $db->lastInsertId();
+        } else {
+            $tempAccId = $tempAcc->id;
+        }
 
         $data = [
             'title' => 'Banking & Cash',
             'content_view' => 'banking/index',
-            'bank_accounts' => $bankAccounts,
+            'bank_accounts' => [],
+            'cash_accounts' => [],
             'error' => '',
             'success' => ''
         ];
 
-        // Handle Quick Transfer / Manual Entry
-        if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'quick_entry') {
-            $type = $_POST['type']; // 'deposit' or 'withdrawal'
-            $bankAccountId = $_POST['bank_account_id'];
-            $offsetAccountId = $_POST['offset_account_id'];
-            $amount = floatval($_POST['amount']);
-            $date = $_POST['entry_date'];
-            $description = trim($_POST['description']);
-
-            if ($amount <= 0) {
-                $data['error'] = 'Amount must be greater than zero.';
-            } else {
-                if ($type == 'deposit') {
-                    $lines = [
-                        ['account_id' => $bankAccountId, 'debit' => $amount, 'credit' => 0],
-                        ['account_id' => $offsetAccountId, 'debit' => 0, 'credit' => $amount]
-                    ];
+        // Handle Bank Account Actions & Transfers
+        if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
+            $action = $_POST['action'];
+            
+            if ($action == 'add_bank') {
+                $name = trim($_POST['account_name']);
+                if (empty($name)) {
+                    $data['error'] = 'Bank Account Name is required.';
                 } else {
-                    $lines = [
-                        ['account_id' => $offsetAccountId, 'debit' => $amount, 'credit' => 0],
-                        ['account_id' => $bankAccountId, 'debit' => 0, 'credit' => $amount]
-                    ];
+                    $db->query("SELECT MAX(CAST(account_code AS UNSIGNED)) as max_code FROM chart_of_accounts WHERE account_code LIKE '16%' AND account_code != '1600'");
+                    $row = $db->single();
+                    $nextCode = $row && $row->max_code ? intval($row->max_code) + 1 : 1601;
+                    if ($nextCode == 1605) {
+                        $nextCode = 1606; // skip reserved 1605
+                    }
+                    
+                    $db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, parent_id, balance, is_active) 
+                                VALUES (:code, :name, 'Asset', :pid, 0, 1)");
+                    $db->bind(':code', (string)$nextCode);
+                    $db->bind(':name', $name);
+                    $db->bind(':pid', $parentId);
+                    
+                    if ($db->execute()) {
+                        header('Location: ' . APP_URL . '/banking?success=bank_added');
+                        exit;
+                    } else {
+                        $data['error'] = 'Failed to add bank account.';
+                    }
                 }
-
-                $reference = strtoupper($type) . '-' . time();
-
-                if ($this->journalModel->postEntry($date, $reference, $description, $lines, $_SESSION['user_id'])) {
-                    header('Location: ' . APP_URL . '/banking?success=1');
-                    exit;
+            }
+            elseif ($action == 'edit_bank') {
+                $id = intval($_POST['bank_id']);
+                $name = trim($_POST['account_name']);
+                if (empty($name)) {
+                    $data['error'] = 'Bank Account Name is required.';
                 } else {
-                    $data['error'] = 'Failed to post transaction to ledger.';
+                    $db->query("UPDATE chart_of_accounts SET account_name = :name WHERE id = :id");
+                    $db->bind(':name', $name);
+                    $db->bind(':id', $id);
+                    if ($db->execute()) {
+                        header('Location: ' . APP_URL . '/banking?success=bank_edited');
+                        exit;
+                    } else {
+                        $data['error'] = 'Failed to update bank account.';
+                    }
+                }
+            }
+            elseif ($action == 'delete_bank') {
+                $id = intval($_POST['bank_id']);
+                
+                $db->query("SELECT COUNT(*) as tx_count FROM transactions WHERE account_id = :id");
+                $txCheck = $db->single();
+                
+                if ($txCheck && $txCheck->tx_count > 0) {
+                    $data['error'] = 'Audit Protection: Bank accounts with transaction history cannot be deleted to preserve financial audit history.';
+                } else {
+                    $db->query("DELETE FROM chart_of_accounts WHERE id = :id");
+                    $db->bind(':id', $id);
+                    if ($db->execute()) {
+                        header('Location: ' . APP_URL . '/banking?success=bank_deleted');
+                        exit;
+                    } else {
+                        $data['error'] = 'Failed to delete bank account.';
+                    }
+                }
+            }
+            elseif ($action == 'transfer_funds') {
+                $fromAccId = intval($_POST['from_account_id']);
+                $toAccId = intval($_POST['to_account_id']);
+                $amount = floatval($_POST['amount']);
+                $date = $_POST['entry_date'];
+                $description = trim($_POST['description']);
+                
+                if ($fromAccId == $toAccId) {
+                    $data['error'] = 'Source and Destination bank accounts must be different.';
+                } elseif ($amount <= 0) {
+                    $data['error'] = 'Transfer amount must be greater than zero.';
+                } else {
+                    $reference = 'BK-XFER-' . time();
+                    $lines = [
+                        ['account_id' => $toAccId, 'debit' => $amount, 'credit' => 0],
+                        ['account_id' => $fromAccId, 'debit' => 0, 'credit' => $amount]
+                    ];
+                    
+                    if ($this->journalModel->postEntry($date, $reference, $description, $lines, $_SESSION['user_id'])) {
+                        header('Location: ' . APP_URL . '/banking?success=transfer_completed');
+                        exit;
+                    } else {
+                        $data['error'] = 'Failed to record inter-bank transfer in ledger.';
+                    }
+                }
+            }
+            elseif ($action == 'quick_entry') {
+                $type = $_POST['type']; // 'deposit' or 'withdrawal'
+                $bankAccountId = $_POST['bank_account_id'];
+                $offsetAccountId = $_POST['offset_account_id'];
+                $amount = floatval($_POST['amount']);
+                $date = $_POST['entry_date'];
+                $description = trim($_POST['description']);
+
+                if ($amount <= 0) {
+                    $data['error'] = 'Amount must be greater than zero.';
+                } else {
+                    if ($type == 'deposit') {
+                        $lines = [
+                            ['account_id' => $bankAccountId, 'debit' => $amount, 'credit' => 0],
+                            ['account_id' => $offsetAccountId, 'debit' => 0, 'credit' => $amount]
+                        ];
+                    } else {
+                        $lines = [
+                            ['account_id' => $offsetAccountId, 'debit' => $amount, 'credit' => 0],
+                            ['account_id' => $bankAccountId, 'debit' => 0, 'credit' => $amount]
+                        ];
+                    }
+
+                    $reference = strtoupper($type) . '-' . time();
+
+                    if ($this->journalModel->postEntry($date, $reference, $description, $lines, $_SESSION['user_id'])) {
+                        header('Location: ' . APP_URL . '/banking?success=quick_entry_completed');
+                        exit;
+                    } else {
+                        $data['error'] = 'Failed to post transaction to ledger.';
+                    }
                 }
             }
         }
+
+        // Fetch bank accounts (sub-accounts of parent 1600)
+        $db->query("SELECT * FROM chart_of_accounts WHERE parent_id = :pid ORDER BY account_code ASC");
+        $db->bind(':pid', $parentId);
+        $data['bank_accounts'] = $db->resultSet() ?: [];
+
+        // Fetch cash accounts (other assets)
+        $db->query("SELECT * FROM chart_of_accounts WHERE account_type = 'Asset' AND (parent_id IS NULL OR parent_id != :pid) AND id != :pid ORDER BY account_code ASC");
+        $db->bind(':pid', $parentId);
+        $data['cash_accounts'] = $db->resultSet() ?: [];
 
         $this->view('layouts/main', $data);
     }

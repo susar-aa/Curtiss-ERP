@@ -70,9 +70,10 @@ class ChartOfAccount {
      * Fetch filtered chronological transaction entries for account ledger
      */
     public function getAccountHistory($accountId, $filters = []) {
-        $sql = "SELECT t.*, je.entry_date, je.reference, je.description 
+        $sql = "SELECT t.*, je.entry_date, je.reference, je.description, inv.id as invoice_id, inv.invoice_number 
                 FROM transactions t 
                 JOIN journal_entries je ON t.journal_entry_id = je.id 
+                LEFT JOIN invoices inv ON je.id = inv.journal_entry_id 
                 WHERE t.account_id = :account_id";
         
         $params = [':account_id' => $accountId];
