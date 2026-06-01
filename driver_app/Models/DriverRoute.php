@@ -7,10 +7,12 @@ class DriverRoute {
     }
 
     public function getUserDetails($userId) {
-        $this->db->query("SELECT u.id, u.username, u.role, u.employee_id, 
-                                 CONCAT(e.first_name, ' ', e.last_name) as full_name
+        $this->db->query("SELECT u.id, u.username, u.role, u.employee_id, u.email,
+                                 CONCAT(e.first_name, ' ', e.last_name) as full_name,
+                                 e2.first_name as e2_first, e2.last_name as e2_last
                           FROM users u
                           LEFT JOIN employees e ON u.employee_id = e.id
+                          LEFT JOIN employees e2 ON u.email = e2.email
                           WHERE u.id = :uid");
         $this->db->bind(':uid', $userId);
         return $this->db->single();
@@ -20,8 +22,52 @@ class DriverRoute {
         $user = $this->getUserDetails($userId);
         if (!$user) return false;
 
-        $fullName = $user->full_name ?: $user->username;
-        $username = $user->username;
+        // Gather all possible identifiers to uniquely match this employee/user
+        $possibilities = [];
+        
+        // 1. Username and User ID
+        $possibilities[] = $user->username;
+        $possibilities[] = strval($user->id);
+        
+        // 2. Employee ID via direct u.employee_id link
+        if (!empty($user->employee_id)) {
+            $possibilities[] = strval($user->employee_id);
+        }
+        
+        // 3. Full Name & First Name via direct u.employee_id link
+        if (!empty($user->full_name)) {
+            $possibilities[] = $user->full_name;
+            $parts = explode(' ', $user->full_name);
+            if (!empty($parts[0])) {
+                $possibilities[] = $parts[0];
+            }
+        }
+        
+        // 4. Full Name & First Name via email fallback link (u.email = e.email)
+        if (!empty($user->e2_first)) {
+            $e2_fullname = trim($user->e2_first . ' ' . $user->e2_last);
+            $possibilities[] = $e2_fullname;
+            $possibilities[] = $user->e2_first;
+        }
+        
+        // Clean, normalize, and unique-filter the possibilities
+        $possibilities = array_unique(array_filter(array_map('trim', $possibilities)));
+        
+        if (empty($possibilities)) {
+            return false;
+        }
+
+        // Build dynamically bound OR clauses for driver_name or partner_name
+        $whereClauses = [];
+        $binds = [];
+        foreach ($possibilities as $index => $possibility) {
+            $paramName = ":poss_" . $index;
+            $whereClauses[] = "d.driver_name = $paramName";
+            $whereClauses[] = "d.partner_name = $paramName";
+            $binds[$paramName] = $possibility;
+        }
+        
+        $whereSql = "(" . implode(" OR ", $whereClauses) . ")";
 
         $this->db->query("
             SELECT d.*, r.route_name, r.start_time,
@@ -30,14 +76,15 @@ class DriverRoute {
                  FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales
             FROM deliveries d
             JOIN rep_daily_routes r ON d.rep_route_id = r.id
-            WHERE d.status != 'Completed' AND 
-                  (d.driver_name = :fullName OR d.partner_name = :fullName OR 
-                   d.driver_name = :username OR d.partner_name = :username)
+            WHERE d.status != 'Completed' AND $whereSql
             ORDER BY d.delivery_date DESC, d.created_at DESC
             LIMIT 1
         ");
-        $this->db->bind(':fullName', $fullName);
-        $this->db->bind(':username', $username);
+        
+        foreach ($binds as $param => $val) {
+            $this->db->bind($param, $val);
+        }
+        
         return $this->db->single();
     }
 
