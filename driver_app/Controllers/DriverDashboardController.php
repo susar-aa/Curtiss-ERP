@@ -296,11 +296,13 @@ class DriverDashboardController extends DriverController {
     public function api_sync_push() {
         header('Content-Type: application/json');
         
+        $logPath = dirname(dirname(__DIR__)) . '/sync_debug.log';
+        
         $rawInput = file_get_contents('php://input');
-        file_put_contents('C:/xampp/htdocs/Curtiss-ERP/sync_debug.log', "[" . date('Y-m-d H:i:s') . "] PUSH SYNC REQUEST:\nRAW: " . $rawInput . "\n\n", FILE_APPEND);
+        file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] PUSH SYNC REQUEST:\nRAW: " . $rawInput . "\n\n", FILE_APPEND);
         
         $postData = json_decode($rawInput, true) ?: [];
-        file_put_contents('C:/xampp/htdocs/Curtiss-ERP/sync_debug.log', "[" . date('Y-m-d H:i:s') . "] DECODED PAYLOAD:\n" . print_r($postData, true) . "\n\n", FILE_APPEND);
+        file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] DECODED PAYLOAD:\n" . print_r($postData, true) . "\n\n", FILE_APPEND);
         
         $userId = intval($postData['user_id'] ?? 0);
         $routeId = intval($postData['route_id'] ?? 0);
@@ -385,7 +387,7 @@ class DriverDashboardController extends DriverController {
             echo json_encode(['success' => true, 'message' => 'Offline driver changes synchronized successfully!']);
             exit;
         } catch (Exception $e) {
-            file_put_contents('C:/xampp/htdocs/Curtiss-ERP/sync_debug.log', "[" . date('Y-m-d H:i:s') . "] FATAL ERROR DURING PUSH: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
+            file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] FATAL ERROR DURING PUSH: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
             echo json_encode(['success' => false, 'message' => 'Server sync processing error: ' . $e->getMessage()]);
             exit;
         }
