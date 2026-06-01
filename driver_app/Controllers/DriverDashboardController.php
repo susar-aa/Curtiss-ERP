@@ -253,6 +253,9 @@ class DriverDashboardController extends DriverController {
         $db->query("SELECT d.id, d.rep_route_id, d.vehicle_number, d.driver_name, d.partner_name, d.status FROM deliveries d WHERE d.status != 'Completed'");
         $allActive = $db->resultSet();
         
+        $db->query("SELECT id, username, employee_id, email, role FROM users");
+        $allUsers = $db->resultSet();
+        
         $userDetails = $this->routeModel->getUserDetails($userId);
         
         echo json_encode([
@@ -267,7 +270,8 @@ class DriverDashboardController extends DriverController {
                 'user_details' => $userDetails,
                 'search_full_name' => $userDetails ? ($userDetails->full_name ?: $userDetails->username) : null,
                 'search_username' => $userDetails ? $userDetails->username : null,
-                'all_active_deliveries_in_db' => $allActive
+                'all_active_deliveries_in_db' => $allActive,
+                'all_users_in_db' => $allUsers
             ]
         ]);
         exit;
