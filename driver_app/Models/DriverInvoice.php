@@ -16,6 +16,34 @@ class DriverInvoice {
         } catch (Exception $e) {
             // Silently catch errors
         }
+        
+        // Failsafe DDL: Ensure pending_collections table exists for offline collections
+        try {
+            $createSql = "CREATE TABLE IF NOT EXISTS pending_collections (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                customer_id INT NOT NULL,
+                route_id INT NOT NULL,
+                payment_method VARCHAR(50) DEFAULT 'Cash',
+                amount DECIMAL(12,2) DEFAULT 0.00,
+                bank_name VARCHAR(255) DEFAULT '',
+                cheque_number VARCHAR(255) DEFAULT '',
+                cheque_date DATE DEFAULT NULL,
+                status VARCHAR(20) DEFAULT 'Pending',
+                created_by INT DEFAULT NULL,
+                finalized_by INT DEFAULT NULL,
+                finalized_at DATETIME DEFAULT NULL,
+                rejected_by INT DEFAULT NULL,
+                rejected_at DATETIME DEFAULT NULL,
+                notes TEXT DEFAULT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+            $this->db->query($createSql);
+            $this->db->execute();
+        } catch (Exception $e) {
+            // If creation fails, log to sync_debug and continue so push reports meaningful error
+            $logPath = dirname(dirname(__DIR__)) . '/sync_debug.log';
+            file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] pending_collections table creation failed: " . $e->getMessage() . "\n", FILE_APPEND);
+        }
     }
 
     public function getCustomerInvoices($customerId, $routeId) {
