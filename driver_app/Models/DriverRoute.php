@@ -71,11 +71,14 @@ class DriverRoute {
 
         $this->db->query("
             SELECT d.*, r.route_name, r.start_time,
+                   COALESCE(CONCAT(rep_e.first_name, ' ', rep_e.last_name), rep_u.username) as rep_name,
                 (SELECT COUNT(*) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as bill_count,
                 (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) 
                  FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales
             FROM deliveries d
             JOIN rep_daily_routes r ON d.rep_route_id = r.id
+            LEFT JOIN users rep_u ON r.user_id = rep_u.id
+            LEFT JOIN employees rep_e ON rep_u.employee_id = rep_e.id
             WHERE d.status != 'Completed' AND $whereSql
             ORDER BY d.delivery_date DESC, d.created_at DESC
             LIMIT 1
