@@ -69,6 +69,7 @@ class DeliveryController extends Controller {
         }
 
         $invoices = $this->deliveryModel->getDeliveryInvoices($delivery->rep_route_id);
+        $creditInvoices = $this->deliveryModel->getDeliveryCreditInvoices($delivery->rep_route_id);
         $balancing = $this->deliveryModel->getDeliveryBalancingData($id);
 
         header('Content-Type: application/json');
@@ -76,6 +77,7 @@ class DeliveryController extends Controller {
             'status' => 'success',
             'delivery' => $delivery,
             'invoices' => $invoices,
+            'credit_invoices' => $creditInvoices,
             'balancing' => $balancing
         ]);
         exit;

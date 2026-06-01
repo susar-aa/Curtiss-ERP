@@ -780,6 +780,7 @@ error_reporting(E_ALL);
 <script>
     let currentDeliveryId = null;
     let currentInvoices = [];
+    let currentCreditInvoices = [];
     let currentBalancingData = null;
     let activeTab = 'all'; // 'all', 'credit', or 'balancing'
     let currentStatusFilter = 'Arranged';
@@ -875,6 +876,7 @@ error_reporting(E_ALL);
                 
                 if (res.status === 'success') {
                     currentInvoices = res.invoices;
+                    currentCreditInvoices = res.credit_invoices || [];
                     currentBalancingData = res.balancing;
                     
                     // Show or hide the balancing tab depending on delivery progress
@@ -922,7 +924,7 @@ error_reporting(E_ALL);
         tbody.innerHTML = '';
         
         const invoicesToRender = activeTab === 'credit' 
-            ? currentInvoices.filter(i => i.status === 'Unpaid') 
+            ? currentCreditInvoices 
             : currentInvoices;
 
         if (invoicesToRender.length === 0) {
@@ -1045,7 +1047,7 @@ error_reporting(E_ALL);
                         <td style="font-weight: 600;">${ch.customer_name}</td>
                         <td>${ch.bank_name}</td>
                         <td style="font-family: monospace;">${ch.cheque_number}</td>
-                        <td>${new Date(ch.cheque_date).toLocaleDateString()}</td>
+                        <td>${new Date(ch.banking_date).toLocaleDateString()}</td>
                         <td style="text-align: right; font-weight: 700; font-family: monospace;">${parseFloat(ch.amount).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
                     </tr>
                 `;
