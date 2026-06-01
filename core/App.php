@@ -27,8 +27,23 @@ class App {
             if (isset($url[0])) {
                 $cleanControllerName = str_replace('-', '', ucwords($url[0], '-'));
                 $controllerName = $cleanControllerName . 'Controller';
-                if (file_exists('../app/Controllers/' . $controllerName . '.php')) {
-                    $this->controller = $controllerName;
+                
+                // Case-insensitive controller file matching for cross-platform compatibility (Linux / Plesk)
+                $matchedController = null;
+                $controllersDir = '../app/Controllers/';
+                if (is_dir($controllersDir)) {
+                    $files = scandir($controllersDir);
+                    $targetLower = strtolower($controllerName . '.php');
+                    foreach ($files as $file) {
+                        if (strtolower($file) === $targetLower) {
+                            $matchedController = pathinfo($file, PATHINFO_FILENAME);
+                            break;
+                        }
+                    }
+                }
+
+                if ($matchedController !== null) {
+                    $this->controller = $matchedController;
                     unset($url[0]);
                 } else {
                     // Force an error to show exactly what file is missing
