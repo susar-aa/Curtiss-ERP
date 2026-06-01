@@ -113,4 +113,15 @@ class RepRoute {
             'budget_km' => $budget
         ];
     }
+
+    // NEW: Fetch pending GL collections (temporary payments awaiting finalization)
+    public function getPendingGLForRoute($routeId) {
+        $this->db->query("SELECT pc.*, c.name as customer_name 
+                          FROM pending_collections pc 
+                          LEFT JOIN customers c ON pc.customer_id = c.id 
+                          WHERE pc.route_id = :rid AND pc.status = 'Pending' 
+                          ORDER BY pc.created_at DESC");
+        $this->db->bind(':rid', $routeId);
+        return $this->db->resultSet();
+    }
 }

@@ -122,6 +122,10 @@ class RepDashboardController extends RepController {
             die("Unauthorized or Invalid Route"); 
         }
         
+        // NEW: Fetch pending GL collections for this route
+        $pendingGL = $this->routeModel->getPendingGLForRoute($routeId);
+        $summary['pending_gl'] = $pendingGL ?: [];
+        
         $data = [
             'title' => 'Route Summary',
             'content_view' => 'route_summary',
@@ -442,6 +446,34 @@ class RepDashboardController extends RepController {
                         'local_id' => $localId,
                         'server_id' => $invoiceServerId
                     ];
+                }
+            }
+
+            // 4. Process Temporary Collections (Pending GL) from mobile offline cache
+            if (!empty($payload['payments']) && is_array($payload['payments'])) {
+                foreach ($payload['payments'] as $payment) {
+                    $customerId = $payment['customer_id'] ?? null;
+                    $routeId = $payment['route_id'] ?? null;
+                    $method = $payment['payment_method'] ?? 'Unknown';
+                    $amount = floatval($payment['amount'] ?? 0);
+                    $bankName = $payment['bank_name'] ?? null;
+                    $chequeNum = $payment['cheque_number'] ?? null;
+                    $chequeDate = $payment['cheque_date'] ?? null;
+
+                    if ($customerId > 0 && $amount > 0) {
+                        // Store pending collection for later GL finalization
+                        $db->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, created_by, status) 
+                                    VALUES (:cid, :rid, :method, :amt, :bank, :chqnum, :chqdate, :uid, 'Pending')");
+                        $db->bind(':cid', $customerId);
+                        $db->bind(':rid', $routeId ?: null);
+                        $db->bind(':method', $method);
+                        $db->bind(':amt', $amount);
+                        $db->bind(':bank', $bankName);
+                        $db->bind(':chqnum', $chequeNum);
+                        $db->bind(':chqdate', $chequeDate);
+                        $db->bind(':uid', $userId);
+                        $db->execute();
+                    }
                 }
             }
 
