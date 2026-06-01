@@ -7,7 +7,18 @@ class RepCustomer {
     }
 
     public function getAllCustomers() {
-        $this->db->query("SELECT * FROM customers ORDER BY name ASC");
+        $this->db->query("
+            SELECT c.*,
+                COALESCE(
+                    (SELECT SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) FROM invoices i WHERE i.customer_id = c.id AND i.status != 'Voided'), 0
+                ) - COALESCE(
+                    (SELECT SUM(p.amount) FROM customer_payments p WHERE p.customer_id = c.id), 0
+                ) - COALESCE(
+                    (SELECT SUM(cn.total_amount) FROM credit_notes cn WHERE cn.customer_id = c.id), 0
+                ) AS outstanding
+            FROM customers c
+            ORDER BY c.name ASC
+        ");
         return $this->db->resultSet();
     }
 
