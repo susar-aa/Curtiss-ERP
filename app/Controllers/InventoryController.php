@@ -70,6 +70,63 @@ class InventoryController extends Controller {
     }
 
     /**
+     * Dedicated Stock Reservation Dashboard Page
+     */
+    public function reserved() {
+        // Query to get simple products with non-zero reserved quantities
+        $this->db->query("
+            SELECT i.id, i.item_code, i.name as item_name, i.price, i.quantity_on_hand, i.quantity_reserved,
+                   COALESCE(c.name, 'Uncategorized') as category_name,
+                   (i.quantity_on_hand - i.quantity_reserved) as quantity_available
+            FROM items i
+            LEFT JOIN item_categories c ON i.category_id = c.id
+            WHERE i.quantity_reserved > 0
+            ORDER BY i.quantity_reserved DESC
+        ");
+        $reservedItems = $this->db->resultSet() ?: [];
+
+        // Query to get product variations with non-zero reserved quantities
+        $this->db->query("
+            SELECT ivo.id, ivo.sku, ivo.price, ivo.quantity_on_hand, ivo.quantity_reserved,
+                   i.name as item_name, i.item_code as parent_code,
+                   CONCAT(v.name, ': ', vv.value_name) as variation_display,
+                   (ivo.quantity_on_hand - ivo.quantity_reserved) as quantity_available
+            FROM item_variation_options ivo
+            JOIN items i ON ivo.item_id = i.id
+            JOIN variations v ON ivo.variation_id = v.id
+            JOIN variation_values vv ON ivo.variation_value_id = vv.id
+            WHERE ivo.quantity_reserved > 0
+            ORDER BY ivo.quantity_reserved DESC
+        ");
+        $reservedVariations = $this->db->resultSet() ?: [];
+
+        // Query to get active route and customer-level commitments/invoices
+        $this->db->query("
+            SELECT ii.quantity as reserved_qty, ii.description as item_name, 
+                   i.invoice_number, i.created_at as invoice_date, i.stock_status,
+                   c.name as customer_name,
+                   r.route_name
+            FROM invoice_items ii
+            JOIN invoices i ON ii.invoice_id = i.id
+            LEFT JOIN customers c ON i.customer_id = c.id
+            LEFT JOIN rep_daily_routes r ON i.rep_route_id = r.id
+            WHERE i.stock_status = 'reserved'
+            ORDER BY i.created_at DESC
+        ");
+        $reservationDetails = $this->db->resultSet() ?: [];
+
+        $data = [
+            'title' => 'Stock Reservation Dashboard',
+            'content_view' => 'inventory/reserved',
+            'reserved_items' => $reservedItems,
+            'reserved_variations' => $reservedVariations,
+            'details' => $reservationDetails
+        ];
+
+        $this->view('layouts/main', $data);
+    }
+
+    /**
      * High-speed, Transactional CSV Catalog Importer.
      * Imports WooCommerce CSV sheets directly without loading overhead.
      * Preserves image URLs as remote CDN targets for fast loading.

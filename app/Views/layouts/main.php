@@ -546,6 +546,13 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Move stock between depots</div>
                             </div>
                         </a>
+                        <a href="<?= APP_URL ?>/inventory/reserved" class="mega-list-item text-primary">
+                            <div class="icon-wrapper text-primary"><i class="ph ph-shield-check"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title text-primary">Reserved Stock</div>
+                                <div class="desc">View all active stock holds</div>
+                            </div>
+                        </a>
                         <a href="<?= APP_URL ?>/inventory/history" class="mega-list-item">
                             <div class="icon-wrapper text-primary"><i class="ph ph-chart-bar"></i></div>
                             <div class="mega-list-item-content">
