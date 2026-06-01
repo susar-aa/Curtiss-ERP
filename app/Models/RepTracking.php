@@ -245,19 +245,38 @@ class RepTracking {
             $this->db->execute();
 
             // Insert into customer_payments officially to credit customer subledger
-            $this->db->query("INSERT INTO customer_payments (customer_id, amount, payment_method, payment_date, bank_name, cheque_number, cheque_date, reference, journal_entry_id, created_by, rep_route_id) 
-                              VALUES (:cid, :amt, :method, CURDATE(), :bank, :chqnum, :chqdate, :ref, :jid, :uid, :rid)");
+            $this->db->query("INSERT INTO customer_payments (customer_id, amount, payment_date, payment_method, reference, journal_entry_id, created_by) 
+                              VALUES (:cid, :amt, CURDATE(), :method, :ref, :jid, :uid)");
             $this->db->bind(':cid', $payment->customer_id);
             $this->db->bind(':amt', $amount);
             $this->db->bind(':method', $method);
-            $this->db->bind(':bank', $payment->bank_name);
-            $this->db->bind(':chqnum', $payment->cheque_number);
-            $this->db->bind(':chqdate', $payment->cheque_date);
-            $this->db->bind(':ref', $payment->cheque_number ?: $payment->bank_name ?: '');
+            
+            // Build the reference string
+            $refText = '';
+            if ($method === 'Cheque') {
+                $refText = "Cheque #: " . $payment->cheque_number . " (" . $payment->bank_name . ")";
+            } elseif ($method === 'Bank Transfer') {
+                $refText = "Transfer (" . $payment->bank_name . ")";
+            } else {
+                $refText = "Cash Collection";
+            }
+            $this->db->bind(':ref', $refText);
             $this->db->bind(':jid', $jid);
             $this->db->bind(':uid', $userId);
-            $this->db->bind(':rid', $payment->route_id);
             $this->db->execute();
+
+            // If it is a cheque, register it in the cheques table as well
+            if ($method === 'Cheque') {
+                $this->db->query("INSERT INTO cheques (customer_id, bank_name, cheque_number, amount, banking_date, status, created_by) 
+                                  VALUES (:cid, :bn, :cn, :amt, :bdate, 'Pending', :uid)");
+                $this->db->bind(':cid', $payment->customer_id);
+                $this->db->bind(':bn', $payment->bank_name);
+                $this->db->bind(':cn', $payment->cheque_number);
+                $this->db->bind(':amt', $amount);
+                $this->db->bind(':bdate', $payment->cheque_date ?: date('Y-m-d'));
+                $this->db->bind(':uid', $userId);
+                $this->db->execute();
+            }
 
             // Link pending collection to generated journal entry and mark as Finalized
             $this->db->query("UPDATE pending_collections SET status = 'Finalized', finalized_by = :uid, finalized_at = NOW() WHERE id = :pid");
