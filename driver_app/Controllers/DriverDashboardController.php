@@ -3,7 +3,9 @@ class DriverDashboardController extends DriverController {
     private $routeModel;
 
     public function __construct() {
-        if (!isset($_SESSION['user_id'])) {
+        $url = $_GET['url'] ?? '';
+        $isApi = (strpos($url, 'api_sync_') !== false);
+        if (!$isApi && !isset($_SESSION['user_id'])) {
             header('Location: ' . APP_URL . '/driver/auth/login');
             exit;
         }
