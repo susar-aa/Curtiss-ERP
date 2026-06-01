@@ -316,10 +316,17 @@ class InventoryController extends Controller {
                         }
                         if ($this->itemModel->updateItem($data)) {
                             $updatedCount++;
+                            if (!empty($imagePath)) {
+                                $this->syncItemImagesTable($existingItem->id, $imagePath);
+                            }
                         }
                     } else {
                         if ($this->itemModel->addItem($data)) {
                             $importedCount++;
+                            $newItemId = $this->db->lastInsertId();
+                            if ($newItemId && !empty($imagePath)) {
+                                $this->syncItemImagesTable($newItemId, $imagePath);
+                            }
                         }
                     }
                 }
@@ -428,6 +435,7 @@ class InventoryController extends Controller {
                 $this->db->bind(':image_path', $imgName);
                 $this->db->bind(':id', $item->id);
                 if ($this->db->execute()) {
+                    $this->syncItemImagesTable($item->id, $imgName);
                     $successCount++;
                 } else {
                     $failedCount++;
@@ -435,6 +443,62 @@ class InventoryController extends Controller {
             } else {
                 $failedCount++;
             }
+        }
+
+        // --- SECONDARY SYNC FOR ITEM_IMAGES TABLE ---
+        try {
+            $this->db->query("SHOW TABLES LIKE 'item_images'");
+            if ($this->db->single()) {
+                $this->db->query("SELECT id, item_id, image_path FROM item_images WHERE image_path LIKE 'http%'");
+                $imagesToMigrate = $this->db->resultSet() ?: [];
+                foreach ($imagesToMigrate as $img) {
+                    $remoteUrl = trim($img->image_path);
+                    if (empty($remoteUrl) || !filter_var($remoteUrl, FILTER_VALIDATE_URL)) {
+                        continue;
+                    }
+
+                    $imgName = basename($remoteUrl);
+                    if (($pos = strpos($imgName, '?')) !== false) {
+                        $imgName = substr($imgName, 0, $pos);
+                    }
+                    $imgName = preg_replace('/[^A-Za-z0-9_\-\.]/', '_', $imgName);
+                    if (empty($imgName)) {
+                        $imgName = 'prod_migrated_img_' . $img->id . '_' . time() . '.jpg';
+                    }
+                    if (!preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $imgName)) {
+                        $imgName .= '.jpg';
+                    }
+
+                    $localFilePath = $uploadDir . '/' . $imgName;
+
+                    $downloadSuccess = false;
+                    if (file_exists($localFilePath)) {
+                        $downloadSuccess = true;
+                    } else {
+                        $imgData = @file_get_contents($remoteUrl);
+                        if ($imgData) {
+                            if (@file_put_contents($localFilePath, $imgData)) {
+                                $downloadSuccess = true;
+                            }
+                        }
+                    }
+
+                    if ($downloadSuccess) {
+                        $this->db->query("UPDATE item_images SET image_path = :image_path WHERE id = :id");
+                        $this->db->bind(':image_path', $imgName);
+                        $this->db->bind(':id', $img->id);
+                        $this->db->execute();
+                        
+                        // Also sync to items table if empty
+                        $this->db->query("UPDATE items SET image_path = :image_path WHERE id = :id AND (image_path IS NULL OR image_path = '' OR image_path LIKE 'http%')");
+                        $this->db->bind(':image_path', $imgName);
+                        $this->db->bind(':id', $img->item_id);
+                        $this->db->execute();
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            // Ignore error
         }
 
         $_SESSION['flash_success'] = "Image migration completed. Successfully migrated <strong>{$successCount}</strong> remote WooCommerce images to local storage 'uploads/products/'. Failed/Skipped: <strong>{$failedCount}</strong>.";
@@ -506,6 +570,10 @@ class InventoryController extends Controller {
             ];
 
             if ($this->itemModel->addItem($data)) {
+                $newItemId = $this->db->lastInsertId();
+                if ($newItemId && !empty($imagePath)) {
+                    $this->syncItemImagesTable($newItemId, $imagePath);
+                }
                 header('Location: ' . APP_URL . '/inventory');
                 exit;
             } else {
@@ -595,6 +663,9 @@ class InventoryController extends Controller {
             ];
 
             if ($this->itemModel->updateItem($data)) {
+                if (!empty($imagePath)) {
+                    $this->syncItemImagesTable($id, $imagePath);
+                }
                 header('Location: ' . APP_URL . '/inventory');
                 exit;
             } else {
@@ -824,6 +895,43 @@ class InventoryController extends Controller {
      */
     public function adjustStock($id, $newQty) {
         return $this->itemModel->updateStockOnly($id, $newQty);
+    }
+
+    /**
+     * Helper to synchronize the primary item image to the item_images table.
+     * Keeps the ERP web items table in sync with the mobile rep app item_images table!
+     */
+    private function syncItemImagesTable($itemId, $imagePath) {
+        if (empty($itemId) || empty($imagePath)) return;
+
+        try {
+            // Check if item_images table exists
+            $this->db->query("SHOW TABLES LIKE 'item_images'");
+            if (!$this->db->single()) {
+                return; // Table doesn't exist, skip silently
+            }
+
+            // Check if there is already a primary image for this item
+            $this->db->query("SELECT id FROM item_images WHERE item_id = :item_id AND variation_value_id IS NULL LIMIT 1");
+            $this->db->bind(':item_id', $itemId);
+            $existing = $this->db->single();
+
+            if ($existing) {
+                // Update existing record
+                $this->db->query("UPDATE item_images SET image_path = :image_path, is_primary = 1 WHERE id = :id");
+                $this->db->bind(':image_path', $imagePath);
+                $this->db->bind(':id', $existing->id);
+                $this->db->execute();
+            } else {
+                // Insert new record
+                $this->db->query("INSERT INTO item_images (item_id, image_path, is_primary, variation_value_id) VALUES (:item_id, :image_path, 1, NULL)");
+                $this->db->bind(':item_id', $itemId);
+                $this->db->bind(':image_path', $imagePath);
+                $this->db->execute();
+            }
+        } catch (Exception $e) {
+            // Silence exceptions to keep the main transaction alive
+        }
     }
 }
 
