@@ -117,6 +117,7 @@ try {
                 <!-- Hidden inputs for variations and image compression base64 -->
                 <input type="hidden" name="variations_json" id="variationsJson" value="[]">
                 <input type="hidden" name="compressed_image_base64" id="compressedImageBase64" value="">
+                <input type="hidden" name="image_deleted" id="imageDeleted" value="0">
 
                 <!-- Section 1: Product Media Dropzone with Compressor -->
                 <div>
@@ -128,7 +129,7 @@ try {
                         <div class="md:col-span-2">
                             <!-- Drag and drop zone -->
                             <div id="dropzone" class="border-2 border-dashed border-slate-300 hover:border-primary-500 bg-slate-50/50 hover:bg-primary-50/10 rounded-2xl p-6 transition-all duration-200 cursor-pointer text-center relative">
-                                <input type="file" id="imageFileInput" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer">
+                                <input type="file" id="imageFileInput" name="image_file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer">
                                 <div class="space-y-2">
                                     <div class="h-10 w-10 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center mx-auto shadow-inner group-hover:scale-110 transition-transform">
                                         <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
@@ -156,7 +157,7 @@ try {
                                 }
                                 ?>
                                 <img id="previewImage" src="<?php echo $preview_img_src; ?>" class="object-cover w-full h-full" onerror="this.src='https://placehold.co/300?text=No+Product+Image'">
-                                <button type="button" id="removeImageBtn" class="absolute bottom-2 right-2 p-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow-md transition-colors text-xs hidden">
+                                <button type="button" id="removeImageBtn" class="absolute bottom-2 right-2 p-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow-md transition-colors text-xs <?php echo empty($image_path) ? 'hidden' : ''; ?>">
                                     <i class="fa-solid fa-trash-can"></i>
                                 </button>
                             </div>
@@ -653,6 +654,11 @@ try {
                 progressBar.style.width = '60%';
                 progressText.innerText = "Decompressing raw bitmap layers...";
 
+                // Instantly display preview for premium visual feedback!
+                previewImage.src = event.target.result;
+                removeImageBtn.classList.remove('hidden');
+                document.getElementById('imageDeleted').value = '0';
+
                 const img = new Image();
                 img.src = event.target.result;
                 img.onload = function() {
@@ -714,6 +720,7 @@ try {
             previewImage.src = 'https://placehold.co/300?text=No+Product+Image';
             base64Input.value = '';
             fileInput.value = '';
+            document.getElementById('imageDeleted').value = '1';
             removeImageBtn.classList.add('hidden');
         });
 

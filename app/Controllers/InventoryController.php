@@ -514,9 +514,31 @@ class InventoryController extends Controller {
             $rawBase64 = $_POST['compressed_image_base64'] ?? '';
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
-            // Compress & save locally uploaded photo
+            // Save locally uploaded photo (supports standard multipart file or client-side base64)
             $imagePath = '';
-            if (!empty($rawBase64)) {
+            
+            if (isset($_FILES['image_file']) && $_FILES['image_file']['error'] === UPLOAD_ERR_OK) {
+                $fileTmpPath = $_FILES['image_file']['tmp_name'];
+                $fileName = $_FILES['image_file']['name'];
+                $fileNameCmps = explode(".", $fileName);
+                $fileExtension = strtolower(end($fileNameCmps));
+                
+                $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                if (in_array($fileExtension, $allowedExtensions)) {
+                    $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
+                    if (!file_exists($uploadDir)) {
+                        @mkdir($uploadDir, 0777, true);
+                    }
+                    
+                    $newFileName = 'prod_' . time() . '_' . rand(1000, 9999) . '.' . $fileExtension;
+                    $destPath = $uploadDir . '/' . $newFileName;
+                    
+                    if (move_uploaded_file($fileTmpPath, $destPath)) {
+                        $imagePath = 'public/uploads/products/' . $newFileName; // Save relative path to DB
+                        $this->compressImagePHP($destPath, $fileExtension);
+                    }
+                }
+            } elseif (!empty($rawBase64)) {
                 $base64 = html_entity_decode($rawBase64, ENT_QUOTES, 'UTF-8');
                 if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
                     $base64 = substr($base64, strpos($base64, ',') + 1);
@@ -528,11 +550,11 @@ class InventoryController extends Controller {
                 if ($binary) {
                     $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
                     if (!file_exists($uploadDir)) {
-                        mkdir($uploadDir, 0777, true);
+                        @mkdir($uploadDir, 0777, true);
                     }
                     $fileName = 'prod_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
                     if (file_put_contents($uploadDir . '/' . $fileName, $binary)) {
-                        $imagePath = $fileName;
+                        $imagePath = 'public/uploads/products/' . $fileName; // Save relative path to DB
                     }
                 }
             }
@@ -608,8 +630,34 @@ class InventoryController extends Controller {
             $existingItem = $this->itemModel->getItemById($id);
             $imagePath = $existingItem->image_path ?? '';
 
-            // Update compressed photo if modified
-            if (!empty($rawBase64)) {
+            $imageDeleted = ($_POST['image_deleted'] ?? '0') === '1';
+            if ($imageDeleted) {
+                $imagePath = '';
+            }
+
+            // Save locally uploaded photo (supports standard multipart file or client-side base64)
+            if (isset($_FILES['image_file']) && $_FILES['image_file']['error'] === UPLOAD_ERR_OK) {
+                $fileTmpPath = $_FILES['image_file']['tmp_name'];
+                $fileName = $_FILES['image_file']['name'];
+                $fileNameCmps = explode(".", $fileName);
+                $fileExtension = strtolower(end($fileNameCmps));
+                
+                $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                if (in_array($fileExtension, $allowedExtensions)) {
+                    $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
+                    if (!file_exists($uploadDir)) {
+                        @mkdir($uploadDir, 0777, true);
+                    }
+                    
+                    $newFileName = 'prod_' . time() . '_' . rand(1000, 9999) . '.' . $fileExtension;
+                    $destPath = $uploadDir . '/' . $newFileName;
+                    
+                    if (move_uploaded_file($fileTmpPath, $destPath)) {
+                        $imagePath = 'public/uploads/products/' . $newFileName; // Save relative path to DB
+                        $this->compressImagePHP($destPath, $fileExtension);
+                    }
+                }
+            } elseif (!empty($rawBase64)) {
                 $base64 = html_entity_decode($rawBase64, ENT_QUOTES, 'UTF-8');
                 if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
                     $base64 = substr($base64, strpos($base64, ',') + 1);
@@ -621,11 +669,11 @@ class InventoryController extends Controller {
                 if ($binary) {
                     $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
                     if (!file_exists($uploadDir)) {
-                        mkdir($uploadDir, 0777, true);
+                        @mkdir($uploadDir, 0777, true);
                     }
                     $fileName = 'prod_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
                     if (file_put_contents($uploadDir . '/' . $fileName, $binary)) {
-                        $imagePath = $fileName;
+                        $imagePath = 'public/uploads/products/' . $fileName; // Save relative path to DB
                     }
                 }
             }
@@ -933,6 +981,37 @@ class InventoryController extends Controller {
             }
         } catch (Exception $e) {
             // Silence exceptions to keep the main transaction alive
+        }
+    }
+
+    /**
+     * Optional helper to compress standard file uploads in PHP using GD library without reducing quality
+     */
+    private function compressImagePHP($filePath, $ext) {
+        try {
+            if (!extension_loaded('gd')) return;
+
+            if ($ext === 'jpg' || $ext === 'jpeg') {
+                $image = @imagecreatefromjpeg($filePath);
+                if ($image) {
+                    @imagejpeg($image, $filePath, 85); // Compress visually lossless
+                    @imagedestroy($image);
+                }
+            } elseif ($ext === 'png') {
+                $image = @imagecreatefrompng($filePath);
+                if ($image) {
+                    @imagepng($image, $filePath, 6); // Optimize size
+                    @imagedestroy($image);
+                }
+            } elseif ($ext === 'webp') {
+                $image = @imagecreatefromwebp($filePath);
+                if ($image) {
+                    @imagewebp($image, $filePath, 85);
+                    @imagedestroy($image);
+                }
+            }
+        } catch (Exception $e) {
+            // Silence compression errors
         }
     }
 }
