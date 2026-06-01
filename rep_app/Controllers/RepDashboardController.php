@@ -204,13 +204,18 @@ class RepDashboardController extends RepController {
         $db->query("SELECT id, name, days_due FROM payment_terms WHERE is_inactive = 0 ORDER BY days_due ASC");
         $terms = $db->resultSet() ?: [];
 
+        // Fetch categories directly from item_categories table
+        $db->query("SELECT id, name FROM item_categories ORDER BY name ASC");
+        $categories = $db->resultSet() ?: [];
+
         echo json_encode([
             'success' => true,
             'products' => $products,
             'customers' => $customers,
             'routes' => $routes,
             'reps' => $reps,
-            'payment_terms' => $terms
+            'payment_terms' => $terms,
+            'categories' => $categories
         ]);
         exit;
     }
