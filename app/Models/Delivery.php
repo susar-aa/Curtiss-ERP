@@ -151,30 +151,15 @@ class Delivery {
                 $cash_sales += $paidAmt;
                 $credit_sales += max(0.0, $dispatchAmt - $paidAmt);
             } else {
-                // Fetch customer payments on this route
+                // Fetch customer payments on this route. Route collections should first apply
+                // to the current route delivery amounts and not reduce cash sales because of
+                // unrelated older unpaid invoices.
                 $this->db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE rep_route_id = :rid AND customer_id = :cid");
                 $this->db->bind(':rid', $delivery->rep_route_id);
                 $this->db->bind(':cid', $cid);
                 $todayRoutePayments = floatval($this->db->single()->total_paid);
 
-                // Fetch older unpaid invoices for this customer
-                $this->db->query("
-                    SELECT id, total_amount, global_discount_val, global_discount_type, tax_amount 
-                    FROM invoices 
-                    WHERE customer_id = :cid AND rep_route_id != :rid AND status = 'Unpaid'
-                    ORDER BY invoice_date ASC, id ASC
-                ");
-                $this->db->bind(':cid', $cid);
-                $this->db->bind(':rid', $delivery->rep_route_id);
-                $oldUnpaidList = $this->db->resultSet();
-
-                $oldUnpaidTotal = 0.0;
-                foreach ($oldUnpaidList as $old) {
-                    $oldUnpaidTotal += $this->getTrueGrandTotal($old);
-                }
-
-                // Calculate cash sales under FIFO
-                $custCashSales = min($dispatchAmt, max(0.0, $todayRoutePayments - $oldUnpaidTotal));
+                $custCashSales = min($dispatchAmt, max(0.0, $todayRoutePayments));
                 $cash_sales += $custCashSales;
                 $credit_sales += max(0.0, $dispatchAmt - $custCashSales);
             }
