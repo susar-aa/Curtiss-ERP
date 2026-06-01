@@ -261,6 +261,32 @@ class RepDashboardController extends RepController {
             exit;
         }
 
+        // Ensure pending_collections table exists (failsafe for fresh deployments - DDL placed before beginTransaction to avoid implicit commit in MySQL)
+        try {
+            $createSql = "CREATE TABLE IF NOT EXISTS pending_collections (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                customer_id INT NOT NULL,
+                route_id INT DEFAULT NULL,
+                payment_method VARCHAR(50) DEFAULT 'Cash',
+                amount DECIMAL(12,2) DEFAULT 0.00,
+                bank_name VARCHAR(255) DEFAULT '',
+                cheque_number VARCHAR(255) DEFAULT '',
+                cheque_date DATE DEFAULT NULL,
+                status VARCHAR(20) DEFAULT 'Pending',
+                created_by INT DEFAULT NULL,
+                finalized_by INT DEFAULT NULL,
+                finalized_at DATETIME DEFAULT NULL,
+                rejected_by INT DEFAULT NULL,
+                rejected_at DATETIME DEFAULT NULL,
+                notes TEXT DEFAULT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+            $db->query($createSql);
+            $db->execute();
+        } catch (Exception $e) {
+            error_log("Failed to ensure pending_collections table exists: " . $e->getMessage());
+        }
+
         $responseMappings = [
             'customers' => [],
             'routes' => [],
@@ -269,33 +295,6 @@ class RepDashboardController extends RepController {
 
         try {
             $db->beginTransaction();
-
-            // Ensure pending_collections table exists (failsafe for fresh deployments)
-            try {
-                $createSql = "CREATE TABLE IF NOT EXISTS pending_collections (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    customer_id INT NOT NULL,
-                    route_id INT DEFAULT NULL,
-                    payment_method VARCHAR(50) DEFAULT 'Cash',
-                    amount DECIMAL(12,2) DEFAULT 0.00,
-                    bank_name VARCHAR(255) DEFAULT '',
-                    cheque_number VARCHAR(255) DEFAULT '',
-                    cheque_date DATE DEFAULT NULL,
-                    status VARCHAR(20) DEFAULT 'Pending',
-                    created_by INT DEFAULT NULL,
-                    finalized_by INT DEFAULT NULL,
-                    finalized_at DATETIME DEFAULT NULL,
-                    rejected_by INT DEFAULT NULL,
-                    rejected_at DATETIME DEFAULT NULL,
-                    notes TEXT DEFAULT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
-                $db->query($createSql);
-                $db->execute();
-            } catch (Exception $e) {
-                // Log and continue; actual insert will fail and transaction will rollback with a clearer error
-                error_log("Failed to ensure pending_collections table exists: " . $e->getMessage());
-            }
 
             // 1. Process Offline Added Customers
             if (!empty($payload['customers']) && is_array($payload['customers'])) {
