@@ -279,74 +279,24 @@ class DriverInvoice {
     public function checkoutShop($customerId, $routeId, $userId, $collections) {
         $this->db->beginTransaction();
         try {
-            // 1. Resolve exact ledger accounts (using 1090 temporary transit account for driver collections)
-            $this->db->query("SELECT id, account_code FROM chart_of_accounts WHERE account_code IN ('1200', '1090')");
-            $accounts = $this->db->resultSet();
-            $accMap = [];
-            foreach($accounts as $a) { $accMap[$a->account_code] = $a->id; }
-
-            $transitAcc = $accMap['1090'] ?? null;
-            $arAcc = $accMap['1200'] ?? null;
-
-            if (!$transitAcc) throw new Exception("Missing Driver Transit Account (1090) in Chart of Accounts.");
-            if (!$arAcc) throw new Exception("Missing AR Account (1200) in Chart of Accounts.");
-
-            $cashAcc = $transitAcc;
-            $chequeAcc = $transitAcc;
-            $bankAcc = $transitAcc;
-
-            // 2. Fetch today's invoices for this customer
+            // 1. Fetch today's invoices for this customer
             $invoices = $this->getCustomerInvoices($customerId, $routeId);
 
-            // 3. DO NOT deduct physical stock on billing. Leave stock status as 'reserved' and update delivery status to 'Delivered'
+            // 2. DO NOT deduct physical stock or finalize accounting here. Update delivery status to 'Delivered'
             foreach ($invoices as $invoice) {
-                // Update delivery status of the invoice to Delivered, keeping stock_status as reserved
                 $this->db->query("UPDATE invoices SET delivery_status = 'Delivered' WHERE id = :id");
                 $this->db->bind(':id', $invoice->id);
                 $this->db->execute();
             }
 
-            // 4. Process Collections & Double entry journal post
+            // 3. Process collections & save to customer_payments and cheques tables (without posting journal entries yet)
             $cashAmt = floatval($collections['cash'] ?? 0);
             $bankAmt = floatval($collections['bank'] ?? 0);
 
-            $processPayment = function($amount, $assetAccId, $methodStr, $chequeDetails = null) use ($userId, $customerId, $arAcc, $routeId) {
-                if ($amount <= 0 || !$assetAccId) return;
+            $savePaymentRecord = function($amount, $methodStr, $chequeDetails = null) use ($userId, $customerId, $routeId) {
+                if ($amount <= 0) return;
 
                 $refCode = "PMT-" . time() . rand(10,99);
-
-                // Insert Journal Entry
-                $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
-                                  VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
-                $this->db->bind(':ref', $refCode);
-                $this->db->bind(':desc', "Driver App Delivery Collection ($methodStr)");
-                $this->db->bind(':uid', $userId);
-                $this->db->execute();
-                $payJid = $this->db->lastInsertId();
-
-                // Debit Asset
-                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, 0)");
-                $this->db->bind(':jid', $payJid);
-                $this->db->bind(':aid', $assetAccId);
-                $this->db->bind(':deb', $amount);
-                $this->db->execute();
-
-                $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :aid");
-                $this->db->bind(':amt', $amount);
-                $this->db->bind(':aid', $assetAccId);
-                $this->db->execute();
-
-                // Credit AR
-                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :cred)");
-                $this->db->bind(':jid', $payJid);
-                $this->db->bind(':aid', $arAcc);
-                $this->db->bind(':cred', $amount);
-                $this->db->execute();
-
-                $this->db->query("UPDATE chart_of_accounts SET balance = balance - :amt WHERE id = :aid");
-                $this->db->bind(':amt', $amount);
-                $this->db->bind(':aid', $arAcc);
-                $this->db->execute();
 
                 // If PDC Cheque details provided, write to cheques table
                 if ($methodStr === 'Cheque' && $chequeDetails) {
@@ -362,29 +312,26 @@ class DriverInvoice {
                     $this->db->execute();
                 }
 
-                // Log Customer Payment History with rep_route_id
+                // Log Customer Payment History with rep_route_id (leaving journal_entry_id NULL)
                 $this->db->query("INSERT INTO customer_payments (customer_id, amount, payment_date, payment_method, reference, journal_entry_id, rep_route_id, created_by) 
-                                  VALUES (:cid, :amt, CURDATE(), :method, :ref, :jid, :route_id, :uid)");
+                                  VALUES (:cid, :amt, CURDATE(), :method, :ref, NULL, :route_id, :uid)");
                 $this->db->bind(':cid', $customerId);
                 $this->db->bind(':amt', $amount);
                 $this->db->bind(':method', $methodStr);
-                $this->db->bind(':ref', $chequeDetails['number'] ?? '');
-                $this->db->bind(':jid', $payJid);
+                $this->db->bind(':ref', $chequeDetails['number'] ?? $refCode);
                 $this->db->bind(':route_id', $routeId);
                 $this->db->bind(':uid', $userId);
                 $this->db->execute();
             };
 
-            $processPayment($cashAmt, $cashAcc, 'Cash');
-            $processPayment($bankAmt, $bankAcc, 'Bank Transfer');
+            $savePaymentRecord($cashAmt, 'Cash');
+            $savePaymentRecord($bankAmt, 'Bank Transfer');
             
-            $totalChequeAmt = 0.0;
             if (isset($collections['cheques']) && is_array($collections['cheques'])) {
                 foreach ($collections['cheques'] as $chequeObj) {
                     $amt = floatval($chequeObj['amount'] ?? 0);
                     if ($amt > 0) {
-                        $totalChequeAmt += $amt;
-                        $processPayment($amt, $chequeAcc, 'Cheque', [
+                        $savePaymentRecord($amt, 'Cheque', [
                             'bank' => $chequeObj['bank'] ?? 'Unknown',
                             'number' => $chequeObj['number'] ?? 'Unknown',
                             'date' => $chequeObj['date'] ?? date('Y-m-d')
@@ -395,38 +342,12 @@ class DriverInvoice {
                 // Fallback to legacy single cheque details if present
                 $chequeAmt = floatval($collections['cheque'] ?? 0);
                 if ($chequeAmt > 0) {
-                    $totalChequeAmt += $chequeAmt;
                     $chequeDetails = [
                         'bank' => $collections['cheque_bank'] ?? '',
                         'number' => $collections['cheque_number'] ?? '',
                         'date' => $collections['cheque_date'] ?? ''
                     ];
-                    $processPayment($chequeAmt, $chequeAcc, 'Cheque', $chequeDetails);
-                }
-            }
-
-            // 5. Update invoice payment status based on collected amount FIFO style
-            $totalCollected = $cashAmt + $bankAmt + $totalChequeAmt;
-            
-            $this->db->query("
-                SELECT id, total_amount, global_discount_val, global_discount_type, tax_amount 
-                FROM invoices 
-                WHERE customer_id = :cid AND status = 'Unpaid' 
-                ORDER BY invoice_date ASC, id ASC
-            ");
-            $this->db->bind(':cid', $customerId);
-            $unpaidList = $this->db->resultSet();
-
-            $pool = $totalCollected;
-            foreach ($unpaidList as $unp) {
-                $gTotal = $this->getTrueGrandTotal($unp);
-                if ($pool >= $gTotal) {
-                    $this->db->query("UPDATE invoices SET status = 'Paid' WHERE id = :id");
-                    $this->db->bind(':id', $unp->id);
-                    $this->db->execute();
-                    $pool -= $gTotal;
-                } else {
-                    break;
+                    $savePaymentRecord($chequeAmt, 'Cheque', $chequeDetails);
                 }
             }
 

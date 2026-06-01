@@ -275,36 +275,17 @@ class Delivery {
                 }
             }
 
-            // 3. Financial Clearance balancing: Transfer from 1090 transit account to final cash, cheque, bank
+            // 3. Financial Clearance balancing: Post double entry ledger entries and update invoice statuses at finalization
             $this->db->query("
-                SELECT payment_method, SUM(amount) as total_amount 
+                SELECT * 
                 FROM customer_payments 
                 WHERE rep_route_id = :rid
-                GROUP BY payment_method
             ");
             $this->db->bind(':rid', $delivery->rep_route_id);
-            $payments = $this->db->resultSet();
+            $routePayments = $this->db->resultSet();
 
-            $totalCollectedAmt = 0.0;
-            $cashTransit = 0.0;
-            $chequeTransit = 0.0;
-            $bankTransit = 0.0;
-
-            foreach ($payments as $pay) {
-                $amt = floatval($pay->total_amount);
-                if ($amt <= 0) continue;
-                $totalCollectedAmt += $amt;
-                if ($pay->payment_method === 'Cash') {
-                    $cashTransit = $amt;
-                } elseif ($pay->payment_method === 'Cheque') {
-                    $chequeTransit = $amt;
-                } elseif ($pay->payment_method === 'Bank Transfer') {
-                    $bankTransit = $amt;
-                }
-            }
-
-            if ($totalCollectedAmt > 0) {
-                $this->db->query("SELECT id, account_code FROM chart_of_accounts WHERE account_code IN ('1000', '1010', '1600', '1090')");
+            if (!empty($routePayments)) {
+                $this->db->query("SELECT id, account_code FROM chart_of_accounts WHERE account_code IN ('1000', '1010', '1600', '1200')");
                 $accounts = $this->db->resultSet();
                 $accMap = [];
                 foreach ($accounts as $a) { $accMap[$a->account_code] = $a->id; }
@@ -312,65 +293,89 @@ class Delivery {
                 $cashAcc = $accMap['1000'] ?? null;
                 $chequeAcc = $accMap['1010'] ?? null;
                 $bankAcc = $accMap['1600'] ?? null;
-                $transitAcc = $accMap['1090'] ?? null;
+                $arAcc = $accMap['1200'] ?? null;
 
-                if ($transitAcc) {
-                    $refCode = "BAL-FIN-" . time() . rand(10,99);
+                if (!$arAcc) throw new Exception("Missing AR Account (1200) in Chart of Accounts.");
+
+                foreach ($routePayments as $pay) {
+                    $amount = floatval($pay->amount);
+                    if ($amount <= 0) continue;
+
+                    $method = $pay->payment_method;
+                    $assetAccId = null;
+                    if ($method === 'Cash') {
+                        $assetAccId = $cashAcc;
+                    } elseif ($method === 'Cheque') {
+                        $assetAccId = $chequeAcc;
+                    } elseif ($method === 'Bank Transfer') {
+                        $assetAccId = $bankAcc;
+                    }
+
+                    if (!$assetAccId) continue;
+
+                    $refCode = "PMT-BAL-" . time() . rand(10,99);
+
+                    // Insert Journal Entry
                     $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
-                                      VALUES (CURDATE(), :ref, 'Admin Delivery Trip Settle Balancing Finalization', :uid, 'Posted')");
+                                      VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
                     $this->db->bind(':ref', $refCode);
+                    $this->db->bind(':desc', "Finalized Delivery Collection ($method)");
                     $this->db->bind(':uid', $adminUserId);
                     $this->db->execute();
-                    $balanceJid = $this->db->lastInsertId();
+                    $payJid = $this->db->lastInsertId();
 
-                    // Credit Transit Account (1090)
+                    // Update payment record to associate with this journal entry
+                    $this->db->query("UPDATE customer_payments SET journal_entry_id = :jid WHERE id = :pid");
+                    $this->db->bind(':jid', $payJid);
+                    $this->db->bind(':pid', $pay->id);
+                    $this->db->execute();
+
+                    // Debit Asset Account
+                    $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, 0)");
+                    $this->db->bind(':jid', $payJid);
+                    $this->db->bind(':aid', $assetAccId);
+                    $this->db->bind(':deb', $amount);
+                    $this->db->execute();
+
+                    $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :aid");
+                    $this->db->bind(':amt', $amount);
+                    $this->db->bind(':aid', $assetAccId);
+                    $this->db->execute();
+
+                    // Credit AR Account
                     $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :cred)");
-                    $this->db->bind(':jid', $balanceJid);
-                    $this->db->bind(':aid', $transitAcc);
-                    $this->db->bind(':cred', $totalCollectedAmt);
+                    $this->db->bind(':jid', $payJid);
+                    $this->db->bind(':aid', $arAcc);
+                    $this->db->bind(':cred', $amount);
                     $this->db->execute();
 
                     $this->db->query("UPDATE chart_of_accounts SET balance = balance - :amt WHERE id = :aid");
-                    $this->db->bind(':amt', $totalCollectedAmt);
-                    $this->db->bind(':aid', $transitAcc);
+                    $this->db->bind(':amt', $amount);
+                    $this->db->bind(':aid', $arAcc);
                     $this->db->execute();
 
-                    // Debit final assets
-                    if ($cashTransit > 0 && $cashAcc) {
-                        $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, 0)");
-                        $this->db->bind(':jid', $balanceJid);
-                        $this->db->bind(':aid', $cashAcc);
-                        $this->db->bind(':deb', $cashTransit);
-                        $this->db->execute();
+                    // FIFO mark invoices Paid
+                    $customerId = $pay->customer_id;
+                    $this->db->query("
+                        SELECT id, total_amount, global_discount_val, global_discount_type, tax_amount 
+                        FROM invoices 
+                        WHERE customer_id = :cid AND status = 'Unpaid' 
+                        ORDER BY invoice_date ASC, id ASC
+                    ");
+                    $this->db->bind(':cid', $customerId);
+                    $unpaidList = $this->db->resultSet();
 
-                        $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :aid");
-                        $this->db->bind(':amt', $cashTransit);
-                        $this->db->bind(':aid', $cashAcc);
-                        $this->db->execute();
-                    }
-                    if ($chequeTransit > 0 && $chequeAcc) {
-                        $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, 0)");
-                        $this->db->bind(':jid', $balanceJid);
-                        $this->db->bind(':aid', $chequeAcc);
-                        $this->db->bind(':deb', $chequeTransit);
-                        $this->db->execute();
-
-                        $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :aid");
-                        $this->db->bind(':amt', $chequeTransit);
-                        $this->db->bind(':aid', $chequeAcc);
-                        $this->db->execute();
-                    }
-                    if ($bankTransit > 0 && $bankAcc) {
-                        $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, 0)");
-                        $this->db->bind(':jid', $balanceJid);
-                        $this->db->bind(':aid', $bankAcc);
-                        $this->db->bind(':deb', $bankTransit);
-                        $this->db->execute();
-
-                        $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :aid");
-                        $this->db->bind(':amt', $bankTransit);
-                        $this->db->bind(':aid', $bankAcc);
-                        $this->db->execute();
+                    $pool = $amount;
+                    foreach ($unpaidList as $unp) {
+                        $gTotal = $this->getTrueGrandTotal($unp);
+                        if ($pool >= $gTotal) {
+                            $this->db->query("UPDATE invoices SET status = 'Paid' WHERE id = :id");
+                            $this->db->bind(':id', $unp->id);
+                            $this->db->execute();
+                            $pool -= $gTotal;
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
@@ -383,4 +388,13 @@ class Delivery {
             throw $e;
         }
     }
+
+    private function getTrueGrandTotal($invoice) {
+        $subTotal = floatval($invoice->total_amount ?? 0);
+        $globalDiscVal = floatval($invoice->global_discount_val ?? 0);
+        $globalDiscType = $invoice->global_discount_type ?? 'Rs';
+        $globalDisc = ($globalDiscType === '%') ? ($subTotal * $globalDiscVal / 100) : $globalDiscVal;
+        return max(0, $subTotal - $globalDisc) + floatval($invoice->tax_amount ?? 0);
+    }
+}
 }
