@@ -200,12 +200,17 @@ class RepDashboardController extends RepController {
                     WHERE LOWER(u.role) = 'rep'");
         $reps = $db->resultSet();
 
+        // Fetch active payment terms
+        $db->query("SELECT id, name, days_due FROM payment_terms WHERE is_inactive = 0 ORDER BY days_due ASC");
+        $terms = $db->resultSet() ?: [];
+
         echo json_encode([
             'success' => true,
             'products' => $products,
             'customers' => $customers,
             'routes' => $routes,
-            'reps' => $reps
+            'reps' => $reps,
+            'payment_terms' => $terms
         ]);
         exit;
     }
@@ -387,12 +392,13 @@ class RepDashboardController extends RepController {
                     $db->execute();
 
                     // Insert Invoice Record
-                    $db->query("INSERT INTO invoices (invoice_number, customer_id, invoice_date, due_date, total_amount, journal_entry_id, created_by, rep_route_id, latitude, longitude, stock_status) 
-                                VALUES (:inv, :cid, :idate, :ddate, :total, :jid, :uid, :route, :lat, :lng, 'reserved')");
+                    $db->query("INSERT INTO invoices (invoice_number, customer_id, invoice_date, due_date, payment_term_id, total_amount, journal_entry_id, created_by, rep_route_id, latitude, longitude, stock_status) 
+                                VALUES (:inv, :cid, :idate, :ddate, :payment_term_id, :total, :jid, :uid, :route, :lat, :lng, 'reserved')");
                     $db->bind(':inv', $invoiceNumber);
                     $db->bind(':cid', $customerId);
                     $db->bind(':idate', $inv['invoice_date']);
                     $db->bind(':ddate', $inv['due_date']);
+                    $db->bind(':payment_term_id', $inv['payment_term_id'] ?? null);
                     $db->bind(':total', $inv['subtotal']);
                     $db->bind(':jid', $saleJournalId);
                     $db->bind(':uid', $userId);
