@@ -511,12 +511,13 @@ class InventoryController extends Controller {
      */
     public function add() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $rawBase64 = $_POST['compressed_image_base64'] ?? '';
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
             // Compress & save locally uploaded photo
             $imagePath = '';
-            if (!empty($_POST['compressed_image_base64'])) {
-                $base64 = html_entity_decode($_POST['compressed_image_base64'], ENT_QUOTES, 'UTF-8');
+            if (!empty($rawBase64)) {
+                $base64 = html_entity_decode($rawBase64, ENT_QUOTES, 'UTF-8');
                 if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
                     $base64 = substr($base64, strpos($base64, ',') + 1);
                     $ext = strtolower($type[1]);
@@ -601,14 +602,15 @@ class InventoryController extends Controller {
      */
     public function edit($id) {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $rawBase64 = $_POST['compressed_image_base64'] ?? '';
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
             $existingItem = $this->itemModel->getItemById($id);
             $imagePath = $existingItem->image_path ?? '';
 
             // Update compressed photo if modified
-            if (!empty($_POST['compressed_image_base64'])) {
-                $base64 = html_entity_decode($_POST['compressed_image_base64'], ENT_QUOTES, 'UTF-8');
+            if (!empty($rawBase64)) {
+                $base64 = html_entity_decode($rawBase64, ENT_QUOTES, 'UTF-8');
                 if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
                     $base64 = substr($base64, strpos($base64, ',') + 1);
                     $ext = strtolower($type[1]);

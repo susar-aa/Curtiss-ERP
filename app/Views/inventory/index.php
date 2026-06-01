@@ -357,16 +357,12 @@ if ($flashError) {
                                     $sku = !empty($item->item_code) ? $item->item_code : ($item->sku ?? '-');
                                     $image = $item->image_path ?? '';
                                     
-                                    // Render direct external link if starting with http, else prepend APP_URL/uploads/products/
+                                    // Render exclusively from local public/uploads/products/ folder by extracting the filename
                                     if (empty($image)) {
                                         $img_src = 'https://placehold.co/300?text=No+Image';
                                     } else {
-                                        if (filter_var($image, FILTER_VALIDATE_URL)) {
-                                            $img_src = $image;
-                                        } else {
-                                            $cleanPath = str_replace('uploads/products/', '', $image);
-                                            $img_src = APP_URL . '/uploads/products/' . $cleanPath;
-                                        }
+                                        $filename = basename($image);
+                                        $img_src = APP_URL . '/public/uploads/products/' . $filename;
                                     }
 
                                     if ($qty <= 0) {

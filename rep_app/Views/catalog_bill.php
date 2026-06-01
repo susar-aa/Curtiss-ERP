@@ -174,12 +174,8 @@ if ($successInvoiceId && !$successCustomer) {
                 <?php 
                 $img_src = '';
                 if ($prod->image_path) {
-                    if (filter_var($prod->image_path, FILTER_VALIDATE_URL)) {
-                        $img_src = $prod->image_path;
-                    } else {
-                        $cleanPath = str_replace('uploads/products/', '', $prod->image_path);
-                        $img_src = APP_URL . '/uploads/products/' . $cleanPath;
-                    }
+                    $filename = basename($prod->image_path);
+                    $img_src = APP_URL . '/public/uploads/products/' . $filename;
                 }
                 ?>
                 <?php if($img_src): ?>
