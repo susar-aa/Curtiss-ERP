@@ -212,6 +212,18 @@ class RepDashboardController extends RepController {
         $db->query("SELECT id, name FROM item_categories ORDER BY name ASC");
         $categories = $db->resultSet() ?: [];
 
+        // Fetch outstanding credit invoices (unpaid outstanding arrears)
+        $db->query("
+            SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date, i.status,
+                   (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
+                   c.name as customer_name, c.address as customer_address
+            FROM invoices i
+            JOIN customers c ON i.customer_id = c.id
+            WHERE i.status = 'Unpaid'
+            ORDER BY i.invoice_date ASC
+        ");
+        $creditInvoices = $db->resultSet() ?: [];
+
         echo json_encode([
             'success' => true,
             'products' => $products,
@@ -219,7 +231,8 @@ class RepDashboardController extends RepController {
             'routes' => $routes,
             'reps' => $reps,
             'payment_terms' => $terms,
-            'categories' => $categories
+            'categories' => $categories,
+            'credit_invoices' => $creditInvoices
         ]);
         exit;
     }
