@@ -248,13 +248,27 @@ class DriverDashboardController extends DriverController {
             }
         }
         
+        // Debug helper: fetch ALL active deliveries (status != 'Completed') in the DB to see why none matched
+        $db = new Database();
+        $db->query("SELECT d.id, d.rep_route_id, d.vehicle_number, d.driver_name, d.partner_name, d.status FROM deliveries d WHERE d.status != 'Completed'");
+        $allActive = $db->resultSet();
+        
+        $userDetails = $this->routeModel->getUserDetails($userId);
+        
         echo json_encode([
             'success' => true,
             'assigned_delivery' => $activeDelivery ?: null,
             'shops' => $shops,
             'invoices' => $invoices,
             'invoice_items' => $invoiceItems,
-            'employees' => $employees
+            'employees' => $employees,
+            'debug' => [
+                'user_id' => $userId,
+                'user_details' => $userDetails,
+                'search_full_name' => $userDetails ? ($userDetails->full_name ?: $userDetails->username) : null,
+                'search_username' => $userDetails ? $userDetails->username : null,
+                'all_active_deliveries_in_db' => $allActive
+            ]
         ]);
         exit;
     }
