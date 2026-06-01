@@ -153,7 +153,7 @@ try {
                                 $preview_img_src = 'https://placehold.co/300?text=No+Product+Image';
                                 if (!empty($image_path)) {
                                     $filename = basename($image_path);
-                                    $preview_img_src = APP_URL . '/public/uploads/products/' . $filename;
+                                    $preview_img_src = APP_URL . '/uploads/products/' . $filename;
                                 }
                                 ?>
                                 <img id="previewImage" src="<?php echo $preview_img_src; ?>" class="object-cover w-full h-full" onerror="this.src='https://placehold.co/300?text=No+Product+Image'">
@@ -654,11 +654,6 @@ try {
                 progressBar.style.width = '60%';
                 progressText.innerText = "Decompressing raw bitmap layers...";
 
-                // Instantly display preview for premium visual feedback!
-                previewImage.src = event.target.result;
-                removeImageBtn.classList.remove('hidden');
-                document.getElementById('imageDeleted').value = '0';
-
                 const img = new Image();
                 img.src = event.target.result;
                 img.onload = function() {
@@ -701,9 +696,11 @@ try {
                         progressBar.style.width = '100%';
                         progressText.innerText = "High-Fidelity compression complete! Image optimized successfully.";
                         
+                        // Show preview and restore active status ONLY after upload/compression is done!
                         previewImage.src = compressedBase64;
                         base64Input.value = compressedBase64;
                         removeImageBtn.classList.remove('hidden');
+                        document.getElementById('imageDeleted').value = '0';
                         
                         setTimeout(() => {
                             progressWrapper.classList.add('hidden');

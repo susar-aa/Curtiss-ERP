@@ -175,7 +175,7 @@ if ($successInvoiceId && !$successCustomer) {
                 $img_src = '';
                 if ($prod->image_path) {
                     $filename = basename($prod->image_path);
-                    $img_src = APP_URL . '/public/uploads/products/' . $filename;
+                    $img_src = APP_URL . '/uploads/products/' . $filename;
                 }
                 ?>
                 <?php if($img_src): ?>
