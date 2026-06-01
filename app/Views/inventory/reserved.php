@@ -107,7 +107,7 @@
                                         <td style="padding: 14px 20px; text-align: center; font-weight: 700; color: #f43f5e;"><?= $item->quantity_reserved ?></td>
                                         <td style="padding: 14px 20px; text-align: center; font-weight: 600; color: #10b981;"><?= $item->quantity_available ?></td>
                                     </tr>
-                                <?php endphp; ?>
+                                <?php endforeach; ?>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -148,7 +148,7 @@
                                         <td style="padding: 14px 20px; text-align: center; font-weight: 700; color: #f43f5e;"><?= $v->quantity_reserved ?></td>
                                         <td style="padding: 14px 20px; text-align: center; font-weight: 600; color: #10b981;"><?= $v->quantity_available ?></td>
                                     </tr>
-                                <?php endphp; ?>
+                                <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>

@@ -435,20 +435,7 @@ class RepDashboardController extends RepController {
                         }
                     }
 
-                    // Process Payment & Collections Offline
-                    $paymentAssetAcc = ($paymentMethod === 'Cash') ? $cashAcc : (($paymentMethod === 'Cheque') ? $chequeAcc : $bankAcc);
-                    if ($grandTotal > 0 && $paymentAssetAcc) {
-                        $db->query("INSERT INTO customer_payments (customer_id, amount, payment_date, payment_method, reference, journal_entry_id, rep_route_id, created_by) 
-                                    VALUES (:cid, :amt, :pdate, :method, :ref, NULL, :route_id, :uid)");
-                        $db->bind(':cid', $customerId);
-                        $db->bind(':amt', $grandTotal);
-                        $db->bind(':pdate', $inv['invoice_date']);
-                        $db->bind(':method', $paymentMethod);
-                        $db->bind(':ref', $invoiceNumber);
-                        $db->bind(':route_id', $routeId);
-                        $db->bind(':uid', $userId);
-                        $db->execute();
-                    }
+                    // Note: Payments and collections are deferred until final delivery confirmation, so we do not insert a local payment transaction here.
 
                     $responseMappings['invoices'][] = [
                         'local_id' => $localId,
