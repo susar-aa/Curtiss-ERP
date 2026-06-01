@@ -279,10 +279,22 @@ class RepDashboardController extends RepController {
                 rejected_by INT DEFAULT NULL,
                 rejected_at DATETIME DEFAULT NULL,
                 notes TEXT DEFAULT NULL,
+                latitude DECIMAL(10,8) DEFAULT NULL,
+                longitude DECIMAL(11,8) DEFAULT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
             $db->query($createSql);
             $db->execute();
+
+            // Self-healing columns check for latitude and longitude
+            try {
+                $db->query("ALTER TABLE pending_collections ADD COLUMN latitude DECIMAL(10,8) DEFAULT NULL");
+                $db->execute();
+            } catch (\Exception $e) {}
+            try {
+                $db->query("ALTER TABLE pending_collections ADD COLUMN longitude DECIMAL(11,8) DEFAULT NULL");
+                $db->execute();
+            } catch (\Exception $e) {}
         } catch (Exception $e) {
             error_log("Failed to ensure pending_collections table exists: " . $e->getMessage());
         }
@@ -510,8 +522,8 @@ class RepDashboardController extends RepController {
 
                     if ($customerId > 0 && $amount > 0) {
                         // Store pending collection for later GL finalization
-                        $db->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, created_by, status) 
-                                    VALUES (:cid, :rid, :method, :amt, :bank, :chqnum, :chqdate, :uid, 'Pending')");
+                        $db->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, created_by, status, latitude, longitude) 
+                                    VALUES (:cid, :rid, :method, :amt, :bank, :chqnum, :chqdate, :uid, 'Pending', :lat, :lng)");
                         $db->bind(':cid', $customerId);
                         $db->bind(':rid', $routeId ?: null);
                         $db->bind(':method', $method);
@@ -520,6 +532,8 @@ class RepDashboardController extends RepController {
                         $db->bind(':chqnum', $chequeNum);
                         $db->bind(':chqdate', $chequeDate);
                         $db->bind(':uid', $userId);
+                        $db->bind(':lat', $payment['latitude'] ?? null);
+                        $db->bind(':lng', $payment['longitude'] ?? null);
                         $db->execute();
                     }
                 }
