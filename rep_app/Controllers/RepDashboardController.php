@@ -397,14 +397,15 @@ class RepDashboardController extends RepController {
                     $db->execute();
 
                     // Insert Invoice Record
-                    $db->query("INSERT INTO invoices (invoice_number, customer_id, invoice_date, due_date, payment_term_id, total_amount, journal_entry_id, created_by, rep_route_id, latitude, longitude, stock_status) 
-                                VALUES (:inv, :cid, :idate, :ddate, :payment_term_id, :total, :jid, :uid, :route, :lat, :lng, 'reserved')");
+                    $db->query("INSERT INTO invoices (invoice_number, customer_id, invoice_date, due_date, payment_term_id, total_amount, global_discount_val, global_discount_type, journal_entry_id, created_by, rep_route_id, latitude, longitude, stock_status) 
+                                VALUES (:inv, :cid, :idate, :ddate, :payment_term_id, :total, :gdisc_val, 'Rs', :jid, :uid, :route, :lat, :lng, 'reserved')");
                     $db->bind(':inv', $invoiceNumber);
                     $db->bind(':cid', $customerId);
                     $db->bind(':idate', $inv['invoice_date']);
                     $db->bind(':ddate', $inv['due_date']);
                     $db->bind(':payment_term_id', $inv['payment_term_id'] ?? null);
                     $db->bind(':total', $inv['subtotal']);
+                    $db->bind(':gdisc_val', $inv['discount'] ?? 0.0);
                     $db->bind(':jid', $saleJournalId);
                     $db->bind(':uid', $userId);
                     $db->bind(':route', $routeId);
@@ -416,14 +417,14 @@ class RepDashboardController extends RepController {
                     // Insert Invoice Items and Reserve Inventory
                     if (!empty($inv['items']) && is_array($inv['items'])) {
                         foreach ($inv['items'] as $item) {
-                            $db->query("INSERT INTO invoice_items (invoice_id, item_id, description, quantity, loaded_quantity, unit_price, discount_value, total) 
-                                        VALUES (:iid, :item_id, :desc, :qty, :qty, :price, :dval, :tot)");
+                            $db->query("INSERT INTO invoice_items (invoice_id, item_id, description, quantity, loaded_quantity, unit_price, discount_value, discount_type, total) 
+                                        VALUES (:iid, :item_id, :desc, :qty, :qty, :price, :dval, 'Rs', :tot)");
                             $db->bind(':iid', $invoiceServerId);
                             $db->bind(':item_id', $item['product_id']);
                             $db->bind(':desc', $item['product_name']);
                             $db->bind(':qty', $item['quantity']);
                             $db->bind(':price', $item['unit_price']);
-                            $db->bind(':dval', $item['discount_val']);
+                            $db->bind(':dval', $item['discount_val'] ?? 0.0);
                             $db->bind(':tot', $item['total']);
                             $db->execute();
 
