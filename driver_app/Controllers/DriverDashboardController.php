@@ -366,7 +366,7 @@ class DriverDashboardController extends DriverController {
                 if ($customerId > 0 && $amount > 0) {
                     $collections = [
                         'cash' => $method === 'Cash' ? $amount : 0,
-                        'bank' => $method === 'Bank Transfer' ? $amount : 0,
+                        'bank' => ($method === 'Bank' || $method === 'Bank Transfer') ? $amount : 0,
                         'cheque' => $method === 'Cheque' ? $amount : 0,
                         'cheque_bank' => $pmt['bank_name'] ?? '',
                         'cheque_number' => $pmt['cheque_number'] ?? '',

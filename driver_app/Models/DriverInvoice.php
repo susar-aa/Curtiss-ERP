@@ -359,4 +359,11 @@ class DriverInvoice {
             return false;
         }
     }
+
+    public function updateInvoiceDeliveryStatus($invoiceId, $status) {
+        $this->db->query("UPDATE invoices SET delivery_status = :status WHERE id = :id");
+        $this->db->bind(':status', $status);
+        $this->db->bind(':id', $invoiceId);
+        return $this->db->execute();
+    }
 }
