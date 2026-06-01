@@ -18,7 +18,7 @@ class RepTracking {
                 (SELECT COUNT(*) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as bill_count,
                 (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) 
                  FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales,
-                (SELECT COUNT(*) FROM customer_payments WHERE rep_route_id = r.id AND journal_entry_id IS NULL) as unfinalized_count
+                (SELECT COUNT(*) FROM pending_collections WHERE route_id = r.id AND status = 'Pending') as unfinalized_count
             FROM rep_daily_routes r
             LEFT JOIN users u ON r.user_id = u.id
             LEFT JOIN employees e ON u.email = e.email
@@ -148,11 +148,16 @@ class RepTracking {
 
     public function getRouteCollections($routeId) {
         $this->db->query("
-            SELECT cp.*, c.name as customer_name
-            FROM customer_payments cp
-            JOIN customers c ON cp.customer_id = c.id
-            WHERE cp.rep_route_id = :rid
-            ORDER BY cp.created_at ASC
+            SELECT pc.id, pc.customer_id, pc.route_id as rep_route_id, pc.payment_method, pc.amount, 
+                   pc.bank_name, pc.cheque_number, pc.cheque_date, pc.created_at, pc.status,
+                   c.name as customer_name, pc.finalized_by, pc.notes,
+                   CASE WHEN pc.status = 'Finalized' THEN 999999 ELSE NULL END as journal_entry_id,
+                   DATE(pc.created_at) as payment_date,
+                   COALESCE(pc.cheque_number, pc.bank_name, '') as reference
+            FROM pending_collections pc
+            JOIN customers c ON pc.customer_id = c.id
+            WHERE pc.route_id = :rid
+            ORDER BY pc.created_at ASC
         ");
         $this->db->bind(':rid', $routeId);
         return $this->db->resultSet() ?: [];
@@ -179,8 +184,8 @@ class RepTracking {
         }
 
         foreach ($paymentIds as $pid) {
-            // Fetch payment details
-            $this->db->query("SELECT * FROM customer_payments WHERE id = :id AND journal_entry_id IS NULL");
+            // Fetch payment details from pending_collections
+            $this->db->query("SELECT * FROM pending_collections WHERE id = :id AND status = 'Pending'");
             $this->db->bind(':id', $pid);
             $payment = $this->db->single();
             if (!$payment) continue;
@@ -239,9 +244,24 @@ class RepTracking {
             $this->db->bind(':aid', $arAcc);
             $this->db->execute();
 
-            // Link payment to generated journal entry to mark it as finalized
-            $this->db->query("UPDATE customer_payments SET journal_entry_id = :jid WHERE id = :pid");
+            // Insert into customer_payments officially to credit customer subledger
+            $this->db->query("INSERT INTO customer_payments (customer_id, amount, payment_method, payment_date, bank_name, cheque_number, cheque_date, reference, journal_entry_id, created_by, rep_route_id) 
+                              VALUES (:cid, :amt, :method, CURDATE(), :bank, :chqnum, :chqdate, :ref, :jid, :uid, :rid)");
+            $this->db->bind(':cid', $payment->customer_id);
+            $this->db->bind(':amt', $amount);
+            $this->db->bind(':method', $method);
+            $this->db->bind(':bank', $payment->bank_name);
+            $this->db->bind(':chqnum', $payment->cheque_number);
+            $this->db->bind(':chqdate', $payment->cheque_date);
+            $this->db->bind(':ref', $payment->cheque_number ?: $payment->bank_name ?: '');
             $this->db->bind(':jid', $jid);
+            $this->db->bind(':uid', $userId);
+            $this->db->bind(':rid', $payment->route_id);
+            $this->db->execute();
+
+            // Link pending collection to generated journal entry and mark as Finalized
+            $this->db->query("UPDATE pending_collections SET status = 'Finalized', finalized_by = :uid, finalized_at = NOW() WHERE id = :pid");
+            $this->db->bind(':uid', $userId);
             $this->db->bind(':pid', $pid);
             $this->db->execute();
         }
