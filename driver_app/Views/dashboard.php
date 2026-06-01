@@ -267,6 +267,51 @@ $employees = $data['employees'];
             }
         </script>
 
+    <?php elseif ($delivery->status === 'Completed' || $delivery->status === 'Finalized'): ?>
+        <!-- 4. COMPLETED / FINALIZED REPORT STATE -->
+        <div class="card" style="padding: 20px; text-align: center; border-top: 5px solid var(--success);">
+            <div style="font-size: 48px; margin-bottom: 10px;">🏆</div>
+            <span class="badge badge-success" style="margin-bottom: 15px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">
+                Route <?= htmlspecialchars($delivery->status) ?>
+            </span>
+            <h2 style="margin: 0 0 10px; font-size: 22px; font-weight: 800;"><?= htmlspecialchars($delivery->route_name) ?></h2>
+            <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 20px;">
+                This delivery route has been successfully completed and settled. Below is the final summary report.
+            </p>
+
+            <div style="text-align: left; background: var(--app-bg); border-radius: 12px; padding: 15px; margin-bottom: 25px; border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
+                    <span style="color: var(--text-muted);">Vehicle Number:</span>
+                    <strong><?= htmlspecialchars($delivery->vehicle_number) ?></strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
+                    <span style="color: var(--text-muted);">Assigned Driver:</span>
+                    <strong><?= htmlspecialchars($delivery->driver_name) ?></strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
+                    <span style="color: var(--text-muted);">Start Odometer:</span>
+                    <strong><?= htmlspecialchars($delivery->start_meter) ?> KM</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                    <span style="color: var(--text-muted);">End Odometer:</span>
+                    <strong><?= htmlspecialchars($delivery->end_meter) ?> KM</strong>
+                </div>
+            </div>
+
+            <h3 style="text-align: left; font-size: 14px; font-weight: 800; text-transform: uppercase; margin: 20px 0 10px; color: var(--text-muted);">Shops & Deliveries</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px; text-align: left; margin-bottom: 25px;">
+                <?php foreach ($data['shops'] as $shop): ?>
+                    <div class="card" style="margin: 0; padding: 12px 15px; border: 1px solid rgba(46,204,113,0.3); background: rgba(46,204,113,0.03); display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="font-size: 14px; color: var(--text-dark);"><?= htmlspecialchars($shop->name) ?></strong>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">📍 <?= htmlspecialchars($shop->address ?: 'No Address') ?></div>
+                        </div>
+                        <span class="badge badge-success" style="font-size: 9px; padding: 2px 6px;">Delivered</span>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
     <?php endif; ?>
 
 <?php endif; ?>

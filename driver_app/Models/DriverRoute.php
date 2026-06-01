@@ -79,7 +79,7 @@ class DriverRoute {
             JOIN rep_daily_routes r ON d.rep_route_id = r.id
             LEFT JOIN users rep_u ON r.user_id = rep_u.id
             LEFT JOIN employees rep_e ON rep_u.employee_id = rep_e.id
-            WHERE d.status != 'Completed' AND $whereSql
+            WHERE $whereSql
             ORDER BY d.delivery_date DESC, d.created_at DESC
             LIMIT 1
         ");
