@@ -66,4 +66,40 @@ class DriverAuthController extends DriverController {
         header('Location: ' . APP_URL . '/driver/auth/login');
         exit;
     }
+
+    // JSON API for Native Mobile App Authentication
+    public function api_login() {
+        header('Content-Type: application/json');
+        
+        $rawInput = file_get_contents('php://input');
+        $postData = json_decode($rawInput, true) ?: $_POST;
+        
+        $username = trim($postData['username'] ?? '');
+        $password = $postData['password'] ?? '';
+        
+        if (empty($username) || empty($password)) {
+            echo json_encode(['success' => false, 'message' => 'Missing credentials']);
+            exit;
+        }
+        
+        $userModel = $this->model('User');
+        $user = $userModel->login($username, $password);
+        
+        if ($user) {
+            $role = strtolower($user->role);
+            if ($role === 'driver') {
+                echo json_encode([
+                    'success' => true,
+                    'user_id' => intval($user->id),
+                    'username' => $user->username,
+                    'role' => $user->role
+                ]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Unauthorized role']);
+            }
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Invalid username or password']);
+        }
+        exit;
+    }
 }

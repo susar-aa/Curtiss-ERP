@@ -211,4 +211,137 @@ class DriverDashboardController extends DriverController {
         
         $this->view('layout', $data);
     }
+
+    // JSON API for Native Mobile App Pull Synchronization
+    public function api_sync_pull() {
+        header('Content-Type: application/json');
+        
+        $userId = intval($_GET['user_id'] ?? 0);
+        if ($userId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid User ID.']);
+            exit;
+        }
+        
+        $activeDelivery = $this->routeModel->getAssignedDelivery($userId);
+        
+        $shops = [];
+        $invoices = [];
+        $invoiceItems = [];
+        $employees = [];
+        
+        if ($activeDelivery) {
+            $shops = $this->routeModel->getDeliveryShops($activeDelivery->rep_route_id);
+            $employees = $this->routeModel->getActiveEmployees();
+            
+            $billingModel = $this->model('DriverInvoice');
+            foreach ($shops as $shop) {
+                $shopInvs = $billingModel->getCustomerInvoices($shop->id, $activeDelivery->rep_route_id);
+                foreach ($shopInvs as $inv) {
+                    $invoices[] = $inv;
+                    $items = $billingModel->getInvoiceItems($inv->id);
+                    foreach ($items as $item) {
+                        $invoiceItems[] = $item;
+                    }
+                }
+            }
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'assigned_delivery' => $activeDelivery ?: null,
+            'shops' => $shops,
+            'invoices' => $invoices,
+            'invoice_items' => $invoiceItems,
+            'employees' => $employees
+        ]);
+        exit;
+    }
+
+    // JSON API for Native Mobile App Push Synchronization
+    public function api_sync_push() {
+        header('Content-Type: application/json');
+        
+        $rawInput = file_get_contents('php://input');
+        $postData = json_decode($rawInput, true) ?: [];
+        
+        $userId = intval($postData['user_id'] ?? 0);
+        $routeId = intval($postData['route_id'] ?? 0);
+        
+        if ($userId <= 0 || $routeId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Missing route or user parameters.']);
+            exit;
+        }
+        
+        $billingModel = $this->model('DriverInvoice');
+        
+        // 1. Process trip odometer & status updates
+        if (isset($postData['trip_details'])) {
+            $td = $postData['trip_details'];
+            $status = $td['status'] ?? '';
+            $deliveryId = intval($td['id'] ?? 0);
+            
+            if ($deliveryId > 0) {
+                if ($status === 'In Transit') {
+                    $startMeter = floatval($td['start_meter'] ?? 0);
+                    $driverName = $td['driver_name'] ?? '';
+                    $partnerName = $td['partner_name'] ?? '';
+                    $this->routeModel->startTrip($deliveryId, $startMeter, $driverName, $partnerName);
+                } elseif ($status === 'Completed') {
+                    $endMeter = floatval($td['end_meter'] ?? 0);
+                    $cashDenoms = isset($td['cash_denominations']) ? json_encode($td['cash_denominations']) : null;
+                    $this->routeModel->endTrip($deliveryId, $endMeter, $cashDenoms);
+                }
+            }
+        }
+        
+        // 2. Process invoice item quantity modifications
+        if (isset($postData['deliveries']) && is_array($postData['deliveries'])) {
+            foreach ($postData['deliveries'] as $del) {
+                $invoiceId = intval($del['invoice_id'] ?? 0);
+                $status = $del['delivery_status'] ?? 'Delivered';
+                
+                // Update overall invoice delivery status
+                $billingModel->updateInvoiceDeliveryStatus($invoiceId, $status);
+                
+                if (isset($del['items']) && is_array($del['items'])) {
+                    foreach ($del['items'] as $item) {
+                        $itemId = intval($item['server_item_id'] ?? 0);
+                        $qty = floatval($item['delivered_qty'] ?? 0);
+                        if ($itemId > 0) {
+                            if ($qty <= 0) {
+                                $billingModel->deleteInvoiceItem($itemId);
+                            } else {
+                                $billingModel->updateInvoiceItemQty($itemId, $qty);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 3. Process payment collections
+        if (isset($postData['payments']) && is_array($postData['payments'])) {
+            foreach ($postData['payments'] as $pmt) {
+                $customerId = intval($pmt['customer_id'] ?? 0);
+                $method = $pmt['payment_method'] ?? 'Cash';
+                $amount = floatval($pmt['amount'] ?? 0);
+                
+                if ($customerId > 0 && $amount > 0) {
+                    $collections = [
+                        'cash' => $method === 'Cash' ? $amount : 0,
+                        'bank' => $method === 'Bank Transfer' ? $amount : 0,
+                        'cheque' => $method === 'Cheque' ? $amount : 0,
+                        'cheque_bank' => $pmt['bank_name'] ?? '',
+                        'cheque_number' => $pmt['cheque_number'] ?? '',
+                        'cheque_date' => $pmt['cheque_date'] ?? ''
+                    ];
+                    
+                    $billingModel->checkoutShop($customerId, $routeId, $userId, $collections);
+                }
+            }
+        }
+        
+        echo json_encode(['success' => true, 'message' => 'Offline driver changes synchronized successfully!']);
+        exit;
+    }
 }
