@@ -231,6 +231,7 @@ class DriverDashboardController extends DriverController {
         $invoiceItems = [];
         $employees = [];
         
+        $creditInvoices = [];
         if ($activeDelivery) {
             $shops = $this->routeModel->getDeliveryShops($activeDelivery->rep_route_id);
             $employees = $this->routeModel->getActiveEmployees();
@@ -246,6 +247,19 @@ class DriverDashboardController extends DriverController {
                     }
                 }
             }
+
+            // Fetch outstanding credit invoices for the territory
+            $db = new Database();
+            $db->query("
+                SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date, i.status,
+                       (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
+                       c.name as customer_name, c.address as customer_address
+                FROM invoices i
+                JOIN customers c ON i.customer_id = c.id
+                WHERE i.status = 'Unpaid'
+                ORDER BY i.invoice_date ASC
+            ");
+            $creditInvoices = $db->resultSet();
         }
         
         // Debug helper: fetch ALL active deliveries (status != 'Completed') in the DB to see why none matched
@@ -265,6 +279,7 @@ class DriverDashboardController extends DriverController {
             'invoices' => $invoices,
             'invoice_items' => $invoiceItems,
             'employees' => $employees,
+            'credit_invoices' => $creditInvoices,
             'debug' => [
                 'user_id' => $userId,
                 'user_details' => $userDetails,
