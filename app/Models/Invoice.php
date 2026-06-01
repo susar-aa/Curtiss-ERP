@@ -138,8 +138,9 @@ class Invoice {
             $this->db->bind(':id', $revenueAccountId);
             $this->db->execute();
 
+            $stockStatus = $invoiceData['stock_status'] ?? 'deducted';
             $this->db->query("INSERT INTO invoices (invoice_number, customer_id, rep_route_id, invoice_date, due_date, payment_term_id, total_amount, global_discount_val, global_discount_type, notes, journal_entry_id, created_by, status, stock_status) 
-                              VALUES (:invoice_number, :customer_id, :rep_route_id, :invoice_date, :due_date, :payment_term_id, :total_amount, :global_discount_val, :global_discount_type, :notes, :journal_entry_id, :created_by, 'Unpaid', 'deducted')");
+                              VALUES (:invoice_number, :customer_id, :rep_route_id, :invoice_date, :due_date, :payment_term_id, :total_amount, :global_discount_val, :global_discount_type, :notes, :journal_entry_id, :created_by, 'Unpaid', :stock_status)");
             $this->db->bind(':invoice_number', $invoiceData['invoice_number']);
             $this->db->bind(':customer_id', $invoiceData['customer_id']);
             $this->db->bind(':rep_route_id', $invoiceData['rep_route_id'] ?? null);
@@ -152,6 +153,7 @@ class Invoice {
             $this->db->bind(':notes', $invoiceData['notes']);
             $this->db->bind(':journal_entry_id', $journalEntryId);
             $this->db->bind(':created_by', $userId);
+            $this->db->bind(':stock_status', $stockStatus);
             $this->db->execute();
             $invoiceId = $this->db->lastInsertId();
 
@@ -177,22 +179,38 @@ class Invoice {
                 $this->db->execute();
                 $invoiceItemId = $this->db->lastInsertId();
 
-                // Direct creation deducts from Physical stock immediately (with unsigned underflow safety)
-                if ($itemId) {
-                    $this->db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
-                    $this->db->bind(':qty', $item['quantity']);
-                    $this->db->bind(':id', $itemId);
-                    $this->db->execute();
-                }
-                if ($varId) {
-                    $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
-                    $this->db->bind(':qty', $item['quantity']);
-                    $this->db->bind(':id', $varId);
-                    $this->db->execute();
-                }
+                if ($stockStatus === 'reserved') {
+                    // Update Reserved Quantities
+                    if ($itemId) {
+                        $this->db->query("UPDATE items SET quantity_reserved = quantity_reserved + :qty WHERE id = :id");
+                        $this->db->bind(':qty', $item['quantity']);
+                        $this->db->bind(':id', $itemId);
+                        $this->db->execute();
+                    }
+                    if ($varId) {
+                        $this->db->query("UPDATE item_variation_options SET quantity_reserved = quantity_reserved + :qty WHERE id = :id");
+                        $this->db->bind(':qty', $item['quantity']);
+                        $this->db->bind(':id', $varId);
+                        $this->db->execute();
+                    }
+                } else {
+                    // Direct creation deducts from Physical stock immediately (with unsigned underflow safety)
+                    if ($itemId) {
+                        $this->db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
+                        $this->db->bind(':qty', $item['quantity']);
+                        $this->db->bind(':id', $itemId);
+                        $this->db->execute();
+                    }
+                    if ($varId) {
+                        $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
+                        $this->db->bind(':qty', $item['quantity']);
+                        $this->db->bind(':id', $varId);
+                        $this->db->execute();
+                    }
 
-                // Deplete via FIFO batches
-                $fifo->depleteStock($itemId, $varId, $item['quantity'], $invoiceItemId, null);
+                    // Deplete via FIFO batches
+                    $fifo->depleteStock($itemId, $varId, $item['quantity'], $invoiceItemId, null);
+                }
             }
 
             $this->db->commit();

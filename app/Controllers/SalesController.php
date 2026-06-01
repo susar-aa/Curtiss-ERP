@@ -167,6 +167,20 @@ class SalesController extends Controller {
             $customerId = intval($_POST['customer_id'] ?? 0);
             $type = $_POST['type'] ?? 'invoice';
             $editingId = intval($_POST['editing_invoice_id'] ?? 0);
+            $repRouteId = !empty($_POST['rep_route_id']) ? intval($_POST['rep_route_id']) : null;
+
+            // Resolve whether this record is in invoices table or sales_orders table
+            $isInvoiceTable = false;
+            if ($editingId > 0) {
+                $this->db->query("SELECT id FROM invoices WHERE id = :id");
+                $this->db->bind(':id', $editingId);
+                if ($this->db->single()) {
+                    $isInvoiceTable = true;
+                }
+            }
+
+            // Route-assigned sales orders MUST be stored in invoices table with stock_status = 'reserved'
+            $isRouteSalesOrder = ($type === 'sales_order' && ($repRouteId || $isInvoiceTable));
             
             $itemSelections = $_POST['item_selection'] ?? [];
             $qtys = $_POST['qty'] ?? [];
@@ -181,7 +195,7 @@ class SalesController extends Controller {
                 exit;
             }
 
-            if ($type === 'sales_order') {
+            if ($type === 'sales_order' && !$isRouteSalesOrder) {
                 // --- SALES ORDER PROCESS (No stock depletion, No ledger entries) ---
                 $this->db->query("SELECT name, phone FROM customers WHERE id = :id");
                 $this->db->bind(':id', $customerId);
@@ -401,8 +415,9 @@ class SalesController extends Controller {
                         'global_discount_val' => $globalDiscountVal,
                         'global_discount_type' => $globalDiscountType,
                         'notes' => trim($_POST['notes'] ?? ''),
-                        'rep_route_id' => !empty($_POST['rep_route_id']) ? intval($_POST['rep_route_id']) : null,
-                        'grand_total' => $grandTotal
+                        'rep_route_id' => $repRouteId,
+                        'grand_total' => $grandTotal,
+                        'stock_status' => $isRouteSalesOrder ? 'reserved' : 'deducted'
                     ];
 
                     $invoiceModel = $this->model('Invoice');

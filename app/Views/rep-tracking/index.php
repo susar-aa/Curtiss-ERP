@@ -1015,9 +1015,52 @@ error_reporting(E_ALL);
     // --- 5. NEW: Redirect to Sales Order Creation ---
     function redirectToAddInvoice() {
         if (currentRouteId) {
-            window.location.href = '<?= APP_URL ?>/sales/create?type=sales_order&rep_route_id=' + currentRouteId;
+            window.location.href = '<?= APP_URL ?>/salesorder/create?rep_route_id=' + currentRouteId;
         }
     }
+
+    // Auto-refresh interval for immediate data visibility post-sync/post-creation
+    setInterval(() => {
+        if (currentRouteId && document.visibilityState === 'visible') {
+            // Fetch silently without showing the loader overlay to avoid UI blinking
+            fetch('<?= APP_URL ?>/RepTracking/api_get_route_details/' + currentRouteId)
+                .then(response => response.json())
+                .then(data => {
+                    if (currentRouteTab === 'invoices') {
+                        const tbody = document.getElementById('billsTableBody');
+                        let newHtml = '';
+                        if (data.bills.length === 0) {
+                            newHtml = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#888;">No bills generated on this route.</td></tr>';
+                        } else {
+                            data.bills.forEach(bill => {
+                                let time = new Date(bill.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                                let statColor = bill.status === 'Paid' ? '#2e7d32' : (bill.status === 'Unpaid' ? '#ef6c00' : '#666');
+                                newHtml += `
+                                    <tr class="bill-row" onclick="openInvoiceSlider(${bill.id})">
+                                        <td style="font-weight:bold; color:var(--primary);">${bill.invoice_number}</td>
+                                        <td style="color:var(--text-muted);">${time}</td>
+                                        <td style="font-weight:bold;">${bill.customer_name}</td>
+                                        <td style="text-align:right; font-weight:bold; font-family:monospace;">${parseFloat(bill.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+                                        <td style="text-align:center;"><span style="color:${statColor}; font-weight:bold; font-size:11px; text-transform:uppercase;">${bill.status}</span></td>
+                                    </tr>
+                                `;
+                            });
+                        }
+                        tbody.innerHTML = newHtml;
+                    }
+                })
+                .catch(err => console.error("Silent refresh failed:", err));
+        }
+    }, 10000);
+
+    window.addEventListener('pageshow', (event) => {
+        if (currentRouteId) {
+            const routeEl = document.getElementById('route_' + currentRouteId);
+            if (routeEl) {
+                loadRouteDetails(currentRouteId, routeEl);
+            }
+        }
+    });
 
     function openMapModal() {
         if (!currentRouteId) return;

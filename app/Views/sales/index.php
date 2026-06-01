@@ -280,7 +280,7 @@ $editingItems = $data['editing_items'] ?? [];
     <?php endif; ?>
 
     <?php
-    $rep_route_id = $_GET['rep_route_id'] ?? '';
+    $rep_route_id = $_GET['rep_route_id'] ?? (isset($inv->rep_route_id) ? $inv->rep_route_id : '');
     $rep_route_name = '';
     if (!empty($rep_route_id)) {
         try {

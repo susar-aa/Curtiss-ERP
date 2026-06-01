@@ -84,6 +84,12 @@ class SalesOrderController extends Controller {
      * Render the Sales Order creation view
      */
     public function create() {
+        $repRouteId = !empty($_GET['rep_route_id']) ? intval($_GET['rep_route_id']) : null;
+        if ($repRouteId) {
+            header('Location: ' . APP_URL . '/sales/create?type=sales_order&rep_route_id=' . $repRouteId);
+            exit;
+        }
+
         $items = $this->itemModel->getAllItems();
 
         // Standardize wholesale pricing for catalog items
