@@ -308,15 +308,18 @@ class DriverDashboardController extends DriverController {
         $routeId = intval($postData['route_id'] ?? 0);
         
         if ($userId <= 0 || $routeId <= 0) {
+            file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] VALIDATION FAILED: userId=$userId, routeId=$routeId\n\n", FILE_APPEND);
             echo json_encode(['success' => false, 'message' => 'Missing route or user parameters.']);
             exit;
         }
         
         try {
             $billingModel = $this->model('DriverInvoice');
+            file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Successfully loaded DriverInvoice model\n\n", FILE_APPEND);
             
             // 1. Process trip odometer & status updates
             if (isset($postData['trip_details'])) {
+                file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Processing trip details...\n", FILE_APPEND);
                 $td = $postData['trip_details'];
                 $status = $td['status'] ?? '';
                 $deliveryId = intval($td['id'] ?? 0);
@@ -339,6 +342,7 @@ class DriverDashboardController extends DriverController {
             
             // 2. Process invoice item quantity modifications
             if (isset($postData['deliveries']) && is_array($postData['deliveries'])) {
+                file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Processing " . count($postData['deliveries']) . " deliveries...\n", FILE_APPEND);
                 foreach ($postData['deliveries'] as $del) {
                     $invoiceId = intval($del['invoice_id'] ?? 0);
                     $status = $del['delivery_status'] ?? 'Delivered';
@@ -364,7 +368,10 @@ class DriverDashboardController extends DriverController {
             
             // 3. Process payment collections
             if (isset($postData['payments']) && is_array($postData['payments'])) {
-                foreach ($postData['payments'] as $pmt) {
+                file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Processing " . count($postData['payments']) . " payments...\n", FILE_APPEND);
+                foreach ($postData['payments'] as $idx => $pmt) {
+                    file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Payment #$idx: " . print_r($pmt, true) . "\n", FILE_APPEND);
+                    
                     $customerId = intval($pmt['customer_id'] ?? 0);
                     $method = $pmt['payment_method'] ?? 'Cash';
                     $amount = floatval($pmt['amount'] ?? 0);
@@ -379,11 +386,16 @@ class DriverDashboardController extends DriverController {
                             'cheque_date' => $pmt['cheque_date'] ?? ''
                         ];
                         
+                        file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Calling checkoutShop: cust=$customerId, route=$routeId, user=$userId, collections=" . print_r($collections, true) . "\n", FILE_APPEND);
                         $billingModel->checkoutShop($customerId, $routeId, $userId, $collections);
+                        file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] checkoutShop succeeded\n", FILE_APPEND);
+                    } else {
+                        file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Skipping payment: customerId=$customerId, amount=$amount\n", FILE_APPEND);
                     }
                 }
             }
             
+            file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] PUSH SYNC COMPLETED SUCCESSFULLY\n\n", FILE_APPEND);
             echo json_encode(['success' => true, 'message' => 'Offline driver changes synchronized successfully!']);
             exit;
         } catch (Exception $e) {

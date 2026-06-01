@@ -277,57 +277,88 @@ class DriverInvoice {
     }
 
     public function checkoutShop($customerId, $routeId, $userId, $collections) {
+        $logPath = dirname(dirname(__DIR__)) . '/sync_debug.log';
+        
         $this->db->beginTransaction();
         try {
+            file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] checkoutShop START: cust=$customerId, route=$routeId\n", FILE_APPEND);
+            
             // 1. Fetch today's invoices for this customer
             $invoices = $this->getCustomerInvoices($customerId, $routeId);
+            file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Found " . count($invoices) . " invoices\n", FILE_APPEND);
 
             // 2. DO NOT deduct physical stock or finalize accounting here. Update delivery status to 'Delivered'
             foreach ($invoices as $invoice) {
                 $this->db->query("UPDATE invoices SET delivery_status = 'Delivered' WHERE id = :id");
                 $this->db->bind(':id', $invoice->id);
-                $this->db->execute();
+                $result = $this->db->execute();
+                if (!$result) {
+                    throw new Exception("Failed to update invoice delivery status for invoice ID: {$invoice->id}");
+                }
             }
 
             // 3. Process collections & save to customer_payments and cheques tables (without posting journal entries yet)
             $cashAmt = floatval($collections['cash'] ?? 0);
             $bankAmt = floatval($collections['bank'] ?? 0);
 
-            $savePaymentRecord = function($amount, $methodStr, $chequeDetails = null) use ($userId, $customerId, $routeId) {
-                if ($amount <= 0) return;
+            file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Processing payments: cash=$cashAmt, bank=$bankAmt\n", FILE_APPEND);
+
+            $savePaymentRecord = function($amount, $methodStr, $chequeDetails = null) use ($userId, $customerId, $routeId, $logPath) {
+                if ($amount <= 0) {
+                    file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Skipping $methodStr payment with amount=$amount\n", FILE_APPEND);
+                    return;
+                }
 
                 $refCode = "PMT-" . time() . rand(10,99);
 
-                // If PDC Cheque details provided, write to cheques table
-                if ($methodStr === 'Cheque' && $chequeDetails) {
-                    $this->db->query("INSERT INTO cheques (customer_id, bank_name, cheque_number, amount, banking_date, status, rep_route_id, created_by) 
-                                      VALUES (:cid, :bn, :cn, :amt, :bdate, 'Pending', :route_id, :uid)");
+                try {
+                    // If PDC Cheque details provided, write to cheques table
+                    if ($methodStr === 'Cheque' && $chequeDetails) {
+                        file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Inserting cheque record: bank={$chequeDetails['bank']}, number={$chequeDetails['number']}, amount=$amount\n", FILE_APPEND);
+                        
+                        $this->db->query("INSERT INTO cheques (customer_id, bank_name, cheque_number, amount, banking_date, status, rep_route_id, created_by) 
+                                          VALUES (:cid, :bn, :cn, :amt, :bdate, 'Pending', :route_id, :uid)");
+                        $this->db->bind(':cid', $customerId);
+                        $this->db->bind(':bn', $chequeDetails['bank'] ?? 'Unknown');
+                        $this->db->bind(':cn', $chequeDetails['number'] ?? 'Unknown');
+                        $this->db->bind(':amt', $amount);
+                        $this->db->bind(':bdate', $chequeDetails['date'] ?: date('Y-m-d'));
+                        $this->db->bind(':route_id', $routeId);
+                        $this->db->bind(':uid', $userId);
+                        $result = $this->db->execute();
+                        if (!$result) {
+                            throw new Exception("Failed to insert cheque record for customer $customerId");
+                        }
+                    }
+
+                    // Log Customer Payment History with rep_route_id (leaving journal_entry_id NULL)
+                    file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Inserting payment record: method=$methodStr, amount=$amount, ref=" . ($chequeDetails['number'] ?? $refCode) . "\n", FILE_APPEND);
+                    
+                    $this->db->query("INSERT INTO customer_payments (customer_id, amount, payment_date, payment_method, reference, journal_entry_id, rep_route_id, created_by) 
+                                      VALUES (:cid, :amt, CURDATE(), :method, :ref, NULL, :route_id, :uid)");
                     $this->db->bind(':cid', $customerId);
-                    $this->db->bind(':bn', $chequeDetails['bank'] ?? 'Unknown');
-                    $this->db->bind(':cn', $chequeDetails['number'] ?? 'Unknown');
                     $this->db->bind(':amt', $amount);
-                    $this->db->bind(':bdate', $chequeDetails['date'] ?: date('Y-m-d'));
+                    $this->db->bind(':method', $methodStr);
+                    $this->db->bind(':ref', $chequeDetails['number'] ?? $refCode);
                     $this->db->bind(':route_id', $routeId);
                     $this->db->bind(':uid', $userId);
-                    $this->db->execute();
+                    $result = $this->db->execute();
+                    if (!$result) {
+                        throw new Exception("Failed to insert payment record for customer $customerId, method=$methodStr");
+                    }
+                    
+                    file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Successfully saved $methodStr payment\n", FILE_APPEND);
+                } catch (Exception $e) {
+                    file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] ERROR in savePaymentRecord ($methodStr): " . $e->getMessage() . "\n", FILE_APPEND);
+                    throw $e;
                 }
-
-                // Log Customer Payment History with rep_route_id (leaving journal_entry_id NULL)
-                $this->db->query("INSERT INTO customer_payments (customer_id, amount, payment_date, payment_method, reference, journal_entry_id, rep_route_id, created_by) 
-                                  VALUES (:cid, :amt, CURDATE(), :method, :ref, NULL, :route_id, :uid)");
-                $this->db->bind(':cid', $customerId);
-                $this->db->bind(':amt', $amount);
-                $this->db->bind(':method', $methodStr);
-                $this->db->bind(':ref', $chequeDetails['number'] ?? $refCode);
-                $this->db->bind(':route_id', $routeId);
-                $this->db->bind(':uid', $userId);
-                $this->db->execute();
             };
 
             $savePaymentRecord($cashAmt, 'Cash');
             $savePaymentRecord($bankAmt, 'Bank Transfer');
             
             if (isset($collections['cheques']) && is_array($collections['cheques'])) {
+                file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Processing cheque array with " . count($collections['cheques']) . " items\n", FILE_APPEND);
                 foreach ($collections['cheques'] as $chequeObj) {
                     $amt = floatval($chequeObj['amount'] ?? 0);
                     if ($amt > 0) {
@@ -342,6 +373,7 @@ class DriverInvoice {
                 // Fallback to legacy single cheque details if present
                 $chequeAmt = floatval($collections['cheque'] ?? 0);
                 if ($chequeAmt > 0) {
+                    file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Processing single cheque (legacy format): amount=$chequeAmt\n", FILE_APPEND);
                     $chequeDetails = [
                         'bank' => $collections['cheque_bank'] ?? '',
                         'number' => $collections['cheque_number'] ?? '',
@@ -352,11 +384,11 @@ class DriverInvoice {
             }
 
             $this->db->commit();
+            file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] checkoutShop COMPLETED SUCCESSFULLY\n", FILE_APPEND);
             return true;
         } catch (Exception $e) {
             $this->db->rollBack();
-            $logPath = dirname(dirname(__DIR__)) . '/sync_debug.log';
-            file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] checkoutShop error: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
+            file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] checkoutShop ROLLBACK: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString() . "\n", FILE_APPEND);
             throw $e;
         }
     }
