@@ -124,21 +124,27 @@ $employees = $data['employees'];
         </div>
 
         <?php if (!empty($data['route_credit_bills'])): ?>
-            <h3 style="font-size: 15px; font-weight: 800; text-transform: uppercase; margin: 25px 0 12px; color: var(--danger); letter-spacing: 0.5px;">💳 Outstanding Credit Bills on Route</h3>
+            <h3 style="font-size: 15px; font-weight: 800; text-transform: uppercase; margin: 25px 0 12px; color: var(--danger); letter-spacing: 0.5px;">💳 Outstanding Credit Collections on Route</h3>
             <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px;">
-                <?php foreach ($data['route_credit_bills'] as $bill): ?>
-                    <a href="<?= APP_URL ?>/driver/billing/checkout/<?= $bill->customer_id ?>" style="text-decoration: none; display: block; color: inherit;">
-                        <div class="card card-interactive" style="margin: 0; padding: 12px 15px; border-left: 4px solid var(--danger); background: var(--surface); display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;">
+                <?php foreach ($data['route_credit_bills'] as $bill): 
+                    $isCompleted = !empty($bill->is_completed);
+                ?>
+                    <a href="<?= APP_URL ?>/driver/billing/shop/<?= $bill->customer_id ?>" style="text-decoration: none; display: block; color: inherit;">
+                        <div class="card card-interactive" style="margin: 0; padding: 12px 15px; border-left: 4px solid <?= $isCompleted ? 'var(--success)' : 'var(--danger)' ?>; background: <?= $isCompleted ? 'rgba(46,204,113,0.03)' : 'var(--surface)' ?>; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;">
                             <div style="flex: 1; padding-right: 10px;">
                                 <strong style="font-size: 14px; color: var(--text-dark);"><?= htmlspecialchars($bill->customer_name) ?></strong>
                                 <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-                                    Bill: <?= htmlspecialchars($bill->invoice_number) ?> (<?= htmlspecialchars($bill->invoice_date) ?>)
+                                    Outstanding Customer Credit Collection
                                 </div>
                             </div>
                             <div style="text-align: right; display: flex; align-items: center; gap: 10px;">
                                 <div>
-                                    <span class="badge badge-danger" style="font-size: 9px; padding: 2px 6px;">Credit</span>
-                                    <strong style="font-size: 14px; display: block; margin-top: 4px; color: var(--danger);">Rs. <?= number_format($bill->true_grand_total, 2) ?></strong>
+                                    <span class="badge <?= $isCompleted ? 'badge-success' : 'badge-danger' ?>" style="font-size: 9px; padding: 2px 6px;">
+                                        <?= $isCompleted ? 'Delivered' : 'Pending' ?>
+                                    </span>
+                                    <strong style="font-size: 14px; display: block; margin-top: 4px; color: <?= $isCompleted ? 'var(--success)' : 'var(--danger)' ?>;">
+                                        Rs. <?= number_format($bill->true_grand_total, 2) ?>
+                                    </strong>
                                 </div>
                                 <span style="font-size: 16px; color: var(--text-muted);">❯</span>
                             </div>

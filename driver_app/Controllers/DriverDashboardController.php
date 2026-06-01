@@ -49,17 +49,18 @@ class DriverDashboardController extends DriverController {
                 if (!empty($selectedIds) && is_array($selectedIds)) {
                     $idList = implode(',', array_map('intval', $selectedIds));
                     $db->query("
-                        SELECT i.*, c.name as customer_name,
-                            (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
+                        SELECT i.customer_id, c.name as customer_name, MIN(i.invoice_number) as invoice_number, MIN(i.invoice_date) as invoice_date,
+                            SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
                         FROM invoices i
                         JOIN customers c ON i.customer_id = c.id
                         WHERE i.customer_id IN ($idList) AND i.status = 'Unpaid'
-                        ORDER BY c.name ASC, i.invoice_date ASC
+                        GROUP BY i.customer_id, c.name
+                        ORDER BY c.name ASC
                     ");
                 } else {
                     $db->query("
-                        SELECT i.*, c.name as customer_name,
-                            (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
+                        SELECT i.customer_id, c.name as customer_name, MIN(i.invoice_number) as invoice_number, MIN(i.invoice_date) as invoice_date,
+                            SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
                         FROM invoices i
                         JOIN customers c ON i.customer_id = c.id
                         WHERE (
@@ -81,13 +82,21 @@ class DriverDashboardController extends DriverController {
                                 SELECT DISTINCT customer_id FROM invoices WHERE rep_route_id = :rid2 AND status != 'Voided'
                              )
                         ) AND i.status = 'Unpaid'
-                        ORDER BY c.name ASC, i.invoice_date ASC
+                        GROUP BY i.customer_id, c.name
+                        ORDER BY c.name ASC
                     ");
                     $db->bind(':rid', $activeDelivery->rep_route_id);
                     $db->bind(':rid2', $activeDelivery->rep_route_id);
                     $db->bind(':rid3', $activeDelivery->rep_route_id);
                 }
                 $routeCreditBills = $db->resultSet();
+                foreach ($routeCreditBills as $bill) {
+                    $db->query("SELECT COUNT(*) as cnt FROM customer_payments WHERE customer_id = :cid AND rep_route_id = :rid");
+                    $db->bind(':cid', $bill->customer_id);
+                    $db->bind(':rid', $activeDelivery->rep_route_id);
+                    $row = $db->single();
+                    $bill->is_completed = ($row && intval($row->cnt) > 0);
+                }
             }
             $employees = $this->routeModel->getActiveEmployees();
         }

@@ -34,7 +34,11 @@ class DriverBillingController extends DriverController {
 
         // Fetch items for today's invoices
         $invoiceItems = [];
+        $pendingCount = 0;
         foreach ($invoices as $invoice) {
+            if ($invoice->delivery_status === 'Pending') {
+                $pendingCount++;
+            }
             $items = $this->billingModel->getInvoiceItems($invoice->id);
             foreach ($items as $item) {
                 if (floatval($item->quantity) <= 0) continue;
@@ -46,11 +50,27 @@ class DriverBillingController extends DriverController {
             }
         }
 
+        // Fetch payments made by this customer on this daily route
+        $db = new Database();
+        $db->query("SELECT * FROM customer_payments WHERE customer_id = :cid AND rep_route_id = :rid");
+        $db->bind(':cid', $customerId);
+        $db->bind(':rid', $activeDelivery->rep_route_id);
+        $payments = $db->resultSet();
+
+        // Check if delivery is fully completed for this shop
+        $hasTodayInvoices = (count($invoices) > 0);
+        if ($hasTodayInvoices) {
+            $isDelivered = ($pendingCount === 0);
+        } else {
+            $isDelivered = (count($payments) > 0);
+        }
+
         $data = [
-            'title' => 'Shop Checklist',
-            'content_view' => 'shop_delivery',
+            'title' => $isDelivered ? 'Delivery Report: ' . $customer->name : 'Shop Checklist',
+            'content_view' => $isDelivered ? 'shop_delivery_report' : 'shop_delivery',
             'customer' => $customer,
             'invoices' => $invoices,
+            'payments' => $payments,
             'credit_bills' => $creditBills,
             'invoice_items' => $invoiceItems,
             'active_delivery' => $activeDelivery,
