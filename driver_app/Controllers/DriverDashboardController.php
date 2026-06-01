@@ -297,7 +297,10 @@ class DriverDashboardController extends DriverController {
         header('Content-Type: application/json');
         
         $rawInput = file_get_contents('php://input');
+        file_put_contents('C:/xampp/htdocs/Curtiss-ERP/sync_debug.log', "[" . date('Y-m-d H:i:s') . "] PUSH SYNC REQUEST:\nRAW: " . $rawInput . "\n\n", FILE_APPEND);
+        
         $postData = json_decode($rawInput, true) ?: [];
+        file_put_contents('C:/xampp/htdocs/Curtiss-ERP/sync_debug.log', "[" . date('Y-m-d H:i:s') . "] DECODED PAYLOAD:\n" . print_r($postData, true) . "\n\n", FILE_APPEND);
         
         $userId = intval($postData['user_id'] ?? 0);
         $routeId = intval($postData['route_id'] ?? 0);
@@ -307,78 +310,84 @@ class DriverDashboardController extends DriverController {
             exit;
         }
         
-        $billingModel = $this->model('DriverInvoice');
-        
-        // 1. Process trip odometer & status updates
-        if (isset($postData['trip_details'])) {
-            $td = $postData['trip_details'];
-            $status = $td['status'] ?? '';
-            $deliveryId = intval($td['id'] ?? 0);
+        try {
+            $billingModel = $this->model('DriverInvoice');
             
-            if ($deliveryId > 0) {
-                if ($status === 'Accepted') {
-                    $this->routeModel->acceptRoute($deliveryId);
-                } elseif ($status === 'In Transit') {
-                    $startMeter = floatval($td['start_meter'] ?? 0);
-                    $driverName = $td['driver_name'] ?? '';
-                    $partnerName = $td['partner_name'] ?? '';
-                    $this->routeModel->startTrip($deliveryId, $startMeter, $driverName, $partnerName);
-                } elseif ($status === 'Completed') {
-                    $endMeter = floatval($td['end_meter'] ?? 0);
-                    $cashDenoms = isset($td['cash_denominations']) ? json_encode($td['cash_denominations']) : null;
-                    $this->routeModel->endTrip($deliveryId, $endMeter, $cashDenoms);
+            // 1. Process trip odometer & status updates
+            if (isset($postData['trip_details'])) {
+                $td = $postData['trip_details'];
+                $status = $td['status'] ?? '';
+                $deliveryId = intval($td['id'] ?? 0);
+                
+                if ($deliveryId > 0) {
+                    if ($status === 'Accepted') {
+                        $this->routeModel->acceptRoute($deliveryId);
+                    } elseif ($status === 'In Transit') {
+                        $startMeter = floatval($td['start_meter'] ?? 0);
+                        $driverName = $td['driver_name'] ?? '';
+                        $partnerName = $td['partner_name'] ?? '';
+                        $this->routeModel->startTrip($deliveryId, $startMeter, $driverName, $partnerName);
+                    } elseif ($status === 'Completed') {
+                        $endMeter = floatval($td['end_meter'] ?? 0);
+                        $cashDenoms = isset($td['cash_denominations']) ? json_encode($td['cash_denominations']) : null;
+                        $this->routeModel->endTrip($deliveryId, $endMeter, $cashDenoms);
+                    }
                 }
             }
-        }
-        
-        // 2. Process invoice item quantity modifications
-        if (isset($postData['deliveries']) && is_array($postData['deliveries'])) {
-            foreach ($postData['deliveries'] as $del) {
-                $invoiceId = intval($del['invoice_id'] ?? 0);
-                $status = $del['delivery_status'] ?? 'Delivered';
-                
-                // Update overall invoice delivery status
-                $billingModel->updateInvoiceDeliveryStatus($invoiceId, $status);
-                
-                if (isset($del['items']) && is_array($del['items'])) {
-                    foreach ($del['items'] as $item) {
-                        $itemId = intval($item['server_item_id'] ?? 0);
-                        $qty = floatval($item['delivered_qty'] ?? 0);
-                        if ($itemId > 0) {
-                            if ($qty <= 0) {
-                                $billingModel->deleteInvoiceItem($itemId);
-                            } else {
-                                $billingModel->updateInvoiceItemQty($itemId, $qty);
+            
+            // 2. Process invoice item quantity modifications
+            if (isset($postData['deliveries']) && is_array($postData['deliveries'])) {
+                foreach ($postData['deliveries'] as $del) {
+                    $invoiceId = intval($del['invoice_id'] ?? 0);
+                    $status = $del['delivery_status'] ?? 'Delivered';
+                    
+                    // Update overall invoice delivery status
+                    $billingModel->updateInvoiceDeliveryStatus($invoiceId, $status);
+                    
+                    if (isset($del['items']) && is_array($del['items'])) {
+                        foreach ($del['items'] as $item) {
+                            $itemId = intval($item['server_item_id'] ?? 0);
+                            $qty = floatval($item['delivered_qty'] ?? 0);
+                            if ($itemId > 0) {
+                                if ($qty <= 0) {
+                                    $billingModel->deleteInvoiceItem($itemId);
+                                } else {
+                                    $billingModel->updateInvoiceItemQty($itemId, $qty);
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-        
-        // 3. Process payment collections
-        if (isset($postData['payments']) && is_array($postData['payments'])) {
-            foreach ($postData['payments'] as $pmt) {
-                $customerId = intval($pmt['customer_id'] ?? 0);
-                $method = $pmt['payment_method'] ?? 'Cash';
-                $amount = floatval($pmt['amount'] ?? 0);
-                
-                if ($customerId > 0 && $amount > 0) {
-                    $collections = [
-                        'cash' => $method === 'Cash' ? $amount : 0,
-                        'bank' => ($method === 'Bank' || $method === 'Bank Transfer') ? $amount : 0,
-                        'cheque' => $method === 'Cheque' ? $amount : 0,
-                        'cheque_bank' => $pmt['bank_name'] ?? '',
-                        'cheque_number' => $pmt['cheque_number'] ?? '',
-                        'cheque_date' => $pmt['cheque_date'] ?? ''
-                    ];
+            
+            // 3. Process payment collections
+            if (isset($postData['payments']) && is_array($postData['payments'])) {
+                foreach ($postData['payments'] as $pmt) {
+                    $customerId = intval($pmt['customer_id'] ?? 0);
+                    $method = $pmt['payment_method'] ?? 'Cash';
+                    $amount = floatval($pmt['amount'] ?? 0);
                     
-                    $billingModel->checkoutShop($customerId, $routeId, $userId, $collections);
+                    if ($customerId > 0 && $amount > 0) {
+                        $collections = [
+                            'cash' => $method === 'Cash' ? $amount : 0,
+                            'bank' => ($method === 'Bank' || $method === 'Bank Transfer') ? $amount : 0,
+                            'cheque' => $method === 'Cheque' ? $amount : 0,
+                            'cheque_bank' => $pmt['bank_name'] ?? '',
+                            'cheque_number' => $pmt['cheque_number'] ?? '',
+                            'cheque_date' => $pmt['cheque_date'] ?? ''
+                        ];
+                        
+                        $billingModel->checkoutShop($customerId, $routeId, $userId, $collections);
+                    }
                 }
             }
+            
+            echo json_encode(['success' => true, 'message' => 'Offline driver changes synchronized successfully!']);
+            exit;
+        } catch (Exception $e) {
+            file_put_contents('C:/xampp/htdocs/Curtiss-ERP/sync_debug.log', "[" . date('Y-m-d H:i:s') . "] FATAL ERROR DURING PUSH: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
+            echo json_encode(['success' => false, 'message' => 'Server sync processing error: ' . $e->getMessage()]);
+            exit;
         }
-        
-        echo json_encode(['success' => true, 'message' => 'Offline driver changes synchronized successfully!']);
-        exit;
     }
 }

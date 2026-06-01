@@ -355,8 +355,8 @@ class DriverInvoice {
             return true;
         } catch (Exception $e) {
             $this->db->rollBack();
-            error_log("checkoutShop error: " . $e->getMessage());
-            return false;
+            file_put_contents('C:/xampp/htdocs/Curtiss-ERP/sync_debug.log', "[" . date('Y-m-d H:i:s') . "] checkoutShop error: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
+            throw $e;
         }
     }
 
