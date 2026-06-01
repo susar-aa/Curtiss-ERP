@@ -73,6 +73,50 @@ class RepTrackingController extends Controller {
         exit;
     }
 
+    // Helper to auto-apply customer payments to non-voided invoices in chronological (FIFO) order
+    private function autoApplyPaymentsToInvoices($customerId) {
+        $db = new Database();
+        
+        // 1. Get total paid amount for this customer
+        $db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :cid");
+        $db->bind(':cid', $customerId);
+        $rowPaid = $db->single();
+        $totalPaid = $rowPaid ? floatval($rowPaid->total_paid) : 0.0;
+        
+        // 2. Get all non-voided invoices in chronological order
+        $db->query("
+            SELECT id, 
+                   (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total,
+                   status
+            FROM invoices
+            WHERE customer_id = :cid AND status != 'Voided'
+            ORDER BY invoice_date ASC, id ASC
+        ");
+        $db->bind(':cid', $customerId);
+        $invoices = $db->resultSet();
+        
+        $remainingPaid = $totalPaid;
+        
+        foreach ($invoices as $inv) {
+            $grandTotal = floatval($inv->true_grand_total);
+            
+            if ($remainingPaid >= $grandTotal - 0.01) { // Allow minor rounding differences
+                $newStatus = 'Paid';
+                $remainingPaid -= $grandTotal;
+            } else {
+                $newStatus = 'Unpaid';
+                $remainingPaid = 0;
+            }
+            
+            if ($inv->status !== $newStatus) {
+                $db->query("UPDATE invoices SET status = :status WHERE id = :id");
+                $db->bind(':status', $newStatus);
+                $db->bind(':id', $inv->id);
+                $db->execute();
+            }
+        }
+    }
+
     // API: outstanding credit bills in the same main area/territory of the route
     public function api_get_outstanding_bills($routeId) {
         $db = new Database();
@@ -113,8 +157,22 @@ class RepTrackingController extends Controller {
             echo json_encode(['status' => 'success', 'bills' => []]);
             exit;
         }
+
+        // 2. Fetch and heal statuses for all customers in this territory who have invoices
+        $db->query("
+            SELECT DISTINCT c.id
+            FROM customers c
+            JOIN mca_areas m ON c.mca_id = m.id
+            JOIN invoices i ON i.customer_id = c.id
+            WHERE m.main_area_id = :mid AND i.status != 'Voided'
+        ");
+        $db->bind(':mid', $mainAreaId);
+        $custs = $db->resultSet();
+        foreach ($custs as $c) {
+            $this->autoApplyPaymentsToInvoices($c->id);
+        }
         
-        // 2. Fetch outstanding customers (aggregated outstanding totals) in that main_area_id
+        // 3. Fetch outstanding customers (aggregated outstanding totals) in that main_area_id
         $db->query("
             SELECT c.id as customer_id, c.name as customer_name, m.name as mca_name,
                    SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as total_outstanding

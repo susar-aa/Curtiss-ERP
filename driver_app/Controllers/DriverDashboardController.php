@@ -33,6 +33,13 @@ class DriverDashboardController extends DriverController {
                 $row = $db->single();
                 $todayCashCollected = $row ? floatval($row->cash_total) : 0.0;
 
+                // Heal invoice payment statuses dynamically before fetching
+                $db->query("SELECT DISTINCT customer_id FROM invoices WHERE status = 'Unpaid'");
+                $custs = $db->resultSet();
+                foreach ($custs as $c) {
+                    $this->autoApplyPaymentsToInvoices($c->customer_id);
+                }
+
                 // Fetch all previous credit bills for the active delivery (or fall back to territory-wide)
                 $selectedIds = [];
                 if ($activeDelivery && !empty($activeDelivery->selected_credit_invoices)) {
@@ -266,8 +273,15 @@ class DriverDashboardController extends DriverController {
             }
         }
 
-        // Fetch outstanding credit invoices: ONLY selected/ticked ones for the active delivery if specified
+        // Heal invoice payment statuses dynamically before fetching
         $db = new Database();
+        $db->query("SELECT DISTINCT customer_id FROM invoices WHERE status = 'Unpaid'");
+        $custs = $db->resultSet();
+        foreach ($custs as $c) {
+            $this->autoApplyPaymentsToInvoices($c->customer_id);
+        }
+
+        // Fetch outstanding credit invoices: ONLY selected/ticked ones for the active delivery if specified
         $selectedIds = [];
         if ($activeDelivery && !empty($activeDelivery->selected_credit_invoices)) {
             $selectedIds = json_decode($activeDelivery->selected_credit_invoices, true);
@@ -424,7 +438,8 @@ class DriverDashboardController extends DriverController {
                         
                         file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Calling checkoutShop: cust=$customerId, route=$routeId, user=$userId, collections=" . print_r($collections, true) . "\n", FILE_APPEND);
                         $billingModel->checkoutShop($customerId, $routeId, $userId, $collections);
-                        file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] checkoutShop succeeded\n", FILE_APPEND);
+                        $this->autoApplyPaymentsToInvoices($customerId);
+                        file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] checkoutShop succeeded and invoice payment statuses healed\n", FILE_APPEND);
                     } else {
                         file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Skipping payment: customerId=$customerId, amount=$amount\n", FILE_APPEND);
                     }
@@ -438,6 +453,50 @@ class DriverDashboardController extends DriverController {
             file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] FATAL ERROR DURING PUSH: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
             echo json_encode(['success' => false, 'message' => 'Server sync processing error: ' . $e->getMessage()]);
             exit;
+        }
+    }
+
+    // Helper to auto-apply customer payments to non-voided invoices in chronological (FIFO) order
+    private function autoApplyPaymentsToInvoices($customerId) {
+        $db = new Database();
+        
+        // 1. Get total paid amount for this customer
+        $db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :cid");
+        $db->bind(':cid', $customerId);
+        $rowPaid = $db->single();
+        $totalPaid = $rowPaid ? floatval($rowPaid->total_paid) : 0.0;
+        
+        // 2. Get all non-voided invoices in chronological order
+        $db->query("
+            SELECT id, 
+                   (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total,
+                   status
+            FROM invoices
+            WHERE customer_id = :cid AND status != 'Voided'
+            ORDER BY invoice_date ASC, id ASC
+        ");
+        $db->bind(':cid', $customerId);
+        $invoices = $db->resultSet();
+        
+        $remainingPaid = $totalPaid;
+        
+        foreach ($invoices as $inv) {
+            $grandTotal = floatval($inv->true_grand_total);
+            
+            if ($remainingPaid >= $grandTotal - 0.01) { // Allow minor rounding differences
+                $newStatus = 'Paid';
+                $remainingPaid -= $grandTotal;
+            } else {
+                $newStatus = 'Unpaid';
+                $remainingPaid = 0;
+            }
+            
+            if ($inv->status !== $newStatus) {
+                $db->query("UPDATE invoices SET status = :status WHERE id = :id");
+                $db->bind(':status', $newStatus);
+                $db->bind(':id', $inv->id);
+                $db->execute();
+            }
         }
     }
 }

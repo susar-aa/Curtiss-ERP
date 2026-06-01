@@ -290,29 +290,8 @@ class BillingController extends RepController {
                 }
             }
 
-            // Auto-Allocate Payments to Oldest Unpaid Invoices
-            $totalCollected = $collections['cash'] + $collections['bank'] + $totalChequeAmount;
-            if ($totalCollected > 0) {
-                $db->query("SELECT id, total_amount, tax_amount, global_discount_val, global_discount_type FROM invoices WHERE customer_id = :cid AND status IN ('Unpaid', 'Draft') ORDER BY invoice_date ASC");
-                $db->bind(':cid', $customerId);
-                $unpaid = $db->resultSet();
-                
-                $remaining = $totalCollected;
-                foreach($unpaid as $inv) {
-                    $trueGrandTotal = $inv->total_amount;
-                    if ($inv->global_discount_val > 0) {
-                        $trueGrandTotal -= ($inv->global_discount_type == '%') ? ($inv->total_amount * ($inv->global_discount_val / 100)) : $inv->global_discount_val;
-                    }
-                    $trueGrandTotal += $inv->tax_amount;
-
-                    if ($remaining >= $trueGrandTotal - 0.01) { 
-                        $db->query("UPDATE invoices SET status = 'Paid' WHERE id = :id");
-                        $db->bind(':id', $inv->id);
-                        $db->execute();
-                        $remaining -= $trueGrandTotal;
-                    }
-                }
-            }
+            // Auto-Allocate and self-heal all payments in FIFO order across all customer invoices
+            $this->autoApplyPaymentsToInvoices($customerId);
 
             $db->commit();
             
@@ -323,6 +302,50 @@ class BillingController extends RepController {
         } catch (Exception $e) {
             if ($db) $db->rollBack();
             die("Checkout Transaction Failed: " . $e->getMessage());
+        }
+    }
+
+    // Helper to auto-apply customer payments to non-voided invoices in chronological (FIFO) order
+    private function autoApplyPaymentsToInvoices($customerId) {
+        $db = new Database();
+        
+        // 1. Get total paid amount for this customer
+        $db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :cid");
+        $db->bind(':cid', $customerId);
+        $rowPaid = $db->single();
+        $totalPaid = $rowPaid ? floatval($rowPaid->total_paid) : 0.0;
+        
+        // 2. Get all non-voided invoices in chronological order
+        $db->query("
+            SELECT id, 
+                   (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total,
+                   status
+            FROM invoices
+            WHERE customer_id = :cid AND status != 'Voided'
+            ORDER BY invoice_date ASC, id ASC
+        ");
+        $db->bind(':cid', $customerId);
+        $invoices = $db->resultSet();
+        
+        $remainingPaid = $totalPaid;
+        
+        foreach ($invoices as $inv) {
+            $grandTotal = floatval($inv->true_grand_total);
+            
+            if ($remainingPaid >= $grandTotal - 0.01) { // Allow minor rounding differences
+                $newStatus = 'Paid';
+                $remainingPaid -= $grandTotal;
+            } else {
+                $newStatus = 'Unpaid';
+                $remainingPaid = 0;
+            }
+            
+            if ($inv->status !== $newStatus) {
+                $db->query("UPDATE invoices SET status = :status WHERE id = :id");
+                $db->bind(':status', $newStatus);
+                $db->bind(':id', $inv->id);
+                $db->execute();
+            }
         }
     }
 }
