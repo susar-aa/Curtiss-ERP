@@ -33,36 +33,53 @@ class DriverDashboardController extends DriverController {
                 $row = $db->single();
                 $todayCashCollected = $row ? floatval($row->cash_total) : 0.0;
 
-                // Fetch all previous credit bills for the MCA(s) of this route
-                $db->query("
-                    SELECT i.*, c.name as customer_name,
-                        (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
-                    FROM invoices i
-                    JOIN customers c ON i.customer_id = c.id
-                    WHERE (
-                        c.mca_id IN (
-                            SELECT DISTINCT cust.mca_id 
-                            FROM invoices inv 
-                            JOIN customers cust ON inv.customer_id = cust.id 
-                            WHERE inv.rep_route_id = :rid AND cust.mca_id IS NOT NULL
-                        )
-                        OR
-                        c.mca_id = (
-                            SELECT m.id 
-                            FROM mca_areas m 
-                            JOIN rep_daily_routes r ON r.route_name = m.name 
-                            WHERE r.id = :rid3
-                        )
-                        OR
-                        i.customer_id IN (
-                            SELECT DISTINCT customer_id FROM invoices WHERE rep_route_id = :rid2 AND status != 'Voided'
-                        )
-                    ) AND i.status = 'Unpaid'
-                    ORDER BY c.name ASC, i.invoice_date ASC
-                ");
-                $db->bind(':rid', $activeDelivery->rep_route_id);
-                $db->bind(':rid2', $activeDelivery->rep_route_id);
-                $db->bind(':rid3', $activeDelivery->rep_route_id);
+                // Fetch all previous credit bills for the active delivery (or fall back to territory-wide)
+                $selectedIds = [];
+                if ($activeDelivery && !empty($activeDelivery->selected_credit_invoices)) {
+                    $selectedIds = json_decode($activeDelivery->selected_credit_invoices, true);
+                }
+
+                if (!empty($selectedIds) && is_array($selectedIds)) {
+                    $idList = implode(',', array_map('intval', $selectedIds));
+                    $db->query("
+                        SELECT i.*, c.name as customer_name,
+                            (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
+                        FROM invoices i
+                        JOIN customers c ON i.customer_id = c.id
+                        WHERE i.id IN ($idList) AND i.status = 'Unpaid'
+                        ORDER BY c.name ASC, i.invoice_date ASC
+                    ");
+                } else {
+                    $db->query("
+                        SELECT i.*, c.name as customer_name,
+                            (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
+                        FROM invoices i
+                        JOIN customers c ON i.customer_id = c.id
+                        WHERE (
+                            c.mca_id IN (
+                                SELECT DISTINCT cust.mca_id 
+                                FROM invoices inv 
+                                JOIN customers cust ON inv.customer_id = cust.id 
+                                WHERE inv.rep_route_id = :rid AND cust.mca_id IS NOT NULL
+                            )
+                            OR
+                            c.mca_id = (
+                                SELECT m.id 
+                                FROM mca_areas m 
+                                JOIN rep_daily_routes r ON r.route_name = m.name 
+                                WHERE r.id = :rid3
+                            )
+                            OR
+                            i.customer_id IN (
+                                SELECT DISTINCT customer_id FROM invoices WHERE rep_route_id = :rid2 AND status != 'Voided'
+                             )
+                        ) AND i.status = 'Unpaid'
+                        ORDER BY c.name ASC, i.invoice_date ASC
+                    ");
+                    $db->bind(':rid', $activeDelivery->rep_route_id);
+                    $db->bind(':rid2', $activeDelivery->rep_route_id);
+                    $db->bind(':rid3', $activeDelivery->rep_route_id);
+                }
                 $routeCreditBills = $db->resultSet();
             }
             $employees = $this->routeModel->getActiveEmployees();
@@ -249,17 +266,36 @@ class DriverDashboardController extends DriverController {
             }
         }
 
-        // Fetch outstanding credit invoices for the territory (always available)
+        // Fetch outstanding credit invoices: ONLY selected/ticked ones for the active delivery if specified
         $db = new Database();
-        $db->query("
-            SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date, i.status,
-                   (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
-                   c.name as customer_name, c.address as customer_address
-            FROM invoices i
-            JOIN customers c ON i.customer_id = c.id
-            WHERE i.status = 'Unpaid'
-            ORDER BY i.invoice_date ASC
-        ");
+        $selectedIds = [];
+        if ($activeDelivery && !empty($activeDelivery->selected_credit_invoices)) {
+            $selectedIds = json_decode($activeDelivery->selected_credit_invoices, true);
+        }
+
+        if ($activeDelivery && !empty($selectedIds) && is_array($selectedIds)) {
+            $idList = implode(',', array_map('intval', $selectedIds));
+            $db->query("
+                SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date, i.status,
+                       (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
+                       c.name as customer_name, c.address as customer_address
+                FROM invoices i
+                JOIN customers c ON i.customer_id = c.id
+                WHERE i.status = 'Unpaid' AND i.id IN ($idList)
+                ORDER BY i.invoice_date ASC
+            ");
+        } else {
+            // Default fallback if no specific invoices were selected: fetch all unpaid (as a safe default)
+            $db->query("
+                SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date, i.status,
+                       (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
+                       c.name as customer_name, c.address as customer_address
+                FROM invoices i
+                JOIN customers c ON i.customer_id = c.id
+                WHERE i.status = 'Unpaid'
+                ORDER BY i.invoice_date ASC
+            ");
+        }
         $creditInvoices = $db->resultSet();
         
         // Debug helper: fetch ALL active deliveries (status != 'Completed') in the DB to see why none matched

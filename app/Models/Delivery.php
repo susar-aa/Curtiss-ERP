@@ -10,6 +10,17 @@ class Delivery {
 
     public function __construct() {
         $this->db = new Database();
+        
+        // Auto-heal schema to add selected_credit_invoices column if not present
+        try {
+            $this->db->query("SHOW COLUMNS FROM deliveries LIKE 'selected_credit_invoices'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE deliveries ADD COLUMN selected_credit_invoices TEXT NULL");
+                $this->db->execute();
+            }
+        } catch (Exception $e) {
+            // Ignore if already exists
+        }
     }
 
     public function createDelivery($data) {
@@ -17,13 +28,14 @@ class Delivery {
 
         try {
             // 1. Insert into deliveries table
-            $this->db->query("INSERT INTO deliveries (rep_route_id, delivery_date, vehicle_number, driver_name, partner_name) 
-                              VALUES (:rep_route_id, :delivery_date, :vehicle_number, :driver_name, :partner_name)");
+            $this->db->query("INSERT INTO deliveries (rep_route_id, delivery_date, vehicle_number, driver_name, partner_name, selected_credit_invoices) 
+                              VALUES (:rep_route_id, :delivery_date, :vehicle_number, :driver_name, :partner_name, :selected_credit_invoices)");
             $this->db->bind(':rep_route_id', $data['rep_route_id']);
             $this->db->bind(':delivery_date', $data['delivery_date']);
             $this->db->bind(':vehicle_number', $data['vehicle_number']);
             $this->db->bind(':driver_name', $data['driver_name']);
             $this->db->bind(':partner_name', $data['partner_name']);
+            $this->db->bind(':selected_credit_invoices', $data['selected_credit_invoices'] ?? null);
             $this->db->execute();
             $deliveryId = $this->db->lastInsertId();
 
@@ -85,6 +97,30 @@ class Delivery {
     }
 
     public function getDeliveryCreditInvoices($routeId) {
+        // Fetch the delivery first to check if there are selected credit invoices
+        $this->db->query("SELECT selected_credit_invoices FROM deliveries WHERE rep_route_id = :rid LIMIT 1");
+        $this->db->bind(':rid', $routeId);
+        $del = $this->db->single();
+        
+        $selectedIds = [];
+        if ($del && !empty($del->selected_credit_invoices)) {
+            $selectedIds = json_decode($del->selected_credit_invoices, true);
+        }
+        
+        if (!empty($selectedIds) && is_array($selectedIds)) {
+            $idList = implode(',', array_map('intval', $selectedIds));
+            $this->db->query("
+                SELECT i.*, c.name as customer_name,
+                (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
+                FROM invoices i
+                JOIN customers c ON i.customer_id = c.id
+                WHERE i.id IN ($idList)
+                ORDER BY i.invoice_date ASC, i.id ASC
+            ");
+            return $this->db->resultSet();
+        }
+
+        // Fallback to old behavior if no selected credit invoices exist
         $this->db->query("
             SELECT i.*, c.name as customer_name,
             (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total

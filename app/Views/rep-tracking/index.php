@@ -331,7 +331,7 @@ error_reporting(E_ALL);
 
 <!-- NEW: Delivery Arrangement Metadata Setup Modal -->
 <div class="modal-backdrop" id="deliveryModal">
-    <div class="modal-panel">
+    <div class="modal-panel" style="max-width: 650px;">
         <div class="modal-header">
             <span>🚚 Setup Delivery Arrangement</span>
             <button onclick="closeDeliveryModal()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
@@ -377,6 +377,12 @@ error_reporting(E_ALL);
                         <?php endif; ?>
                     <?php endforeach; ?>
                 </select>
+            </div>
+            <div style="margin-top: 15px;">
+                <label style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;">Select Territory Outstanding Credit Bills to Assign</label>
+                <div id="outstandingBillsContainer" style="border: 1px solid #ccc; border-radius: 6px; padding: 10px; max-height: 220px; overflow-y: auto; background: #fafafa; font-size: 12px;">
+                    <p style="text-align: center; color: #888; margin: 10px 0;">Select a daily rep route first.</p>
+                </div>
             </div>
         </div>
         <div class="modal-footer">
@@ -655,6 +661,41 @@ error_reporting(E_ALL);
             return;
         }
         document.getElementById('deliveryModal').style.display = 'flex';
+
+        const container = document.getElementById('outstandingBillsContainer');
+        container.innerHTML = '<p style="text-align: center; color: #888; margin: 10px 0;">Loading outstanding credit bills... ⏳</p>';
+        
+        fetch('<?= APP_URL ?>/RepTracking/api_get_outstanding_bills/' + currentRouteId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success' || !data.bills || data.bills.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #888; margin: 10px 0;">No outstanding credit bills found in this territory.</p>';
+                    return;
+                }
+                
+                let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+                data.bills.forEach(bill => {
+                    let amtFormatted = parseFloat(bill.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits: 2});
+                    html += `
+                        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 6px; border-bottom: 1px solid #f0f0f0; margin-bottom: 0;">
+                            <input type="checkbox" class="da-bill-checkbox" value="${bill.id}" style="width: 16px; height: 16px; margin-top: 2px;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold; color: #333;">${bill.customer_name}</div>
+                                <div style="font-size: 11px; color: #666;">
+                                    Bill: <strong>${bill.invoice_number}</strong> (${bill.invoice_date}) &bull; Area: <strong>${bill.mca_name}</strong>
+                                </div>
+                            </div>
+                            <div style="font-weight: bold; font-family: monospace; color: #c62828;">Rs ${amtFormatted}</div>
+                        </label>
+                    `;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            })
+            .catch(err => {
+                container.innerHTML = '<p style="text-align: center; color: #c62828; margin: 10px 0;">Failed to load outstanding bills.</p>';
+                console.error(err);
+            });
     }
 
     function closeDeliveryModal() {
@@ -676,6 +717,11 @@ error_reporting(E_ALL);
             return;
         }
 
+        const checkedBills = [];
+        document.querySelectorAll('.da-bill-checkbox:checked').forEach(cb => {
+            checkedBills.push(parseInt(cb.value));
+        });
+
         closeDeliveryModal();
 
         const payload = {
@@ -683,7 +729,8 @@ error_reporting(E_ALL);
             delivery_date: date,
             vehicle_number: vehicle,
             driver_name: driver,
-            partner_name: partner
+            partner_name: partner,
+            selected_credit_invoices: checkedBills
         };
 
         // Post the arrangement to the deliveries endpoint via AJAX

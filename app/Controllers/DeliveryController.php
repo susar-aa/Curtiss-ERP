@@ -39,7 +39,8 @@ class DeliveryController extends Controller {
             'delivery_date' => trim($postData['delivery_date'] ?? ''),
             'vehicle_number' => trim($postData['vehicle_number'] ?? ''),
             'driver_name' => trim($postData['driver_name'] ?? ''),
-            'partner_name' => trim($postData['partner_name'] ?? '')
+            'partner_name' => trim($postData['partner_name'] ?? ''),
+            'selected_credit_invoices' => !empty($postData['selected_credit_invoices']) ? json_encode($postData['selected_credit_invoices']) : null
         ];
 
         if (empty($deliveryData['rep_route_id']) || empty($deliveryData['delivery_date']) || empty($deliveryData['vehicle_number']) || empty($deliveryData['driver_name'])) {

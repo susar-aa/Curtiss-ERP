@@ -73,6 +73,67 @@ class RepTrackingController extends Controller {
         exit;
     }
 
+    // API: outstanding credit bills in the same main area/territory of the route
+    public function api_get_outstanding_bills($routeId) {
+        $db = new Database();
+        
+        // 1. Get the main_area_id of the current route
+        $db->query("
+            SELECT m.main_area_id
+            FROM mca_areas m
+            JOIN rep_daily_routes r ON r.route_name = m.name
+            WHERE r.id = :rid
+            LIMIT 1
+        ");
+        $db->bind(':rid', $routeId);
+        $row = $db->single();
+        
+        $mainAreaId = null;
+        if ($row) {
+            $mainAreaId = $row->main_area_id;
+        } else {
+            // Fallback: check customers associated with invoices on this route
+            $db->query("
+                SELECT DISTINCT m.main_area_id
+                FROM invoices i
+                JOIN customers c ON i.customer_id = c.id
+                JOIN mca_areas m ON c.mca_id = m.id
+                WHERE i.rep_route_id = :rid AND c.mca_id IS NOT NULL
+                LIMIT 1
+            ");
+            $db->bind(':rid', $routeId);
+            $rowFallback = $db->single();
+            if ($rowFallback) {
+                $mainAreaId = $rowFallback->main_area_id;
+            }
+        }
+        
+        if (!$mainAreaId) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'bills' => []]);
+            exit;
+        }
+        
+        // 2. Fetch all unpaid invoices for customers in that main_area_id
+        $db->query("
+            SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date,
+                   (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
+                   c.name as customer_name, m.name as mca_name
+            FROM invoices i
+            JOIN customers c ON i.customer_id = c.id
+            JOIN mca_areas m ON c.mca_id = m.id
+            WHERE m.main_area_id = :mid
+              AND i.status = 'Unpaid'
+            ORDER BY c.name ASC, i.invoice_date ASC
+        ");
+        $db->bind(':mid', $mainAreaId);
+        $bills = $db->resultSet();
+        
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'success', 'bills' => $bills]);
+        exit;
+    }
+
     // NEW: Endpoint to generate and show the Loading Report
     public function print_loading($routeId) {
         $data = [
