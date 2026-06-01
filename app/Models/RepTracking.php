@@ -163,7 +163,7 @@ class RepTracking {
         return $this->db->resultSet() ?: [];
     }
 
-    public function finalizePayments($paymentIds, $userId, $bankAllocations = []) {
+    public function finalizePayments($paymentIds, $userId, $bankAllocations = [], $customDebitAccounts = [], $customCreditAccounts = []) {
         if (empty($paymentIds)) return true;
 
         // Resolve necessary account IDs based on codes
@@ -205,6 +205,17 @@ class RepTracking {
                 $assetAccId = $chequeAcc;
             }
 
+            // Custom Debit Account override if specified
+            if (isset($customDebitAccounts[$pid]) && !empty($customDebitAccounts[$pid])) {
+                $assetAccId = intval($customDebitAccounts[$pid]);
+            }
+
+            // Custom Credit Account override if specified
+            $arAccId = $arAcc;
+            if (isset($customCreditAccounts[$pid]) && !empty($customCreditAccounts[$pid])) {
+                $arAccId = intval($customCreditAccounts[$pid]);
+            }
+
             if (!$assetAccId) {
                 continue; // Skip if no valid account mapped
             }
@@ -232,16 +243,16 @@ class RepTracking {
             $this->db->bind(':aid', $assetAccId);
             $this->db->execute();
 
-            // Transaction 2: Credit Accounts Receivable (1200)
+            // Transaction 2: Credit Accounts Receivable (or custom credit account)
             $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :amount)");
             $this->db->bind(':jid', $jid);
-            $this->db->bind(':aid', $arAcc);
+            $this->db->bind(':aid', $arAccId);
             $this->db->bind(':amount', $amount);
             $this->db->execute();
 
             $this->db->query("UPDATE chart_of_accounts SET balance = balance - :amt WHERE id = :aid");
             $this->db->bind(':amt', $amount);
-            $this->db->bind(':aid', $arAcc);
+            $this->db->bind(':aid', $arAccId);
             $this->db->execute();
 
             // Insert into customer_payments officially to credit customer subledger

@@ -18,9 +18,16 @@ class Delivery {
                 $this->db->query("ALTER TABLE deliveries ADD COLUMN selected_credit_invoices TEXT NULL");
                 $this->db->execute();
             }
-        } catch (Exception $e) {
-            // Ignore if already exists
-        }
+        } catch (Exception $e) {}
+
+        // Auto-heal schema to add secondary_rep_route_id column if not present
+        try {
+            $this->db->query("SHOW COLUMNS FROM deliveries LIKE 'secondary_rep_route_id'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE deliveries ADD COLUMN secondary_rep_route_id INT NULL AFTER rep_route_id");
+                $this->db->execute();
+            }
+        } catch (Exception $e) {}
     }
 
     public function createDelivery($data) {
@@ -28,9 +35,10 @@ class Delivery {
 
         try {
             // 1. Insert into deliveries table
-            $this->db->query("INSERT INTO deliveries (rep_route_id, delivery_date, vehicle_number, driver_name, partner_name, selected_credit_invoices) 
-                              VALUES (:rep_route_id, :delivery_date, :vehicle_number, :driver_name, :partner_name, :selected_credit_invoices)");
+            $this->db->query("INSERT INTO deliveries (rep_route_id, secondary_rep_route_id, delivery_date, vehicle_number, driver_name, partner_name, selected_credit_invoices) 
+                              VALUES (:rep_route_id, :secondary_rep_route_id, :delivery_date, :vehicle_number, :driver_name, :partner_name, :selected_credit_invoices)");
             $this->db->bind(':rep_route_id', $data['rep_route_id']);
+            $this->db->bind(':secondary_rep_route_id', $data['secondary_rep_route_id'] ?? null);
             $this->db->bind(':delivery_date', $data['delivery_date']);
             $this->db->bind(':vehicle_number', $data['vehicle_number']);
             $this->db->bind(':driver_name', $data['driver_name']);
@@ -43,6 +51,12 @@ class Delivery {
             $this->db->query("UPDATE rep_daily_routes SET status = 'Delivery Arranged' WHERE id = :route_id");
             $this->db->bind(':route_id', $data['rep_route_id']);
             $this->db->execute();
+
+            if (!empty($data['secondary_rep_route_id'])) {
+                $this->db->query("UPDATE rep_daily_routes SET status = 'Delivery Arranged' WHERE id = :route_id");
+                $this->db->bind(':route_id', $data['secondary_rep_route_id']);
+                $this->db->execute();
+            }
 
             $this->db->commit();
             return $deliveryId;
@@ -83,20 +97,25 @@ class Delivery {
         return $this->db->single();
     }
 
-    public function getDeliveryInvoices($routeId) {
+    public function getDeliveryInvoices($routeId, $secondaryRouteId = null) {
+        $rids = [intval($routeId)];
+        if ($secondaryRouteId) {
+            $rids[] = intval($secondaryRouteId);
+        }
+        $ridsStr = implode(',', $rids);
+
         $this->db->query("
             SELECT i.*, c.name as customer_name,
             (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total
             FROM invoices i
             JOIN customers c ON i.customer_id = c.id
-            WHERE i.rep_route_id = :rid
+            WHERE i.rep_route_id IN ($ridsStr)
             ORDER BY i.created_at ASC
         ");
-        $this->db->bind(':rid', $routeId);
         return $this->db->resultSet();
     }
 
-    public function getDeliveryCreditInvoices($routeId) {
+    public function getDeliveryCreditInvoices($routeId, $secondaryRouteId = null) {
         // Fetch the delivery first to check if there are selected credit invoices
         $this->db->query("SELECT selected_credit_invoices FROM deliveries WHERE rep_route_id = :rid LIMIT 1");
         $this->db->bind(':rid', $routeId);
@@ -121,30 +140,40 @@ class Delivery {
         }
 
         // Fallback to old behavior if no selected credit invoices exist
+        $rids = [intval($routeId)];
+        if ($secondaryRouteId) {
+            $rids[] = intval($secondaryRouteId);
+        }
+        $ridsStr = implode(',', $rids);
+
         $this->db->query("
             SELECT i.*, c.name as customer_name,
             (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total
             FROM invoices i
             JOIN customers c ON i.customer_id = c.id
-            WHERE i.customer_id IN (SELECT DISTINCT customer_id FROM invoices WHERE rep_route_id = :rid AND status != 'Voided')
-              AND i.rep_route_id != :rid
+            WHERE i.customer_id IN (SELECT DISTINCT customer_id FROM invoices WHERE rep_route_id IN ($ridsStr) AND status != 'Voided')
+              AND i.rep_route_id NOT IN ($ridsStr)
               AND i.status != 'Voided'
             ORDER BY i.invoice_date ASC, i.id ASC
         ");
-        $this->db->bind(':rid', $routeId);
         return $this->db->resultSet();
     }
 
-    public function getDeliverySpreadsheetData($routeId) {
+    public function getDeliverySpreadsheetData($routeId, $secondaryRouteId = null) {
+        $rids = [intval($routeId)];
+        if ($secondaryRouteId) {
+            $rids[] = intval($secondaryRouteId);
+        }
+        $ridsStr = implode(',', $rids);
+
         $this->db->query("
             SELECT ii.description as item_name, SUM(ii.quantity) as total_qty 
             FROM invoice_items ii 
             JOIN invoices i ON ii.invoice_id = i.id 
-            WHERE i.rep_route_id = :rid AND i.status != 'Voided' 
+            WHERE i.rep_route_id IN ($ridsStr) AND i.status != 'Voided' 
             GROUP BY ii.description 
             ORDER BY ii.description ASC
         ");
-        $this->db->bind(':rid', $routeId);
         return $this->db->resultSet();
     }
 
@@ -152,13 +181,18 @@ class Delivery {
         $delivery = $this->getDeliveryById($deliveryId);
         if (!$delivery) return null;
 
+        $rids = [intval($delivery->rep_route_id)];
+        if (!empty($delivery->secondary_rep_route_id)) {
+            $rids[] = intval($delivery->secondary_rep_route_id);
+        }
+        $ridsStr = implode(',', $rids);
+
         // 1. Fetch Invoices stats (today's Cash Sales vs today's Credit Sales)
         $this->db->query("
             SELECT id, customer_id, delivery_status, status, total_amount, global_discount_val, global_discount_type, tax_amount 
             FROM invoices 
-            WHERE rep_route_id = :rid AND status != 'Voided'
+            WHERE rep_route_id IN ($ridsStr) AND status != 'Voided'
         ");
-        $this->db->bind(':rid', $delivery->rep_route_id);
         $routeInvoices = $this->db->resultSet();
 
         $cash_sales = 0.0;
@@ -190,8 +224,7 @@ class Delivery {
                 // Fetch customer payments on this route. Route collections should first apply
                 // to the current route delivery amounts and not reduce cash sales because of
                 // unrelated older unpaid invoices.
-                $this->db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE rep_route_id = :rid AND customer_id = :cid");
-                $this->db->bind(':rid', $delivery->rep_route_id);
+                $this->db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE rep_route_id IN ($ridsStr) AND customer_id = :cid");
                 $this->db->bind(':cid', $cid);
                 $todayRoutePayments = floatval($this->db->single()->total_paid);
 
@@ -208,9 +241,8 @@ class Delivery {
                 COALESCE(SUM(CASE WHEN payment_method = 'Cheque' THEN amount ELSE 0 END), 0) as cheque_collections,
                 COALESCE(SUM(CASE WHEN payment_method = 'Bank Transfer' THEN amount ELSE 0 END), 0) as bank_collections
             FROM customer_payments 
-            WHERE rep_route_id = :rid
+            WHERE rep_route_id IN ($ridsStr)
         ");
-        $this->db->bind(':rid', $delivery->rep_route_id);
         $collectionsStats = $this->db->single();
 
         // 3. Fetch Stock summary
@@ -224,11 +256,10 @@ class Delivery {
                 (SUM(ii.loaded_quantity) - SUM(CASE WHEN i.delivery_status = 'Delivered' THEN ii.quantity ELSE 0 END)) as remaining_qty
             FROM invoice_items ii
             JOIN invoices i ON ii.invoice_id = i.id
-            WHERE i.rep_route_id = :rid AND i.status != 'Voided'
+            WHERE i.rep_route_id IN ($ridsStr) AND i.status != 'Voided'
             GROUP BY TRIM(ii.description)
             ORDER BY TRIM(ii.description) ASC
         ");
-        $this->db->bind(':rid', $delivery->rep_route_id);
         $stockItems = $this->db->resultSet();
 
         // 4. Fetch cheques collected on this delivery
@@ -236,9 +267,8 @@ class Delivery {
             SELECT c.*, cust.name as customer_name
             FROM cheques c
             JOIN customers cust ON c.customer_id = cust.id
-            WHERE c.rep_route_id = :rid
+            WHERE c.rep_route_id IN ($ridsStr)
         ");
-        $this->db->bind(':rid', $delivery->rep_route_id);
         $chequesCollected = $this->db->resultSet();
 
         return [
@@ -273,9 +303,20 @@ class Delivery {
             $this->db->bind(':route_id', $delivery->rep_route_id);
             $this->db->execute();
 
+            if (!empty($delivery->secondary_rep_route_id)) {
+                $this->db->query("UPDATE rep_daily_routes SET status = 'Finalized' WHERE id = :route_id");
+                $this->db->bind(':route_id', $delivery->secondary_rep_route_id);
+                $this->db->execute();
+            }
+
             // 2. Stock deductions & reservation releases
-            $this->db->query("SELECT id, delivery_status, stock_status FROM invoices WHERE rep_route_id = :route_id AND status != 'Voided'");
-            $this->db->bind(':route_id', $delivery->rep_route_id);
+            $rids = [intval($delivery->rep_route_id)];
+            if (!empty($delivery->secondary_rep_route_id)) {
+                $rids[] = intval($delivery->secondary_rep_route_id);
+            }
+            $ridsStr = implode(',', $rids);
+
+            $this->db->query("SELECT id, delivery_status, stock_status FROM invoices WHERE rep_route_id IN ($ridsStr) AND status != 'Voided'");
             $invoices = $this->db->resultSet();
 
             require_once '../app/Models/FIFO.php';

@@ -36,6 +36,7 @@ class DeliveryController extends Controller {
 
         $deliveryData = [
             'rep_route_id' => intval($postData['rep_route_id'] ?? 0),
+            'secondary_rep_route_id' => !empty($postData['secondary_rep_route_id']) ? intval($postData['secondary_rep_route_id']) : null,
             'delivery_date' => trim($postData['delivery_date'] ?? ''),
             'vehicle_number' => trim($postData['vehicle_number'] ?? ''),
             'driver_name' => trim($postData['driver_name'] ?? ''),
@@ -69,8 +70,8 @@ class DeliveryController extends Controller {
             exit;
         }
 
-        $invoices = $this->deliveryModel->getDeliveryInvoices($delivery->rep_route_id);
-        $creditInvoices = $this->deliveryModel->getDeliveryCreditInvoices($delivery->rep_route_id);
+        $invoices = $this->deliveryModel->getDeliveryInvoices($delivery->rep_route_id, $delivery->secondary_rep_route_id ?? null);
+        $creditInvoices = $this->deliveryModel->getDeliveryCreditInvoices($delivery->rep_route_id, $delivery->secondary_rep_route_id ?? null);
         $balancing = $this->deliveryModel->getDeliveryBalancingData($id);
 
         header('Content-Type: application/json');
@@ -146,8 +147,8 @@ class DeliveryController extends Controller {
         $data = [
             'title' => 'Delivery Loading Spreadsheet',
             'delivery' => $delivery,
-            'items' => $this->deliveryModel->getDeliverySpreadsheetData($delivery->rep_route_id),
-            'bills' => $this->deliveryModel->getDeliveryInvoices($delivery->rep_route_id)
+            'items' => $this->deliveryModel->getDeliverySpreadsheetData($delivery->rep_route_id, $delivery->secondary_rep_route_id ?? null),
+            'bills' => $this->deliveryModel->getDeliveryInvoices($delivery->rep_route_id, $delivery->secondary_rep_route_id ?? null)
         ];
 
         $this->view('deliveries/spreadsheet', $data);
@@ -160,8 +161,8 @@ class DeliveryController extends Controller {
             die("Delivery not found.");
         }
 
-        $items = $this->deliveryModel->getDeliverySpreadsheetData($delivery->rep_route_id);
-        $bills = $this->deliveryModel->getDeliveryInvoices($delivery->rep_route_id);
+        $items = $this->deliveryModel->getDeliverySpreadsheetData($delivery->rep_route_id, $delivery->secondary_rep_route_id ?? null);
+        $bills = $this->deliveryModel->getDeliveryInvoices($delivery->rep_route_id, $delivery->secondary_rep_route_id ?? null);
 
         // Define file download parameters
         $filename = "Loading_Sheet_" . str_replace(" ", "_", $delivery->route_name) . "_" . $delivery->delivery_date . ".csv";

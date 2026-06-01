@@ -210,6 +210,9 @@ error_reporting(E_ALL);
                 <!-- NEW: Add Invoice Button -->
                 <button id="btnAddInvoice" onclick="redirectToAddInvoice()" style="padding: 10px 15px; border: none; background: #0066cc; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 5px;">➕ Add Sales Order</button>
 
+                <!-- NEW: Attach Invoice Button -->
+                <button id="btnAttachInvoice" onclick="openAttachInvoiceModal()" style="padding: 10px 15px; border: none; background: #5c6bc0; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 5px;">🔗 Attach Invoice</button>
+
                 <!-- NEW: View Map Button -->
                 <button id="btnViewMap" onclick="openMapModal()" style="padding: 10px 15px; border: none; background: #ef6c00; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 5px; display: none; align-items: center; gap: 4px;">📍 View Map</button>
             </div>
@@ -321,6 +324,7 @@ error_reporting(E_ALL);
             <div>
                 <!-- Edit Invoice Button -->
                 <a id="btnEditInvoice" href="#" style="background: rgba(255,255,255,0.2); color: #fff; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; margin-right: 15px; border: 1px solid rgba(255,255,255,0.4);">✏️ Edit Sales Order</a>
+                <button id="btnDeleteInvoice" onclick="deleteSalesOrder()" style="background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; margin-right: 15px; cursor: pointer; font-weight: bold;">🗑️ Delete</button>
                 <button class="close-slider" onclick="closeInvoiceSlider()">✕</button>
             </div>
         </div>
@@ -378,6 +382,15 @@ error_reporting(E_ALL);
                     <?php endforeach; ?>
                 </select>
             </div>
+            <div style="margin-top: 10px;">
+                <label>Bind Secondary Route (Optional)</label>
+                <select id="daSecondaryRoute" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: #fff; color: #333;" onchange="loadOutstandingBillsForBoundRoutes()">
+                    <option value="">-- No Secondary Route --</option>
+                    <?php foreach($data['routes'] as $r): ?>
+                        <option class="sec-route-option" id="sec_opt_<?= $r->id ?>" value="<?= $r->id ?>"><?= htmlspecialchars($r->route_name) ?> (Rep: <?= htmlspecialchars($r->first_name . ' ' . $r->last_name) ?>)</option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
             <div style="margin-top: 15px;">
                 <label style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;">Select Territory Outstanding Credit Bills to Assign</label>
                 <div id="outstandingBillsContainer" style="border: 1px solid #ccc; border-radius: 6px; padding: 10px; max-height: 220px; overflow-y: auto; background: #fafafa; font-size: 12px;">
@@ -392,8 +405,32 @@ error_reporting(E_ALL);
     </div>
 </div>
 
+<!-- NEW: Attach Existing Invoices Modal -->
+<div class="modal-backdrop" id="attachInvoiceModal" style="display: none; align-items: center; justify-content: center; z-index: 2000;">
+    <div class="modal-panel" style="max-width: 550px; width: 90%;">
+        <div class="modal-header" style="background: #5c6bc0;">
+            <span>🔗 Attach Existing Invoices to Route</span>
+            <button onclick="closeAttachInvoiceModal()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <div style="margin-bottom: 15px;">
+                <label style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;">Search Invoice Number or Customer Name</label>
+                <input type="text" id="invoiceSearchInput" onkeyup="searchUnattachedInvoices()" placeholder="Type to search..." style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px;">
+            </div>
+            <div id="unattachedInvoicesContainer" style="border: 1px solid #ccc; border-radius: 6px; padding: 10px; max-height: 250px; overflow-y: auto; background: #fafafa; font-size: 12px;">
+                <p style="text-align: center; color: #888; margin: 10px 0;">Start typing to search unattached invoices...</p>
+            </div>
+        </div>
+        <div class="modal-footer" style="padding: 15px 20px; background: #f5f5f5; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="qb-btn" onclick="closeAttachInvoiceModal()" style="border:1px solid #ccc; padding:6px 14px; border-radius:4px; font-size:12px; cursor:pointer;">Cancel</button>
+            <button class="qb-btn" onclick="confirmAttachInvoices()" style="background:#5c6bc0; color:#fff; border-color:#5c6bc0; padding:6px 14px; border-radius:4px; font-size:12px; cursor:pointer;">Attach Selected</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const globalBankAccounts = <?php echo json_encode($data['bank_accounts'] ?? []); ?>;
+    const globalAllAccounts = <?php echo json_encode($data['all_accounts'] ?? []); ?>;
     let currentRouteId = null;
     let routeMap = null;
     let routeMapLayers = [];
@@ -662,14 +699,34 @@ error_reporting(E_ALL);
         }
         document.getElementById('deliveryModal').style.display = 'flex';
 
+        // Hide current route in secondary route select options to prevent self-binding
+        document.querySelectorAll('.sec-route-option').forEach(opt => {
+            if (opt.value == currentRouteId) {
+                opt.style.display = 'none';
+            } else {
+                opt.style.display = 'block';
+            }
+        });
+        document.getElementById('daSecondaryRoute').value = '';
+
+        loadOutstandingBillsForBoundRoutes();
+    }
+
+    function loadOutstandingBillsForBoundRoutes() {
         const container = document.getElementById('outstandingBillsContainer');
         container.innerHTML = '<p style="text-align: center; color: #888; margin: 10px 0;">Loading outstanding credit bills... ⏳</p>';
         
-        fetch('<?= APP_URL ?>/RepTracking/api_get_outstanding_bills/' + currentRouteId)
+        const secondaryRouteId = document.getElementById('daSecondaryRoute').value;
+        let url = '<?= APP_URL ?>/RepTracking/api_get_outstanding_bills/' + currentRouteId;
+        if (secondaryRouteId) {
+            url += '?secondary_route_id=' + secondaryRouteId;
+        }
+        
+        fetch(url)
             .then(response => response.json())
             .then(data => {
                 if (data.status !== 'success' || !data.bills || data.bills.length === 0) {
-                    container.innerHTML = '<p style="text-align: center; color: #888; margin: 10px 0;">No outstanding credit bills found in this territory.</p>';
+                    container.innerHTML = '<p style="text-align: center; color: #888; margin: 10px 0;">No outstanding credit bills found in these territories.</p>';
                     return;
                 }
                 
@@ -707,6 +764,7 @@ error_reporting(E_ALL);
         const vehicle = document.getElementById('daVehicle').value;
         const driver = document.getElementById('daDriver').value;
         const partner = document.getElementById('daPartner').value;
+        const secondaryRouteId = document.getElementById('daSecondaryRoute').value;
 
         if (!vehicle) {
             alert("Please select a vehicle.");
@@ -726,6 +784,7 @@ error_reporting(E_ALL);
 
         const payload = {
             rep_route_id: currentRouteId,
+            secondary_rep_route_id: secondaryRouteId ? parseInt(secondaryRouteId) : null,
             delivery_date: date,
             vehicle_number: vehicle,
             driver_name: driver,
@@ -789,6 +848,23 @@ error_reporting(E_ALL);
         }
     }
 
+    function renderAccountSelect(paymentId, type, selectedCode) {
+        let optionsHtml = '';
+        globalAllAccounts.forEach(acc => {
+            let isSel = acc.account_code === selectedCode ? 'selected' : '';
+            optionsHtml += `<option value="${acc.id}" ${isSel}>${acc.account_code} - ${acc.account_name}</option>`;
+        });
+        return `
+            <select class="payment-${type}-select" data-payment-id="${paymentId}" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--mac-border); font-size: 11px; max-width: 250px; background: #fff; color: #333;" onchange="updateGLPreview(${paymentId})">
+                ${optionsHtml}
+            </select>
+        `;
+    }
+
+    function updateGLPreview(paymentId) {
+        // Purely visual effect update if desired, currently selecting handles it
+    }
+
     function loadRouteCollections(routeId) {
         const listDiv = document.getElementById('collectionsList');
         const overviewDiv = document.getElementById('collectionsOverview');
@@ -834,6 +910,13 @@ error_reporting(E_ALL);
                     let assetAccName = c.payment_method === 'Cash' ? '1000 - Cash Account' : (c.payment_method === 'Cheque' ? '1010 - Cheque Clearing Account' : '1600 - Bank Current Account');
                     let amtFormatted = parseFloat(c.amount).toLocaleString('en-IN', {minimumFractionDigits: 2});
                     
+                    let defaultDebitCode = '1000';
+                    if (c.payment_method === 'Cheque') {
+                        defaultDebitCode = '1010';
+                    } else if (c.payment_method === 'Bank Transfer') {
+                        defaultDebitCode = '1600';
+                    }
+
                     let bankSelectHtml = '';
                     if (c.payment_method === 'Bank Transfer' && !isFinalized) {
                         let bankOptionsHtml = '<option value="">-- Choose Commercial Bank --</option>';
@@ -887,13 +970,25 @@ error_reporting(E_ALL);
                                 <div style="font-weight: bold; color: ${isFinalized ? '#2e7d32' : '#0369a1'}; margin-bottom: 5px; text-transform: uppercase;">
                                     ${isFinalized ? 'Posted Double Entry (General Ledger)' : 'GL Double-Entry Preview (Post-Finalization)'}
                                 </div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-                                    <span>DEBIT: ${assetAccName}</span>
-                                    <span style="font-weight: bold; color: #16a34a;">+ Rs ${amtFormatted}</span>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 10px; flex-wrap: wrap;">
+                                    <span>DEBIT ACCOUNT:</span>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        ${isFinalized 
+                                            ? `<strong>${assetAccName}</strong>`
+                                            : renderAccountSelect(c.id, 'debit', defaultDebitCode)
+                                        }
+                                        <span style="font-weight: bold; color: #16a34a;">+ Rs ${amtFormatted}</span>
+                                    </div>
                                 </div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                    <span>CREDIT: 1200 - Accounts Receivable (Customer Sub-ledger)</span>
-                                    <span style="font-weight: bold; color: #dc2626;">- Rs ${amtFormatted}</span>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 10px; flex-wrap: wrap;">
+                                    <span>CREDIT ACCOUNT:</span>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        ${isFinalized 
+                                            ? `<strong>1200 - Accounts Receivable (Customer Sub-ledger)</strong>`
+                                            : renderAccountSelect(c.id, 'credit', '1200')
+                                        }
+                                        <span style="font-weight: bold; color: #dc2626;">- Rs ${amtFormatted}</span>
+                                    </div>
                                 </div>
                                 <div style="border-top: 1px dotted #ccc; margin-top: 5px; padding-top: 5px; font-size: 11px; color: #64748b; font-style: italic;">
                                     ${isFinalized 
@@ -988,14 +1083,29 @@ error_reporting(E_ALL);
         
         if (ids.length === 0) return;
         
-        // Construct bank allocations mapping
+        // Construct bank allocations, custom debit/credits mapping
         const bankAllocations = {};
+        const debitAccounts = {};
+        const creditAccounts = {};
         let missingSelection = false;
         let firstMissingSelect = null;
         
         checkboxes.forEach(cb => {
+            const paymentId = cb.value;
+            
+            // Extract custom debit select value
+            const debitSel = document.querySelector(`.payment-debit-select[data-payment-id="${paymentId}"]`);
+            if (debitSel) {
+                debitAccounts[paymentId] = parseInt(debitSel.value);
+            }
+            
+            // Extract custom credit select value
+            const creditSel = document.querySelector(`.payment-credit-select[data-payment-id="${paymentId}"]`);
+            if (creditSel) {
+                creditAccounts[paymentId] = parseInt(creditSel.value);
+            }
+
             if (cb.getAttribute('data-method') === 'Bank Transfer') {
-                const paymentId = cb.value;
                 const selectEl = document.querySelector(`.payment-bank-select[data-payment-id="${paymentId}"]`);
                 if (selectEl) {
                     if (!selectEl.value) {
@@ -1036,7 +1146,9 @@ error_reporting(E_ALL);
             },
             body: JSON.stringify({ 
                 payment_ids: ids,
-                bank_allocations: bankAllocations
+                bank_allocations: bankAllocations,
+                debit_accounts: debitAccounts,
+                credit_accounts: creditAccounts
             })
         })
         .then(response => response.json())
@@ -1052,7 +1164,7 @@ error_reporting(E_ALL);
             }
         })
         .catch(err => {
-            alert("Failed to finalize collections. Connection or database transaction error.");
+            alert("Failed to post collections due to network or connection error.");
             btnPost.disabled = false;
             btnPost.innerText = "⚡ Post GL Updates & Finalize";
             updateSelectedCollectionsStats();
@@ -1196,4 +1308,129 @@ error_reporting(E_ALL);
         
         filterLeftPane('active', document.getElementById('btnLeftActive'));
     });
+
+    // --- NEW: Sales Order Deletion & Invoice Attachment Methods ---
+    function deleteSalesOrder() {
+        const editLink = document.getElementById('btnEditInvoice').href;
+        const matches = editLink.match(/\/sales\/edit\/(\d+)/);
+        if (!matches || !matches[1]) return;
+        
+        const invoiceId = parseInt(matches[1]);
+        
+        if (!confirm("⚠️ WARNING: Are you sure you want to delete this Sales Order permanently? This will release all locked stock inventory reservations!")) {
+            return;
+        }
+        
+        fetch('<?= APP_URL ?>/RepTracking/api_delete_sales_order/' + invoiceId, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert("🎉 Deleted: " + data.message);
+                closeInvoiceSlider();
+                
+                // Reload route list to show updated totals and stats
+                window.location.reload();
+            } else {
+                alert("⚠️ Error: " + data.message);
+            }
+        })
+        .catch(err => {
+            alert("Failed to delete sales order due to connection error.");
+            console.error(err);
+        });
+    }
+
+    function openAttachInvoiceModal() {
+        if (!currentRouteId) {
+            alert("Please select a daily rep route first.");
+            return;
+        }
+        document.getElementById('attachInvoiceModal').style.display = 'flex';
+        document.getElementById('invoiceSearchInput').value = '';
+        searchUnattachedInvoices();
+    }
+
+    function closeAttachInvoiceModal() {
+        document.getElementById('attachInvoiceModal').style.display = 'none';
+    }
+
+    function searchUnattachedInvoices() {
+        const query = document.getElementById('invoiceSearchInput').value;
+        const container = document.getElementById('unattachedInvoicesContainer');
+        container.innerHTML = '<p style="text-align: center; color: #888; margin: 10px 0;">Searching... ⏳</p>';
+        
+        fetch('<?= APP_URL ?>/RepTracking/api_get_unattached_invoices?search=' + encodeURIComponent(query))
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success' || !data.invoices || data.invoices.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #888; margin: 10px 0;">No unattached invoices found matching search.</p>';
+                    return;
+                }
+                
+                let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+                data.invoices.forEach(inv => {
+                    let amtFormatted = parseFloat(inv.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits: 2});
+                    html += `
+                        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 6px; border-bottom: 1px solid #f0f0f0; margin-bottom: 0;">
+                            <input type="checkbox" class="attach-invoice-checkbox" value="${inv.id}" style="width: 16px; height: 16px; margin-top: 2px;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold; color: #333;">${inv.invoice_number}</div>
+                                <div style="font-size: 11px; color: #666;">
+                                    Customer: <strong>${inv.customer_name}</strong> | Date: ${inv.invoice_date}
+                                </div>
+                            </div>
+                            <div style="font-weight: bold; font-family: monospace; color: #2e7d32;">Rs ${amtFormatted}</div>
+                        </label>
+                    `;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            })
+            .catch(err => {
+                container.innerHTML = '<p style="text-align: center; color: #c62828; margin: 10px 0;">Failed to load invoices.</p>';
+                console.error(err);
+            });
+    }
+
+    function confirmAttachInvoices() {
+        const checkedInvoices = [];
+        document.querySelectorAll('.attach-invoice-checkbox:checked').forEach(cb => {
+            checkedInvoices.push(parseInt(cb.value));
+        });
+        
+        if (checkedInvoices.length === 0) {
+            alert("Please select at least one invoice to attach.");
+            return;
+        }
+        
+        closeAttachInvoiceModal();
+        
+        fetch('<?= APP_URL ?>/RepTracking/api_attach_invoices', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                route_id: currentRouteId,
+                invoice_ids: checkedInvoices
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert("🎉 Attached: " + data.message);
+                
+                // Reload route to update details immediately
+                window.location.href = '<?= APP_URL ?>/RepTracking?route_id=' + currentRouteId;
+            } else {
+                alert("⚠️ Error: " + data.message);
+            }
+        })
+        .catch(err => {
+            alert("Failed to attach invoices due to connection error.");
+            console.error(err);
+        });
+    }
 </script>

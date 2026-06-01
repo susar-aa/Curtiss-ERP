@@ -32,6 +32,9 @@ class RepTrackingController extends Controller {
         $db->bind(':pid', $parentId);
         $bankAccounts = $db->resultSet() ?: [];
 
+        $db->query("SELECT id, account_code, account_name FROM chart_of_accounts ORDER BY account_code ASC");
+        $allAccounts = $db->resultSet() ?: [];
+
         $data = [
             'title' => 'Rep Route Tracking',
             'content_view' => 'rep-tracking/index',
@@ -39,7 +42,8 @@ class RepTrackingController extends Controller {
             'vehicles' => $vehicles,
             'drivers' => $drivers,
             'employees' => $allEmployees,
-            'bank_accounts' => $bankAccounts
+            'bank_accounts' => $bankAccounts,
+            'all_accounts' => $allAccounts
         ];
         
         $this->view('layouts/main', $data);
@@ -120,71 +124,77 @@ class RepTrackingController extends Controller {
     // API: outstanding credit bills in the same main area/territory of the route
     public function api_get_outstanding_bills($routeId) {
         $db = new Database();
+        $secondaryRouteId = isset($_GET['secondary_route_id']) ? intval($_GET['secondary_route_id']) : 0;
         
-        // 1. Get the main_area_id of the current route
-        $db->query("
-            SELECT m.main_area_id
-            FROM mca_areas m
-            JOIN rep_daily_routes r ON r.route_name = m.name
-            WHERE r.id = :rid
-            LIMIT 1
-        ");
-        $db->bind(':rid', $routeId);
-        $row = $db->single();
+        $routeIds = [$routeId];
+        if ($secondaryRouteId > 0) {
+            $routeIds[] = $secondaryRouteId;
+        }
         
-        $mainAreaId = null;
-        if ($row) {
-            $mainAreaId = $row->main_area_id;
-        } else {
-            // Fallback: check customers associated with invoices on this route
+        $mainAreaIds = [];
+        foreach ($routeIds as $rid) {
             $db->query("
-                SELECT DISTINCT m.main_area_id
-                FROM invoices i
-                JOIN customers c ON i.customer_id = c.id
-                JOIN mca_areas m ON c.mca_id = m.id
-                WHERE i.rep_route_id = :rid AND c.mca_id IS NOT NULL
+                SELECT m.main_area_id
+                FROM mca_areas m
+                JOIN rep_daily_routes r ON r.route_name = m.name
+                WHERE r.id = :rid
                 LIMIT 1
             ");
-            $db->bind(':rid', $routeId);
-            $rowFallback = $db->single();
-            if ($rowFallback) {
-                $mainAreaId = $rowFallback->main_area_id;
+            $db->bind(':rid', $rid);
+            $row = $db->single();
+            if ($row && $row->main_area_id) {
+                $mainAreaIds[] = intval($row->main_area_id);
+            } else {
+                // Fallback
+                $db->query("
+                    SELECT DISTINCT m.main_area_id
+                    FROM invoices i
+                    JOIN customers c ON i.customer_id = c.id
+                    JOIN mca_areas m ON c.mca_id = m.id
+                    WHERE i.rep_route_id = :rid AND c.mca_id IS NOT NULL
+                    LIMIT 1
+                ");
+                $db->bind(':rid', $rid);
+                $rowFallback = $db->single();
+                if ($rowFallback && $rowFallback->main_area_id) {
+                    $mainAreaIds[] = intval($rowFallback->main_area_id);
+                }
             }
         }
         
-        if (!$mainAreaId) {
+        if (empty($mainAreaIds)) {
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'bills' => []]);
             exit;
         }
+        
+        $areaIdsStr = implode(',', array_unique($mainAreaIds));
 
-        // 2. Fetch and heal statuses for all customers in this territory who have invoices
+        // Fetch and heal statuses for all customers in this territory who have invoices
         $db->query("
             SELECT DISTINCT c.id
             FROM customers c
             JOIN mca_areas m ON c.mca_id = m.id
             JOIN invoices i ON i.customer_id = c.id
-            WHERE m.main_area_id = :mid AND i.status != 'Voided'
+            WHERE m.main_area_id IN ($areaIdsStr) AND i.status != 'Voided'
         ");
-        $db->bind(':mid', $mainAreaId);
         $custs = $db->resultSet();
         foreach ($custs as $c) {
             $this->autoApplyPaymentsToInvoices($c->id);
         }
         
-        // 3. Fetch outstanding customers (aggregated outstanding totals) in that main_area_id
+        // Fetch outstanding customers (aggregated outstanding totals) in that territory
         $db->query("
             SELECT c.id as customer_id, c.name as customer_name, m.name as mca_name,
                    SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as total_outstanding
             FROM invoices i
             JOIN customers c ON i.customer_id = c.id
             JOIN mca_areas m ON c.mca_id = m.id
-            WHERE m.main_area_id = :mid
+            WHERE m.main_area_id IN ($areaIdsStr)
               AND i.status = 'Unpaid'
             GROUP BY c.id, c.name, m.name
             ORDER BY c.name ASC
         ");
-        $db->bind(':mid', $mainAreaId);
         $bills = $db->resultSet();
         
         header('Content-Type: application/json');
@@ -212,24 +222,146 @@ class RepTrackingController extends Controller {
         exit;
     }
 
-    // NEW: Finalize GL double entries for selected collections
+    // NEW: Finalize GL double entries for selected collections with custom debits and credits
     public function api_finalize_collections() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
         
         $payload = json_decode(file_get_contents('php://input'), true);
         $paymentIds = $payload['payment_ids'] ?? [];
         $bankAllocations = $payload['bank_allocations'] ?? [];
+        $customDebitAccounts = $payload['debit_accounts'] ?? [];
+        $customCreditAccounts = $payload['credit_accounts'] ?? [];
         $userId = $_SESSION['user_id'];
         
         try {
             $db = new Database();
             $db->beginTransaction();
             
-            $this->trackingModel->finalizePayments($paymentIds, $userId, $bankAllocations);
+            $this->trackingModel->finalizePayments($paymentIds, $userId, $bankAllocations, $customDebitAccounts, $customCreditAccounts);
             
             $db->commit();
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'message' => 'Selected collections posted to GL successfully!']);
+            exit;
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    // NEW: Delete Sales Order API
+    public function api_delete_sales_order($invoiceId) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        
+        try {
+            $db = new Database();
+            $db->beginTransaction();
+            
+            // 1. Restore reserved quantities
+            $db->query("SELECT item_id, quantity FROM invoice_items WHERE invoice_id = :iid");
+            $db->bind(':iid', $invoiceId);
+            $items = $db->resultSet() ?: [];
+            
+            foreach ($items as $item) {
+                if ($item->item_id) {
+                    $db->query("UPDATE items SET quantity_reserved = GREATEST(0, quantity_reserved - :qty) WHERE id = :id");
+                    $db->bind(':qty', $item->quantity);
+                    $db->bind(':id', $item->item_id);
+                    $db->execute();
+                }
+            }
+            
+            // 2. Delete invoice items
+            $db->query("DELETE FROM invoice_items WHERE invoice_id = :iid");
+            $db->bind(':iid', $invoiceId);
+            $db->execute();
+            
+            // 3. Delete invoice
+            $db->query("DELETE FROM invoices WHERE id = :iid");
+            $db->bind(':iid', $invoiceId);
+            $db->execute();
+            
+            $db->commit();
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => 'Sales Order deleted successfully and inventory released!']);
+            exit;
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    // NEW: Get unattached invoices
+    public function api_get_unattached_invoices() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') { die("Invalid Request"); }
+        
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        
+        $db = new Database();
+        if (!empty($search)) {
+            $db->query("
+                SELECT i.id, i.invoice_number, i.invoice_date, c.name as customer_name,
+                       (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
+                FROM invoices i
+                JOIN customers c ON i.customer_id = c.id
+                WHERE (i.rep_route_id IS NULL OR i.rep_route_id = 0)
+                  AND i.status != 'Voided'
+                  AND (i.invoice_number LIKE :search OR c.name LIKE :search2)
+                ORDER BY i.invoice_number DESC
+                LIMIT 30
+            ");
+            $db->bind(':search', '%' . $search . '%');
+            $db->bind(':search2', '%' . $search . '%');
+        } else {
+            $db->query("
+                SELECT i.id, i.invoice_number, i.invoice_date, c.name as customer_name,
+                       (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
+                FROM invoices i
+                JOIN customers c ON i.customer_id = c.id
+                WHERE (i.rep_route_id IS NULL OR i.rep_route_id = 0)
+                  AND i.status != 'Voided'
+                ORDER BY i.invoice_number DESC
+                LIMIT 30
+            ");
+        }
+        
+        $invoices = $db->resultSet() ?: [];
+        
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'success', 'invoices' => $invoices]);
+        exit;
+    }
+
+    // NEW: Attach unattached invoices to route
+    public function api_attach_invoices() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $routeId = intval($payload['route_id'] ?? 0);
+        $invoiceIds = $payload['invoice_ids'] ?? [];
+        
+        if ($routeId <= 0 || empty($invoiceIds)) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Invalid route or invoice selection.']);
+            exit;
+        }
+        
+        try {
+            $db = new Database();
+            $db->beginTransaction();
+            
+            foreach ($invoiceIds as $invId) {
+                $db->query("UPDATE invoices SET rep_route_id = :rid WHERE id = :id");
+                $db->bind(':rid', $routeId);
+                $db->bind(':id', $invId);
+                $db->execute();
+            }
+            
+            $db->commit();
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => 'Invoices attached successfully!']);
             exit;
         } catch (Exception $e) {
             header('Content-Type: application/json');
