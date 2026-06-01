@@ -46,7 +46,7 @@ class DriverDashboardController extends DriverController {
                             (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
                         FROM invoices i
                         JOIN customers c ON i.customer_id = c.id
-                        WHERE i.id IN ($idList) AND i.status = 'Unpaid'
+                        WHERE i.customer_id IN ($idList) AND i.status = 'Unpaid'
                         ORDER BY c.name ASC, i.invoice_date ASC
                     ");
                 } else {
@@ -281,7 +281,7 @@ class DriverDashboardController extends DriverController {
                        c.name as customer_name, c.address as customer_address
                 FROM invoices i
                 JOIN customers c ON i.customer_id = c.id
-                WHERE i.status = 'Unpaid' AND i.id IN ($idList)
+                WHERE i.status = 'Unpaid' AND i.customer_id IN ($idList)
                 ORDER BY i.invoice_date ASC
             ");
         } else {

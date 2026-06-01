@@ -675,14 +675,14 @@ error_reporting(E_ALL);
                 
                 let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
                 data.bills.forEach(bill => {
-                    let amtFormatted = parseFloat(bill.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits: 2});
+                    let amtFormatted = parseFloat(bill.total_outstanding).toLocaleString('en-IN', {minimumFractionDigits: 2});
                     html += `
                         <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 6px; border-bottom: 1px solid #f0f0f0; margin-bottom: 0;">
-                            <input type="checkbox" class="da-bill-checkbox" value="${bill.id}" style="width: 16px; height: 16px; margin-top: 2px;">
+                            <input type="checkbox" class="da-bill-checkbox" value="${bill.customer_id}" style="width: 16px; height: 16px; margin-top: 2px;">
                             <div style="flex: 1;">
                                 <div style="font-weight: bold; color: #333;">${bill.customer_name}</div>
                                 <div style="font-size: 11px; color: #666;">
-                                    Bill: <strong>${bill.invoice_number}</strong> (${bill.invoice_date}) &bull; Area: <strong>${bill.mca_name}</strong>
+                                    Area: <strong>${bill.mca_name}</strong>
                                 </div>
                             </div>
                             <div style="font-weight: bold; font-family: monospace; color: #c62828;">Rs ${amtFormatted}</div>

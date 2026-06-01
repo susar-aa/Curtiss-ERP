@@ -114,17 +114,17 @@ class RepTrackingController extends Controller {
             exit;
         }
         
-        // 2. Fetch all unpaid invoices for customers in that main_area_id
+        // 2. Fetch outstanding customers (aggregated outstanding totals) in that main_area_id
         $db->query("
-            SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date,
-                   (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
-                   c.name as customer_name, m.name as mca_name
+            SELECT c.id as customer_id, c.name as customer_name, m.name as mca_name,
+                   SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as total_outstanding
             FROM invoices i
             JOIN customers c ON i.customer_id = c.id
             JOIN mca_areas m ON c.mca_id = m.id
             WHERE m.main_area_id = :mid
               AND i.status = 'Unpaid'
-            ORDER BY c.name ASC, i.invoice_date ASC
+            GROUP BY c.id, c.name, m.name
+            ORDER BY c.name ASC
         ");
         $db->bind(':mid', $mainAreaId);
         $bills = $db->resultSet();
