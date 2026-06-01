@@ -301,7 +301,9 @@ class DriverDashboardController extends DriverController {
             $deliveryId = intval($td['id'] ?? 0);
             
             if ($deliveryId > 0) {
-                if ($status === 'In Transit') {
+                if ($status === 'Accepted') {
+                    $this->routeModel->acceptRoute($deliveryId);
+                } elseif ($status === 'In Transit') {
                     $startMeter = floatval($td['start_meter'] ?? 0);
                     $driverName = $td['driver_name'] ?? '';
                     $partnerName = $td['partner_name'] ?? '';
