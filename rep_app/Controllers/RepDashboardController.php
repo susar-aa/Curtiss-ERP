@@ -212,15 +212,20 @@ class RepDashboardController extends RepController {
         $db->query("SELECT id, name FROM item_categories ORDER BY name ASC");
         $categories = $db->resultSet() ?: [];
 
-        // Fetch outstanding credit invoices (unpaid outstanding arrears)
+        // Fetch outstanding credit balances per customer with accurate math (Total Billed - Total Paid - Total Credited)
         $db->query("
-            SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date, i.status,
-                   (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
+            SELECT c.id, 'Arrears' as invoice_number, c.id as customer_id, '' as invoice_date, 'Unpaid' as status,
+                   (COALESCE(
+                       (SELECT SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) FROM invoices i WHERE i.customer_id = c.id AND i.status != 'Voided'), 0
+                   ) - COALESCE(
+                       (SELECT SUM(p.amount) FROM customer_payments p WHERE p.customer_id = c.id), 0
+                   ) - COALESCE(
+                       (SELECT SUM(cn.total_amount) FROM credit_notes cn WHERE cn.customer_id = c.id), 0
+                   )) as true_grand_total,
                    c.name as customer_name, c.address as customer_address
-            FROM invoices i
-            JOIN customers c ON i.customer_id = c.id
-            WHERE i.status = 'Unpaid'
-            ORDER BY i.invoice_date ASC
+            FROM customers c
+            HAVING true_grand_total > 0.01
+            ORDER BY c.name ASC
         ");
         $creditInvoices = $db->resultSet() ?: [];
 
@@ -493,12 +498,16 @@ class RepDashboardController extends RepController {
             if (!empty($payload['payments']) && is_array($payload['payments'])) {
                 foreach ($payload['payments'] as $payment) {
                     $customerId = $payment['customer_id'] ?? null;
-                    $routeId = $payment['route_id'] ?? null;
+                    $routeId = $payment['route_id'] ?? $payment['server_route_id'] ?? null;
                     $method = $payment['payment_method'] ?? 'Unknown';
                     $amount = floatval($payment['amount'] ?? 0);
                     $bankName = $payment['bank_name'] ?? null;
                     $chequeNum = $payment['cheque_number'] ?? null;
                     $chequeDate = $payment['cheque_date'] ?? null;
+
+                    if ($bankName === '') $bankName = null;
+                    if ($chequeNum === '') $chequeNum = null;
+                    if ($chequeDate === '' || $chequeDate === 'null') $chequeDate = null;
 
                     if ($customerId > 0 && $amount > 0) {
                         // Store pending collection for later GL finalization
