@@ -208,11 +208,55 @@ class InventoryController extends Controller {
                     $barcode = !empty($barcodeIdx) ? trim($row[$barcodeIdx]) : '';
                     $weight = !empty($weightIdx) ? trim($row[$weightIdx]) : '';
                     
-                    // Parse image links
+                    // Parse image links and download WooCommerce remote images locally
                     $imagePath = '';
                     if (!empty($imagesIdx) && !empty($row[$imagesIdx])) {
                         $imgUrls = explode(',', $row[$imagesIdx]);
-                        $imagePath = trim($imgUrls[0]); // store remote CDN URL directly (Bypasses network delay)
+                        $remoteUrl = trim($imgUrls[0]);
+                        if (!empty($remoteUrl)) {
+                            if (filter_var($remoteUrl, FILTER_VALIDATE_URL)) {
+                                $imgName = basename($remoteUrl);
+                                if (($pos = strpos($imgName, '?')) !== false) {
+                                    $imgName = substr($imgName, 0, $pos);
+                                }
+                                $imgName = preg_replace('/[^A-Za-z0-9_\-\.]/', '_', $imgName);
+                                if (empty($imgName)) {
+                                    $imgName = 'prod_' . time() . '_' . rand(1000, 9999) . '.jpg';
+                                }
+                                if (!preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $imgName)) {
+                                    $imgName .= '.jpg';
+                                }
+                                
+                                $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
+                                if (!file_exists($uploadDir)) {
+                                    @mkdir($uploadDir, 0777, true);
+                                }
+                                
+                                $localFilePath = $uploadDir . '/' . $imgName;
+                                
+                                // Download image if it doesn't already exist locally
+                                $downloadSuccess = false;
+                                if (file_exists($localFilePath)) {
+                                    $downloadSuccess = true;
+                                } else {
+                                    $imgData = @file_get_contents($remoteUrl);
+                                    if ($imgData) {
+                                        if (@file_put_contents($localFilePath, $imgData)) {
+                                            $downloadSuccess = true;
+                                        }
+                                    }
+                                }
+                                
+                                if ($downloadSuccess) {
+                                    $imagePath = $imgName;
+                                } else {
+                                    // if download fails, fall back to remote URL so it doesn't break
+                                    $imagePath = $remoteUrl;
+                                }
+                            } else {
+                                $imagePath = $remoteUrl;
+                            }
+                        }
                     }
 
                     $publishedValue = !empty($statusIdx) ? trim($row[$statusIdx]) : '1';
@@ -327,6 +371,78 @@ class InventoryController extends Controller {
     }
 
     /**
+     * One-click self-healing migration route to download all legacy external WooCommerce image URLs 
+     * locally and convert database path values to unified filenames.
+     */
+    public function migrateImages() {
+        @set_time_limit(0);
+        @ini_set('memory_limit', '1024M');
+
+        $this->db->query("SELECT id, image_path FROM items WHERE image_path LIKE 'http%'");
+        $itemsToMigrate = $this->db->resultSet() ?: [];
+
+        $successCount = 0;
+        $failedCount = 0;
+
+        $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
+        if (!file_exists($uploadDir)) {
+            @mkdir($uploadDir, 0777, true);
+        }
+
+        foreach ($itemsToMigrate as $item) {
+            $remoteUrl = trim($item->image_path);
+            if (empty($remoteUrl) || !filter_var($remoteUrl, FILTER_VALIDATE_URL)) {
+                continue;
+            }
+
+            $imgName = basename($remoteUrl);
+            if (($pos = strpos($imgName, '?')) !== false) {
+                $imgName = substr($imgName, 0, $pos);
+            }
+            $imgName = preg_replace('/[^A-Za-z0-9_\-\.]/', '_', $imgName);
+            if (empty($imgName)) {
+                $imgName = 'prod_migrated_' . $item->id . '_' . time() . '.jpg';
+            }
+            if (!preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $imgName)) {
+                $imgName .= '.jpg';
+            }
+
+            $localFilePath = $uploadDir . '/' . $imgName;
+
+            // Download legacy image if not already present locally
+            $downloadSuccess = false;
+            if (file_exists($localFilePath)) {
+                $downloadSuccess = true;
+            } else {
+                $imgData = @file_get_contents($remoteUrl);
+                if ($imgData) {
+                    if (@file_put_contents($localFilePath, $imgData)) {
+                        $downloadSuccess = true;
+                    }
+                }
+            }
+
+            if ($downloadSuccess) {
+                // Update item image_path in database to store just the filename
+                $this->db->query("UPDATE items SET image_path = :image_path WHERE id = :id");
+                $this->db->bind(':image_path', $imgName);
+                $this->db->bind(':id', $item->id);
+                if ($this->db->execute()) {
+                    $successCount++;
+                } else {
+                    $failedCount++;
+                }
+            } else {
+                $failedCount++;
+            }
+        }
+
+        $_SESSION['flash_success'] = "Image migration completed. Successfully migrated <strong>{$successCount}</strong> remote WooCommerce images to local storage 'uploads/products/'. Failed/Skipped: <strong>{$failedCount}</strong>.";
+        header('Location: ' . APP_URL . '/inventory');
+        exit;
+    }
+
+    /**
      * Add new inventory item with live database category, supplier, and warehouse listings
      */
     public function add() {
@@ -351,7 +467,7 @@ class InventoryController extends Controller {
                     }
                     $fileName = 'prod_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
                     if (file_put_contents($uploadDir . '/' . $fileName, $binary)) {
-                        $imagePath = 'uploads/products/' . $fileName;
+                        $imagePath = $fileName;
                     }
                 }
             }
@@ -439,7 +555,7 @@ class InventoryController extends Controller {
                     }
                     $fileName = 'prod_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
                     if (file_put_contents($uploadDir . '/' . $fileName, $binary)) {
-                        $imagePath = 'uploads/products/' . $fileName;
+                        $imagePath = $fileName;
                     }
                 }
             }

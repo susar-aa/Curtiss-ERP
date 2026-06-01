@@ -171,8 +171,19 @@ if ($successInvoiceId && !$successCustomer) {
         ?>
         <div class="product-card cat-<?= $prod->category_id ?: 'none' ?>" data-id="<?= $prod->id ?>" onclick="openProductModal('<?= $jsonProd ?>')">
             <div class="img-wrapper">
-                <?php if($prod->image_path): ?>
-                    <img src="<?= APP_URL ?>/uploads/products/<?= htmlspecialchars($prod->image_path) ?>" alt="Product">
+                <?php 
+                $img_src = '';
+                if ($prod->image_path) {
+                    if (filter_var($prod->image_path, FILTER_VALIDATE_URL)) {
+                        $img_src = $prod->image_path;
+                    } else {
+                        $cleanPath = str_replace('uploads/products/', '', $prod->image_path);
+                        $img_src = APP_URL . '/uploads/products/' . $cleanPath;
+                    }
+                }
+                ?>
+                <?php if($img_src): ?>
+                    <img src="<?= $img_src ?>" alt="Product" onerror="this.src='https://placehold.co/300?text=No+Image'">
                 <?php else: ?>
                     <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#aaa; font-size:12px;">No Image</div>
                 <?php endif; ?>

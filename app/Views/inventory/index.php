@@ -154,6 +154,12 @@ if ($flashError) {
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
+                <button onclick="openCsvModal()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-emerald-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5 cursor-pointer">
+                    <i class="fa-solid fa-file-csv"></i> Import WooCommerce CSV
+                </button>
+                <a href="<?php echo APP_URL; ?>/inventory/migrateImages" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-amber-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5">
+                    <i class="fa-solid fa-images animate-pulse"></i> Migrate Remote Images
+                </a>
                 <a href="<?php echo APP_URL; ?>/inventory/add" class="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-primary-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5">
                     <i class="fa-solid fa-plus"></i> Add New Product
                 </a>
@@ -351,11 +357,16 @@ if ($flashError) {
                                     $sku = !empty($item->item_code) ? $item->item_code : ($item->sku ?? '-');
                                     $image = $item->image_path ?? '';
                                     
-                                    // Render direct external link if starting with http, else prepend APP_URL
+                                    // Render direct external link if starting with http, else prepend APP_URL/uploads/products/
                                     if (empty($image)) {
                                         $img_src = 'https://placehold.co/300?text=No+Image';
                                     } else {
-                                        $img_src = (filter_var($image, FILTER_VALIDATE_URL)) ? $image : APP_URL . '/' . $image;
+                                        if (filter_var($image, FILTER_VALIDATE_URL)) {
+                                            $img_src = $image;
+                                        } else {
+                                            $cleanPath = str_replace('uploads/products/', '', $image);
+                                            $img_src = APP_URL . '/uploads/products/' . $cleanPath;
+                                        }
                                     }
 
                                     if ($qty <= 0) {

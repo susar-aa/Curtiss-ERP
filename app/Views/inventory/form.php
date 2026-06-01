@@ -148,7 +148,18 @@ try {
                         <!-- Image Preview Slot -->
                         <div class="flex justify-center">
                             <div class="relative w-36 h-36 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shadow-inner">
-                                <img id="previewImage" src="<?php echo !empty($image_path) ? (filter_var($image_path, FILTER_VALIDATE_URL) ? $image_path : APP_URL . '/' . $image_path) : 'https://placehold.co/300?text=No+Product+Image'; ?>" class="object-cover w-full h-full" onerror="this.src='https://placehold.co/300?text=No+Product+Image'">
+                                <?php
+                                $preview_img_src = 'https://placehold.co/300?text=No+Product+Image';
+                                if (!empty($image_path)) {
+                                    if (filter_var($image_path, FILTER_VALIDATE_URL)) {
+                                        $preview_img_src = $image_path;
+                                    } else {
+                                        $cleanPath = str_replace('uploads/products/', '', $image_path);
+                                        $preview_img_src = APP_URL . '/uploads/products/' . $cleanPath;
+                                    }
+                                }
+                                ?>
+                                <img id="previewImage" src="<?php echo $preview_img_src; ?>" class="object-cover w-full h-full" onerror="this.src='https://placehold.co/300?text=No+Product+Image'">
                                 <button type="button" id="removeImageBtn" class="absolute bottom-2 right-2 p-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow-md transition-colors text-xs hidden">
                                     <i class="fa-solid fa-trash-can"></i>
                                 </button>
