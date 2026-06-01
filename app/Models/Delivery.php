@@ -1,4 +1,10 @@
 <?php
+
+// Enable error reporting to prevent blank 500 errors in the future
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 class Delivery {
     private $db;
 
@@ -43,7 +49,7 @@ class Delivery {
             FROM deliveries d
             JOIN rep_daily_routes r ON d.rep_route_id = r.id
             LEFT JOIN users u ON r.user_id = u.id
-            LEFT JOIN employees e ON u.email = e.email
+            LEFT JOIN employees e ON u.employee_id = e.id
             ORDER BY d.delivery_date DESC, d.created_at DESC
         ");
         return $this->db->resultSet();
@@ -58,7 +64,7 @@ class Delivery {
             FROM deliveries d
             JOIN rep_daily_routes r ON d.rep_route_id = r.id
             LEFT JOIN users u ON r.user_id = u.id
-            LEFT JOIN employees e ON u.email = e.email
+            LEFT JOIN employees e ON u.employee_id = e.id
             WHERE d.id = :id
         ");
         $this->db->bind(':id', $id);
@@ -396,5 +402,4 @@ class Delivery {
         $globalDisc = ($globalDiscType === '%') ? ($subTotal * $globalDiscVal / 100) : $globalDiscVal;
         return max(0, $subTotal - $globalDisc) + floatval($invoice->tax_amount ?? 0);
     }
-}
 }
