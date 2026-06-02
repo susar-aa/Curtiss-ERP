@@ -475,6 +475,42 @@ class RepDashboardController extends RepController {
 
                     // Create Journal Entry
                     $invoiceNumber = $inv['invoice_number'];
+
+                    // Check for duplicate invoice number and auto-increment if exists
+                    $db->query("SELECT id FROM invoices WHERE invoice_number = :inv");
+                    $db->bind(':inv', $invoiceNumber);
+                    $existing = $db->single();
+                    
+                    if ($existing) {
+                        if (preg_match('/^(.*?)([0-9]+)$/', $invoiceNumber, $matches)) {
+                            $prefix = $matches[1];
+                            $num = intval($matches[2]);
+                            $numLen = strlen($matches[2]);
+                            
+                            while (true) {
+                                $num++;
+                                $newInvoiceNumber = $prefix . str_pad($num, $numLen, '0', STR_PAD_LEFT);
+                                $db->query("SELECT id FROM invoices WHERE invoice_number = :inv");
+                                $db->bind(':inv', $newInvoiceNumber);
+                                if (!$db->single()) {
+                                    $invoiceNumber = $newInvoiceNumber;
+                                    break;
+                                }
+                            }
+                        } else {
+                            $counter = 1;
+                            while (true) {
+                                $newInvoiceNumber = $invoiceNumber . '-' . $counter;
+                                $db->query("SELECT id FROM invoices WHERE invoice_number = :inv");
+                                $db->bind(':inv', $newInvoiceNumber);
+                                if (!$db->single()) {
+                                    $invoiceNumber = $newInvoiceNumber;
+                                    break;
+                                }
+                                $counter++;
+                            }
+                        }
+                    }
                     $db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
                                 VALUES (:edate, :ref, :desc, :uid, 'Posted')");
                     $db->bind(':edate', $inv['invoice_date']);
@@ -550,7 +586,8 @@ class RepDashboardController extends RepController {
 
                     $responseMappings['invoices'][] = [
                         'local_id' => $localId,
-                        'server_id' => $invoiceServerId
+                        'server_id' => $invoiceServerId,
+                        'invoice_number' => $invoiceNumber
                     ];
                 }
             }
