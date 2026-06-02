@@ -424,4 +424,43 @@ class RepTrackingController extends Controller {
             exit;
         }
     }
+
+    // NEW: API endpoint to undo route binding (unbind routes)
+    public function api_unbind_route() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $bindingId = intval($payload['binding_id'] ?? 0);
+        
+        if (empty($bindingId)) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Invalid Binding ID.']);
+            exit;
+        }
+        
+        try {
+            $db = new Database();
+            $db->beginTransaction();
+            
+            // 1. Remove association from daily routes
+            $db->query("UPDATE rep_daily_routes SET route_binding_id = NULL WHERE route_binding_id = :bid");
+            $db->bind(':bid', $bindingId);
+            $db->execute();
+            
+            // 2. Delete the binding record
+            $db->query("DELETE FROM route_bindings WHERE id = :bid");
+            $db->bind(':bid', $bindingId);
+            $db->execute();
+            
+            $db->commit();
+            
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => 'Route binding successfully undone! Routes are now separated.']);
+            exit;
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
 }

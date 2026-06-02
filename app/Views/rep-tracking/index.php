@@ -292,7 +292,9 @@ error_reporting(E_ALL);
                      data-sales="<?= number_format($route->total_sales, 2) ?>"
                      data-bills="<?= $route->bill_count ?>"
                      data-status="<?= $route->status ?>"
-                     data-unfinalized="<?= $route->unfinalized_count ?>">
+                     data-unfinalized="<?= $route->unfinalized_count ?>"
+                     data-bound="<?= !empty($route->is_bound_group) ? '1' : '0' ?>"
+                     data-binding-id="<?= $route->route_binding_id ?: '' ?>">
                 </div>
             <?php endforeach; ?>
         </div>
@@ -328,6 +330,9 @@ error_reporting(E_ALL);
 
                 <!-- NEW: View Map Button -->
                 <button id="btnViewMap" onclick="openMapModal()" style="padding: 10px 15px; border: none; background: #ef6c00; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 5px; display: none; align-items: center; gap: 4px;">📍 View Map</button>
+                
+                <!-- NEW: Undo Route Binding Button -->
+                <button id="btnUnbindRoute" onclick="unbindActiveRoute()" style="padding: 10px 15px; border: none; background: #c62828; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 5px; display: none; align-items: center; gap: 4px;">🔗 Undo Bind</button>
             </div>
         </div>
 
@@ -723,6 +728,19 @@ error_reporting(E_ALL);
         
         const status = d.getAttribute('data-status');
         const unfinalized = parseInt(d.getAttribute('data-unfinalized')) || 0;
+        
+        // Show Undo Bind button if this is a bound group
+        const isBound = d.getAttribute('data-bound') === '1';
+        const bindingId = d.getAttribute('data-binding-id');
+        const btnUnbind = document.getElementById('btnUnbindRoute');
+        if (btnUnbind) {
+            if (isBound && bindingId) {
+                btnUnbind.style.display = 'inline-flex';
+                btnUnbind.setAttribute('data-binding-id', bindingId);
+            } else {
+                btnUnbind.style.display = 'none';
+            }
+        }
 
         // Do not show route route collection finalization system until rep end the route
         if (status !== 'Completed') {
@@ -1716,6 +1734,42 @@ error_reporting(E_ALL);
         })
         .catch(err => {
             alert("Failed to save route binding.");
+            console.error(err);
+        });
+    }
+
+    function unbindActiveRoute() {
+        const btnUnbind = document.getElementById('btnUnbindRoute');
+        const bindingId = btnUnbind ? btnUnbind.getAttribute('data-binding-id') : null;
+        if (!bindingId) {
+            alert("No active route binding identified.");
+            return;
+        }
+
+        if (!confirm("Are you sure you want to undo this route binding? The routes will be separated back to their original states and listed individually.")) {
+            return;
+        }
+
+        fetch('<?= APP_URL ?>/RepTracking/api_unbind_route', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                binding_id: parseInt(bindingId)
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert("🎉 Success: " + data.message);
+                window.location.reload();
+            } else {
+                alert("⚠️ Error: " + data.message);
+            }
+        })
+        .catch(err => {
+            alert("Failed to undo route binding.");
             console.error(err);
         });
     }
