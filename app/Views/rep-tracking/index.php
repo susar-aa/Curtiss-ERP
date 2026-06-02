@@ -272,7 +272,11 @@ error_reporting(E_ALL);
                         <span><?= date('M d, Y', strtotime($route->start_time)) ?></span>
                         <strong style="color: <?= $route->status == 'Completed' ? 'inherit' : '#ef6c00' ?>;">Rs: <?= number_format($route->total_sales, 2) ?></strong>
                     </div>
-                    <?php if (!empty($route->binding_name)): ?>
+                    <?php if (!empty($route->is_bound_group)): ?>
+                        <div class="rb-bound-tag" style="background: #e0f2fe; color: #0369a1; display: block; margin-top: 5px;">
+                            🔗 Group: <?= htmlspecialchars($route->constituent_routes_info) ?>
+                        </div>
+                    <?php elseif (!empty($route->binding_name)): ?>
                         <div class="rb-bound-tag">
                             🔗 Bound: <?= htmlspecialchars($route->binding_name) ?>
                         </div>

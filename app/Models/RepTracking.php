@@ -27,19 +27,81 @@ class RepTracking {
             WHERE r.id NOT IN (SELECT rep_route_id FROM deliveries)
             ORDER BY r.start_time DESC
         ");
-        return $this->db->resultSet();
+        $rawRoutes = $this->db->resultSet() ?: [];
+        
+        $grouped = [];
+        $unbound = [];
+        
+        foreach ($rawRoutes as $route) {
+            if ($route->route_binding_id) {
+                $grouped[$route->route_binding_id][] = $route;
+            } else {
+                $unbound[] = $route;
+            }
+        }
+        
+        $finalRoutes = [];
+        foreach ($unbound as $route) {
+            $route->is_bound_group = false;
+            $finalRoutes[] = $route;
+        }
+        
+        foreach ($grouped as $bindingId => $routesList) {
+            // Pick route with lowest ID as primary representative
+            usort($routesList, function($a, $b) { return $a->id - $b->id; });
+            $rep = $routesList[0];
+            
+            $merged = clone $rep;
+            $merged->route_name = $rep->binding_name; // Use new binding name
+            $merged->bill_count = 0;
+            $merged->total_sales = 0.0;
+            $merged->unfinalized_count = 0;
+            $merged->is_bound_group = true;
+            
+            $names = [];
+            foreach ($routesList as $r) {
+                $merged->bill_count += intval($r->bill_count);
+                $merged->total_sales += floatval($r->total_sales);
+                $merged->unfinalized_count += intval($r->unfinalized_count);
+                $names[] = $r->route_name;
+            }
+            
+            $merged->constituent_routes_info = implode(' & ', $names);
+            $finalRoutes[] = $merged;
+        }
+        
+        // Sort final list by start_time descending
+        usort($finalRoutes, function($a, $b) {
+            return strtotime($b->start_time) - strtotime($a->start_time);
+        });
+        
+        return $finalRoutes;
     }
 
     public function getRouteBills($routeId) {
+        $routeIds = [$routeId];
+        $this->db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
+        $this->db->bind(':rid', $routeId);
+        $routeRow = $this->db->single();
+        if ($routeRow && $routeRow->route_binding_id) {
+            $this->db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
+            $this->db->bind(':bid', $routeRow->route_binding_id);
+            $boundRoutes = $this->db->resultSet();
+            foreach ($boundRoutes as $br) {
+                $routeIds[] = intval($br->id);
+            }
+        }
+        $routeIds = array_unique($routeIds);
+        $routeIdsStr = implode(',', $routeIds);
+
         $this->db->query("
             SELECT i.*, c.name as customer_name,
             (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total
             FROM invoices i
             JOIN customers c ON i.customer_id = c.id
-            WHERE i.rep_route_id = :rid
+            WHERE i.rep_route_id IN ($routeIdsStr)
             ORDER BY i.created_at ASC
         ");
-        $this->db->bind(':rid', $routeId);
         return $this->db->resultSet();
     }
 
@@ -60,6 +122,21 @@ class RepTracking {
     }
 
     public function getRouteLoadingItems($routeId) {
+        $routeIds = [$routeId];
+        $this->db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
+        $this->db->bind(':rid', $routeId);
+        $routeRow = $this->db->single();
+        if ($routeRow && $routeRow->route_binding_id) {
+            $this->db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
+            $this->db->bind(':bid', $routeRow->route_binding_id);
+            $boundRoutes = $this->db->resultSet();
+            foreach ($boundRoutes as $br) {
+                $routeIds[] = intval($br->id);
+            }
+        }
+        $routeIds = array_unique($routeIds);
+        $routeIdsStr = implode(',', $routeIds);
+
         $this->db->query("
             SELECT ii.description as item_name,
                    SUM(ii.quantity) as total_qty,
@@ -68,11 +145,10 @@ class RepTracking {
             JOIN invoices i ON ii.invoice_id = i.id
             LEFT JOIN items it ON ii.item_id = it.id
             LEFT JOIN item_categories ic ON it.category_id = ic.id
-            WHERE i.rep_route_id = :rid AND i.status != 'Voided'
+            WHERE i.rep_route_id IN ($routeIdsStr) AND i.status != 'Voided'
             GROUP BY ii.description, COALESCE(ic.id, 0), COALESCE(ic.name, 'Uncategorized')
             ORDER BY category_name ASC, ii.description ASC
         ");
-        $this->db->bind(':rid', $routeId);
         return $this->db->resultSet();
     }
 
@@ -80,75 +156,127 @@ class RepTracking {
      * Chronological GPS path: day start → each invoice → day end.
      */
     public function getRoutePath($routeId) {
-        $route = $this->getRouteById($routeId);
-        if (!$route) {
+        $routeIds = [$routeId];
+        $this->db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
+        $this->db->bind(':rid', $routeId);
+        $routeRow = $this->db->single();
+        if ($routeRow && $routeRow->route_binding_id) {
+            $this->db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
+            $this->db->bind(':bid', $routeRow->route_binding_id);
+            $boundRoutes = $this->db->resultSet();
+            foreach ($boundRoutes as $br) {
+                $routeIds[] = intval($br->id);
+            }
+        }
+        $routeIds = array_unique($routeIds);
+        
+        $waypoints = [];
+        $seq = 1;
+        $primaryRoute = null;
+
+        foreach ($routeIds as $rid) {
+            $route = $this->getRouteById($rid);
+            if (!$route) {
+                continue;
+            }
+            if ($rid == $routeId) {
+                $primaryRoute = $route;
+            }
+
+            if (!empty($route->start_lat) && !empty($route->start_lng)) {
+                $waypoints[] = [
+                    'type' => 'start',
+                    'lat' => (float) $route->start_lat,
+                    'lng' => (float) $route->start_lng,
+                    'time' => $route->start_time,
+                    'label' => 'Start (' . htmlspecialchars($route->route_name) . ')',
+                    'detail' => $route->route_name,
+                ];
+            }
+
+            $this->db->query("
+                SELECT i.id, i.invoice_number, i.created_at, i.latitude, i.longitude, c.name as customer_name,
+                (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total
+                FROM invoices i
+                JOIN customers c ON i.customer_id = c.id
+                WHERE i.rep_route_id = :rid AND i.status != 'Voided'
+                  AND i.latitude IS NOT NULL AND i.longitude IS NOT NULL
+                ORDER BY i.created_at ASC
+            ");
+            $this->db->bind(':rid', $rid);
+            $bills = $this->db->resultSet();
+
+            foreach ($bills as $bill) {
+                $waypoints[] = [
+                    'type' => 'invoice',
+                    'id' => (int) $bill->id,
+                    'lat' => (float) $bill->latitude,
+                    'lng' => (float) $bill->longitude,
+                    'time' => $bill->created_at,
+                    'label' => $bill->invoice_number,
+                    'detail' => $bill->customer_name,
+                    'amount' => (float) $bill->true_grand_total,
+                    'sequence' => $seq++,
+                ];
+            }
+
+            if (!empty($route->end_lat) && !empty($route->end_lng)) {
+                $waypoints[] = [
+                    'type' => 'end',
+                    'lat' => (float) $route->end_lat,
+                    'lng' => (float) $route->end_lng,
+                    'time' => $route->end_time,
+                    'label' => 'End (' . htmlspecialchars($route->route_name) . ')',
+                    'detail' => $route->status === 'Completed' ? 'Route completed' : 'Last recorded position',
+                ];
+            }
+        }
+
+        if (empty($primaryRoute)) {
             return null;
         }
 
-        $waypoints = [];
+        // Sort waypoints chronologically by time
+        usort($waypoints, function($a, $b) {
+            return strtotime($a['time']) - strtotime($b['time']);
+        });
 
-        if (!empty($route->start_lat) && !empty($route->start_lng)) {
-            $waypoints[] = [
-                'type' => 'start',
-                'lat' => (float) $route->start_lat,
-                'lng' => (float) $route->start_lng,
-                'time' => $route->start_time,
-                'label' => 'Day Start',
-                'detail' => $route->route_name,
-            ];
-        }
-
-        $this->db->query("
-            SELECT i.id, i.invoice_number, i.created_at, i.latitude, i.longitude, c.name as customer_name,
-            (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total
-            FROM invoices i
-            JOIN customers c ON i.customer_id = c.id
-            WHERE i.rep_route_id = :rid AND i.status != 'Voided'
-              AND i.latitude IS NOT NULL AND i.longitude IS NOT NULL
-            ORDER BY i.created_at ASC
-        ");
-        $this->db->bind(':rid', $routeId);
-        $bills = $this->db->resultSet();
-
+        // Re-assign sequences chronologically
         $seq = 1;
-        foreach ($bills as $bill) {
-            $waypoints[] = [
-                'type' => 'invoice',
-                'id' => (int) $bill->id,
-                'lat' => (float) $bill->latitude,
-                'lng' => (float) $bill->longitude,
-                'time' => $bill->created_at,
-                'label' => $bill->invoice_number,
-                'detail' => $bill->customer_name,
-                'amount' => (float) $bill->true_grand_total,
-                'sequence' => $seq++,
-            ];
-        }
-
-        if (!empty($route->end_lat) && !empty($route->end_lng)) {
-            $waypoints[] = [
-                'type' => 'end',
-                'lat' => (float) $route->end_lat,
-                'lng' => (float) $route->end_lng,
-                'time' => $route->end_time,
-                'label' => 'Day End',
-                'detail' => $route->status === 'Completed' ? 'Route completed' : 'Last recorded position',
-            ];
+        foreach ($waypoints as &$wp) {
+            if ($wp['type'] === 'invoice') {
+                $wp['sequence'] = $seq++;
+            }
         }
 
         return [
             'route_id' => (int) $routeId,
-            'route_name' => $route->route_name,
-            'rep_name' => trim($route->first_name . ' ' . $route->last_name),
-            'status' => $route->status,
-            'start_time' => $route->start_time,
-            'end_time' => $route->end_time,
+            'route_name' => $primaryRoute->route_name,
+            'rep_name' => trim($primaryRoute->first_name . ' ' . $primaryRoute->last_name),
+            'status' => $primaryRoute->status,
+            'start_time' => $primaryRoute->start_time,
+            'end_time' => $primaryRoute->end_time,
             'waypoints' => $waypoints,
             'point_count' => count($waypoints),
         ];
     }
 
     public function getRouteCollections($routeId) {
+        $routeIds = [$routeId];
+        $this->db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
+        $this->db->bind(':rid', $routeId);
+        $routeRow = $this->db->single();
+        if ($routeRow && $routeRow->route_binding_id) {
+            $this->db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
+            $this->db->bind(':bid', $routeRow->route_binding_id);
+            $boundRoutes = $this->db->resultSet();
+            foreach ($boundRoutes as $br) {
+                $routeIds[] = intval($br->id);
+            }
+        }
+        $routeIds = array_unique($routeIds);
+        $routeIdsStr = implode(',', $routeIds);
+
         $this->db->query("
             SELECT pc.id, pc.customer_id, pc.route_id as rep_route_id, pc.payment_method, pc.amount, 
                    pc.bank_name, pc.cheque_number, pc.cheque_date, pc.created_at, pc.status,
@@ -158,10 +286,9 @@ class RepTracking {
                    COALESCE(pc.cheque_number, pc.bank_name, '') as reference
             FROM pending_collections pc
             JOIN customers c ON pc.customer_id = c.id
-            WHERE pc.route_id = :rid
+            WHERE pc.route_id IN ($routeIdsStr)
             ORDER BY pc.created_at ASC
         ");
-        $this->db->bind(':rid', $routeId);
         return $this->db->resultSet() ?: [];
     }
 
