@@ -139,24 +139,8 @@ class Delivery {
             return $this->db->resultSet();
         }
 
-        // Fallback to old behavior if no selected credit invoices exist
-        $rids = [intval($routeId)];
-        if ($secondaryRouteId) {
-            $rids[] = intval($secondaryRouteId);
-        }
-        $ridsStr = implode(',', $rids);
-
-        $this->db->query("
-            SELECT i.*, c.name as customer_name,
-            (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total
-            FROM invoices i
-            JOIN customers c ON i.customer_id = c.id
-            WHERE i.customer_id IN (SELECT DISTINCT customer_id FROM invoices WHERE rep_route_id IN ($ridsStr) AND status != 'Voided')
-              AND i.rep_route_id NOT IN ($ridsStr)
-              AND i.status != 'Voided'
-            ORDER BY i.invoice_date ASC, i.id ASC
-        ");
-        return $this->db->resultSet();
+        // Only show ticked bills. If none are ticked, return empty array.
+        return [];
     }
 
     public function getDeliverySpreadsheetData($routeId, $secondaryRouteId = null) {

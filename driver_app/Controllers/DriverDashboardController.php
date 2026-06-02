@@ -58,36 +58,9 @@ class DriverDashboardController extends DriverController {
                         ORDER BY c.name ASC
                     ");
                 } else {
-                    $db->query("
-                        SELECT i.customer_id, c.name as customer_name, MIN(i.invoice_number) as invoice_number, MIN(i.invoice_date) as invoice_date,
-                            SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
-                        FROM invoices i
-                        JOIN customers c ON i.customer_id = c.id
-                        WHERE (
-                            c.mca_id IN (
-                                SELECT DISTINCT cust.mca_id 
-                                FROM invoices inv 
-                                JOIN customers cust ON inv.customer_id = cust.id 
-                                WHERE inv.rep_route_id = :rid AND cust.mca_id IS NOT NULL
-                            )
-                            OR
-                            c.mca_id = (
-                                SELECT m.id 
-                                FROM mca_areas m 
-                                JOIN rep_daily_routes r ON r.route_name = m.name 
-                                WHERE r.id = :rid3
-                            )
-                            OR
-                            i.customer_id IN (
-                                SELECT DISTINCT customer_id FROM invoices WHERE rep_route_id = :rid2 AND status != 'Voided'
-                             )
-                        ) AND i.status = 'Unpaid'
-                        GROUP BY i.customer_id, c.name
-                        ORDER BY c.name ASC
-                    ");
-                    $db->bind(':rid', $activeDelivery->rep_route_id);
-                    $db->bind(':rid2', $activeDelivery->rep_route_id);
-                    $db->bind(':rid3', $activeDelivery->rep_route_id);
+                    // Do not show territory-wide fallback outstanding credit bills anymore
+                    // Only show checked/ticked ones. If none checked, show empty.
+                    $db->query("SELECT 1 FROM invoices WHERE 1=0");
                 }
                 $routeCreditBills = $db->resultSet();
                 foreach ($routeCreditBills as $bill) {
@@ -308,16 +281,8 @@ class DriverDashboardController extends DriverController {
                 ORDER BY i.invoice_date ASC
             ");
         } else {
-            // Default fallback if no specific invoices were selected: fetch all unpaid (as a safe default)
-            $db->query("
-                SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date, i.status,
-                       (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
-                       c.name as customer_name, c.address as customer_address
-                FROM invoices i
-                JOIN customers c ON i.customer_id = c.id
-                WHERE i.status = 'Unpaid'
-                ORDER BY i.invoice_date ASC
-            ");
+            // Default fallback if no specific invoices were selected: return empty
+            $db->query("SELECT 1 FROM invoices WHERE 1=0");
         }
         $creditInvoices = $db->resultSet();
         
