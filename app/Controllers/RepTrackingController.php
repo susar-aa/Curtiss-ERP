@@ -124,12 +124,21 @@ class RepTrackingController extends Controller {
     // API: outstanding credit bills in the same main area/territory of the route
     public function api_get_outstanding_bills($routeId) {
         $db = new Database();
-        $secondaryRouteId = isset($_GET['secondary_route_id']) ? intval($_GET['secondary_route_id']) : 0;
         
         $routeIds = [$routeId];
-        if ($secondaryRouteId > 0) {
-            $routeIds[] = $secondaryRouteId;
+        // Resolve all bound routes sharing the same route_binding_id
+        $db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
+        $db->bind(':rid', $routeId);
+        $routeRow = $db->single();
+        if ($routeRow && $routeRow->route_binding_id) {
+            $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
+            $db->bind(':bid', $routeRow->route_binding_id);
+            $boundRoutes = $db->resultSet();
+            foreach ($boundRoutes as $br) {
+                $routeIds[] = intval($br->id);
+            }
         }
+        $routeIds = array_unique($routeIds);
         
         $mainAreaIds = [];
         foreach ($routeIds as $rid) {
@@ -366,6 +375,48 @@ class RepTrackingController extends Controller {
             $db->commit();
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'message' => 'Invoices attached successfully!']);
+            exit;
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    // NEW: API endpoint to create route binding
+    public function api_create_binding() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $bindingName = trim($payload['binding_name'] ?? '');
+        $routeIds = $payload['route_ids'] ?? [];
+        
+        if (empty($bindingName) || empty($routeIds) || count($routeIds) < 2) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Please enter a valid route name and select at least 2 routes to bind.']);
+            exit;
+        }
+        
+        try {
+            $db = new Database();
+            $db->beginTransaction();
+            
+            // Insert binding
+            $db->query("INSERT INTO route_bindings (name) VALUES (:name)");
+            $db->bind(':name', $bindingName);
+            $db->execute();
+            $bindingId = $db->lastInsertId();
+            
+            // Link routes to binding
+            $routeIdsList = implode(',', array_map('intval', $routeIds));
+            $db->query("UPDATE rep_daily_routes SET route_binding_id = :bid WHERE id IN ($routeIdsList)");
+            $db->bind(':bid', $bindingId);
+            $db->execute();
+            
+            $db->commit();
+            
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => 'Routes successfully bound under "' . $bindingName . '"!']);
             exit;
         } catch (Exception $e) {
             header('Content-Type: application/json');

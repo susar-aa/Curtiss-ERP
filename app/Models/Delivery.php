@@ -48,15 +48,15 @@ class Delivery {
             $deliveryId = $this->db->lastInsertId();
 
             // 2. Update status of rep_daily_routes to 'Delivery Arranged'
-            $this->db->query("UPDATE rep_daily_routes SET status = 'Delivery Arranged' WHERE id = :route_id");
-            $this->db->bind(':route_id', $data['rep_route_id']);
-            $this->db->execute();
-
+            $rids = [intval($data['rep_route_id'])];
             if (!empty($data['secondary_rep_route_id'])) {
-                $this->db->query("UPDATE rep_daily_routes SET status = 'Delivery Arranged' WHERE id = :route_id");
-                $this->db->bind(':route_id', $data['secondary_rep_route_id']);
-                $this->db->execute();
+                $rids[] = intval($data['secondary_rep_route_id']);
             }
+            $rids = $this->resolveAllBoundRouteIds($rids);
+            $ridsStr = implode(',', $rids);
+
+            $this->db->query("UPDATE rep_daily_routes SET status = 'Delivery Arranged' WHERE id IN ($ridsStr)");
+            $this->db->execute();
 
             $this->db->commit();
             return $deliveryId;
@@ -102,6 +102,7 @@ class Delivery {
         if ($secondaryRouteId) {
             $rids[] = intval($secondaryRouteId);
         }
+        $rids = $this->resolveAllBoundRouteIds($rids);
         $ridsStr = implode(',', $rids);
 
         $this->db->query("
@@ -148,6 +149,7 @@ class Delivery {
         if ($secondaryRouteId) {
             $rids[] = intval($secondaryRouteId);
         }
+        $rids = $this->resolveAllBoundRouteIds($rids);
         $ridsStr = implode(',', $rids);
 
         $this->db->query("
@@ -169,6 +171,7 @@ class Delivery {
         if (!empty($delivery->secondary_rep_route_id)) {
             $rids[] = intval($delivery->secondary_rep_route_id);
         }
+        $rids = $this->resolveAllBoundRouteIds($rids);
         $ridsStr = implode(',', $rids);
 
         // Ensure 1605 account exists in chart of accounts
@@ -374,22 +377,17 @@ class Delivery {
             $this->db->bind(':id', $deliveryId);
             $this->db->execute();
 
-            $this->db->query("UPDATE rep_daily_routes SET status = 'Finalized' WHERE id = :route_id");
-            $this->db->bind(':route_id', $delivery->rep_route_id);
-            $this->db->execute();
-
-            if (!empty($delivery->secondary_rep_route_id)) {
-                $this->db->query("UPDATE rep_daily_routes SET status = 'Finalized' WHERE id = :route_id");
-                $this->db->bind(':route_id', $delivery->secondary_rep_route_id);
-                $this->db->execute();
-            }
-
-            // 2. Stock deductions & reservation releases
             $rids = [intval($delivery->rep_route_id)];
             if (!empty($delivery->secondary_rep_route_id)) {
                 $rids[] = intval($delivery->secondary_rep_route_id);
             }
+            $rids = $this->resolveAllBoundRouteIds($rids);
             $ridsStr = implode(',', $rids);
+
+            $this->db->query("UPDATE rep_daily_routes SET status = 'Finalized' WHERE id IN ($ridsStr)");
+            $this->db->execute();
+
+            // 2. Stock deductions & reservation releases
 
             $this->db->query("SELECT id, delivery_status, stock_status FROM invoices WHERE rep_route_id IN ($ridsStr) AND status != 'Voided'");
             $invoices = $this->db->resultSet();
@@ -706,5 +704,29 @@ class Delivery {
         $globalDiscType = $invoice->global_discount_type ?? 'Rs';
         $globalDisc = ($globalDiscType === '%') ? ($subTotal * $globalDiscVal / 100) : $globalDiscVal;
         return max(0, $subTotal - $globalDisc) + floatval($invoice->tax_amount ?? 0);
+    }
+
+    private function resolveAllBoundRouteIds($rids) {
+        if (empty($rids)) return [];
+        $rids = array_map('intval', $rids);
+        $ridsStr = implode(',', $rids);
+        
+        $this->db->query("SELECT DISTINCT route_binding_id FROM rep_daily_routes WHERE id IN ($ridsStr) AND route_binding_id IS NOT NULL");
+        $bindings = $this->db->resultSet();
+        
+        if (!empty($bindings)) {
+            $bindingIds = [];
+            foreach ($bindings as $b) {
+                $bindingIds[] = intval($b->route_binding_id);
+            }
+            $bindingIdsStr = implode(',', $bindingIds);
+            
+            $this->db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id IN ($bindingIdsStr)");
+            $allRoutes = $this->db->resultSet();
+            foreach ($allRoutes as $r) {
+                $rids[] = intval($r->id);
+            }
+        }
+        return array_unique($rids);
     }
 }

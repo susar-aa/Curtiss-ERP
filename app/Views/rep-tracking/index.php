@@ -125,12 +125,116 @@ error_reporting(E_ALL);
             color: #e2e8f0 !important;
         }
     }
+
+    /* Route Multi-Binding CSS System */
+    .rb-slot-column {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .rb-slot-box {
+        border: 2px dashed #cbd5e1;
+        border-radius: 6px;
+        padding: 20px;
+        text-align: center;
+        background: #ffffff;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 80px;
+    }
+    .rb-slot-box:hover {
+        border-color: #3f51b5;
+        background: #f5f7ff;
+    }
+    .rb-slot-select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        font-size: 13px;
+        background: #fff;
+        color: #333;
+        margin-top: 5px;
+    }
+    .rb-bill-list {
+        max-height: 180px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        background: #fff;
+        padding: 8px;
+        font-size: 12px;
+        display: none;
+    }
+    .rb-bill-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 8px;
+        border-bottom: 1px solid #f1f5f9;
+        align-items: center;
+    }
+    .rb-bill-item:last-child {
+        border-bottom: none;
+    }
+    .rb-bound-tag {
+        margin-top: 5px;
+        font-size: 11px;
+        background: #e8eaf6;
+        color: #3f51b5;
+        padding: 2px 6px;
+        border-radius: 4px;
+        display: inline-block;
+        font-weight: bold;
+    }
+    @media (prefers-color-scheme: dark) {
+        .rb-slot-column {
+            background: #1e1e2d;
+            border-color: #2d2d3d;
+        }
+        .rb-slot-box {
+            background: #12121a;
+            border-color: #3f3f46;
+        }
+        .rb-slot-box:hover {
+            background: #181824;
+        }
+        .rb-slot-select {
+            background: #1e1e2d;
+            color: #f1f5f9;
+            border-color: #3f3f46;
+        }
+        .rb-bill-list {
+            background: #12121a;
+            border-color: #2d2d3d;
+        }
+        .rb-bill-item {
+            border-bottom-color: #1e1e2d;
+        }
+        .rb-bound-tag {
+            background: #1c2438 !important;
+            color: #7986cb !important;
+        }
+    }
 </style>
 
-<div class="header-actions" style="margin-bottom: 15px;">
+<div class="header-actions" style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
     <div>
         <h2 style="margin: 0 0 5px 0;">Rep Route Tracking & Audits</h2>
         <p style="margin: 0; color: #666; font-size: 14px;">Click a route to view sales orders and the GPS path from day start through each sales order to day end.</p>
+    </div>
+    <div>
+        <button id="btnOpenRouteBinding" onclick="openRouteBindingModal()" style="padding: 10px 18px; border: none; background: #3f51b5; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(63, 81, 181, 0.2); transition: all 0.2s ease;">
+            🔗 Route Binding Panel
+        </button>
     </div>
 </div>
 
@@ -168,6 +272,11 @@ error_reporting(E_ALL);
                         <span><?= date('M d, Y', strtotime($route->start_time)) ?></span>
                         <strong style="color: <?= $route->status == 'Completed' ? 'inherit' : '#ef6c00' ?>;">Rs: <?= number_format($route->total_sales, 2) ?></strong>
                     </div>
+                    <?php if (!empty($route->binding_name)): ?>
+                        <div class="rb-bound-tag">
+                            🔗 Bound: <?= htmlspecialchars($route->binding_name) ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 
                 <!-- Hidden data payload to populate the middle header quickly -->
@@ -382,15 +491,7 @@ error_reporting(E_ALL);
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div style="margin-top: 10px;">
-                <label>Bind Secondary Route (Optional)</label>
-                <select id="daSecondaryRoute" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: #fff; color: #333;" onchange="loadOutstandingBillsForBoundRoutes()">
-                    <option value="">-- No Secondary Route --</option>
-                    <?php foreach($data['routes'] as $r): ?>
-                        <option class="sec-route-option" id="sec_opt_<?= $r->id ?>" value="<?= $r->id ?>"><?= htmlspecialchars($r->route_name) ?> (Rep: <?= htmlspecialchars($r->first_name . ' ' . $r->last_name) ?>)</option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+            <!-- Removed Bind Secondary Route selection block from delivery arrangement modal -->
             <div style="margin-top: 15px;">
                 <label style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;">Select Territory Outstanding Credit Bills to Assign</label>
                 <div id="outstandingBillsContainer" style="border: 1px solid #ccc; border-radius: 6px; padding: 10px; max-height: 220px; overflow-y: auto; background: #fafafa; font-size: 12px;">
@@ -428,12 +529,42 @@ error_reporting(E_ALL);
     </div>
 </div>
 
+<!-- NEW: Route Multi-Binding Modal -->
+<div class="modal-backdrop" id="routeBindingModal" style="display: none; align-items: center; justify-content: center; z-index: 2000;">
+    <div class="modal-panel" style="max-width: 1000px; width: 95%; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header" style="background: #3f51b5;">
+            <span>🔗 Rep Route Multi-Binding Panel</span>
+            <button onclick="closeRouteBindingModal()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: bold; font-size: 12px; text-transform: uppercase; color: #555; margin-bottom: 6px; display: block;">Custom Route Name (Merged Route Assignment ID)</label>
+                <input type="text" id="rbBoundName" placeholder="e.g. Combined Western Route - June 2" style="width: 100%; padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 14px;">
+            </div>
+            
+            <label style="font-weight: bold; font-size: 12px; text-transform: uppercase; color: #555; margin-bottom: 10px; display: block;">Define Bound Territory Route Slots</label>
+            <div class="rb-slots-grid" id="rbSlotsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                <!-- Dynamically populated slots -->
+            </div>
+            
+            <button type="button" onclick="addBindingSlot()" style="background: #eef2ff; color: #3f51b5; border: 1px dashed #3f51b5; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: block; width: 100%; text-align: center; transition: all 0.2s ease;">
+                ➕ Add Another Binding Slot
+            </button>
+        </div>
+        <div class="modal-footer" style="padding: 15px 20px; background: #f5f5f5; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="qb-btn" onclick="closeRouteBindingModal()" style="border:1px solid #ccc; padding:8px 18px; border-radius:4px; font-size:12px; cursor:pointer;">Cancel</button>
+            <button class="qb-btn" onclick="submitRouteBinding()" style="background:#2e7d32; color:#fff; border-color:#2e7d32; padding:8px 18px; border-radius:4px; font-size:12px; cursor:pointer; font-weight: bold;">⚡ Confirm & Create Route Binding</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const globalBankAccounts = <?php echo json_encode($data['bank_accounts'] ?? []); ?>;
     const globalAllAccounts = <?php echo json_encode($data['all_accounts'] ?? []); ?>;
     let currentRouteId = null;
     let routeMap = null;
     let routeMapLayers = [];
+    let rbSlotsCount = 2;
 
     const pathGreenIcon = new L.Icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
@@ -699,16 +830,7 @@ error_reporting(E_ALL);
         }
         document.getElementById('deliveryModal').style.display = 'flex';
 
-        // Hide current route in secondary route select options to prevent self-binding
-        document.querySelectorAll('.sec-route-option').forEach(opt => {
-            if (opt.value == currentRouteId) {
-                opt.style.display = 'none';
-            } else {
-                opt.style.display = 'block';
-            }
-        });
-        document.getElementById('daSecondaryRoute').value = '';
-
+        // No secondary route selection needed since routes are bound separately in Rep Route Tracking
         loadOutstandingBillsForBoundRoutes();
     }
 
@@ -716,11 +838,7 @@ error_reporting(E_ALL);
         const container = document.getElementById('outstandingBillsContainer');
         container.innerHTML = '<p style="text-align: center; color: #888; margin: 10px 0;">Loading outstanding credit bills... ⏳</p>';
         
-        const secondaryRouteId = document.getElementById('daSecondaryRoute').value;
         let url = '<?= APP_URL ?>/RepTracking/api_get_outstanding_bills/' + currentRouteId;
-        if (secondaryRouteId) {
-            url += '?secondary_route_id=' + secondaryRouteId;
-        }
         
         fetch(url)
             .then(response => response.json())
@@ -764,7 +882,7 @@ error_reporting(E_ALL);
         const vehicle = document.getElementById('daVehicle').value;
         const driver = document.getElementById('daDriver').value;
         const partner = document.getElementById('daPartner').value;
-        const secondaryRouteId = document.getElementById('daSecondaryRoute').value;
+        const secondaryRouteId = null;
 
         if (!vehicle) {
             alert("Please select a vehicle.");
@@ -784,7 +902,7 @@ error_reporting(E_ALL);
 
         const payload = {
             rep_route_id: currentRouteId,
-            secondary_rep_route_id: secondaryRouteId ? parseInt(secondaryRouteId) : null,
+            secondary_rep_route_id: null,
             delivery_date: date,
             vehicle_number: vehicle,
             driver_name: driver,
@@ -1430,6 +1548,170 @@ error_reporting(E_ALL);
         })
         .catch(err => {
             alert("Failed to attach invoices due to connection error.");
+            console.error(err);
+        });
+    }
+
+    // --- 9. Route Binding Panel Handlers ---
+    function getEligibleBindingRoutes() {
+        const routes = [];
+        document.querySelectorAll('.route-item').forEach(item => {
+            if (item.getAttribute('data-route-type') === 'pending_delivery') {
+                const id = item.id.replace('route_', '');
+                const dataDiv = document.getElementById('route_data_' + id);
+                if (dataDiv) {
+                    const name = dataDiv.getAttribute('data-rname');
+                    const rep = dataDiv.getAttribute('data-rep');
+                    routes.push({ id: parseInt(id), name: name, rep: rep });
+                }
+            }
+        });
+        return routes;
+    }
+
+    function openRouteBindingModal() {
+        document.getElementById('rbBoundName').value = '';
+        document.getElementById('rbSlotsContainer').innerHTML = '';
+        rbSlotsCount = 0;
+        
+        addBindingSlot();
+        addBindingSlot();
+        
+        document.getElementById('routeBindingModal').style.display = 'flex';
+    }
+
+    function closeRouteBindingModal() {
+        document.getElementById('routeBindingModal').style.display = 'none';
+    }
+
+    function addBindingSlot() {
+        rbSlotsCount++;
+        const index = rbSlotsCount;
+        const eligibleRoutes = getEligibleBindingRoutes();
+        
+        let optionsHtml = '<option value="">-- Choose Route --</option>';
+        eligibleRoutes.forEach(r => {
+            optionsHtml += `<option value="${r.id}">${r.name} (Rep: ${r.rep})</option>`;
+        });
+        
+        const slotHtml = `
+            <div class="rb-slot-column" id="rb_slot_col_${index}" style="position: relative;">
+                ${index > 2 ? `<button type="button" onclick="removeBindingSlot(${index})" style="position: absolute; top: 10px; right: 10px; border: none; background: #dc2626; color: #fff; width: 22px; height: 22px; border-radius: 50%; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: bold; padding:0; line-height: 22px; z-index: 10;">✕</button>` : ''}
+                <h5 style="margin: 0 0 5px 0; color: #3f51b5; font-size: 12px; font-weight: bold; text-transform: uppercase;">Slot ${index}</h5>
+                <div class="rb-slot-box">
+                    <div style="font-size: 20px; color: #cbd5e1; margin-bottom: 6px;" id="rb_slot_icon_${index}">➕</div>
+                    <select class="rb-slot-select" id="rb_select_${index}" onchange="onBindingSlotRouteSelect(${index}, this)">
+                        ${optionsHtml}
+                    </select>
+                </div>
+                <div class="rb-bill-list" id="rb_bills_${index}">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('rbSlotsContainer').insertAdjacentHTML('beforeend', slotHtml);
+    }
+
+    function removeBindingSlot(index) {
+        const el = document.getElementById(`rb_slot_col_${index}`);
+        if (el) {
+            el.remove();
+        }
+    }
+
+    function onBindingSlotRouteSelect(index, select) {
+        const routeId = select.value;
+        const billsContainer = document.getElementById(`rb_bills_${index}`);
+        const icon = document.getElementById(`rb_slot_icon_${index}`);
+        
+        if (!routeId) {
+            billsContainer.style.display = 'none';
+            billsContainer.innerHTML = '';
+            icon.innerText = '➕';
+            return;
+        }
+        
+        icon.innerText = '🔗';
+        billsContainer.style.display = 'block';
+        billsContainer.innerHTML = '<p style="text-align: center; color: #888; margin: 10px 0;">Loading bills... ⏳</p>';
+        
+        fetch('<?= APP_URL ?>/RepTracking/api_get_route_details/' + routeId)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status !== 'success' || !data.bills || data.bills.length === 0) {
+                    billsContainer.innerHTML = '<p style="text-align: center; color: #888; margin: 10px 0;">No sales orders in this route.</p>';
+                    return;
+                }
+                
+                let html = '<div style="font-weight: bold; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 6px; font-size: 11px; text-transform: uppercase; color: #666;">Sales Orders</div>';
+                data.bills.forEach(b => {
+                    let trueTotal = parseFloat(b.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits: 2});
+                    html += `
+                        <div class="rb-bill-item">
+                            <span><strong>${b.invoice_number}</strong> (${b.customer_name})</span>
+                            <strong style="font-family: monospace; color: #2e7d32;">Rs ${trueTotal}</strong>
+                        </div>
+                    `;
+                });
+                billsContainer.innerHTML = html;
+            })
+            .catch(err => {
+                billsContainer.innerHTML = '<p style="text-align: center; color: #dc2626; margin: 10px 0;">Failed to load bills.</p>';
+                console.error(err);
+            });
+    }
+
+    function submitRouteBinding() {
+        const boundName = document.getElementById('rbBoundName').value.trim();
+        if (!boundName) {
+            alert("Please enter a custom name for the bound route.");
+            return;
+        }
+        
+        const routeIds = [];
+        document.querySelectorAll('.rb-slot-select').forEach(select => {
+            if (select.value) {
+                routeIds.push(parseInt(select.value));
+            }
+        });
+        
+        const uniqueRouteIds = [...new Set(routeIds)];
+        if (uniqueRouteIds.length < 2) {
+            alert("Please select at least 2 distinct routes to bind.");
+            return;
+        }
+        if (uniqueRouteIds.length !== routeIds.length) {
+            alert("Please make sure you do not select the same route in multiple slots.");
+            return;
+        }
+        
+        if (!confirm(`Are you sure you want to bind these ${uniqueRouteIds.length} routes together under the name "${boundName}"?`)) {
+            return;
+        }
+        
+        fetch('<?= APP_URL ?>/RepTracking/api_create_binding', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                binding_name: boundName,
+                route_ids: uniqueRouteIds
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert("🎉 Success: " + data.message);
+                closeRouteBindingModal();
+                window.location.reload();
+            } else {
+                alert("⚠️ Error: " + data.message);
+            }
+        })
+        .catch(err => {
+            alert("Failed to save route binding.");
             console.error(err);
         });
     }

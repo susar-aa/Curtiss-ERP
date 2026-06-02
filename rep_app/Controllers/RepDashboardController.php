@@ -198,9 +198,9 @@ class RepDashboardController extends RepController {
 
         // Fetch representatives linked to employees
         $db = new Database();
-        $db->query("SELECT u.id, u.username, u.password_hash, u.employee_id, e.first_name, e.last_name 
+        $db->query("SELECT u.id, u.username, u.password_hash, u.employee_id, COALESCE(e.first_name, '') as first_name, COALESCE(e.last_name, '') as last_name 
                     FROM users u 
-                    JOIN employees e ON u.employee_id = e.id 
+                    LEFT JOIN employees e ON u.employee_id = e.id 
                     WHERE LOWER(u.role) = 'rep'");
         $reps = $db->resultSet();
 

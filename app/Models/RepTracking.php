@@ -18,10 +18,12 @@ class RepTracking {
                 (SELECT COUNT(*) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as bill_count,
                 (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) 
                  FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales,
-                (SELECT COUNT(*) FROM pending_collections WHERE route_id = r.id AND status = 'Pending') as unfinalized_count
+                (SELECT COUNT(*) FROM pending_collections WHERE route_id = r.id AND status = 'Pending') as unfinalized_count,
+                rb.name as binding_name
             FROM rep_daily_routes r
             LEFT JOIN users u ON r.user_id = u.id
             LEFT JOIN employees e ON u.email = e.email
+            LEFT JOIN route_bindings rb ON r.route_binding_id = rb.id
             WHERE r.id NOT IN (SELECT rep_route_id FROM deliveries)
             ORDER BY r.start_time DESC
         ");
