@@ -49,12 +49,34 @@ class CustomerController extends Controller {
             'cheques' => $cheques,
             'assets' => $assets,
             'ar_account' => $arAccount,
+            'mca_areas' => $this->customerModel->getMcaAreas(),
             'error' => '',
             'success' => ''
         ];
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
-            if ($_POST['action'] == 'update_customer') {
+            if ($_POST['action'] == 'add_customer') {
+                $insertData = [
+                    'name' => trim($_POST['name'] ?? ''),
+                    'email' => trim($_POST['email'] ?? ''),
+                    'phone' => trim($_POST['phone'] ?? ''),
+                    'address' => trim($_POST['address'] ?? ''),
+                    'lat' => !empty($_POST['latitude']) ? $_POST['latitude'] : null,
+                    'lng' => !empty($_POST['longitude']) ? $_POST['longitude'] : null,
+                    'mca_id' => !empty($_POST['mca_id']) ? intval($_POST['mca_id']) : null
+                ];
+
+                if (!empty($insertData['name'])) {
+                    if ($this->customerModel->addCustomer($insertData)) {
+                        $db = new Database();
+                        $db->query("SELECT id FROM customers ORDER BY id DESC LIMIT 1");
+                        $newCust = $db->single();
+                        $newId = $newCust ? $newCust->id : '';
+                        $this->logActivity('Add Customer', 'Customer', "Created a new customer profile: {$insertData['name']}");
+                        header('Location: ' . APP_URL . '/customer/index/' . $newId . '?success=add'); exit;
+                    } else { $data['error'] = 'Failed to create new customer.'; }
+                } else { $data['error'] = 'Customer name is required.'; }
+            } elseif ($_POST['action'] == 'update_customer') {
                 $updateData = [
                     'id' => $_POST['customer_id'],
                     'name' => trim($_POST['name'] ?? ''),
@@ -62,7 +84,8 @@ class CustomerController extends Controller {
                     'phone' => trim($_POST['phone'] ?? ''),
                     'address' => trim($_POST['address'] ?? ''),
                     'lat' => !empty($_POST['latitude']) ? $_POST['latitude'] : null,
-                    'lng' => !empty($_POST['longitude']) ? $_POST['longitude'] : null
+                    'lng' => !empty($_POST['longitude']) ? $_POST['longitude'] : null,
+                    'mca_id' => !empty($_POST['mca_id']) ? intval($_POST['mca_id']) : null
                 ];
 
                 if (!empty($updateData['name'])) {
@@ -96,7 +119,13 @@ class CustomerController extends Controller {
         }
 
         if (isset($_GET['success'])) {
-            $data['success'] = $_GET['success'] == 'payment' ? "Payment recorded and ledger updated!" : "Customer profile updated successfully!";
+            if ($_GET['success'] == 'payment') {
+                $data['success'] = "Payment recorded and ledger updated!";
+            } elseif ($_GET['success'] == 'add') {
+                $data['success'] = "New customer created successfully!";
+            } else {
+                $data['success'] = "Customer profile updated successfully!";
+            }
         }
 
         $this->view('layouts/main', $data);
