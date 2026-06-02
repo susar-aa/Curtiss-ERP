@@ -38,6 +38,8 @@ class CustomerController extends Controller {
             }
         }
 
+        $mcaAreas = $this->customerModel->getMcaAreas();
+
         $data = [
             'title' => 'Customer Profile',
             'content_view' => 'customers/index',
@@ -49,43 +51,66 @@ class CustomerController extends Controller {
             'cheques' => $cheques,
             'assets' => $assets,
             'ar_account' => $arAccount,
-            'mca_areas' => $this->customerModel->getMcaAreas(),
+            'mca_areas' => $mcaAreas,
             'error' => '',
             'success' => ''
         ];
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             if ($_POST['action'] == 'add_customer') {
-                $insertData = [
+                $mcaId = !empty($_POST['mca_id']) ? intval($_POST['mca_id']) : null;
+                $territoryName = null;
+                if ($mcaId) {
+                    foreach ($mcaAreas as $area) {
+                        if ($area->id == $mcaId) {
+                            $territoryName = $area->name;
+                            break;
+                        }
+                    }
+                }
+
+                $addData = [
                     'name' => trim($_POST['name'] ?? ''),
                     'email' => trim($_POST['email'] ?? ''),
                     'phone' => trim($_POST['phone'] ?? ''),
+                    'whatsapp' => trim($_POST['whatsapp'] ?? ''),
                     'address' => trim($_POST['address'] ?? ''),
                     'lat' => !empty($_POST['latitude']) ? $_POST['latitude'] : null,
                     'lng' => !empty($_POST['longitude']) ? $_POST['longitude'] : null,
-                    'mca_id' => !empty($_POST['mca_id']) ? intval($_POST['mca_id']) : null
+                    'mca_id' => $mcaId,
+                    'territory' => $territoryName
                 ];
 
-                if (!empty($insertData['name'])) {
-                    if ($this->customerModel->addCustomer($insertData)) {
-                        $db = new Database();
-                        $db->query("SELECT id FROM customers ORDER BY id DESC LIMIT 1");
-                        $newCust = $db->single();
-                        $newId = $newCust ? $newCust->id : '';
-                        $this->logActivity('Add Customer', 'Customer', "Created a new customer profile: {$insertData['name']}");
-                        header('Location: ' . APP_URL . '/customer/index/' . $newId . '?success=add'); exit;
-                    } else { $data['error'] = 'Failed to create new customer.'; }
-                } else { $data['error'] = 'Customer name is required.'; }
+                if (!empty($addData['name'])) {
+                    if ($this->customerModel->addCustomer($addData)) {
+                        $this->logActivity('Add Customer', 'Customer', "Registered new customer profile: {$addData['name']}");
+                        header('Location: ' . APP_URL . '/customer/index?success=add'); exit;
+                    } else { $data['error'] = 'Failed to create new customer profile.'; }
+                } else { $data['error'] = 'Customer/Company name is required.'; }
+
             } elseif ($_POST['action'] == 'update_customer') {
+                $mcaId = !empty($_POST['mca_id']) ? intval($_POST['mca_id']) : null;
+                $territoryName = null;
+                if ($mcaId) {
+                    foreach ($mcaAreas as $area) {
+                        if ($area->id == $mcaId) {
+                            $territoryName = $area->name;
+                            break;
+                        }
+                    }
+                }
+
                 $updateData = [
                     'id' => $_POST['customer_id'],
                     'name' => trim($_POST['name'] ?? ''),
                     'email' => trim($_POST['email'] ?? ''),
                     'phone' => trim($_POST['phone'] ?? ''),
+                    'whatsapp' => trim($_POST['whatsapp'] ?? ''),
                     'address' => trim($_POST['address'] ?? ''),
                     'lat' => !empty($_POST['latitude']) ? $_POST['latitude'] : null,
                     'lng' => !empty($_POST['longitude']) ? $_POST['longitude'] : null,
-                    'mca_id' => !empty($_POST['mca_id']) ? intval($_POST['mca_id']) : null
+                    'mca_id' => $mcaId,
+                    'territory' => $territoryName
                 ];
 
                 if (!empty($updateData['name'])) {
@@ -94,6 +119,7 @@ class CustomerController extends Controller {
                         header('Location: ' . APP_URL . '/customer/index/' . $updateData['id'] . '?success=1'); exit;
                     } else { $data['error'] = 'Failed to update customer details.'; }
                 }
+
             } elseif ($_POST['action'] == 'record_payment') {
                 $paymentData = [
                     'customer_id' => $_POST['customer_id'],
@@ -122,7 +148,7 @@ class CustomerController extends Controller {
             if ($_GET['success'] == 'payment') {
                 $data['success'] = "Payment recorded and ledger updated!";
             } elseif ($_GET['success'] == 'add') {
-                $data['success'] = "New customer created successfully!";
+                $data['success'] = "New customer profile registered successfully!";
             } else {
                 $data['success'] = "Customer profile updated successfully!";
             }

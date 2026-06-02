@@ -94,28 +94,34 @@ class Customer {
     }
 
     public function addCustomer($data) {
-        $this->db->query("INSERT INTO customers (name, email, phone, address, latitude, longitude, mca_id) VALUES (:name, :email, :phone, :address, :lat, :lng, :mca_id)");
+        $this->db->query("INSERT INTO customers (name, email, phone, whatsapp, address, latitude, longitude, mca_id, territory) 
+                          VALUES (:name, :email, :phone, :whatsapp, :address, :lat, :lng, :mca_id, :territory)");
         $this->db->bind(':name', $data['name']);
-        $this->db->bind(':email', $data['email']);
-        $this->db->bind(':phone', $data['phone']);
-        $this->db->bind(':address', $data['address']);
-        $this->db->bind(':lat', $data['lat']);
-        $this->db->bind(':lng', $data['lng']);
-        $this->db->bind(':mca_id', $data['mca_id']);
+        $this->db->bind(':email', $data['email'] ?: null);
+        $this->db->bind(':phone', $data['phone'] ?: null);
+        $this->db->bind(':whatsapp', $data['whatsapp'] ?: null);
+        $this->db->bind(':address', $data['address'] ?: null);
+        $this->db->bind(':lat', $data['lat'] ?: null);
+        $this->db->bind(':lng', $data['lng'] ?: null);
+        $this->db->bind(':mca_id', $data['mca_id'] ?: null);
+        $this->db->bind(':territory', $data['territory'] ?: null);
         return $this->db->execute();
     }
 
     public function updateCustomer($data) {
-        $this->db->query("UPDATE customers SET name = :name, email = :email, phone = :phone, address = :address, latitude = :lat, longitude = :lng, mca_id = :mca_id 
+        $this->db->query("UPDATE customers SET name = :name, email = :email, phone = :phone, whatsapp = :whatsapp, address = :address, 
+                          latitude = :lat, longitude = :lng, mca_id = :mca_id, territory = :territory 
                           WHERE id = :id");
         $this->db->bind(':id', $data['id']);
         $this->db->bind(':name', $data['name']);
-        $this->db->bind(':email', $data['email']);
-        $this->db->bind(':phone', $data['phone']);
-        $this->db->bind(':address', $data['address']);
-        $this->db->bind(':lat', $data['lat']);
-        $this->db->bind(':lng', $data['lng']);
-        $this->db->bind(':mca_id', $data['mca_id']);
+        $this->db->bind(':email', $data['email'] ?: null);
+        $this->db->bind(':phone', $data['phone'] ?: null);
+        $this->db->bind(':whatsapp', $data['whatsapp'] ?: null);
+        $this->db->bind(':address', $data['address'] ?: null);
+        $this->db->bind(':lat', $data['lat'] ?: null);
+        $this->db->bind(':lng', $data['lng'] ?: null);
+        $this->db->bind(':mca_id', $data['mca_id'] ?: null);
+        $this->db->bind(':territory', $data['territory'] ?: null);
         return $this->db->execute();
     }
 

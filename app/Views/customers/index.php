@@ -78,8 +78,9 @@
     
     <!-- Left Pane: Customer List with Advanced Filters -->
     <div class="left-pane">
-        <div class="search-bar">
+        <div class="search-bar" style="display: flex; gap: 8px; align-items: center;">
             <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search customers..." onkeyup="filterList()">
+            <button class="btn btn-success" style="padding: 10px 14px; font-size: 13px; flex-shrink: 0;" onclick="openModal('addCustomerModal')">+ Add</button>
         </div>
         
         <!-- NEW: Filter Panel -->
@@ -296,6 +297,18 @@
                                 <div class="form-group"><label>Email Address</label><input type="email" name="email" class="form-control" value="<?= htmlspecialchars($c->email) ?>"></div>
                                 <div class="form-group"><label>Phone Number</label><input type="text" name="phone" class="form-control" value="<?= htmlspecialchars($c->phone) ?>"></div>
                             </div>
+                            <div class="grid-2">
+                                <div class="form-group"><label>WhatsApp Number</label><input type="text" name="whatsapp" class="form-control" value="<?= htmlspecialchars($c->whatsapp ?? '') ?>"></div>
+                                <div class="form-group">
+                                    <label>Assigned Territory / Route</label>
+                                    <select name="mca_id" class="form-control">
+                                        <option value="">Unassigned</option>
+                                        <?php foreach($data['mca_areas'] as $route): ?>
+                                            <option value="<?= $route->id ?>" <?= $c->mca_id == $route->id ? 'selected' : '' ?>><?= htmlspecialchars($route->name) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
                             <div class="form-group"><label>Billing Address</label><textarea name="address" class="form-control" rows="2"><?= htmlspecialchars($c->address) ?></textarea></div>
                             
                             <div class="grid-2">
@@ -413,7 +426,7 @@
 
 <!-- Edit Profile Modal (Still functional if triggered via top button) -->
 <div class="modal" id="editModal">
-    <div class="modal-content">
+    <div class="modal-content" style="width: 550px;">
         <h3 style="margin-top:0; color:#0066cc;">Edit Customer Details</h3>
         <p style="font-size: 12px; color: #666; margin-top:-5px; margin-bottom: 20px;">Or use the Profile tab for quick edits.</p>
         <form action="<?= APP_URL ?>/customer/index/<?= $c->id ?>" method="POST">
@@ -424,7 +437,23 @@
                 <div class="form-group"><label>Email Address</label><input type="email" name="email" class="form-control" value="<?= htmlspecialchars($c->email) ?>"></div>
                 <div class="form-group"><label>Phone Number</label><input type="text" name="phone" class="form-control" value="<?= htmlspecialchars($c->phone) ?>"></div>
             </div>
+            <div class="grid-2">
+                <div class="form-group"><label>WhatsApp Number</label><input type="text" name="whatsapp" class="form-control" value="<?= htmlspecialchars($c->whatsapp ?? '') ?>"></div>
+                <div class="form-group">
+                    <label>Assigned Territory / Route</label>
+                    <select name="mca_id" class="form-control">
+                        <option value="">Unassigned</option>
+                        <?php foreach($data['mca_areas'] as $route): ?>
+                            <option value="<?= $route->id ?>" <?= $c->mca_id == $route->id ? 'selected' : '' ?>><?= htmlspecialchars($route->name) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
             <div class="form-group"><label>Billing Address</label><textarea name="address" class="form-control" rows="2"><?= htmlspecialchars($c->address) ?></textarea></div>
+            <div class="grid-2">
+                <div class="form-group"><label>Latitude (GPS)</label><input type="text" name="latitude" class="form-control" value="<?= $c->latitude ?>"></div>
+                <div class="form-group"><label>Longitude (GPS)</label><input type="text" name="longitude" class="form-control" value="<?= $c->longitude ?>"></div>
+            </div>
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('editModal')">Cancel</button>
                 <button type="submit" class="btn">Save Changes</button>
@@ -433,6 +462,56 @@
     </div>
 </div>
 <?php endif; ?>
+
+<!-- Add Customer Modal (Always accessible) -->
+<div class="modal" id="addCustomerModal">
+    <div class="modal-content" style="width: 550px;">
+        <h3 style="margin-top:0; color:#2e7d32;">Add New Customer</h3>
+        <p style="font-size: 12px; color: #666; margin-top:-5px; margin-bottom: 20px;">Create a new customer profile on the ERP system.</p>
+        
+        <form action="<?= APP_URL ?>/customer/index" method="POST">
+            <input type="hidden" name="action" value="add_customer">
+            
+            <div class="form-group">
+                <label>Customer/Company Name *</label>
+                <input type="text" name="name" class="form-control" placeholder="e.g. Acme Corporation" required>
+            </div>
+            
+            <div class="grid-2">
+                <div class="form-group"><label>Email Address</label><input type="email" name="email" class="form-control" placeholder="e.g. acme@example.com"></div>
+                <div class="form-group"><label>Phone Number</label><input type="text" name="phone" class="form-control" placeholder="e.g. +94771234567"></div>
+            </div>
+            
+            <div class="grid-2">
+                <div class="form-group"><label>WhatsApp Number</label><input type="text" name="whatsapp" class="form-control" placeholder="e.g. +94771234567"></div>
+                <div class="form-group">
+                    <label>Assign Territory / Route</label>
+                    <select name="mca_id" class="form-control">
+                        <option value="">Unassigned</option>
+                        <?php foreach($data['mca_areas'] as $route): ?>
+                            <option value="<?= $route->id ?>"><?= htmlspecialchars($route->name) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Billing Address</label>
+                <textarea name="address" class="form-control" rows="2" placeholder="e.g. 123 Main Street, Colombo"></textarea>
+            </div>
+            
+            <div class="grid-2">
+                <div class="form-group"><label>Latitude (GPS)</label><input type="text" name="latitude" class="form-control" placeholder="Optional"></div>
+                <div class="form-group"><label>Longitude (GPS)</label><input type="text" name="longitude" class="form-control" placeholder="Optional"></div>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('addCustomerModal')">Cancel</button>
+                <button type="submit" class="btn btn-success">Save & Register</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script>
     function switchTab(tabName) {
