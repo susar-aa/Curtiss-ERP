@@ -183,7 +183,10 @@ class RepTrackingController extends Controller {
             $this->autoApplyPaymentsToInvoices($c->id);
         }
         
-        // Fetch outstanding customers (aggregated outstanding totals) in that territory
+        $routeIdsStr = implode(',', array_map('intval', $routeIds));
+
+        // Fetch outstanding customers (aggregated outstanding totals) in that territory,
+        // excluding invoices already assigned to the route(s) to avoid duplicate assignments
         $db->query("
             SELECT c.id as customer_id, c.name as customer_name, m.name as mca_name,
                    SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as total_outstanding
@@ -192,6 +195,7 @@ class RepTrackingController extends Controller {
             JOIN mca_areas m ON c.mca_id = m.id
             WHERE m.main_area_id IN ($areaIdsStr)
               AND i.status = 'Unpaid'
+              AND (i.rep_route_id IS NULL OR i.rep_route_id NOT IN ($routeIdsStr))
             GROUP BY c.id, c.name, m.name
             ORDER BY c.name ASC
         ");
