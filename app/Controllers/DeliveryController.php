@@ -108,7 +108,19 @@ class DeliveryController extends Controller {
 
         try {
             $adminUserId = $_SESSION['user_id'];
-            $this->deliveryModel->finalizeDelivery($deliveryId, $adminUserId);
+            $selectedPaymentIds = isset($postData['selected_payment_ids']) ? array_map('intval', $postData['selected_payment_ids']) : [];
+            $selectedInvoiceIds = isset($postData['selected_invoice_ids']) ? array_map('intval', $postData['selected_invoice_ids']) : [];
+            $debitAccounts = $postData['debit_accounts'] ?? [];
+            $creditAccounts = $postData['credit_accounts'] ?? [];
+
+            $this->deliveryModel->finalizeDelivery(
+                $deliveryId, 
+                $adminUserId, 
+                $selectedPaymentIds, 
+                $selectedInvoiceIds, 
+                $debitAccounts, 
+                $creditAccounts
+            );
 
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'message' => 'Delivery route finalized successfully! Physical stock and ledger cleared.']);

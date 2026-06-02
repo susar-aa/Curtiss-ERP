@@ -723,6 +723,35 @@ error_reporting(E_ALL);
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Section 4: Real-time Ledger Double Entry Control -->
+                    <div style="background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.01);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 15px; margin-bottom: 20px;">
+                            <h4 style="margin: 0; font-size: 15px; font-weight: 800; text-transform: uppercase; color: var(--text-main);">💼 Real-Time General Ledger Double-Entry Mapping</h4>
+                            <div style="display: flex; gap: 15px; align-items: center;">
+                                <button type="button" class="btn-premium secondary" onclick="toggleAllLedgerSelections(true)" style="padding: 4px 10px; font-size: 11px;">Select All</button>
+                                <button type="button" class="btn-premium secondary" onclick="toggleAllLedgerSelections(false)" style="padding: 4px 10px; font-size: 11px;">Deselect All</button>
+                            </div>
+                        </div>
+
+                        <!-- Double Entry Tabs -->
+                        <div style="display: flex; border-bottom: 1px solid rgba(0,0,0,0.06); margin-bottom: 20px; gap: 10px;">
+                            <button type="button" class="tab-btn active" id="deTabCollections" onclick="switchDeTab('collections')" style="font-size: 12px; padding: 8px 16px; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-weight: bold; border: none; border-radius: 0;">💵 Collections & Clearing (Transit Sweep)</button>
+                            <button type="button" class="tab-btn" id="deTabSales" onclick="switchDeTab('sales')" style="font-size: 12px; padding: 8px 16px; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-weight: bold; border: none; border-radius: 0;">📦 Invoices Delivered (Sales Posting)</button>
+                        </div>
+
+                        <div id="deCollectionsSection">
+                            <div style="display: flex; flex-direction: column; gap: 15px;" id="deCollectionsContainer">
+                                <!-- JS populates -->
+                            </div>
+                        </div>
+
+                        <div id="deSalesSection" style="display: none;">
+                            <div style="display: flex; flex-direction: column; gap: 15px;" id="deSalesContainer">
+                                <!-- JS populates -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Finalize Action Panel -->
@@ -955,6 +984,136 @@ error_reporting(E_ALL);
     }
 
     // --- 5. Render Settle Balancing Info ---
+    let activeDeTab = 'collections';
+
+    function switchDeTab(tab) {
+        activeDeTab = tab;
+        document.getElementById('deTabCollections').classList.toggle('active', tab === 'collections');
+        document.getElementById('deTabCollections').style.borderBottom = tab === 'collections' ? '2px solid #007aff' : '2px solid transparent';
+        
+        document.getElementById('deTabSales').classList.toggle('active', tab === 'sales');
+        document.getElementById('deTabSales').style.borderBottom = tab === 'sales' ? '2px solid #007aff' : '2px solid transparent';
+
+        document.getElementById('deCollectionsSection').style.display = tab === 'collections' ? 'block' : 'none';
+        document.getElementById('deSalesSection').style.display = tab === 'sales' ? 'block' : 'none';
+    }
+
+    function toggleAllLedgerSelections(isChecked) {
+        const checkBoxes = activeDeTab === 'collections'
+            ? document.querySelectorAll('.de-payment-chk')
+            : document.querySelectorAll('.de-invoice-chk');
+        checkBoxes.forEach(cb => {
+            if (!cb.disabled) cb.checked = isChecked;
+        });
+    }
+
+    function renderAccountSelect(id, type, selectedCode) {
+        if (!currentBalancingData || !currentBalancingData.all_accounts) return '';
+        let optionsHtml = '';
+        currentBalancingData.all_accounts.forEach(acc => {
+            let isSel = acc.account_code === selectedCode ? 'selected' : '';
+            optionsHtml += `<option value="${acc.id}" ${isSel}>${acc.account_code} - ${acc.account_name}</option>`;
+        });
+        return `
+            <select class="de-select" data-id="${id}" data-type="${type}" style="padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.12); font-size: 12px; min-width: 200px; background: #fff; color: #333; cursor: pointer; font-weight: 600; outline: none; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                ${optionsHtml}
+            </select>
+        `;
+    }
+
+    function renderDeCollections() {
+        const container = document.getElementById('deCollectionsContainer');
+        container.innerHTML = '';
+        const payments = currentBalancingData.payments || [];
+        const isFinal = currentBalancingData.delivery.status === 'Finalized';
+
+        if (payments.length === 0) {
+            container.innerHTML = `<div style="text-align:center; padding:20px; color:#888;">No payments logged on this trip.</div>`;
+            return;
+        }
+
+        payments.forEach(p => {
+            let defaultDebitCode = '1000'; // Cash default
+            if (p.payment_method === 'Cheque') {
+                defaultDebitCode = '1010';
+            } else if (p.payment_method === 'Bank Transfer') {
+                defaultDebitCode = '1605';
+            }
+
+            container.innerHTML += `
+                <div class="payment-de-card" style="display:flex; justify-content:space-between; align-items:center; background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.05); padding: 15px 20px; border-radius: 10px; gap: 20px;">
+                    <div style="display:flex; align-items:center; gap:12px; flex: 1;">
+                        <input type="checkbox" class="de-payment-chk" value="${p.id}" ${isFinal ? 'checked disabled' : 'checked'} style="width:18px; height:18px; cursor: pointer;">
+                        <div>
+                            <div style="font-weight: 700; color: var(--text-main); font-size:14px;">${p.customer_name}</div>
+                            <div style="font-size:11.5px; color:#888; margin-top:2px;">Method: <strong>${p.payment_method}</strong> | Ref: <strong>${p.reference || '-'}</strong></div>
+                        </div>
+                    </div>
+                    <div style="font-family:monospace; font-weight:700; font-size:14px; text-align:right; min-width: 110px; color:#2e7d32;">
+                        Rs ${parseFloat(p.amount).toLocaleString('en-IN', {minimumFractionDigits:2})}
+                    </div>
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                            <span style="font-size:9.5px; text-transform:uppercase; color:#888; font-weight:bold; letter-spacing:0.5px;">Debit Account (Asset Destination)</span>
+                            ${renderAccountSelect(p.id, 'debit', defaultDebitCode)}
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                            <span style="font-size:9.5px; text-transform:uppercase; color:#888; font-weight:bold; letter-spacing:0.5px;">Credit Account (Transit Source)</span>
+                            ${renderAccountSelect(p.id, 'credit', '1090')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        if (isFinal) {
+            document.querySelectorAll('.de-select').forEach(sel => sel.disabled = true);
+        }
+    }
+
+    function renderDeSales() {
+        const container = document.getElementById('deSalesContainer');
+        container.innerHTML = '';
+        const invoices = currentInvoices.filter(inv => inv.delivery_status === 'Delivered');
+        const isFinal = currentBalancingData.delivery.status === 'Finalized';
+
+        if (invoices.length === 0) {
+            container.innerHTML = `<div style="text-align:center; padding:20px; color:#888;">No delivered sales invoices on this trip.</div>`;
+            return;
+        }
+
+        invoices.forEach(inv => {
+            container.innerHTML += `
+                <div class="sales-de-card" style="display:flex; justify-content:space-between; align-items:center; background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.05); padding: 15px 20px; border-radius: 10px; gap: 20px;">
+                    <div style="display:flex; align-items:center; gap:12px; flex: 1;">
+                        <input type="checkbox" class="de-invoice-chk" value="${inv.id}" ${isFinal ? 'checked disabled' : 'checked'} style="width:18px; height:18px; cursor: pointer;">
+                        <div>
+                            <div style="font-weight: 700; color: #007aff; font-size:14px;">${inv.invoice_number}</div>
+                            <div style="font-size:11.5px; color:#888; margin-top:2px;">Customer: <strong>${inv.customer_name}</strong></div>
+                        </div>
+                    </div>
+                    <div style="font-family:monospace; font-weight:700; font-size:14px; text-align:right; min-width: 110px; color: var(--text-main);">
+                        Rs ${parseFloat(inv.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2})}
+                    </div>
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                            <span style="font-size:9.5px; text-transform:uppercase; color:#888; font-weight:bold; letter-spacing:0.5px;">Debit Account (Accounts Receivable)</span>
+                            ${renderAccountSelect("inv_" + inv.id, 'debit', '1200')}
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                            <span style="font-size:9.5px; text-transform:uppercase; color:#888; font-weight:bold; letter-spacing:0.5px;">Credit Account (Sales Revenue)</span>
+                            ${renderAccountSelect("inv_" + inv.id, 'credit', '4000')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        if (isFinal) {
+            document.querySelectorAll('.de-select').forEach(sel => sel.disabled = true);
+        }
+    }
+
     function renderBalancing() {
         if (!currentBalancingData) return;
         
@@ -1075,6 +1234,11 @@ error_reporting(E_ALL);
             });
         }
 
+        // Render Section 4 interactive lists
+        renderDeCollections();
+        renderDeSales();
+        switchDeTab('collections');
+
         // 7. Verify Checkboxes & Action Buttons based on status
         const verifyCashBox = document.getElementById('verifyCash');
         const verifyChequeBox = document.getElementById('verifyCheques');
@@ -1158,7 +1322,7 @@ error_reporting(E_ALL);
 
     // --- 7. Submit Finalization Request ---
     function submitFinalization() {
-        if (!confirm("Are you sure you want to FINALIZE this delivery trip?\n\nThis will:\n1. Deduct delivered stock from warehouse inventory.\n2. Release reserved stock back into available stock.\n3. Transfer collections out of the transit holding account (1090) to final cash, cheque, and bank ledger accounts.")) {
+        if (!confirm("Are you sure you want to FINALIZE this delivery trip?\n\nThis will:\n1. Deduct delivered stock from warehouse inventory.\n2. Release reserved stock back into available stock.\n3. Transfer selected collections and post sales invoices to General Ledger with specified double-entry accounts.")) {
             return;
         }
 
@@ -1166,10 +1330,39 @@ error_reporting(E_ALL);
         btnFinalize.disabled = true;
         btnFinalize.innerText = "Finalizing Delivery... ⏳";
 
+        const selectedPaymentIds = [];
+        document.querySelectorAll('.de-payment-chk:checked').forEach(cb => {
+            selectedPaymentIds.push(parseInt(cb.value));
+        });
+
+        const selectedInvoiceIds = [];
+        document.querySelectorAll('.de-invoice-chk:checked').forEach(cb => {
+            selectedInvoiceIds.push(parseInt(cb.value));
+        });
+
+        const debitAccounts = {};
+        const creditAccounts = {};
+        document.querySelectorAll('.de-select').forEach(sel => {
+            const id = sel.getAttribute('data-id');
+            const type = sel.getAttribute('data-type');
+            const val = parseInt(sel.value);
+            if (type === 'debit') {
+                debitAccounts[id] = val;
+            } else {
+                creditAccounts[id] = val;
+            }
+        });
+
         fetch('<?= APP_URL ?>/delivery/finalize', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ delivery_id: currentDeliveryId })
+            body: JSON.stringify({ 
+                delivery_id: currentDeliveryId,
+                selected_payment_ids: selectedPaymentIds,
+                selected_invoice_ids: selectedInvoiceIds,
+                debit_accounts: debitAccounts,
+                credit_accounts: creditAccounts
+            })
         })
         .then(res => res.json())
         .then(res => {

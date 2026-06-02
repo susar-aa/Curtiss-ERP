@@ -315,7 +315,7 @@ class DriverInvoice {
             $invoices = $this->getCustomerInvoices($customerId, $routeId);
             file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Found " . count($invoices) . " invoices\n", FILE_APPEND);
 
-            // 2. DO NOT deduct physical stock or finalize accounting here. Update delivery status to 'Delivered'
+            // 2. Update delivery status to 'Delivered'
             foreach ($invoices as $invoice) {
                 $this->db->query("UPDATE invoices SET delivery_status = 'Delivered' WHERE id = :id");
                 $this->db->bind(':id', $invoice->id);
@@ -325,7 +325,7 @@ class DriverInvoice {
                 }
             }
 
-            // 3. Process collections & save to customer_payments and cheques tables (without posting journal entries yet)
+            // 3. Process collections & save to customer_payments, cheques, and chart_of_accounts using 1090 transit account
             $cashAmt = floatval($collections['cash'] ?? 0);
             $bankAmt = floatval($collections['bank'] ?? 0);
 
@@ -340,6 +340,51 @@ class DriverInvoice {
                 $refCode = "PMT-" . time() . rand(10,99);
 
                 try {
+                    // Fetch account IDs for 1090 and 1200
+                    $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1090'");
+                    $rowTemp = $this->db->single();
+                    $tempAccId = $rowTemp ? $rowTemp->id : null;
+
+                    $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1200'");
+                    $rowAR = $this->db->single();
+                    $arAccId = $rowAR ? $rowAR->id : null;
+
+                    $payJid = null;
+                    if ($tempAccId && $arAccId) {
+                        // Create temporary journal entry
+                        $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
+                                          VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
+                        $this->db->bind(':ref', $refCode);
+                        $this->db->bind(':desc', "Driver Transit Collection ($methodStr) - Customer ID: $customerId");
+                        $this->db->bind(':uid', $userId);
+                        $this->db->execute();
+                        $payJid = $this->db->lastInsertId();
+
+                        // Debit 1090 (Driver Transit Collections (Temp))
+                        $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, 0)");
+                        $this->db->bind(':jid', $payJid);
+                        $this->db->bind(':aid', $tempAccId);
+                        $this->db->bind(':deb', $amount);
+                        $this->db->execute();
+
+                        $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :aid");
+                        $this->db->bind(':amt', $amount);
+                        $this->db->bind(':aid', $tempAccId);
+                        $this->db->execute();
+
+                        // Credit 1200 (Accounts Receivable)
+                        $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :cred)");
+                        $this->db->bind(':jid', $payJid);
+                        $this->db->bind(':aid', $arAccId);
+                        $this->db->bind(':cred', $amount);
+                        $this->db->execute();
+
+                        $this->db->query("UPDATE chart_of_accounts SET balance = balance - :amt WHERE id = :aid");
+                        $this->db->bind(':amt', $amount);
+                        $this->db->bind(':aid', $arAccId);
+                        $this->db->execute();
+                    }
+
                     // If PDC Cheque details provided, write to cheques table
                     if ($methodStr === 'Cheque' && $chequeDetails) {
                         file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Inserting cheque record: bank={$chequeDetails['bank']}, number={$chequeDetails['number']}, amount=$amount\n", FILE_APPEND);
@@ -359,15 +404,16 @@ class DriverInvoice {
                         }
                     }
 
-                    // Log Customer Payment History with rep_route_id (leaving journal_entry_id NULL)
+                    // Log Customer Payment History with rep_route_id (associated with transit journal entry)
                     file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Inserting payment record: method=$methodStr, amount=$amount, ref=" . ($chequeDetails['number'] ?? $refCode) . "\n", FILE_APPEND);
                     
                     $this->db->query("INSERT INTO customer_payments (customer_id, amount, payment_date, payment_method, reference, journal_entry_id, rep_route_id, created_by) 
-                                      VALUES (:cid, :amt, CURDATE(), :method, :ref, NULL, :route_id, :uid)");
+                                      VALUES (:cid, :amt, CURDATE(), :method, :ref, :jid, :route_id, :uid)");
                     $this->db->bind(':cid', $customerId);
                     $this->db->bind(':amt', $amount);
                     $this->db->bind(':method', $methodStr);
                     $this->db->bind(':ref', $chequeDetails['number'] ?? $refCode);
+                    $this->db->bind(':jid', $payJid);
                     $this->db->bind(':route_id', $routeId);
                     $this->db->bind(':uid', $userId);
                     $result = $this->db->execute();
@@ -425,6 +471,83 @@ class DriverInvoice {
                     ];
                     $savePaymentRecord($chequeAmt, 'Cheque', $chequeDetails);
                 }
+            }
+
+            // 4. Real-time stock deduction and reservation release
+            require_once dirname(__DIR__, 2) . '/app/Models/FIFO.php';
+            $fifo = new FIFO();
+
+            foreach ($invoices as $invoice) {
+                // If already processed/deducted, don't do it again
+                if ($invoice->stock_status === 'deducted') {
+                    continue;
+                }
+
+                // Fetch invoice items
+                $this->db->query("SELECT * FROM invoice_items WHERE invoice_id = :iid");
+                $this->db->bind(':iid', $invoice->id);
+                $items = $this->db->resultSet();
+
+                foreach ($items as $item) {
+                    $deliveredQty = floatval($item->quantity);
+                    $loadedQty = floatval($item->loaded_quantity);
+                    $itemId = $item->item_id;
+                    $varId = $item->variation_option_id;
+
+                    // Fallback to description name match if itemId is null
+                    if (!$itemId && !empty($item->description)) {
+                        $this->db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
+                        $this->db->bind(':name', $item->description);
+                        $rowItem = $this->db->single();
+                        if ($rowItem) {
+                            $itemId = $rowItem->id;
+                        }
+                    }
+
+                    if ($itemId) {
+                        // A. Deduct delivered stock from physical inventory (quantity_on_hand)
+                        if ($deliveredQty > 0) {
+                            if ($varId) {
+                                $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
+                                $this->db->bind(':qty', $deliveredQty);
+                                $this->db->bind(':id', $varId);
+                                $this->db->execute();
+                            } else {
+                                $this->db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
+                                $this->db->bind(':qty', $deliveredQty);
+                                $this->db->bind(':id', $itemId);
+                                $this->db->execute();
+                            }
+
+                            // B. Deduct FIFO stock costing
+                            try {
+                                $fifo->depleteStock($itemId, $varId ?: null, $deliveredQty, $item->id, null);
+                            } catch (Exception $e) {
+                                file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] FIFO error for item $itemId: " . $e->getMessage() . "\n", FILE_APPEND);
+                            }
+                        }
+
+                        // C. Remove reserved stock (loaded quantity was the reserved amount)
+                        if ($loadedQty > 0) {
+                            if ($varId) {
+                                $this->db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
+                                $this->db->bind(':qty', $loadedQty);
+                                $this->db->bind(':id', $varId);
+                                $this->db->execute();
+                            } else {
+                                $this->db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
+                                $this->db->bind(':qty', $loadedQty);
+                                $this->db->bind(':id', $itemId);
+                                $this->db->execute();
+                            }
+                        }
+                    }
+                }
+
+                // Update invoice stock status to 'deducted'
+                $this->db->query("UPDATE invoices SET stock_status = 'deducted' WHERE id = :id");
+                $this->db->bind(':id', $invoice->id);
+                $this->db->execute();
             }
 
             $this->db->commit();
