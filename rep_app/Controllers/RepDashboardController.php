@@ -332,7 +332,65 @@ class RepDashboardController extends RepController {
                 }
             }
 
-            // 2. Process Offline Billed Invoices (Completing Transactions + Inventory Double-Entry)
+            // 2. Process Offline Route Actions first to ensure correct route_id association for invoices
+            if (!empty($payload['routes']) && is_array($payload['routes'])) {
+                foreach ($payload['routes'] as $route) {
+                    $localId = $route['local_id'] ?? 0;
+                    $status = $route['status'] ?? 'Completed';
+                    
+                    if ($status === 'Active') {
+                        $db->query("INSERT INTO rep_daily_routes (user_id, route_name, start_meter, start_time, start_lat, start_lng, status) 
+                                    VALUES (:uid, :rname, :meter, :stime, :lat, :lng, 'Active')");
+                        $db->bind(':uid', $userId);
+                        $db->bind(':rname', $route['route_name']);
+                        $db->bind(':meter', $route['start_meter']);
+                        $db->bind(':stime', $route['start_time']);
+                        $db->bind(':lat', $route['start_lat']);
+                        $db->bind(':lng', $route['start_lng']);
+                        $db->execute();
+                        $serverId = $db->lastInsertId();
+                    } else {
+                        // Ending an existing active route or direct sync
+                        $db->query("SELECT id FROM rep_daily_routes WHERE user_id = :uid AND status = 'Active' ORDER BY id DESC LIMIT 1");
+                        $db->bind(':uid', $userId);
+                        $activeRoute = $db->single();
+                        $routeId = $activeRoute ? $activeRoute->id : null;
+
+                        if ($routeId) {
+                            $db->query("UPDATE rep_daily_routes SET end_meter = :meter, end_time = :etime, end_lat = :lat, end_lng = :lng, status = 'Completed' WHERE id = :id");
+                            $db->bind(':id', $routeId);
+                            $db->bind(':meter', $route['end_meter']);
+                            $db->bind(':etime', $route['end_time']);
+                            $db->bind(':lat', $route['end_lat']);
+                            $db->bind(':lng', $route['end_lng']);
+                            $db->execute();
+                            $serverId = $routeId;
+                        } else {
+                            // Fallback insert completed route if not already active
+                            $db->query("INSERT INTO rep_daily_routes (user_id, route_name, start_meter, start_time, start_lat, start_lng, end_meter, end_time, end_lat, end_lng, status) 
+                                        VALUES (:uid, :rname, :smeter, :stime, :slat, :slng, :emeter, :etime, :elat, :elng, 'Completed')");
+                            $db->bind(':uid', $userId);
+                            $db->bind(':rname', $route['route_name']);
+                            $db->bind(':smeter', $route['start_meter']);
+                            $db->bind(':stime', $route['start_time']);
+                            $db->bind(':slat', $route['start_lat']);
+                            $db->bind(':slng', $route['start_lng']);
+                            $db->bind(':emeter', $route['end_meter']);
+                            $db->bind(':etime', $route['end_time']);
+                            $db->bind(':elat', $route['end_lat']);
+                            $db->bind(':elng', $route['end_lng']);
+                            $db->execute();
+                            $serverId = $db->lastInsertId();
+                        }
+                    }
+                    $responseMappings['routes'][] = [
+                        'local_id' => $localId,
+                        'server_id' => $serverId
+                    ];
+                }
+            }
+
+            // 3. Process Offline Billed Invoices (Completing Transactions + Inventory Double-Entry)
             if (!empty($payload['invoices']) && is_array($payload['invoices'])) {
                 foreach ($payload['invoices'] as $inv) {
                     $localId = $inv['local_id'] ?? 0;
@@ -347,11 +405,31 @@ class RepDashboardController extends RepController {
                         }
                     }
 
-                    // Resolve active route
-                    $db->query("SELECT id FROM rep_daily_routes WHERE user_id = :uid AND status = 'Active' ORDER BY id DESC LIMIT 1");
-                    $db->bind(':uid', $userId);
-                    $activeRoute = $db->single();
-                    $routeId = $activeRoute ? $activeRoute->id : null;
+                    // Resolve route ID for this invoice
+                    $routeId = null;
+                    $localRouteId = $inv['local_route_id'] ?? null;
+                    if ($localRouteId) {
+                        foreach ($responseMappings['routes'] as $rmap) {
+                            if ($rmap['local_id'] == $localRouteId) {
+                                $routeId = $rmap['server_id'];
+                                break;
+                            }
+                        }
+                    }
+                    if (!$routeId) {
+                        // Fallback 1: Resolve active route from server database
+                        $db->query("SELECT id FROM rep_daily_routes WHERE user_id = :uid AND status = 'Active' ORDER BY id DESC LIMIT 1");
+                        $db->bind(':uid', $userId);
+                        $activeRoute = $db->single();
+                        $routeId = $activeRoute ? $activeRoute->id : null;
+                    }
+                    if (!$routeId) {
+                        // Fallback 2: Resolve latest route from server database (active or completed)
+                        $db->query("SELECT id FROM rep_daily_routes WHERE user_id = :uid ORDER BY id DESC LIMIT 1");
+                        $db->bind(':uid', $userId);
+                        $latestRoute = $db->single();
+                        $routeId = $latestRoute ? $latestRoute->id : null;
+                    }
 
                     // Compute Account IDs from Chart of Accounts
                     $db->query("SELECT id, account_code FROM chart_of_accounts WHERE account_code IN ('1000', '1010', '1600', '4000', '1200')");
@@ -443,64 +521,6 @@ class RepDashboardController extends RepController {
                     $responseMappings['invoices'][] = [
                         'local_id' => $localId,
                         'server_id' => $invoiceServerId
-                    ];
-                }
-            }
-
-            // 3. Process Offline Route Actions
-            if (!empty($payload['routes']) && is_array($payload['routes'])) {
-                foreach ($payload['routes'] as $route) {
-                    $localId = $route['local_id'] ?? 0;
-                    $status = $route['status'] ?? 'Completed';
-                    
-                    if ($status === 'Active') {
-                        $db->query("INSERT INTO rep_daily_routes (user_id, route_name, start_meter, start_time, start_lat, start_lng, status) 
-                                    VALUES (:uid, :rname, :meter, :stime, :lat, :lng, 'Active')");
-                        $db->bind(':uid', $userId);
-                        $db->bind(':rname', $route['route_name']);
-                        $db->bind(':meter', $route['start_meter']);
-                        $db->bind(':stime', $route['start_time']);
-                        $db->bind(':lat', $route['start_lat']);
-                        $db->bind(':lng', $route['start_lng']);
-                        $db->execute();
-                        $serverId = $db->lastInsertId();
-                    } else {
-                        // Ending an existing active route or direct sync
-                        $db->query("SELECT id FROM rep_daily_routes WHERE user_id = :uid AND status = 'Active' ORDER BY id DESC LIMIT 1");
-                        $db->bind(':uid', $userId);
-                        $activeRoute = $db->single();
-                        $routeId = $activeRoute ? $activeRoute->id : null;
-
-                        if ($routeId) {
-                            $db->query("UPDATE rep_daily_routes SET end_meter = :meter, end_time = :etime, end_lat = :lat, end_lng = :lng, status = 'Completed' WHERE id = :id");
-                            $db->bind(':id', $routeId);
-                            $db->bind(':meter', $route['end_meter']);
-                            $db->bind(':etime', $route['end_time']);
-                            $db->bind(':lat', $route['end_lat']);
-                            $db->bind(':lng', $route['end_lng']);
-                            $db->execute();
-                            $serverId = $routeId;
-                        } else {
-                            // Insert a fully completed historic route directly
-                            $db->query("INSERT INTO rep_daily_routes (user_id, route_name, start_meter, start_time, start_lat, start_lng, end_meter, end_time, end_lat, end_lng, status) 
-                                        VALUES (:uid, :rname, :smeter, :stime, :slat, :slng, :emeter, :etime, :elat, :elng, 'Completed')");
-                            $db->bind(':uid', $userId);
-                            $db->bind(':rname', $route['route_name']);
-                            $db->bind(':smeter', $route['start_meter']);
-                            $db->bind(':stime', $route['start_time']);
-                            $db->bind(':slat', $route['start_lat']);
-                            $db->bind(':slng', $route['start_lng']);
-                            $db->bind(':emeter', $route['end_meter']);
-                            $db->bind(':etime', $route['end_time']);
-                            $db->bind(':elat', $route['end_lat']);
-                            $db->bind(':elng', $route['end_lng']);
-                            $db->execute();
-                            $serverId = $db->lastInsertId();
-                        }
-                    }
-                    $responseMappings['routes'][] = [
-                        'local_id' => $localId,
-                        'server_id' => $serverId
                     ];
                 }
             }
