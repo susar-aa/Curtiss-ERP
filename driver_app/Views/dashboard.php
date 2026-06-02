@@ -56,7 +56,7 @@ $employees = $data['employees'];
             </div>
 
             <label class="form-label">Starting Odometer Reading (KM)</label>
-            <input type="number" step="0.01" name="start_meter" required class="form-input" placeholder="e.g. 12040.50">
+            <input type="number" step="0.01" name="start_meter" required class="form-input" placeholder="e.g. 12040.50" oninput="if(this.value.length > 6) this.value = this.value.slice(0, 6);">
 
             <!-- SWAP DRIVERS / HELPERS SELECTS -->
             <label class="form-label">Driver Profile (Verify/Swap)</label>
@@ -156,7 +156,7 @@ $employees = $data['employees'];
 
         <!-- END TRIP SECTION -->
         <div class="card" style="border-top: 5px solid var(--danger);">
-            <h3 style="margin: 0 0 15px; font-size: 16px; font-weight: 800;">Conclude Daily Delivery Route</h3>
+            <h3 style="margin: 0 0 15px; font-size: 16px; font-weight: 800;">Conclude Daily Daily Route</h3>
             
             <button type="button" id="btn-show-end-day" class="btn-primary" style="background: var(--danger); box-shadow: 0 4px 12px rgba(231, 76, 60, 0.2);" onclick="showEndDayForm()">
                 🏁 End Day / Conclude Route
@@ -168,7 +168,7 @@ $employees = $data['employees'];
                 <input type="hidden" id="expected-cash-val" value="<?= floatval($data['today_cash_collected']) ?>">
 
                 <label class="form-label">Ending Odometer Reading (KM)</label>
-                <input type="number" step="0.01" name="end_meter" id="end-meter-input" required class="form-input" placeholder="e.g. 12095.80" style="margin-bottom: 25px;">
+                <input type="number" step="0.01" name="end_meter" id="end-meter-input" required class="form-input" placeholder="e.g. 12095.80" style="margin-bottom: 25px;" oninput="if(this.value.length > 6) this.value = this.value.slice(0, 6);">
 
                 <div style="background: var(--app-bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 25px;">
                     <h4 style="margin: 0 0 12px; font-size: 14px; font-weight: 800; text-transform: uppercase; color: var(--primary);">💵 Cash Balancing Terminal</h4>

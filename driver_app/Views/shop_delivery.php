@@ -1,6 +1,8 @@
 <?php
 $customer = $data['customer'];
-$invoiceItems = $data['invoice_items'];
+$invoiceItems = array_filter($data['invoice_items'] ?? [], function($entry) {
+    return floatval($entry['item']->quantity ?? 0) > 0;
+});
 $delivery = $data['active_delivery'];
 ?>
 
