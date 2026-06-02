@@ -112,6 +112,7 @@ class DeliveryController extends Controller {
             $selectedInvoiceIds = isset($postData['selected_invoice_ids']) ? array_map('intval', $postData['selected_invoice_ids']) : [];
             $debitAccounts = $postData['debit_accounts'] ?? [];
             $creditAccounts = $postData['credit_accounts'] ?? [];
+            $returnedItems = $postData['returned_items'] ?? [];
 
             $this->deliveryModel->finalizeDelivery(
                 $deliveryId, 
@@ -119,7 +120,8 @@ class DeliveryController extends Controller {
                 $selectedPaymentIds, 
                 $selectedInvoiceIds, 
                 $debitAccounts, 
-                $creditAccounts
+                $creditAccounts,
+                $returnedItems
             );
 
             header('Content-Type: application/json');

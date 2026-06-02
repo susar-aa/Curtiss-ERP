@@ -337,7 +337,7 @@ class Delivery {
         ];
     }
 
-    public function finalizeDelivery($deliveryId, $adminUserId, $selectedPaymentIds = [], $selectedInvoiceIds = [], $debitAccounts = [], $creditAccounts = []) {
+    public function finalizeDelivery($deliveryId, $adminUserId, $selectedPaymentIds = [], $selectedInvoiceIds = [], $debitAccounts = [], $creditAccounts = [], $returnedItems = []) {
         $this->db->beginTransaction();
         try {
             $delivery = $this->getDeliveryById($deliveryId);
@@ -406,6 +406,7 @@ class Delivery {
                     if ($invoice->stock_status === 'reserved') {
                         foreach ($items as $item) {
                             $qty = floatval($item->quantity);
+                            $loadedQty = floatval($item->loaded_quantity);
                             $itemId = $item->item_id;
                             $varId = $item->variation_option_id;
 
@@ -422,8 +423,8 @@ class Delivery {
                                 $this->db->bind(':id', $itemId);
                                 $this->db->execute();
 
-                                $this->db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
-                                $this->db->bind(':qty', $qty);
+                                $this->db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :loadedQty) WHERE id = :id");
+                                $this->db->bind(':loadedQty', $loadedQty);
                                 $this->db->bind(':id', $itemId);
                                 $this->db->execute();
                             }
@@ -433,8 +434,8 @@ class Delivery {
                                 $this->db->bind(':id', $varId);
                                 $this->db->execute();
 
-                                $this->db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
-                                $this->db->bind(':qty', $qty);
+                                $this->db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :loadedQty) WHERE id = :id");
+                                $this->db->bind(':loadedQty', $loadedQty);
                                 $this->db->bind(':id', $varId);
                                 $this->db->execute();
                             }
@@ -448,7 +449,7 @@ class Delivery {
                 } else {
                     if ($invoice->stock_status === 'reserved') {
                         foreach ($items as $item) {
-                            $qty = floatval($item->quantity);
+                            $loadedQty = floatval($item->loaded_quantity);
                             $itemId = $item->item_id;
                             $varId = $item->variation_option_id;
 
@@ -460,14 +461,14 @@ class Delivery {
                             }
 
                             if ($itemId) {
-                                $this->db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
-                                $this->db->bind(':qty', $qty);
+                                $this->db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :loadedQty) WHERE id = :id");
+                                $this->db->bind(':loadedQty', $loadedQty);
                                 $this->db->bind(':id', $itemId);
                                 $this->db->execute();
                             }
                             if ($varId) {
-                                $this->db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
-                                $this->db->bind(':qty', $qty);
+                                $this->db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :loadedQty) WHERE id = :id");
+                                $this->db->bind(':loadedQty', $loadedQty);
                                 $this->db->bind(':id', $varId);
                                 $this->db->execute();
                             }
@@ -475,6 +476,41 @@ class Delivery {
                         $this->db->query("UPDATE invoices SET stock_status = 'returned' WHERE id = :iid");
                         $this->db->bind(':iid', $invoice->id);
                         $this->db->execute();
+                    }
+                }
+            }
+
+            // 2b. Apply administrator's actual counted returned products adjustments
+            if (!empty($returnedItems) && is_array($returnedItems)) {
+                foreach ($returnedItems as $ret) {
+                    $itemId = intval($ret['item_id'] ?? 0);
+                    $varId = intval($ret['variation_option_id'] ?? 0);
+                    $loadedQty = floatval($ret['loaded_qty'] ?? 0);
+                    $deliveredQty = floatval($ret['delivered_qty'] ?? 0);
+                    $actualReturnedQty = floatval($ret['actual_returned_qty'] ?? 0);
+
+                    if (!$itemId && !empty($ret['item_name'])) {
+                        $this->db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
+                        $this->db->bind(':name', $ret['item_name']);
+                        $rowItem = $this->db->single();
+                        if ($rowItem) $itemId = $rowItem->id;
+                    }
+
+                    $expectedReturned = $loadedQty - $deliveredQty;
+                    $adjustment = $actualReturnedQty - $expectedReturned;
+
+                    if ($adjustment != 0) {
+                        if ($varId) {
+                            $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :adj) WHERE id = :id");
+                            $this->db->bind(':adj', $adjustment);
+                            $this->db->bind(':id', $varId);
+                            $this->db->execute();
+                        } else if ($itemId) {
+                            $this->db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :adj) WHERE id = :id");
+                            $this->db->bind(':adj', $adjustment);
+                            $this->db->bind(':id', $itemId);
+                            $this->db->execute();
+                        }
                     }
                 }
             }

@@ -265,7 +265,7 @@ class RepDashboardController extends RepController {
             'payment_terms' => $terms,
             'categories' => $categories,
             'credit_invoices' => $creditInvoices,
-            'active_route' => $activeRoute,
+            'active_route' => $activeRoute ?: null,
             'active_route_invoices' => $activeRouteInvoices,
             'active_route_invoice_items' => $activeRouteInvoiceItems
         ]);

@@ -1228,7 +1228,18 @@ error_reporting(E_ALL);
                         <td style="font-weight: 600;">${st.item_name}</td>
                         <td style="text-align: right; font-weight: 700;">${parseInt(st.loaded_qty)}</td>
                         <td style="text-align: right; font-weight: 700; color: #2e7d32;">${parseInt(st.delivered_qty)}</td>
-                        <td style="text-align: right; font-weight: 700; color: #ef6c00;">${parseInt(st.remaining_qty)}</td>
+                        <td style="text-align: right; font-weight: 700; color: #ef6c00;">
+                            <input type="number" class="actual-returned-qty-input" 
+                                   data-item-name="${st.item_name}" 
+                                   data-item-id="${st.item_id}" 
+                                   data-var-id="${st.variation_option_id || 0}" 
+                                   data-loaded-qty="${st.loaded_qty}"
+                                   data-delivered-qty="${st.delivered_qty}"
+                                   value="${parseInt(st.remaining_qty)}" 
+                                   min="0" 
+                                   style="width: 80px; text-align: right; padding: 4px 8px; border: 1px solid rgba(0,0,0,0.15); border-radius: 6px; font-weight: bold; background: rgba(255,255,255,0.95); color: #333;" 
+                                   ${isFinal ? 'disabled' : ''}>
+                        </td>
                     </tr>
                 `;
             });
@@ -1353,6 +1364,18 @@ error_reporting(E_ALL);
             }
         });
 
+        const returnedItems = [];
+        document.querySelectorAll('.actual-returned-qty-input').forEach(input => {
+            returnedItems.push({
+                item_name: input.getAttribute('data-item-name'),
+                item_id: parseInt(input.getAttribute('data-item-id') || 0),
+                variation_option_id: parseInt(input.getAttribute('data-var-id') || 0),
+                loaded_qty: parseFloat(input.getAttribute('data-loaded-qty') || 0),
+                delivered_qty: parseFloat(input.getAttribute('data-delivered-qty') || 0),
+                actual_returned_qty: parseFloat(input.value || 0)
+            });
+        });
+
         fetch('<?= APP_URL ?>/delivery/finalize', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1361,7 +1384,8 @@ error_reporting(E_ALL);
                 selected_payment_ids: selectedPaymentIds,
                 selected_invoice_ids: selectedInvoiceIds,
                 debit_accounts: debitAccounts,
-                credit_accounts: creditAccounts
+                credit_accounts: creditAccounts,
+                returned_items: returnedItems
             })
         })
         .then(res => res.json())

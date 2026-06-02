@@ -473,7 +473,11 @@ class DriverInvoice {
                 }
             }
 
+            // [Antigravity EDIT]
             // 4. Real-time stock deduction and reservation release
+            // We comment this out to ensure all stock deductions and reservation releases
+            // are deferred until administrative Finalization in Delivery::finalizeDelivery.
+            /*
             require_once dirname(__DIR__, 2) . '/app/Models/FIFO.php';
             $fifo = new FIFO();
 
@@ -549,6 +553,7 @@ class DriverInvoice {
                 $this->db->bind(':id', $invoice->id);
                 $this->db->execute();
             }
+            */
 
             $this->db->commit();
             file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] checkoutShop COMPLETED SUCCESSFULLY\n", FILE_APPEND);
