@@ -229,6 +229,33 @@ class RepDashboardController extends RepController {
         ");
         $creditInvoices = $db->resultSet() ?: [];
 
+        // 1. Check if a user_id was passed to look up ongoing route data
+        $userId = isset($_GET['user_id']) ? intval($_GET['user_id']) : null;
+        $activeRoute = null;
+        $activeRouteInvoices = [];
+        $activeRouteInvoiceItems = [];
+
+        if ($userId) {
+            // Find active route for this rep
+            $db->query("SELECT * FROM rep_daily_routes WHERE user_id = :uid AND status = 'Active' ORDER BY id DESC LIMIT 1");
+            $db->bind(':uid', $userId);
+            $activeRoute = $db->single();
+
+            if ($activeRoute) {
+                // Fetch invoices created on this active route
+                $db->query("SELECT id, invoice_number, customer_id, invoice_date, due_date, payment_term_id, total_amount, global_discount_val, global_discount_type, rep_route_id, latitude, longitude FROM invoices WHERE rep_route_id = :rid AND status != 'Voided'");
+                $db->bind(':rid', $activeRoute->id);
+                $activeRouteInvoices = $db->resultSet() ?: [];
+
+                if (!empty($activeRouteInvoices)) {
+                    $invoiceIds = array_map(function($inv) { return intval($inv->id); }, $activeRouteInvoices);
+                    $idsStr = implode(',', $invoiceIds);
+                    $db->query("SELECT * FROM invoice_items WHERE invoice_id IN ($idsStr)");
+                    $activeRouteInvoiceItems = $db->resultSet() ?: [];
+                }
+            }
+        }
+
         echo json_encode([
             'success' => true,
             'products' => $products,
@@ -237,7 +264,10 @@ class RepDashboardController extends RepController {
             'reps' => $reps,
             'payment_terms' => $terms,
             'categories' => $categories,
-            'credit_invoices' => $creditInvoices
+            'credit_invoices' => $creditInvoices,
+            'active_route' => $activeRoute,
+            'active_route_invoices' => $activeRouteInvoices,
+            'active_route_invoice_items' => $activeRouteInvoiceItems
         ]);
         exit;
     }
