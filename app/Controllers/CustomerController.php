@@ -196,8 +196,7 @@ class CustomerController extends Controller {
         ];
 
         if ($this->customerModel->addCustomer($addData)) {
-            $db = new Database();
-            $newId = $db->lastInsertId();
+            $newId = $this->customerModel->getLastInsertId();
             $this->logActivity('Add Customer', 'Customer', "Registered new customer profile via AJAX: {$name}");
             
             $addData['id'] = $newId;

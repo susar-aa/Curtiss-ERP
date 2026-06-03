@@ -597,6 +597,13 @@ $editingItems = $data['editing_items'] ?? [];
         <?php endforeach; ?>
     ];
 
+    // Customizable Discount Rules Engine Configuration
+    const activeDiscountRules = <?= json_encode($data['active_discount_rules'] ?? []) ?>;
+    const promptedDiscounts = {
+        itemRules: {},
+        billRules: {}
+    };
+
     const customers = [
         <?php foreach($customers as $c): ?>
         {
@@ -1021,6 +1028,274 @@ $editingItems = $data['editing_items'] ?? [];
         document.getElementById('subTotal').innerText = subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         document.getElementById('grandTotal').innerText = grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         document.getElementById('balanceDue').innerText = grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+        // Run Customizable Discount Checks
+        checkDiscounts();
+    }
+
+    function showDiscountPrompt(title, message, onAccept, onReject) {
+        // Create backdrop
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop';
+        backdrop.style.position = 'fixed';
+        backdrop.style.top = '0';
+        backdrop.style.left = '0';
+        backdrop.style.width = '100%';
+        backdrop.style.height = '100%';
+        backdrop.style.backgroundColor = 'rgba(0,0,0,0.5)';
+        backdrop.style.zIndex = '9999';
+        backdrop.style.display = 'flex';
+        backdrop.style.alignItems = 'center';
+        backdrop.style.justifyContent = 'center';
+
+        // Create modal panel
+        const panel = document.createElement('div');
+        panel.style.maxWidth = '420px';
+        panel.style.width = '90%';
+        panel.style.backgroundColor = '#fff';
+        panel.style.borderRadius = '8px';
+        panel.style.overflow = 'hidden';
+        panel.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
+        panel.style.border = '1px solid #cbd5e1';
+        panel.style.fontFamily = 'Inter, sans-serif';
+
+        // Header
+        const header = document.createElement('div');
+        header.style.backgroundColor = '#1e3a8a'; // Blue-900
+        header.style.color = '#fff';
+        header.style.padding = '14px 18px';
+        header.style.fontWeight = 'bold';
+        header.style.fontSize = '14px';
+        header.style.display = 'flex';
+        header.style.alignItems = 'center';
+        header.style.gap = '8px';
+        header.innerHTML = `<i class="fa-solid fa-gift text-amber-400"></i> ${title}`;
+        panel.appendChild(header);
+
+        // Body
+        const body = document.createElement('div');
+        body.style.padding = '22px 18px';
+        body.style.fontSize = '13px';
+        body.style.color = '#334155';
+        body.style.lineHeight = '1.6';
+        body.innerText = message;
+        panel.appendChild(body);
+
+        // Footer
+        const footer = document.createElement('div');
+        footer.style.padding = '12px 18px';
+        footer.style.backgroundColor = '#f8fafc';
+        footer.style.borderTop = '1px solid #e2e8f0';
+        footer.style.display = 'flex';
+        footer.style.justifyContent = 'flex-end';
+        footer.style.gap = '10px';
+
+        // Reject button
+        const btnReject = document.createElement('button');
+        btnReject.type = 'button';
+        btnReject.style.padding = '8px 16px';
+        btnReject.style.borderRadius = '6px';
+        btnReject.style.border = '1px solid #cbd5e1';
+        btnReject.style.backgroundColor = '#fff';
+        btnReject.style.color = '#475569';
+        btnReject.style.fontSize = '12px';
+        btnReject.style.fontWeight = 'bold';
+        btnReject.style.cursor = 'pointer';
+        btnReject.style.transition = 'all 0.2s';
+        btnReject.innerText = 'No, Thanks';
+        btnReject.onclick = () => {
+            backdrop.remove();
+            if (onReject) onReject();
+        };
+        footer.appendChild(btnReject);
+
+        // Accept button
+        const btnAccept = document.createElement('button');
+        btnAccept.type = 'button';
+        btnAccept.style.padding = '8px 16px';
+        btnAccept.style.borderRadius = '6px';
+        btnAccept.style.border = 'none';
+        btnAccept.style.backgroundColor = '#2563eb'; // Blue-600
+        btnAccept.style.color = '#fff';
+        btnAccept.style.fontSize = '12px';
+        btnAccept.style.fontWeight = 'bold';
+        btnAccept.style.cursor = 'pointer';
+        btnAccept.style.transition = 'all 0.2s';
+        btnAccept.innerText = 'Accept Offer';
+        btnAccept.onclick = () => {
+            backdrop.remove();
+            if (onAccept) onAccept();
+        };
+        footer.appendChild(btnAccept);
+
+        panel.appendChild(footer);
+        backdrop.appendChild(panel);
+        document.body.appendChild(backdrop);
+    }
+
+    function checkDiscounts() {
+        if (!activeDiscountRules || activeDiscountRules.length === 0) return;
+
+        // 1. Gather all current items and their quantities from the table
+        const cartItems = {};
+        document.querySelectorAll('#invoiceBody tr').forEach(row => {
+            const itemId = row.querySelector('input[name="item_selection[]"]')?.value;
+            const qty = parseFloat(row.querySelector('input[name="qty[]"]')?.value) || 0;
+            const price = parseFloat(row.querySelector('input[name="price[]"]')?.value) || 0;
+            
+            if (itemId) {
+                const baseItemId = itemId.split('|')[0];
+                // Ignore free issue rows when counting standard billing quantities
+                if (price > 0.001) {
+                    cartItems[baseItemId] = (cartItems[baseItemId] || 0) + qty;
+                }
+            }
+        });
+
+        // 2. Process Item-wise rules
+        activeDiscountRules.forEach(rule => {
+            if (rule.rule_type === 'item_wise' && rule.target_item_id) {
+                const targetItemId = String(rule.target_item_id);
+                const totalQty = cartItems[targetItemId] || 0;
+
+                if (totalQty > 0) {
+                    // Find the best tier satisfied by the total QTY
+                    let bestTier = null;
+                    rule.tiers.forEach(tier => {
+                        const min = parseFloat(tier.min_threshold);
+                        if (totalQty >= min) {
+                            if (!bestTier || min > parseFloat(bestTier.min_threshold)) {
+                                bestTier = tier;
+                            }
+                        }
+                    });
+
+                    const promptKey = `${rule.id}-${targetItemId}`;
+                    if (bestTier) {
+                        const rewardQty = parseFloat(bestTier.reward_val);
+                        // Check if we have prompted for this tier
+                        if (promptedDiscounts.itemRules[promptKey] !== String(bestTier.id)) {
+                            promptedDiscounts.itemRules[promptKey] = String(bestTier.id);
+
+                            // Find the composite ID that triggered this to add the correct variant free issue
+                            let sourceCompositeId = null;
+                            let maxQtyForComp = 0;
+                            document.querySelectorAll('#invoiceBody tr').forEach(row => {
+                                const rowCompId = row.querySelector('input[name="item_selection[]"]')?.value;
+                                const rowPrice = parseFloat(row.querySelector('input[name="price[]"]')?.value) || 0;
+                                const rowQty = parseFloat(row.querySelector('input[name="qty[]"]')?.value) || 0;
+                                if (rowCompId && rowCompId.split('|')[0] === targetItemId && rowPrice > 0.001) {
+                                    if (rowQty > maxQtyForComp) {
+                                        maxQtyForComp = rowQty;
+                                        sourceCompositeId = rowCompId;
+                                    }
+                                }
+                            });
+                            
+                            if (!sourceCompositeId) {
+                                sourceCompositeId = `${targetItemId}|0|0`;
+                            }
+
+                            const targetItem = catalog.find(c => c.id === sourceCompositeId) || catalog.find(c => c.id.split('|')[0] === targetItemId);
+                            const itemName = targetItem ? targetItem.name : 'Product';
+
+                            showDiscountPrompt(
+                                "Free Issue Promotion!",
+                                `Your billed quantity (${totalQty}) for ${itemName} qualifies for ${rewardQty} free unit(s). Add this free issue to the bill?`,
+                                function() {
+                                    let foundFree = false;
+                                    document.querySelectorAll('#invoiceBody tr').forEach(row => {
+                                        const rowId = row.querySelector('input[name="item_selection[]"]')?.value;
+                                        const rowPrice = parseFloat(row.querySelector('input[name="price[]"]')?.value) || 0;
+                                        if (rowId === sourceCompositeId && rowPrice <= 0.001) {
+                                            const qtyInput = row.querySelector('input[name="qty[]"]');
+                                            if (qtyInput) {
+                                                qtyInput.value = rewardQty;
+                                                foundFree = true;
+                                            }
+                                        }
+                                    });
+
+                                    if (!foundFree) {
+                                        addItemRow(
+                                            sourceCompositeId,
+                                            targetItem ? targetItem.code : 'FREE',
+                                            rewardQty,
+                                            `${itemName} [FREE ISSUE]`,
+                                            0.00,
+                                            0,
+                                            'Rs'
+                                        );
+                                    }
+                                    calcTotals();
+                                },
+                                function() {
+                                    // Rejected
+                                }
+                            );
+                        }
+                    }
+                }
+            }
+        });
+
+        // 3. Process Bill-wise rules
+        // Calculate subtotal BEFORE global discount is applied
+        let subTotalBeforeGlobal = 0;
+        document.querySelectorAll('#invoiceBody tr').forEach(row => {
+            const qty = parseFloat(row.querySelector('input[name="qty[]"]').value) || 0;
+            const price = parseFloat(row.querySelector('input[name="price[]"]').value) || 0;
+            const discVal = parseFloat(row.querySelector('input[name="item_discount_val[]"]').value) || 0;
+            const discType = row.querySelector('select[name="item_discount_type[]"]').value;
+
+            let rowGross = qty * price;
+            let rowDisc = (discType === '%') ? (rowGross * discVal / 100) : discVal;
+            let rowNet = rowGross - rowDisc;
+            if (rowNet < 0) rowNet = 0;
+            subTotalBeforeGlobal += rowNet;
+        });
+
+        activeDiscountRules.forEach(rule => {
+            if (rule.rule_type === 'bill_wise') {
+                // Find the best tier satisfied by the subtotal
+                let bestTier = null;
+                rule.tiers.forEach(tier => {
+                    const min = parseFloat(tier.min_threshold);
+                    const max = tier.max_threshold ? parseFloat(tier.max_threshold) : Infinity;
+                    if (subTotalBeforeGlobal >= min && subTotalBeforeGlobal <= max) {
+                        if (!bestTier || min > parseFloat(bestTier.min_threshold)) {
+                            bestTier = tier;
+                        }
+                    }
+                });
+
+                if (bestTier) {
+                    const discountPct = parseFloat(bestTier.reward_val);
+                    const promptKey = String(rule.id);
+                    
+                    if (promptedDiscounts.billRules[promptKey] !== String(bestTier.id)) {
+                        promptedDiscounts.billRules[promptKey] = String(bestTier.id);
+
+                        showDiscountPrompt(
+                            "Bill Discount Promotion!",
+                            `Your subtotal (Rs ${subTotalBeforeGlobal.toLocaleString('en-IN', {minimumFractionDigits: 2})}) qualifies for a ${discountPct}% global bill discount. Apply this discount to the bill?`,
+                            function() {
+                                const globSelect = document.getElementById('globalDiscType');
+                                const globInput = document.getElementById('globalDiscVal');
+                                if (globSelect && globInput) {
+                                    globSelect.value = '%';
+                                    globInput.value = discountPct;
+                                    calcTotals();
+                                }
+                            },
+                            function() {
+                                // Rejected
+                            }
+                        );
+                    }
+                }
+            }
+        });
     }
 
     function calculateDueDateOffset() {

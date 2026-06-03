@@ -145,13 +145,18 @@ class SalesController extends Controller {
         $termModel = $this->model('PaymentTerm');
         $paymentTerms = $termModel->getAllTerms();
 
+        // Fetch active discount rules
+        $discountModel = $this->model('DiscountRule');
+        $activeDiscountRules = $discountModel->getActiveRules();
+
         $data = [
             'title' => $type === 'sales_order' ? 'Create Sales Order' : 'Create Bill & Invoice',
             'items' => $items,
             'catalog_items' => $items,
             'payment_terms' => $paymentTerms,
             'invoice_number' => $invoiceNumber,
-            'type' => $type
+            'type' => $type,
+            'active_discount_rules' => $activeDiscountRules
         ];
         $this->view('sales/index', $data);
     }
@@ -655,6 +660,10 @@ class SalesController extends Controller {
         $termModel = $this->model('PaymentTerm');
         $paymentTerms = $termModel->getAllTerms();
 
+        // Fetch active discount rules
+        $discountModel = $this->model('DiscountRule');
+        $activeDiscountRules = $discountModel->getActiveRules();
+
         $data = [
             'title' => ($type === 'sales_order' || (isset($inv->stock_status) && $inv->stock_status === 'reserved')) ? 'Edit Sales Order' : 'Edit Bill & Invoice',
             'catalog_items' => $items,
@@ -663,7 +672,8 @@ class SalesController extends Controller {
             'editing_invoice' => $inv,
             'editing_items' => $editingItems,
             'invoice_number' => $inv->invoice_number,
-            'type' => $type
+            'type' => $type,
+            'active_discount_rules' => $activeDiscountRules
         ];
 
         $this->view('sales/index', $data);

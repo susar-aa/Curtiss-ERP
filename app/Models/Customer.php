@@ -108,6 +108,10 @@ class Customer {
         return $this->db->execute();
     }
 
+    public function getLastInsertId() {
+        return $this->db->lastInsertId();
+    }
+
     public function updateCustomer($data) {
         $this->db->query("UPDATE customers SET name = :name, email = :email, phone = :phone, whatsapp = :whatsapp, address = :address, 
                           latitude = :lat, longitude = :lng, mca_id = :mca_id, territory = :territory 

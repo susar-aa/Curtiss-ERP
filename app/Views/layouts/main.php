@@ -458,6 +458,13 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Automate follow-ups</div>
                             </div>
                         </a>
+                        <a href="<?= APP_URL ?>/discount" class="mega-list-item text-primary">
+                            <div class="icon-wrapper text-primary"><i class="ph ph-tag"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title text-primary">Discount Feed</div>
+                                <div class="desc">Configure rules & tiers</div>
+                            </div>
+                        </a>
                     </div>
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Operations</div>
