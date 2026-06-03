@@ -286,6 +286,20 @@ class DriverDashboardController extends DriverController {
         }
         $creditInvoices = $db->resultSet();
         
+        // Fetch visual catalog and categories for driver app local catalog support
+        $products = [];
+        $categories = [];
+        try {
+            require_once '../rep_app/Models/RepCatalog.php';
+            $catalogModel = new RepCatalog();
+            $products = $catalogModel->getVisualCatalog();
+            
+            $db->query("SELECT id, name FROM item_categories ORDER BY name ASC");
+            $categories = $db->resultSet() ?: [];
+        } catch (Exception $e) {
+            error_log("Failed to fetch products/categories in driver api_sync_pull: " . $e->getMessage());
+        }
+
         // Debug helper: fetch ALL active deliveries (status != 'Completed') in the DB to see why none matched
         $db = new Database();
         $db->query("SELECT d.id, d.rep_route_id, d.vehicle_number, d.driver_name, d.partner_name, d.status FROM deliveries d WHERE d.status != 'Completed'");
@@ -304,6 +318,8 @@ class DriverDashboardController extends DriverController {
             'invoice_items' => $invoiceItems,
             'employees' => $employees,
             'credit_invoices' => $creditInvoices,
+            'products' => $products,
+            'categories' => $categories,
             'debug' => [
                 'user_id' => $userId,
                 'user_details' => $userDetails,
