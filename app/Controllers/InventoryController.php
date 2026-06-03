@@ -127,6 +127,362 @@ class InventoryController extends Controller {
     }
 
     /**
+     * Export entire inventory catalog to a standard ERP CSV file.
+     * Mapped to resolve category, warehouse, and vendor names instead of their internal IDs.
+     */
+    public function exportCSV() {
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=inventory_export_' . date('Ymd_His') . '.csv');
+
+        $output = fopen('php://output', 'w');
+
+        // Write UTF-8 BOM for Excel compatibility
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+
+        // Write CSV Header
+        fputcsv($output, [
+            'SKU',
+            'Name',
+            'Selling Price',
+            'Wholesale Price',
+            'Cost Price',
+            'Quantity',
+            'Description',
+            'Barcode',
+            'Category',
+            'Brand',
+            'Warehouse',
+            'Vendor',
+            'Alert Qty',
+            'Unit',
+            'Status',
+            'Weight',
+            'Retail Margin',
+            'Wholesale Margin',
+            'Sample Code',
+            'Variations'
+        ]);
+
+        // Query all items resolving relation names
+        $this->db->query("
+            SELECT i.*, 
+                   c.name AS category_name, 
+                   w.name AS warehouse_name, 
+                   v.name AS vendor_name
+            FROM items i
+            LEFT JOIN item_categories c ON i.category_id = c.id
+            LEFT JOIN warehouses w ON i.warehouse_id = w.id
+            LEFT JOIN vendors v ON i.vendor_id = v.id
+            ORDER BY i.id DESC
+        ");
+        $items = $this->db->resultSet() ?: [];
+
+        foreach ($items as $item) {
+            fputcsv($output, [
+                $item->item_code,
+                $item->name,
+                number_format(floatval($item->price ?? 0), 2, '.', ''),
+                number_format(floatval($item->wholesale_price ?? 0), 2, '.', ''),
+                number_format(floatval($item->cost_price ?? 0), 2, '.', ''),
+                intval($item->qty ?? 0),
+                $item->description ?? '',
+                $item->barcode ?? '',
+                $item->category_name ?? '',
+                $item->brand ?? '',
+                $item->warehouse_name ?? $item->warehouse ?? '',
+                $item->vendor_name ?? '',
+                intval($item->alert_qty ?? 5),
+                $item->unit ?? 'pcs',
+                $item->status ?? 'active',
+                $item->weight ?? '',
+                number_format(floatval($item->retail_margin ?? 0), 2, '.', ''),
+                number_format(floatval($item->wholesale_margin ?? 0), 2, '.', ''),
+                $item->sample_code ?? '',
+                $item->variations_json ?? '[]'
+            ]);
+        }
+
+        fclose($output);
+        exit;
+    }
+
+    /**
+     * Import custom ERP CSV file.
+     * Updates products if SKU matches; inserts new products otherwise.
+     * Category, Warehouse, and Vendor names are matched or created automatically on-the-fly.
+     */
+    public function importERPCSV() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_FILES['csv_file']['tmp_name'])) {
+            $_SESSION['flash_error'] = "Please select a valid CSV file to upload.";
+            header('Location: ' . APP_URL . '/inventory');
+            exit;
+        }
+
+        $filepath = $_FILES['csv_file']['tmp_name'];
+
+        @set_time_limit(0);
+        @ini_set('memory_limit', '1024M');
+
+        $errors = [];
+        $successLogs = [];
+        $addedCount = 0;
+        $updatedCount = 0;
+
+        if (($handle = fopen($filepath, "r")) !== FALSE) {
+            // Read headers
+            $headers = fgetcsv($handle, 10000, ",");
+            if (!$headers) {
+                $_SESSION['flash_error'] = "The uploaded CSV file is empty or has invalid formatting.";
+                header('Location: ' . APP_URL . '/inventory');
+                exit;
+            }
+
+            // Clean headers (remove BOM and force lower)
+            $headers = array_map(function($h) {
+                // Strip UTF-8 BOM if present
+                $bom = pack('H*', 'EFBBBF');
+                $h = preg_replace("/^$bom/", '', $h);
+                return strtolower(trim(preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $h)));
+            }, $headers);
+
+            // Locate columns
+            $skuIdx = array_search('sku', $headers);
+            $nameIdx = array_search('name', $headers);
+            $sellingPriceIdx = array_search('selling price', $headers);
+            $wholesalePriceIdx = array_search('wholesale price', $headers);
+            $costPriceIdx = array_search('cost price', $headers);
+            $qtyIdx = array_search('quantity', $headers);
+            $descIdx = array_search('description', $headers);
+            $barcodeIdx = array_search('barcode', $headers);
+            $categoryIdx = array_search('category', $headers);
+            $brandIdx = array_search('brand', $headers);
+            $warehouseIdx = array_search('warehouse', $headers);
+            $vendorIdx = array_search('vendor', $headers);
+            $alertQtyIdx = array_search('alert qty', $headers);
+            $unitIdx = array_search('unit', $headers);
+            $statusIdx = array_search('status', $headers);
+            $weightIdx = array_search('weight', $headers);
+            $retailMarginIdx = array_search('retail margin', $headers);
+            $wholesaleMarginIdx = array_search('wholesale margin', $headers);
+            $sampleCodeIdx = array_search('sample code', $headers);
+            $variationsIdx = array_search('variations', $headers);
+
+            if ($skuIdx === FALSE || $nameIdx === FALSE) {
+                $_SESSION['flash_error'] = "Invalid CSV structure. Could not find required 'SKU' and 'Name' headers.";
+                header('Location: ' . APP_URL . '/inventory');
+                exit;
+            }
+
+            // Lookup maps
+            $categoryMap = [];
+            $warehouseMap = [];
+            $vendorMap = [];
+
+            // Fetch current lookup maps
+            $this->db->query("SELECT id, name FROM item_categories");
+            foreach ($this->db->resultSet() as $r) {
+                $categoryMap[strtolower(trim($r->name))] = $r->id;
+            }
+
+            $this->db->query("SELECT id, name FROM warehouses");
+            foreach ($this->db->resultSet() as $r) {
+                $warehouseMap[strtolower(trim($r->name))] = $r->id;
+            }
+
+            $this->db->query("SELECT id, name FROM vendors");
+            foreach ($this->db->resultSet() as $r) {
+                $vendorMap[strtolower(trim($r->name))] = $r->id;
+            }
+
+            $rowCount = 0;
+            $this->db->beginTransaction();
+
+            try {
+                while (($row = fgetcsv($handle, 10000, ",")) !== FALSE) {
+                    $rowCount++;
+
+                    $sku = trim($row[$skuIdx] ?? '');
+                    $name = trim($row[$nameIdx] ?? '');
+
+                    if (empty($sku)) {
+                        $errors[] = "Row {$rowCount}: SKU is missing or empty. Skipped.";
+                        continue;
+                    }
+                    if (empty($name)) {
+                        $errors[] = "Row {$rowCount}: Name is missing or empty for SKU '{$sku}'. Skipped.";
+                        continue;
+                    }
+
+                    $sellingPrice = floatval(trim($row[$sellingPriceIdx] ?? '0'));
+                    $wholesalePrice = floatval(trim($row[$wholesalePriceIdx] ?? '0'));
+                    $costPrice = floatval(trim($row[$costPriceIdx] ?? '0'));
+                    $qty = intval(trim($row[$qtyIdx] ?? '0'));
+                    $description = trim($row[$descIdx] ?? '');
+                    $barcode = trim($row[$barcodeIdx] ?? '');
+                    $categoryName = trim($row[$categoryIdx] ?? '');
+                    $brand = trim($row[$brandIdx] ?? '');
+                    $warehouseName = trim($row[$warehouseIdx] ?? '');
+                    $vendorName = trim($row[$vendorIdx] ?? '');
+                    $alertQty = intval(trim($row[$alertQtyIdx] ?? '5'));
+                    $unit = trim($row[$unitIdx] ?? 'pcs');
+                    $status = strtolower(trim($row[$statusIdx] ?? 'active'));
+                    if ($status !== 'active' && $status !== 'inactive') {
+                        $status = 'active';
+                    }
+                    $weight = trim($row[$weightIdx] ?? '');
+                    $retailMargin = floatval(trim($row[$retailMarginIdx] ?? '0'));
+                    $wholesaleMargin = floatval(trim($row[$wholesaleMarginIdx] ?? '0'));
+                    $sampleCode = trim($row[$sampleCodeIdx] ?? '');
+                    $variationsJson = trim($row[$variationsIdx] ?? '[]');
+
+                    // Resolve category on-the-fly
+                    $categoryId = null;
+                    if (!empty($categoryName)) {
+                        $catKey = strtolower($categoryName);
+                        if (isset($categoryMap[$catKey])) {
+                            $categoryId = $categoryMap[$catKey];
+                        } else {
+                            $this->db->query("INSERT INTO item_categories (name, description) VALUES (:name, :desc)");
+                            $this->db->bind(':name', $categoryName);
+                            $this->db->bind(':desc', 'Auto-created during CSV import');
+                            if ($this->db->execute()) {
+                                $newCatId = $this->db->lastInsertId();
+                                $categoryMap[$catKey] = $newCatId;
+                                $categoryId = $newCatId;
+                                $successLogs[] = "Auto-created Category '{$categoryName}'";
+                            }
+                        }
+                    }
+
+                    // Resolve warehouse on-the-fly
+                    $warehouseId = null;
+                    if (!empty($warehouseName)) {
+                        $whKey = strtolower($warehouseName);
+                        if (isset($warehouseMap[$whKey])) {
+                            $warehouseId = $warehouseMap[$whKey];
+                        } else {
+                            $this->db->query("INSERT INTO warehouses (name, location, is_default) VALUES (:name, 'Auto-created', 0)");
+                            $this->db->bind(':name', $warehouseName);
+                            if ($this->db->execute()) {
+                                $newWhId = $this->db->lastInsertId();
+                                $warehouseMap[$whKey] = $newWhId;
+                                $warehouseId = $newWhId;
+                                $successLogs[] = "Auto-created Warehouse '{$warehouseName}'";
+                            }
+                        }
+                    }
+
+                    // Resolve vendor on-the-fly
+                    $vendorId = null;
+                    if (!empty($vendorName)) {
+                        $vKey = strtolower($vendorName);
+                        if (isset($vendorMap[$vKey])) {
+                            $vendorId = $vendorMap[$vKey];
+                        } else {
+                            $this->db->query("INSERT INTO vendors (name, email, phone, address) VALUES (:name, '', '', '')");
+                            $this->db->bind(':name', $vendorName);
+                            if ($this->db->execute()) {
+                                $newVndId = $this->db->lastInsertId();
+                                $vendorMap[$vKey] = $newVndId;
+                                $vendorId = $newVndId;
+                                $successLogs[] = "Auto-created Vendor '{$vendorName}'";
+                            }
+                        }
+                    }
+
+                    $itemData = [
+                        'item_code' => $sku,
+                        'name' => $name,
+                        'selling_price' => $sellingPrice,
+                        'wholesale_price' => $wholesalePrice,
+                        'qty' => $qty,
+                        'description' => $description,
+                        'barcode' => $barcode,
+                        'category_id' => $categoryId,
+                        'brand' => $brand,
+                        'warehouse' => $warehouseName,
+                        'alert_qty' => $alertQty,
+                        'unit' => $unit,
+                        'status' => $status,
+                        'weight' => $weight,
+                        'sync_woo' => 1,
+                        'variations_json' => $variationsJson,
+                        'image_path' => '',
+                        'cost_price' => $costPrice,
+                        'warehouse_id' => $warehouseId,
+                        'vendor_id' => $vendorId,
+                        'sample_code' => $sampleCode,
+                        'retail_margin' => $retailMargin,
+                        'wholesale_margin' => $wholesaleMargin
+                    ];
+
+                    $existingItem = $this->itemModel->getItemByCode($sku);
+
+                    if ($existingItem) {
+                        $itemData['id'] = $existingItem->id;
+                        $itemData['image_path'] = $existingItem->image_path ?? '';
+
+                        // Track before/after changes for audit log
+                        $oldValues = [];
+                        $newValues = [];
+                        $changesExist = false;
+                        foreach (['selling_price', 'wholesale_price', 'cost_price', 'name', 'status', 'qty'] as $key) {
+                            $oldVal = $existingItem->$key ?? null;
+                            $newVal = $itemData[$key] ?? null;
+                            if (floatval($oldVal) != floatval($newVal) || $oldVal != $newVal) {
+                                $oldValues[$key] = $oldVal;
+                                $newValues[$key] = $newVal;
+                                $changesExist = true;
+                            }
+                        }
+
+                        if ($this->itemModel->updateItem($itemData)) {
+                            $updatedCount++;
+                            if ($changesExist) {
+                                $this->logActivity('Product Edited', 'Inventory', "Product '{$itemData['name']}' (Code: {$itemData['item_code']}) updated via custom ERP CSV import.", $existingItem->id, $oldValues, $newValues);
+                            }
+                        } else {
+                            $errors[] = "Row {$rowCount}: Failed to update database record for SKU '{$sku}'.";
+                        }
+                    } else {
+                        if ($this->itemModel->addItem($itemData)) {
+                            $addedCount++;
+                            $newItemId = $this->db->lastInsertId();
+                            $this->logActivity('Product Created', 'Inventory', "Product '{$itemData['name']}' (Code: {$itemData['item_code']}) created via custom ERP CSV import.", $newItemId, null, $itemData);
+                        } else {
+                            $errors[] = "Row {$rowCount}: Failed to insert new product '{$name}' (SKU: '{$sku}') into database.";
+                        }
+                    }
+                }
+
+                $this->db->commit();
+            } catch (Exception $e) {
+                $this->db->rollBack();
+                $errors[] = "Database Transaction Failure: " . $e->getMessage();
+            }
+
+            fclose($handle);
+        } else {
+            $errors[] = "Could not read uploaded CSV file.";
+        }
+
+        // Store outcomes in session
+        $_SESSION['import_results'] = [
+            'added' => $addedCount,
+            'updated' => $updatedCount,
+            'errors' => $errors,
+            'success_logs' => $successLogs
+        ];
+
+        header('Location: ' . APP_URL . '/inventory');
+        exit;
+    }
+
+    /**
      * High-speed, Transactional CSV Catalog Importer.
      * Imports WooCommerce CSV sheets directly without loading overhead.
      * Preserves image URLs as remote CDN targets for fast loading.

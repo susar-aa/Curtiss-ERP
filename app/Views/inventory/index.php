@@ -46,6 +46,10 @@ $flashError = $_SESSION['flash_error'] ?? null;
 if ($flashError) {
     unset($_SESSION['flash_error']);
 }
+$importResults = $_SESSION['import_results'] ?? null;
+if ($importResults) {
+    unset($_SESSION['import_results']);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -154,8 +158,11 @@ if ($flashError) {
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
+                <a href="<?php echo APP_URL; ?>/inventory/exportCSV" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-indigo-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5 cursor-pointer">
+                    <i class="fa-solid fa-file-export"></i> Export Catalog
+                </a>
                 <button onclick="openCsvModal()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-emerald-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5 cursor-pointer">
-                    <i class="fa-solid fa-file-csv"></i> Import WooCommerce CSV
+                    <i class="fa-solid fa-file-import"></i> Import Catalog
                 </button>
                 <a href="<?php echo APP_URL; ?>/inventory/migrateImages" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-amber-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5">
                     <i class="fa-solid fa-images animate-pulse"></i> Migrate Remote Images
@@ -194,6 +201,68 @@ if ($flashError) {
                 <button onclick="document.getElementById('flash-error-alert').style.display='none'" class="ml-auto text-rose-400 hover:text-rose-600 cursor-pointer">
                     <i class="fa-solid fa-xmark text-sm"></i>
                 </button>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($importResults): ?>
+            <div id="import-results-panel" class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4 animate-fade-in">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                            <i class="fa-solid fa-file-circle-check text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800">CSV Import Completed</h3>
+                            <p class="text-xs text-slate-500">Processed all records from your custom inventory CSV.</p>
+                        </div>
+                    </div>
+                    <button onclick="document.getElementById('import-results-panel').style.display='none'" class="text-slate-400 hover:text-slate-600 cursor-pointer">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 text-center">
+                        <div class="text-xs font-semibold text-slate-500 mb-1">New Products Added</div>
+                        <div class="text-xl font-bold text-emerald-600 font-mono"><?= $importResults['added']; ?></div>
+                    </div>
+                    <div class="bg-blue-50/50 border border-blue-100 rounded-xl p-3 text-center">
+                        <div class="text-xs font-semibold text-slate-500 mb-1">Products Updated</div>
+                        <div class="text-xl font-bold text-blue-600 font-mono"><?= $importResults['updated']; ?></div>
+                    </div>
+                    <div class="bg-amber-50/50 border border-amber-100 rounded-xl p-3 text-center">
+                        <div class="text-xs font-semibold text-slate-500 mb-1">Relations Created</div>
+                        <div class="text-xl font-bold text-amber-600 font-mono"><?= count($importResults['success_logs']); ?></div>
+                    </div>
+                    <div class="bg-rose-50/50 border border-rose-100 rounded-xl p-3 text-center">
+                        <div class="text-xs font-semibold text-slate-500 mb-1">Errors Encountered</div>
+                        <div class="text-xl font-bold text-rose-600 font-mono"><?= count($importResults['errors']); ?></div>
+                    </div>
+                </div>
+
+                <?php if (!empty($importResults['success_logs'])): ?>
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
+                        <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wider">Created Database Entities:</h4>
+                        <ul class="text-[11px] text-slate-500 font-mono list-disc list-inside space-y-0.5">
+                            <?php foreach ($importResults['success_logs'] as $log): ?>
+                                <li><?= htmlspecialchars($log); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!empty($importResults['errors'])): ?>
+                    <div class="bg-rose-50 border border-rose-100 rounded-xl p-4 space-y-2">
+                        <h4 class="text-xs font-bold text-rose-800 uppercase tracking-wider flex items-center gap-1">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Detailed Error Log:
+                        </h4>
+                        <ul class="text-[11px] text-rose-600 font-mono list-disc list-inside space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
+                            <?php foreach ($importResults['errors'] as $err): ?>
+                                <li><?= htmlspecialchars($err); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
 
@@ -494,53 +563,136 @@ if ($flashError) {
         </div>
     </div>
 
-    <!-- WooCommerce CSV Import Overlay Modal (Fully Custom Styled) -->
+    <!-- Combined Import Overlay Modal (Fully Custom Styled with Tabs) -->
     <div id="csvImportModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all border border-slate-200">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all border border-slate-200">
+            <!-- Modal Header -->
             <div class="bg-slate-50 border-b border-slate-100 p-6 flex justify-between items-center">
                 <div class="flex items-center gap-2.5 text-slate-900">
-                    <i class="fa-solid fa-file-csv text-emerald-600 text-xl"></i>
-                    <h3 class="text-base font-bold">Import WooCommerce Products</h3>
+                    <i class="fa-solid fa-file-import text-emerald-600 text-xl"></i>
+                    <h3 class="text-base font-bold">Import Products Catalog</h3>
                 </div>
-                <button onclick="closeCsvModal()" class="text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
+                <button onclick="closeCsvModal()" class="text-slate-400 hover:text-slate-600 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
-            
-            <form action="<?php echo APP_URL; ?>/inventory/importCSV" method="POST" enctype="multipart/form-data" class="p-6 space-y-6">
-                <div class="space-y-2">
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Select WooCommerce Export CSV</label>
-                    <div class="border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-slate-50 rounded-xl p-6 text-center cursor-pointer relative transition-colors duration-150">
-                        <input type="file" name="csv_file" accept=".csv" required class="absolute inset-0 opacity-0 cursor-pointer">
-                        <div class="space-y-2">
-                            <div class="h-10 w-10 bg-slate-100 text-emerald-600 rounded-xl flex items-center justify-center mx-auto shadow-inner">
-                                <i class="fa-solid fa-file-arrow-up text-lg"></i>
+
+            <!-- Tab Triggers -->
+            <div class="flex border-b border-slate-100 bg-slate-50/50">
+                <button type="button" onclick="switchImportTab('erp')" id="tab-btn-erp" class="flex-1 py-3 text-xs font-bold text-center border-b-2 border-primary-600 text-primary-600 transition-all focus:outline-none">
+                    Standard ERP Format
+                </button>
+                <button type="button" onclick="switchImportTab('woo')" id="tab-btn-woo" class="flex-1 py-3 text-xs font-bold text-center border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-all focus:outline-none">
+                    WooCommerce Format
+                </button>
+            </div>
+
+            <!-- Tab Content: ERP Standard -->
+            <div id="import-tab-erp" class="p-6 space-y-6">
+                <form action="<?php echo APP_URL; ?>/inventory/importERPCSV" method="POST" enctype="multipart/form-data" class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Select Standard ERP CSV File</label>
+                        <div class="border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-slate-50 rounded-xl p-6 text-center cursor-pointer relative transition-colors duration-150">
+                            <input type="file" name="csv_file" accept=".csv" required class="absolute inset-0 opacity-0 cursor-pointer">
+                            <div class="space-y-2">
+                                <div class="h-10 w-10 bg-slate-100 text-emerald-600 rounded-xl flex items-center justify-center mx-auto shadow-inner">
+                                    <i class="fa-solid fa-file-arrow-up text-lg"></i>
+                                </div>
+                                <p class="text-xs font-semibold text-slate-700">Drag & drop standard CSV here or <span class="text-emerald-600 hover:underline">browse files</span></p>
+                                <p class="text-[10px] text-slate-400 font-medium">Standard ERP format (resolves category, warehouse, vendor by name)</p>
                             </div>
-                            <p class="text-xs font-semibold text-slate-700">Drag & drop your CSV file here or <span class="text-emerald-600 hover:underline">browse files</span></p>
-                            <p class="text-[10px] text-slate-400 font-medium">Accepts standard .csv exports from your WooCommerce catalog</p>
                         </div>
                     </div>
-                </div>
 
-                <!-- Price Mapping Indicators -->
-                <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 space-y-2.5 text-xs text-indigo-950">
-                    <h4 class="font-bold text-indigo-900 flex items-center gap-1"><i class="fa-solid fa-circle-info"></i> Auto Price Mappings</h4>
-                    <ul class="space-y-1 text-[11px] list-disc list-inside">
-                        <li><span class="font-bold text-indigo-900">Regular price</span> &rarr; Retail Price (LKR)</li>
-                        <li><span class="font-bold text-indigo-900">B2B Users Base Price</span> &rarr; Wholesale Price (WholesaleX)</li>
-                        <li>Variations are nested automatically under parent SKUs</li>
-                    </ul>
-                </div>
+                    <!-- Column Mapping Info -->
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 space-y-2 text-xs text-indigo-950">
+                        <h4 class="font-bold text-indigo-900 flex items-center gap-1">
+                            <i class="fa-solid fa-circle-info"></i> Self-Healing Smart Mappings
+                        </h4>
+                        <p class="text-[11px] leading-relaxed text-indigo-850">
+                            The importer matches existing products using the <span class="font-bold">SKU</span> column. If category, warehouse, or vendor names are new, the system creates them dynamically on-the-fly!
+                        </p>
+                        <p class="text-[10px] text-indigo-600/80 font-mono mt-1">
+                            Accepted Headers: SKU, Name, Selling Price, Wholesale Price, Cost Price, Quantity, Description, Barcode, Category, Brand, Warehouse, Vendor, Alert Qty, Unit, Status, Weight, Retail Margin, Wholesale Margin, Sample Code, Variations
+                        </p>
+                    </div>
 
-                <div class="flex gap-2 pt-4 border-t border-slate-100">
-                    <button type="button" onclick="closeCsvModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">Cancel</button>
-                    <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-750 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/30 transition">Start Instant Import</button>
-                </div>
-            </form>
+                    <div class="flex gap-2 pt-4 border-t border-slate-100">
+                        <button type="button" onclick="closeCsvModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">Cancel</button>
+                        <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-750 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/30 transition">Start ERP Import</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tab Content: WooCommerce -->
+            <div id="import-tab-woo" class="p-6 space-y-6 hidden">
+                <form action="<?php echo APP_URL; ?>/inventory/importCSV" method="POST" enctype="multipart/form-data" class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Select WooCommerce Export CSV</label>
+                        <div class="border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-slate-50 rounded-xl p-6 text-center cursor-pointer relative transition-colors duration-150">
+                            <input type="file" name="csv_file" accept=".csv" required class="absolute inset-0 opacity-0 cursor-pointer">
+                            <div class="space-y-2">
+                                <div class="h-10 w-10 bg-slate-100 text-emerald-600 rounded-xl flex items-center justify-center mx-auto shadow-inner">
+                                    <i class="fa-solid fa-file-arrow-up text-lg"></i>
+                                </div>
+                                <p class="text-xs font-semibold text-slate-700">Drag & drop WooCommerce CSV here or <span class="text-emerald-600 hover:underline">browse files</span></p>
+                                <p class="text-[10px] text-slate-400 font-medium">Accepts standard .csv exports from your WooCommerce catalog</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Price Mapping Indicators -->
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 space-y-2 text-xs text-indigo-950">
+                        <h4 class="font-bold text-indigo-900 flex items-center gap-1">
+                            <i class="fa-solid fa-circle-info"></i> WooCommerce Price Mappings
+                        </h4>
+                        <ul class="space-y-1 text-[11px] list-disc list-inside">
+                            <li><span class="font-bold text-indigo-900">Regular price</span> &rarr; Retail Price (LKR)</li>
+                            <li><span class="font-bold text-indigo-900">B2B Users Base Price</span> &rarr; Wholesale Price (WholesaleX)</li>
+                            <li>Variations are nested automatically under parent SKUs</li>
+                        </ul>
+                    </div>
+
+                    <div class="flex gap-2 pt-4 border-t border-slate-100">
+                        <button type="button" onclick="closeCsvModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">Cancel</button>
+                        <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-750 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/30 transition">Start WooCommerce Import</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
     <!-- AJAX-based real-time search, filter logic, and step-by-step progress importer -->
     <script>
         let searchTimeout = null;
+
+        /**
+         * Switch between standard ERP and WooCommerce import tabs
+         */
+        function switchImportTab(tab) {
+            const btnErp = document.getElementById('tab-btn-erp');
+            const btnWoo = document.getElementById('tab-btn-woo');
+            const tabErp = document.getElementById('import-tab-erp');
+            const tabWoo = document.getElementById('import-tab-woo');
+
+            if (tab === 'erp') {
+                btnErp.classList.add('border-primary-600', 'text-primary-600');
+                btnErp.classList.remove('border-transparent', 'text-slate-500');
+                btnWoo.classList.remove('border-primary-600', 'text-primary-600');
+                btnWoo.classList.add('border-transparent', 'text-slate-500');
+                
+                tabErp.classList.remove('hidden');
+                tabWoo.classList.add('hidden');
+            } else {
+                btnWoo.classList.add('border-primary-600', 'text-primary-600');
+                btnWoo.classList.remove('border-transparent', 'text-slate-500');
+                btnErp.classList.remove('border-primary-600', 'text-primary-600');
+                btnErp.classList.add('border-transparent', 'text-slate-500');
+                
+                tabWoo.classList.remove('hidden');
+                tabErp.classList.add('hidden');
+            }
+        }
 
         /**
          * Trigger debounce search update to avoid database flooding while typing

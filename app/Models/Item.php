@@ -330,11 +330,11 @@ class Item {
         $this->db->query("INSERT INTO items (
             {$this->itemCodeColumn}, name, {$this->priceColumn}, {$this->wholesalePriceColumn}, {$this->qtyColumn}, {$this->descColumn},
             barcode, category_id, brand, warehouse, alert_qty, unit, status, weight, sync_woo, variations_json, image_path,
-            cost_price, warehouse_id, vendor_id, sample_code
+            cost_price, warehouse_id, vendor_id, sample_code, retail_margin, wholesale_margin
         ) VALUES (
             :item_code, :name, :price, :wholesale_price, :qty, :description,
             :barcode, :category_id, :brand, :warehouse, :alert_qty, :unit, :status, :weight, :sync_woo, :variations_json, :image_path,
-            :cost_price, :warehouse_id, :vendor_id, :sample_code
+            :cost_price, :warehouse_id, :vendor_id, :sample_code, :retail_margin, :wholesale_margin
         )");
 
         $this->db->bind(':item_code', $data['item_code']);
@@ -358,6 +358,8 @@ class Item {
         $this->db->bind(':warehouse_id', $data['warehouse_id'] ?? null);
         $this->db->bind(':vendor_id', $data['vendor_id'] ?? null);
         $this->db->bind(':sample_code', $data['sample_code'] ?? null);
+        $this->db->bind(':retail_margin', $data['retail_margin'] ?? '0.00');
+        $this->db->bind(':wholesale_margin', $data['wholesale_margin'] ?? '0.00');
 
         return $this->db->execute();
     }
@@ -384,7 +386,9 @@ class Item {
             cost_price = :cost_price,
             warehouse_id = :warehouse_id,
             vendor_id = :vendor_id,
-            sample_code = :sample_code
+            sample_code = :sample_code,
+            retail_margin = :retail_margin,
+            wholesale_margin = :wholesale_margin
             WHERE id = :id");
 
         $this->db->bind(':id', $data['id']);
@@ -409,6 +413,8 @@ class Item {
         $this->db->bind(':warehouse_id', $data['warehouse_id'] ?? null);
         $this->db->bind(':vendor_id', $data['vendor_id'] ?? null);
         $this->db->bind(':sample_code', $data['sample_code'] ?? null);
+        $this->db->bind(':retail_margin', $data['retail_margin'] ?? '0.00');
+        $this->db->bind(':wholesale_margin', $data['wholesale_margin'] ?? '0.00');
 
         return $this->db->execute();
     }
