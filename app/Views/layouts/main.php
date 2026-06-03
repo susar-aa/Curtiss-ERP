@@ -895,5 +895,7 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
             icon.innerHTML = collapsedNow ? '<i class="ph ph-caret-up"></i>' : '<i class="ph ph-caret-down"></i>';
         }
     </script>
+    
+    <?php include '../app/Views/layouts/resilient_loader.php'; ?>
 </body>
 </html>

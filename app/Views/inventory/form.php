@@ -996,6 +996,6 @@ try {
             serializeVariations();
         });
     </script>
-
+<?php include '../app/Views/layouts/resilient_loader.php'; ?>
 </body>
 </html>

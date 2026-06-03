@@ -822,6 +822,6 @@ if ($importResults) {
             document.getElementById('csvImportModal').classList.add('hidden');
         }
     </script>
-
+<?php include '../app/Views/layouts/resilient_loader.php'; ?>
 </body>
 </html>
