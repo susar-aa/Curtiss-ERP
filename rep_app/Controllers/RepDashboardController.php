@@ -355,6 +355,7 @@ class RepDashboardController extends RepController {
                     $db->execute();
                     
                     $serverId = $db->lastInsertId();
+                    $this->logActivity('Customer Created', 'Customer', "Customer '{$cust['name']}' (Territory: {$cust['territory']}) created via Rep Mobile App Sync.", $serverId, null, $cust);
                     $responseMappings['customers'][] = [
                         'local_id' => $localId,
                         'server_id' => $serverId
@@ -412,6 +413,11 @@ class RepDashboardController extends RepController {
                             $db->execute();
                             $serverId = $db->lastInsertId();
                         }
+                    }
+                    if ($status === 'Active') {
+                        $this->logActivity('Start Route', 'Rep Route', "Rep started route '{$route['route_name']}' via Mobile App Sync.", $serverId, null, $route);
+                    } else {
+                        $this->logActivity('End Route', 'Rep Route', "Rep ended route ID {$serverId} with Odometer {$route['end_meter']} via Mobile App Sync.", $serverId, null, $route);
                     }
                     $responseMappings['routes'][] = [
                         'local_id' => $localId,
@@ -589,6 +595,11 @@ class RepDashboardController extends RepController {
                         'server_id' => $invoiceServerId,
                         'invoice_number' => $invoiceNumber
                     ];
+                    $newValues = [
+                        'invoice' => $inv,
+                        'items' => $inv['items'] ?? []
+                    ];
+                    $this->logActivity('Create Invoice', 'Billing', "Created and posted Invoice {$invoiceNumber} via Mobile App Sync totaling Rs: " . number_format($grandTotal, 2), $invoiceServerId, null, $newValues);
                 }
             }
 
@@ -622,6 +633,8 @@ class RepDashboardController extends RepController {
                         $db->bind(':lat', $payment['latitude'] ?? null);
                         $db->bind(':lng', $payment['longitude'] ?? null);
                         $db->execute();
+                        $collectionId = $db->lastInsertId();
+                        $this->logActivity('Collection Received', 'Billing', "Collected Rs. " . number_format($amount, 2) . " via {$method} from Customer ID {$customerId} (Route ID: {$routeId}) via Mobile App Sync.", $collectionId, null, $payment);
                     }
                 }
             }

@@ -48,6 +48,21 @@ class UserController extends Controller {
                 $data['error'] = 'Username is already taken.';
             } else {
                 if ($this->userModel->createUser($userData)) {
+                    $newUser = $this->userModel->findUserByUsername($userData['username']);
+                    $newId = $newUser ? $newUser->id : null;
+                    
+                    $cleanUserData = $userData;
+                    unset($cleanUserData['password']); // Protect credentials from audit logs
+                    
+                    $this->logActivity(
+                        'User Created', 
+                        'Security', 
+                        "User account '{$userData['username']}' (Role: {$userData['role']}) created successfully.", 
+                        $newId, 
+                        null, 
+                        $cleanUserData
+                    );
+
                     $data['success'] = 'User account created with signature successfully!';
                     $data['users'] = $this->userModel->getAllUsers();
                 } else {

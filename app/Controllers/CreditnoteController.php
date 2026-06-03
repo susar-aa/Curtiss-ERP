@@ -129,8 +129,13 @@ class CreditNoteController extends Controller {
             if (empty($items)) {
                 $data['error'] = 'You must add at least one valid returned item.';
             } else {
-                if ($this->creditNoteModel->createCreditNoteWithAccounting($cnData, $items, $arAccount, $revAccount, $expenseAccount, $_SESSION['user_id'])) {
-                    $this->logActivity('Create Credit Note', 'Billing', "Issued Credit Note {$cnData['credit_note_number']} for Customer ID {$cnData['customer_id']}");
+                $creditNoteId = $this->creditNoteModel->createCreditNoteWithAccounting($cnData, $items, $arAccount, $revAccount, $expenseAccount, $_SESSION['user_id']);
+                if ($creditNoteId) {
+                    $newValues = [
+                        'credit_note' => $cnData,
+                        'items' => $items
+                    ];
+                    $this->logActivity('Create Credit Note', 'Billing', "Issued Credit Note {$cnData['credit_note_number']} for Customer ID {$cnData['customer_id']}", $creditNoteId, null, $newValues);
                     header('Location: ' . APP_URL . '/creditnote?success=1');
                     exit;
                 } else {

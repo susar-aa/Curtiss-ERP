@@ -348,7 +348,7 @@ class CreditNote {
             }
 
             $this->db->commit();
-            return true;
+            return $cnId;
         } catch (PDOException $e) {
             $this->db->rollBack();
             return false;

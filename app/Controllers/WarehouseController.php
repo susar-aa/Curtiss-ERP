@@ -107,8 +107,9 @@ class WarehouseController extends Controller {
             'created_by' => $_SESSION['user_id']
         ];
 
-        if ($transferModel->createTransfer($payload)) {
-            $this->logActivity('Warehouse Transfer', 'Supply Chain', "Transferred {$qty} unit(s) of Item ID {$itemId} from Warehouse ID {$fromWh} to Warehouse ID {$toWh} (Ref: {$transferNum})");
+        $transferId = $transferModel->createTransfer($payload);
+        if ($transferId) {
+            $this->logActivity('Warehouse Transfer', 'Supply Chain', "Transferred {$qty} unit(s) of Item ID {$itemId} from Warehouse ID {$fromWh} to Warehouse ID {$toWh} (Ref: {$transferNum})", $transferId, null, $payload);
             $_SESSION['flash_success'] = "Stock transfer record posted successfully: " . $transferNum;
         } else {
             $_SESSION['flash_error'] = 'Failed to execute stock transfer transaction.';

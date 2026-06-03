@@ -367,15 +367,18 @@ class DriverDashboardController extends DriverController {
                 if ($deliveryId > 0) {
                     if ($status === 'Accepted') {
                         $this->routeModel->acceptRoute($deliveryId);
+                        $this->logActivity('Accept Route', 'Delivery Route', "Driver accepted Delivery Route ID {$deliveryId} via Driver Mobile App Sync.", $deliveryId, null, $td);
                     } elseif ($status === 'In Transit') {
                         $startMeter = floatval($td['start_meter'] ?? 0);
                         $driverName = $td['driver_name'] ?? '';
                         $partnerName = $td['partner_name'] ?? '';
                         $this->routeModel->startTrip($deliveryId, $startMeter, $driverName, $partnerName);
+                        $this->logActivity('Start Trip', 'Delivery Route', "Driver started trip for Delivery Route ID {$deliveryId} with Odometer {$startMeter} via Driver Mobile App Sync.", $deliveryId, null, $td);
                     } elseif ($status === 'Completed') {
                         $endMeter = floatval($td['end_meter'] ?? 0);
                         $cashDenoms = isset($td['cash_denominations']) ? json_encode($td['cash_denominations']) : null;
                         $this->routeModel->endTrip($deliveryId, $endMeter, $cashDenoms);
+                        $this->logActivity('End Trip', 'Delivery Route', "Driver completed trip for Delivery Route ID {$deliveryId} with Ending Odometer {$endMeter} via Driver Mobile App Sync.", $deliveryId, null, $td);
                     }
                 }
             }
@@ -387,6 +390,14 @@ class DriverDashboardController extends DriverController {
                     $invoiceId = intval($del['invoice_id'] ?? 0);
                     $status = $del['delivery_status'] ?? 'Delivered';
                     
+                    $oldValues = null;
+                    try {
+                        $oldValues = [
+                            'invoice' => $billingModel->getInvoiceDetails($invoiceId),
+                            'items' => $billingModel->getInvoiceItems($invoiceId)
+                        ];
+                    } catch (Exception $e) {}
+
                     // Update overall invoice delivery status
                     $billingModel->updateInvoiceDeliveryStatus($invoiceId, $status);
                     
@@ -403,6 +414,16 @@ class DriverDashboardController extends DriverController {
                             }
                         }
                     }
+
+                    $newValues = null;
+                    try {
+                        $newValues = [
+                            'invoice' => $billingModel->getInvoiceDetails($invoiceId),
+                            'items' => $billingModel->getInvoiceItems($invoiceId)
+                        ];
+                    } catch (Exception $e) {}
+
+                    $this->logActivity('Edit Invoice', 'Billing', "Delivery status set to '{$status}' for Invoice ID {$invoiceId} via Driver Mobile App Sync.", $invoiceId, $oldValues, $newValues);
                 }
             }
             
@@ -429,6 +450,7 @@ class DriverDashboardController extends DriverController {
                         file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Calling checkoutShop: cust=$customerId, route=$routeId, user=$userId, collections=" . print_r($collections, true) . "\n", FILE_APPEND);
                         $billingModel->checkoutShop($customerId, $routeId, $userId, $collections);
                         $this->autoApplyPaymentsToInvoices($customerId);
+                        $this->logActivity('Collection Received', 'Billing', "Collected Rs. " . number_format($amount, 2) . " via {$method} from Customer ID {$customerId} (Route ID: {$routeId}) via Driver Mobile App Sync.", null, null, $pmt);
                         file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] checkoutShop succeeded and invoice payment statuses healed\n", FILE_APPEND);
                     } else {
                         file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Skipping payment: customerId=$customerId, amount=$amount\n", FILE_APPEND);

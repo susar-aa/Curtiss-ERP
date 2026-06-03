@@ -203,6 +203,24 @@ class SalesController extends Controller {
                 $customerName = $custRow ? $custRow->name : 'Walk-In Customer';
                 $customerPhone = $custRow ? $custRow->phone : '';
 
+                $oldValues = null;
+                if ($editingId > 0) {
+                    try {
+                        $this->db->query("SELECT * FROM sales_orders WHERE id = :id");
+                        $this->db->bind(':id', $editingId);
+                        $oldOrder = $this->db->single();
+                        $this->db->query("SELECT * FROM sales_order_items WHERE sales_order_id = :id");
+                        $this->db->bind(':id', $editingId);
+                        $oldItems = $this->db->resultSet() ?: [];
+                        $oldValues = [
+                            'order' => $oldOrder,
+                            'items' => $oldItems
+                        ];
+                    } catch (Exception $e) {
+                        // ignore failures in fetching old values
+                    }
+                }
+
                 try {
                     $this->db->beginTransaction();
 
@@ -335,7 +353,27 @@ class SalesController extends Controller {
 
                     $this->db->commit();
                     $actionText = $editingId > 0 ? 'Updated' : 'Created';
-                    $this->logActivity("{$actionText} Sales Order", 'Sales Order', "Saved Sales Order {$invoiceNumber} for Customer ID {$customerId} totaling Rs: " . number_format($grandTotal, 2));
+                    $newValues = [
+                        'order' => [
+                            'order_number' => $invoiceNumber,
+                            'customer_id' => $customerId,
+                            'customer_name' => $customerName,
+                            'customer_phone' => $customerPhone,
+                            'subtotal' => $subtotal,
+                            'discount' => $globalDiscount,
+                            'grand_total' => $grandTotal,
+                            'notes' => $_POST['notes'] ?? '',
+                            'rep_name' => $_POST['rep_name'] ?? '',
+                            'mca' => $_POST['mca'] ?? '',
+                            'rep_tp' => $_POST['rep_tp'] ?? '',
+                            'po_number' => $_POST['po_number'] ?? '',
+                            'order_date' => $_POST['invoice_date'] ?? date('Y-m-d'),
+                            'due_date' => $_POST['due_date'] ?? date('Y-m-d'),
+                            'payment_term_id' => !empty($_POST['payment_term_id']) ? intval($_POST['payment_term_id']) : null
+                        ],
+                        'items' => $itemsPayload
+                    ];
+                    $this->logActivity("{$actionText} Sales Order", 'Sales Order', "Saved Sales Order {$invoiceNumber} for Customer ID {$customerId} totaling Rs: " . number_format($grandTotal, 2), $orderId, $oldValues, $newValues);
                     $_SESSION['flash_success'] = "Sales Order {$invoiceNumber} successfully {$actionText} (Inventory unchanged)!";
                     header('Location: ' . APP_URL . '/salesorder/show/' . $orderId);
                     exit;
@@ -423,6 +461,14 @@ class SalesController extends Controller {
                     $invoiceModel = $this->model('Invoice');
 
                     if ($editingId > 0) {
+                        $oldValues = null;
+                        try {
+                            $oldValues = [
+                                'invoice' => $invoiceModel->getInvoiceById($editingId),
+                                'items' => $invoiceModel->getInvoiceItems($editingId)
+                            ];
+                        } catch (Exception $e) {}
+
                         $success = $invoiceModel->updateInvoiceWithAccounting(
                             $editingId,
                             $invoiceData,
@@ -432,7 +478,11 @@ class SalesController extends Controller {
                             $_SESSION['user_id']
                         );
                         if ($success) {
-                            $this->logActivity('Edit Invoice', 'Billing', "Updated and re-posted Invoice {$invoiceNumber} for Customer ID {$customerId} totaling Rs: " . number_format($grandTotal, 2));
+                            $newValues = [
+                                'invoice' => $invoiceData,
+                                'items' => $itemsPayload
+                            ];
+                            $this->logActivity('Edit Invoice', 'Billing', "Updated and re-posted Invoice {$invoiceNumber} for Customer ID {$customerId} totaling Rs: " . number_format($grandTotal, 2), $editingId, $oldValues, $newValues);
                             $_SESSION['flash_success'] = "Sales Order {$invoiceNumber} successfully updated!";
                             
                             $routeId = !empty($_POST['rep_route_id']) ? intval($_POST['rep_route_id']) : null;
@@ -464,7 +514,11 @@ class SalesController extends Controller {
                         );
 
                         if ($invoiceId) {
-                            $this->logActivity('Create Invoice', 'Billing', "Created and posted Invoice {$invoiceNumber} for Customer ID {$customerId} totaling Rs: " . number_format($grandTotal, 2));
+                            $newValues = [
+                                'invoice' => $invoiceData,
+                                'items' => $itemsPayload
+                            ];
+                            $this->logActivity('Create Invoice', 'Billing', "Created and posted Invoice {$invoiceNumber} for Customer ID {$customerId} totaling Rs: " . number_format($grandTotal, 2), $invoiceId, null, $newValues);
                             
                             $saveAction = $_POST['save_action'] ?? 'close';
                             

@@ -92,7 +92,7 @@ class AuthController extends Controller {
                         // Session Hijacking prevention - regenerate ID
                         session_regenerate_id(true);
 
-                        $this->logActivity('Login', 'Auth', "User '{$loggedInUser->username}' successfully logged in.");
+                        $this->logActivity('Login', 'Auth', "User '{$loggedInUser->username}' successfully logged in.", $loggedInUser->id);
                         $this->createUserSession($loggedInUser);
                     } else {
                         $this->handleFailedAttempt();
@@ -105,6 +105,7 @@ class AuthController extends Controller {
                             $data['password_err'] = "Password incorrect. You have {$remaining} attempts remaining.";
                         } else {
                             $_SESSION['login_locked_until'] = time() + $lockout_time;
+                            $this->logActivity('Account Locked', 'Auth', "Secure login locked for 3 minutes for username: '{$data['username']}' due to too many failed attempts.");
                             $data['lockout_err'] = "Too many failed attempts. Secure login is locked for 3 minutes.";
                         }
                     }
@@ -119,6 +120,7 @@ class AuthController extends Controller {
                         $data['username_err'] = "No user found with that username. You have {$remaining} attempts remaining.";
                     } else {
                         $_SESSION['login_locked_until'] = time() + $lockout_time;
+                        $this->logActivity('Account Locked', 'Auth', "Secure login locked for 3 minutes for username: '{$data['username']}' due to too many failed attempts.");
                         $data['lockout_err'] = "Too many failed attempts. Secure login is locked for 3 minutes.";
                     }
                 }
@@ -155,7 +157,7 @@ class AuthController extends Controller {
 
     public function logout() {
         if (isset($_SESSION['username'])) {
-            $this->logActivity('Logout', 'Auth', "User '{$_SESSION['username']}' logged out.");
+            $this->logActivity('Logout', 'Auth', "User '{$_SESSION['username']}' logged out.", $_SESSION['user_id'] ?? null);
         }
         
         // Capture CSRF to keep session token clean

@@ -149,8 +149,9 @@ class WarehouseTransfer {
                 $this->db->execute();
             }
 
+            $transferId = $this->db->lastInsertId();
             $this->db->commit();
-            return true;
+            return $transferId;
         } catch (Exception $e) {
             error_log("Stock Transfer SQL Exception: " . $e->getMessage());
             $this->db->rollBack();

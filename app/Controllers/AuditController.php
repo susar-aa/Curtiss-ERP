@@ -1,6 +1,7 @@
 <?php
 class AuditController extends Controller {
     private $auditModel;
+    private $userModel;
 
     public function __construct() {
         // Must be logged in
@@ -12,13 +13,29 @@ class AuditController extends Controller {
         }
         
         $this->auditModel = $this->model('AuditLog');
+        $this->userModel = $this->model('User');
     }
 
     public function index() {
+        $filters = [
+            'user_id' => $_GET['user_id'] ?? '',
+            'module' => $_GET['module'] ?? '',
+            'action' => $_GET['action'] ?? '',
+            'date_from' => $_GET['date_from'] ?? '',
+            'date_to' => $_GET['date_to'] ?? '',
+            'search' => $_GET['search'] ?? '',
+        ];
+
+        $logs = $this->auditModel->getFilteredLogs($filters, 250);
+
         $data = [
             'title' => 'System Audit Logs',
             'content_view' => 'audits/index',
-            'logs' => $this->auditModel->getAllLogs(250) // Fetch the last 250 actions
+            'logs' => $logs,
+            'users' => $this->userModel->getAllUsers(),
+            'modules' => $this->auditModel->getUniqueModules(),
+            'actions' => $this->auditModel->getUniqueActions(),
+            'filters' => $filters
         ];
 
         $this->view('layouts/main', $data);

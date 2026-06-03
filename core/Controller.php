@@ -20,12 +20,12 @@ class Controller {
     /**
      * Helper to log system activity
      */
-    protected function logActivity($action, $module, $description) {
+    protected function logActivity($action, $module, $description, $recordId = null, $oldValues = null, $newValues = null) {
         try {
             $userId = $_SESSION['user_id'] ?? 0;
             require_once '../app/Models/AuditLog.php';
             $audit = new AuditLog();
-            $audit->logAction($userId, $action, $module, $description);
+            $audit->logAction($userId, $action, $module, $description, $recordId, $oldValues, $newValues);
         } catch (Exception $e) {
             // Failsafe to avoid crashing the main application flow
         }

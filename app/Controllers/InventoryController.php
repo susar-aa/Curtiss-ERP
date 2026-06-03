@@ -314,10 +314,28 @@ class InventoryController extends Controller {
                         if (empty($imagePath)) {
                             $data['image_path'] = $existingItem->image_path ?? '';
                         }
+                        
+                        // Compare for logging inside CSV import
+                        $oldValues = [];
+                        $newValues = [];
+                        $changesExist = false;
+                        foreach (['selling_price', 'wholesale_price', 'cost_price', 'name', 'status'] as $key) {
+                            $oldVal = $existingItem->$key ?? null;
+                            $newVal = $data[$key] ?? null;
+                            if (floatval($oldVal) != floatval($newVal) || $oldVal != $newVal) {
+                                $oldValues[$key] = $oldVal;
+                                $newValues[$key] = $newVal;
+                                $changesExist = true;
+                            }
+                        }
+
                         if ($this->itemModel->updateItem($data)) {
                             $updatedCount++;
                             if (!empty($imagePath)) {
                                 $this->syncItemImagesTable($existingItem->id, $imagePath);
+                            }
+                            if ($changesExist) {
+                                $this->logActivity('Product Edited', 'Inventory', "Product '{$data['name']}' (Code: {$data['item_code']}) updated via WooCommerce CSV import.", $existingItem->id, $oldValues, $newValues);
                             }
                         }
                     } else {
@@ -327,6 +345,7 @@ class InventoryController extends Controller {
                             if ($newItemId && !empty($imagePath)) {
                                 $this->syncItemImagesTable($newItemId, $imagePath);
                             }
+                            $this->logActivity('Product Created', 'Inventory', "Product '{$data['name']}' (Code: {$data['item_code']}) created via WooCommerce CSV import.", $newItemId, null, $data);
                         }
                     }
                 }
@@ -597,6 +616,7 @@ class InventoryController extends Controller {
                 if ($newItemId && !empty($imagePath)) {
                     $this->syncItemImagesTable($newItemId, $imagePath);
                 }
+                $this->logActivity('Product Created', 'Inventory', "Product '{$data['name']}' (Code: {$data['item_code']}) created successfully.", $newItemId, null, $data);
                 header('Location: ' . APP_URL . '/inventory');
                 exit;
             } else {
@@ -716,6 +736,55 @@ class InventoryController extends Controller {
                 if (!empty($imagePath)) {
                     $this->syncItemImagesTable($id, $imagePath);
                 }
+                
+                // Track before/after changes for audit log
+                $oldValues = [];
+                $newValues = [];
+                $changes = [];
+                
+                $fieldsToCompare = [
+                    'item_code' => 'Code',
+                    'name' => 'Name',
+                    'selling_price' => 'Selling Price',
+                    'wholesale_price' => 'Wholesale Price',
+                    'cost_price' => 'Cost Price',
+                    'description' => 'Description',
+                    'barcode' => 'Barcode',
+                    'category_id' => 'Category ID',
+                    'brand' => 'Brand',
+                    'status' => 'Status',
+                    'image_path' => 'Image Path'
+                ];
+                
+                if ($existingItem) {
+                    foreach ($fieldsToCompare as $key => $label) {
+                        $oldVal = $existingItem->$key ?? null;
+                        $newVal = $data[$key] ?? null;
+                        if ($key === 'selling_price' || $key === 'wholesale_price' || $key === 'cost_price') {
+                            if (floatval($oldVal) !== floatval($newVal)) {
+                                $oldValues[$key] = floatval($oldVal);
+                                $newValues[$key] = floatval($newVal);
+                                $changes[] = "$label changed from " . number_format(floatval($oldVal), 2) . " to " . number_format(floatval($newVal), 2);
+                            }
+                        } else {
+                            if ($oldVal != $newVal) {
+                                $oldValues[$key] = $oldVal;
+                                $newValues[$key] = $newVal;
+                                $changes[] = "$label changed from '" . ($oldVal ?: 'None') . "' to '" . ($newVal ?: 'None') . "'";
+                            }
+                        }
+                    }
+                }
+                
+                $desc = "Product '{$data['name']}' (Code: {$data['item_code']}) updated.";
+                if (!empty($changes)) {
+                    $desc .= " Changes: " . implode(', ', $changes);
+                } else {
+                    $desc .= " No values changed.";
+                }
+                
+                $this->logActivity('Product Edited', 'Inventory', $desc, $id, $oldValues, $newValues);
+                
                 header('Location: ' . APP_URL . '/inventory');
                 exit;
             } else {
@@ -940,11 +1009,26 @@ class InventoryController extends Controller {
         exit;
     }
 
-    /**
-     * Sync Stock specifically when changes are made
-     */
     public function adjustStock($id, $newQty) {
-        return $this->itemModel->updateStockOnly($id, $newQty);
+        $item = $this->itemModel->getItemById($id);
+        if ($item) {
+            $oldQty = intval($item->qty);
+            $newQtyInt = intval($newQty);
+            $diff = $newQtyInt - $oldQty;
+            $res = $this->itemModel->updateStockOnly($id, $newQtyInt);
+            if ($res) {
+                $this->logActivity(
+                    'Stock Adjustment', 
+                    'Inventory', 
+                    "Stock adjusted for product '{$item->name}' (Code: {$item->item_code}) from {$oldQty} to {$newQtyInt} (Delta: " . ($diff >= 0 ? '+' : '') . "{$diff}).", 
+                    $id, 
+                    ['qty' => $oldQty], 
+                    ['qty' => $newQtyInt]
+                );
+            }
+            return $res;
+        }
+        return false;
     }
 
     /**

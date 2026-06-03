@@ -149,7 +149,7 @@ class GRN {
             }
 
             $this->db->commit();
-            return true;
+            return $grnId;
         } catch (PDOException $e) { $this->db->rollBack(); return false; }
     }
 

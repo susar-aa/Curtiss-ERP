@@ -42,6 +42,8 @@ class DriverAuthController extends DriverController {
                 $_SESSION['username']  = $user->username;
                 $_SESSION['role']      = $user->role;
                 
+                $this->logActivity('Login', 'Auth', "Driver '{$user->username}' successfully logged in.", $user->id);
+
                 $role = strtolower($user->role);
                 if ($role === 'driver') {
                     header('Location: ' . APP_URL . '/driver');
@@ -52,17 +54,21 @@ class DriverAuthController extends DriverController {
                 }
                 exit;
             } else {
+                $this->logActivity('Login Failed', 'Auth', "Failed driver login attempt for username: '{$username}'");
                 $data['error'] = 'Invalid username or password';
             }
         }
 
         $this->view('layout', $data);
-    }
-
-    // Log out the driver
-    public function logout() {
-        session_unset();
-        session_destroy();
+     }
+ 
+     // Log out the driver
+     public function logout() {
+         if (isset($_SESSION['username'])) {
+             $this->logActivity('Logout', 'Auth', "Driver '{$_SESSION['username']}' logged out.", $_SESSION['user_id'] ?? null);
+         }
+         session_unset();
+         session_destroy();
         header('Location: ' . APP_URL . '/driver/auth/login');
         exit;
     }
@@ -88,6 +94,7 @@ class DriverAuthController extends DriverController {
         if ($user) {
             $role = strtolower($user->role);
             if ($role === 'driver') {
+                $this->logActivity('Login', 'Auth', "Driver '{$user->username}' successfully logged in via mobile app API.", $user->id);
                 echo json_encode([
                     'success' => true,
                     'user_id' => intval($user->id),
@@ -95,9 +102,11 @@ class DriverAuthController extends DriverController {
                     'role' => $user->role
                 ]);
             } else {
+                $this->logActivity('Login Failed', 'Auth', "Driver API login unauthorized role '{$user->role}' for username: '{$user->username}'", $user->id);
                 echo json_encode(['success' => false, 'message' => 'Unauthorized role']);
             }
         } else {
+            $this->logActivity('Login Failed', 'Auth', "Failed driver login attempt via mobile API for username: '{$username}'");
             echo json_encode(['success' => false, 'message' => 'Invalid username or password']);
         }
         exit;

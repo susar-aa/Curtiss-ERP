@@ -23,7 +23,16 @@ class GRNController extends Controller {
         $filters = ['vendor_id' => $_GET['vendor_id'] ?? ''];
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'delete_grn') {
-            if ($this->grnModel->deleteGRN($_POST['grn_id'])) {
+            $grnId = intval($_POST['grn_id']);
+            $grn = $this->grnModel->getGRNById($grnId);
+            $grnItems = $this->grnModel->getGRNItems($grnId);
+            $oldValues = [
+                'grn' => $grn,
+                'items' => $grnItems
+            ];
+            if ($this->grnModel->deleteGRN($grnId)) {
+                $grnNum = $grn ? $grn->grn_number : $grnId;
+                $this->logActivity('GRN Deleted', 'Inventory', "GRN '{$grnNum}' deleted and stock reversed.", $grnId, $oldValues, null);
                 header("Location: " . APP_URL . "/grn?success=GRN deleted and Inventory Stock reversed successfully"); exit;
             }
         }
@@ -118,13 +127,19 @@ class GRNController extends Controller {
                 }
             }
 
-            if (empty($items)) { $data['error'] = 'You must add at least one item to receive.'; } 
-            else {
-                if ($this->grnModel->createGRN($grnData, $items, $_SESSION['user_id'])) { 
-                    header('Location: ' . APP_URL . '/grn?success=GRN Created and Inventory Updated'); exit; 
-                } else { $data['error'] = 'Database Error: Failed to create GRN.'; }
-            }
-        }
+             if (empty($items)) { $data['error'] = 'You must add at least one item to receive.'; } 
+             else {
+                 $grnId = $this->grnModel->createGRN($grnData, $items, $_SESSION['user_id']);
+                 if ($grnId) {
+                     $newValues = [
+                         'grn' => $grnData,
+                         'items' => $items
+                     ];
+                     $this->logActivity('GRN Created', 'Inventory', "GRN '{$grnData['grn_number']}' created and inventory updated.", $grnId, null, $newValues);
+                     header('Location: ' . APP_URL . '/grn?success=GRN Created and Inventory Updated'); exit; 
+                 } else { $data['error'] = 'Database Error: Failed to create GRN.'; }
+             }
+         }
         $this->view('layouts/main', $data);
     }
 }

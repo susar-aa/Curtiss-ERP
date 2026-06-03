@@ -248,7 +248,27 @@ class SalesOrderController extends Controller {
                 }
 
                 $this->db->commit();
-                $this->logActivity('Create Sales Order', 'Sales Order', "Saved Sales Order {$orderNumber} for Customer ID {$customerId} totaling Rs: " . number_format($grandTotal, 2));
+                $newValues = [
+                    'order' => [
+                        'order_number' => $orderNumber,
+                        'customer_id' => $customerId,
+                        'customer_name' => $customerName,
+                        'customer_phone' => $customerPhone,
+                        'subtotal' => $subtotal,
+                        'discount' => $globalDiscount,
+                        'grand_total' => $grandTotal,
+                        'notes' => $_POST['notes'] ?? '',
+                        'rep_name' => $_POST['rep_name'] ?? '',
+                        'mca' => $_POST['mca'] ?? '',
+                        'rep_tp' => $_POST['rep_tp'] ?? '',
+                        'po_number' => $_POST['po_number'] ?? '',
+                        'order_date' => $_POST['invoice_date'] ?? date('Y-m-d'),
+                        'due_date' => $_POST['due_date'] ?? date('Y-m-d'),
+                        'payment_term_id' => !empty($_POST['payment_term_id']) ? intval($_POST['payment_term_id']) : null
+                    ],
+                    'items' => $itemsPayload
+                ];
+                $this->logActivity('Create Sales Order', 'Sales Order', "Saved Sales Order {$orderNumber} for Customer ID {$customerId} totaling Rs: " . number_format($grandTotal, 2), $orderId, null, $newValues);
                 $_SESSION['flash_success'] = "Sales Order {$orderNumber} successfully saved (Inventory unchanged)!";
                 header('Location: ' . APP_URL . '/salesorder/show/' . $orderId);
                 exit;
