@@ -12,17 +12,6 @@ class App {
             $this->controller = 'AuthController';
             $this->method = 'login';
         } else {
-            // If logged in as driver/rep, intercept and redirect to their respective apps (except for auth routes like logout)
-            if (isset($_SESSION['user_id']) && (isset($url[0]) ? strtolower($url[0]) !== 'auth' : true)) {
-                $role = strtolower($_SESSION['role'] ?? '');
-                if ($role === 'driver') {
-                    header('Location: ' . APP_URL . '/driver');
-                    exit;
-                } elseif ($role === 'rep') {
-                    header('Location: ' . APP_URL . '/rep');
-                    exit;
-                }
-            }
 
             if (isset($url[0])) {
                 $cleanControllerName = str_replace('-', '', ucwords($url[0], '-'));
