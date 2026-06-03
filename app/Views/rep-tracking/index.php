@@ -325,8 +325,8 @@ error_reporting(E_ALL);
                 <!-- NEW: Add Invoice Button -->
                 <button id="btnAddInvoice" onclick="redirectToAddInvoice()" style="padding: 10px 15px; border: none; background: #0066cc; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 5px;">➕ Add Sales Order</button>
 
-                <!-- NEW: Attach Invoice Button -->
-                <button id="btnAttachInvoice" onclick="openAttachInvoiceModal()" style="padding: 10px 15px; border: none; background: #5c6bc0; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 5px;">🔗 Attach Invoice</button>
+                <!-- NEW: Attach Sales Order Button -->
+                <button id="btnAttachInvoice" onclick="openAttachInvoiceModal()" style="padding: 10px 15px; border: none; background: #5c6bc0; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 5px;">🔗 Attach Sales Order</button>
 
                 <!-- NEW: View Map Button -->
                 <button id="btnViewMap" onclick="openMapModal()" style="padding: 10px 15px; border: none; background: #ef6c00; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 5px; display: none; align-items: center; gap: 4px;">📍 View Map</button>
@@ -515,25 +515,49 @@ error_reporting(E_ALL);
     </div>
 </div>
 
-<!-- NEW: Attach Existing Invoices Modal -->
+<!-- NEW: Attach Existing Sales Orders Modal -->
 <div class="modal-backdrop" id="attachInvoiceModal" style="display: none; align-items: center; justify-content: center; z-index: 2000;">
-    <div class="modal-panel" style="max-width: 550px; width: 90%;">
+    <div class="modal-panel" style="max-width: 580px; width: 90%;">
         <div class="modal-header" style="background: #5c6bc0;">
-            <span>🔗 Attach Existing Invoices to Route</span>
+            <span>🔗 Attach Sales Orders to Route</span>
             <button onclick="closeAttachInvoiceModal()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
         </div>
-        <div class="modal-body" style="padding: 20px;">
-            <div style="margin-bottom: 15px;">
-                <label style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;">Search Invoice Number or Customer Name</label>
-                <input type="text" id="invoiceSearchInput" onkeyup="searchUnattachedInvoices()" placeholder="Type to search..." style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px;">
+        <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+            <div>
+                <label style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;">Search Sales Order Number or Customer Name</label>
+                <input type="text" id="invoiceSearchInput" onkeyup="searchUnattachedInvoices()" placeholder="Type SO-XXXX or customer name..." style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px;">
             </div>
-            <div id="unattachedInvoicesContainer" style="border: 1px solid #ccc; border-radius: 6px; padding: 10px; max-height: 250px; overflow-y: auto; background: #fafafa; font-size: 12px;">
-                <p style="text-align: center; color: #888; margin: 10px 0;">Start typing to search unattached invoices...</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div>
+                    <label style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;">Start Date</label>
+                    <input type="date" id="soFilterStartDate" onchange="searchUnattachedInvoices()" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px;">
+                </div>
+                <div>
+                    <label style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;">End Date</label>
+                    <input type="date" id="soFilterEndDate" onchange="searchUnattachedInvoices()" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px;">
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
+                <div>
+                    <label style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;">Status Filter</label>
+                    <select id="soFilterStatus" onchange="searchUnattachedInvoices()" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px; background: white;">
+                        <option value="">All Statuses</option>
+                        <option value="Unpaid">Unpaid</option>
+                        <option value="Paid">Paid</option>
+                        <option value="Pending">Pending</option>
+                    </select>
+                </div>
+                <div style="display: flex; align-items: flex-end;">
+                    <button type="button" onclick="resetSalesOrderFilters()" style="width: 100%; padding: 8px 12px; background: #e2e8f0; color: #333; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; text-align: center; height: 38px; box-sizing: border-box;">Reset Filters</button>
+                </div>
+            </div>
+            <div id="unattachedInvoicesContainer" style="border: 1px solid #ccc; border-radius: 6px; padding: 10px; max-height: 200px; overflow-y: auto; background: #fafafa; font-size: 12px; margin-top: 5px;">
+                <p style="text-align: center; color: #888; margin: 10px 0;">Start typing or change filters to search unattached sales orders...</p>
             </div>
         </div>
         <div class="modal-footer" style="padding: 15px 20px; background: #f5f5f5; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 10px;">
             <button class="qb-btn" onclick="closeAttachInvoiceModal()" style="border:1px solid #ccc; padding:6px 14px; border-radius:4px; font-size:12px; cursor:pointer;">Cancel</button>
-            <button class="qb-btn" onclick="confirmAttachInvoices()" style="background:#5c6bc0; color:#fff; border-color:#5c6bc0; padding:6px 14px; border-radius:4px; font-size:12px; cursor:pointer;">Attach Selected</button>
+            <button class="qb-btn" onclick="confirmAttachInvoices()" style="background:#5c6bc0; color:#fff; border-color:#5c6bc0; padding:6px 14px; border-radius:4px; font-size:12px; cursor:pointer; font-weight: bold;">Attach Selected</button>
         </div>
     </div>
 </div>
@@ -1489,6 +1513,9 @@ error_reporting(E_ALL);
         }
         document.getElementById('attachInvoiceModal').style.display = 'flex';
         document.getElementById('invoiceSearchInput').value = '';
+        if (document.getElementById('soFilterStartDate')) document.getElementById('soFilterStartDate').value = '';
+        if (document.getElementById('soFilterEndDate')) document.getElementById('soFilterEndDate').value = '';
+        if (document.getElementById('soFilterStatus')) document.getElementById('soFilterStatus').value = '';
         searchUnattachedInvoices();
     }
 
@@ -1496,27 +1523,45 @@ error_reporting(E_ALL);
         document.getElementById('attachInvoiceModal').style.display = 'none';
     }
 
+    function resetSalesOrderFilters() {
+        document.getElementById('invoiceSearchInput').value = '';
+        if (document.getElementById('soFilterStartDate')) document.getElementById('soFilterStartDate').value = '';
+        if (document.getElementById('soFilterEndDate')) document.getElementById('soFilterEndDate').value = '';
+        if (document.getElementById('soFilterStatus')) document.getElementById('soFilterStatus').value = '';
+        searchUnattachedInvoices();
+    }
+
     function searchUnattachedInvoices() {
         const query = document.getElementById('invoiceSearchInput').value;
+        const startDate = document.getElementById('soFilterStartDate') ? document.getElementById('soFilterStartDate').value : '';
+        const endDate = document.getElementById('soFilterEndDate') ? document.getElementById('soFilterEndDate').value : '';
+        const status = document.getElementById('soFilterStatus') ? document.getElementById('soFilterStatus').value : '';
+        
         const container = document.getElementById('unattachedInvoicesContainer');
         container.innerHTML = '<p style="text-align: center; color: #888; margin: 10px 0;">Searching... ⏳</p>';
         
-        fetch('<?= APP_URL ?>/RepTracking/api_get_unattached_invoices?search=' + encodeURIComponent(query))
+        let url = '<?= APP_URL ?>/RepTracking/api_get_unattached_invoices?search=' + encodeURIComponent(query);
+        if (startDate) url += '&start_date=' + encodeURIComponent(startDate);
+        if (endDate) url += '&end_date=' + encodeURIComponent(endDate);
+        if (status) url += '&status=' + encodeURIComponent(status);
+        
+        fetch(url)
             .then(response => response.json())
             .then(data => {
                 if (data.status !== 'success' || !data.invoices || data.invoices.length === 0) {
-                    container.innerHTML = '<p style="text-align: center; color: #888; margin: 10px 0;">No unattached invoices found matching search.</p>';
+                    container.innerHTML = '<p style="text-align: center; color: #888; margin: 10px 0;">No unattached sales orders found matching search criteria.</p>';
                     return;
                 }
                 
                 let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
                 data.invoices.forEach(inv => {
                     let amtFormatted = parseFloat(inv.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits: 2});
+                    let statusBadge = `<span style="font-size: 10px; font-weight: bold; background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">${inv.status}</span>`;
                     html += `
                         <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 6px; border-bottom: 1px solid #f0f0f0; margin-bottom: 0;">
                             <input type="checkbox" class="attach-invoice-checkbox" value="${inv.id}" style="width: 16px; height: 16px; margin-top: 2px;">
                             <div style="flex: 1;">
-                                <div style="font-weight: bold; color: #333;">${inv.invoice_number}</div>
+                                <div style="font-weight: bold; color: #333;">${inv.invoice_number} ${statusBadge}</div>
                                 <div style="font-size: 11px; color: #666;">
                                     Customer: <strong>${inv.customer_name}</strong> | Date: ${inv.invoice_date}
                                 </div>
@@ -1529,7 +1574,7 @@ error_reporting(E_ALL);
                 container.innerHTML = html;
             })
             .catch(err => {
-                container.innerHTML = '<p style="text-align: center; color: #c62828; margin: 10px 0;">Failed to load invoices.</p>';
+                container.innerHTML = '<p style="text-align: center; color: #c62828; margin: 10px 0;">Failed to load sales orders.</p>';
                 console.error(err);
             });
     }
@@ -1541,7 +1586,7 @@ error_reporting(E_ALL);
         });
         
         if (checkedInvoices.length === 0) {
-            alert("Please select at least one invoice to attach.");
+            alert("Please select at least one sales order to attach.");
             return;
         }
         
@@ -1569,7 +1614,7 @@ error_reporting(E_ALL);
             }
         })
         .catch(err => {
-            alert("Failed to attach invoices due to connection error.");
+            alert("Failed to attach sales orders due to connection error.");
             console.error(err);
         });
     }

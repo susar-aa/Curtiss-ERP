@@ -306,38 +306,55 @@ class RepTrackingController extends Controller {
         }
     }
 
-    // NEW: Get unattached invoices
+    // NEW: Get unattached invoices (Filtered to Sales Orders only)
     public function api_get_unattached_invoices() {
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') { die("Invalid Request"); }
         
         $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        $startDate = isset($_GET['start_date']) ? trim($_GET['start_date']) : '';
+        $endDate = isset($_GET['end_date']) ? trim($_GET['end_date']) : '';
+        $status = isset($_GET['status']) ? trim($_GET['status']) : '';
+        
+        $queryStr = "
+            SELECT i.id, i.invoice_number, i.invoice_date, c.name as customer_name, i.status,
+                   (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
+            FROM invoices i
+            JOIN customers c ON i.customer_id = c.id
+            WHERE (i.rep_route_id IS NULL OR i.rep_route_id = 0)
+              AND i.stock_status = 'reserved'
+              AND i.status != 'Voided'
+        ";
+        
+        $params = [];
+        
+        if (!empty($search)) {
+            $queryStr .= " AND (i.invoice_number LIKE :search OR c.name LIKE :search2)";
+            $params['search'] = '%' . $search . '%';
+            $params['search2'] = '%' . $search . '%';
+        }
+        
+        if (!empty($startDate)) {
+            $queryStr .= " AND i.invoice_date >= :start_date";
+            $params['start_date'] = $startDate;
+        }
+        
+        if (!empty($endDate)) {
+            $queryStr .= " AND i.invoice_date <= :end_date";
+            $params['end_date'] = $endDate;
+        }
+        
+        if (!empty($status)) {
+            $queryStr .= " AND i.status = :status";
+            $params['status'] = $status;
+        }
+        
+        $queryStr .= " ORDER BY i.invoice_number DESC LIMIT 50";
         
         $db = new Database();
-        if (!empty($search)) {
-            $db->query("
-                SELECT i.id, i.invoice_number, i.invoice_date, c.name as customer_name,
-                       (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
-                FROM invoices i
-                JOIN customers c ON i.customer_id = c.id
-                WHERE (i.rep_route_id IS NULL OR i.rep_route_id = 0)
-                  AND i.status != 'Voided'
-                  AND (i.invoice_number LIKE :search OR c.name LIKE :search2)
-                ORDER BY i.invoice_number DESC
-                LIMIT 30
-            ");
-            $db->bind(':search', '%' . $search . '%');
-            $db->bind(':search2', '%' . $search . '%');
-        } else {
-            $db->query("
-                SELECT i.id, i.invoice_number, i.invoice_date, c.name as customer_name,
-                       (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
-                FROM invoices i
-                JOIN customers c ON i.customer_id = c.id
-                WHERE (i.rep_route_id IS NULL OR i.rep_route_id = 0)
-                  AND i.status != 'Voided'
-                ORDER BY i.invoice_number DESC
-                LIMIT 30
-            ");
+        $db->query($queryStr);
+        
+        foreach ($params as $key => $val) {
+            $db->bind(':' . $key, $val);
         }
         
         $invoices = $db->resultSet() ?: [];
@@ -346,6 +363,7 @@ class RepTrackingController extends Controller {
         echo json_encode(['status' => 'success', 'invoices' => $invoices]);
         exit;
     }
+
 
     // NEW: Attach unattached invoices to route
     public function api_attach_invoices() {
