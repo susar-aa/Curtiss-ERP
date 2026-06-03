@@ -129,6 +129,9 @@ $db->query("SELECT c.*, m.name as mca_name,
             ORDER BY c.name ASC");
 $customers = $db->resultSet();
 
+$db->query("SELECT * FROM mca_areas ORDER BY name ASC");
+$mcaAreas = $db->resultSet() ?: [];
+
 // Fetch Employees specifically marked as Reps/Sales (or fallback to all active employees)
 $db->query("SELECT * FROM employees WHERE status = 'Active' AND job_title = 'Rep' ORDER BY first_name ASC");
 $reps = $db->resultSet();
@@ -315,7 +318,10 @@ $editingItems = $data['editing_items'] ?? [];
                 <div style="width: 300px;">
                     <div class="qb-title"><?= htmlspecialchars($data['title'] ?? ($inv ? 'Edit Invoice' : 'New Invoice')) ?></div>
                     <div class="qb-box" style="position: relative;">
-                        <div class="qb-box-header">Bill To</div>
+                        <div class="qb-box-header" style="display: flex; justify-content: space-between; align-items: center; padding: 3px 6px;">
+                            <span>Bill To</span>
+                            <button type="button" onclick="openNewCustomerModal()" style="background: #2e7d32; border: none; color: #fff; border-radius: 3px; font-weight: bold; cursor: pointer; font-size: 10px; padding: 2px 6px; line-height: 1;">+ New Customer</button>
+                        </div>
                         <input type="hidden" name="customer_id" id="customerIdInput" required>
                         <input type="text" id="customerSearch" class="qb-input" style="width: 100%; border:none; border-bottom:1px solid #ccc; font-weight:bold; padding: 6px;" placeholder="🔍 Search Customer by Name, Route, Address..." onkeyup="filterCustomerSearch(event)" autocomplete="off" required>
                         <ul id="customerSearchResults" class="search-results" style="width: 100%;"></ul>
@@ -384,7 +390,7 @@ $editingItems = $data['editing_items'] ?? [];
             </div>
 
             <div class="search-wrapper">
-                <input type="text" id="itemSearch" class="item-search-bar" placeholder="🔍 Search Catalog by Item Code or Name to add to invoice..." onkeyup="filterSearch(event)" autocomplete="off">
+                <input type="text" id="itemSearch" class="item-search-bar" placeholder="🔍 Search Catalog by Item Code or Name, SKU, Category, Sample Code..." autocomplete="off">
                 <ul id="searchResults" class="search-results"></ul>
             </div>
 
@@ -478,6 +484,59 @@ $editingItems = $data['editing_items'] ?? [];
             </div>
 
         </form>
+</div>
+</div>
+
+<!-- Modal backdrop for Registering New Customer -->
+<div class="modal-backdrop" id="newCustomerModal" style="display: none; align-items: center; justify-content: center; z-index: 2000; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);">
+    <div class="modal-panel" style="max-width: 480px; width: 90%; background: #fff; border-radius: 6px; overflow: hidden; border: 1px solid #b0c4de; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+        <div class="modal-header" style="background: #2e7d32; color: #fff; padding: 10px 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+            <span>➕ Register New Customer</span>
+            <button type="button" onclick="closeNewCustomerModal()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
+        </div>
+        <form id="ajaxNewCustomerForm" onsubmit="submitAjaxNewCustomer(event)" style="margin: 0;">
+            <div class="modal-body" style="padding: 15px; display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto;">
+                <div>
+                    <label style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;">Customer / Company Name <span style="color:red;">*</span></label>
+                    <input type="text" name="name" required style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px;">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;">Phone Number</label>
+                        <input type="text" name="phone" style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;">WhatsApp Number</label>
+                        <input type="text" name="whatsapp" style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px;">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;">Email Address</label>
+                        <input type="email" name="email" style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;">Route / Area (MCA)</label>
+                        <select name="mca_id" style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px; background: #fff;">
+                            <option value="">Select Area...</option>
+                            <?php foreach($mcaAreas as $area): ?>
+                                <option value="<?= $area->id ?>"><?= htmlspecialchars($area->name) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;">Billing Address</label>
+                    <textarea name="address" style="width: 100%; height: 60px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px; resize: none;"></textarea>
+                </div>
+                <input type="hidden" name="latitude" value="">
+                <input type="hidden" name="longitude" value="">
+            </div>
+            <div class="modal-footer" style="padding: 10px 15px; background: #f5f5f5; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="qb-btn" onclick="closeNewCustomerModal()" style="border:1px solid #ccc; padding:6px 14px; border-radius:4px; font-size:12px; cursor:pointer;">Cancel</button>
+                <button type="submit" class="qb-btn" style="background:#2e7d32; color:#fff; border-color:#2e7d32; padding:6px 14px; border-radius:4px; font-size:12px; cursor:pointer; font-weight: bold;">Add Customer</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -523,15 +582,17 @@ $editingItems = $data['editing_items'] ?? [];
             <?php 
             $hasVars = !empty($item->variations);
             $baseAvailable = ($item->quantity_on_hand ?? 0) - ($item->quantity_reserved ?? 0);
+            $catName = htmlspecialchars(addslashes((string)($item->category_name ?? '')));
+            $sampleCode = htmlspecialchars(addslashes((string)($item->sample_code ?? '')));
             ?>
             <?php if($hasVars): ?>
-                { id: "<?= $item->id ?>|MIX|1", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($baseAvailable) ?>, code: "<?= htmlspecialchars((string)($item->item_code ?? '')) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?> (MIX)", price: <?= floatval($item->price ?? 0) ?> },
+                { id: "<?= $item->id ?>|MIX|1", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($baseAvailable) ?>, code: "<?= htmlspecialchars((string)($item->item_code ?? '')) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?> (MIX)", price: <?= floatval($item->price ?? 0) ?>, category: "<?= $catName ?>", sample_code: "<?= $sampleCode ?>" },
                 <?php foreach($item->variations as $var): ?>
                 <?php $varAvailable = ($var->quantity_on_hand ?? 0) - ($var->quantity_reserved ?? 0); ?>
-                { id: "<?= $item->id ?>|<?= $var->id ?>|0", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($varAvailable) ?>, code: "<?= htmlspecialchars(addslashes((string)($var->sku ?? $item->item_code ?? ''))) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?> - <?= htmlspecialchars(addslashes((string)($var->variation_name ?? ''))) ?>: <?= htmlspecialchars(addslashes((string)($var->value_name ?? ''))) ?>", price: <?= floatval(isset($var->price) && $var->price > 0 ? $var->price : ($item->price ?? 0)) ?> },
+                { id: "<?= $item->id ?>|<?= $var->id ?>|0", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($varAvailable) ?>, code: "<?= htmlspecialchars(addslashes((string)($var->sku ?? $item->item_code ?? ''))) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?> - <?= htmlspecialchars(addslashes((string)($var->variation_name ?? ''))) ?>: <?= htmlspecialchars(addslashes((string)($var->value_name ?? ''))) ?>", price: <?= floatval(isset($var->price) && $var->price > 0 ? $var->price : ($item->price ?? 0)) ?>, category: "<?= $catName ?>", sample_code: "<?= $sampleCode ?>" },
                 <?php endforeach; ?>
             <?php else: ?>
-                { id: "<?= $item->id ?>|0|0", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($baseAvailable) ?>, code: "<?= htmlspecialchars((string)($item->item_code ?? '')) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?>", price: <?= floatval($item->price ?? 0) ?> },
+                { id: "<?= $item->id ?>|0|0", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($baseAvailable) ?>, code: "<?= htmlspecialchars((string)($item->item_code ?? '')) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?>", price: <?= floatval($item->price ?? 0) ?>, category: "<?= $catName ?>", sample_code: "<?= $sampleCode ?>" },
             <?php endif; ?>
         <?php endforeach; ?>
     ];
@@ -643,46 +704,166 @@ $editingItems = $data['editing_items'] ?? [];
         }
     }
 
-    function filterSearch(e) {
-        const val = e.target.value.toLowerCase().trim();
+    let activeSearchIndex = -1;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const itemSearch = document.getElementById('itemSearch');
         const resList = document.getElementById('searchResults');
-        resList.innerHTML = '';
-        if(!val) { resList.style.display = 'none'; return; }
+        if (!itemSearch || !resList) return;
 
-        const filtered = catalog.filter(i => i.name.toLowerCase().includes(val) || i.code.toLowerCase().includes(val)).slice(0, 15);
-        if(filtered.length === 0) { resList.style.display = 'none'; return; }
+        itemSearch.addEventListener('input', function(e) {
+            const val = this.value.toLowerCase().trim();
+            resList.innerHTML = '';
+            activeSearchIndex = -1;
+            if(!val) { resList.style.display = 'none'; return; }
 
-        filtered.forEach(item => {
-            const li = document.createElement('li');
-            
-            // Build Stock Badge
-            let stockBadge = '';
-            if (item.type === 'Service') {
-                stockBadge = `<span style="color:#0066cc; font-size: 11px; font-weight:bold;">Service</span>`;
-            } else if (item.stock > 0) {
-                stockBadge = `<span style="color:#2e7d32; font-size: 11px; font-weight:bold;">Stock: ${item.stock}</span>`;
-            } else {
-                stockBadge = `<span style="color:#c62828; font-size: 11px; font-weight:bold;">Out of Stock</span>`;
+            const filtered = catalog.filter(i => 
+                i.name.toLowerCase().includes(val) || 
+                i.code.toLowerCase().includes(val) ||
+                (i.category && i.category.toLowerCase().includes(val)) ||
+                (i.sample_code && i.sample_code.toLowerCase().includes(val))
+            ).slice(0, 15);
+
+            if(filtered.length === 0) { 
+                resList.style.display = 'none'; 
+                return; 
             }
 
-            li.innerHTML = `
-                <div><strong>${item.name}</strong><br><span style="font-size: 11px; color: #888;">SKU: ${item.code || 'N/A'} | ${stockBadge}</span></div>
-                <div style="color: #0066cc; font-family: monospace; font-weight: bold; font-size: 14px;">Rs: ${item.price.toFixed(2)}</div>
-            `;
-            
-            li.onclick = () => { 
-                if (item.type !== 'Service' && item.stock <= 0) {
-                    alert("Cannot add item! It is currently out of stock.");
-                    return;
+            filtered.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.setAttribute('data-index', index);
+                li.style.padding = '8px 10px';
+                li.style.borderBottom = '1px solid #eee';
+                li.style.cursor = 'pointer';
+                li.style.display = 'flex';
+                li.style.justifyContent = 'space-between';
+
+                // Build Stock Badge
+                let stockBadge = '';
+                if (item.type === 'Service') {
+                    stockBadge = `<span style="color:#0066cc; font-size: 11px; font-weight:bold;">Service</span>`;
+                } else if (item.stock > 0) {
+                    stockBadge = `<span style="color:#2e7d32; font-size: 11px; font-weight:bold;">Stock: ${item.stock}</span>`;
+                } else {
+                    stockBadge = `<span style="color:#c62828; font-size: 11px; font-weight:bold;">Out of Stock</span>`;
                 }
-                addItemRow(item); 
-                e.target.value = ''; 
-                resList.style.display = 'none'; 
-                document.getElementById('itemSearch').focus(); 
-            };
-            resList.appendChild(li);
+
+                li.innerHTML = `
+                    <div><strong>${item.name}</strong><br><span style="font-size: 11px; color: #888;">SKU: ${item.code || 'N/A'} | ${stockBadge}</span></div>
+                    <div style="color: #0066cc; font-family: monospace; font-weight: bold; font-size: 14px;">Rs: ${item.price.toFixed(2)}</div>
+                `;
+                
+                li.addEventListener('click', function() {
+                    selectSearchItem(item);
+                });
+
+                resList.appendChild(li);
+            });
+            resList.style.display = 'block';
         });
-        resList.style.display = 'block';
+
+        itemSearch.addEventListener('keydown', function(e) {
+            const items = resList.querySelectorAll('li');
+            if (items.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeSearchIndex++;
+                if (activeSearchIndex >= items.length) activeSearchIndex = 0;
+                highlightSearchItem(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeSearchIndex--;
+                if (activeSearchIndex < 0) activeSearchIndex = items.length - 1;
+                highlightSearchItem(items);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (activeSearchIndex >= 0 && activeSearchIndex < items.length) {
+                    items[activeSearchIndex].click();
+                } else if (items.length > 0) {
+                    items[0].click();
+                }
+            }
+        });
+    });
+
+    function highlightSearchItem(items) {
+        items.forEach((item, index) => {
+            if (index === activeSearchIndex) {
+                item.style.backgroundColor = '#0066cc';
+                item.style.color = '#fff';
+                const priceDiv = item.querySelector('div:last-child');
+                if (priceDiv) priceDiv.style.color = '#fff';
+                const spanSku = item.querySelector('span');
+                if (spanSku) spanSku.style.color = '#e2e8f0';
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.style.backgroundColor = '';
+                item.style.color = '';
+                const priceDiv = item.querySelector('div:last-child');
+                if (priceDiv) priceDiv.style.color = '#0066cc';
+                const spanSku = item.querySelector('span');
+                if (spanSku) spanSku.style.color = '#888';
+            }
+        });
+    }
+
+    function selectSearchItem(item) {
+        if (item.type !== 'Service' && item.stock <= 0) {
+            alert("Cannot add item! It is currently out of stock.");
+            return;
+        }
+        addItemRow(item); 
+        const itemSearch = document.getElementById('itemSearch');
+        if (itemSearch) {
+            itemSearch.value = '';
+        }
+        document.getElementById('searchResults').style.display = 'none'; 
+        activeSearchIndex = -1;
+    }
+
+    function openNewCustomerModal() {
+        document.getElementById('newCustomerModal').style.display = 'flex';
+        const form = document.getElementById('ajaxNewCustomerForm');
+        if (form) form.reset();
+    }
+
+    function closeNewCustomerModal() {
+        document.getElementById('newCustomerModal').style.display = 'none';
+    }
+
+    function submitAjaxNewCustomer(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+
+        fetch('<?= APP_URL ?>/customer/api_add_customer', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const newCust = {
+                    id: String(data.customer.id),
+                    name: data.customer.name,
+                    phone: data.customer.phone,
+                    address: data.customer.address,
+                    mca: data.customer.mca || '',
+                    outstanding: 0.00
+                };
+                customers.push(newCust);
+                selectCustomer(newCust);
+                closeNewCustomerModal();
+                alert("🎉 Customer added and selected successfully!");
+            } else {
+                alert("⚠️ Error: " + data.message);
+            }
+        })
+        .catch(err => {
+            alert("Connection error! Failed to register customer.");
+            console.error(err);
+        });
     }
 
     document.addEventListener('click', function(e) {
@@ -755,7 +936,7 @@ $editingItems = $data['editing_items'] ?? [];
                 <input type="hidden" name="item_selection[]" value="${item.id}">
             </td>
             <td style="text-align: center;">
-                <input type="number" class="num" name="qty[]" value="${qty}" min="0.01" step="0.01" ${maxAttr} oninput="validateQty(this, ${item.type === 'Service' ? 'null' : item.stock}); calcTotals()" required style="width: 60px; margin-bottom: 2px;">
+                <input type="number" class="num" name="qty[]" value="${qty}" min="0.01" step="0.01" ${maxAttr} oninput="validateQty(this, ${item.type === 'Service' ? 'null' : item.stock}); calcTotals()" onkeydown="handleQtyKeydown(event, this)" required style="width: 60px; margin-bottom: 2px;">
                 ${stockHtml}
             </td>
             <td><input type="text" name="desc[]" value="${desc}" required style="width: 100%; border:none; background:transparent;"></td>
@@ -782,6 +963,27 @@ $editingItems = $data['editing_items'] ?? [];
         calcTotals();
         
         document.querySelector('.table-scroll-container').scrollTop = 0;
+
+        if (typeof itemOrId === 'object' && itemOrId !== null) {
+            setTimeout(() => {
+                if (qtyInput) {
+                    qtyInput.focus();
+                    qtyInput.select();
+                }
+            }, 50);
+        }
+    }
+
+    function handleQtyKeydown(event, input) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            // Focus back on search bar
+            const itemSearch = document.getElementById('itemSearch');
+            if (itemSearch) {
+                itemSearch.focus();
+                itemSearch.select();
+            }
+        }
     }
 
     function calcTotals() {

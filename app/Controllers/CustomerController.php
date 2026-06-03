@@ -156,4 +156,61 @@ class CustomerController extends Controller {
 
         $this->view('layouts/main', $data);
     }
+
+    public function api_add_customer() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Invalid Request']);
+            exit;
+        }
+
+        $name = isset($_POST['name']) ? trim($_POST['name']) : '';
+        if (empty($name)) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Customer name is required.']);
+            exit;
+        }
+
+        $mcaId = !empty($_POST['mca_id']) ? intval($_POST['mca_id']) : null;
+        $territoryName = null;
+        if ($mcaId) {
+            $mcaAreas = $this->customerModel->getMcaAreas();
+            foreach ($mcaAreas as $area) {
+                if ($area->id == $mcaId) {
+                    $territoryName = $area->name;
+                    break;
+                }
+            }
+        }
+
+        $addData = [
+            'name' => $name,
+            'email' => isset($_POST['email']) ? trim($_POST['email']) : '',
+            'phone' => isset($_POST['phone']) ? trim($_POST['phone']) : '',
+            'whatsapp' => isset($_POST['whatsapp']) ? trim($_POST['whatsapp']) : '',
+            'address' => isset($_POST['address']) ? trim($_POST['address']) : '',
+            'lat' => !empty($_POST['latitude']) ? $_POST['latitude'] : null,
+            'lng' => !empty($_POST['longitude']) ? $_POST['longitude'] : null,
+            'mca_id' => $mcaId,
+            'territory' => $territoryName
+        ];
+
+        if ($this->customerModel->addCustomer($addData)) {
+            $db = new Database();
+            $newId = $db->lastInsertId();
+            $this->logActivity('Add Customer', 'Customer', "Registered new customer profile via AJAX: {$name}");
+            
+            $addData['id'] = $newId;
+            $addData['outstanding'] = 0.00;
+            $addData['mca'] = $territoryName ?? '';
+            
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'customer' => $addData]);
+            exit;
+        } else {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Failed to insert customer record.']);
+            exit;
+        }
+    }
 }
