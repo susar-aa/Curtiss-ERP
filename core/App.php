@@ -8,12 +8,14 @@ class App {
         $url = $this->parseUrl();
 
         // Strip the mobile 'rep' or 'driver' prefix if present
+        $isMobileApi = false;
         if (isset($url[0]) && (strtolower($url[0]) === 'rep' || strtolower($url[0]) === 'driver')) {
+            $isMobileApi = true;
             array_shift($url);
         }
 
         // Check if this is an API sync request
-        $isApiSync = isset($_GET['api_sync']) || (isset($url[1]) && (strpos($url[1], 'api_') === 0 || strpos($url[1], 'sync_') === 0));
+        $isApiSync = $isMobileApi || isset($_GET['api_sync']) || (isset($url[1]) && (strpos($url[1], 'api_') === 0 || strpos($url[1], 'sync_') === 0));
 
         // Check if user is logged in. If not, force routing to AuthController (unless it is auth controller or an API sync request)
         if (!isset($_SESSION['user_id']) && !$isApiSync && (isset($url[0]) ? strtolower($url[0]) !== 'auth' : true)) {
