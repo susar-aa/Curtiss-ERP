@@ -7,8 +7,16 @@ class App {
     public function __construct() {
         $url = $this->parseUrl();
 
-        // Check if user is logged in. If not, force routing to AuthController
-        if (!isset($_SESSION['user_id']) && (isset($url[0]) ? strtolower($url[0]) !== 'auth' : true)) {
+        // Strip the mobile 'rep' or 'driver' prefix if present
+        if (isset($url[0]) && (strtolower($url[0]) === 'rep' || strtolower($url[0]) === 'driver')) {
+            array_shift($url);
+        }
+
+        // Check if this is an API sync request
+        $isApiSync = isset($_GET['api_sync']) || (isset($url[1]) && (strpos($url[1], 'api_') === 0 || strpos($url[1], 'sync_') === 0));
+
+        // Check if user is logged in. If not, force routing to AuthController (unless it is auth controller or an API sync request)
+        if (!isset($_SESSION['user_id']) && !$isApiSync && (isset($url[0]) ? strtolower($url[0]) !== 'auth' : true)) {
             $this->controller = 'AuthController';
             $this->method = 'login';
         } else {
