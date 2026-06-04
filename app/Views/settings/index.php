@@ -68,6 +68,11 @@
                 <textarea name="address" class="form-control" rows="3"><?= htmlspecialchars($data['settings']->address ?? '') ?></textarea>
             </div>
 
+            <div class="form-group">
+                <label>E-Commerce Storefront URL</label>
+                <input type="url" name="ecommerce_store_url" class="form-control" value="<?= htmlspecialchars($data['settings']->ecommerce_store_url ?? '') ?>" placeholder="e.g. http://localhost/Curtiss%20E%20Commerce">
+            </div>
+
             <button type="submit" class="btn">Save Profile Settings</button>
         </form>
     </div>

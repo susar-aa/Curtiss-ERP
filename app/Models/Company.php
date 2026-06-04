@@ -18,6 +18,7 @@ class Company {
             'logo_path' => null,
             'website' => 'www.candent.com',
             'currency' => 'LKR',
+            'ecommerce_store_url' => 'http://localhost/Curtiss%20E%20Commerce',
         ];
     }
 
@@ -33,8 +34,15 @@ class Company {
                     address TEXT NULL,
                     tax_number VARCHAR(100) NULL,
                     logo_path VARCHAR(255) NULL,
+                    ecommerce_store_url VARCHAR(255) NULL DEFAULT '',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )");
+                $this->db->execute();
+            }
+
+            $this->db->query("SHOW COLUMNS FROM company_settings LIKE 'ecommerce_store_url'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE company_settings ADD COLUMN ecommerce_store_url VARCHAR(255) NULL DEFAULT ''");
                 $this->db->execute();
             }
 
@@ -48,8 +56,59 @@ class Company {
                 }
                 $this->db->execute();
             }
+
+            // Ensure customers table has username and password
+            $this->db->query("SHOW COLUMNS FROM customers LIKE 'username'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE customers ADD COLUMN username VARCHAR(100) UNIQUE NULL AFTER email");
+                $this->db->execute();
+            }
+            $this->db->query("SHOW COLUMNS FROM customers LIKE 'password'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE customers ADD COLUMN password VARCHAR(255) NULL AFTER username");
+                $this->db->execute();
+            }
+
+            // Ensure wholesaler_requests table exists
+            $this->db->query("SHOW TABLES LIKE 'wholesaler_requests'");
+            if (!$this->db->single()) {
+                $this->db->query("CREATE TABLE wholesaler_requests (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    business_name VARCHAR(150) NOT NULL,
+                    address TEXT NOT NULL,
+                    contact_number VARCHAR(50) NOT NULL,
+                    city VARCHAR(100) NOT NULL,
+                    email_address VARCHAR(150) NOT NULL UNIQUE,
+                    username VARCHAR(100) NOT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    notes TEXT NULL,
+                    status ENUM('pending', 'approved', 'declined') DEFAULT 'pending',
+                    linked_customer_id INT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (linked_customer_id) REFERENCES customers(id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+                $this->db->execute();
+            }
+
+            // Ensure ecommerce_retail_customers table exists
+            $this->db->query("SHOW TABLES LIKE 'ecommerce_retail_customers'");
+            if (!$this->db->single()) {
+                $this->db->query("CREATE TABLE ecommerce_retail_customers (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL,
+                    email VARCHAR(150) NOT NULL UNIQUE,
+                    username VARCHAR(100) UNIQUE NULL,
+                    password VARCHAR(255) NOT NULL,
+                    phone VARCHAR(50) NULL,
+                    address TEXT NULL,
+                    city VARCHAR(100) NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+                $this->db->execute();
+            }
+
         } catch (Exception $e) {
-            // Table may already exist with incompatible schema; reads will fall back
+            // Table/column alterations might already be active
         }
     }
 
@@ -62,6 +121,9 @@ class Company {
         }
         if (empty($row->tax_id) && !empty($row->tax_number)) {
             $row->tax_id = $row->tax_number;
+        }
+        if (!isset($row->ecommerce_store_url)) {
+            $row->ecommerce_store_url = '';
         }
         return $row;
     }
@@ -97,12 +159,13 @@ class Company {
                 email = :email,
                 phone = :phone,
                 address = :address,
-                tax_number = :tax_number
+                tax_number = :tax_number,
+                ecommerce_store_url = :ecommerce_store_url
                 WHERE id = :id");
             $this->db->bind(':id', $current->id);
         } else {
-            $this->db->query("INSERT INTO company_settings (company_name, email, phone, address, tax_number)
-                VALUES (:company_name, :email, :phone, :address, :tax_number)");
+            $this->db->query("INSERT INTO company_settings (company_name, email, phone, address, tax_number, ecommerce_store_url)
+                VALUES (:company_name, :email, :phone, :address, :tax_number, :ecommerce_store_url)");
         }
 
         $this->db->bind(':company_name', $data['company_name'] ?? '');
@@ -110,6 +173,7 @@ class Company {
         $this->db->bind(':phone', $data['phone'] ?? '');
         $this->db->bind(':address', $data['address'] ?? '');
         $this->db->bind(':tax_number', $data['tax_number'] ?? '');
+        $this->db->bind(':ecommerce_store_url', $data['ecommerce_store_url'] ?? '');
 
         return $this->db->execute();
     }

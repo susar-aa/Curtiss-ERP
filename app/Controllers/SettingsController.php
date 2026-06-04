@@ -28,7 +28,8 @@ class SettingsController extends Controller {
                     'email' => trim($_POST['email']),
                     'phone' => trim($_POST['phone']),
                     'address' => trim($_POST['address']),
-                    'tax_number' => trim($_POST['tax_number'])
+                    'tax_number' => trim($_POST['tax_number']),
+                    'ecommerce_store_url' => trim($_POST['ecommerce_store_url'] ?? '')
                 ];
 
                 if (!empty($postData['company_name'])) {

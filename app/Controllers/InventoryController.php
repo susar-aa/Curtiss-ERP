@@ -479,9 +479,8 @@ class InventoryController extends Controller {
 
         header('Location: ' . APP_URL . '/inventory');
         exit;
+    }
 
-     * Add new inventory item with live database category, supplier, and warehouse listings
-     */
     public function add() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $rawBase64 = $_POST['compressed_image_base64'] ?? '';

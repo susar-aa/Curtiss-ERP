@@ -376,6 +376,7 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
     <?php 
         $db = new Database();
         $notifCount = 0;
+        $storeUrl = 'http://localhost/Curtiss%20E%20Commerce';
         
         if (isset($_SESSION['user_id'])) {
             try {
@@ -387,6 +388,16 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                 }
             } catch (Exception $e) {
                 $notifCount = 0;
+            }
+
+            try {
+                $db->query("SELECT ecommerce_store_url FROM company_settings LIMIT 1");
+                $sett = $db->single();
+                if ($sett && !empty($sett->ecommerce_store_url)) {
+                    $storeUrl = $sett->ecommerce_store_url;
+                }
+            } catch (Exception $e) {
+                // Keep default
             }
         }
     ?>
@@ -724,6 +735,33 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                 </div>
             </div>
 
+            <!-- 5.5 E-Commerce Operations -->
+            <div class="mac-menu-container align-right">
+                <div class="mac-menu-item">E-Commerce</div>
+                <div class="mega-menu">
+                    <div class="mega-menu-col">
+                        <div class="mega-menu-header">Wholesaler Management</div>
+                        <a href="<?= APP_URL ?>/ecommerce/requests" class="mega-list-item">
+                            <div class="icon-wrapper text-primary"><i class="ph ph-handshake"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title text-primary">Wholesaler Requests</div>
+                                <div class="desc">Approve, decline and link requests</div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="mega-menu-col">
+                        <div class="mega-menu-header">Retail Directory</div>
+                        <a href="<?= APP_URL ?>/ecommerce/retail" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-users"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Retail Customers</div>
+                                <div class="desc">View e-commerce retail accounts</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
             <!-- 6. Admin (Conditional) -->
             <?php if(isset($_SESSION['role']) && ($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'Manager' || $_SESSION['role'] === 'Accountant')): ?>
             <div class="mac-menu-container align-right">
@@ -791,6 +829,11 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
         </div>
         
         <div class="mac-menubar-right">
+            <?php if (!empty($storeUrl)): ?>
+                <a href="<?= htmlspecialchars($storeUrl) ?>" target="_blank" class="mac-menu-item" style="color: #0066cc; font-weight: 600;">
+                    <i class="ph ph-arrow-square-out" style="font-size: 16px;"></i> Visit Store
+                </a>
+            <?php endif; ?>
             <a href="<?= APP_URL ?>/notification" class="mac-menu-item" style="position: relative;">
                 <i class="ph ph-bell" style="font-size: 16px;"></i>
                 <?php if($notifCount > 0): ?>
