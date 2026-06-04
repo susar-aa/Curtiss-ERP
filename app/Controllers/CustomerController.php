@@ -2,11 +2,13 @@
 class CustomerController extends Controller {
     private $customerModel;
     private $coaModel;
+    private $db;
 
     public function __construct() {
         if (!isset($_SESSION['user_id'])) { header('Location: ' . APP_URL . '/auth/login'); exit; }
         $this->customerModel = $this->model('Customer');
         $this->coaModel = $this->model('ChartOfAccount');
+        $this->db = new Database();
     }
 
     public function index($id = null) {
@@ -211,5 +213,310 @@ class CustomerController extends Controller {
             echo json_encode(['status' => 'error', 'message' => 'Failed to insert customer record.']);
             exit;
         }
+    }
+
+    /**
+     * Export all customers to a standard CSV file.
+     */
+    public function exportCSV() {
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="customers_export_' . date('Y-m-d_His') . '.csv"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $output = fopen('php://output', 'w');
+        
+        // Write UTF-8 BOM for Excel compatibility
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+
+        // Column headers matching standard customer attributes
+        fputcsv($output, [
+            'Name',
+            'Email',
+            'Phone',
+            'WhatsApp',
+            'Address',
+            'Latitude',
+            'Longitude',
+            'Territory'
+        ]);
+
+        $customers = $this->customerModel->getAllCustomers();
+
+        foreach ($customers as $c) {
+            fputcsv($output, [
+                $c->name,
+                $c->email ?? '',
+                $c->phone ?? '',
+                $c->whatsapp ?? '',
+                $c->address ?? '',
+                $c->latitude ?? '',
+                $c->longitude ?? '',
+                $c->mca_name ?? ''
+            ]);
+        }
+
+        fclose($output);
+        exit;
+    }
+
+    /**
+     * Import customers from standard CSV file with self-healing territory matching.
+     */
+    public function importCSV() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . APP_URL . '/customer/index');
+            exit;
+        }
+
+        $addedCount = 0;
+        $updatedCount = 0;
+        $errors = [];
+        $successLogs = [];
+
+        if (isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] == UPLOAD_ERR_OK) {
+            $fileTmpPath = $_FILES['csv_file']['tmp_name'];
+            $handle = fopen($fileTmpPath, 'r');
+
+            // Skip UTF-8 BOM if present
+            $bom = fread($handle, 3);
+            if ($bom !== "\xEF\xBB\xBF") {
+                rewind($handle);
+            }
+
+            // Read header row
+            $header = fgetcsv($handle, 1000, ",");
+            if (!$header) {
+                $_SESSION['customer_import_results'] = [
+                    'added' => 0,
+                    'updated' => 0,
+                    'errors' => ['CSV file is empty or malformed.'],
+                    'success_logs' => []
+                ];
+                header('Location: ' . APP_URL . '/customer/index');
+                exit;
+            }
+
+            // Trim headers to avoid spacing issues
+            $header = array_map('trim', $header);
+
+            // Column Indexes Map (Case-Insensitive)
+            $colMap = [];
+            foreach ($header as $idx => $colName) {
+                $colMap[strtolower($colName)] = $idx;
+            }
+
+            // Required validation: Name must exist in headers
+            if (!isset($colMap['name'])) {
+                $_SESSION['customer_import_results'] = [
+                    'added' => 0,
+                    'updated' => 0,
+                    'errors' => ["CSV file is missing the required 'Name' column header."],
+                    'success_logs' => []
+                ];
+                header('Location: ' . APP_URL . '/customer/index');
+                exit;
+            }
+
+            // Map columns to CSV index
+            $nameIdx      = $colMap['name'];
+            $emailIdx     = $colMap['email'] ?? -1;
+            $phoneIdx     = $colMap['phone'] ?? -1;
+            $whatsappIdx  = $colMap['whatsapp'] ?? -1;
+            $addressIdx   = $colMap['address'] ?? -1;
+            $latIdx       = $colMap['latitude'] ?? ($colMap['lat'] ?? -1);
+            $lngIdx       = $colMap['longitude'] ?? ($colMap['lng'] ?? -1);
+            $territoryIdx = $colMap['territory'] ?? ($colMap['mca'] ?? ($colMap['route'] ?? -1));
+
+            // Load lookup maps to avoid N+1 queries during insertion
+            $territoryMap = [];
+            $this->db->query("SELECT id, name FROM mca_areas");
+            foreach ($this->db->resultSet() as $r) {
+                $territoryMap[strtolower(trim($r->name))] = $r->id;
+            }
+
+            $customerMap = [];
+            $this->db->query("SELECT id, name, phone, email, whatsapp, address, latitude, longitude, mca_id, territory FROM customers");
+            foreach ($this->db->resultSet() as $c) {
+                $customerMap[strtolower(trim($c->name))] = $c;
+            }
+
+            try {
+                $this->db->beginTransaction();
+                $rowCount = 1;
+                $logsToRecord = [];
+
+                while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+                    $rowCount++;
+                    
+                    // Basic sanity check
+                    if (count($row) < 1 || empty(trim($row[$nameIdx] ?? ''))) {
+                        continue; 
+                    }
+
+                    $name          = trim($row[$nameIdx] ?? '');
+                    $email         = $emailIdx     !== -1 ? trim($row[$emailIdx] ?? '') : '';
+                    $phone         = $phoneIdx     !== -1 ? trim($row[$phoneIdx] ?? '') : '';
+                    $whatsapp      = $whatsappIdx  !== -1 ? trim($row[$whatsappIdx] ?? '') : '';
+                    $address       = $addressIdx   !== -1 ? trim($row[$addressIdx] ?? '') : '';
+                    $latitude      = $latIdx       !== -1 ? trim($row[$latIdx] ?? '') : '';
+                    $longitude     = $lngIdx       !== -1 ? trim($row[$lngIdx] ?? '') : '';
+                    $territoryName = $territoryIdx !== -1 ? trim($row[$territoryIdx] ?? '') : '';
+
+                    // Resolve territory (MCA area) on-the-fly
+                    $mcaId = null;
+                    if (!empty($territoryName)) {
+                        $tKey = strtolower($territoryName);
+                        if (isset($territoryMap[$tKey])) {
+                            $mcaId = $territoryMap[$tKey];
+                        } else {
+                            // Find default main_area_id if available
+                            $this->db->query("SELECT id FROM main_areas LIMIT 1");
+                            $mainArea = $this->db->single();
+                            $mainAreaId = $mainArea ? $mainArea->id : null;
+
+                            // Insert new MCA area
+                            $this->db->query("INSERT INTO mca_areas (name, main_area_id, start_lat, start_lng, end_lat, end_lng, budget_km, actual_route_km) 
+                                              VALUES (:name, :mid, '0.000000', '0.000000', '0.000000', '0.000000', 0, 0)");
+                            $this->db->bind(':name', $territoryName);
+                            $this->db->bind(':mid', $mainAreaId);
+                            
+                            if ($this->db->execute()) {
+                                $newMcaId = $this->db->lastInsertId();
+                                $territoryMap[$tKey] = $newMcaId;
+                                $mcaId = $newMcaId;
+                                $successLogs[] = "Auto-created Territory '{$territoryName}'";
+                            }
+                        }
+                    }
+
+                    // Check if customer already exists by name (case-insensitive)
+                    $custKey = strtolower($name);
+                    $existingCustomer = $customerMap[$custKey] ?? null;
+
+                    $customerData = [
+                        'name' => $name,
+                        'email' => !empty($email) ? $email : null,
+                        'phone' => !empty($phone) ? $phone : null,
+                        'whatsapp' => !empty($whatsapp) ? $whatsapp : null,
+                        'address' => !empty($address) ? $address : null,
+                        'lat' => !empty($latitude) ? $latitude : null,
+                        'lng' => !empty($longitude) ? $longitude : null,
+                        'mca_id' => $mcaId,
+                        'territory' => !empty($territoryName) ? $territoryName : null
+                    ];
+
+                    if ($existingCustomer) {
+                        // Update existing customer
+                        $customerData['id'] = $existingCustomer->id;
+                        
+                        // Compare fields to see if changes actually exist
+                        $changesExist = false;
+                        $oldValues = [];
+                        $newValues = [];
+                        $changes = [];
+
+                        $fieldsToCompare = [
+                            'name' => 'Name',
+                            'email' => 'Email',
+                            'phone' => 'Phone',
+                            'whatsapp' => 'WhatsApp',
+                            'address' => 'Address',
+                            'latitude' => 'Latitude',
+                            'longitude' => 'Longitude',
+                            'mca_id' => 'Territory ID',
+                            'territory' => 'Territory Name'
+                        ];
+
+                        foreach ($fieldsToCompare as $dbKey => $label) {
+                            $oldVal = $existingCustomer->$dbKey ?? null;
+                            $newVal = $customerData[$dbKey === 'latitude' ? 'lat' : ($dbKey === 'longitude' ? 'lng' : $dbKey)];
+
+                            if (trim($oldVal ?? '') != trim($newVal ?? '')) {
+                                $changesExist = true;
+                                $oldValues[$dbKey] = $oldVal;
+                                $newValues[$dbKey] = $newVal;
+                                $changes[] = "$label changed from '" . ($oldVal ?: 'None') . "' to '" . ($newVal ?: 'None') . "'";
+                            }
+                        }
+
+                        if ($this->customerModel->updateCustomer($customerData)) {
+                            $updatedCount++;
+                            if ($changesExist) {
+                                $logsToRecord[] = [
+                                    'action' => 'Update Customer',
+                                    'description' => "Customer '{$name}' details updated via CSV import: " . implode(', ', $changes),
+                                    'record_id' => $existingCustomer->id,
+                                    'old_values' => $oldValues,
+                                    'new_values' => $newValues
+                                ];
+                            }
+                        } else {
+                            $errors[] = "Row {$rowCount}: Failed to update customer record for '{$name}'.";
+                        }
+                    } else {
+                        // Insert new customer
+                        if ($this->customerModel->addCustomer($customerData)) {
+                            $addedCount++;
+                            $newCustomerId = $this->db->lastInsertId();
+                            
+                            $logsToRecord[] = [
+                                'action' => 'Add Customer',
+                                'description' => "Registered new customer profile '{$name}' via CSV import.",
+                                'record_id' => $newCustomerId,
+                                'old_values' => null,
+                                'new_values' => $customerData
+                            ];
+
+                            // Add to cache map to prevent duplicate inserts if the same name appears twice in CSV
+                            $newCustomerObj = (object)[
+                                'id' => $newCustomerId,
+                                'name' => $name,
+                                'email' => $email,
+                                'phone' => $phone,
+                                'whatsapp' => $whatsapp,
+                                'address' => $address,
+                                'latitude' => $latitude,
+                                'longitude' => $longitude,
+                                'mca_id' => $mcaId,
+                                'territory' => $territoryName
+                            ];
+                            $customerMap[$custKey] = $newCustomerObj;
+                        } else {
+                            $errors[] = "Row {$rowCount}: Failed to insert new customer '{$name}'.";
+                        }
+                    }
+                }
+
+                $this->db->commit();
+
+                // Safely log activities after transaction is committed to prevent implicit commit DDL queries inside transaction
+                foreach ($logsToRecord as $log) {
+                    $this->logActivity($log['action'], 'Customer', $log['description'], $log['record_id'], $log['old_values'], $log['new_values']);
+                }
+            } catch (Exception $e) {
+                $this->db->rollBack();
+                $errors[] = "Database Transaction Failure: " . $e->getMessage();
+            }
+
+            fclose($handle);
+        } else {
+            $errors[] = "Could not read uploaded CSV file.";
+        }
+
+        // Store outcomes in session
+        $_SESSION['customer_import_results'] = [
+            'added' => $addedCount,
+            'updated' => $updatedCount,
+            'errors' => $errors,
+            'success_logs' => $successLogs
+        ];
+
+        header('Location: ' . APP_URL . '/customer/index');
+        exit;
     }
 }

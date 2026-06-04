@@ -1,4 +1,8 @@
 <?php
+$importResults = $_SESSION['customer_import_results'] ?? null;
+if ($importResults) {
+    unset($_SESSION['customer_import_results']);
+}
 ?>
 <style>
     .split-layout { display: flex; height: calc(100vh - 80px); background: #f4f5f7; border-radius: 8px; overflow: hidden; gap: 0; border: 1px solid var(--mac-border); box-shadow: 0 2px 10px rgba(0,0,0,0.05);}
@@ -74,6 +78,30 @@
     <div style="padding: 10px; background:#e8f5e9; color:#2e7d32; border-radius:8px; margin-bottom:15px;"><?= $data['success'] ?></div>
 <?php endif; ?>
 
+<?php if ($importResults): ?>
+    <div style="padding: 15px; background: #e8f5e9; border: 1px solid #c8e6c9; color: #2e7d32; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+        <h4 style="margin: 0 0 5px 0; font-weight: bold; font-size: 14px;">CSV Import Completed</h4>
+        <ul style="margin: 0 0 10px 0; padding-left: 20px; font-size: 13px;">
+            <li>Added: <strong><?= intval($importResults['added']) ?></strong> new customers</li>
+            <li>Updated: <strong><?= intval($importResults['updated']) ?></strong> existing customers</li>
+        </ul>
+        <?php if (!empty($importResults['success_logs'])): ?>
+            <div style="margin-top: 10px; font-size: 11px; max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.03); padding: 8px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.05);">
+                <?php foreach ($importResults['success_logs'] as $log): ?>
+                    <div style="margin-bottom: 3px;">✅ <?= htmlspecialchars($log) ?></div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+        <?php if (!empty($importResults['errors'])): ?>
+            <div style="margin-top: 10px; font-size: 11px; max-height: 100px; overflow-y: auto; background: #ffebee; color: #c62828; padding: 8px; border-radius: 6px; border: 1px solid #ffcdd2;">
+                <?php foreach ($importResults['errors'] as $err): ?>
+                    <div style="margin-bottom: 3px;">❌ <?= htmlspecialchars($err) ?></div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
+
 <div class="split-layout">
     
     <!-- Left Pane: Customer List with Advanced Filters -->
@@ -81,6 +109,12 @@
         <div class="search-bar" style="display: flex; gap: 8px; align-items: center;">
             <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search customers..." onkeyup="filterList()">
             <button class="btn btn-success" style="padding: 10px 14px; font-size: 13px; flex-shrink: 0;" onclick="openModal('addCustomerModal')">+ Add</button>
+        </div>
+        
+        <!-- CSV Import/Export Buttons -->
+        <div style="padding: 0 15px 10px 15px; background: var(--mac-bg); display: flex; gap: 8px; border-bottom: 1px solid var(--mac-border);">
+            <a href="<?= APP_URL ?>/customer/exportCSV" class="btn btn-outline" style="flex: 1; text-align: center; font-size: 12px; padding: 6px 10px; border-radius: 6px; text-decoration: none;">📤 Export CSV</a>
+            <button class="btn btn-outline" style="flex: 1; font-size: 12px; padding: 6px 10px; border-radius: 6px;" onclick="openModal('csvImportModal')">📥 Import CSV</button>
         </div>
         
         <!-- NEW: Filter Panel -->
@@ -508,6 +542,30 @@
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('addCustomerModal')">Cancel</button>
                 <button type="submit" class="btn btn-success">Save & Register</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- CSV Import Modal -->
+<div class="modal" id="csvImportModal">
+    <div class="modal-content" style="width: 500px;">
+        <h3 style="margin-top:0; color:#2e7d32;">Import Customers from CSV</h3>
+        <p style="font-size: 12px; color: #666; margin-top:-5px; margin-bottom: 20px;">
+            Select a CSV file containing customer details. Required column: <strong>Name</strong>.
+            Supported columns: <strong>Name, Email, Phone, WhatsApp, Address, Latitude, Longitude, Territory</strong>.
+        </p>
+        
+        <form action="<?= APP_URL ?>/customer/importCSV" method="POST" enctype="multipart/form-data">
+            <div class="form-group" style="border: 2px dashed var(--mac-border); padding: 25px; border-radius: 8px; text-align: center; background: rgba(0,0,0,0.02); position: relative; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background='rgba(0,0,0,0.02)'">
+                <input type="file" name="csv_file" accept=".csv" required style="position: absolute; inset:0; opacity:0; cursor:pointer;">
+                <div style="font-size: 24px; margin-bottom: 8px;">📁</div>
+                <span style="font-size:13px; font-weight:600; color:#555;">Choose a CSV file or drag it here</span>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('csvImportModal')">Cancel</button>
+                <button type="submit" class="btn btn-success">Import Customers</button>
             </div>
         </form>
     </div>
