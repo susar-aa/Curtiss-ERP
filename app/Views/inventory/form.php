@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // ==========================================
 // FORM SAFETY & FALLBACK ENGINE
 // ==========================================
@@ -18,13 +18,12 @@ $description = $item ? ($item->description ?? '') : '';
 // Retrieve potential fallback features to prevent omissions
 $barcode = $item ? ($item->barcode ?? '') : '';
 $cost_price = $item ? ($item->cost_price ?? '') : '';
-$wholesale_price = $item ? ($item->wholesale_price ?? '') : ''; // WholesaleX B2B Price field
+$wholesale_price = $item ? ($item->wholesale_price ?? '') : ''; // B2B Price field
 $alert_qty = $item ? ($item->alert_qty ?? '5') : '5';
 $category_id = $item ? ($item->category_id ?? '') : '';
 $brand = $item ? ($item->brand ?? '') : '';
 $unit = $item ? ($item->unit ?? 'pcs') : 'pcs';
 $status = $item ? ($item->status ?? 'active') : 'active';
-$sync_woo = $item ? ($item->sync_woo ?? '1') : '1';
 $image_path = $item ? ($item->image_path ?? '') : '';
 $weight = $item ? ($item->weight ?? '') : '';
 $sample_code = $item ? ($item->sample_code ?? '') : '';
@@ -38,12 +37,12 @@ $wholesale_margin = $item ? ($item->wholesale_margin ?? '') : '';
 $is_edit = !empty($item_id);
 $form_action = $is_edit ? APP_URL . '/inventory/edit/' . $item_id : APP_URL . '/inventory/add';
 
-// Dynamically use WooCommerce categories loaded from controller with fallback
+// Load categories, vendors and warehouses from controller
 $categories = $data['categories'] ?? [];
 $vendors = $data['vendors'] ?? [];
 $warehouses = $data['warehouses'] ?? [];
 
-// Dynamic self-healing fetch of synced WooCommerce attributes and terms
+// Fetch product attributes and their terms from local database
 $synced_attributes = [];
 try {
     $db->query("SELECT * FROM product_attributes ORDER BY name ASC");
@@ -500,7 +499,7 @@ try {
 
     <!-- Client side dynamic compressor, calculators, variations serializer scripts -->
     <script>
-        // WooCommerce Synced Attributes & Terms data set
+        // Product Attributes & Terms data set
         const syncedAttributes = <?php echo json_encode($synced_attributes); ?>;
 
         // Variations Tracker State

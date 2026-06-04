@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 class FIFO {
     private $db;
 
@@ -141,7 +141,7 @@ class FIFO {
         }
 
         // Fallback if there is still remaining quantity needed but no more batches exist in DB
-        // (e.g. initial stock imported from WooCommerce or migrated prior to FIFO)
+        // (e.g. initial stock imported via CSV or migrated prior to FIFO)
         if ($remainingNeeded > 0) {
             // Fetch fallback cost from items table
             $this->db->query("SELECT cost, cost_price FROM items WHERE id = :id");

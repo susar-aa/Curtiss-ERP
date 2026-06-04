@@ -91,50 +91,6 @@ class CategoryController extends Controller {
     }
 
     /**
-     * AJAX Endpoint: Sync Category taxonomies directly from WooCommerce.
-     * Stubbed to use local database catalog normally.
-     */
-    public function ajaxSyncCategories() {
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'imported' => 0,
-            'updated' => 0,
-            'total' => 0,
-            'logs' => ['[Category Sync] WooCommerce integration is disabled. Category operations are managed locally.']
-        ]);
-        exit;
-    }
-
-    /**
-     * AJAX Endpoint: Sync Global attribute definitions from WooCommerce.
-     * Stubbed to use local database catalog normally.
-     */
-    public function ajaxSyncAttributes() {
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'logs' => ['[Attributes Sync] WooCommerce integration is disabled. Attribute operations are managed locally.']
-        ]);
-        exit;
-    }
-
-    /**
-     * AJAX Endpoint: Sync variations from WooCommerce Variable parent products.
-     * Stubbed to use local database catalog normally.
-     */
-    public function ajaxSyncVariations() {
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'updated' => 0,
-            'failed' => 0,
-            'logs' => ['[Variations Sync] WooCommerce integration is disabled. Variations are managed locally.']
-        ]);
-        exit;
-    }
-
-    /**
      * AJAX Endpoint: Run deep variation database audits & WholesaleX checks.
      */
     public function ajaxAuditVariations() {

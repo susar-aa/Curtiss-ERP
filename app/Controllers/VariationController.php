@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 class VariationController extends Controller {
     private $itemModel;
@@ -64,7 +64,6 @@ class VariationController extends Controller {
                         'parent_name' => $parent->name,
                         'parent_sku' => $parent->item_code,
                         'parent_image' => $parent->image_path,
-                        'parent_sync_woo' => $parent->sync_woo,
                         'id' => $v['id'] ?? '',
                         'sku' => $v['sku'] ?? '',
                         'attribute' => $v['attribute'] ?? '',
@@ -89,7 +88,7 @@ class VariationController extends Controller {
             });
         }
 
-        // Fetch local synced WooCommerce Attributes and their Terms
+        // Fetch local product attributes and their terms
         $this->db->query("SELECT * FROM product_attributes ORDER BY name ASC");
         $attributesList = $this->db->resultSet() ?: [];
 
@@ -110,35 +109,6 @@ class VariationController extends Controller {
         $this->view('variations/index', $data);
     }
 
-    /**
-     * AJAX Endpoint: Sync variations from WooCommerce Variable parent products.
-     * Stubbed to use local database catalog normally.
-     */
-    public function ajaxSyncVariations() {
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'updated' => 0,
-            'failed' => 0,
-            'logs' => ['[Variations Sync] WooCommerce integration is disabled. Variations are managed locally.']
-        ]);
-        exit;
-    }
-
-    /**
-     * AJAX Endpoint: Pull and Sync Global attribute definitions and Terms.
-     * Stubbed to use local database catalog normally.
-     */
-    public function ajaxSyncAttributes() {
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'imported_attributes' => 0,
-            'imported_terms' => 0,
-            'logs' => ['[Attributes Sync] WooCommerce integration is disabled. Attribute operations are managed locally.']
-        ]);
-        exit;
-    }
 
     /**
      * AJAX Endpoint: Run deep variation database audits & WholesaleX checks.
@@ -195,19 +165,6 @@ class VariationController extends Controller {
             'total_variations' => $totalVariations,
             'duplicates' => $skuDuplicates,
             'logs' => $logs
-        ]);
-        exit;
-    }
-
-    /**
-     * AJAX Endpoint: Individual Variable Parent Sync Push/Pull Broker.
-     * Stubbed to use local database catalog normally.
-     */
-    public function ajaxItemSync() {
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'logs' => ['[Item Sync] WooCommerce integration is disabled. Item variations are persisted locally.']
         ]);
         exit;
     }
