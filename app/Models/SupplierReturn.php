@@ -108,7 +108,10 @@ class SupplierReturn {
                    CASE 
                        WHEN ivo.id IS NOT NULL THEN CONCAT(i.name, ' - ', v.name, ': ', vv.value_name)
                        ELSE i.name 
-                   END as product_name
+                   END as product_name,
+                   i.item_code as sku,
+                   ivo.sku as var_sku,
+                   i.sample_code as sample_code
             FROM grn_items gri
             JOIN goods_receipt_notes grn ON gri.grn_id = grn.id
             JOIN items i ON gri.item_id = i.id

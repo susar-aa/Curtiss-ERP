@@ -38,6 +38,8 @@ class CreditNote {
                 ii.item_id, 
                 ii.variation_option_id, 
                 ii.description as product_name,
+                itm.item_code as sku,
+                itm.sample_code as sample_code,
                 SUM(ii.quantity) as total_sold,
                 COALESCE(
                     (SELECT SUM(cni.quantity) 
@@ -50,10 +52,11 @@ class CreditNote {
                 ) as total_returned
             FROM invoice_items ii
             JOIN invoices i ON ii.invoice_id = i.id
+            LEFT JOIN items itm ON ii.item_id = itm.id
             WHERE i.customer_id = :cid2 
               AND i.is_deleted = 0 
               AND i.status != 'Voided'
-            GROUP BY ii.item_id, ii.variation_option_id, ii.description
+            GROUP BY ii.item_id, ii.variation_option_id, ii.description, itm.item_code, itm.sample_code
         ");
         $this->db->bind(':cid1', $customerId);
         $this->db->bind(':cid2', $customerId);

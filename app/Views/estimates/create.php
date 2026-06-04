@@ -71,7 +71,7 @@
                         <select name="desc[]" onchange="autoFillPrice(this)" required>
                             <option value="">Select Product...</option>
                             <?php foreach($data['catalog_items'] as $item): ?>
-                                <option value="<?= htmlspecialchars($item->name) ?>" data-price="<?= $item->price ?>">
+                                <option value="<?= htmlspecialchars($item->name) ?>" data-price="<?= $item->price ?>" data-sku="<?= htmlspecialchars($item->item_code ?? '') ?>" data-sample-code="<?= htmlspecialchars($item->sample_code ?? '') ?>">
                                     <?= htmlspecialchars($item->name) ?>
                                 </option>
                             <?php endforeach; ?>
@@ -101,7 +101,7 @@
     const catalogOptions = `
         <option value="">Select Product...</option>
         <?php foreach($data['catalog_items'] as $item): ?>
-            <option value="<?= htmlspecialchars($item->name) ?>" data-price="<?= $item->price ?>">
+            <option value="<?= htmlspecialchars($item->name) ?>" data-price="<?= $item->price ?>" data-sku="<?= htmlspecialchars($item->item_code ?? '') ?>" data-sample-code="<?= htmlspecialchars($item->sample_code ?? '') ?>">
                 <?= htmlspecialchars($item->name) ?>
             </option>
         <?php endforeach; ?>

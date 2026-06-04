@@ -138,7 +138,9 @@
         
         let selectOptions = '<option value="">Select product...</option>';
         vendorProducts.forEach(p => {
-            selectOptions += `<option value="${p.item_id}|${p.var_opt_id || '0'}">${escapeHtml(p.product_name)}</option>`;
+            const skuVal = p.var_sku || p.sku || '';
+            const sampleCodeVal = p.sample_code || '';
+            selectOptions += `<option value="${p.item_id}|${p.var_opt_id || '0'}" data-sku="${escapeHtml(skuVal)}" data-sample-code="${escapeHtml(sampleCodeVal)}">${escapeHtml(p.product_name)}</option>`;
         });
 
         tr.innerHTML = `

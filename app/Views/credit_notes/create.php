@@ -222,9 +222,12 @@
         container.innerHTML = '';
         const tr = input.closest('tr');
 
-        const matched = customerProducts.filter(p => 
-            p.product_name.toLowerCase().includes(query)
-        );
+        const matched = customerProducts.filter(p => {
+            const name = (p.product_name || '').toLowerCase();
+            const sku = (p.sku || '').toLowerCase();
+            const sampleCode = (p.sample_code || '').toLowerCase();
+            return name.includes(query) || sku.includes(query) || sampleCode.includes(query);
+        });
 
         if (matched.length === 0) {
             container.style.display = 'none';
@@ -235,7 +238,16 @@
         matched.forEach(p => {
             const div = document.createElement('div');
             div.className = 'autocomplete-item';
-            div.innerHTML = `<strong>${escapeHtml(p.product_name)}</strong> <span style="font-size:10px; color:#888;">(Sold: ${parseFloat(p.total_sold).toFixed(0)} Pcs)</span>`;
+            
+            let skuDisplay = '';
+            if (p.sku) {
+                skuDisplay = ` <span style="font-size:9px; color:#666; font-family:monospace; margin-left:8px;">[SKU: ${escapeHtml(p.sku)}]</span>`;
+            }
+            if (p.sample_code) {
+                skuDisplay += ` <span style="font-size:9px; color:#0066cc; font-family:monospace; margin-left:4px;">[Code: ${escapeHtml(p.sample_code)}]</span>`;
+            }
+
+            div.innerHTML = `<strong>${escapeHtml(p.product_name)}</strong>${skuDisplay} <span style="font-size:10px; color:#888;">(Sold: ${parseFloat(p.total_sold).toFixed(0)} Pcs)</span>`;
             div.onclick = function() {
                 input.value = p.product_name;
                 tr.querySelector('.item-selection-hidden').value = `${p.item_id}|${p.variation_option_id || '0'}`;
