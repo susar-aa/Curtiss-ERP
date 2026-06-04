@@ -22,8 +22,8 @@ try {
     // 4. Run the user details query with error checking
     $db->query("SELECT u.id, u.username, u.role, u.employee_id, u.email,
                        CONCAT(e.first_name, ' ', e.last_name) as full_name
-                FROM users u
-                LEFT JOIN employees e ON u.employee_id = e.id");
+                 FROM users u
+                 LEFT JOIN employees e ON u.employee_id = e.id");
     $testJoin = $db->resultSet();
     
     // 5. Active deliveries

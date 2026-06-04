@@ -144,7 +144,7 @@ class Supplier {
                        WHEN ivo.id IS NOT NULL THEN CONCAT(i.name, ' - ', v.name, ': ', vv.value_name)
                        ELSE i.name 
                    END as product_name,
-                   i.sku,
+                   i.item_code as sku,
                    COALESCE(ivo.price, i.price) as price,
                    COALESCE(ivo.cost, i.cost) as cost,
                    COALESCE(ivo.quantity_on_hand, i.quantity_on_hand) as quantity_on_hand
