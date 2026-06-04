@@ -37,7 +37,7 @@
 
 <div class="quick-links">
     <span style="font-size: 11px; color: #888; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Supply Chain:</span>
-    <a href="<?= APP_URL ?>/vendor" class="btn-quick">🏢 Vendors</a>
+    <a href="<?= APP_URL ?>/supplier" class="btn-quick">🏢 Suppliers</a>
     <a href="<?= APP_URL ?>/purchase" class="btn-quick">🛒 Purchase Orders</a>
     <a href="<?= APP_URL ?>/grn" class="btn-quick active">📦 Goods Receipts (GRN)</a>
     <a href="<?= APP_URL ?>/inventory" class="btn-quick">🗄️ Inventory</a>

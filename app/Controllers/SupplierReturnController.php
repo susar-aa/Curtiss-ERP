@@ -8,7 +8,7 @@ class SupplierReturnController extends Controller {
             header('Location: ' . APP_URL . '/auth/login'); 
             exit; 
         }
-        $this->vendorModel = $this->model('Vendor');
+        $this->vendorModel = $this->model('Supplier');
         $this->returnModel = $this->model('SupplierReturn');
     }
 

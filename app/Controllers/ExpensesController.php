@@ -6,7 +6,7 @@ class ExpensesController extends Controller {
 
     public function __construct() {
         if (!isset($_SESSION['user_id'])) { header('Location: ' . APP_URL . '/auth/login'); exit; }
-        $this->vendorModel = $this->model('Vendor');
+        $this->vendorModel = $this->model('Supplier');
         $this->expenseModel = $this->model('Expense');
         $this->coaModel = $this->model('ChartOfAccount');
     }

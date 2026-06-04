@@ -525,10 +525,10 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                     <div class="desc">Inventory catalog</div>
                                 </div>
                             </a>
-                            <a href="<?= APP_URL ?>/vendor" class="mega-card">
+                            <a href="<?= APP_URL ?>/supplier" class="mega-card">
                                 <div class="icon"><i class="ph ph-factory"></i></div>
                                 <div class="mega-card-text">
-                                    <div class="title">Vendor Center</div>
+                                    <div class="title">Supplier Center</div>
                                     <div class="desc">Manage suppliers</div>
                                 </div>
                             </a>

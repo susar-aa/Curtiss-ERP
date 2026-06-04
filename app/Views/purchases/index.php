@@ -43,7 +43,7 @@
 <!-- Quick Navigation Links -->
 <div class="quick-links">
     <span style="font-size: 11px; color: #888; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Supply Chain:</span>
-    <a href="<?= APP_URL ?>/vendor" class="btn-quick">🏢 Vendors</a>
+    <a href="<?= APP_URL ?>/supplier" class="btn-quick">🏢 Suppliers</a>
     <a href="<?= APP_URL ?>/purchase" class="btn-quick active">🛒 Purchase Orders</a>
     <a href="<?= APP_URL ?>/expenses" class="btn-quick">💳 Enter Bills & AP</a>
 </div>
