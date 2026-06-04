@@ -47,9 +47,11 @@ document.addEventListener('submit', function(e) {
         formData.append(submitter.name, submitter.value);
     }
 
+    const targetUrl = form.getAttribute('action') || window.location.href;
+
     // Diagnostic logging
     console.log('--- Resilient Form Submission Payload ---');
-    console.log('Target URL:', form.action || window.location.href);
+    console.log('Target URL:', targetUrl);
     console.log('HTTP Method:', form.method || 'POST');
     console.log('Form Element ID:', form.id || 'No ID');
     for (let pair of formData.entries()) {
@@ -57,7 +59,7 @@ document.addEventListener('submit', function(e) {
     }
     console.log('----------------------------------------');
 
-    fetch(form.action || window.location.href, {
+    fetch(targetUrl, {
         method: form.method || 'POST',
         body: formData,
         headers: {
