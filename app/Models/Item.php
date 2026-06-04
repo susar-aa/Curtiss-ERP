@@ -428,4 +428,50 @@ class Item {
         $this->db->bind(':qty', $newQty);
         return $this->db->execute();
     }
+
+    /**
+     * Automatically regenerate sample codes for all products in the database.
+     * Orders categories alphabetically (name ASC) and then orders products within each
+     * category by creation (id ASC). The first category starts at 100, second at 200, etc.
+     */
+    public function regenerateSampleCodes() {
+        try {
+            // Fetch all categories sorted by name ASC
+            $this->db->query("SELECT id FROM item_categories ORDER BY name ASC");
+            $categories = $this->db->resultSet() ?: [];
+
+            $categoryIndex = 0;
+            foreach ($categories as $cat) {
+                // Determine base code (100, 200, 300, etc.)
+                $baseCode = ($categoryIndex + 1) * 100;
+                
+                // Fetch all products in this category ordered by id ASC
+                $this->db->query("SELECT id FROM items WHERE category_id = :category_id ORDER BY id ASC");
+                $this->db->bind(':category_id', $cat->id);
+                $items = $this->db->resultSet() ?: [];
+                
+                $itemIndex = 0;
+                foreach ($items as $item) {
+                    $sampleCode = (string)($baseCode + $itemIndex);
+                    
+                    // Update this item's sample code
+                    $this->db->query("UPDATE items SET sample_code = :sample_code WHERE id = :id");
+                    $this->db->bind(':sample_code', $sampleCode);
+                    $this->db->bind(':id', $item->id);
+                    $this->db->execute();
+                    
+                    $itemIndex++;
+                }
+                
+                $categoryIndex++;
+            }
+
+            // Reset sample codes for products without any valid category to NULL
+            $this->db->query("UPDATE items SET sample_code = NULL WHERE category_id IS NULL OR category_id = 0");
+            $this->db->execute();
+            
+        } catch (Exception $e) {
+            // Log error or ignore gracefully
+        }
+    }
 }

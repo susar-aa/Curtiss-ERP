@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 class InventoryController extends Controller {
     private $itemModel;
@@ -131,6 +131,9 @@ class InventoryController extends Controller {
      * Mapped to resolve category, warehouse, and vendor names instead of their internal IDs.
      */
     public function exportCSV() {
+        // Automatically regenerate sample codes before exporting to ensure they are up to date
+        $this->itemModel->regenerateSampleCodes();
+
         if (ob_get_level()) {
             ob_end_clean();
         }
@@ -465,6 +468,9 @@ class InventoryController extends Controller {
             }
 
             fclose($handle);
+
+            // Auto-regenerate product sample codes sequentially by category name ASC and product id ASC
+            $this->itemModel->regenerateSampleCodes();
         } else {
             $errors[] = "Could not read uploaded CSV file.";
         }
@@ -569,6 +575,10 @@ class InventoryController extends Controller {
                     $this->syncItemImagesTable($newItemId, $imagePath);
                 }
                 $this->logActivity('Product Created', 'Inventory', "Product '{$data['name']}' (Code: {$data['item_code']}) created successfully.", $newItemId, null, $data);
+                
+                // Auto-regenerate product sample codes sequentially by category name ASC and product id ASC
+                $this->itemModel->regenerateSampleCodes();
+                
                 header('Location: ' . APP_URL . '/inventory');
                 exit;
             } else {
@@ -735,6 +745,9 @@ class InventoryController extends Controller {
                 }
                 
                 $this->logActivity('Product Edited', 'Inventory', $desc, $id, $oldValues, $newValues);
+                
+                // Auto-regenerate product sample codes sequentially by category name ASC and product id ASC
+                $this->itemModel->regenerateSampleCodes();
                 
                 header('Location: ' . APP_URL . '/inventory');
                 exit;
