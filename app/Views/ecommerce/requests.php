@@ -245,10 +245,13 @@
             <!-- Existing Customer Selection (hidden by default) -->
             <div class="form-group" id="existingCustomerGroup" style="display: none;">
                 <label>Select Existing ERP Customer Account</label>
-                <select name="existing_customer_id" id="existingCustomerSelect" class="form-control">
+                <input type="text" id="customerSearchInput" class="form-control" placeholder="🔍 Type name or phone to search..." style="margin-bottom: 8px; border-color: rgba(0,0,0,0.15);">
+                <select name="existing_customer_id" id="existingCustomerSelect" class="form-control" size="5" style="height: 130px;">
                     <option value="">-- Choose Customer --</option>
                     <?php foreach($data['erp_customers'] as $cust): ?>
-                        <option value="<?= $cust->id ?>"><?= htmlspecialchars($cust->name) ?> (<?= htmlspecialchars($cust->phone ?? 'No Phone') ?>)</option>
+                        <option value="<?= $cust->id ?>" data-search="<?= strtolower(htmlspecialchars($cust->name . ' ' . ($cust->phone ?? ''))) ?>">
+                            <?= htmlspecialchars($cust->name) ?> (<?= htmlspecialchars($cust->phone ?? 'No Phone') ?>)
+                        </option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -347,4 +350,32 @@
         console.log('Approval form validation passed. Submitting to: ' + document.getElementById('approvalForm').action);
         return true;
     }
+
+    // Dynamic search filtering for existing ERP customers
+    document.getElementById('customerSearchInput').addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase().trim();
+        const select = document.getElementById('existingCustomerSelect');
+        const options = select.options;
+        
+        let firstMatch = null;
+        for (let i = 0; i < options.length; i++) {
+            const opt = options[i];
+            if (opt.value === "") {
+                opt.style.display = ""; // Keep placeholder visible
+                continue;
+            }
+            const searchText = opt.getAttribute('data-search') || "";
+            if (searchText.indexOf(query) !== -1) {
+                opt.style.display = "";
+                if (!firstMatch) firstMatch = opt;
+            } else {
+                opt.style.display = "none";
+            }
+        }
+        
+        // If query is empty, reset select option scroll, otherwise select first match
+        if (query === "") {
+            select.value = "";
+        }
+    });
 </script>

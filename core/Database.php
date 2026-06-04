@@ -61,6 +61,12 @@ class Database {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+                // Ensure username column exists in ecommerce_retail_customers
+                $stmt = $this->dbh->query("SHOW COLUMNS FROM ecommerce_retail_customers LIKE 'username'");
+                if (!$stmt->fetch(PDO::FETCH_OBJ)) {
+                    $this->dbh->exec("ALTER TABLE ecommerce_retail_customers ADD COLUMN username VARCHAR(100) UNIQUE NULL AFTER email");
+                }
+
                 // Ensure company_settings has ecommerce_store_url
                 $stmt = $this->dbh->query("SHOW TABLES LIKE 'company_settings'");
                 if ($stmt->fetch(PDO::FETCH_OBJ)) {
