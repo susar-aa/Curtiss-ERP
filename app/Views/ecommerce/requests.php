@@ -256,13 +256,13 @@
             <!-- Username & Password Config -->
             <div class="form-group">
                 <label>Storefront Login Username</label>
-                <input type="text" name="username" id="modalUsername" class="form-control" required>
+                <input type="text" name="approve_username" id="modalUsername" class="form-control" required>
             </div>
             
             <div class="form-group">
                 <label>Storefront Login Password</label>
                 <div style="display: flex; gap: 8px;">
-                    <input type="text" name="password" id="modalPassword" class="form-control" required>
+                    <input type="text" name="approve_password" id="modalPassword" class="form-control" required>
                     <button type="button" class="btn-secondary" onclick="generatePassword()" style="flex-shrink: 0; padding: 8px 12px;">Generate</button>
                 </div>
             </div>

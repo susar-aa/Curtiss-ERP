@@ -24,8 +24,8 @@ class EcommerceController extends Controller {
 
             if ($action === 'approve') {
                 $linkAction = $_POST['link_action'] ?? 'create_new';
-                $username = trim($_POST['username'] ?? '');
-                $password = $_POST['password'] ?? '';
+                $username = trim($_POST['approve_username'] ?? '');
+                $password = $_POST['approve_password'] ?? '';
 
                 if (empty($username) || empty($password)) {
                     $error = 'Username and Password are required to approve wholesaler profiles.';
