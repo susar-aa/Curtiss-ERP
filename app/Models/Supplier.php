@@ -185,4 +185,77 @@ class Supplier {
     public function getVendorPOs($vendorId) {
         return $this->getSupplierPOs($vendorId);
     }
+
+    public function recordPayment($data, $userId) {
+        try {
+            $this->db->beginTransaction();
+
+            $desc = "Payment to Supplier: " . $data['method'] . " to Supplier ID " . $data['supplier_id'];
+            $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) VALUES (:date, :ref, :desc, :uid, 'Posted')");
+            $this->db->bind(':date', $data['date']);
+            $this->db->bind(':ref', $data['reference']);
+            $this->db->bind(':desc', $desc);
+            $this->db->bind(':uid', $userId);
+            $this->db->execute();
+            $journalId = $this->db->lastInsertId();
+
+            // Double Entry: Debit Accounts Payable (ap_account_id), Credit Asset (asset_account_id)
+            $lines = [
+                ['account_id' => $data['ap_account_id'], 'debit' => $data['amount'], 'credit' => 0],
+                ['account_id' => $data['asset_account_id'], 'debit' => 0, 'credit' => $data['amount']]
+            ];
+
+            foreach ($lines as $line) {
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, :cred)");
+                $this->db->bind(':jid', $journalId);
+                $this->db->bind(':aid', $line['account_id']);
+                $this->db->bind(':deb', $line['debit']);
+                $this->db->bind(':cred', $line['credit']);
+                $this->db->execute();
+
+                $this->db->query("SELECT account_type FROM chart_of_accounts WHERE id = :id");
+                $this->db->bind(':id', $line['account_id']);
+                $acc = $this->db->single();
+                
+                $sql = "UPDATE chart_of_accounts SET balance = balance ";
+                $sql .= in_array($acc->account_type, ['Asset', 'Expense']) ? "+ :debit - :credit " : "- :debit + :credit ";
+                $sql .= "WHERE id = :id";
+                $this->db->query($sql);
+                $this->db->bind(':debit', $line['debit']);
+                $this->db->bind(':credit', $line['credit']);
+                $this->db->bind(':id', $line['account_id']);
+                $this->db->execute();
+            }
+
+            // Insert into expenses
+            $this->db->query("INSERT INTO expenses (reference, vendor_id, expense_date, amount, description, journal_entry_id, created_by) 
+                              VALUES (:ref, :vid, :edate, :amt, :desc, :jid, :uid)");
+            $this->db->bind(':ref', $data['reference']);
+            $this->db->bind(':vid', $data['supplier_id']);
+            $this->db->bind(':edate', $data['date']);
+            $this->db->bind(':amt', $data['amount']);
+            $this->db->bind(':desc', "Supplier Payment - Reference: " . $data['reference']);
+            $this->db->bind(':jid', $journalId);
+            $this->db->bind(':uid', $userId);
+            $this->db->execute();
+
+            if ($data['method'] === 'Cheque') {
+                $this->db->query("INSERT INTO cheques (vendor_id, customer_id, bank_name, cheque_number, amount, banking_date, status, created_by) 
+                                  VALUES (:vid, NULL, :bn, :cn, :amt, :bdate, 'Pending', :uid)");
+                $this->db->bind(':vid', $data['supplier_id']);
+                $this->db->bind(':bn', $data['cheque_bank']);
+                $this->db->bind(':cn', $data['cheque_number']);
+                $this->db->bind(':amt', $data['amount']);
+                $this->db->bind(':bdate', $data['cheque_date']);
+                $this->db->bind(':uid', $userId);
+                $this->db->execute();
+            }
+
+            $this->db->commit();
+            return true;
+        } catch (PDOException $e) {
+            $this->db->rollBack();
+            return false;
+        }
+    }
 }

@@ -121,6 +121,9 @@
                     <div style="font-size: 24px; font-weight: bold; color: <?= $stats->outstanding > 0 ? '#c62828' : '#2e7d32' ?>;">
                         Rs: <?= number_format($stats->outstanding, 2) ?>
                     </div>
+                    <div style="margin-top: 5px;">
+                        <button class="btn btn-success" style="padding: 8px 16px;" onclick="openModal('paymentModal')">+ Record Payment</button>
+                    </div>
                 </div>
             </div>
 
@@ -325,6 +328,88 @@
     </div>
 </div>
 
+<!-- Record Payment Modal -->
+<?php if($data['selected_supplier']): ?>
+<div class="modal" id="paymentModal">
+    <div class="modal-content" style="width: 550px;">
+        <h3 style="margin-top:0; color:#2e7d32;">Record Payment Made</h3>
+        <p style="font-size: 12px; color: #666; margin-top:-5px; margin-bottom: 20px;">This will drop the supplier's outstanding payable balance and automatically post to the ledger.</p>
+        
+        <form action="<?= APP_URL ?>/supplier/index/<?= $sup->id ?>" method="POST">
+            <input type="hidden" name="action" value="record_payment">
+            <input type="hidden" name="supplier_id" value="<?= $sup->id ?>">
+            
+            <!-- Hidden AP Account (Debit) -->
+            <?php if($data['ap_account']): ?>
+                <input type="hidden" name="ap_account_id" value="<?= $data['ap_account']->id ?>">
+            <?php else: ?>
+                <div style="color:#c62828; font-size:12px; margin-bottom:10px;">⚠ No "Accounts Payable" found in Chart of Accounts!</div>
+            <?php endif; ?>
+
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Payment Amount (Rs:) *</label>
+                    <input type="number" name="amount" step="0.01" min="0.01" class="form-control" style="font-size: 18px; font-weight:bold; color:#2e7d32;" required>
+                </div>
+                <div class="form-group">
+                    <label>Payment Date *</label>
+                    <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Payment Method *</label>
+                    <select name="payment_method" id="payMethod" class="form-control" onchange="togglePaymentFields()" required>
+                        <option value="Cash">Cash</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Cheque">Cheque</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Receipt / Ref #</label>
+                    <input type="text" name="reference" class="form-control" placeholder="Optional">
+                </div>
+            </div>
+
+            <div class="form-group" style="background: rgba(0,102,204,0.05); padding: 15px; border-radius: 8px; border: 1px solid rgba(0,102,204,0.2);">
+                <label style="color:#0066cc;">Paid From (Asset Ledger Account) *</label>
+                <select name="asset_account_id" class="form-control" required style="background:#fff;">
+                    <?php foreach($data['assets'] as $acc): ?>
+                        <option value="<?= $acc->id ?>"><?= $acc->account_code ?> - <?= htmlspecialchars($acc->account_name) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <p style="font-size: 11px; color:#666; margin: 5px 0 0 0;">Select Cash in Hand, Bank, or relevant credit source.</p>
+            </div>
+
+            <!-- Dynamic Cheque Fields -->
+            <div id="chequeFields" style="display:none; background: #fff8e1; padding: 15px; border-radius: 8px; border: 1px dashed #ffb300; margin-bottom: 15px;">
+                <h4 style="margin:0 0 10px 0; color:#f57c00; font-size:13px;">Cheque Details</h4>
+                <div class="form-group">
+                    <label>Bank Name *</label>
+                    <input type="text" name="cheque_bank" id="cq_bank" class="form-control" placeholder="e.g. Commercial Bank">
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Cheque Number *</label>
+                        <input type="text" name="cheque_number" id="cq_num" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Banking Date *</label>
+                        <input type="date" name="cheque_date" id="cq_date" class="form-control">
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('paymentModal')">Cancel</button>
+                <button type="submit" class="btn btn-success">Save Payment & Post Ledger</button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
+
 <script>
     function switchTab(tabName) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -342,6 +427,26 @@
 
     function closeModal(id) {
         document.getElementById(id).style.display = 'none';
+    }
+
+    function togglePaymentFields() {
+        const method = document.getElementById('payMethod').value;
+        const cqDiv = document.getElementById('chequeFields');
+        const bInput = document.getElementById('cq_bank');
+        const nInput = document.getElementById('cq_num');
+        const dInput = document.getElementById('cq_date');
+
+        if (method === 'Cheque') {
+            cqDiv.style.display = 'block';
+            bInput.required = true;
+            nInput.required = true;
+            dInput.required = true;
+        } else {
+            cqDiv.style.display = 'none';
+            bInput.required = false;
+            nInput.required = false;
+            dInput.required = false;
+        }
     }
 
     function filterSuppliers() {
