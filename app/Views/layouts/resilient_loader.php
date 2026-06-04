@@ -47,6 +47,16 @@ document.addEventListener('submit', function(e) {
         formData.append(submitter.name, submitter.value);
     }
 
+    // Diagnostic logging
+    console.log('--- Resilient Form Submission Payload ---');
+    console.log('Target URL:', form.action || window.location.href);
+    console.log('HTTP Method:', form.method || 'POST');
+    console.log('Form Element ID:', form.id || 'No ID');
+    for (let pair of formData.entries()) {
+        console.log('  ' + pair[0] + ' =', pair[1]);
+    }
+    console.log('----------------------------------------');
+
     fetch(form.action || window.location.href, {
         method: form.method || 'POST',
         body: formData,
@@ -56,7 +66,10 @@ document.addEventListener('submit', function(e) {
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error('Server returned HTTP status: ' + response.status);
+            return response.text().then(text => {
+                console.error('Server save error details:', text);
+                throw new Error('HTTP Status ' + response.status + ' - ' + (text.substring(0, 300) || 'Unknown Server Error'));
+            });
         }
 
         // Check if it's a file download
@@ -96,7 +109,7 @@ document.addEventListener('submit', function(e) {
     .catch(error => {
         if (overlay) overlay.style.display = 'none';
         console.error('Safe save failed:', error);
-        alert('⚠ Save Failed: A network or connection issue occurred. Please check your internet connection and try again. Your typed data has been kept safe.');
+        alert('⚠ Save Failed: A network or connection issue occurred. Please check your internet connection and try again. Your typed data has been kept safe.\n\nDetails:\n' + error.message);
     });
 });
 </script>

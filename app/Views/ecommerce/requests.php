@@ -224,7 +224,7 @@
             <h3>Approve Wholesaler Access</h3>
             <button class="close-btn" onclick="closeModal()">&times;</button>
         </div>
-        <form action="<?= APP_URL ?>/ecommerce/requests" method="POST" id="approvalForm">
+        <form action="<?= APP_URL ?>/ecommerce/requests" method="POST" id="approvalForm" onsubmit="return validateApprovalForm(event)">
             <input type="hidden" name="action" value="approve">
             <input type="hidden" name="request_id" id="modalRequestId">
             
@@ -313,5 +313,38 @@
             pass += chars.charAt(Math.floor(Math.random() * chars.length));
         }
         document.getElementById('modalPassword').value = pass;
+    }
+
+    function validateApprovalForm(e) {
+        const linkAction = document.querySelector('input[name="link_action"]:checked').value;
+        const username = document.getElementById('modalUsername').value.trim();
+        const password = document.getElementById('modalPassword').value.trim();
+        
+        if (linkAction === 'link_existing') {
+            const selectElem = document.getElementById('existingCustomerSelect');
+            if (!selectElem.value) {
+                alert('Please select an existing ERP customer to link.');
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                return false;
+            }
+        }
+        
+        if (username.length < 3) {
+            alert('Username must be at least 3 characters long.');
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return false;
+        }
+        
+        if (password.length < 4) {
+            alert('Password must be at least 4 characters long.');
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return false;
+        }
+        
+        console.log('Approval form validation passed. Submitting to: ' + document.getElementById('approvalForm').action);
+        return true;
     }
 </script>
