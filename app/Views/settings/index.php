@@ -73,6 +73,25 @@
                 <input type="url" name="ecommerce_store_url" class="form-control" value="<?= htmlspecialchars($data['settings']->ecommerce_store_url ?? '') ?>" placeholder="e.g. http://localhost/Curtiss%20E%20Commerce">
             </div>
 
+            <!-- Facebook Integration Section -->
+            <div style="margin-top: 25px; margin-bottom: 20px; border-top: 1px dashed var(--mac-border); padding-top: 20px;">
+                <h4 style="margin: 0 0 10px 0; color: #0066cc; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-brands fa-facebook"></i> Facebook Page Autopost Integration
+                </h4>
+                <p style="font-size: 12px; color: #666; margin: 0 0 15px 0;">Automatically publish newly created products directly to your Facebook Business Page feed.</p>
+                
+                <div class="form-group">
+                    <label>Facebook Page ID</label>
+                    <input type="text" name="facebook_page_id" class="form-control" value="<?= htmlspecialchars($data['settings']->facebook_page_id ?? '') ?>" placeholder="e.g. 104859672859">
+                </div>
+                
+                <div class="form-group">
+                    <label>Facebook Page Access Token</label>
+                    <input type="text" name="facebook_access_token" class="form-control" value="<?= htmlspecialchars($data['settings']->facebook_access_token ?? '') ?>" placeholder="e.g. EAAGzD... (Permanent Page Token)">
+                    <small style="display: block; font-size: 11px; color: #888; margin-top: 4px;">Use a Facebook Page Access Token with <code>pages_manage_posts</code> and <code>pages_read_engagement</code> permissions.</small>
+                </div>
+            </div>
+
             <button type="submit" class="btn">Save Profile Settings</button>
         </form>
     </div>

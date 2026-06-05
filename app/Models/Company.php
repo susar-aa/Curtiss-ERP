@@ -19,6 +19,8 @@ class Company {
             'website' => 'www.candent.com',
             'currency' => 'LKR',
             'ecommerce_store_url' => 'http://localhost/Curtiss%20E%20Commerce',
+            'facebook_page_id' => '',
+            'facebook_access_token' => '',
         ];
     }
 
@@ -54,6 +56,19 @@ class Company {
                 } else {
                     $this->db->query("ALTER TABLE company_settings ADD COLUMN tax_number VARCHAR(100) NULL");
                 }
+                $this->db->execute();
+            }
+
+            // Ensure facebook integration columns exist
+            $this->db->query("SHOW COLUMNS FROM company_settings LIKE 'facebook_page_id'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE company_settings ADD COLUMN facebook_page_id VARCHAR(100) NULL DEFAULT ''");
+                $this->db->execute();
+            }
+
+            $this->db->query("SHOW COLUMNS FROM company_settings LIKE 'facebook_access_token'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE company_settings ADD COLUMN facebook_access_token TEXT NULL");
                 $this->db->execute();
             }
 
@@ -125,6 +140,12 @@ class Company {
         if (!isset($row->ecommerce_store_url)) {
             $row->ecommerce_store_url = '';
         }
+        if (!isset($row->facebook_page_id)) {
+            $row->facebook_page_id = '';
+        }
+        if (!isset($row->facebook_access_token)) {
+            $row->facebook_access_token = '';
+        }
         return $row;
     }
 
@@ -160,12 +181,14 @@ class Company {
                 phone = :phone,
                 address = :address,
                 tax_number = :tax_number,
-                ecommerce_store_url = :ecommerce_store_url
+                ecommerce_store_url = :ecommerce_store_url,
+                facebook_page_id = :facebook_page_id,
+                facebook_access_token = :facebook_access_token
                 WHERE id = :id");
             $this->db->bind(':id', $current->id);
         } else {
-            $this->db->query("INSERT INTO company_settings (company_name, email, phone, address, tax_number, ecommerce_store_url)
-                VALUES (:company_name, :email, :phone, :address, :tax_number, :ecommerce_store_url)");
+            $this->db->query("INSERT INTO company_settings (company_name, email, phone, address, tax_number, ecommerce_store_url, facebook_page_id, facebook_access_token)
+                VALUES (:company_name, :email, :phone, :address, :tax_number, :ecommerce_store_url, :facebook_page_id, :facebook_access_token)");
         }
 
         $this->db->bind(':company_name', $data['company_name'] ?? '');
@@ -174,6 +197,8 @@ class Company {
         $this->db->bind(':address', $data['address'] ?? '');
         $this->db->bind(':tax_number', $data['tax_number'] ?? '');
         $this->db->bind(':ecommerce_store_url', $data['ecommerce_store_url'] ?? '');
+        $this->db->bind(':facebook_page_id', $data['facebook_page_id'] ?? '');
+        $this->db->bind(':facebook_access_token', $data['facebook_access_token'] ?? '');
 
         return $this->db->execute();
     }

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // ==========================================
 // FORM SAFETY & FALLBACK ENGINE
 // ==========================================
@@ -482,6 +482,24 @@ try {
                                   class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none placeholder-slate-400 leading-relaxed"><?php echo htmlspecialchars($description); ?></textarea>
                     </div>
                 </div>
+
+                <!-- Facebook Autopost Option (Only visible when adding new product) -->
+                <?php if (!$is_edit): ?>
+                <div class="p-4 bg-blue-50/40 border border-blue-150 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" name="share_facebook" id="shareFacebook" value="1" 
+                               class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
+                        <label for="shareFacebook" class="text-sm font-semibold text-slate-700 flex items-center gap-2 select-none cursor-pointer">
+                            <i class="fa-brands fa-facebook text-blue-600 text-lg"></i> Autopost new product to Facebook Business Page
+                        </label>
+                    </div>
+                    <?php if (empty($data['settings']->facebook_page_id) || empty($data['settings']->facebook_access_token)): ?>
+                        <span class="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1 rounded-xl font-medium flex items-center gap-1.5 self-start md:self-auto">
+                            <i class="fa-solid fa-triangle-exclamation"></i> API keys not configured. Setup in Settings.
+                        </span>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
 
                 <!-- Form Footer Actions -->
                 <div class="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">

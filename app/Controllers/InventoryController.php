@@ -252,27 +252,38 @@ class InventoryController extends Controller {
                 return strtolower(trim(preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $h)));
             }, $headers);
 
-            // Locate columns
-            $skuIdx = array_search('sku', $headers);
-            $nameIdx = array_search('name', $headers);
-            $sellingPriceIdx = array_search('selling price', $headers);
-            $wholesalePriceIdx = array_search('wholesale price', $headers);
-            $costPriceIdx = array_search('cost price', $headers);
-            $qtyIdx = array_search('quantity', $headers);
-            $descIdx = array_search('description', $headers);
-            $barcodeIdx = array_search('barcode', $headers);
-            $categoryIdx = array_search('category', $headers);
-            $brandIdx = array_search('brand', $headers);
-            $warehouseIdx = array_search('warehouse', $headers);
-            $vendorIdx = array_search('vendor', $headers);
-            $alertQtyIdx = array_search('alert qty', $headers);
-            $unitIdx = array_search('unit', $headers);
-            $statusIdx = array_search('status', $headers);
-            $weightIdx = array_search('weight', $headers);
-            $retailMarginIdx = array_search('retail margin', $headers);
-            $wholesaleMarginIdx = array_search('wholesale margin', $headers);
-            $sampleCodeIdx = array_search('sample code', $headers);
-            $variationsIdx = array_search('variations', $headers);
+            // Helper to find column index matching multiple possible candidate aliases
+            $findHeaderIdx = function($candidates) use ($headers) {
+                foreach ($candidates as $candidate) {
+                    $idx = array_search(strtolower(trim($candidate)), $headers);
+                    if ($idx !== FALSE) {
+                        return $idx;
+                    }
+                }
+                return FALSE;
+            };
+
+            // Locate columns using candidate aliases
+            $skuIdx = $findHeaderIdx(['sku', 'item_code', 'item code', 'code', 'product_code', 'product code']);
+            $nameIdx = $findHeaderIdx(['name', 'title', 'product_name', 'product name', 'item_name', 'item name']);
+            $sellingPriceIdx = $findHeaderIdx(['selling price', 'selling_price', 'price', 'unit_price', 'unit price', 'rate']);
+            $wholesalePriceIdx = $findHeaderIdx(['wholesale price', 'wholesale_price', 'wholesale', 'b2b_price', 'b2b price', 'trade_price', 'trade price']);
+            $costPriceIdx = $findHeaderIdx(['cost price', 'cost_price', 'cost', 'purchase_price', 'purchase price', 'buy_price', 'buy price']);
+            $qtyIdx = $findHeaderIdx(['quantity', 'qty', 'stock', 'stock_qty', 'stock qty', 'stock_quantity', 'stock quantity']);
+            $descIdx = $findHeaderIdx(['description', 'desc', 'product_description', 'product description', 'details']);
+            $barcodeIdx = $findHeaderIdx(['barcode', 'bar_code', 'upc', 'ean']);
+            $categoryIdx = $findHeaderIdx(['category', 'category_name', 'category name', 'cat']);
+            $brandIdx = $findHeaderIdx(['brand', 'brand_name', 'brand name', 'manufacturer']);
+            $warehouseIdx = $findHeaderIdx(['warehouse', 'warehouse_name', 'warehouse name', 'location']);
+            $vendorIdx = $findHeaderIdx(['vendor', 'vendor_name', 'vendor name', 'supplier', 'supplier_name', 'supplier name']);
+            $alertQtyIdx = $findHeaderIdx(['alert qty', 'alert_qty', 'alert_quantity', 'alert quantity', 'min_stock', 'min stock']);
+            $unitIdx = $findHeaderIdx(['unit', 'uom', 'measurement']);
+            $statusIdx = $findHeaderIdx(['status', 'item_status', 'state']);
+            $weightIdx = $findHeaderIdx(['weight', 'item_weight', 'mass']);
+            $retailMarginIdx = $findHeaderIdx(['retail margin', 'retail_margin', 'retail_markup', 'retail markup']);
+            $wholesaleMarginIdx = $findHeaderIdx(['wholesale margin', 'wholesale_margin', 'wholesale_markup', 'wholesale markup']);
+            $sampleCodeIdx = $findHeaderIdx(['sample code', 'sample_code', 'sample_no', 'sample no']);
+            $variationsIdx = $findHeaderIdx(['variations', 'variations_json', 'variation', 'options']);
 
             if ($skuIdx === FALSE || $nameIdx === FALSE) {
                 $_SESSION['flash_error'] = "Invalid CSV structure. Could not find required 'SKU' and 'Name' headers.";
@@ -308,8 +319,8 @@ class InventoryController extends Controller {
                 while (($row = fgetcsv($handle, 10000, ",")) !== FALSE) {
                     $rowCount++;
 
-                    $sku = trim($row[$skuIdx] ?? '');
-                    $name = trim($row[$nameIdx] ?? '');
+                    $sku = ($skuIdx !== FALSE && isset($row[$skuIdx])) ? trim($row[$skuIdx]) : '';
+                    $name = ($nameIdx !== FALSE && isset($row[$nameIdx])) ? trim($row[$nameIdx]) : '';
 
                     if (empty($sku)) {
                         $errors[] = "Row {$rowCount}: SKU is missing or empty. Skipped.";
@@ -320,27 +331,33 @@ class InventoryController extends Controller {
                         continue;
                     }
 
-                    $sellingPrice = floatval(trim($row[$sellingPriceIdx] ?? '0'));
-                    $wholesalePrice = floatval(trim($row[$wholesalePriceIdx] ?? '0'));
-                    $costPrice = floatval(trim($row[$costPriceIdx] ?? '0'));
-                    $qty = intval(trim($row[$qtyIdx] ?? '0'));
-                    $description = trim($row[$descIdx] ?? '');
-                    $barcode = trim($row[$barcodeIdx] ?? '');
-                    $categoryName = trim($row[$categoryIdx] ?? '');
-                    $brand = trim($row[$brandIdx] ?? '');
-                    $warehouseName = trim($row[$warehouseIdx] ?? '');
-                    $vendorName = trim($row[$vendorIdx] ?? '');
-                    $alertQty = intval(trim($row[$alertQtyIdx] ?? '5'));
-                    $unit = trim($row[$unitIdx] ?? 'pcs');
-                    $status = strtolower(trim($row[$statusIdx] ?? 'active'));
+                    // Parse numeric inputs safely, removing thousand-separator commas
+                    $sellingPrice = ($sellingPriceIdx !== FALSE && isset($row[$sellingPriceIdx])) ? floatval(str_replace(',', '', trim($row[$sellingPriceIdx]))) : 0.00;
+                    $wholesalePrice = ($wholesalePriceIdx !== FALSE && isset($row[$wholesalePriceIdx])) ? floatval(str_replace(',', '', trim($row[$wholesalePriceIdx]))) : 0.00;
+                    $costPrice = ($costPriceIdx !== FALSE && isset($row[$costPriceIdx])) ? floatval(str_replace(',', '', trim($row[$costPriceIdx]))) : 0.00;
+                    $qty = ($qtyIdx !== FALSE && isset($row[$qtyIdx])) ? intval(str_replace(',', '', trim($row[$qtyIdx]))) : 0;
+                    
+                    $description = ($descIdx !== FALSE && isset($row[$descIdx])) ? trim($row[$descIdx]) : '';
+                    $barcode = ($barcodeIdx !== FALSE && isset($row[$barcodeIdx])) ? trim($row[$barcodeIdx]) : '';
+                    $categoryName = ($categoryIdx !== FALSE && isset($row[$categoryIdx])) ? trim($row[$categoryIdx]) : '';
+                    $brand = ($brandIdx !== FALSE && isset($row[$brandIdx])) ? trim($row[$brandIdx]) : '';
+                    $warehouseName = ($warehouseIdx !== FALSE && isset($row[$warehouseIdx])) ? trim($row[$warehouseIdx]) : '';
+                    $vendorName = ($vendorIdx !== FALSE && isset($row[$vendorIdx])) ? trim($row[$vendorIdx]) : '';
+                    
+                    $alertQty = ($alertQtyIdx !== FALSE && isset($row[$alertQtyIdx])) ? intval(str_replace(',', '', trim($row[$alertQtyIdx]))) : 5;
+                    $unit = ($unitIdx !== FALSE && isset($row[$unitIdx])) ? trim($row[$unitIdx]) : 'pcs';
+                    
+                    $status = ($statusIdx !== FALSE && isset($row[$statusIdx])) ? strtolower(trim($row[$statusIdx])) : 'active';
                     if ($status !== 'active' && $status !== 'inactive') {
                         $status = 'active';
                     }
-                    $weight = trim($row[$weightIdx] ?? '');
-                    $retailMargin = floatval(trim($row[$retailMarginIdx] ?? '0'));
-                    $wholesaleMargin = floatval(trim($row[$wholesaleMarginIdx] ?? '0'));
-                    $sampleCode = trim($row[$sampleCodeIdx] ?? '');
-                    $variationsJson = trim($row[$variationsIdx] ?? '[]');
+                    
+                    $weight = ($weightIdx !== FALSE && isset($row[$weightIdx])) ? trim($row[$weightIdx]) : '';
+                    
+                    $retailMargin = ($retailMarginIdx !== FALSE && isset($row[$retailMarginIdx])) ? floatval(str_replace(',', '', trim($row[$retailMarginIdx]))) : 0.00;
+                    $wholesaleMargin = ($wholesaleMarginIdx !== FALSE && isset($row[$wholesaleMarginIdx])) ? floatval(str_replace(',', '', trim($row[$wholesaleMarginIdx]))) : 0.00;
+                    $sampleCode = ($sampleCodeIdx !== FALSE && isset($row[$sampleCodeIdx])) ? trim($row[$sampleCodeIdx]) : '';
+                    $variationsJson = ($variationsIdx !== FALSE && isset($row[$variationsIdx])) ? trim($row[$variationsIdx]) : '[]';
 
                     // Resolve category on-the-fly
                     $categoryId = null;
@@ -578,6 +595,18 @@ class InventoryController extends Controller {
                 
                 // Auto-regenerate product sample codes sequentially by category name ASC and product id ASC
                 $this->itemModel->regenerateSampleCodes();
+
+                // Check if facebook sharing was requested
+                if (isset($_POST['share_facebook']) && $_POST['share_facebook'] == '1') {
+                    $fbResult = $this->postProductToFacebook($newItemId, $data, $imagePath);
+                    if ($fbResult) {
+                        $_SESSION['flash_success'] = "Product created and successfully posted to Facebook Page!";
+                    } else {
+                        $_SESSION['flash_success'] = "Product created successfully, but Facebook Page auto-posting failed. Please check your credentials in Settings.";
+                    }
+                } else {
+                    $_SESSION['flash_success'] = "Product created successfully!";
+                }
                 
                 header('Location: ' . APP_URL . '/inventory');
                 exit;
@@ -589,13 +618,16 @@ class InventoryController extends Controller {
             $categories = $this->categoryModel->getCategories();
             $vendors = $this->getVendorsDropdown();
             $warehouses = $this->getWarehousesDropdown();
+            $companyModel = $this->model('Company');
+            $settings = $companyModel->getSettings();
 
             $data = [
                 'title' => 'Create New Inventory Product',
                 'item' => null,
                 'categories' => $categories,
                 'vendors' => $vendors,
-                'warehouses' => $warehouses
+                'warehouses' => $warehouses,
+                'settings' => $settings
             ];
             $this->view('inventory/form', $data);
         }
@@ -761,13 +793,16 @@ class InventoryController extends Controller {
             $categories = $this->categoryModel->getCategories();
             $vendors = $this->getVendorsDropdown();
             $warehouses = $this->getWarehousesDropdown();
+            $companyModel = $this->model('Company');
+            $settings = $companyModel->getSettings();
 
             $data = [
                 'title' => 'Edit Inventory Product Profile',
                 'item' => $item,
                 'categories' => $categories,
                 'vendors' => $vendors,
-                'warehouses' => $warehouses
+                'warehouses' => $warehouses,
+                'settings' => $settings
             ];
             $this->view('inventory/form', $data);
         }
@@ -1060,6 +1095,93 @@ class InventoryController extends Controller {
             }
         } catch (Exception $e) {
             // Silence compression errors
+        }
+    }
+
+    /**
+     * Publish promotional post to Facebook Graph API for a newly created product
+     */
+    private function postProductToFacebook($productId, $data, $imagePath) {
+        try {
+            $companyModel = $this->model('Company');
+            $settings = $companyModel->getSettings();
+
+            $pageId = $settings->facebook_page_id ?? '';
+            $accessToken = $settings->facebook_access_token ?? '';
+
+            if (empty($pageId) || empty($accessToken)) {
+                return false;
+            }
+
+            // Construct Storefront Product Detail URL
+            $storeUrl = rtrim($settings->ecommerce_store_url ?? '', '/');
+            if (empty($storeUrl)) {
+                $storeUrl = 'http://localhost/Curtiss%20E%20Commerce';
+            }
+            $productUrl = $storeUrl . '/index.php?p=product&id=' . $productId;
+
+            // Message template
+            $message = $data['name'] . "\n";
+            $message .= "Price: Rs. " . number_format(floatval($data['selling_price']), 2);
+            if (floatval($data['wholesale_price']) > 0) {
+                $message .= " (Retail) / Rs. " . number_format(floatval($data['wholesale_price']), 2) . " (Wholesale)";
+            }
+            $message .= "\n\n";
+            if (!empty($data['description'])) {
+                $message .= $data['description'] . "\n\n";
+            }
+            $message .= "View & Order Online:\n" . $productUrl;
+
+            $absoluteImgPath = '';
+            if (!empty($imagePath)) {
+                $absoluteImgPath = dirname(__DIR__, 2) . '/' . $imagePath;
+            }
+
+            // If there's a valid local image, try to post it as a photo
+            if (!empty($absoluteImgPath) && file_exists($absoluteImgPath)) {
+                $url = "https://graph.facebook.com/v19.0/" . urlencode($pageId) . "/photos";
+                $postFields = [
+                    'caption' => $message,
+                    'access_token' => $accessToken,
+                    'source' => new CURLFile($absoluteImgPath)
+                ];
+
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+
+                if ($httpCode >= 200 && $httpCode < 300) {
+                    return true;
+                }
+            }
+
+            // Fallback to feed/link post if photo upload fails or is not available
+            $url = "https://graph.facebook.com/v19.0/" . urlencode($pageId) . "/feed";
+            $postFields = [
+                'message' => $message,
+                'link' => $productUrl,
+                'access_token' => $accessToken
+            ];
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postFields));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            return ($httpCode >= 200 && $httpCode < 300);
+        } catch (Exception $e) {
+            return false;
         }
     }
 }

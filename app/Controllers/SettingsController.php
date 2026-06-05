@@ -29,7 +29,9 @@ class SettingsController extends Controller {
                     'phone' => trim($_POST['phone']),
                     'address' => trim($_POST['address']),
                     'tax_number' => trim($_POST['tax_number']),
-                    'ecommerce_store_url' => trim($_POST['ecommerce_store_url'] ?? '')
+                    'ecommerce_store_url' => trim($_POST['ecommerce_store_url'] ?? ''),
+                    'facebook_page_id' => trim($_POST['facebook_page_id'] ?? ''),
+                    'facebook_access_token' => trim($_POST['facebook_access_token'] ?? '')
                 ];
 
                 if (!empty($postData['company_name'])) {
