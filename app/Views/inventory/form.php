@@ -57,6 +57,34 @@ try {
     // Fail-safe empty array fallback
     $db_error_message = $e->getMessage();
 }
+
+if (!function_exists('erp_safe_utf8_convert')) {
+    function erp_safe_utf8_convert($data) {
+        if (is_array($data)) {
+            foreach ($data as $k => $v) {
+                $data[$k] = erp_safe_utf8_convert($v);
+            }
+        } else if (is_object($data)) {
+            foreach ($data as $k => $v) {
+                $data->$k = erp_safe_utf8_convert($v);
+            }
+        } else if (is_string($data)) {
+            return mb_convert_encoding($data, 'UTF-8', 'UTF-8,ISO-8859-1,ASCII');
+        }
+        return $data;
+    }
+}
+
+if (!function_exists('erp_safe_json_encode')) {
+    function erp_safe_json_encode($data) {
+        $json = json_encode($data);
+        if ($json !== false) {
+            return $json;
+        }
+        $clean_data = erp_safe_utf8_convert($data);
+        return json_encode($clean_data) ?: '[]';
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -520,13 +548,14 @@ try {
     <!-- Client side dynamic compressor, calculators, variations serializer scripts -->
     <script>
         // Product Attributes & Terms data set
-        const syncedAttributes = <?php 
-            $json = json_encode($synced_attributes);
-            echo ($json !== false) ? $json : '[]';
-        ?>;
+        const syncedAttributes = <?php echo erp_safe_json_encode($synced_attributes); ?>;
         const dbErrorMessage = <?php echo json_encode($db_error_message); ?>;
+        const jsonErrorMessage = <?php echo json_encode(json_last_error() !== JSON_ERROR_NONE ? json_last_error_msg() : ''); ?>;
         if (dbErrorMessage) {
             console.error("Database Error loading synced attributes/terms:", dbErrorMessage);
+        }
+        if (jsonErrorMessage) {
+            console.error("JSON Encoding Error in syncedAttributes:", jsonErrorMessage);
         }
 
         // Variations Tracker State
