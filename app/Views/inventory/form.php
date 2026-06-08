@@ -54,6 +54,7 @@ try {
     }
 } catch (Exception $e) {
     // Fail-safe empty array fallback
+    echo "<!-- Synced Attributes Database Error: " . htmlspecialchars($e->getMessage()) . " -->";
 }
 ?>
 <!DOCTYPE html>
@@ -777,7 +778,7 @@ try {
                 syncedTermsWrapper.classList.remove('hidden');
                 
                 // Fetch attribute terms from matched local synced array
-                const attrObj = syncedAttributes.find(a => a.id == val);
+                const attrObj = syncedAttributes.find(a => String(a.id) === String(val));
                 if (attrObj && attrObj.terms && attrObj.terms.length > 0) {
                     attrObj.terms.forEach(term => {
                         const btn = document.createElement('button');
@@ -793,6 +794,10 @@ try {
                     syncedTermsContainer.innerHTML = '<span class="text-amber-600 font-semibold"><i class="fa-solid fa-circle-exclamation mr-1"></i> No terms exist for this attribute. Please sync attributes or add a Custom Attribute group.</span>';
                 }
             }
+        }
+
+        if (selectGroup) {
+            selectGroup.addEventListener('change', handleAttributeSelectionChange);
         }
 
         // Listener for custom tags entry
@@ -985,6 +990,8 @@ try {
         }
 
         function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            str = String(str);
             return str
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
