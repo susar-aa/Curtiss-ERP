@@ -44,6 +44,7 @@ $warehouses = $data['warehouses'] ?? [];
 
 // Fetch product attributes and their terms from local database
 $synced_attributes = [];
+$db_error_message = '';
 try {
     $db->query("SELECT * FROM product_attributes ORDER BY name ASC");
     $synced_attributes = $db->resultSet() ?: [];
@@ -54,7 +55,7 @@ try {
     }
 } catch (Exception $e) {
     // Fail-safe empty array fallback
-    echo "<!-- Synced Attributes Database Error: " . htmlspecialchars($e->getMessage()) . " -->";
+    $db_error_message = $e->getMessage();
 }
 ?>
 <!DOCTYPE html>
@@ -519,7 +520,14 @@ try {
     <!-- Client side dynamic compressor, calculators, variations serializer scripts -->
     <script>
         // Product Attributes & Terms data set
-        const syncedAttributes = <?php echo json_encode($synced_attributes); ?>;
+        const syncedAttributes = <?php 
+            $json = json_encode($synced_attributes);
+            echo ($json !== false) ? $json : '[]';
+        ?>;
+        const dbErrorMessage = <?php echo json_encode($db_error_message); ?>;
+        if (dbErrorMessage) {
+            console.error("Database Error loading synced attributes/terms:", dbErrorMessage);
+        }
 
         // Variations Tracker State
         let variations = [];
