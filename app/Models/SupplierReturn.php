@@ -197,6 +197,15 @@ class SupplierReturn {
                     $this->db->bind(':vid', $item['var_opt_id']);
                     $this->db->execute();
                 }
+
+                // Log Stock Movement in Ledger
+                require_once '../app/Models/StockLedger.php';
+                $ledger = new StockLedger();
+                $this->db->query("SELECT warehouse_id FROM items WHERE id = :id");
+                $this->db->bind(':id', $item['item_id']);
+                $itemRow = $this->db->single();
+                $whId = $itemRow ? $itemRow->warehouse_id : null;
+                $ledger->logMovement($item['item_id'], $item['var_opt_id'] ?: null, 0, $item['qty'], 'Purchase Return', $returnData['return_number'], $whId, $userId, 'Supplier Return Stock Deduction', $item['price']);
             }
 
             $this->db->commit();

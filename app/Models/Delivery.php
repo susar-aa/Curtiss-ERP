@@ -439,6 +439,21 @@ class Delivery {
                             }
 
                             $fifo->depleteStock($itemId, $varId, $qty, $item->id, null);
+
+                            // Log stock movement in ledger (depletion)
+                            require_once '../app/Models/StockLedger.php';
+                            $ledger = new StockLedger();
+                            $this->db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                            $this->db->bind(':id', $itemId);
+                            $itemRow = $this->db->single();
+                            $whId = $itemRow ? $itemRow->warehouse_id : null;
+                            $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
+                            
+                            $this->db->query("SELECT invoice_number FROM invoices WHERE id = :iid");
+                            $this->db->bind(':iid', $invoice->id);
+                            $invRow = $this->db->single();
+                            $invNum = $invRow ? $invRow->invoice_number : '';
+                            $ledger->logMovement($itemId, $varId ?: null, 0, $qty, 'Sales Invoice', $invNum, $whId, $adminUserId, 'Delivery Finalized - Stock Deducted', $itemCost);
                         }
                         $this->db->query("UPDATE invoices SET stock_status = 'deducted' WHERE id = :iid");
                         $this->db->bind(':iid', $invoice->id);
@@ -496,7 +511,6 @@ class Delivery {
 
                     $expectedReturned = $loadedQty - $deliveredQty;
                     $adjustment = $actualReturnedQty - $expectedReturned;
-
                     if ($adjustment != 0) {
                         if ($varId) {
                             $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :adj) WHERE id = :id");
@@ -509,6 +523,19 @@ class Delivery {
                             $this->db->bind(':id', $itemId);
                             $this->db->execute();
                         }
+
+                        // Log stock movement in ledger (counted returns adjustment)
+                        require_once '../app/Models/StockLedger.php';
+                        $ledger = new StockLedger();
+                        $this->db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                        $this->db->bind(':id', $itemId);
+                        $itemRow = $this->db->single();
+                        $whId = $itemRow ? $itemRow->warehouse_id : null;
+                        $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
+
+                        $qtyIn = $adjustment > 0 ? $adjustment : 0;
+                        $qtyOut = $adjustment < 0 ? abs($adjustment) : 0;
+                        $ledger->logMovement($itemId, $varId ?: null, $qtyIn, $qtyOut, 'Stock Adjustment', 'DEL-' . $deliveryId, $whId, $adminUserId, 'Delivery Finalized - Counted Returns Adjustment', $itemCost);
                     }
                 }
             }

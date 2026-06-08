@@ -578,6 +578,13 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Track cost changes</div>
                             </div>
                         </a>
+                        <a href="<?= APP_URL ?>/stockledger" class="mega-list-item text-primary">
+                            <div class="icon-wrapper text-primary"><i class="ph ph-receipt"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title text-primary">Stock Ledger</div>
+                                <div class="desc">Inventory audit trail</div>
+                            </div>
+                        </a>
                         <a href="<?= APP_URL ?>/creditnote/damaged" class="mega-list-item">
                             <div class="icon-wrapper text-warning"><i class="ph ph-warning-circle"></i></div>
                             <div class="mega-list-item-content">

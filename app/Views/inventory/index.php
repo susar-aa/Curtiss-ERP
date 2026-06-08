@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // ==========================================
 // VARIABLE SAFETY & ROBUST FALLBACK ENGINE
 // ==========================================
@@ -481,6 +481,10 @@ if ($importResults) {
                                         </td>
                                         <td class="py-4 px-6 text-right align-top">
                                             <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
+                                                <a href="<?php echo APP_URL; ?>/stockledger/product/<?php echo $item->id; ?>" 
+                                                   class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View Stock Card / Ledger">
+                                                    <i class="fa-solid fa-chart-line"></i>
+                                                </a>
                                                 <a href="<?php echo APP_URL; ?>/inventory/edit/<?php echo $item->id; ?>" 
                                                    class="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors" title="Edit Catalog Entry">
                                                     <i class="fa-solid fa-pen-to-square"></i>

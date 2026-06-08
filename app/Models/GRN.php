@@ -259,6 +259,15 @@ class GRN {
                     $this->db->bind(':vid', $item->item_variation_option_id);
                     $this->db->execute();
                 }
+
+                // 3.5 Log Stock Movement in Ledger
+                require_once '../app/Models/StockLedger.php';
+                $ledger = new StockLedger();
+                $this->db->query("SELECT warehouse_id FROM items WHERE id = :id");
+                $this->db->bind(':id', $item->item_id);
+                $itemRow = $this->db->single();
+                $whId = $itemRow ? $itemRow->warehouse_id : null;
+                $ledger->logMovement($item->item_id, $item->item_variation_option_id, $item->quantity, 0, 'GRN', $grn->grn_number, $whId, $userId, 'GRN Approved Stock Receipt', $item->unit_cost);
             }
 
             // 4. Update PO Status if linked

@@ -300,6 +300,15 @@ class CreditNote {
 
                         $fifo->recordReceipt($item['item_id'], $item['var_opt_id'], null, $item['qty'], $costPrice);
                         $totalGoodCost += ($item['qty'] * $costPrice);
+
+                        // Log Stock Movement in Ledger
+                        require_once '../app/Models/StockLedger.php';
+                        $ledger = new StockLedger();
+                        $this->db->query("SELECT warehouse_id FROM items WHERE id = :id");
+                        $this->db->bind(':id', $item['item_id']);
+                        $itemRow = $this->db->single();
+                        $whId = $itemRow ? $itemRow->warehouse_id : null;
+                        $ledger->logMovement($item['item_id'], $item['var_opt_id'] ?: null, $item['qty'], 0, 'Sales Return', $noteData['credit_note_number'], $whId, $userId, 'Sales Return Restocking', $costPrice);
                     } else {
                         $totalDamagedCost += ($item['qty'] * $costPrice);
                     }
