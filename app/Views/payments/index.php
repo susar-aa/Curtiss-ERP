@@ -2,10 +2,15 @@
     /* Tabs System */
     .tabs-container {
         display: flex;
-        gap: 8px;
+        justify-content: space-between;
+        align-items: center;
         border-bottom: 1px solid var(--mac-border);
         padding-bottom: 12px;
         margin-bottom: 25px;
+    }
+    .tabs-left {
+        display: flex;
+        gap: 8px;
     }
     .tab-btn {
         background: transparent;
@@ -35,6 +40,31 @@
         .tab-btn:hover {
             background: rgba(255, 255, 255, 0.05);
         }
+    }
+
+    /* Action buttons */
+    .btn-record {
+        padding: 8px 16px;
+        background: #0066cc;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        box-shadow: 0 4px 10px rgba(0, 102, 204, 0.15);
+        transition: all 0.2s;
+    }
+    .btn-record:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+    .btn-supplier-record {
+        background: #ef6c00;
+        box-shadow: 0 4px 10px rgba(239, 108, 0, 0.15);
     }
 
     /* KPI Summary Cards */
@@ -89,35 +119,77 @@
         .kpi-cheques .kpi-icon { background: rgba(21, 101, 192, 0.15); }
     }
 
-    /* Split Dashboard Layout */
-    .split-layout {
-        display: grid;
-        grid-template-columns: 380px 1fr;
-        gap: 25px;
-        align-items: start;
+    /* Modal System */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.2s ease-out;
     }
-    @media (max-width: 1100px) {
-        .split-layout {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    /* Forms & Panel Styles */
-    .form-pane {
-        border-radius: 12px;
-        border: 1px solid var(--mac-border);
-        padding: 24px;
+    .modal-container {
         background: var(--mac-bg);
+        border: 1px solid var(--mac-border);
+        border-radius: 14px;
+        width: 550px;
+        max-width: 90%;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        animation: scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-    .form-pane h3 {
-        margin-top: 0;
-        margin-bottom: 20px;
+    .modal-header {
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--mac-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.01);
+    }
+    .modal-header h3 {
+        margin: 0;
         font-size: 16px;
         font-weight: 700;
         display: flex;
         align-items: center;
         gap: 8px;
     }
+    .modal-close-btn {
+        background: transparent;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        transition: background-color 0.2s;
+    }
+    .modal-close-btn:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+        color: var(--text-main);
+    }
+    @media (prefers-color-scheme: dark) {
+        .modal-close-btn:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+    }
+    .modal-body {
+        padding: 24px;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    /* Forms Styles */
     .form-group {
         margin-bottom: 16px;
     }
@@ -177,10 +249,6 @@
     @media (prefers-color-scheme: dark) {
         .cheque-details-box { background: rgba(255, 255, 255, 0.02); }
     }
-    @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
 
     /* List Pane styles */
     .list-pane {
@@ -201,7 +269,7 @@
         font-weight: 700;
     }
     .search-filter {
-        width: 200px;
+        width: 220px;
         padding: 6px 12px;
         font-size: 12px;
         border: 1px solid var(--mac-border);
@@ -254,6 +322,19 @@
     .hidden {
         display: none !important;
     }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes scaleUp {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 </style>
 
 <!-- Header Section -->
@@ -276,7 +357,6 @@
 
 <!-- KPI Status Summary Widgets -->
 <?php
-    // Calculate dashboard aggregate sums
     $totalCustAmount = array_sum(array_column($data['customer_payments'], 'amount'));
     $totalSuppAmount = array_sum(array_column($data['supplier_payments'], 'amount'));
 ?>
@@ -307,24 +387,152 @@
     </div>
 </div>
 
-<!-- Tabs selector -->
+<!-- Tabs & Actions bar -->
 <div class="tabs-container">
-    <button class="tab-btn active" id="btn-customer" onclick="switchTab('customer')">
-        <i class="ph ph-user-shared"></i> Customer collections
-    </button>
-    <button class="tab-btn" id="btn-supplier" onclick="switchTab('supplier')">
-        <i class="ph ph-factory"></i> Supplier Payments
-    </button>
+    <div class="tabs-left">
+        <button class="tab-btn active" id="btn-customer" onclick="switchTab('customer')">
+            <i class="ph ph-user-shared"></i> Customer collections
+        </button>
+        <button class="tab-btn" id="btn-supplier" onclick="switchTab('supplier')">
+            <i class="ph ph-factory"></i> Supplier Payments
+        </button>
+    </div>
+    <div>
+        <button class="btn-record" id="action-btn-customer" onclick="openPaymentModal('customer')">
+            <i class="ph ph-plus-circle"></i> Record Collection
+        </button>
+        <button class="btn-record btn-supplier-record hidden" id="action-btn-supplier" onclick="openPaymentModal('supplier')">
+            <i class="ph ph-plus-circle"></i> Record Payment
+        </button>
+    </div>
 </div>
 
 <!-- ============================================== -->
 <!-- TAB CONTENT 1: CUSTOMER COLLECTIONS -->
 <!-- ============================================== -->
 <div id="tab-content-customer" class="tab-panel">
-    <div class="split-layout">
-        <!-- Form Pane -->
-        <div class="form-pane">
-            <h3><i class="ph ph-plus-circle text-primary"></i> Record Collection</h3>
+    <div class="list-pane">
+        <div class="list-header">
+            <h3>Customer Payment Records</h3>
+            <input type="text" id="cust-search" class="search-filter" placeholder="Search collections..." onkeyup="filterCollectionTable('customer')">
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table class="data-table" id="table-customer-payments">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Method</th>
+                        <th>Reference</th>
+                        <th style="text-align: right;">Amount</th>
+                        <th>GL J-Entry</th>
+                        <th>Responsible</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($data['customer_payments'])): ?>
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 25px;">No collections recorded yet.</td>
+                        </tr>
+                    <?php else: foreach ($data['customer_payments'] as $cp): ?>
+                        <tr class="row-collection">
+                            <td style="white-space: nowrap; font-weight: 500;"><?= date('Y-m-d', strtotime($cp->payment_date)) ?></td>
+                            <td class="col-entity" style="font-weight: 600;"><?= htmlspecialchars($cp->customer_name) ?></td>
+                            <td>
+                                <span class="badge-method method-<?= str_replace(' ', '', $cp->payment_method) ?>"><?= $cp->payment_method ?></span>
+                            </td>
+                            <td class="col-ref"><?= htmlspecialchars($cp->reference ?: '-') ?></td>
+                            <td style="text-align: right; font-weight: 600; font-family: monospace;">Rs <?= number_format($cp->amount, 2) ?></td>
+                            <td>
+                                <?php if ($cp->journal_entry_id): ?>
+                                    <?php 
+                                        // Pass the correct Asset Account ID affected by the transaction, falling back to first asset account if empty
+                                        $targetAccountId = $cp->asset_account_id ?: ($data['assets'] ? reset($data['assets'])->id : 1);
+                                    ?>
+                                    <a href="<?= APP_URL ?>/accounting/history/<?= $targetAccountId ?>?search=<?= urlencode($cp->reference ?: '') ?>" style="color: #0066cc; font-weight: 600; text-decoration: none;">
+                                        <i class="ph ph-link"></i> JE #<?= $cp->journal_entry_id ?>
+                                    </a>
+                                <?php else: ?>
+                                    <span style="color: var(--text-muted); font-style: italic;">No Entry</span>
+                                <?php endif; ?>
+                            </td>
+                            <td style="color: var(--text-muted); font-size: 12px;"><?= htmlspecialchars($cp->responsible_person ?: 'System') ?></td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================== -->
+<!-- TAB CONTENT 2: SUPPLIER PAYMENTS -->
+<!-- ============================================== -->
+<div id="tab-content-supplier" class="tab-panel hidden">
+    <div class="list-pane">
+        <div class="list-header">
+            <h3>Supplier Payment Records</h3>
+            <input type="text" id="supp-search" class="search-filter" placeholder="Search payments..." onkeyup="filterCollectionTable('supplier')">
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table class="data-table" id="table-supplier-payments">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Supplier</th>
+                        <th>Reference</th>
+                        <th>Description</th>
+                        <th style="text-align: right;">Amount</th>
+                        <th>GL J-Entry</th>
+                        <th>Responsible</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($data['supplier_payments'])): ?>
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 25px;">No payments recorded yet.</td>
+                        </tr>
+                    <?php else: foreach ($data['supplier_payments'] as $sp): ?>
+                        <tr class="row-collection">
+                            <td style="white-space: nowrap; font-weight: 500;"><?= date('Y-m-d', strtotime($sp->expense_date)) ?></td>
+                            <td class="col-entity" style="font-weight: 600;"><?= htmlspecialchars($sp->supplier_name) ?></td>
+                            <td class="col-ref"><?= htmlspecialchars($sp->reference ?: '-') ?></td>
+                            <td><?= htmlspecialchars($sp->description ?: '-') ?></td>
+                            <td style="text-align: right; font-weight: 600; font-family: monospace;">Rs <?= number_format($sp->amount, 2) ?></td>
+                            <td>
+                                <?php if ($sp->journal_entry_id): ?>
+                                    <?php 
+                                        // Pass the correct Asset Account ID affected by the transaction, falling back to first asset account if empty
+                                        $targetAccountId = $sp->asset_account_id ?: ($data['assets'] ? reset($data['assets'])->id : 1);
+                                    ?>
+                                    <a href="<?= APP_URL ?>/accounting/history/<?= $targetAccountId ?>?search=<?= urlencode($sp->reference ?: '') ?>" style="color: #0066cc; font-weight: 600; text-decoration: none;">
+                                        <i class="ph ph-link"></i> JE #<?= $sp->journal_entry_id ?>
+                                    </a>
+                                <?php else: ?>
+                                    <span style="color: var(--text-muted); font-style: italic;">No Entry</span>
+                                <?php endif; ?>
+                            </td>
+                            <td style="color: var(--text-muted); font-size: 12px;"><?= htmlspecialchars($sp->responsible_person ?: 'System') ?></td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================== -->
+<!-- MODAL: RECORD CUSTOMER COLLECTION -->
+<!-- ============================================== -->
+<div class="modal-overlay" id="customer-payment-modal" onclick="closePaymentModal('customer', event)">
+    <div class="modal-container" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3><i class="ph ph-plus-circle text-primary"></i> Record Customer Receipt</h3>
+            <button class="modal-close-btn" onclick="closePaymentModal('customer')">&times;</button>
+        </div>
+        <div class="modal-body">
             <form action="<?= APP_URL ?>/payment/recordCustomerPayment" method="POST" id="customerPaymentForm">
                 <div class="form-group">
                     <label for="cust-select">Select Customer *</label>
@@ -412,72 +620,23 @@
                 </div>
 
                 <button type="submit" class="btn-submit">
-                    <i class="ph ph-check-square"></i> Record Collection
+                    <i class="ph ph-check-square"></i> Save Receipt
                 </button>
             </form>
-        </div>
-
-        <!-- List Pane -->
-        <div class="list-pane">
-            <div class="list-header">
-                <h3>Customer Payment Records</h3>
-                <input type="text" id="cust-search" class="search-filter" placeholder="Search collections..." onkeyup="filterCollectionTable('customer')">
-            </div>
-
-            <div style="overflow-x: auto;">
-                <table class="data-table" id="table-customer-payments">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Customer</th>
-                            <th>Method</th>
-                            <th>Reference</th>
-                            <th style="text-align: right;">Amount</th>
-                            <th>GL J-Entry</th>
-                            <th>Responsible</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($data['customer_payments'])): ?>
-                            <tr>
-                                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 25px;">No collections recorded yet.</td>
-                            </tr>
-                        <?php else: foreach ($data['customer_payments'] as $cp): ?>
-                            <tr class="row-collection">
-                                <td style="white-space: nowrap; font-weight: 500;"><?= date('Y-m-d', strtotime($cp->payment_date)) ?></td>
-                                <td class="col-entity" style="font-weight: 600;"><?= htmlspecialchars($cp->customer_name) ?></td>
-                                <td>
-                                    <span class="badge-method method-<?= str_replace(' ', '', $cp->payment_method) ?>"><?= $cp->payment_method ?></span>
-                                </td>
-                                <td class="col-ref"><?= htmlspecialchars($cp->reference ?: '-') ?></td>
-                                <td style="text-align: right; font-weight: 600; font-family: monospace;">Rs <?= number_format($cp->amount, 2) ?></td>
-                                <td>
-                                    <?php if ($cp->journal_entry_id): ?>
-                                        <a href="<?= APP_URL ?>/accounting/history/<?= $cp->journal_entry_id ?>" style="color: #0066cc; font-weight: 600; text-decoration: none;">
-                                            <i class="ph ph-link"></i> JE #<?= $cp->journal_entry_id ?>
-                                        </a>
-                                    <?php else: ?>
-                                        <span style="color: var(--text-muted); font-style: italic;">No Entry</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td style="color: var(--text-muted); font-size: 12px;"><?= htmlspecialchars($cp->responsible_person ?: 'System') ?></td>
-                            </tr>
-                        <?php endforeach; endif; ?>
-                    </tbody>
-                </table>
-            </div>
         </div>
     </div>
 </div>
 
 <!-- ============================================== -->
-<!-- TAB CONTENT 2: SUPPLIER PAYMENTS -->
+<!-- MODAL: RECORD SUPPLIER PAYMENT -->
 <!-- ============================================== -->
-<div id="tab-content-supplier" class="tab-panel hidden">
-    <div class="split-layout">
-        <!-- Form Pane -->
-        <div class="form-pane">
-            <h3><i class="ph ph-minus-circle text-warning"></i> Record Payment</h3>
+<div class="modal-overlay" id="supplier-payment-modal" onclick="closePaymentModal('supplier', event)">
+    <div class="modal-container" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3><i class="ph ph-minus-circle text-warning"></i> Record Supplier Payment</h3>
+            <button class="modal-close-btn" onclick="closePaymentModal('supplier')">&times;</button>
+        </div>
+        <div class="modal-body">
             <form action="<?= APP_URL ?>/payment/recordSupplierPayment" method="POST" id="supplierPaymentForm">
                 <div class="form-group">
                     <label for="supp-select">Select Supplier *</label>
@@ -520,8 +679,8 @@
                     </div>
                     <div style="display: flex; gap: 12px;">
                         <div class="form-group" style="flex: 1;">
-                            <label for="supp-chk-num">Cheque Number *</label>
-                            <input type="text" name="cheque_number" id="supp-chk-num" class="form-control" placeholder="e.g. 987654">
+                            <label for="supp-chk-number">Cheque Number *</label>
+                            <input type="text" name="cheque_number" id="supp-chk-number" class="form-control" placeholder="e.g. 987654">
                         </div>
                         <div class="form-group" style="flex: 1;">
                             <label for="supp-chk-date">Cheque Date *</label>
@@ -564,58 +723,9 @@
                 </div>
 
                 <button type="submit" class="btn-submit" style="background: #ef6c00; box-shadow: 0 4px 10px rgba(239, 108, 0, 0.15);">
-                    <i class="ph ph-check-square"></i> Record Payment
+                    <i class="ph ph-check-square"></i> Save Payment
                 </button>
             </form>
-        </div>
-
-        <!-- List Pane -->
-        <div class="list-pane">
-            <div class="list-header">
-                <h3>Supplier Payment Records</h3>
-                <input type="text" id="supp-search" class="search-filter" placeholder="Search payments..." onkeyup="filterCollectionTable('supplier')">
-            </div>
-
-            <div style="overflow-x: auto;">
-                <table class="data-table" id="table-supplier-payments">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Supplier</th>
-                            <th>Reference</th>
-                            <th>Description</th>
-                            <th style="text-align: right;">Amount</th>
-                            <th>GL J-Entry</th>
-                            <th>Responsible</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($data['supplier_payments'])): ?>
-                            <tr>
-                                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 25px;">No payments recorded yet.</td>
-                            </tr>
-                        <?php else: foreach ($data['supplier_payments'] as $sp): ?>
-                            <tr class="row-collection">
-                                <td style="white-space: nowrap; font-weight: 500;"><?= date('Y-m-d', strtotime($sp->expense_date)) ?></td>
-                                <td class="col-entity" style="font-weight: 600;"><?= htmlspecialchars($sp->supplier_name) ?></td>
-                                <td class="col-ref"><?= htmlspecialchars($sp->reference ?: '-') ?></td>
-                                <td><?= htmlspecialchars($sp->description ?: '-') ?></td>
-                                <td style="text-align: right; font-weight: 600; font-family: monospace;">Rs <?= number_format($sp->amount, 2) ?></td>
-                                <td>
-                                    <?php if ($sp->journal_entry_id): ?>
-                                        <a href="<?= APP_URL ?>/accounting/history/<?= $sp->journal_entry_id ?>" style="color: #0066cc; font-weight: 600; text-decoration: none;">
-                                            <i class="ph ph-link"></i> JE #<?= $sp->journal_entry_id ?>
-                                        </a>
-                                    <?php else: ?>
-                                        <span style="color: var(--text-muted); font-style: italic;">No Entry</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td style="color: var(--text-muted); font-size: 12px;"><?= htmlspecialchars($sp->responsible_person ?: 'System') ?></td>
-                            </tr>
-                        <?php endforeach; endif; ?>
-                    </tbody>
-                </table>
-            </div>
         </div>
     </div>
 </div>
@@ -625,12 +735,26 @@
     function switchTab(tab) {
         document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.btn-record').forEach(btn => btn.classList.add('hidden'));
 
         document.getElementById('tab-content-' + tab).classList.remove('hidden');
         document.getElementById('btn-' + tab).classList.add('active');
+        document.getElementById('action-btn-' + tab).classList.remove('hidden');
 
         // Store tab preference in sessionStorage
         sessionStorage.setItem('payments_active_tab', tab);
+    }
+
+    // Modal popup actions
+    function openPaymentModal(type) {
+        document.getElementById(type + '-payment-modal').style.display = 'flex';
+    }
+
+    function closePaymentModal(type, event) {
+        if (event) {
+            event.stopPropagation();
+        }
+        document.getElementById(type + '-payment-modal').style.display = 'none';
     }
 
     // Toggle cheque field boxes conditionally
@@ -638,7 +762,14 @@
         const method = document.getElementById(type + '-method').value;
         const box = document.getElementById(type + '-cheque-box');
         const bankInput = document.getElementById(type + '-chk-bank');
-        const numInput = document.getElementById(type + '-chk-num');
+        
+        let numInput;
+        if (type === 'customer') {
+            numInput = document.getElementById('cust-chk-num');
+        } else {
+            numInput = document.getElementById('supp-chk-number');
+        }
+        
         const dateInput = document.getElementById(type + '-chk-date');
 
         if (method === 'Cheque') {

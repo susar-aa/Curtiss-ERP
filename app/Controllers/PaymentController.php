@@ -46,7 +46,8 @@ class PaymentController extends Controller {
 
         // Fetch Customer Payments
         $this->db->query("
-            SELECT cp.*, c.name as customer_name, u.username as responsible_person
+            SELECT cp.*, c.name as customer_name, u.username as responsible_person,
+                   (SELECT account_id FROM transactions WHERE journal_entry_id = cp.journal_entry_id AND debit > 0 LIMIT 1) as asset_account_id
             FROM customer_payments cp
             JOIN customers c ON cp.customer_id = c.id
             LEFT JOIN users u ON cp.created_by = u.id
@@ -56,7 +57,8 @@ class PaymentController extends Controller {
 
         // Fetch Supplier Payments (recorded in expenses with vendor_id)
         $this->db->query("
-            SELECT e.*, v.name as supplier_name, u.username as responsible_person
+            SELECT e.*, v.name as supplier_name, u.username as responsible_person,
+                   (SELECT account_id FROM transactions WHERE journal_entry_id = e.journal_entry_id AND credit > 0 LIMIT 1) as asset_account_id
             FROM expenses e
             JOIN vendors v ON e.vendor_id = v.id
             LEFT JOIN users u ON e.created_by = u.id
