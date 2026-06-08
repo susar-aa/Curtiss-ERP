@@ -700,6 +700,13 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Accounts and recons</div>
                             </div>
                         </a>
+                        <a href="<?= APP_URL ?>/payment" class="mega-list-item">
+                            <div class="icon-wrapper text-primary"><i class="ph ph-hand-coins"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title text-primary">Payment Center</div>
+                                <div class="desc">Customer & Supplier Payments</div>
+                            </div>
+                        </a>
                         <a href="<?= APP_URL ?>/asset" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-buildings"></i></div>
                             <div class="mega-list-item-content">
