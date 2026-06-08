@@ -67,6 +67,7 @@ class StockLedgerController extends Controller {
 
         $data = [
             'title' => 'Stock Ledger',
+            'content_view' => 'stock_ledger/index',
             'movements' => $movements,
             'totalItems' => $totalItems,
             'totalPages' => $totalPages,
@@ -110,6 +111,7 @@ class StockLedgerController extends Controller {
 
         $data = [
             'title' => 'Stock Card - ' . $item->name,
+            'content_view' => 'stock_ledger/product',
             'item' => $item,
             'variations' => $variations,
             'varOptId' => $varOptId,
