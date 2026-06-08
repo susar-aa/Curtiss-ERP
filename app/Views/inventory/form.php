@@ -765,6 +765,9 @@ try {
          */
         function handleAttributeSelectionChange() {
             const val = selectGroup.value;
+            console.log("=== handleAttributeSelectionChange ===");
+            console.log("Selected attribute ID value:", val, "Type:", typeof val);
+            console.log("syncedAttributes array:", syncedAttributes);
 
             // Reset layouts
             customGroupWrapper.classList.add('hidden');
@@ -787,6 +790,13 @@ try {
                 
                 // Fetch attribute terms from matched local synced array
                 const attrObj = syncedAttributes.find(a => String(a.id) === String(val));
+                console.log("Matched Attribute Object (attrObj):", attrObj);
+                if (attrObj) {
+                    console.log("Matched Attribute terms:", attrObj.terms);
+                } else {
+                    console.warn("Could not find matching attribute in syncedAttributes for ID:", val);
+                }
+
                 if (attrObj && attrObj.terms && attrObj.terms.length > 0) {
                     attrObj.terms.forEach(term => {
                         const btn = document.createElement('button');
