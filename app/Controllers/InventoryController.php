@@ -6,10 +6,10 @@ class InventoryController extends Controller {
     private $db;
 
     public function __construct() {
-        if (!isset($_SESSION['user_id'])) {
-            header('Location: ' . APP_URL . '/auth/login');
-            exit;
-        }
+        // if (!isset($_SESSION['user_id'])) {
+        //     header('Location: ' . APP_URL . '/auth/login');
+        //     exit;
+        // }
         
         $this->itemModel = $this->model('Item');
         $this->categoryModel = $this->model('Category');
