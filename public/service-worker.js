@@ -1,9 +1,9 @@
 const CACHE_NAME = 'curtiss-erp-v1';
 const ASSETS_TO_CACHE = [
-  '/Curtiss-ERP/public/',
-  '/Curtiss-ERP/public/manifest.json',
-  '/Curtiss-ERP/public/icon-192.png',
-  '/Curtiss-ERP/public/icon-512.png',
+  '/',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
   'https://unpkg.com/@phosphor-icons/web'
 ];
 
@@ -33,6 +33,11 @@ self.addEventListener('activate', (event) => {
 
 // Network-First with fallback to cache for static resources
 self.addEventListener('fetch', (event) => {
+  // Only handle GET requests
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
   // Suppress browser extension requests or non-http requests
   if (!event.request.url.startsWith(self.location.origin) && !event.request.url.startsWith('https://unpkg.com')) {
     return;

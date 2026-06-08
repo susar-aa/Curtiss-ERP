@@ -83,6 +83,15 @@
                     <?php if(!empty($grn->receipt_number)): ?>
                         <br><span style="font-size: 11px; color: #2e7d32;">Inv: <?= htmlspecialchars($grn->receipt_number) ?></span>
                     <?php endif; ?>
+                    <br>
+                    <?php if($grn->is_approved): ?>
+                        <span class="badge" style="background:#e8f5e9; color:#2e7d32; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:bold; display:inline-block; margin-top:5px;">✓ Approved</span>
+                        <?php if($grn->approver_name): ?>
+                            <br><span style="font-size: 9px; color:#888;">Approved by: <?= htmlspecialchars($grn->approver_name) ?></span>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <span class="badge" style="background:#fff3e0; color:#ef6c00; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:bold; display:inline-block; margin-top:5px;">⏳ Pending Approval</span>
+                    <?php endif; ?>
                 </td>
                 <td>
                     <span style="color:#0066cc; font-weight:bold;"><?= htmlspecialchars($grn->vendor_name) ?></span><br>
@@ -100,12 +109,17 @@
                 </td>
                 <td style="text-align: center;">
                     <a href="<?= APP_URL ?>/grn/show/<?= $grn->id ?>" class="btn btn-small btn-outline" target="_blank">Print</a>
-                    <a href="<?= APP_URL ?>/grn/edit/<?= $grn->id ?>" class="btn btn-small btn-outline" style="border-color: #2e7d32; color: #2e7d32;">Edit</a>
-                    <form action="<?= APP_URL ?>/grn" method="POST" style="display:inline;">
-                        <input type="hidden" name="action" value="delete_grn">
-                        <input type="hidden" name="grn_id" value="<?= $grn->id ?>">
-                        <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this GRN? This will REVERSE the physical stock quantities back out of inventory!');">Delete & Reverse</button>
-                    </form>
+                    <?php if(!$grn->is_approved): ?>
+                        <a href="<?= APP_URL ?>/grn/edit/<?= $grn->id ?>" class="btn btn-small btn-outline" style="border-color: #2e7d32; color: #2e7d32;">Edit</a>
+                        <form action="<?= APP_URL ?>/grn" method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="delete_grn">
+                            <input type="hidden" name="grn_id" value="<?= $grn->id ?>">
+                            <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this pending GRN?');">Delete</button>
+                        </form>
+                        <?php if(strtolower($_SESSION['role'] ?? '') === 'admin'): ?>
+                            <a href="<?= APP_URL ?>/grn/approve/<?= $grn->id ?>" class="btn btn-small" style="background:#2e7d32; color:#fff; font-weight:bold; margin-left: 5px;" onclick="return confirm('Approve this GRN? This will update inventory stock levels.');">Approve</a>
+                        <?php endif; ?>
+                    <?php endif; ?>
                 </td>
             </tr>
             <?php endforeach; endif; ?>

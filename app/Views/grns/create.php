@@ -423,5 +423,34 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
             calculateRowPrices(row);
         });
         renumberLineRows('poBody');
+
+        const form = document.getElementById('grnForm');
+        if (form) {
+            form.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    const target = e.target;
+                    if (target.tagName === 'INPUT' || target.tagName === 'SELECT') {
+                        const row = target.closest('tr');
+                        if (row && row.closest('#poBody')) {
+                            e.preventDefault();
+                            
+                            const tbody = document.getElementById('poBody');
+                            const lastTr = tbody.querySelector('tr:last-child');
+                            if (row === lastTr) {
+                                addRow();
+                            }
+                            
+                            setTimeout(() => {
+                                const newLastTr = tbody.querySelector('tr:last-child');
+                                if (newLastTr) {
+                                    const newInput = newLastTr.querySelector('.autocomplete-search-input');
+                                    if (newInput) newInput.focus();
+                                }
+                            }, 50);
+                        }
+                    }
+                }
+            });
+        }
     });
 </script>

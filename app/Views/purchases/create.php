@@ -291,5 +291,40 @@ $actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "cre
         calcTotals();
         filterProducts();
         renumberLineRows('poBody');
+
+        const form = document.getElementById('poForm');
+        if (form) {
+            form.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    const target = e.target;
+                    if (target.tagName === 'INPUT' || target.tagName === 'SELECT') {
+                        const row = target.closest('tr');
+                        if (row && row.closest('#poBody')) {
+                            e.preventDefault();
+                            
+                            const tbody = document.getElementById('poBody');
+                            const lastTr = tbody.querySelector('tr:last-child');
+                            if (row === lastTr) {
+                                addRow();
+                            }
+                            
+                            setTimeout(() => {
+                                const newLastTr = tbody.querySelector('tr:last-child');
+                                if (newLastTr) {
+                                    const select = newLastTr.querySelector('.item-select');
+                                    if (select) {
+                                        if (select.tomselect) {
+                                            select.tomselect.focus();
+                                        } else {
+                                            select.focus();
+                                        }
+                                    }
+                                }
+                            }, 50);
+                        }
+                    }
+                }
+            });
+        }
     });
 </script>

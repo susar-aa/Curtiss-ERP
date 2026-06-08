@@ -136,9 +136,9 @@ class GRNController extends Controller {
                              'grn' => $grnData,
                              'items' => $items
                          ];
-                         $this->logActivity('GRN Created', 'Inventory', "GRN '{$grnData['grn_number']}' created and inventory updated.", $grnId, null, $newValues);
-                         header('Location: ' . APP_URL . '/grn?success=GRN Created and Inventory Updated'); exit; 
-                     } else { $data['error'] = 'Database Error: Failed to create GRN.'; }
+                          $this->logActivity('GRN Created', 'Inventory', "GRN '{$grnData['grn_number']}' created, pending approval.", $grnId, null, $newValues);
+                          header('Location: ' . APP_URL . '/grn?success=' . urlencode('GRN created successfully. Pending admin approval.')); exit; 
+                      } else { $data['error'] = 'Database Error: Failed to create GRN.'; }
                  } catch (Exception $e) {
                      $data['error'] = 'Database Error: Failed to create GRN. Details: ' . $e->getMessage();
                  }
@@ -151,6 +151,10 @@ class GRNController extends Controller {
         if (!$id) { header('Location: ' . APP_URL . '/grn'); exit; }
         $grn = $this->grnModel->getGRNById($id);
         if (!$grn) { die("GRN not found."); }
+        if ($grn->is_approved) {
+            header('Location: ' . APP_URL . '/grn?error=' . urlencode('Approved Goods Receipt Notes cannot be edited.'));
+            exit;
+        }
 
         $catalogItems = $this->itemModel->getAllItems();
         foreach($catalogItems as $item) {
@@ -208,8 +212,8 @@ class GRNController extends Controller {
                             'grn' => $grnData,
                             'items' => $items
                         ];
-                        $this->logActivity('GRN Updated', 'Inventory', "GRN '{$grn->grn_number}' updated and inventory reconciled.", $id, null, $newValues);
-                        header('Location: ' . APP_URL . '/grn?success=GRN Updated and Inventory Reconciled'); exit;
+                        $this->logActivity('GRN Updated', 'Inventory', "GRN '{$grn->grn_number}' updated.", $id, null, $newValues);
+                        header('Location: ' . APP_URL . '/grn?success=' . urlencode('GRN updated successfully.')); exit;
                     } else {
                         $data['error'] = 'Database Error: Failed to update GRN.';
                     }
@@ -219,5 +223,31 @@ class GRNController extends Controller {
             }
         }
         $this->view('layouts/main', $data);
+    }
+
+    public function approve($id = null) {
+        if (!$id) { header('Location: ' . APP_URL . '/grn'); exit; }
+        
+        $role = strtolower($_SESSION['role'] ?? '');
+        if ($role !== 'admin') {
+            header('Location: ' . APP_URL . '/grn?error=Unauthorized: Only administrators can approve GRNs.');
+            exit;
+        }
+
+        try {
+            if ($this->grnModel->approveGRN($id, $_SESSION['user_id'])) {
+                $grn = $this->grnModel->getGRNById($id);
+                $grnNum = $grn ? $grn->grn_number : $id;
+                $this->logActivity('GRN Approved', 'Inventory', "GRN '{$grnNum}' approved and stock updated.", $id, null, null);
+                header("Location: " . APP_URL . "/grn?success=GRN approved and stock updated successfully.");
+                exit;
+            } else {
+                header("Location: " . APP_URL . "/grn?error=Failed to approve GRN.");
+                exit;
+            }
+        } catch (Exception $e) {
+            header("Location: " . APP_URL . "/grn?error=" . urlencode($e->getMessage()));
+            exit;
+        }
     }
 }
