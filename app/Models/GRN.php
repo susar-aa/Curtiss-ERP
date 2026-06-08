@@ -4,39 +4,32 @@ class GRN {
 
     public function __construct() {
         $this->db = new Database();
-        try {
-            $this->db->query("SHOW COLUMNS FROM goods_receipt_notes LIKE 'receipt_number'");
-            if (!$this->db->single()) {
-                $this->db->query("ALTER TABLE goods_receipt_notes ADD COLUMN receipt_number VARCHAR(100) NULL AFTER grn_number");
-                $this->db->execute();
+        // Individual self-healing migrations to ensure all fields are correctly initialized
+        $fieldsToCheck = [
+            'goods_receipt_notes' => [
+                'receipt_number' => "ALTER TABLE goods_receipt_notes ADD COLUMN receipt_number VARCHAR(100) NULL AFTER grn_number",
+                'is_approved' => "ALTER TABLE goods_receipt_notes ADD COLUMN is_approved TINYINT(1) DEFAULT 0 AFTER notes",
+                'approved_by' => "ALTER TABLE goods_receipt_notes ADD COLUMN approved_by INT NULL AFTER is_approved",
+                'approved_at' => "ALTER TABLE goods_receipt_notes ADD COLUMN approved_at DATETIME NULL AFTER approved_by"
+            ],
+            'grn_items' => [
+                'retail_margin' => "ALTER TABLE grn_items ADD COLUMN retail_margin DECIMAL(15,2) DEFAULT 0.00 AFTER wholesale_price",
+                'wholesale_margin' => "ALTER TABLE grn_items ADD COLUMN wholesale_margin DECIMAL(15,2) DEFAULT 0.00 AFTER retail_margin"
+            ]
+        ];
+
+        foreach ($fieldsToCheck as $table => $columns) {
+            foreach ($columns as $column => $sql) {
+                try {
+                    $this->db->query("SHOW COLUMNS FROM {$table} LIKE '{$column}'");
+                    if (!$this->db->single()) {
+                        $this->db->query($sql);
+                        $this->db->execute();
+                    }
+                } catch (Throwable $e) {
+                    // Fail silently to avoid breaking page load on DB configuration hitches
+                }
             }
-            $this->db->query("SHOW COLUMNS FROM goods_receipt_notes LIKE 'is_approved'");
-            if (!$this->db->single()) {
-                $this->db->query("ALTER TABLE goods_receipt_notes ADD COLUMN is_approved TINYINT(1) DEFAULT 0 AFTER notes");
-                $this->db->execute();
-            }
-            $this->db->query("SHOW COLUMNS FROM goods_receipt_notes LIKE 'approved_by'");
-            if (!$this->db->single()) {
-                $this->db->query("ALTER TABLE goods_receipt_notes ADD COLUMN approved_by INT NULL AFTER is_approved");
-                $this->db->execute();
-            }
-            $this->db->query("SHOW COLUMNS FROM goods_receipt_notes LIKE 'approved_at'");
-            if (!$this->db->single()) {
-                $this->db->query("ALTER TABLE goods_receipt_notes ADD COLUMN approved_at DATETIME NULL AFTER approved_by");
-                $this->db->execute();
-            }
-            $this->db->query("SHOW COLUMNS FROM grn_items LIKE 'retail_margin'");
-            if (!$this->db->single()) {
-                $this->db->query("ALTER TABLE grn_items ADD COLUMN retail_margin DECIMAL(15,2) DEFAULT 0.00 AFTER wholesale_price");
-                $this->db->execute();
-            }
-            $this->db->query("SHOW COLUMNS FROM grn_items LIKE 'wholesale_margin'");
-            if (!$this->db->single()) {
-                $this->db->query("ALTER TABLE grn_items ADD COLUMN wholesale_margin DECIMAL(15,2) DEFAULT 0.00 AFTER retail_margin");
-                $this->db->execute();
-            }
-        } catch (Exception $e) {
-            // Silently ignore if migration cannot run
         }
     }
 
@@ -225,8 +218,8 @@ class GRN {
                 // 2. Update Master Item Stock, Cost, Margins and Prices
                 $this->db->query("
                     UPDATE items 
-                    SET quantity_on_hand = quantity_on_hand + :qty, 
-                        qty = qty + :qty, 
+                    SET quantity_on_hand = COALESCE(quantity_on_hand, 0) + :qty, 
+                        qty = COALESCE(qty, 0) + :qty, 
                         price = :sprice, 
                         wholesale_price = :wprice, 
                         cost = :cost, 
@@ -248,7 +241,7 @@ class GRN {
                 if ($item->item_variation_option_id) {
                     $this->db->query("
                         UPDATE item_variation_options 
-                        SET quantity_on_hand = quantity_on_hand + :qty, 
+                        SET quantity_on_hand = COALESCE(quantity_on_hand, 0) + :qty, 
                             price = :sprice, 
                             cost = :cost 
                         WHERE id = :vid
@@ -285,6 +278,11 @@ class GRN {
 
             $this->db->commit();
             return true;
-        } catch (PDOException $e) { $this->db->rollBack(); throw $e; }
+        } catch (Throwable $e) { 
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e; 
+        }
     }
 }

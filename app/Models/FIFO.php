@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 class FIFO {
     private $db;
 
@@ -12,6 +12,10 @@ class FIFO {
      */
     private function initDatabase() {
         // Safe check to avoid DDL statements which cause implicit commits in MySQL
+        if ($this->db->inTransaction()) {
+            return;
+        }
+
         try {
             $this->db->query("SELECT 1 FROM stock_batches LIMIT 1");
             $this->db->execute();
