@@ -117,7 +117,7 @@
                             <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this pending GRN?');">Delete</button>
                         </form>
                         <?php if(strtolower($_SESSION['role'] ?? '') === 'admin'): ?>
-                            <a href="<?= APP_URL ?>/grn/approve/<?= $grn->id ?>" class="btn btn-small" style="background:#2e7d32; color:#fff; font-weight:bold; margin-left: 5px;" onclick="return confirm('Approve this GRN? This will update inventory stock levels.');">Approve</a>
+                            <button class="btn btn-small" style="background:#2e7d32; color:#fff; font-weight:bold; margin-left: 5px; border:none; cursor:pointer;" onclick="showApprovalModal(<?= $grn->id ?>, '<?= htmlspecialchars($grn->grn_number) ?>')">Approve</button>
                         <?php endif; ?>
                     <?php endif; ?>
                 </td>
@@ -150,3 +150,49 @@
         triggerSearch();
     }
 </script>
+
+<!-- Approval Password Modal -->
+<div id="approvalModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; backdrop-filter: blur(2px);">
+    <div style="background:#fff; padding:25px; border-radius:12px; width:100%; max-width:400px; box-shadow:0 8px 30px rgba(0,0,0,0.3); box-sizing:border-box; border-top: 5px solid #2e7d32; animation: fadeIn 0.2s ease-out;">
+        <h3 style="margin-top:0; color:#333; font-size: 18px;" id="approvalTitle">Approve GRN</h3>
+        <p style="font-size:13px; color:#666; margin-bottom:20px; line-height: 1.4;">For security verification, please enter your administrator password to authorize this Goods Receipt Note and update inventory levels.</p>
+        
+        <form id="approvalForm" method="POST" action="">
+            <input type="hidden" name="action" value="approve_grn">
+            <div style="margin-bottom:20px;">
+                <label style="display:block; margin-bottom:8px; font-size:11px; font-weight:600; color:#888; text-transform: uppercase;">Admin Password</label>
+                <input type="password" name="password" id="approvalPassword" class="form-control" style="width:100%; padding:10px 12px; border:1px solid var(--mac-border); border-radius:6px; box-sizing:border-box; font-size: 14px;" required placeholder="••••••••">
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn btn-outline" style="border-color:#ccc; color:#666; padding:8px 16px; border-radius: 6px; font-weight: 500;" onclick="closeApprovalModal()">Cancel</button>
+                <button type="submit" class="btn" style="background:#2e7d32; color:#fff; padding:8px 16px; border-radius: 6px; font-weight: 600;">Confirm & Approve</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function showApprovalModal(grnId, grnNumber) {
+        const modal = document.getElementById('approvalModal');
+        const form = document.getElementById('approvalForm');
+        const title = document.getElementById('approvalTitle');
+        const passwordInput = document.getElementById('approvalPassword');
+        
+        title.innerText = `Approve GRN: ${grnNumber}`;
+        form.action = `<?= APP_URL ?>/grn/approve/${grnId}`;
+        passwordInput.value = '';
+        modal.style.display = 'flex';
+        setTimeout(() => passwordInput.focus(), 50);
+    }
+
+    function closeApprovalModal() {
+        document.getElementById('approvalModal').style.display = 'none';
+    }
+</script>
+
+<style>
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+</style>

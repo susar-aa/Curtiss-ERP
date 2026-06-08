@@ -137,16 +137,30 @@
             </p>
         <?php endif; ?>
         
-        <div class="signature-block">
-            <?php if(!empty($data['grn']->creator_signature)): ?>
-                <img src="<?= APP_URL ?>/uploads/<?= htmlspecialchars($data['grn']->creator_signature) ?>" class="signature-img">
-            <?php else: ?>
-                <div style="height: 70px;"></div>
-            <?php endif; ?>
-            <div class="signature-line">
-                Received & Verified By<br>
-                <span style="font-size:11px; color:#888; font-weight:normal;"><?= htmlspecialchars($data['grn']->creator_name) ?></span>
+        <div style="display: flex; justify-content: space-between; margin-top: 60px; align-items: flex-end;">
+            <div class="signature-block" style="margin-top: 0;">
+                <?php if(!empty($data['grn']->creator_signature)): ?>
+                    <img src="<?= APP_URL ?>/uploads/<?= htmlspecialchars($data['grn']->creator_signature) ?>" class="signature-img">
+                <?php else: ?>
+                    <div style="height: 70px;"></div>
+                <?php endif; ?>
+                <div class="signature-line">
+                    Received & Verified By<br>
+                    <span style="font-size:11px; color:#888; font-weight:normal;"><?= htmlspecialchars($data['grn']->creator_name) ?></span>
+                </div>
             </div>
+
+            <?php if($data['grn']->is_approved): ?>
+            <div class="signature-block" style="margin-top: 0;">
+                <div style="height: 70px; display: flex; align-items: center; justify-content: center; margin-bottom: 5px;">
+                    <span style="color: #2e7d32; border: 2px dashed #2e7d32; padding: 4px 8px; border-radius: 4px; font-weight: bold; text-transform: uppercase; transform: rotate(-5deg); font-size: 14px;">✓ APPROVED</span>
+                </div>
+                <div class="signature-line">
+                    Approved By<br>
+                    <span style="font-size:11px; color:#888; font-weight:normal;"><?= htmlspecialchars($data['grn']->approver_name) ?><br><?= date('M d, Y H:i', strtotime($data['grn']->approved_at)) ?></span>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 </body>

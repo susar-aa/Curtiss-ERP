@@ -234,6 +234,18 @@ class GRNController extends Controller {
             exit;
         }
 
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['password'])) {
+            header('Location: ' . APP_URL . '/grn?error=Password verification is required for approval.');
+            exit;
+        }
+
+        $userModel = $this->model('User');
+        $adminUser = $userModel->findUserByUsername($_SESSION['username']);
+        if (!$adminUser || !password_verify($_POST['password'], $adminUser->password_hash)) {
+            header('Location: ' . APP_URL . '/grn?error=Invalid administrator password. Approval failed.');
+            exit;
+        }
+
         try {
             if ($this->grnModel->approveGRN($id, $_SESSION['user_id'])) {
                 $grn = $this->grnModel->getGRNById($id);

@@ -25,6 +25,16 @@ class GRN {
                 $this->db->query("ALTER TABLE goods_receipt_notes ADD COLUMN approved_at DATETIME NULL AFTER approved_by");
                 $this->db->execute();
             }
+            $this->db->query("SHOW COLUMNS FROM grn_items LIKE 'retail_margin'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE grn_items ADD COLUMN retail_margin DECIMAL(15,2) DEFAULT 0.00 AFTER wholesale_price");
+                $this->db->execute();
+            }
+            $this->db->query("SHOW COLUMNS FROM grn_items LIKE 'wholesale_margin'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE grn_items ADD COLUMN wholesale_margin DECIMAL(15,2) DEFAULT 0.00 AFTER retail_margin");
+                $this->db->execute();
+            }
         } catch (Exception $e) {
             // Silently ignore if migration cannot run
         }
