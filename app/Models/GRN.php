@@ -16,7 +16,8 @@ class GRN {
     }
 
     public function getGRNsPaginated($search = '', $limit = 10, $offset = 0, $filters = []) {
-        $sql = "SELECT g.*, v.name as vendor_name, u.username as creator_name, p.po_number 
+        $sql = "SELECT g.*, v.name as vendor_name, u.username as creator_name, p.po_number,
+                       COALESCE((SELECT SUM(total) FROM grn_items WHERE grn_id = g.id), 0) as total_amount
                 FROM goods_receipt_notes g 
                 JOIN vendors v ON g.vendor_id = v.id 
                 LEFT JOIN users u ON g.created_by = u.id
@@ -49,7 +50,8 @@ class GRN {
     public function getGRNById($id) {
         $this->db->query("SELECT g.*, v.name as vendor_name, v.email, v.phone, v.address, 
                                  u.username as creator_name, u.signature_path as creator_signature,
-                                 p.po_number
+                                 p.po_number,
+                                 COALESCE((SELECT SUM(total) FROM grn_items WHERE grn_id = g.id), 0) as total_amount
                           FROM goods_receipt_notes g 
                           JOIN vendors v ON g.vendor_id = v.id 
                           LEFT JOIN users u ON g.created_by = u.id
@@ -150,7 +152,7 @@ class GRN {
 
             $this->db->commit();
             return $grnId;
-        } catch (PDOException $e) { $this->db->rollBack(); return false; }
+        } catch (PDOException $e) { $this->db->rollBack(); throw $e; }
     }
 
     public function deleteGRN($id) {
@@ -197,5 +199,116 @@ class GRN {
             $this->db->commit();
             return true;
         } catch (PDOException $e) { $this->db->rollBack(); return false; }
+    }
+
+    public function updateGRN($grnId, $grnData, $items, $userId) {
+        try {
+            $this->db->beginTransaction();
+
+            $oldItems = $this->getGRNItems($grnId);
+
+            // 1. Revert Old Stock
+            foreach ($oldItems as $item) {
+                $this->db->query("UPDATE items SET quantity_on_hand = quantity_on_hand - :qty, qty = qty - :qty WHERE id = :iid");
+                $this->db->bind(':qty', $item->quantity);
+                $this->db->bind(':iid', $item->item_id);
+                $this->db->execute();
+
+                if ($item->item_variation_option_id) {
+                    $this->db->query("UPDATE item_variation_options SET quantity_on_hand = quantity_on_hand - :qty WHERE id = :vid");
+                    $this->db->bind(':qty', $item->quantity);
+                    $this->db->bind(':vid', $item->item_variation_option_id);
+                    $this->db->execute();
+                }
+            }
+
+            // 2. Delete old grn_items and stock batches
+            $this->db->query("DELETE FROM invoice_item_batches WHERE stock_batch_id IN (SELECT id FROM stock_batches WHERE grn_id = :id)");
+            $this->db->bind(':id', $grnId);
+            $this->db->execute();
+
+            $this->db->query("DELETE FROM stock_batches WHERE grn_id = :id");
+            $this->db->bind(':id', $grnId);
+            $this->db->execute();
+
+            $this->db->query("DELETE FROM grn_items WHERE grn_id = :id");
+            $this->db->bind(':id', $grnId);
+            $this->db->execute();
+
+            // 3. Update master GRN record
+            $this->db->query("UPDATE goods_receipt_notes 
+                              SET vendor_id = :vid, receipt_number = :receipt, grn_date = :gdate, notes = :notes 
+                              WHERE id = :id");
+            $this->db->bind(':vid', $grnData['vendor_id']);
+            $this->db->bind(':receipt', $grnData['receipt_number'] ?? null);
+            $this->db->bind(':gdate', $grnData['grn_date']);
+            $this->db->bind(':notes', $grnData['notes']);
+            $this->db->bind(':id', $grnId);
+            $this->db->execute();
+
+            // 4. Insert new items and apply new stock additions
+            require_once '../app/Models/FIFO.php';
+            $fifo = new FIFO();
+
+            foreach ($items as $item) {
+                // Insert new line item
+                $this->db->query("INSERT INTO grn_items (grn_id, item_id, item_variation_option_id, description, quantity, unit_cost, total, selling_price, wholesale_price) 
+                                  VALUES (:gid, :iid, :vid, :desc, :qty, :cost, :total, :sprice, :wprice)");
+                $this->db->bind(':gid', $grnId);
+                $this->db->bind(':iid', $item['item_id']);
+                $this->db->bind(':vid', $item['var_opt_id']);
+                $this->db->bind(':desc', $item['desc']);
+                $this->db->bind(':qty', $item['qty']);
+                $this->db->bind(':cost', $item['price']);
+                $this->db->bind(':total', ($item['qty'] * $item['price']));
+                $this->db->bind(':sprice', $item['selling_price']);
+                $this->db->bind(':wprice', $item['wholesale_price']);
+                $this->db->execute();
+
+                // Record FIFO stock receipt batch
+                $fifo->recordReceipt($item['item_id'], $item['var_opt_id'], $grnId, $item['qty'], $item['price']);
+
+                // Update Master Item Stock, Cost, Margins and Prices
+                $this->db->query("
+                    UPDATE items 
+                    SET quantity_on_hand = quantity_on_hand + :qty, 
+                        qty = qty + :qty, 
+                        price = :sprice, 
+                        wholesale_price = :wprice, 
+                        cost = :cost, 
+                        cost_price = :cost, 
+                        retail_margin = :rmargin, 
+                        wholesale_margin = :wmargin 
+                    WHERE id = :iid
+                ");
+                $this->db->bind(':qty', $item['qty']);
+                $this->db->bind(':sprice', $item['selling_price']);
+                $this->db->bind(':wprice', $item['wholesale_price']);
+                $this->db->bind(':cost', $item['price']);
+                $this->db->bind(':rmargin', $item['retail_margin']);
+                $this->db->bind(':wmargin', $item['wholesale_margin']);
+                $this->db->bind(':iid', $item['item_id']);
+                $this->db->execute();
+
+                // Update Specific Variation Stock, Cost and Selling Price (If applicable)
+                if ($item['var_opt_id']) {
+                    $this->db->query("
+                        UPDATE item_variation_options 
+                        SET quantity_on_hand = quantity_on_hand + :qty, 
+                            price = :sprice, 
+                            cost = :cost 
+                        WHERE id = :vid
+                    ");
+                    $this->db->bind(':qty', $item['qty']);
+                    $this->db->bind(':sprice', $item['selling_price']);
+                    $this->db->bind(':cost', $item['price']);
+                    $this->db->bind(':vid', $item['var_opt_id']);
+                    $this->db->execute();
+                }
+            }
+
+            $this->db->commit();
+            return true;
+        } catch (PDOException $e) { $this->db->rollBack(); throw $e; }
     }
 }

@@ -21,9 +21,13 @@
     .total-box { float: right; width: 300px; padding: 20px; background: rgba(0,0,0,0.02); border-radius: 8px; margin-top: 20px; text-align: right; font-size: 18px; font-weight: bold;}
 </style>
 
+<?php
+$isEdit = isset($data['grn']);
+$actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create");
+?>
 <div class="card">
     <div class="header-actions">
-        <h2>Create Goods Receipt Note (GRN)</h2>
+        <h2><?= $isEdit ? 'Edit Goods Receipt Note (GRN)' : 'Create Goods Receipt Note (GRN)' ?></h2>
         <a href="<?= APP_URL ?>/grn" style="color: #666; text-decoration:none;">&larr; Back to GRNs</a>
     </div>
 
@@ -31,8 +35,8 @@
         <div style="padding: 10px; background:#ffebee; color:#c62828; border-radius:4px; margin-bottom:15px;"><?= $data['error'] ?></div>
     <?php endif; ?>
 
-    <form action="<?= APP_URL ?>/grn/create" method="POST" id="grnForm">
-        <input type="hidden" name="action" value="save_grn">
+    <form action="<?= $actionUrl ?>" method="POST" id="grnForm">
+        <input type="hidden" name="action" value="<?= $isEdit ? 'update_grn' : 'save_grn' ?>">
         
         <?php if($data['linked_po']): ?>
             <div style="background:#e8f5e9; color:#2e7d32; padding:15px; border-radius:8px; margin-bottom:20px; border: 1px solid rgba(46,125,50,0.2);">
@@ -45,7 +49,7 @@
         <div class="grid-4">
             <div class="form-group">
                 <label>Supplier / Vendor *</label>
-                <select name="vendor_id" id="vendorSelect" class="form-control" onchange="onVendorChange()" required <?= $data['linked_po'] ? 'style="pointer-events:none; background:rgba(0,0,0,0.02);"' : '' ?>>
+                <select name="vendor_id" id="vendorSelect" class="form-control" onchange="onVendorChange()" required <?= ($data['linked_po'] || $isEdit) ? 'style="pointer-events:none; background:rgba(0,0,0,0.02);"' : '' ?>>
                     <option value="">Select Vendor...</option>
                     <?php foreach($data['vendors'] as $ven): ?>
                         <option value="<?= $ven->id ?>" <?= $data['prefilled_vendor'] == $ven->id ? 'selected' : '' ?>><?= htmlspecialchars($ven->name) ?></option>
@@ -54,15 +58,15 @@
             </div>
             <div class="form-group">
                 <label>GRN Number</label>
-                <input type="text" name="grn_number" class="form-control" value="<?= htmlspecialchars($data['grn_number']) ?>" required>
+                <input type="text" name="grn_number" class="form-control" value="<?= htmlspecialchars($isEdit ? $data['grn']->grn_number : $data['grn_number']) ?>" required <?= $isEdit ? 'readonly style="pointer-events:none; background:rgba(0,0,0,0.02);"' : '' ?>>
             </div>
             <div class="form-group">
                 <label>Receipt Date</label>
-                <input type="date" name="grn_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                <input type="date" name="grn_date" class="form-control" value="<?= htmlspecialchars($isEdit ? $data['grn']->grn_date : date('Y-m-d')) ?>" required>
             </div>
             <div class="form-group">
                 <label>Supplier Invoice / Receipt No.</label>
-                <input type="text" name="receipt_number" class="form-control" placeholder="Invoice number from supplier">
+                <input type="text" name="receipt_number" class="form-control" placeholder="Invoice number from supplier" value="<?= htmlspecialchars($isEdit ? ($data['grn']->receipt_number ?? '') : '') ?>">
             </div>
         </div>
 
@@ -85,14 +89,18 @@
                 <?php if(!empty($data['prefilled_items'])): ?>
                     <?php $lineNum = 1; foreach($data['prefilled_items'] as $item): ?>
                         <?php 
-                            $retailMargin = 0.0;
-                            $wholesaleMargin = 0.0;
+                            $retailMargin = isset($item->retail_margin) ? floatval($item->retail_margin) : 0.0;
+                            $wholesaleMargin = isset($item->wholesale_margin) ? floatval($item->wholesale_margin) : 0.0;
                             $displayName = $item->description;
                             if ($item->item_id) {
                                 foreach($data['catalog_items'] as $catItem) {
                                     if ($catItem->id == $item->item_id) {
-                                        $retailMargin = floatval($catItem->retail_margin ?? 0);
-                                        $wholesaleMargin = floatval($catItem->wholesale_margin ?? 0);
+                                        if (!isset($item->retail_margin)) {
+                                            $retailMargin = floatval($catItem->retail_margin ?? 0);
+                                        }
+                                        if (!isset($item->wholesale_margin)) {
+                                            $wholesaleMargin = floatval($catItem->wholesale_margin ?? 0);
+                                        }
                                         $displayName = $catItem->name;
                                         if ($item->item_variation_option_id && !empty($catItem->variations)) {
                                             foreach($catItem->variations as $v) {
@@ -104,6 +112,7 @@
                                     }
                                 }
                             }
+                            $unitCost = isset($item->unit_cost) ? $item->unit_cost : ($item->unit_price ?? 0);
                         ?>
                         <tr>
                             <td class="line-row-num"><?= $lineNum++ ?></td>
@@ -114,7 +123,7 @@
                                 <input type="hidden" name="desc[]" class="desc-hidden" value="<?= htmlspecialchars($displayName) ?>">
                             </td>
                             <td><input type="number" name="qty[]" step="1" min="1" value="<?= $item->quantity ?>" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px;"></td>
-                            <td><input type="number" name="price[]" step="0.01" min="0" value="<?= number_format($item->unit_price, 2, '.', '') ?>" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; font-weight:600; text-align:right;"></td>
+                            <td><input type="number" name="price[]" step="0.01" min="0" value="<?= number_format($unitCost, 2, '.', '') ?>" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; font-weight:600; text-align:right;"></td>
                             <td style="text-align: right; vertical-align: middle;">
                                 <span class="line-total-display" style="font-weight:bold; color:var(--text-main);">0.00</span>
                             </td>
@@ -167,7 +176,7 @@
         <div style="display: flex; justify-content: space-between; margin-top: 20px; align-items: flex-start;">
             <div class="form-group" style="width: 50%;">
                 <label>Inspection Notes / Damages</label>
-                <textarea name="notes" class="form-control" rows="3" placeholder="Log any damages or notes regarding this delivery..."></textarea>
+                <textarea name="notes" class="form-control" rows="3" placeholder="Log any damages or notes regarding this delivery..."><?= htmlspecialchars($isEdit ? ($data['grn']->notes ?? '') : '') ?></textarea>
             </div>
             
             <div class="total-box">

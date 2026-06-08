@@ -68,12 +68,13 @@
                 <th>GRN Number & Date</th>
                 <th>Supplier / Vendor</th>
                 <th>Linked PO</th>
-                <th style="text-align: center;">Actions</th>
+                <th style="text-align: right; width: 15%;">Total Amount</th>
+                <th style="text-align: center; width: 25%;">Actions</th>
             </tr>
         </thead>
         <tbody id="tableBody">
             <?php if(empty($data['grns'])): ?>
-            <tr><td colspan="4" style="text-align: center; color: #888; padding: 20px;">No Goods Receipt Notes found.</td></tr>
+            <tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">No Goods Receipt Notes found.</td></tr>
             <?php else: foreach($data['grns'] as $grn): ?>
             <tr>
                 <td>
@@ -94,12 +95,16 @@
                         <span style="color: #aaa; font-style: italic; font-size: 11px;">Manual GRN</span>
                     <?php endif; ?>
                 </td>
+                <td style="text-align: right; font-weight: bold; color: var(--text-main);">
+                    Rs: <?= number_format($grn->total_amount, 2) ?>
+                </td>
                 <td style="text-align: center;">
-                    <a href="<?= APP_URL ?>/grn/show/<?= $grn->id ?>" class="btn btn-small btn-outline" target="_blank">Print Document</a>
+                    <a href="<?= APP_URL ?>/grn/show/<?= $grn->id ?>" class="btn btn-small btn-outline" target="_blank">Print</a>
+                    <a href="<?= APP_URL ?>/grn/edit/<?= $grn->id ?>" class="btn btn-small btn-outline" style="border-color: #2e7d32; color: #2e7d32;">Edit</a>
                     <form action="<?= APP_URL ?>/grn" method="POST" style="display:inline;">
                         <input type="hidden" name="action" value="delete_grn">
                         <input type="hidden" name="grn_id" value="<?= $grn->id ?>">
-                        <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this GRN? This will REVERSE the physical stock quantities back out of inventory!');">Delete & Reverse Stock</button>
+                        <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this GRN? This will REVERSE the physical stock quantities back out of inventory!');">Delete & Reverse</button>
                     </form>
                 </td>
             </tr>

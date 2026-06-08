@@ -129,17 +129,95 @@ class GRNController extends Controller {
 
              if (empty($items)) { $data['error'] = 'You must add at least one item to receive.'; } 
              else {
-                 $grnId = $this->grnModel->createGRN($grnData, $items, $_SESSION['user_id']);
-                 if ($grnId) {
-                     $newValues = [
-                         'grn' => $grnData,
-                         'items' => $items
-                     ];
-                     $this->logActivity('GRN Created', 'Inventory', "GRN '{$grnData['grn_number']}' created and inventory updated.", $grnId, null, $newValues);
-                     header('Location: ' . APP_URL . '/grn?success=GRN Created and Inventory Updated'); exit; 
-                 } else { $data['error'] = 'Database Error: Failed to create GRN.'; }
+                 try {
+                     $grnId = $this->grnModel->createGRN($grnData, $items, $_SESSION['user_id']);
+                     if ($grnId) {
+                         $newValues = [
+                             'grn' => $grnData,
+                             'items' => $items
+                         ];
+                         $this->logActivity('GRN Created', 'Inventory', "GRN '{$grnData['grn_number']}' created and inventory updated.", $grnId, null, $newValues);
+                         header('Location: ' . APP_URL . '/grn?success=GRN Created and Inventory Updated'); exit; 
+                     } else { $data['error'] = 'Database Error: Failed to create GRN.'; }
+                 } catch (Exception $e) {
+                     $data['error'] = 'Database Error: Failed to create GRN. Details: ' . $e->getMessage();
+                 }
              }
          }
+        $this->view('layouts/main', $data);
+    }
+
+    public function edit($id = null) {
+        if (!$id) { header('Location: ' . APP_URL . '/grn'); exit; }
+        $grn = $this->grnModel->getGRNById($id);
+        if (!$grn) { die("GRN not found."); }
+
+        $catalogItems = $this->itemModel->getAllItems();
+        foreach($catalogItems as $item) {
+            $item->variations = $this->itemModel->getItemVariations($item->id);
+        }
+
+        $data = [
+            'title' => 'Edit Goods Receipt Note (GRN)',
+            'content_view' => 'grns/create',
+            'vendors' => $this->vendorModel->getAllVendors(),
+            'catalog_items' => $catalogItems,
+            'grn' => $grn,
+            'prefilled_vendor' => $grn->vendor_id,
+            'prefilled_items' => $this->grnModel->getGRNItems($id),
+            'linked_po' => $grn->po_id ? $this->poModel->getPOById($grn->po_id) : null,
+            'error' => '',
+            'success' => ''
+        ];
+
+        if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'update_grn') {
+            $grnData = [
+                'vendor_id' => $_POST['vendor_id'],
+                'receipt_number' => trim($_POST['receipt_number'] ?? '') ?: null,
+                'grn_date' => $_POST['grn_date'],
+                'notes' => trim($_POST['notes'])
+            ];
+            
+            $items = [];
+            if (isset($_POST['item_selection'])) {
+                for ($i = 0; $i < count($_POST['item_selection']); $i++) {
+                    $selection = $_POST['item_selection'][$i];
+                    if (!empty($selection) && $_POST['qty'][$i] > 0 && $_POST['price'][$i] >= 0) {
+                        list($itemId, $varOptId) = explode('|', $selection);
+                        $items[] = [
+                            'item_id' => $itemId,
+                            'var_opt_id' => ($varOptId === '0') ? null : $varOptId,
+                            'desc' => $_POST['desc'][$i],
+                            'qty' => $_POST['qty'][$i],
+                            'price' => $_POST['price'][$i],
+                            'selling_price' => floatval($_POST['selling_price'][$i] ?? 0),
+                            'wholesale_price' => floatval($_POST['wholesale_price'][$i] ?? 0),
+                            'retail_margin' => floatval($_POST['retail_margin'][$i] ?? 0),
+                            'wholesale_margin' => floatval($_POST['wholesale_margin'][$i] ?? 0)
+                        ];
+                    }
+                }
+            }
+
+            if (empty($items)) {
+                $data['error'] = 'You must add at least one item to receive.';
+            } else {
+                try {
+                    if ($this->grnModel->updateGRN($id, $grnData, $items, $_SESSION['user_id'])) {
+                        $newValues = [
+                            'grn' => $grnData,
+                            'items' => $items
+                        ];
+                        $this->logActivity('GRN Updated', 'Inventory', "GRN '{$grn->grn_number}' updated and inventory reconciled.", $id, null, $newValues);
+                        header('Location: ' . APP_URL . '/grn?success=GRN Updated and Inventory Reconciled'); exit;
+                    } else {
+                        $data['error'] = 'Database Error: Failed to update GRN.';
+                    }
+                } catch (Exception $e) {
+                    $data['error'] = 'Database Error: Failed to update GRN. Details: ' . $e->getMessage();
+                }
+            }
+        }
         $this->view('layouts/main', $data);
     }
 }
