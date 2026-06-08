@@ -759,9 +759,12 @@
 
     // Toggle cheque field boxes conditionally & auto-change asset accounts
     function toggleChequeFields(type) {
-        const method = document.getElementById(type + '-method').value;
+        const prefix = type === 'customer' ? 'cust' : 'supp';
+        const methodEl = document.getElementById(prefix + '-method');
+        if (!methodEl) return;
+        const method = methodEl.value;
         const box = document.getElementById(type + '-cheque-box');
-        const bankInput = document.getElementById(type + '-chk-bank');
+        const bankInput = document.getElementById(prefix + '-chk-bank');
         
         let numInput;
         if (type === 'customer') {
@@ -770,18 +773,18 @@
             numInput = document.getElementById('supp-chk-number');
         }
         
-        const dateInput = document.getElementById(type + '-chk-date');
+        const dateInput = document.getElementById(prefix + '-chk-date');
 
         if (method === 'Cheque') {
-            box.style.display = 'block';
-            bankInput.required = true;
-            numInput.required = true;
-            dateInput.required = true;
+            if (box) box.style.display = 'block';
+            if (bankInput) bankInput.required = true;
+            if (numInput) numInput.required = true;
+            if (dateInput) dateInput.required = true;
         } else {
-            box.style.display = 'none';
-            bankInput.required = false;
-            numInput.required = false;
-            dateInput.required = false;
+            if (box) box.style.display = 'none';
+            if (bankInput) bankInput.required = false;
+            if (numInput) numInput.required = false;
+            if (dateInput) dateInput.required = false;
         }
 
         // Automatic Account Selection based on Method
