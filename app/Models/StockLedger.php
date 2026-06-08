@@ -54,7 +54,7 @@ class StockLedger {
             $this->db->query("SELECT COUNT(*) as cnt FROM stock_ledger");
             $count = $this->db->single();
             if ($count && $count->cnt == 0) {
-                $this->db->query("SELECT id, quantity_on_hand, cost, cost_price, warehouse_id, created_by FROM items WHERE quantity_on_hand > 0");
+                $this->db->query("SELECT id, quantity_on_hand, cost, cost_price, warehouse_id FROM items WHERE quantity_on_hand > 0");
                 $items = $this->db->resultSet() ?: [];
                 foreach ($items as $item) {
                     $cost = floatval($item->cost > 0 ? $item->cost : ($item->cost_price > 0 ? $item->cost_price : 0.00));
@@ -65,7 +65,7 @@ class StockLedger {
                     $this->db->bind(':qty', $item->quantity_on_hand);
                     $this->db->bind(':cost', $cost);
                     $this->db->bind(':val', $item->quantity_on_hand * $cost);
-                    $this->db->bind(':uid', $item->created_by ? $item->created_by : 1);
+                    $this->db->bind(':uid', 1);
                     $this->db->execute();
                 }
             }

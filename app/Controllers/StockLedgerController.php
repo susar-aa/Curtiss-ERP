@@ -56,7 +56,7 @@ class StockLedgerController extends Controller {
 
         // Fetch lists for filters
         $items = $this->itemModel->getAllItems();
-        $categories = $this->categoryModel->getAllCategories();
+        $categories = $this->categoryModel->getCategories();
         $warehouses = $this->warehouseModel->getAllWarehouses();
         $users = $this->userModel->getAllUsers();
 
