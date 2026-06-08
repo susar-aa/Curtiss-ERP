@@ -450,8 +450,8 @@
                                         // Pass the correct Asset Account ID affected by the transaction, falling back to first asset account if empty
                                         $targetAccountId = $cp->asset_account_id ?: ($data['assets'] ? reset($data['assets'])->id : 1);
                                     ?>
-                                    <a href="<?= APP_URL ?>/accounting/history/<?= $targetAccountId ?>?search=<?= urlencode($cp->reference ?: '') ?>" style="color: #0066cc; font-weight: 600; text-decoration: none;">
-                                        <i class="ph ph-link"></i> JE #<?= $cp->journal_entry_id ?>
+                                    <a href="<?= APP_URL ?>/accounting/history/<?= $targetAccountId ?>?search=<?= urlencode($cp->je_reference ?: '') ?>" style="color: #0066cc; font-weight: 600; text-decoration: none;">
+                                        <i class="ph ph-link"></i> JE #<?= htmlspecialchars($cp->je_reference ?: $cp->journal_entry_id) ?>
                                     </a>
                                 <?php else: ?>
                                     <span style="color: var(--text-muted); font-style: italic;">No Entry</span>
@@ -507,8 +507,8 @@
                                         // Pass the correct Asset Account ID affected by the transaction, falling back to first asset account if empty
                                         $targetAccountId = $sp->asset_account_id ?: ($data['assets'] ? reset($data['assets'])->id : 1);
                                     ?>
-                                    <a href="<?= APP_URL ?>/accounting/history/<?= $targetAccountId ?>?search=<?= urlencode($sp->reference ?: '') ?>" style="color: #0066cc; font-weight: 600; text-decoration: none;">
-                                        <i class="ph ph-link"></i> JE #<?= $sp->journal_entry_id ?>
+                                    <a href="<?= APP_URL ?>/accounting/history/<?= $targetAccountId ?>?search=<?= urlencode($sp->je_reference ?: '') ?>" style="color: #0066cc; font-weight: 600; text-decoration: none;">
+                                        <i class="ph ph-link"></i> JE #<?= htmlspecialchars($sp->je_reference ?: $sp->journal_entry_id) ?>
                                     </a>
                                 <?php else: ?>
                                     <span style="color: var(--text-muted); font-style: italic;">No Entry</span>
