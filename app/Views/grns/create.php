@@ -18,6 +18,7 @@
     .price-badge { font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 4px; display: inline-block; }
     .price-retail { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; }
     .price-wholesale { background: #f3e5f5; color: #7b1fa2; border: 1px solid #ce93d8; }
+    .total-box { float: right; width: 300px; padding: 20px; background: rgba(0,0,0,0.02); border-radius: 8px; margin-top: 20px; text-align: right; font-size: 18px; font-weight: bold;}
 </style>
 
 <div class="card">
@@ -69,13 +70,14 @@
             <thead>
                 <tr>
                     <th style="width: 30px;">#</th>
-                    <th style="width: 30%;">Specific Product / Variation Received</th>
+                    <th style="width: 25%;">Specific Product / Variation Received</th>
                     <th style="width: 8%; text-align:right;">Qty</th>
-                    <th style="width: 12%; text-align:right;">Unit Cost (Rs:)</th>
-                    <th style="width: 10%; text-align:right;">Retail Margin %</th>
-                    <th style="width: 10%; text-align:right;">Wholesale Margin %</th>
-                    <th style="width: 14%; text-align:right; color: #1565c0;">Retail Price (Calculated)</th>
-                    <th style="width: 14%; text-align:right; color: #7b1fa2;">Wholesale B2B (Calculated)</th>
+                    <th style="width: 10%; text-align:right;">Unit Cost (Rs:)</th>
+                    <th style="width: 10%; text-align:right;">Line Total</th>
+                    <th style="width: 8%; text-align:right;">Retail Margin %</th>
+                    <th style="width: 8%; text-align:right;">Wholesale Margin %</th>
+                    <th style="width: 12%; text-align:right; color: #1565c0;">Retail Price (Calculated)</th>
+                    <th style="width: 12%; text-align:right; color: #7b1fa2;">Wholesale B2B (Calculated)</th>
                     <th style="width: 4%;"></th>
                 </tr>
             </thead>
@@ -111,8 +113,11 @@
                                 <input type="hidden" name="item_selection[]" class="item-selection-hidden" value="<?= $item->item_id ?>|<?= $item->item_variation_option_id ?: '0' ?>" required>
                                 <input type="hidden" name="desc[]" class="desc-hidden" value="<?= htmlspecialchars($displayName) ?>">
                             </td>
-                            <td><input type="number" name="qty[]" step="1" min="1" value="<?= $item->quantity ?>" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px;"></td>
+                            <td><input type="number" name="qty[]" step="1" min="1" value="<?= $item->quantity ?>" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px;"></td>
                             <td><input type="number" name="price[]" step="0.01" min="0" value="<?= number_format($item->unit_price, 2, '.', '') ?>" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; font-weight:600; text-align:right;"></td>
+                            <td style="text-align: right; vertical-align: middle;">
+                                <span class="line-total-display" style="font-weight:bold; color:var(--text-main);">0.00</span>
+                            </td>
                             <td><input type="number" name="retail_margin[]" step="0.1" value="<?= number_format($retailMargin, 1, '.', '') ?>" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; text-align:right;"></td>
                             <td><input type="number" name="wholesale_margin[]" step="0.1" value="<?= number_format($wholesaleMargin, 1, '.', '') ?>" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; text-align:right;"></td>
                             <td style="text-align: right; vertical-align: middle;">
@@ -136,8 +141,11 @@
                             <input type="hidden" name="item_selection[]" class="item-selection-hidden" required>
                             <input type="hidden" name="desc[]" class="desc-hidden">
                         </td>
-                        <td><input type="number" name="qty[]" step="1" min="1" value="1" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px;"></td>
+                        <td><input type="number" name="qty[]" step="1" min="1" value="1" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px;"></td>
                         <td><input type="number" name="price[]" step="0.01" min="0" value="0.00" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; font-weight:600; text-align:right;"></td>
+                        <td style="text-align: right; vertical-align: middle;">
+                            <span class="line-total-display" style="font-weight:bold; color:var(--text-main);">0.00</span>
+                        </td>
                         <td><input type="number" name="retail_margin[]" step="0.1" value="0.0" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; text-align:right;"></td>
                         <td><input type="number" name="wholesale_margin[]" step="0.1" value="0.0" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; text-align:right;"></td>
                         <td style="text-align: right; vertical-align: middle;">
@@ -156,9 +164,15 @@
         
         <button type="button" class="btn btn-outline" style="margin-top: 10px; font-size:12px;" onclick="addRow()">+ Add Received Item</button>
 
-        <div class="form-group" style="margin-top: 20px;">
-            <label>Inspection Notes / Damages</label>
-            <textarea name="notes" class="form-control" rows="3" placeholder="Log any damages or notes regarding this delivery..."></textarea>
+        <div style="display: flex; justify-content: space-between; margin-top: 20px; align-items: flex-start;">
+            <div class="form-group" style="width: 50%;">
+                <label>Inspection Notes / Damages</label>
+                <textarea name="notes" class="form-control" rows="3" placeholder="Log any damages or notes regarding this delivery..."></textarea>
+            </div>
+            
+            <div class="total-box">
+                Grand Total: Rs: <span id="grandTotal">0.00</span>
+            </div>
         </div>
 
         <div style="margin-top: 20px; text-align: right;">
@@ -169,10 +183,10 @@
 
 <script>
     // Injected catalog items with preloaded variations
-    const catalogItems = <?= json_encode($data['catalog_items']) ?>;
+    var catalogItems = <?= json_encode($data['catalog_items']) ?>;
     
     // Generate flattened list of searchable elements (main items + variation options)
-    const searchableItems = [];
+    var searchableItems = [];
     catalogItems.forEach(item => {
         if (item.variations && item.variations.length > 0) {
             item.variations.forEach(v => {
@@ -182,7 +196,7 @@
                     display_name: `${item.name} - ${v.variation_name}: ${v.value_name}`,
                     sku: v.sku || item.item_code || '',
                     vendor_id: item.vendor_id,
-                    cost: parseFloat(v.cost ?? item.cost ?? 0),
+                    cost: parseFloat(v.cost && parseFloat(v.cost) > 0 ? v.cost : (item.cost_price && parseFloat(item.cost_price) > 0 ? item.cost_price : (item.cost ?? 0))),
                     price: parseFloat(v.price ?? item.price ?? 0),
                     retail_margin: parseFloat(item.retail_margin ?? 0),
                     wholesale_margin: parseFloat(item.wholesale_margin ?? 0),
@@ -196,7 +210,7 @@
                 display_name: item.name,
                 sku: item.item_code || '',
                 vendor_id: item.vendor_id,
-                cost: parseFloat(item.cost ?? 0),
+                cost: parseFloat(item.cost_price && parseFloat(item.cost_price) > 0 ? item.cost_price : (item.cost ?? 0)),
                 price: parseFloat(item.price ?? 0),
                 retail_margin: parseFloat(item.retail_margin ?? 0),
                 wholesale_margin: parseFloat(item.wholesale_margin ?? 0),
@@ -300,9 +314,16 @@
     }
 
     function calculateRowPrices(row) {
+        const qty = parseFloat(row.querySelector('input[name="qty[]"]').value) || 0;
         const cost = parseFloat(row.querySelector('input[name="price[]"]').value) || 0;
         const retailMargin = parseFloat(row.querySelector('input[name="retail_margin[]"]').value) || 0;
         const wholesaleMargin = parseFloat(row.querySelector('input[name="wholesale_margin[]"]').value) || 0;
+
+        const lineTotal = qty * cost;
+        const lineTotalSpan = row.querySelector('.line-total-display');
+        if (lineTotalSpan) {
+            lineTotalSpan.textContent = lineTotal.toFixed(2);
+        }
 
         const calculatedRetail = cost + (cost * retailMargin / 100);
         const calculatedWholesale = cost + (cost * wholesaleMargin / 100);
@@ -313,6 +334,21 @@
         // Populate inputs to submit
         row.querySelector('input[name="selling_price[]"]').value = calculatedRetail.toFixed(2);
         row.querySelector('input[name="wholesale_price[]"]').value = calculatedWholesale.toFixed(2);
+
+        calcGrandTotal();
+    }
+
+    function calcGrandTotal() {
+        let grandTotal = 0;
+        document.querySelectorAll('#poBody tr').forEach(row => {
+            const qty = parseFloat(row.querySelector('input[name="qty[]"]').value) || 0;
+            const cost = parseFloat(row.querySelector('input[name="price[]"]').value) || 0;
+            grandTotal += qty * cost;
+        });
+        const grandTotalSpan = document.getElementById('grandTotal');
+        if (grandTotalSpan) {
+            grandTotalSpan.textContent = grandTotal.toFixed(2);
+        }
     }
 
     function renumberLineRows(tbodyId) {
@@ -333,8 +369,11 @@
                 <input type="hidden" name="item_selection[]" class="item-selection-hidden" required>
                 <input type="hidden" name="desc[]" class="desc-hidden">
             </td>
-            <td><input type="number" name="qty[]" step="1" min="1" value="1" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px;"></td>
+            <td><input type="number" name="qty[]" step="1" min="1" value="1" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px;"></td>
             <td><input type="number" name="price[]" step="0.01" min="0" value="0.00" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; font-weight:600; text-align:right;"></td>
+            <td style="text-align: right; vertical-align: middle;">
+                <span class="line-total-display" style="font-weight:bold; color:var(--text-main);">0.00</span>
+            </td>
             <td><input type="number" name="retail_margin[]" step="0.1" value="0.0" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; text-align:right;"></td>
             <td><input type="number" name="wholesale_margin[]" step="0.1" value="0.0" oninput="calculateRowPrices(this.closest('tr'))" required style="border: 1px solid var(--mac-border); border-radius: 4px; padding: 4px 6px; text-align:right;"></td>
             <td style="text-align: right; vertical-align: middle;">
@@ -355,6 +394,7 @@
     function removeRow(btn) {
         btn.closest('tr').remove();
         renumberLineRows('poBody');
+        calcGrandTotal();
     }
 
     function escapeHtml(str) {

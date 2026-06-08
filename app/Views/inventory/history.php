@@ -105,7 +105,7 @@
         error_reporting(0);
         ini_set('display_errors', 0);
     ?>
-    const catalogItems = <?php
+    var catalogItems = <?php
         try {
             if (isset($data['catalog_items'])) {
                 $json = json_encode($data['catalog_items']);
@@ -129,7 +129,7 @@
     let selectedVarOptId = null;
 
     // Generate flattened list of searchable elements (main items + variation options)
-    const searchableItems = [];
+    var searchableItems = [];
     catalogItems.forEach(item => {
         if (item.variations && item.variations.length > 0) {
             item.variations.forEach(v => {
