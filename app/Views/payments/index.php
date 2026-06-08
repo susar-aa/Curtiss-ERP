@@ -595,9 +595,9 @@
                     <h4 style="margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: #0066cc; font-weight: 700;">Double Entry GL Accounts</h4>
                     <div class="form-group" style="margin-bottom: 10px;">
                         <label>Debit Account (Cash/Bank) *</label>
-                        <select name="asset_account_id" class="form-control" required>
+                        <select name="asset_account_id" id="customer-asset-account" class="form-control" required>
                             <?php foreach ($data['assets'] as $asset): ?>
-                                <option value="<?= $asset->id ?>" <?= $asset->account_code === '1000' ? 'selected' : '' ?>>
+                                <option value="<?= $asset->id ?>" data-code="<?= $asset->account_code ?>" <?= $asset->account_code === '1000' ? 'selected' : '' ?>>
                                     <?= $asset->account_code ?> - <?= htmlspecialchars($asset->account_name) ?>
                                 </option>
                             <?php endforeach; ?>
@@ -712,9 +712,9 @@
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
                         <label>Credit Account (Cash/Bank) *</label>
-                        <select name="asset_account_id" class="form-control" required>
+                        <select name="asset_account_id" id="supplier-asset-account" class="form-control" required>
                             <?php foreach ($data['assets'] as $asset): ?>
-                                <option value="<?= $asset->id ?>" <?= $asset->account_code === '1000' ? 'selected' : '' ?>>
+                                <option value="<?= $asset->id ?>" data-code="<?= $asset->account_code ?>" <?= $asset->account_code === '1000' ? 'selected' : '' ?>>
                                     <?= $asset->account_code ?> - <?= htmlspecialchars($asset->account_name) ?>
                                 </option>
                             <?php endforeach; ?>
@@ -757,7 +757,7 @@
         document.getElementById(type + '-payment-modal').style.display = 'none';
     }
 
-    // Toggle cheque field boxes conditionally
+    // Toggle cheque field boxes conditionally & auto-change asset accounts
     function toggleChequeFields(type) {
         const method = document.getElementById(type + '-method').value;
         const box = document.getElementById(type + '-cheque-box');
@@ -782,6 +782,25 @@
             bankInput.required = false;
             numInput.required = false;
             dateInput.required = false;
+        }
+
+        // Automatic Account Selection based on Method
+        const assetSelect = document.getElementById(type + '-asset-account');
+        if (assetSelect) {
+            let targetCode = '1000'; // Default Cash
+            if (method === 'Bank Transfer') {
+                targetCode = '1600'; // Bank account
+            } else if (method === 'Cheque') {
+                targetCode = '1010'; // Cheque in Hand account
+            }
+
+            for (let i = 0; i < assetSelect.options.length; i++) {
+                if (assetSelect.options[i].getAttribute('data-code') === targetCode) {
+                    assetSelect.selectedIndex = i;
+                    assetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    break;
+                }
+            }
         }
     }
 

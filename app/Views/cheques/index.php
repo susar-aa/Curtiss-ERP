@@ -104,26 +104,33 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th style="width: 20%;">Drawer (Customer)</th>
+                    <th style="width: 25%;">Drawer / Payee</th>
                     <th style="width: 20%;">Bank Name</th>
                     <th style="width: 15%;">Cheque Number</th>
                     <th style="width: 10%;">Status</th>
                     <th style="width: 15%; text-align: right;">Amount (Rs:)</th>
-                    <th style="width: 20%; text-align: center;">Actions</th>
+                    <th style="width: 15%; text-align: center;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach($cheques as $chk): ?>
                 <tr>
-                    <td><strong><?= htmlspecialchars($chk->customer_name) ?></strong></td>
+                    <td>
+                        <strong><?= htmlspecialchars($chk->customer_name ?: ($chk->vendor_name ?: '-')) ?></strong>
+                        <?php if ($chk->customer_name): ?>
+                            <span style="font-size:10px; color:#2e7d32; display:block; font-weight:600;">Customer Receipt</span>
+                        <?php elseif ($chk->vendor_name): ?>
+                            <span style="font-size:10px; color:#ef6c00; display:block; font-weight:600;">Supplier Payment</span>
+                        <?php endif; ?>
+                    </td>
                     <td><?= htmlspecialchars($chk->bank_name) ?></td>
                     <td style="font-family: monospace; font-size: 14px;"><?= htmlspecialchars($chk->cheque_number) ?></td>
                     <td class="status-<?= $chk->status ?>"><?= $chk->status ?></td>
                     <td style="text-align: right; font-weight: bold;"><?= number_format($chk->amount, 2) ?></td>
                     <td style="text-align: center;">
-                        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;" onclick="viewCheque('<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->banking_date)) ?>', '<?= htmlspecialchars(addslashes($chk->amount)) ?>', '<?= htmlspecialchars(addslashes($chk->customer_name)) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">👁️ View</button>
+                        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;" onclick="viewCheque('<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->banking_date)) ?>', '<?= htmlspecialchars(addslashes($chk->amount)) ?>', '<?= htmlspecialchars(addslashes($chk->customer_name ?: ($chk->vendor_name ?: ''))) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">👁️ View</button>
                         
-                        <button class="btn" style="padding: 4px 8px; font-size: 11px; margin: 0 4px;" onclick="openEditModal(<?= $chk->id ?>, <?= $chk->customer_id ?>, '<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>', <?= $chk->amount ?>, '<?= $chk->banking_date ?>', '<?= $chk->status ?>')">✏️ Edit</button>
+                        <button class="btn" style="padding: 4px 8px; font-size: 11px; margin: 0 4px;" onclick="openEditModal(<?= $chk->id ?>, <?= $chk->customer_id ?: 'null' ?>, <?= $chk->vendor_id ?: 'null' ?>, '<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>', <?= $chk->amount ?>, '<?= $chk->banking_date ?>', '<?= $chk->status ?>')">✏️ Edit</button>
                         
                         <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="openDeleteModal(<?= $chk->id ?>, '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">🗑️</button>
                     </td>
@@ -138,14 +145,21 @@
 <!-- Add Modal -->
 <div class="modal" id="addModal">
     <div class="modal-content">
-        <h3 style="margin-top:0;">Record Received Cheque</h3>
+        <h3 style="margin-top:0;">Record Received / Paid Cheque</h3>
         <form action="<?= APP_URL ?>/cheque" method="POST">
             <input type="hidden" name="action" value="add_cheque">
             <div class="form-group">
-                <label>Received From (Customer) *</label>
-                <select name="customer_id" class="form-control" required>
-                    <option value="">Select Customer...</option>
+                <label>Customer (for Collection/Received Cheque)</label>
+                <select name="customer_id" class="form-control">
+                    <option value="">-- Select Customer --</option>
                     <?php foreach($data['customers'] as $cust): ?><option value="<?= $cust->id ?>"><?= htmlspecialchars($cust->name) ?></option><?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Supplier / Vendor (for Payment/Issued Cheque)</label>
+                <select name="vendor_id" class="form-control">
+                    <option value="">-- Select Supplier --</option>
+                    <?php foreach($data['suppliers'] as $supp): ?><option value="<?= $supp->id ?>"><?= htmlspecialchars($supp->name) ?></option><?php endforeach; ?>
                 </select>
             </div>
             <div class="grid-2">
@@ -167,15 +181,23 @@
 <!-- Edit Modal -->
 <div class="modal" id="editModal">
     <div class="modal-content">
-        <h3 style="margin-top:0;">Update Cheque Status</h3>
+        <h3 style="margin-top:0;">Update Cheque Details</h3>
         <form action="<?= APP_URL ?>/cheque" method="POST">
             <input type="hidden" name="action" value="edit_cheque">
             <input type="hidden" name="cheque_id" id="edit_id">
             
             <div class="form-group">
-                <label>Customer</label>
-                <select name="customer_id" id="edit_customer" class="form-control" required>
+                <label>Customer (for Collections)</label>
+                <select name="customer_id" id="edit_customer" class="form-control">
+                    <option value="">-- None --</option>
                     <?php foreach($data['customers'] as $cust): ?><option value="<?= $cust->id ?>"><?= htmlspecialchars($cust->name) ?></option><?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Supplier / Vendor (for Payments)</label>
+                <select name="vendor_id" id="edit_vendor" class="form-control">
+                    <option value="">-- None --</option>
+                    <?php foreach($data['suppliers'] as $supp): ?><option value="<?= $supp->id ?>"><?= htmlspecialchars($supp->name) ?></option><?php endforeach; ?>
                 </select>
             </div>
             <div class="grid-2">
@@ -212,7 +234,7 @@
             <input type="hidden" name="delete_id" id="delete_id">
             <div style="display: flex; justify-content: center; gap: 15px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
-                <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                <button type="submit" class="btn-danger btn">Yes, Delete</button>
             </div>
         </form>
     </div>
@@ -254,9 +276,10 @@
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-    function openEditModal(id, cid, bank, cnum, amt, date, status) {
+    function openEditModal(id, cid, vid, bank, cnum, amt, date, status) {
         document.getElementById('edit_id').value = id;
-        document.getElementById('edit_customer').value = cid;
+        document.getElementById('edit_customer').value = cid || '';
+        document.getElementById('edit_vendor').value = vid || '';
         document.getElementById('edit_bank').value = bank;
         document.getElementById('edit_cnum').value = cnum;
         document.getElementById('edit_amt').value = amt;

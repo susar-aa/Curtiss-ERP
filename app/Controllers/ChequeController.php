@@ -2,12 +2,14 @@
 class ChequeController extends Controller {
     private $chequeModel;
     private $customerModel;
+    private $supplierModel;
     private $companyModel;
 
     public function __construct() {
         if (!isset($_SESSION['user_id'])) { header('Location: ' . APP_URL . '/auth/login'); exit; }
         $this->chequeModel = $this->model('Cheque');
         $this->customerModel = $this->model('Customer');
+        $this->supplierModel = $this->model('Supplier');
         $this->companyModel = $this->model('Company');
     }
 
@@ -47,7 +49,8 @@ class ChequeController extends Controller {
             'title' => 'Cheque Management',
             'content_view' => 'cheques/index',
             'grouped_cheques' => $groupedCheques,
-            'customers' => $this->customerModel->getAllCustomers(),
+            'customers' => $this->customerModel->getAllCustomers() ?: [],
+            'suppliers' => $this->supplierModel->getAllSuppliers() ?: [],
             'company_name' => $company->company_name,
             'kpi_pending' => $totalPending,
             'kpi_cleared' => $totalCleared,
@@ -60,7 +63,8 @@ class ChequeController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             if ($_POST['action'] == 'add_cheque') {
                 $chkData = [
-                    'customer_id' => $_POST['customer_id'],
+                    'customer_id' => !empty($_POST['customer_id']) ? intval($_POST['customer_id']) : null,
+                    'vendor_id' => !empty($_POST['vendor_id']) ? intval($_POST['vendor_id']) : null,
                     'bank_name' => trim($_POST['bank_name']),
                     'cheque_number' => trim($_POST['cheque_number']),
                     'amount' => floatval($_POST['amount']),
@@ -75,7 +79,8 @@ class ChequeController extends Controller {
             } elseif ($_POST['action'] == 'edit_cheque') {
                 $chkData = [
                     'id' => $_POST['cheque_id'],
-                    'customer_id' => $_POST['customer_id'],
+                    'customer_id' => !empty($_POST['customer_id']) ? intval($_POST['customer_id']) : null,
+                    'vendor_id' => !empty($_POST['vendor_id']) ? intval($_POST['vendor_id']) : null,
                     'bank_name' => trim($_POST['bank_name']),
                     'cheque_number' => trim($_POST['cheque_number']),
                     'amount' => floatval($_POST['amount']),
