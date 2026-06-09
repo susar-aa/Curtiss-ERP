@@ -1,794 +1,768 @@
 <style>
-    /* Tabs System */
-    .tabs-container {
+    /* Design Tokens & Theme integration */
+    :root {
+        --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+        --success-gradient: linear-gradient(135deg, #10b981 0%, #065f46 100%);
+        --warning-gradient: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+        --danger-gradient: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+        --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        --hover-shadow: 0 20px 40px rgba(79, 70, 229, 0.15);
+    }
+
+    /* Tabs Layout */
+    .payment-center-tabs {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid var(--mac-border);
-        padding-bottom: 12px;
+        border-bottom: 2px solid var(--mac-border);
         margin-bottom: 25px;
+        gap: 5px;
     }
-    .tabs-left {
-        display: flex;
-        gap: 8px;
-    }
-    .tab-btn {
+    .payment-tab-btn {
         background: transparent;
-        border: 1px solid transparent;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 12px 24px;
         font-size: 14px;
         font-weight: 600;
         color: var(--text-muted);
         cursor: pointer;
-        padding: 8px 18px;
-        border-radius: 8px;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.3s ease;
         display: flex;
         align-items: center;
         gap: 8px;
     }
-    .tab-btn:hover {
-        background: rgba(0, 0, 0, 0.04);
+    .payment-tab-btn:hover {
         color: var(--text-main);
+        background: rgba(0,0,0,0.02);
     }
-    .tab-btn.active {
-        background: #0066cc;
-        color: #fff;
-        border-color: #0066cc;
-        box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2);
+    .payment-tab-btn.active {
+        color: #4f46e5;
+        border-bottom-color: #4f46e5;
     }
     @media (prefers-color-scheme: dark) {
-        .tab-btn:hover {
-            background: rgba(255, 255, 255, 0.05);
+        .payment-tab-btn:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .payment-tab-btn.active {
+            color: #818cf8;
+            border-bottom-color: #818cf8;
         }
     }
 
-    /* Action buttons */
-    .btn-record {
-        padding: 8px 16px;
-        background: #0066cc;
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        box-shadow: 0 4px 10px rgba(0, 102, 204, 0.15);
-        transition: all 0.2s;
-    }
-    .btn-record:hover {
-        opacity: 0.9;
-        transform: translateY(-1px);
-    }
-    .btn-supplier-record {
-        background: #ef6c00;
-        box-shadow: 0 4px 10px rgba(239, 108, 0, 0.15);
-    }
-
-    /* KPI Summary Cards */
-    .kpi-row {
+    /* KPI Row */
+    .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 20px;
         margin-bottom: 25px;
     }
-    .kpi-card {
-        padding: 20px;
-        border-radius: 12px;
-        border: 1px solid var(--mac-border);
+    .stat-card {
         background: var(--mac-bg);
-        backdrop-filter: blur(10px);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
-        display: flex;
-        align-items: center;
-        gap: 15px;
+        border: 1px solid var(--mac-border);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: var(--card-shadow);
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s;
     }
-    .kpi-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        flex-shrink: 0;
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.08);
     }
-    .kpi-val {
-        font-size: 22px;
-        font-weight: 700;
-        margin-top: 4px;
-        font-family: monospace;
-    }
-    .kpi-label {
-        font-size: 12px;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-    }
-
-    /* Color variations for KPIs */
-    .kpi-customer .kpi-icon { background: #e8f5e9; color: #2e7d32; }
-    .kpi-supplier .kpi-icon { background: #fff3e0; color: #ef6c00; }
-    .kpi-cheques .kpi-icon { background: #e3f2fd; color: #1565c0; }
-    @media (prefers-color-scheme: dark) {
-        .kpi-customer .kpi-icon { background: rgba(46, 125, 50, 0.15); }
-        .kpi-supplier .kpi-icon { background: rgba(239, 108, 0, 0.15); }
-        .kpi-cheques .kpi-icon { background: rgba(21, 101, 192, 0.15); }
-    }
-
-    /* Modal System */
-    .modal-overlay {
-        display: none;
-        position: fixed;
+    .stat-card::before {
+        content: '';
+        position: absolute;
         top: 0;
         left: 0;
-        width: 100%;
+        width: 4px;
         height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(4px);
-        z-index: 2000;
-        align-items: center;
-        justify-content: center;
-        animation: fadeIn 0.2s ease-out;
     }
-    .modal-container {
-        background: var(--mac-bg);
-        border: 1px solid var(--mac-border);
-        border-radius: 14px;
-        width: 550px;
-        max-width: 90%;
-        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
-        overflow: hidden;
-        animation: scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .modal-header {
-        padding: 18px 24px;
-        border-bottom: 1px solid var(--mac-border);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: rgba(0, 0, 0, 0.01);
-    }
-    .modal-header h3 {
-        margin: 0;
-        font-size: 16px;
+    .stat-card.receivable::before { background: #4f46e5; }
+    .stat-card.payable::before { background: #f59e0b; }
+    .stat-card.general::before { background: #10b981; }
+
+    .stat-title {
+        font-size: 11px;
+        text-transform: uppercase;
         font-weight: 700;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .modal-close-btn {
-        background: transparent;
-        border: none;
-        font-size: 20px;
-        cursor: pointer;
         color: var(--text-muted);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        transition: background-color 0.2s;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
     }
-    .modal-close-btn:hover {
-        background-color: rgba(0, 0, 0, 0.05);
+    .stat-val {
+        font-size: 26px;
+        font-weight: 800;
         color: var(--text-main);
+        font-family: monospace;
     }
-    @media (prefers-color-scheme: dark) {
-        .modal-close-btn:hover {
-            background-color: rgba(255, 255, 255, 0.05);
+
+    /* Split Panes */
+    .pane-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 25px;
+    }
+    @media (min-width: 1024px) {
+        .pane-row {
+            grid-template-columns: 350px 1fr;
         }
     }
-    .modal-body {
-        padding: 24px;
-        max-height: 80vh;
+
+    .pane-sidebar {
+        background: var(--mac-bg);
+        border: 1px solid var(--mac-border);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: var(--card-shadow);
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        max-height: 75vh;
         overflow-y: auto;
     }
-
-    /* Forms Styles */
-    .form-group {
-        margin-bottom: 16px;
-    }
-    .form-group label {
-        display: block;
-        margin-bottom: 6px;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--text-main);
-    }
-    .form-control {
-        width: 100%;
-        padding: 9px 12px;
-        border: 1px solid var(--mac-border);
-        border-radius: 6px;
-        background: transparent;
-        color: var(--text-main);
-        font-size: 13px;
-        box-sizing: border-box;
-        transition: border-color 0.2s;
-    }
-    .form-control:focus {
-        border-color: #0066cc;
-        outline: none;
-    }
-    .btn-submit {
-        width: 100%;
-        padding: 10px 16px;
-        background: #0066cc;
-        color: #fff;
-        border: none;
-        border-radius: 6px;
-        font-weight: 600;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        font-size: 13px;
-        box-shadow: 0 4px 10px rgba(0, 102, 204, 0.15);
-        transition: opacity 0.2s;
-    }
-    .btn-submit:hover {
-        opacity: 0.9;
-    }
-
-    /* Cheque Fieldset slider */
-    .cheque-details-box {
-        display: none;
-        background: rgba(0, 0, 0, 0.02);
-        padding: 15px;
-        border-radius: 8px;
-        border: 1px dashed var(--mac-border);
-        margin-bottom: 16px;
-        animation: slideDown 0.25s ease-out;
-    }
-    @media (prefers-color-scheme: dark) {
-        .cheque-details-box { background: rgba(255, 255, 255, 0.02); }
-    }
-
-    /* List Pane styles */
-    .list-pane {
-        border-radius: 12px;
-        border: 1px solid var(--mac-border);
-        padding: 24px;
+    .pane-main {
         background: var(--mac-bg);
+        border: 1px solid var(--mac-border);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: var(--card-shadow);
     }
-    .list-header {
+
+    /* Entity selector item */
+    .entity-item {
+        padding: 12px 16px;
+        border-radius: 10px;
+        border: 1px solid var(--mac-border);
+        cursor: pointer;
+        transition: all 0.2s;
+        background: rgba(0,0,0,0.01);
+    }
+    .entity-item:hover {
+        background: rgba(79, 70, 229, 0.05);
+        border-color: rgba(79, 70, 229, 0.2);
+    }
+    .entity-item.active {
+        background: rgba(79, 70, 229, 0.1);
+        border-color: #4f46e5;
+    }
+    .entity-title {
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-main);
+        margin-bottom: 4px;
+    }
+    .entity-desc {
+        font-size: 11px;
+        color: var(--text-muted);
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        margin-bottom: 18px;
-    }
-    .list-header h3 {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 700;
-    }
-    .search-filter {
-        width: 220px;
-        padding: 6px 12px;
-        font-size: 12px;
-        border: 1px solid var(--mac-border);
-        border-radius: 6px;
-        background: transparent;
-        color: var(--text-main);
     }
 
-    /* Table enhancements */
-    .data-table {
+    /* Forms and allocation grid */
+    .allocation-box {
+        border: 1px solid var(--mac-border);
+        border-radius: 12px;
+        padding: 20px;
+        background: rgba(0,0,0,0.01);
+        margin-top: 15px;
+    }
+    .allocations-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 13px;
+        margin-top: 10px;
+        font-size: 12px;
     }
-    .data-table th, .data-table td {
-        padding: 12px 14px;
-        text-align: left;
+    .allocations-table th, .allocations-table td {
+        padding: 8px 10px;
         border-bottom: 1px solid var(--mac-border);
+        text-align: left;
     }
-    .data-table th {
-        background-color: rgba(0, 0, 0, 0.01);
+    .allocations-table th {
         font-weight: 600;
         color: var(--text-muted);
         text-transform: uppercase;
-        font-size: 11px;
-        letter-spacing: 0.5px;
+        font-size: 10px;
     }
-    .data-table tr:hover td {
-        background-color: rgba(0, 0, 0, 0.01);
-    }
-    @media (prefers-color-scheme: dark) {
-        .data-table tr:hover td { background-color: rgba(255, 255, 255, 0.01); }
-    }
-    .badge-method {
-        padding: 3px 8px;
+
+    /* Reversal badge */
+    .status-badge {
+        padding: 4px 8px;
         border-radius: 12px;
         font-size: 10px;
         font-weight: 700;
         text-transform: uppercase;
     }
-    .method-Cash { background: #e8f5e9; color: #2e7d32; }
-    .method-BankTransfer { background: #e3f2fd; color: #1565c0; }
-    .method-Cheque { background: #fff3e0; color: #ef6c00; }
-    @media (prefers-color-scheme: dark) {
-        .method-Cash { background: rgba(46,125,50,0.15); }
-        .method-BankTransfer { background: rgba(21,101,192,0.15); }
-        .method-Cheque { background: rgba(239,108,0,0.15); }
+    .status-Active { background: #d1fae5; color: #065f46; }
+    .status-Reversed { background: #fee2e2; color: #991b1b; }
+
+    /* Action Buttons */
+    .btn-action-small {
+        padding: 5px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 6px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border: 1px solid var(--mac-border);
+        background: var(--mac-bg);
+        color: var(--text-main);
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+    .btn-action-small:hover {
+        background: rgba(0,0,0,0.05);
+    }
+    .btn-action-small.btn-danger {
+        border-color: #f87171;
+        color: #ef4444;
+    }
+    .btn-action-small.btn-danger:hover {
+        background: #fef2f2;
     }
 
+    /* Hide helper */
     .hidden {
         display: none !important;
     }
-
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    @keyframes scaleUp {
-        from { opacity: 0; transform: scale(0.95); }
-        to { opacity: 1; transform: scale(1); }
-    }
-    @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
 </style>
 
-<!-- Header Section -->
-<div style="margin-bottom: 25px;">
-    <h2 style="margin: 0 0 5px 0; font-weight: 700;">Payment & Collections Center</h2>
-    <p style="margin: 0; color: var(--text-muted); font-size: 14px;">Manage and record dual-entry customer payments (collections) and supplier expenses.</p>
+<div style="margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h2 style="margin: 0 0 5px 0; font-weight: 800; color: var(--text-main);">Centralized Payment Center</h2>
+        <p style="margin: 0; color: var(--text-muted); font-size: 14px;">Audit-ready accounts receivable & payable billing, allocations, credit handling and reversals.</p>
+    </div>
 </div>
 
-<!-- Alert notifications -->
+<!-- Notifications -->
 <?php if (!empty($data['error'])): ?>
-    <div style="padding: 12px 15px; background: #ffebee; color: #c62828; border-radius: 8px; border: 1px solid rgba(198,40,40,0.15); margin-bottom: 20px; font-size: 13px; font-weight: 500;">
-        <i class="ph ph-warning-circle" style="vertical-align: middle; font-size: 16px; margin-right: 6px;"></i> <?= $data['error'] ?>
+    <div style="padding: 12px 15px; background: #fee2e2; color: #991b1b; border-radius: 8px; border: 1px solid #fca5a5; margin-bottom: 20px; font-size: 13px; font-weight: 500;">
+        ⚠ <?= $data['error'] ?>
     </div>
 <?php endif; ?>
 <?php if (!empty($data['success'])): ?>
-    <div style="padding: 12px 15px; background: #e8f5e9; color: #2e7d32; border-radius: 8px; border: 1px solid rgba(46,125,50,0.15); margin-bottom: 20px; font-size: 13px; font-weight: 500;">
-        <i class="ph ph-check-circle" style="vertical-align: middle; font-size: 16px; margin-right: 6px;"></i> <?= $data['success'] ?>
+    <div style="padding: 12px 15px; background: #d1fae5; color: #065f46; border-radius: 8px; border: 1px solid #6ee7b7; margin-bottom: 20px; font-size: 13px; font-weight: 500;">
+        ✓ <?= $data['success'] ?>
     </div>
 <?php endif; ?>
 
-<!-- KPI Status Summary Widgets -->
-<?php
-    $totalCustAmount = array_sum(array_column($data['customer_payments'], 'amount'));
-    $totalSuppAmount = array_sum(array_column($data['supplier_payments'], 'amount'));
-?>
-<div class="kpi-row">
-    <div class="kpi-card kpi-customer">
-        <div class="kpi-icon"><i class="ph ph-hand-coins"></i></div>
-        <div>
-            <div class="kpi-label">Customer Receipts</div>
-            <div class="kpi-val">Rs <?= number_format($totalCustAmount, 2) ?></div>
+<!-- Stats Row -->
+<div class="stats-grid">
+    <div class="stat-card receivable">
+        <div class="stat-title">Total Accounts Receivable</div>
+        <div class="stat-val">
+            Rs <?= number_format(array_sum(array_column($data['customers'], 'outstanding_balance')), 2) ?>
         </div>
     </div>
-    <div class="kpi-card kpi-supplier">
-        <div class="kpi-icon"><i class="ph ph-truck"></i></div>
-        <div>
-            <div class="kpi-label">Supplier Payments</div>
-            <div class="kpi-val">Rs <?= number_format($totalSuppAmount, 2) ?></div>
+    <div class="stat-card payable">
+        <div class="stat-title">Total Accounts Payable</div>
+        <div class="stat-val">
+            Rs <?= number_format(array_sum(array_column($data['suppliers'], 'outstanding_balance')), 2) ?>
         </div>
     </div>
-    <div class="kpi-card kpi-cheques">
-        <div class="kpi-icon"><i class="ph ph-file-text"></i></div>
-        <div>
-            <div class="kpi-label">Receivable / Payable Accounts</div>
-            <div class="kpi-val" style="font-size: 13px; font-weight: 600; margin-top: 8px; font-family: inherit;">
-                AR: Code <?= $data['ar_account'] ? $data['ar_account']->account_code : '1200' ?><br>
-                AP: Code <?= $data['ap_account'] ? $data['ap_account']->account_code : '2000' ?>
+    <div class="stat-card general">
+        <div class="stat-title">GL Cash & Bank Accounts</div>
+        <div class="stat-val" style="font-size: 13px; font-family: inherit; font-weight: 600; line-height: 1.5; margin-top: 10px;">
+            <?php foreach (array_slice($data['assets'], 0, 3) as $asset): ?>
+                • <?= htmlspecialchars($asset->account_name) ?>: <strong>Rs <?= number_format($asset->balance, 2) ?></strong><br>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="payment-center-tabs">
+    <button class="payment-tab-btn active" id="tab-ar-btn" onclick="switchMainTab('ar')">
+        💵 Accounts Receivable (Customers)
+    </button>
+    <button class="payment-tab-btn" id="tab-ap-btn" onclick="switchMainTab('ap')">
+        🏭 Accounts Payable (Suppliers)
+    </button>
+    <button class="payment-tab-btn" id="tab-history-btn" onclick="switchMainTab('history')">
+        📜 Payments & Reversals History
+    </button>
+</div>
+
+<!-- ========================================== -->
+<!-- TAB PANEL: ACCOUNTS RECEIVABLE (CUSTOMERS) -->
+<!-- ========================================== -->
+<div id="tab-ar" class="payment-tab-panel">
+    <div class="pane-row">
+        <!-- Sidebar: Customers List -->
+        <div class="pane-sidebar">
+            <h3 style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700;">Select Customer</h3>
+            <input type="text" id="cust-search" class="form-control" placeholder="Search customer..." onkeyup="filterEntities('cust')">
+            <div id="cust-list" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                <?php foreach ($data['customers'] as $cust): ?>
+                    <div class="entity-item cust-item-el" data-id="<?= $cust->id ?>" data-name="<?= htmlspecialchars($cust->name) ?>" onclick="selectCustomer(<?= $cust->id ?>, '<?= htmlspecialchars($cust->name) ?>', <?= $cust->outstanding_balance ?>)">
+                        <div class="entity-title"><?= htmlspecialchars($cust->name) ?></div>
+                        <div class="entity-desc">
+                            <span>Bal: <strong>Rs <?= number_format($cust->outstanding_balance, 2) ?></strong></span>
+                            <span style="color: #6366f1;">Payable</span>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <!-- Main Workspace: Payment allocation -->
+        <div class="pane-main">
+            <div id="ar-welcome" style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+                <i class="ph ph-hand-coins" style="font-size: 64px; color: #4f46e5; opacity: 0.6; margin-bottom: 15px;"></i>
+                <h3>Select a customer from the left sidebar to record a payment allocation.</h3>
+                <p style="font-size: 13px; max-width: 450px; margin: 10px auto 0 auto;">Dedicated, audit-ready AR module allows auto-clearing invoices (FIFO), manual line-by-line allocation, and advance payments.</p>
+            </div>
+
+            <div id="ar-workspace" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--mac-border); padding-bottom: 15px; margin-bottom: 20px;">
+                    <div>
+                        <h3 id="selected-cust-name" style="margin: 0; font-size: 18px; font-weight: 700; color: var(--text-main);">Customer</h3>
+                        <p style="margin: 5px 0 0 0; font-size: 13px; color: var(--text-muted);">
+                            Outstanding Balance: <strong id="selected-cust-bal" style="color:#ef4444; font-family:monospace;">Rs 0.00</strong>
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <a href="#" id="selected-cust-statement-btn" target="_blank" class="btn-action-small">
+                            📄 Print Statement
+                        </a>
+                        <a href="#" id="selected-cust-apply-credit" class="btn-action-small" style="border-color:#10b981; color:#059669; display: none;">
+                            💵 Apply Credit Balance
+                        </a>
+                    </div>
+                </div>
+
+                <form action="<?= APP_URL ?>/payment/recordCustomerPayment" method="POST" id="customerPayForm">
+                    <input type="hidden" name="customer_id" id="form-cust-id">
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label>Payment Amount (Rs:) *</label>
+                            <input type="number" step="0.01" name="amount" id="cust-amount-input" class="form-control" style="font-size: 16px; font-weight: 700; color: #10b981;" required min="0.01" oninput="updateAllocationTotals()">
+                        </div>
+                        <div class="form-group">
+                            <label>Payment Date *</label>
+                            <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label>Payment Method *</label>
+                            <select name="payment_method" id="cust-method-select" class="form-control" onchange="toggleChequeFields('cust')" required>
+                                <option value="Cash">Cash</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="Cheque">Cheque (PDC)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Receipt / Reference #</label>
+                            <input type="text" name="reference" class="form-control" placeholder="Optional reference">
+                        </div>
+                    </div>
+
+                    <!-- Cheque Details Container -->
+                    <div id="cust-cheque-details" class="cheque-details-box" style="margin-bottom: 15px;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: #b45309; font-weight: 700;">Cheque & PDC Information</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+                            <div class="form-group">
+                                <label>Bank Name *</label>
+                                <input type="text" name="cheque_bank" id="cust-chk-bank-input" class="form-control" placeholder="e.g. Commercial Bank">
+                            </div>
+                            <div class="form-group">
+                                <label>Cheque Number *</label>
+                                <input type="text" name="cheque_number" id="cust-chk-num-input" class="form-control" placeholder="e.g. 123456">
+                            </div>
+                            <div class="form-group">
+                                <label>Banking Date *</label>
+                                <input type="date" name="cheque_date" id="cust-chk-date-input" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label>Debit Ledger Account (Cash/Bank) *</label>
+                            <select name="asset_account_id" id="cust-asset-account" class="form-control" required style="background: var(--mac-bg);">
+                                <?php foreach ($data['assets'] as $asset): ?>
+                                    <option value="<?= $asset->id ?>" data-code="<?= $asset->account_code ?>" <?= $asset->account_code === '1000' ? 'selected' : '' ?>>
+                                        <?= $asset->account_code ?> - <?= htmlspecialchars($asset->account_name) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Credit Ledger Account (Accounts Receivable) *</label>
+                            <select name="ar_account_id" class="form-control" required style="background: var(--mac-bg);">
+                                <option value="<?= $data['ar_account'] ? $data['ar_account']->id : 11 ?>">
+                                    <?= $data['ar_account'] ? $data['ar_account']->account_code . ' - ' . htmlspecialchars($data['ar_account']->account_name) : '1200 - Accounts Receivable' ?>
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Allocation Selection -->
+                    <div class="allocation-box">
+                        <h4 style="margin: 0 0 10px 0; font-size: 13px; font-weight: 700; color: var(--text-main);">Invoice Allocation Workflow</h4>
+                        <div class="form-group">
+                            <label>Allocation Strategy</label>
+                            <select name="allocation_type" id="cust-allocation-type" class="form-control" onchange="toggleAllocationGrid('cust')" style="background: var(--mac-bg);">
+                                <option value="auto">Auto-Clear Oldest Document (FIFO)</option>
+                                <option value="manual">Manual Invoice Allocation (Line-by-line)</option>
+                                <option value="advance">Advance / Unallocated Payment</option>
+                            </select>
+                        </div>
+
+                        <!-- Manual Grid -->
+                        <div id="cust-manual-grid" class="hidden" style="margin-top: 15px;">
+                            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 10px; font-weight: 600; text-transform: uppercase;">
+                                Unpaid & Partially Paid Invoices
+                            </div>
+                            <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--mac-border); border-radius: 8px;">
+                                <table class="allocations-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Invoice #</th>
+                                            <th>Date</th>
+                                            <th style="text-align: right;">Total Amount</th>
+                                            <th style="text-align: right;">Balance Due</th>
+                                            <th style="width: 120px; text-align: right;">Allocation</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="cust-invoices-tbody">
+                                        <!-- Injected via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 13px; font-weight: 600;">
+                                <span>Unallocated Amount: <span id="cust-unallocated-lbl" style="color: #ef4444; font-family: monospace;">Rs 0.00</span></span>
+                                <span>Total Allocated: <span id="cust-allocated-lbl" style="color: #10b981; font-family: monospace;">Rs 0.00</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Notes / Memo</label>
+                        <textarea name="notes" rows="2" class="form-control" placeholder="Internal audit logs memo..."></textarea>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <button type="submit" class="btn-submit" style="background: var(--primary-gradient); font-size: 14px; font-weight: 700; height: 44px;">
+                            <i class="ph ph-shield-check"></i> Post & Allocate Payment
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Tabs & Actions bar -->
-<div class="tabs-container">
-    <div class="tabs-left">
-        <button class="tab-btn active" id="btn-customer" onclick="switchTab('customer')">
-            <i class="ph ph-user-shared"></i> Customer collections
-        </button>
-        <button class="tab-btn" id="btn-supplier" onclick="switchTab('supplier')">
-            <i class="ph ph-factory"></i> Supplier Payments
-        </button>
-    </div>
-    <div>
-        <button class="btn-record" id="action-btn-customer" onclick="openPaymentModal('customer')">
-            <i class="ph ph-plus-circle"></i> Record Collection
-        </button>
-        <button class="btn-record btn-supplier-record hidden" id="action-btn-supplier" onclick="openPaymentModal('supplier')">
-            <i class="ph ph-plus-circle"></i> Record Payment
-        </button>
+<!-- ========================================== -->
+<!-- TAB PANEL: ACCOUNTS PAYABLE (SUPPLIERS) -->
+<!-- ========================================== -->
+<div id="tab-ap" class="payment-tab-panel hidden">
+    <div class="pane-row">
+        <!-- Sidebar: Suppliers List -->
+        <div class="pane-sidebar">
+            <h3 style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700;">Select Supplier</h3>
+            <input type="text" id="supp-search" class="form-control" placeholder="Search supplier..." onkeyup="filterEntities('supp')">
+            <div id="supp-list" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                <?php foreach ($data['suppliers'] as $supp): ?>
+                    <div class="entity-item supp-item-el" data-id="<?= $supp->id ?>" data-name="<?= htmlspecialchars($supp->name) ?>" onclick="selectSupplier(<?= $supp->id ?>, '<?= htmlspecialchars($supp->name) ?>', <?= $supp->outstanding_balance ?>)">
+                        <div class="entity-title"><?= htmlspecialchars($supp->name) ?></div>
+                        <div class="entity-desc">
+                            <span>Bal: <strong>Rs <?= number_format($supp->outstanding_balance, 2) ?></strong></span>
+                            <span style="color: #ef6c00;">Payable</span>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <!-- Main Workspace: Payment allocation -->
+        <div class="pane-main">
+            <div id="ap-welcome" style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
+                <i class="ph ph-factory" style="font-size: 64px; color: #ef6c00; opacity: 0.6; margin-bottom: 15px;"></i>
+                <h3>Select a supplier from the left sidebar to record a payout.</h3>
+                <p style="font-size: 13px; max-width: 450px; margin: 10px auto 0 auto;">Dedicated, audit-ready AP module allows auto-clearing GRNs (FIFO), manual line-by-line allocation, and advance payments.</p>
+            </div>
+
+            <div id="ap-workspace" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--mac-border); padding-bottom: 15px; margin-bottom: 20px;">
+                    <div>
+                        <h3 id="selected-supp-name" style="margin: 0; font-size: 18px; font-weight: 700; color: var(--text-main);">Supplier</h3>
+                        <p style="margin: 5px 0 0 0; font-size: 13px; color: var(--text-muted);">
+                            Outstanding Payable: <strong id="selected-supp-bal" style="color:#ef4444; font-family:monospace;">Rs 0.00</strong>
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <a href="#" id="selected-supp-statement-btn" target="_blank" class="btn-action-small">
+                            📄 Print Statement
+                        </a>
+                        <a href="#" id="selected-supp-apply-credit" class="btn-action-small" style="border-color:#10b981; color:#059669; display: none;">
+                            🏭 Apply Credit Balance
+                        </a>
+                    </div>
+                </div>
+
+                <form action="<?= APP_URL ?>/payment/recordSupplierPayment" method="POST" id="supplierPayForm">
+                    <input type="hidden" name="supplier_id" id="form-supp-id">
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label>Payment Amount (Rs:) *</label>
+                            <input type="number" step="0.01" name="amount" id="supp-amount-input" class="form-control" style="font-size: 16px; font-weight: 700; color: #f59e0b;" required min="0.01" oninput="updateAllocationTotals()">
+                        </div>
+                        <div class="form-group">
+                            <label>Payment Date *</label>
+                            <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label>Payment Method *</label>
+                            <select name="payment_method" id="supp-method-select" class="form-control" onchange="toggleChequeFields('supp')" required>
+                                <option value="Cash">Cash</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="Cheque">Cheque</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Reference # / Voucher #</label>
+                            <input type="text" name="reference" class="form-control" placeholder="Optional reference">
+                        </div>
+                    </div>
+
+                    <!-- Cheque Details Container -->
+                    <div id="supp-cheque-details" class="cheque-details-box" style="margin-bottom: 15px;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: #b45309; font-weight: 700;">Cheque Details</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+                            <div class="form-group">
+                                <label>Bank Name *</label>
+                                <input type="text" name="cheque_bank" id="supp-chk-bank-input" class="form-control" placeholder="e.g. Commercial Bank">
+                            </div>
+                            <div class="form-group">
+                                <label>Cheque Number *</label>
+                                <input type="text" name="cheque_number" id="supp-chk-num-input" class="form-control" placeholder="e.g. 987654">
+                            </div>
+                            <div class="form-group">
+                                <label>Banking Date *</label>
+                                <input type="date" name="cheque_date" id="supp-chk-date-input" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label>Debit Ledger Account (Accounts Payable) *</label>
+                            <select name="ap_account_id" class="form-control" required style="background: var(--mac-bg);">
+                                <option value="<?= $data['ap_account'] ? $data['ap_account']->id : 18 ?>">
+                                    <?= $data['ap_account'] ? $data['ap_account']->account_code . ' - ' . htmlspecialchars($data['ap_account']->account_name) : '2000 - Accounts Payable' ?>
+                                </option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Credit Ledger Account (Cash/Bank) *</label>
+                            <select name="asset_account_id" id="supp-asset-account" class="form-control" required style="background: var(--mac-bg);">
+                                <?php foreach ($data['assets'] as $asset): ?>
+                                    <option value="<?= $asset->id ?>" data-code="<?= $asset->account_code ?>" <?= $asset->account_code === '1000' ? 'selected' : '' ?>>
+                                        <?= $asset->account_code ?> - <?= htmlspecialchars($asset->account_name) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Allocation Selection -->
+                    <div class="allocation-box">
+                        <h4 style="margin: 0 0 10px 0; font-size: 13px; font-weight: 700; color: var(--text-main);">GRN Allocation Workflow</h4>
+                        <div class="form-group">
+                            <label>Allocation Strategy</label>
+                            <select name="allocation_type" id="supp-allocation-type" class="form-control" onchange="toggleAllocationGrid('supp')" style="background: var(--mac-bg);">
+                                <option value="auto">Auto-Clear Oldest Document (FIFO)</option>
+                                <option value="manual">Manual GRN Allocation (Line-by-line)</option>
+                                <option value="advance">Advance / Unallocated Payment</option>
+                            </select>
+                        </div>
+
+                        <!-- Manual Grid -->
+                        <div id="supp-manual-grid" class="hidden" style="margin-top: 15px;">
+                            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 10px; font-weight: 600; text-transform: uppercase;">
+                                Unpaid & Partially Paid GRNs
+                            </div>
+                            <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--mac-border); border-radius: 8px;">
+                                <table class="allocations-table">
+                                    <thead>
+                                        <tr>
+                                            <th>GRN Number</th>
+                                            <th>GRN Date</th>
+                                            <th style="text-align: right;">Total Amount</th>
+                                            <th style="text-align: right;">Balance Due</th>
+                                            <th style="width: 120px; text-align: right;">Allocation</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="supp-grns-tbody">
+                                        <!-- Injected via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 13px; font-weight: 600;">
+                                <span>Unallocated Amount: <span id="supp-unallocated-lbl" style="color: #ef4444; font-family: monospace;">Rs 0.00</span></span>
+                                <span>Total Allocated: <span id="supp-allocated-lbl" style="color: #10b981; font-family: monospace;">Rs 0.00</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Notes / Memo</label>
+                        <textarea name="notes" rows="2" class="form-control" placeholder="Internal audit logs memo..."></textarea>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <button type="submit" class="btn-submit" style="background: var(--warning-gradient); font-size: 14px; font-weight: 700; height: 44px;">
+                            <i class="ph ph-shield-check"></i> Post & Allocate Payout
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- ============================================== -->
-<!-- TAB CONTENT 1: CUSTOMER COLLECTIONS -->
-<!-- ============================================== -->
-<div id="tab-content-customer" class="tab-panel">
-    <div class="list-pane">
-        <div class="list-header">
-            <h3>Customer Payment Records</h3>
-            <input type="text" id="cust-search" class="search-filter" placeholder="Search collections..." onkeyup="filterCollectionTable('customer')">
+<!-- ========================================== -->
+<!-- TAB PANEL: PAYMENTS & REVERSALS HISTORY   -->
+<!-- ========================================== -->
+<div id="tab-history" class="payment-tab-panel hidden">
+    <div class="pane-main" style="width: 100%; box-sizing: border-box;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700;">GL Audit-Trail Transaction History</h3>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="history-search" class="form-control" style="width: 250px;" placeholder="Search history..." onkeyup="filterHistory()">
+            </div>
         </div>
 
         <div style="overflow-x: auto;">
-            <table class="data-table" id="table-customer-payments">
+            <table class="data-table" id="history-table">
                 <thead>
                     <tr>
                         <th>Date</th>
-                        <th>Customer</th>
+                        <th>Type</th>
+                        <th>Counterparty</th>
                         <th>Method</th>
                         <th>Reference</th>
                         <th style="text-align: right;">Amount</th>
-                        <th>GL J-Entry</th>
-                        <th>Responsible</th>
+                        <th>Status</th>
+                        <th>Logged By</th>
+                        <th style="text-align: center; width: 180px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (empty($data['customer_payments'])): ?>
+                    <?php if (empty($data['payments_history'])): ?>
                         <tr>
-                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 25px;">No collections recorded yet.</td>
+                            <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">No payment logs found in current audit timeline.</td>
                         </tr>
-                    <?php else: foreach ($data['customer_payments'] as $cp): ?>
-                        <tr class="row-collection">
-                            <td style="white-space: nowrap; font-weight: 500;"><?= date('Y-m-d', strtotime($cp->payment_date)) ?></td>
-                            <td class="col-entity" style="font-weight: 600;"><?= htmlspecialchars($cp->customer_name) ?></td>
+                    <?php else: foreach ($data['payments_history'] as $ph): ?>
+                        <tr class="history-row-el">
+                            <td style="white-space: nowrap; font-weight: 500;"><?= date('Y-m-d', strtotime($ph->payment_date)) ?></td>
                             <td>
-                                <span class="badge-method method-<?= str_replace(' ', '', $cp->payment_method) ?>"><?= $cp->payment_method ?></span>
+                                <span class="badge-method" style="background: <?= $ph->type === 'Customer' ? '#e0e7ff; color: #4338ca;' : '#fef3c7; color: #d97706;' ?>">
+                                    <?= $ph->type ?>
+                                </span>
                             </td>
-                            <td class="col-ref"><?= htmlspecialchars($cp->reference ?: '-') ?></td>
-                            <td style="text-align: right; font-weight: 600; font-family: monospace;">Rs <?= number_format($cp->amount, 2) ?></td>
+                            <td class="history-name-col" style="font-weight: 600;"><?= htmlspecialchars($ph->counterparty_name) ?></td>
+                            <td><span class="badge-method method-<?= str_replace(' ', '', $ph->payment_method) ?>"><?= $ph->payment_method ?></span></td>
+                            <td class="history-ref-col"><?= htmlspecialchars($ph->reference ?: '-') ?></td>
+                            <td style="text-align: right; font-weight: 700; font-family: monospace; color: <?= $ph->status === 'Reversed' ? '#991b1b' : 'inherit' ?>">
+                                Rs <?= number_format($ph->amount, 2) ?>
+                            </td>
                             <td>
-                                <?php if ($cp->journal_entry_id): ?>
-                                    <?php 
-                                        // Pass the correct Asset Account ID affected by the transaction, falling back to first asset account if empty
-                                        $targetAccountId = $cp->asset_account_id ?: ($data['assets'] ? reset($data['assets'])->id : 1);
-                                    ?>
-                                    <a href="<?= APP_URL ?>/accounting/history/<?= $targetAccountId ?>?search=<?= urlencode($cp->je_reference ?: '') ?>" style="color: #0066cc; font-weight: 600; text-decoration: none;">
-                                        <i class="ph ph-link"></i> JE #<?= htmlspecialchars($cp->je_reference ?: $cp->journal_entry_id) ?>
-                                    </a>
-                                <?php else: ?>
-                                    <span style="color: var(--text-muted); font-style: italic;">No Entry</span>
+                                <span class="status-badge status-<?= $ph->status ?>"><?= $ph->status ?></span>
+                            </td>
+                            <td style="font-size: 11px; color: var(--text-muted);"><?= htmlspecialchars($ph->creator_name ?: 'System') ?></td>
+                            <td style="text-align: center; white-space: nowrap;">
+                                <a href="<?= APP_URL ?>/payment/receipt/<?= strtolower($ph->type) ?>/<?= $ph->id ?>" target="_blank" class="btn-action-small">
+                                    🖨 Receipt
+                                </a>
+                                <?php if ($ph->status === 'Active'): ?>
+                                    <button onclick="triggerReversal('<?= strtolower($ph->type) ?>', <?= $ph->id ?>, <?= $ph->amount ?>)" class="btn-action-small btn-danger">
+                                        ↩ Reverse
+                                    </button>
                                 <?php endif; ?>
                             </td>
-                            <td style="color: var(--text-muted); font-size: 12px;"><?= htmlspecialchars($cp->responsible_person ?: 'System') ?></td>
                         </tr>
                     <?php endforeach; endif; ?>
                 </tbody>
             </table>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================== -->
-<!-- TAB CONTENT 2: SUPPLIER PAYMENTS -->
-<!-- ============================================== -->
-<div id="tab-content-supplier" class="tab-panel hidden">
-    <div class="list-pane">
-        <div class="list-header">
-            <h3>Supplier Payment Records</h3>
-            <input type="text" id="supp-search" class="search-filter" placeholder="Search payments..." onkeyup="filterCollectionTable('supplier')">
-        </div>
-
-        <div style="overflow-x: auto;">
-            <table class="data-table" id="table-supplier-payments">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Supplier</th>
-                        <th>Reference</th>
-                        <th>Description</th>
-                        <th style="text-align: right;">Amount</th>
-                        <th>GL J-Entry</th>
-                        <th>Responsible</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($data['supplier_payments'])): ?>
-                        <tr>
-                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 25px;">No payments recorded yet.</td>
-                        </tr>
-                    <?php else: foreach ($data['supplier_payments'] as $sp): ?>
-                        <tr class="row-collection">
-                            <td style="white-space: nowrap; font-weight: 500;"><?= date('Y-m-d', strtotime($sp->expense_date)) ?></td>
-                            <td class="col-entity" style="font-weight: 600;"><?= htmlspecialchars($sp->supplier_name) ?></td>
-                            <td class="col-ref"><?= htmlspecialchars($sp->reference ?: '-') ?></td>
-                            <td><?= htmlspecialchars($sp->description ?: '-') ?></td>
-                            <td style="text-align: right; font-weight: 600; font-family: monospace;">Rs <?= number_format($sp->amount, 2) ?></td>
-                            <td>
-                                <?php if ($sp->journal_entry_id): ?>
-                                    <?php 
-                                        // Pass the correct Asset Account ID affected by the transaction, falling back to first asset account if empty
-                                        $targetAccountId = $sp->asset_account_id ?: ($data['assets'] ? reset($data['assets'])->id : 1);
-                                    ?>
-                                    <a href="<?= APP_URL ?>/accounting/history/<?= $targetAccountId ?>?search=<?= urlencode($sp->je_reference ?: '') ?>" style="color: #0066cc; font-weight: 600; text-decoration: none;">
-                                        <i class="ph ph-link"></i> JE #<?= htmlspecialchars($sp->je_reference ?: $sp->journal_entry_id) ?>
-                                    </a>
-                                <?php else: ?>
-                                    <span style="color: var(--text-muted); font-style: italic;">No Entry</span>
-                                <?php endif; ?>
-                            </td>
-                            <td style="color: var(--text-muted); font-size: 12px;"><?= htmlspecialchars($sp->responsible_person ?: 'System') ?></td>
-                        </tr>
-                    <?php endforeach; endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================== -->
-<!-- MODAL: RECORD CUSTOMER COLLECTION -->
-<!-- ============================================== -->
-<div class="modal-overlay" id="customer-payment-modal" onclick="closePaymentModal('customer', event)">
-    <div class="modal-container" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <h3><i class="ph ph-plus-circle text-primary"></i> Record Customer Receipt</h3>
-            <button class="modal-close-btn" onclick="closePaymentModal('customer')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form action="<?= APP_URL ?>/payment/recordCustomerPayment" method="POST" id="customerPaymentForm">
-                <div class="form-group">
-                    <label for="cust-select">Select Customer *</label>
-                    <select name="customer_id" id="cust-select" class="form-control" required>
-                        <option value="">-- Choose Customer --</option>
-                        <?php foreach($data['customers'] as $cust): ?>
-                            <option value="<?= $cust->id ?>" data-balance="<?= $cust->outstanding_balance ?>">
-                                <?= htmlspecialchars($cust->name) ?> (Outstanding: Rs <?= number_format($cust->outstanding_balance, 2) ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="cust-amount">Amount (Rs) *</label>
-                    <input type="number" step="0.01" name="amount" id="cust-amount" class="form-control" placeholder="0.00" required min="0.01">
-                </div>
-
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="cust-date">Payment Date *</label>
-                        <input type="date" name="payment_date" id="cust-date" class="form-control" value="<?= date('Y-m-d') ?>" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label for="cust-method">Method *</label>
-                        <select name="payment_method" id="cust-method" class="form-control" onchange="toggleChequeFields('customer')" required>
-                            <option value="Cash">Cash</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                            <option value="Cheque">Cheque</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Conditional Cheque Fields -->
-                <div id="customer-cheque-box" class="cheque-details-box">
-                    <h4 style="margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: var(--text-muted);">Cheque Information</h4>
-                    <div class="form-group">
-                        <label for="cust-chk-bank">Bank Name *</label>
-                        <input type="text" name="cheque_bank" id="cust-chk-bank" class="form-control" placeholder="e.g. Commercial Bank">
-                    </div>
-                    <div style="display: flex; gap: 12px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="cust-chk-num">Cheque Number *</label>
-                            <input type="text" name="cheque_number" id="cust-chk-num" class="form-control" placeholder="e.g. 123456">
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label for="cust-chk-date">Cheque Date *</label>
-                            <input type="date" name="cheque_date" id="cust-chk-date" class="form-control">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="cust-ref">Reference / Memo</label>
-                    <input type="text" name="reference" id="cust-ref" class="form-control" placeholder="Receipt no., memo, etc.">
-                </div>
-
-                <!-- Ledger Accounts selection (COA) -->
-                <div style="background: rgba(0, 102, 204, 0.03); padding: 12px; border-radius: 8px; border: 1px solid rgba(0, 102, 204, 0.1); margin-top: 15px; margin-bottom: 20px;">
-                    <h4 style="margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: #0066cc; font-weight: 700;">Double Entry GL Accounts</h4>
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label>Debit Account (Cash/Bank) *</label>
-                        <select name="asset_account_id" id="customer-asset-account" class="form-control" required>
-                            <?php foreach ($data['assets'] as $asset): ?>
-                                <option value="<?= $asset->id ?>" data-code="<?= $asset->account_code ?>" <?= $asset->account_code === '1000' ? 'selected' : '' ?>>
-                                    <?= $asset->account_code ?> - <?= htmlspecialchars($asset->account_name) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>Credit Account (Accounts Receivable) *</label>
-                        <select name="ar_account_id" class="form-control" required>
-                            <option value="<?= $data['ar_account'] ? $data['ar_account']->id : 11 ?>">
-                                <?= $data['ar_account'] ? $data['ar_account']->account_code . ' - ' . htmlspecialchars($data['ar_account']->account_name) : '1200 - Accounts Receivable' ?>
-                            </option>
-                            <?php foreach ($data['assets'] as $asset): ?>
-                                <?php if ($data['ar_account'] && $asset->id === $data['ar_account']->id) continue; ?>
-                                <option value="<?= $asset->id ?>">
-                                    <?= $asset->account_code ?> - <?= htmlspecialchars($asset->account_name) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn-submit">
-                    <i class="ph ph-check-square"></i> Save Receipt
-                </button>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================== -->
-<!-- MODAL: RECORD SUPPLIER PAYMENT -->
-<!-- ============================================== -->
-<div class="modal-overlay" id="supplier-payment-modal" onclick="closePaymentModal('supplier', event)">
-    <div class="modal-container" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <h3><i class="ph ph-minus-circle text-warning"></i> Record Supplier Payment</h3>
-            <button class="modal-close-btn" onclick="closePaymentModal('supplier')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form action="<?= APP_URL ?>/payment/recordSupplierPayment" method="POST" id="supplierPaymentForm">
-                <div class="form-group">
-                    <label for="supp-select">Select Supplier *</label>
-                    <select name="supplier_id" id="supp-select" class="form-control" required>
-                        <option value="">-- Choose Supplier --</option>
-                        <?php foreach($data['suppliers'] as $supp): ?>
-                            <option value="<?= $supp->id ?>" data-balance="<?= $supp->outstanding_balance ?>">
-                                <?= htmlspecialchars($supp->name) ?> (Outstanding: Rs <?= number_format($supp->outstanding_balance, 2) ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="supp-amount">Amount (Rs) *</label>
-                    <input type="number" step="0.01" name="amount" id="supp-amount" class="form-control" placeholder="0.00" required min="0.01">
-                </div>
-
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="supp-date">Payment Date *</label>
-                        <input type="date" name="payment_date" id="supp-date" class="form-control" value="<?= date('Y-m-d') ?>" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label for="supp-method">Method *</label>
-                        <select name="payment_method" id="supp-method" class="form-control" onchange="toggleChequeFields('supplier')" required>
-                            <option value="Cash">Cash</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                            <option value="Cheque">Cheque</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Conditional Cheque Fields -->
-                <div id="supplier-cheque-box" class="cheque-details-box">
-                    <h4 style="margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: var(--text-muted);">Cheque Information</h4>
-                    <div class="form-group">
-                        <label for="supp-chk-bank">Bank Name *</label>
-                        <input type="text" name="cheque_bank" id="supp-chk-bank" class="form-control" placeholder="e.g. Commercial Bank">
-                    </div>
-                    <div style="display: flex; gap: 12px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="supp-chk-number">Cheque Number *</label>
-                            <input type="text" name="cheque_number" id="supp-chk-number" class="form-control" placeholder="e.g. 987654">
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label for="supp-chk-date">Cheque Date *</label>
-                            <input type="date" name="cheque_date" id="supp-chk-date" class="form-control">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="supp-ref">Reference / Memo</label>
-                    <input type="text" name="reference" id="supp-ref" class="form-control" placeholder="Voucher no., invoice link, etc.">
-                </div>
-
-                <!-- Ledger Accounts selection (COA) -->
-                <div style="background: rgba(239, 108, 0, 0.03); padding: 12px; border-radius: 8px; border: 1px solid rgba(239, 108, 0, 0.1); margin-top: 15px; margin-bottom: 20px;">
-                    <h4 style="margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: #ef6c00; font-weight: 700;">Double Entry GL Accounts</h4>
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label>Debit Account (Accounts Payable) *</label>
-                        <select name="ap_account_id" class="form-control" required>
-                            <option value="<?= $data['ap_account'] ? $data['ap_account']->id : 18 ?>">
-                                <?= $data['ap_account'] ? $data['ap_account']->account_code . ' - ' . htmlspecialchars($data['ap_account']->account_name) : '2000 - Accounts Payable' ?>
-                            </option>
-                            <?php foreach ($data['assets'] as $asset): ?>
-                                <option value="<?= $asset->id ?>">
-                                    <?= $asset->account_code ?> - <?= htmlspecialchars($asset->account_name) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>Credit Account (Cash/Bank) *</label>
-                        <select name="asset_account_id" id="supplier-asset-account" class="form-control" required>
-                            <?php foreach ($data['assets'] as $asset): ?>
-                                <option value="<?= $asset->id ?>" data-code="<?= $asset->account_code ?>" <?= $asset->account_code === '1000' ? 'selected' : '' ?>>
-                                    <?= $asset->account_code ?> - <?= htmlspecialchars($asset->account_name) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn-submit" style="background: #ef6c00; box-shadow: 0 4px 10px rgba(239, 108, 0, 0.15);">
-                    <i class="ph ph-check-square"></i> Save Payment
-                </button>
-            </form>
         </div>
     </div>
 </div>
 
 <script>
-    // Tab switching engine
-    function switchTab(tab) {
-        document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.btn-record').forEach(btn => btn.classList.add('hidden'));
+    // Global states
+    let activeCustomerInvoices = [];
+    let activeSupplierGRNs = [];
 
-        document.getElementById('tab-content-' + tab).classList.remove('hidden');
-        document.getElementById('btn-' + tab).classList.add('active');
-        document.getElementById('action-btn-' + tab).classList.remove('hidden');
+    // Switch main tabs
+    function switchMainTab(tab) {
+        document.querySelectorAll('.payment-tab-panel').forEach(panel => panel.classList.add('hidden'));
+        document.querySelectorAll('.payment-tab-btn').forEach(btn => btn.classList.remove('active'));
 
-        // Store tab preference in sessionStorage
-        sessionStorage.setItem('payments_active_tab', tab);
+        document.getElementById('tab-' + tab).classList.remove('hidden');
+        document.getElementById('tab-' + tab + '-btn').classList.add('active');
     }
 
-    // Modal popup actions
-    function openPaymentModal(type) {
-        document.getElementById(type + '-payment-modal').style.display = 'flex';
+    // Filter sidebar list helper
+    function filterEntities(prefix) {
+        const query = document.getElementById(prefix + '-search').value.toLowerCase();
+        const items = document.querySelectorAll('.' + prefix + '-item-el');
+        items.forEach(item => {
+            const name = item.getAttribute('data-name').toLowerCase();
+            if (name.includes(query)) {
+                item.classList.remove('hidden');
+            } else {
+                item.classList.add('hidden');
+            }
+        });
     }
 
-    function closePaymentModal(type, event) {
-        if (event) {
-            event.stopPropagation();
-        }
-        document.getElementById(type + '-payment-modal').style.display = 'none';
+    // Filter unified history
+    function filterHistory() {
+        const query = document.getElementById('history-search').value.toLowerCase();
+        const rows = document.querySelectorAll('.history-row-el');
+        rows.forEach(row => {
+            const name = row.querySelector('.history-name-col').textContent.toLowerCase();
+            const ref = row.querySelector('.history-ref-col').textContent.toLowerCase();
+            if (name.includes(query) || ref.includes(query)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
     }
 
-    // Toggle cheque field boxes conditionally & auto-change asset accounts
-    function toggleChequeFields(type) {
-        const prefix = type === 'customer' ? 'cust' : 'supp';
-        const methodEl = document.getElementById(prefix + '-method');
-        if (!methodEl) return;
-        const method = methodEl.value;
-        const box = document.getElementById(type + '-cheque-box');
-        const bankInput = document.getElementById(prefix + '-chk-bank');
-        
-        let numInput;
-        if (type === 'customer') {
-            numInput = document.getElementById('cust-chk-num');
-        } else {
-            numInput = document.getElementById('supp-chk-number');
-        }
-        
-        const dateInput = document.getElementById(prefix + '-chk-date');
+    // Toggle cheque details
+    function toggleChequeFields(prefix) {
+        const method = document.getElementById(prefix + '-method-select').value;
+        const cqBox = document.getElementById(prefix + '-cheque-details');
+        const bankInput = document.getElementById(prefix + '-chk-bank-input');
+        const numInput = document.getElementById(prefix + '-chk-num-input');
+        const dateInput = document.getElementById(prefix + '-chk-date-input');
 
         if (method === 'Cheque') {
-            if (box) box.style.display = 'block';
-            if (bankInput) bankInput.required = true;
-            if (numInput) numInput.required = true;
-            if (dateInput) dateInput.required = true;
+            cqBox.classList.remove('hidden');
+            bankInput.required = true;
+            numInput.required = true;
+            dateInput.required = true;
         } else {
-            if (box) box.style.display = 'none';
-            if (bankInput) bankInput.required = false;
-            if (numInput) numInput.required = false;
-            if (dateInput) dateInput.required = false;
+            cqBox.classList.add('hidden');
+            bankInput.required = false;
+            numInput.required = false;
+            dateInput.required = false;
         }
 
         // Automatic Account Selection based on Method
-        const assetSelect = document.getElementById(type + '-asset-account');
+        const assetSelect = document.getElementById(prefix + '-asset-account');
         if (assetSelect) {
             let targetCode = '1000'; // Default Cash
             if (method === 'Bank Transfer') {
@@ -800,41 +774,234 @@
             for (let i = 0; i < assetSelect.options.length; i++) {
                 if (assetSelect.options[i].getAttribute('data-code') === targetCode) {
                     assetSelect.selectedIndex = i;
-                    assetSelect.dispatchEvent(new Event('change', { bubbles: true }));
                     break;
                 }
             }
         }
     }
 
-    // Table quick searches
-    function filterCollectionTable(type) {
-        const query = document.getElementById(type + '-search').value.toLowerCase();
-        const rows = document.querySelectorAll('#table-' + type + '-payments tbody tr.row-collection');
+    // Select Customer
+    function selectCustomer(id, name, balance) {
+        // Toggle Active highlight
+        document.querySelectorAll('.cust-item-el').forEach(el => el.classList.remove('active'));
+        const activeItem = document.querySelector(`.cust-item-el[data-id="${id}"]`);
+        if (activeItem) activeItem.classList.add('active');
 
-        rows.forEach(row => {
-            const entity = row.querySelector('.col-entity').textContent.toLowerCase();
-            const ref = row.querySelector('.col-ref').textContent.toLowerCase();
-            if (entity.includes(query) || ref.includes(query)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+        // Setup form fields
+        document.getElementById('form-cust-id').value = id;
+        document.getElementById('selected-cust-name').innerText = name;
+        document.getElementById('selected-cust-bal').innerText = 'Rs ' + parseFloat(balance).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        // Setup statement link
+        document.getElementById('selected-cust-statement-btn').href = '<?= APP_URL ?>/payment/statement/customer/' + id;
+        
+        // Settle Invoices with credit link
+        const creditBtn = document.getElementById('selected-cust-apply-credit');
+        creditBtn.href = '<?= APP_URL ?>/payment/applyCustomerCredit/' + id;
+        creditBtn.style.display = balance > 0 ? 'inline-flex' : 'none';
+
+        // Load unpaid invoices via AJAX
+        document.getElementById('cust-invoices-tbody').innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading unpaid invoices...</td></tr>';
+        
+        fetch('<?= APP_URL ?>/payment/getCustomerInvoicesJson/' + id)
+            .then(res => res.json())
+            .then(data => {
+                activeCustomerInvoices = data;
+                renderCustomerInvoicesTable();
+                
+                // Show Workspace
+                document.getElementById('ar-welcome').classList.add('hidden');
+                document.getElementById('ar-workspace').classList.remove('hidden');
+                
+                // Reset Form
+                document.getElementById('cust-amount-input').value = '';
+                document.getElementById('cust-allocation-type').value = 'auto';
+                toggleAllocationGrid('cust');
+                updateAllocationTotals();
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('cust-invoices-tbody').innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Failed to load invoices.</td></tr>';
+            });
+    }
+
+    // Select Supplier
+    function selectSupplier(id, name, balance) {
+        // Toggle Active highlight
+        document.querySelectorAll('.supp-item-el').forEach(el => el.classList.remove('active'));
+        const activeItem = document.querySelector(`.supp-item-el[data-id="${id}"]`);
+        if (activeItem) activeItem.classList.add('active');
+
+        // Setup form fields
+        document.getElementById('form-supp-id').value = id;
+        document.getElementById('selected-supp-name').innerText = name;
+        document.getElementById('selected-supp-bal').innerText = 'Rs ' + parseFloat(balance).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        // Setup statement link
+        document.getElementById('selected-supp-statement-btn').href = '<?= APP_URL ?>/payment/statement/supplier/' + id;
+        
+        // Settle GRNs with credit link
+        const creditBtn = document.getElementById('selected-supp-apply-credit');
+        creditBtn.href = '<?= APP_URL ?>/payment/applySupplierCredit/' + id;
+        creditBtn.style.display = balance > 0 ? 'inline-flex' : 'none';
+
+        // Load unpaid GRNs via AJAX
+        document.getElementById('supp-grns-tbody').innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading unpaid GRNs...</td></tr>';
+        
+        fetch('<?= APP_URL ?>/payment/getSupplierGRNsJson/' + id)
+            .then(res => res.json())
+            .then(data => {
+                activeSupplierGRNs = data;
+                renderSupplierGRNsTable();
+                
+                // Show Workspace
+                document.getElementById('ap-welcome').classList.add('hidden');
+                document.getElementById('ap-workspace').classList.remove('hidden');
+                
+                // Reset Form
+                document.getElementById('supp-amount-input').value = '';
+                document.getElementById('supp-allocation-type').value = 'auto';
+                toggleAllocationGrid('supp');
+                updateAllocationTotals();
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('supp-grns-tbody').innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Failed to load GRNs.</td></tr>';
+            });
+    }
+
+    // Render customer invoices grid
+    function renderCustomerInvoicesTable() {
+        const tbody = document.getElementById('cust-invoices-tbody');
+        tbody.innerHTML = '';
+        if (activeCustomerInvoices.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No unpaid invoices for this customer.</td></tr>';
+            return;
+        }
+
+        activeCustomerInvoices.forEach(inv => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${inv.invoice_number}</strong></td>
+                <td>${inv.invoice_date}</td>
+                <td style="text-align:right;">Rs ${parseFloat(inv.total_amount).toFixed(2)}</td>
+                <td style="text-align:right; font-weight:600; color:#ef4444;">Rs ${parseFloat(inv.balance_due).toFixed(2)}</td>
+                <td style="text-align:right;">
+                    <input type="number" step="0.01" class="form-control cust-alloc-input" 
+                           style="width: 100px; text-align: right; padding: 4px 8px;" 
+                           name="allocations[${inv.id}]" 
+                           data-max="${inv.balance_due}" 
+                           placeholder="0.00" 
+                           oninput="validateAndAllocate('cust', this)">
+                </td>
+            `;
+            tbody.appendChild(tr);
         });
     }
 
-    // Initial state loading
-    document.addEventListener('DOMContentLoaded', () => {
-        // Toggle initial cheque forms state
-        toggleChequeFields('customer');
-        toggleChequeFields('supplier');
-
-        // Restore active tab if saved
-        const activeTab = sessionStorage.getItem('payments_active_tab');
-        if (activeTab === 'supplier') {
-            switchTab('supplier');
-        } else {
-            switchTab('customer');
+    // Render supplier GRNs grid
+    function renderSupplierGRNsTable() {
+        const tbody = document.getElementById('supp-grns-tbody');
+        tbody.innerHTML = '';
+        if (activeSupplierGRNs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No unpaid GRNs for this supplier.</td></tr>';
+            return;
         }
+
+        activeSupplierGRNs.forEach(g => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${g.grn_number}</strong> ${g.receipt_number ? `(${g.receipt_number})` : ''}</td>
+                <td>${g.grn_date}</td>
+                <td style="text-align:right;">Rs ${parseFloat(g.total_amount).toFixed(2)}</td>
+                <td style="text-align:right; font-weight:600; color:#ef4444;">Rs ${parseFloat(g.balance_due).toFixed(2)}</td>
+                <td style="text-align:right;">
+                    <input type="number" step="0.01" class="form-control supp-alloc-input" 
+                           style="width: 100px; text-align: right; padding: 4px 8px;" 
+                           name="allocations[${g.id}]" 
+                           data-max="${g.balance_due}" 
+                           placeholder="0.00" 
+                           oninput="validateAndAllocate('supp', this)">
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Toggle allocation strategy grid visibility
+    function toggleAllocationGrid(prefix) {
+        const type = document.getElementById(prefix + '-allocation-type').value;
+        const grid = document.getElementById(prefix + '-manual-grid');
+        
+        if (type === 'manual') {
+            grid.classList.remove('hidden');
+        } else {
+            grid.classList.add('hidden');
+        }
+        updateAllocationTotals();
+    }
+
+    // Validate allocation input and recalculate
+    function validateAndAllocate(prefix, input) {
+        const max = parseFloat(input.getAttribute('data-max'));
+        let val = parseFloat(input.value) || 0;
+        
+        if (val < 0) {
+            input.value = '0.00';
+            val = 0;
+        }
+        if (val > max) {
+            input.value = max.toFixed(2);
+            val = max;
+        }
+
+        updateAllocationTotals();
+    }
+
+    // Update running allocated / unallocated totals
+    function updateAllocationTotals() {
+        // Customer side
+        const custTotalPay = parseFloat(document.getElementById('cust-amount-input').value) || 0;
+        const custAllocType = document.getElementById('cust-allocation-type').value;
+        let custAllocated = 0;
+
+        if (custAllocType === 'manual') {
+            document.querySelectorAll('.cust-alloc-input').forEach(input => {
+                custAllocated += parseFloat(input.value) || 0;
+            });
+        }
+
+        const custUnallocated = Math.max(0, custTotalPay - custAllocated);
+        document.getElementById('cust-allocated-lbl').innerText = 'Rs ' + custAllocated.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+        document.getElementById('cust-unallocated-lbl').innerText = 'Rs ' + custUnallocated.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+        // Supplier side
+        const suppTotalPay = parseFloat(document.getElementById('supp-amount-input').value) || 0;
+        const suppAllocType = document.getElementById('supp-allocation-type').value;
+        let suppAllocated = 0;
+
+        if (suppAllocType === 'manual') {
+            document.querySelectorAll('.supp-alloc-input').forEach(input => {
+                suppAllocated += parseFloat(input.value) || 0;
+            });
+        }
+
+        const suppUnallocated = Math.max(0, suppTotalPay - suppAllocated);
+        document.getElementById('supp-allocated-lbl').innerText = 'Rs ' + suppAllocated.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+        document.getElementById('supp-unallocated-lbl').innerText = 'Rs ' + suppUnallocated.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+
+    // Trigger reversal action
+    function triggerReversal(type, id, amount) {
+        const msg = `Are you absolutely sure you want to REVERSE this ${type} payment of Rs ${parseFloat(amount).toLocaleString()}?\n\nThis will restore the unpaid balance of the allocated documents, bounce associated cheques, and create reversing journal entries in the General Ledger.`;
+        if (confirm(msg)) {
+            window.location.href = `<?= APP_URL ?>/payment/reverse${type.charAt(0).toUpperCase() + type.slice(1)}Payment/${id}`;
+        }
+    }
+
+    // Initial page load bindings
+    document.addEventListener('DOMContentLoaded', () => {
+        toggleChequeFields('cust');
+        toggleChequeFields('supp');
     });
 </script>

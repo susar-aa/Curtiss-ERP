@@ -1,27 +1,27 @@
 <?php
 class PaymentController extends Controller {
+    private $paymentModel;
     private $customerModel;
     private $supplierModel;
     private $coaModel;
-    private $db;
 
     public function __construct() {
         if (!isset($_SESSION['user_id'])) {
             header('Location: ' . APP_URL . '/auth/login');
             exit;
         }
+        $this->paymentModel = $this->model('Payment');
         $this->customerModel = $this->model('Customer');
         $this->supplierModel = $this->model('Supplier');
         $this->coaModel = $this->model('ChartOfAccount');
-        $this->db = new Database();
     }
 
     public function index() {
-        $customers = $this->customerModel->getAllCustomers() ?: [];
-        $suppliers = $this->supplierModel->getAllSuppliers() ?: [];
+        $customers = $this->paymentModel->getCustomerOutstandingList();
+        $suppliers = $this->paymentModel->getSupplierOutstandingList();
         $accounts = $this->coaModel->getAccounts() ?: [];
 
-        // Filter Asset accounts (e.g., Cash/Bank)
+        // Filter Asset accounts (e.g. Cash/Bank)
         $assets = array_filter($accounts, function($a) {
             return $a->account_type == 'Asset';
         });
@@ -44,29 +44,15 @@ class PaymentController extends Controller {
             }
         }
 
-        // Fetch Customer Payments
-        $this->db->query("
-            SELECT cp.*, c.name as customer_name, u.username as responsible_person, je.reference as je_reference,
-                   (SELECT account_id FROM transactions WHERE journal_entry_id = cp.journal_entry_id AND debit > 0 LIMIT 1) as asset_account_id
-            FROM customer_payments cp
-            JOIN customers c ON cp.customer_id = c.id
-            LEFT JOIN users u ON cp.created_by = u.id
-            LEFT JOIN journal_entries je ON cp.journal_entry_id = je.id
-            ORDER BY cp.payment_date DESC, cp.id DESC
-        ");
-        $customerPayments = $this->db->resultSet() ?: [];
-
-        // Fetch Supplier Payments (recorded in expenses with vendor_id)
-        $this->db->query("
-            SELECT e.*, v.name as supplier_name, u.username as responsible_person, je.reference as je_reference,
-                   (SELECT account_id FROM transactions WHERE journal_entry_id = e.journal_entry_id AND credit > 0 LIMIT 1) as asset_account_id
-            FROM expenses e
-            JOIN vendors v ON e.vendor_id = v.id
-            LEFT JOIN users u ON e.created_by = u.id
-            LEFT JOIN journal_entries je ON e.journal_entry_id = je.id
-            ORDER BY e.expense_date DESC, e.id DESC
-        ");
-        $supplierPayments = $this->db->resultSet() ?: [];
+        // Fetch unified payment history
+        $filters = [
+            'start_date' => $_GET['start_date'] ?? '',
+            'end_date' => $_GET['end_date'] ?? '',
+            'method' => $_GET['method'] ?? '',
+            'limit' => 100,
+            'offset' => 0
+        ];
+        $paymentsHistory = $this->paymentModel->getUnifiedPaymentHistory($filters);
 
         $data = [
             'title' => 'Payment Center',
@@ -76,20 +62,24 @@ class PaymentController extends Controller {
             'assets' => $assets,
             'ar_account' => $arAccount,
             'ap_account' => $apAccount,
-            'customer_payments' => $customerPayments,
-            'supplier_payments' => $supplierPayments,
+            'payments_history' => $paymentsHistory,
+            'filters' => $filters,
             'error' => '',
             'success' => ''
         ];
 
-        // Handle success messages from redirect
         if (isset($_GET['success'])) {
             if ($_GET['success'] === 'customer_payment') {
-                $data['success'] = 'Customer payment recorded and double-entry posted successfully!';
+                $data['success'] = 'Customer payment recorded successfully!';
             } elseif ($_GET['success'] === 'supplier_payment') {
-                $data['success'] = 'Supplier payment recorded and double-entry posted successfully!';
+                $data['success'] = 'Supplier payment recorded successfully!';
+            } elseif ($_GET['success'] === 'reversed') {
+                $data['success'] = 'Payment reversed successfully and ledger updated!';
+            } elseif ($_GET['success'] === 'credit_applied') {
+                $data['success'] = 'Available credit balance successfully applied to unpaid invoices!';
             }
         }
+
         if (isset($_GET['error'])) {
             $data['error'] = htmlspecialchars($_GET['error']);
         }
@@ -98,7 +88,27 @@ class PaymentController extends Controller {
     }
 
     /**
-     * Record a payment received from a customer
+     * API to fetch customer unpaid invoices in JSON
+     */
+    public function getCustomerInvoicesJson($customerId) {
+        header('Content-Type: application/json');
+        $invoices = $this->paymentModel->getCustomerUnpaidInvoices(intval($customerId));
+        echo json_encode(array_values($invoices));
+        exit;
+    }
+
+    /**
+     * API to fetch supplier unpaid GRNs in JSON
+     */
+    public function getSupplierGRNsJson($supplierId) {
+        header('Content-Type: application/json');
+        $grns = $this->paymentModel->getSupplierUnpaidGRNs(intval($supplierId));
+        echo json_encode(array_values($grns));
+        exit;
+    }
+
+    /**
+     * Record customer payment
      */
     public function recordCustomerPayment() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -106,16 +116,17 @@ class PaymentController extends Controller {
             exit;
         }
 
-        $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-
         $paymentData = [
-            'customer_id' => intval($_POST['customer_id']),
-            'amount' => floatval($_POST['amount']),
-            'date' => $_POST['payment_date'],
-            'method' => $_POST['payment_method'],
-            'reference' => trim($_POST['reference']),
-            'asset_account_id' => intval($_POST['asset_account_id']),
-            'ar_account_id' => intval($_POST['ar_account_id']),
+            'customer_id' => intval($_POST['customer_id'] ?? 0),
+            'amount' => floatval($_POST['amount'] ?? 0),
+            'date' => $_POST['payment_date'] ?? date('Y-m-d'),
+            'method' => $_POST['payment_method'] ?? 'Cash',
+            'reference' => trim($_POST['reference'] ?? ''),
+            'notes' => trim($_POST['notes'] ?? ''),
+            'asset_account_id' => intval($_POST['asset_account_id'] ?? 0),
+            'ar_account_id' => intval($_POST['ar_account_id'] ?? 0),
+            'allocation_type' => $_POST['allocation_type'] ?? 'auto',
+            'allocations' => $_POST['allocations'] ?? [],
             // Cheque details
             'cheque_bank' => trim($_POST['cheque_bank'] ?? ''),
             'cheque_number' => trim($_POST['cheque_number'] ?? ''),
@@ -128,31 +139,32 @@ class PaymentController extends Controller {
         }
 
         if (empty($paymentData['customer_id'])) {
-            header('Location: ' . APP_URL . '/payment?error=Please select a valid customer.');
+            header('Location: ' . APP_URL . '/payment?error=Please select a customer.');
             exit;
         }
 
         if (empty($paymentData['asset_account_id']) || empty($paymentData['ar_account_id'])) {
-            header('Location: ' . APP_URL . '/payment?error=Ledger accounts (Cash/Bank and Accounts Receivable) must be selected.');
+            header('Location: ' . APP_URL . '/payment?error=Ledger accounts must be specified.');
             exit;
         }
 
         if ($paymentData['method'] === 'Cheque' && (empty($paymentData['cheque_bank']) || empty($paymentData['cheque_number']) || empty($paymentData['cheque_date']))) {
-            header('Location: ' . APP_URL . '/payment?error=All cheque details (Bank, Number, and Date) are required for Cheque payments.');
+            header('Location: ' . APP_URL . '/payment?error=Cheque details are required.');
             exit;
         }
 
-        // Process payment in Model
-        if ($this->customerModel->recordPayment($paymentData, $_SESSION['user_id'])) {
+        $paymentId = $this->paymentModel->recordCustomerPayment($paymentData, $_SESSION['user_id']);
+        if ($paymentId) {
+            $this->logActivity('Record Customer Payment', 'Payments', "Recorded customer payment of Rs: " . number_format($paymentData['amount'], 2) . " for Customer ID {$paymentData['customer_id']} via {$paymentData['method']}");
             header('Location: ' . APP_URL . '/payment?success=customer_payment');
         } else {
-            header('Location: ' . APP_URL . '/payment?error=Failed to process payment double-entry logic.');
+            header('Location: ' . APP_URL . '/payment?error=Failed to record payment and update ledger.');
         }
         exit;
     }
 
     /**
-     * Record a payment made to a supplier
+     * Record supplier payment
      */
     public function recordSupplierPayment() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -160,16 +172,17 @@ class PaymentController extends Controller {
             exit;
         }
 
-        $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-
         $paymentData = [
-            'supplier_id' => intval($_POST['supplier_id']),
-            'amount' => floatval($_POST['amount']),
-            'date' => $_POST['payment_date'],
-            'method' => $_POST['payment_method'],
-            'reference' => trim($_POST['reference']),
-            'asset_account_id' => intval($_POST['asset_account_id']),
-            'ap_account_id' => intval($_POST['ap_account_id']),
+            'supplier_id' => intval($_POST['supplier_id'] ?? 0),
+            'amount' => floatval($_POST['amount'] ?? 0),
+            'date' => $_POST['payment_date'] ?? date('Y-m-d'),
+            'method' => $_POST['payment_method'] ?? 'Cash',
+            'reference' => trim($_POST['reference'] ?? ''),
+            'notes' => trim($_POST['notes'] ?? ''),
+            'asset_account_id' => intval($_POST['asset_account_id'] ?? 0),
+            'ap_account_id' => intval($_POST['ap_account_id'] ?? 0),
+            'allocation_type' => $_POST['allocation_type'] ?? 'auto',
+            'allocations' => $_POST['allocations'] ?? [],
             // Cheque details
             'cheque_bank' => trim($_POST['cheque_bank'] ?? ''),
             'cheque_number' => trim($_POST['cheque_number'] ?? ''),
@@ -182,26 +195,127 @@ class PaymentController extends Controller {
         }
 
         if (empty($paymentData['supplier_id'])) {
-            header('Location: ' . APP_URL . '/payment?error=Please select a valid supplier.');
+            header('Location: ' . APP_URL . '/payment?error=Please select a supplier.');
             exit;
         }
 
         if (empty($paymentData['asset_account_id']) || empty($paymentData['ap_account_id'])) {
-            header('Location: ' . APP_URL . '/payment?error=Ledger accounts (Cash/Bank and Accounts Payable) must be selected.');
+            header('Location: ' . APP_URL . '/payment?error=Ledger accounts must be specified.');
             exit;
         }
 
         if ($paymentData['method'] === 'Cheque' && (empty($paymentData['cheque_bank']) || empty($paymentData['cheque_number']) || empty($paymentData['cheque_date']))) {
-            header('Location: ' . APP_URL . '/payment?error=All cheque details (Bank, Number, and Date) are required for Cheque payments.');
+            header('Location: ' . APP_URL . '/payment?error=Cheque details are required.');
             exit;
         }
 
-        // Process payment in Model
-        if ($this->supplierModel->recordPayment($paymentData, $_SESSION['user_id'])) {
+        $paymentId = $this->paymentModel->recordSupplierPayment($paymentData, $_SESSION['user_id']);
+        if ($paymentId) {
+            $this->logActivity('Record Supplier Payment', 'Payments', "Recorded supplier payment of Rs: " . number_format($paymentData['amount'], 2) . " for Supplier ID {$paymentData['supplier_id']} via {$paymentData['method']}");
             header('Location: ' . APP_URL . '/payment?success=supplier_payment');
         } else {
-            header('Location: ' . APP_URL . '/payment?error=Failed to process payment double-entry logic.');
+            header('Location: ' . APP_URL . '/payment?error=Failed to record payment and update ledger.');
         }
         exit;
+    }
+
+    /**
+     * Reverse Customer Payment
+     */
+    public function reverseCustomerPayment($id) {
+        if ($this->paymentModel->reverseCustomerPayment(intval($id), $_SESSION['user_id'])) {
+            $this->logActivity('Reverse Customer Payment', 'Payments', "Reversed customer payment ID: {$id}");
+            header('Location: ' . APP_URL . '/payment?success=reversed');
+        } else {
+            header('Location: ' . APP_URL . '/payment?error=Failed to reverse customer payment.');
+        }
+        exit;
+    }
+
+    /**
+     * Reverse Supplier Payment
+     */
+    public function reverseSupplierPayment($id) {
+        if ($this->paymentModel->reverseSupplierPayment(intval($id), $_SESSION['user_id'])) {
+            $this->logActivity('Reverse Supplier Payment', 'Payments', "Reversed supplier payment ID: {$id}");
+            header('Location: ' . APP_URL . '/payment?success=reversed');
+        } else {
+            header('Location: ' . APP_URL . '/payment?error=Failed to reverse supplier payment.');
+        }
+        exit;
+    }
+
+    /**
+     * Apply Customer Credit to unpaid invoices
+     */
+    public function applyCustomerCredit($customerId) {
+        if ($this->paymentModel->settleCustomerInvoicesWithCredit(intval($customerId), $_SESSION['user_id'])) {
+            $this->logActivity('Apply Customer Credit', 'Payments', "Applied available credits to invoices for Customer ID: {$customerId}");
+            header('Location: ' . APP_URL . '/payment?success=credit_applied');
+        } else {
+            header('Location: ' . APP_URL . '/payment?error=Failed to apply customer credit balance or no unpaid invoices found.');
+        }
+        exit;
+    }
+
+    /**
+     * Apply Supplier Credit to unpaid GRNs
+     */
+    public function applySupplierCredit($supplierId) {
+        if ($this->paymentModel->settleSupplierGRNsWithCredit(intval($supplierId), $_SESSION['user_id'])) {
+            $this->logActivity('Apply Supplier Credit', 'Payments', "Applied available credits to GRNs for Supplier ID: {$supplierId}");
+            header('Location: ' . APP_URL . '/payment?success=credit_applied');
+        } else {
+            header('Location: ' . APP_URL . '/payment?error=Failed to apply supplier credit balance or no unpaid GRNs found.');
+        }
+        exit;
+    }
+
+    /**
+     * Display printable receipt
+     */
+    public function receipt($type, $id) {
+        $id = intval($id);
+        $data = [];
+        if ($type === 'customer') {
+            $data['payment'] = $this->paymentModel->getCustomerPaymentById($id);
+            $data['allocations'] = $this->paymentModel->getCustomerPaymentAllocations($id);
+            $this->view('payments/customer_receipt', $data);
+        } elseif ($type === 'supplier') {
+            $data['payment'] = $this->paymentModel->getSupplierPaymentById($id);
+            $data['allocations'] = $this->paymentModel->getSupplierPaymentAllocations($id);
+            $this->view('payments/supplier_receipt', $data);
+        } else {
+            die("Invalid Receipt Type");
+        }
+    }
+
+    /**
+     * Display customer/supplier statement report
+     */
+    public function statement($type, $id) {
+        $id = intval($id);
+        $startDate = $_GET['start_date'] ?? '';
+        $endDate = $_GET['end_date'] ?? '';
+
+        $data = [
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'type' => $type
+        ];
+
+        if ($type === 'customer') {
+            $data['customer'] = $this->customerModel->getCustomerById($id);
+            $data['stats'] = $this->customerModel->getCustomerStats($id);
+            $data['ledger'] = $this->paymentModel->getCustomerStatement($id, $startDate, $endDate);
+            $this->view('payments/customer_statement', $data);
+        } elseif ($type === 'supplier') {
+            $data['supplier'] = $this->supplierModel->getSupplierById($id);
+            $data['stats'] = $this->supplierModel->getSupplierStats($id);
+            $data['ledger'] = $this->paymentModel->getSupplierStatement($id, $startDate, $endDate);
+            $this->view('payments/supplier_statement', $data);
+        } else {
+            die("Invalid Statement Type");
+        }
     }
 }

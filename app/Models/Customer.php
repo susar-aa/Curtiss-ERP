@@ -12,7 +12,7 @@ class Customer {
             SELECT c.*, m.name as mca_name,
                    (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = c.id AND status != 'Voided') 
                    - 
-                   (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE customer_id = c.id) 
+                   (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE customer_id = c.id AND status = 'Active') 
                    - 
                    (SELECT COALESCE(SUM(total_amount), 0) FROM credit_notes WHERE customer_id = c.id) 
                    AS outstanding_balance
@@ -42,7 +42,7 @@ class Customer {
         $this->db->bind(':id', $id);
         $stats = $this->db->single();
 
-        $this->db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :id");
+        $this->db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :id AND status = 'Active'");
         $this->db->bind(':id', $id);
         $paid = $this->db->single();
         

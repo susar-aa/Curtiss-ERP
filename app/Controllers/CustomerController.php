@@ -122,34 +122,11 @@ class CustomerController extends Controller {
                     } else { $data['error'] = 'Failed to update customer details.'; }
                 }
 
-            } elseif ($_POST['action'] == 'record_payment') {
-                $paymentData = [
-                    'customer_id' => $_POST['customer_id'],
-                    'amount' => floatval($_POST['amount']),
-                    'date' => $_POST['payment_date'],
-                    'method' => $_POST['payment_method'],
-                    'reference' => trim($_POST['reference']),
-                    'asset_account_id' => $_POST['asset_account_id'],
-                    'ar_account_id' => $_POST['ar_account_id'],
-                    // Cheque Specific
-                    'cheque_bank' => trim($_POST['cheque_bank'] ?? ''),
-                    'cheque_number' => trim($_POST['cheque_number'] ?? ''),
-                    'cheque_date' => $_POST['cheque_date'] ?? ''
-                ];
-
-                if ($paymentData['amount'] > 0 && !empty($paymentData['asset_account_id'])) {
-                    if ($this->customerModel->recordPayment($paymentData, $_SESSION['user_id'])) {
-                        $this->logActivity('Record Payment', 'Billing', "Recorded payment of Rs: " . number_format($paymentData['amount'], 2) . " for Customer ID {$paymentData['customer_id']} via {$paymentData['method']}");
-                        header('Location: ' . APP_URL . '/customer/index/' . $paymentData['customer_id'] . '?success=payment'); exit;
-                    } else { $data['error'] = 'Failed to process payment double-entry logic.'; }
-                } else { $data['error'] = 'Invalid payment amount or missing ledger accounts.'; }
             }
         }
 
         if (isset($_GET['success'])) {
-            if ($_GET['success'] == 'payment') {
-                $data['success'] = "Payment recorded and ledger updated!";
-            } elseif ($_GET['success'] == 'add') {
+            if ($_GET['success'] == 'add') {
                 $data['success'] = "New customer profile registered successfully!";
             } else {
                 $data['success'] = "Customer profile updated successfully!";

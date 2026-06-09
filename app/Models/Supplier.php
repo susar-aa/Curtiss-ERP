@@ -7,7 +7,7 @@ class Supplier {
     }
 
     public function getAllSuppliers() {
-        // Calculates the billed (GRNs), paid (Expenses), and returned (Supplier Returns) to determine outstanding balance
+        // Calculates the billed (GRNs), paid (Expenses/Payments), and returned (Supplier Returns) to determine outstanding balance
         $this->db->query("
             SELECT v.*,
                    (SELECT COALESCE(SUM(gri.total), 0) 
@@ -16,7 +16,11 @@ class Supplier {
                     WHERE grn.vendor_id = v.id) as total_billed,
                    (SELECT COALESCE(SUM(amount), 0) 
                     FROM expenses 
-                    WHERE vendor_id = v.id) as total_paid,
+                    WHERE vendor_id = v.id) 
+                   + 
+                   (SELECT COALESCE(SUM(amount), 0) 
+                    FROM supplier_payments 
+                    WHERE vendor_id = v.id AND status = 'Active') as total_paid,
                    (SELECT COALESCE(SUM(total_amount), 0) 
                     FROM supplier_returns 
                     WHERE vendor_id = v.id) as total_returned
@@ -71,9 +75,16 @@ class Supplier {
         $this->db->bind(':id', $id);
         $billed = $this->db->single();
 
-        // Total Paid (Expenses)
-        $this->db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM expenses WHERE vendor_id = :id");
-        $this->db->bind(':id', $id);
+        // Total Paid (Expenses + Active Supplier Payments)
+        $this->db->query("
+            SELECT 
+                (SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE vendor_id = :id1) 
+                + 
+                (SELECT COALESCE(SUM(amount), 0) FROM supplier_payments WHERE vendor_id = :id2 AND status = 'Active') 
+                as total_paid
+        ");
+        $this->db->bind(':id1', $id);
+        $this->db->bind(':id2', $id);
         $paid = $this->db->single();
 
         // Total Returned (Supplier Returns)

@@ -94,32 +94,6 @@ class SupplierController extends Controller {
                     }
                 } else {
                     $data['error'] = 'Supplier name is required.';
-                }
-            } elseif ($_POST['action'] == 'record_payment') {
-                $paymentData = [
-                    'supplier_id' => intval($_POST['supplier_id']),
-                    'amount' => floatval($_POST['amount']),
-                    'date' => $_POST['payment_date'],
-                    'method' => $_POST['payment_method'],
-                    'reference' => trim($_POST['reference']),
-                    'asset_account_id' => intval($_POST['asset_account_id']),
-                    'ap_account_id' => intval($_POST['ap_account_id']),
-                    // Cheque Specific
-                    'cheque_bank' => trim($_POST['cheque_bank'] ?? ''),
-                    'cheque_number' => trim($_POST['cheque_number'] ?? ''),
-                    'cheque_date' => $_POST['cheque_date'] ?? ''
-                ];
-
-                if ($paymentData['amount'] > 0 && !empty($paymentData['asset_account_id']) && !empty($paymentData['ap_account_id'])) {
-                    if ($this->supplierModel->recordPayment($paymentData, $_SESSION['user_id'])) {
-                        header('Location: ' . APP_URL . '/supplier/index/' . $paymentData['supplier_id'] . '?success=payment');
-                        exit;
-                    } else {
-                        $data['error'] = 'Failed to process payment double-entry logic.';
-                    }
-                } else {
-                    $data['error'] = 'Invalid payment amount or missing ledger accounts.';
-                }
             }
         }
 
@@ -128,8 +102,6 @@ class SupplierController extends Controller {
                 $data['success'] = "Supplier registered successfully!";
             } elseif ($_GET['success'] == 'updated') {
                 $data['success'] = "Supplier profile updated successfully!";
-            } elseif ($_GET['success'] == 'payment') {
-                $data['success'] = "Payment recorded and ledger updated successfully!";
             }
         }
 
