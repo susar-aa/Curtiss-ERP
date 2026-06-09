@@ -707,11 +707,18 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Accounts and recons</div>
                             </div>
                         </a>
-                        <a href="<?= APP_URL ?>/payment" class="mega-list-item">
+                        <a href="<?= APP_URL ?>/customerpayment" class="mega-list-item">
                             <div class="icon-wrapper text-primary"><i class="ph ph-hand-coins"></i></div>
                             <div class="mega-list-item-content">
-                                <div class="title text-primary">Payment Center</div>
-                                <div class="desc">Customer & Supplier Payments</div>
+                                <div class="title text-primary">Customer Payments</div>
+                                <div class="desc">AR Collections & Allocations</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/supplierpayment" class="mega-list-item">
+                            <div class="icon-wrapper text-warning"><i class="ph ph-hand-deposit"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title text-warning">Supplier Payments</div>
+                                <div class="desc">AP Payouts & GRN Allocations</div>
                             </div>
                         </a>
                         <a href="<?= APP_URL ?>/asset" class="mega-list-item">

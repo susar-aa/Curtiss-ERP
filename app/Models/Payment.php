@@ -819,6 +819,92 @@ class Payment {
     }
 
     /**
+     * Get Customer-only Payment History
+     */
+    public function getCustomerPaymentHistory($filters = []) {
+        $sql = "
+            SELECT 'Customer' as type, p.id, p.payment_date, p.payment_method, p.reference, p.amount, p.status, c.name as counterparty_name, u.username as creator_name
+            FROM customer_payments p
+            JOIN customers c ON p.customer_id = c.id
+            LEFT JOIN users u ON p.created_by = u.id
+            WHERE 1=1
+        ";
+
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND p.payment_date >= :start_date";
+        }
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND p.payment_date <= :end_date";
+        }
+        if (!empty($filters['method'])) {
+            $sql .= " AND p.payment_method = :method";
+        }
+
+        $sql .= " ORDER BY payment_date DESC, id DESC LIMIT :limit OFFSET :offset";
+        $this->db->query($sql);
+
+        if (!empty($filters['start_date'])) {
+            $this->db->bind(':start_date', $filters['start_date']);
+        }
+        if (!empty($filters['end_date'])) {
+            $this->db->bind(':end_date', $filters['end_date']);
+        }
+        if (!empty($filters['method'])) {
+            $this->db->bind(':method', $filters['method']);
+        }
+
+        $limit = $filters['limit'] ?? 50;
+        $offset = $filters['offset'] ?? 0;
+        $this->db->bind(':limit', $limit, PDO::PARAM_INT);
+        $this->db->bind(':offset', $offset, PDO::PARAM_INT);
+
+        return $this->db->resultSet();
+    }
+
+    /**
+     * Get Supplier-only Payment History
+     */
+    public function getSupplierPaymentHistory($filters = []) {
+        $sql = "
+            SELECT 'Supplier' as type, p.id, p.payment_date, p.payment_method, p.reference, p.amount, p.status, v.name as counterparty_name, u.username as creator_name
+            FROM supplier_payments p
+            JOIN vendors v ON p.vendor_id = v.id
+            LEFT JOIN users u ON p.created_by = u.id
+            WHERE 1=1
+        ";
+
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND p.payment_date >= :start_date";
+        }
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND p.payment_date <= :end_date";
+        }
+        if (!empty($filters['method'])) {
+            $sql .= " AND p.payment_method = :method";
+        }
+
+        $sql .= " ORDER BY payment_date DESC, id DESC LIMIT :limit OFFSET :offset";
+        $this->db->query($sql);
+
+        if (!empty($filters['start_date'])) {
+            $this->db->bind(':start_date', $filters['start_date']);
+        }
+        if (!empty($filters['end_date'])) {
+            $this->db->bind(':end_date', $filters['end_date']);
+        }
+        if (!empty($filters['method'])) {
+            $this->db->bind(':method', $filters['method']);
+        }
+
+        $limit = $filters['limit'] ?? 50;
+        $offset = $filters['offset'] ?? 0;
+        $this->db->bind(':limit', $limit, PDO::PARAM_INT);
+        $this->db->bind(':offset', $offset, PDO::PARAM_INT);
+
+        return $this->db->resultSet();
+    }
+
+    /**
      * Settle Customer unpaid invoices using their available advance credit balance
      */
     public function settleCustomerInvoicesWithCredit($customerId, $userId) {

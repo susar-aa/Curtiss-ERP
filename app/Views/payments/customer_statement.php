@@ -144,7 +144,7 @@
                 Filter
             </button>
             <?php if ($data['start_date'] || $data['end_date']): ?>
-                <a href="<?= APP_URL ?>/payment/statement/customer/<?= $data['customer']->id ?>" style="color: #4f46e5; text-decoration: none; font-size: 13px; font-weight: 600; margin-left: 10px;">Clear</a>
+                <a href="<?= APP_URL ?>/customerpayment/statement/<?= $data['customer']->id ?>" style="color: #4f46e5; text-decoration: none; font-size: 13px; font-weight: 600; margin-left: 10px;">Clear</a>
             <?php endif; ?>
         </form>
         <button onclick="window.print()" style="padding: 8px 16px; background: #10b981; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer;">

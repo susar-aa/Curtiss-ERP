@@ -92,8 +92,7 @@ class SupplierController extends Controller {
                     } else {
                         $data['error'] = 'Failed to update supplier.';
                     }
-                } else {
-                    $data['error'] = 'Supplier name is required.';
+                }
             }
         }
 
