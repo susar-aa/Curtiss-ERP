@@ -91,7 +91,7 @@ class StockLedgerController extends Controller {
         }
 
         $startDate = $_GET['start_date'] ?? date('Y-m-d', strtotime('-30 days'));
-        $endDate = $_GET['end_date'] ?? date('Y-m-d');
+        $endDate = $_GET['end_date'] ?? '';
         $varOptId = $_GET['variation_option_id'] ?? null;
 
         $item = $this->itemModel->getItemById($itemId);
@@ -116,7 +116,7 @@ class StockLedgerController extends Controller {
             'variations' => $variations,
             'varOptId' => $varOptId,
             'startDate' => $startDate,
-            'endDate' => $endDate,
+            'endDate' => $endDate ?: date('Y-m-d'),
             'opening_balance' => $stockCard['opening_balance'],
             'movements' => $stockCard['movements'],
             'closing_balance' => $stockCard['closing_balance']
