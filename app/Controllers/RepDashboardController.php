@@ -76,12 +76,16 @@ class RepDashboardController extends Controller {
         $items = $this->itemModel->getItems();
         $productsJson = [];
         foreach ($items as $item) {
+            $wholesalePrice = floatval($item->wholesale_price ?? 0);
+            if ($wholesalePrice <= 0) {
+                $wholesalePrice = floatval($item->selling_price ?? 0);
+            }
             $productsJson[] = [
                 'id' => intval($item->id),
                 'name' => $item->name,
                 'category_name' => $item->category_name ?? 'General',
-                'selling_price' => floatval($item->selling_price),
-                'wholesale_price' => floatval($item->wholesale_price ?? $item->selling_price),
+                'selling_price' => $wholesalePrice,
+                'wholesale_price' => $wholesalePrice,
                 'quantity_on_hand' => intval($item->qty ?? $item->quantity_on_hand ?? 0),
                 'quantity_reserved' => intval($item->quantity_reserved),
                 'image_path' => $item->image_path ?? ''
