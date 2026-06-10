@@ -252,15 +252,50 @@ if ($importResults) {
                 <?php endif; ?>
 
                 <?php if (!empty($importResults['errors'])): ?>
-                    <div class="bg-rose-50 border border-rose-100 rounded-xl p-4 space-y-2">
-                        <h4 class="text-xs font-bold text-rose-800 uppercase tracking-wider flex items-center gap-1">
-                            <i class="fa-solid fa-triangle-exclamation"></i> Detailed Error Log:
+                    <div class="bg-rose-50/50 border border-rose-100 rounded-2xl p-5 space-y-3">
+                        <h4 class="text-xs font-bold text-rose-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Detailed Validation & Error Log:
                         </h4>
-                        <ul class="text-[11px] text-rose-600 font-mono list-disc list-inside space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
-                            <?php foreach ($importResults['errors'] as $err): ?>
-                                <li><?= htmlspecialchars($err); ?></li>
-                            <?php endforeach; ?>
-                        </ul>
+                        <div class="overflow-x-auto rounded-xl border border-rose-100 bg-white shadow-sm max-h-[350px] custom-scrollbar">
+                            <table class="min-w-full divide-y divide-rose-100 text-xs">
+                                <thead class="bg-rose-50/70 sticky top-0 backdrop-blur-md z-10">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left font-bold text-rose-800 uppercase tracking-wider w-16">Row</th>
+                                        <th class="px-4 py-3 text-left font-bold text-rose-800 uppercase tracking-wider w-36">SKU / Code</th>
+                                        <th class="px-4 py-3 text-left font-bold text-rose-800 uppercase tracking-wider w-48">Product Name</th>
+                                        <th class="px-4 py-3 text-left font-bold text-rose-800 uppercase tracking-wider">Validation Errors & Issues</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-rose-50/50 font-medium">
+                                    <?php foreach ($importResults['errors'] as $err): ?>
+                                        <?php if (is_array($err)): ?>
+                                            <tr class="hover:bg-rose-50/10 transition-colors">
+                                                <td class="px-4 py-3 text-rose-700 font-mono"><?= htmlspecialchars($err['row'] ?? '-'); ?></td>
+                                                <td class="px-4 py-3 text-slate-700 font-mono"><?= htmlspecialchars($err['sku'] ?? '-'); ?></td>
+                                                <td class="px-4 py-3 text-slate-700 font-semibold truncate max-w-[180px]" title="<?= htmlspecialchars($err['name'] ?? '-'); ?>"><?= htmlspecialchars($err['name'] ?? '-'); ?></td>
+                                                <td class="px-4 py-3">
+                                                    <div class="flex flex-col gap-1">
+                                                        <?php foreach ($err['messages'] as $msg): ?>
+                                                            <div class="flex items-start gap-1.5 text-rose-600">
+                                                                <span class="text-[10px] text-rose-400 mt-0.5">•</span>
+                                                                <span><?= htmlspecialchars($msg); ?></span>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php else: ?>
+                                            <tr class="hover:bg-rose-50/10 transition-colors">
+                                                <td class="px-4 py-3 text-rose-700 font-mono">-</td>
+                                                <td class="px-4 py-3 text-slate-700 font-mono">-</td>
+                                                <td class="px-4 py-3 text-slate-700 font-semibold">-</td>
+                                                <td class="px-4 py-3 text-rose-600"><?= htmlspecialchars($err); ?></td>
+                                            </tr>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 <?php endif; ?>
             </div>
@@ -945,7 +980,13 @@ if ($importResults) {
             const isChecked = checkbox.checked;
             
             if (field === 'category') {
-                document.getElementById('bulkCategorySelect').disabled = !isChecked;
+                const select = document.getElementById('bulkCategorySelect');
+                select.disabled = !isChecked;
+                const wrapper = select.previousElementSibling;
+                if (wrapper && wrapper.classList.contains('searchable-select-wrapper')) {
+                    const input = wrapper.querySelector('.searchable-select-input');
+                    if (input) input.disabled = !isChecked;
+                }
             } else if (field === 'selling_price') {
                 document.getElementById('bulkSellingPriceType').disabled = !isChecked;
                 document.getElementById('bulkSellingPriceVal').disabled = !isChecked;
@@ -953,7 +994,13 @@ if ($importResults) {
                 document.getElementById('bulkWholesalePriceType').disabled = !isChecked;
                 document.getElementById('bulkWholesalePriceVal').disabled = !isChecked;
             } else if (field === 'status') {
-                document.getElementById('bulkStatusSelect').disabled = !isChecked;
+                const select = document.getElementById('bulkStatusSelect');
+                select.disabled = !isChecked;
+                const wrapper = select.previousElementSibling;
+                if (wrapper && wrapper.classList.contains('searchable-select-wrapper')) {
+                    const input = wrapper.querySelector('.searchable-select-input');
+                    if (input) input.disabled = !isChecked;
+                }
             }
         }
 
