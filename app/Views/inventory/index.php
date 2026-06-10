@@ -935,7 +935,14 @@ if ($importResults) {
         }
 
         function toggleBulkField(field) {
-            const isChecked = document.getElementById('bulkUpdate' + field.charAt(0).toUpperCase() + field.slice(1)).checked;
+            let id = 'bulkUpdateCategory';
+            if (field === 'selling_price') id = 'bulkUpdateSellingPrice';
+            else if (field === 'wholesale_price') id = 'bulkUpdateWholesalePrice';
+            else if (field === 'status') id = 'bulkUpdateStatus';
+            
+            const checkbox = document.getElementById(id);
+            if (!checkbox) return;
+            const isChecked = checkbox.checked;
             
             if (field === 'category') {
                 document.getElementById('bulkCategorySelect').disabled = !isChecked;
