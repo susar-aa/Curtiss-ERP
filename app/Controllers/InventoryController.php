@@ -1187,7 +1187,80 @@ class InventoryController extends Controller {
             return false;
         }
     }
+
+    public function delete($id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Invalid request method.']);
+            exit;
+        }
+
+        header('Content-Type: application/json');
+        
+        $password = $_POST['password'] ?? '';
+        $isAdmin = (strtolower($_SESSION['role'] ?? '') === 'admin');
+
+        $userModel = $this->model('User');
+        $authorized = false;
+        $authUsername = '';
+
+        if ($isAdmin) {
+            // Verify current logged in admin password
+            $currentUsername = $_SESSION['username'] ?? '';
+            $user = $userModel->login($currentUsername, $password);
+            if ($user && strtolower($user->role) === 'admin') {
+                $authorized = true;
+                $authUsername = $currentUsername;
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Incorrect password for your admin account.']);
+                exit;
+            }
+        } else {
+            // Verify provided admin credentials
+            $adminUsername = trim($_POST['admin_username'] ?? '');
+            if (empty($adminUsername)) {
+                echo json_encode(['success' => false, 'error' => 'Admin username is required.']);
+                exit;
+            }
+            $user = $userModel->login($adminUsername, $password);
+            if ($user && strtolower($user->role) === 'admin') {
+                $authorized = true;
+                $authUsername = $adminUsername;
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Invalid admin credentials or user is not an administrator.']);
+                exit;
+            }
+        }
+
+        if ($authorized) {
+            $item = $this->itemModel->getItemById($id);
+            if (!$item) {
+                echo json_encode(['success' => false, 'error' => 'Product not found.']);
+                exit;
+            }
+
+            if ($this->itemModel->deleteItem($id)) {
+                // Log action
+                $this->logActivity(
+                    'Product Deleted',
+                    'Inventory',
+                    "Product '{$item->name}' (Code: {$item->item_code}) deleted by administrator '{$authUsername}' (Requesting user: '{$_SESSION['username']}').",
+                    $id
+                );
+
+                echo json_encode(['success' => true, 'message' => 'Product deleted successfully!']);
+                exit;
+            } else {
+                echo json_encode(['success' => false, 'error' => 'Failed to delete product from database.']);
+                exit;
+            }
+        }
+
+        echo json_encode(['success' => false, 'error' => 'Unauthorized action.']);
+        exit;
+    }
 }
+
 
 /**
  * Truncates long names nicely

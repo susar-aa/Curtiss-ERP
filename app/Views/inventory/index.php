@@ -21,6 +21,7 @@ $filters['max_price'] = $filters['max_price'] ?? '';
 $filters['stock_status'] = $filters['stock_status'] ?? '';
 $filters['category_id'] = $filters['category_id'] ?? '';
 $categories = $data['categories'] ?? [];
+$isCurrentlyAdmin = (strtolower($_SESSION['role'] ?? '') === 'admin');
 
 // Retrieve pagination config with safe fallbacks
 $pagination = $data['pagination'] ?? [
@@ -504,6 +505,10 @@ if ($importResults) {
                                                    class="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors" title="Edit Catalog Entry">
                                                     <i class="fa-solid fa-pen-to-square"></i>
                                                 </a>
+                                                <button type="button" onclick="confirmDelete(<?php echo $item->id; ?>, '<?php echo htmlspecialchars(addslashes($item->name)); ?>')" 
+                                                        class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Delete Product">
+                                                    <i class="fa-solid fa-trash-can"></i>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -750,7 +755,157 @@ if ($importResults) {
         function closeCsvModal() {
             document.getElementById('csvImportModal').classList.add('hidden');
         }
+
+        let activeDeleteId = null;
+
+        function confirmDelete(id, name) {
+            activeDeleteId = id;
+            document.getElementById('deleteItemId').value = id;
+            document.getElementById('deleteItemName').textContent = name;
+            
+            // Clear inputs and error message
+            const errorContainer = document.getElementById('deleteErrorContainer');
+            if (errorContainer) {
+                errorContainer.classList.add('hidden');
+                errorContainer.textContent = '';
+            }
+            
+            const passwordInput = document.getElementById('deleteAdminPassword');
+            if (passwordInput) passwordInput.value = '';
+            
+            const usernameInput = document.getElementById('deleteAdminUsername');
+            if (usernameInput) usernameInput.value = '';
+
+            document.getElementById('deleteProductModal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteProductModal').classList.add('hidden');
+            activeDeleteId = null;
+        }
+
+        function submitDeleteProduct(e) {
+            e.preventDefault();
+
+            if (!activeDeleteId) return;
+
+            const form = document.getElementById('deleteProductForm');
+            const submitBtn = document.getElementById('deleteSubmitBtn');
+            const spinner = document.getElementById('deleteBtnSpinner');
+            const errorContainer = document.getElementById('deleteErrorContainer');
+
+            // Disable buttons and show spinner
+            if (submitBtn) submitBtn.disabled = true;
+            if (spinner) spinner.classList.remove('hidden');
+            if (errorContainer) {
+                errorContainer.classList.add('hidden');
+                errorContainer.textContent = '';
+            }
+
+            const formData = new FormData(form);
+
+            fetch('<?php echo APP_URL; ?>/inventory/delete/' + activeDeleteId, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to authorize deletion');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    closeDeleteModal();
+                    applyAjaxFilters();
+                } else {
+                    if (errorContainer) {
+                        errorContainer.textContent = data.error || 'Authorization failed. Please try again.';
+                        errorContainer.classList.remove('hidden');
+                    }
+                }
+            })
+            .catch(err => {
+                if (errorContainer) {
+                    errorContainer.textContent = err.message || 'An error occurred during verification.';
+                    errorContainer.classList.remove('hidden');
+                }
+            })
+            .finally(() => {
+                if (submitBtn) submitBtn.disabled = false;
+                if (spinner) spinner.classList.add('hidden');
+            });
+        }
     </script>
+
+    <!-- Product Delete Confirmation Modal (Rich Glassmorphism & Admin verification) -->
+    <div id="deleteProductModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all border border-slate-200">
+            <!-- Modal Header -->
+            <div class="bg-rose-50 border-b border-rose-100 p-6 flex justify-between items-center">
+                <div class="flex items-center gap-2.5 text-rose-800">
+                    <i class="fa-solid fa-trash-can text-rose-600 text-xl"></i>
+                    <h3 class="text-base font-bold">Delete Product</h3>
+                </div>
+                <button onclick="closeDeleteModal()" class="text-slate-400 hover:text-slate-600 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body / Form -->
+            <form id="deleteProductForm" onsubmit="submitDeleteProduct(event)" class="p-6 space-y-4">
+                <input type="hidden" id="deleteItemId" name="item_id">
+                
+                <p class="text-sm text-slate-600">
+                    Are you sure you want to delete <strong id="deleteItemName" class="text-slate-900"></strong>? This action cannot be undone.
+                </p>
+
+                <div id="deleteErrorContainer" class="hidden p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl font-medium"></div>
+
+                <?php if ($isCurrentlyAdmin): ?>
+                    <!-- Currently Admin: Password verification only -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Confirm with your password</label>
+                        <input type="password" name="password" id="deleteAdminPassword" required placeholder="Enter your password" 
+                               class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 focus:outline-none transition-all">
+                    </div>
+                <?php else: ?>
+                    <!-- Currently Non-Admin: Require both admin username and password -->
+                    <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-xl mb-4">
+                        <div class="flex gap-2">
+                            <i class="fa-solid fa-shield-halved text-amber-600 mt-0.5 text-sm"></i>
+                            <div class="text-xs text-amber-800 font-medium">
+                                Admin authorization is required to delete products. Please ask an administrator to sign this action.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Admin Username</label>
+                            <input type="text" name="admin_username" id="deleteAdminUsername" required placeholder="Admin username" 
+                                   class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 focus:outline-none transition-all">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Admin Password</label>
+                            <input type="password" name="password" id="deleteAdminPassword" required placeholder="Admin password" 
+                                   class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 focus:outline-none transition-all">
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Form Actions -->
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeDeleteModal()" 
+                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition-all">
+                        Cancel
+                    </button>
+                    <button type="submit" id="deleteSubmitBtn"
+                            class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all flex items-center gap-2">
+                        <span id="deleteBtnSpinner" class="hidden"><i class="fa-solid fa-spinner animate-spin"></i></span>
+                        Authorize & Delete
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 <?php include '../app/Views/layouts/resilient_loader.php'; ?>
 </body>
 </html>

@@ -481,4 +481,35 @@ class Item {
             // Log error or ignore gracefully
         }
     }
+
+    public function deleteItem($id) {
+        $this->db->beginTransaction();
+        try {
+            // Delete related discount rules
+            $this->db->query("DELETE FROM discount_rules WHERE target_item_id = :id");
+            $this->db->bind(':id', $id);
+            $this->db->execute();
+
+            // Delete related item images
+            $this->db->query("DELETE FROM item_images WHERE item_id = :id");
+            $this->db->bind(':id', $id);
+            $this->db->execute();
+
+            // Delete related variation options
+            $this->db->query("DELETE FROM item_variation_options WHERE item_id = :id");
+            $this->db->bind(':id', $id);
+            $this->db->execute();
+
+            // Delete item itself
+            $this->db->query("DELETE FROM items WHERE id = :id");
+            $this->db->bind(':id', $id);
+            $this->db->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            return false;
+        }
+    }
 }
