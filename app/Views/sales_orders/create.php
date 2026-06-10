@@ -17,6 +17,89 @@ if (empty($catalog_items)) {
     $catalog_items = $db->resultSet();
 }
 
+// Enforce Wholesale B2B pricing preference and load variations from JSON if needed
+foreach ($catalog_items as $key => $item) {
+    $billingPrice = 0.00;
+    if (is_object($item)) {
+        if (isset($item->wholesale_price) && floatval($item->wholesale_price) > 0) {
+            $billingPrice = floatval($item->wholesale_price);
+        } elseif (isset($item->selling_price) && floatval($item->selling_price) > 0) {
+            $billingPrice = floatval($item->selling_price);
+        } elseif (isset($item->price) && floatval($item->price) > 0) {
+            $billingPrice = floatval($item->price);
+        } elseif (isset($item->regular_price) && floatval($item->regular_price) > 0) {
+            $billingPrice = floatval($item->regular_price);
+        }
+        $item->price = $billingPrice;
+        $item->selling_price = $billingPrice;
+        $item->regular_price = $billingPrice;
+        $item->wholesale_price = $billingPrice;
+
+        if (!isset($item->variations) || empty($item->variations)) {
+            $db->query("SELECT ivo.*, v.name as variation_name, vv.value_name 
+                        FROM item_variation_options ivo
+                        JOIN variations v ON ivo.variation_id = v.id
+                        JOIN variation_values vv ON ivo.variation_value_id = vv.id
+                        WHERE ivo.item_id = :id");
+            $db->bind(':id', $item->id);
+            $item->variations = $db->resultSet() ?: [];
+
+            if (empty($item->variations) && !empty($item->variations_json)) {
+                $decoded = json_decode($item->variations_json);
+                if (is_array($decoded)) {
+                    $item->variations = [];
+                    foreach ($decoded as $v) {
+                        $vObj = new stdClass();
+                        $vObj->id = $v->id ?? 0;
+                        $vObj->variation_name = 'Option';
+                        $vObj->value_name = $v->attribute ?? '';
+                        $vObj->sku = $v->sku ?? '';
+                        $vObj->quantity_on_hand = $v->qty ?? $item->qty ?? $item->quantity_on_hand ?? 0;
+                        $vObj->quantity_reserved = $v->quantity_reserved ?? 0;
+
+                        $vPrice = 0.00;
+                        if (isset($v->wholesale_price) && floatval($v->wholesale_price) > 0) {
+                            $vPrice = floatval($v->wholesale_price);
+                        } elseif (isset($v->price) && floatval($v->price) > 0) {
+                            $vPrice = floatval($v->price);
+                        } else {
+                            $vPrice = $billingPrice;
+                        }
+                        $vObj->price = $vPrice;
+                        $item->variations[] = $vObj;
+                    }
+                }
+            } else if (!empty($item->variations)) {
+                foreach ($item->variations as $var) {
+                    $varPrice = 0.00;
+                    if (isset($var->wholesale_price) && floatval($var->wholesale_price) > 0) {
+                        $varPrice = floatval($var->wholesale_price);
+                    } elseif (isset($var->price) && floatval($var->price) > 0) {
+                        $varPrice = floatval($var->price);
+                    } else {
+                        $varPrice = $billingPrice;
+                    }
+                    $var->price = $varPrice;
+                }
+            }
+        }
+    } elseif (is_array($item)) {
+        if (isset($item['wholesale_price']) && floatval($item['wholesale_price']) > 0) {
+            $billingPrice = floatval($item['wholesale_price']);
+        } elseif (isset($item['selling_price']) && floatval($item['selling_price']) > 0) {
+            $billingPrice = floatval($item['selling_price']);
+        } elseif (isset($item['price']) && floatval($item['price']) > 0) {
+            $billingPrice = floatval($item['price']);
+        } elseif (isset($item['regular_price']) && floatval($item['regular_price']) > 0) {
+            $billingPrice = floatval($item['regular_price']);
+        }
+        $catalog_items[$key]['price'] = $billingPrice;
+        $catalog_items[$key]['selling_price'] = $billingPrice;
+        $catalog_items[$key]['regular_price'] = $billingPrice;
+        $catalog_items[$key]['wholesale_price'] = $billingPrice;
+    }
+}
+
 // Fetch Customers WITH Territory Name and Real-Time Outstanding Balance
 $db->query("SELECT c.*, m.name as mca_name,
                (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = c.id AND status != 'Voided') 
@@ -295,7 +378,8 @@ $reps = $db->resultSet();
         <?php foreach($catalog_items as $item): ?>
             <?php 
             $hasVars = !empty($item->variations);
-            $baseAvailable = ($item->quantity_on_hand ?? 0) - ($item->quantity_reserved ?? 0);
+            $stockQty = isset($item->qty) ? $item->qty : ($item->quantity_on_hand ?? 0);
+            $baseAvailable = $stockQty - ($item->quantity_reserved ?? 0);
             ?>
             <?php if($hasVars): ?>
                 { id: "<?= $item->id ?>|MIX|1", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($baseAvailable) ?>, code: "<?= htmlspecialchars((string)($item->item_code ?? '')) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?> (MIX)", price: <?= floatval($item->price ?? 0) ?> },

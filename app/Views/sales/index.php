@@ -70,7 +70,7 @@ foreach ($catalog_items as $key => $item) {
                         $vObj->variation_name = 'Option';
                         $vObj->value_name = $v->attribute ?? '';
                         $vObj->sku = $v->sku ?? '';
-                        $vObj->quantity_on_hand = $v->qty ?? $item->quantity_on_hand ?? 0;
+                        $vObj->quantity_on_hand = $v->qty ?? $item->qty ?? $item->quantity_on_hand ?? 0;
                         $vObj->quantity_reserved = $v->quantity_reserved ?? 0;
 
                         $vPrice = 0.00;
@@ -581,7 +581,8 @@ $editingItems = $data['editing_items'] ?? [];
         <?php foreach($catalog_items as $item): ?>
             <?php 
             $hasVars = !empty($item->variations);
-            $baseAvailable = ($item->quantity_on_hand ?? 0) - ($item->quantity_reserved ?? 0);
+            $stockQty = isset($item->qty) ? $item->qty : ($item->quantity_on_hand ?? 0);
+            $baseAvailable = $stockQty - ($item->quantity_reserved ?? 0);
             $catName = htmlspecialchars(addslashes((string)($item->category_name ?? '')));
             $sampleCode = htmlspecialchars(addslashes((string)($item->sample_code ?? '')));
             ?>
