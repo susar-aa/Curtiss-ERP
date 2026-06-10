@@ -1051,7 +1051,21 @@ if (!function_exists('erp_safe_json_encode')) {
         // INITIALIZATIONS
         // ==========================================
         window.addEventListener('DOMContentLoaded', () => {
-            calculateMarkupProfit();
+            const isEdit = <?php echo $is_edit ? 'true' : 'false'; ?>;
+            const sellingPriceLoaded = parseFloat(document.getElementById('sellingPriceInput').value) || 0;
+            const wholesalePriceLoaded = parseFloat(document.getElementById('wholesalePriceInput').value) || 0;
+
+            if (isEdit && (sellingPriceLoaded > 0 || wholesalePriceLoaded > 0)) {
+                // In edit mode, we preserve the actual saved prices and recalculate margins to match
+                if (sellingPriceLoaded > 0) {
+                    calculateMarginFromPrice('retail');
+                }
+                if (wholesalePriceLoaded > 0) {
+                    calculateMarginFromPrice('wholesale');
+                }
+            } else {
+                calculateMarkupProfit();
+            }
 
             // Populate existing variations in Edit Mode
             <?php if ($is_edit && isset($item->variations_json) && !empty($item->variations_json)): ?>
