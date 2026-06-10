@@ -1251,6 +1251,139 @@ class InventoryController extends Controller {
         echo json_encode(['success' => false, 'error' => 'Unauthorized action.']);
         exit;
     }
+
+    public function bulkUpdate() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Invalid request method.']);
+            exit;
+        }
+
+        header('Content-Type: application/json');
+
+        $itemIds = $_POST['item_ids'] ?? [];
+        if (!is_array($itemIds) || empty($itemIds)) {
+            echo json_encode(['success' => false, 'error' => 'No items selected for update.']);
+            exit;
+        }
+
+        // Clean IDs
+        $itemIds = array_map('intval', $itemIds);
+        $idsPlaceholder = implode(',', $itemIds);
+
+        // Track updates
+        $updates = [];
+        $params = [];
+
+        // 1. Category
+        if (isset($_POST['update_category']) && $_POST['update_category'] === '1') {
+            $catId = isset($_POST['category_id']) && $_POST['category_id'] !== '' ? intval($_POST['category_id']) : null;
+            if ($catId !== null) {
+                // Verify category exists
+                $this->db->query("SELECT id FROM item_categories WHERE id = :cat_id");
+                $this->db->bind(':cat_id', $catId);
+                if (!$this->db->single()) {
+                    echo json_encode(['success' => false, 'error' => 'Invalid category selected.']);
+                    exit;
+                }
+            }
+            $updates[] = "category_id = :category_id";
+            $params[':category_id'] = $catId;
+        }
+
+        // 2. Selling Price
+        if (isset($_POST['update_selling_price']) && $_POST['update_selling_price'] === '1') {
+            $type = $_POST['selling_price_type'] ?? 'flat';
+            $val = floatval($_POST['selling_price_val'] ?? 0);
+            if ($val < 0) {
+                echo json_encode(['success' => false, 'error' => 'Retail price value cannot be negative.']);
+                exit;
+            }
+
+            if ($type === 'flat') {
+                $updates[] = "selling_price = :selling_price";
+                $params[':selling_price'] = $val;
+            } elseif ($type === 'pct_inc') {
+                $updates[] = "selling_price = selling_price * (1 + (:selling_price_pct / 100))";
+                $params[':selling_price_pct'] = $val;
+            } elseif ($type === 'pct_dec') {
+                $updates[] = "selling_price = selling_price * (1 - (:selling_price_pct / 100))";
+                $params[':selling_price_pct'] = $val;
+            }
+        }
+
+        // 3. Wholesale Price
+        if (isset($_POST['update_wholesale_price']) && $_POST['update_wholesale_price'] === '1') {
+            $type = $_POST['wholesale_price_type'] ?? 'flat';
+            $val = floatval($_POST['wholesale_price_val'] ?? 0);
+            if ($val < 0) {
+                echo json_encode(['success' => false, 'error' => 'B2B price value cannot be negative.']);
+                exit;
+            }
+
+            if ($type === 'flat') {
+                $updates[] = "wholesale_price = :wholesale_price";
+                $params[':wholesale_price'] = $val;
+            } elseif ($type === 'pct_inc') {
+                $updates[] = "wholesale_price = wholesale_price * (1 + (:wholesale_price_pct / 100))";
+                $params[':wholesale_price_pct'] = $val;
+            } elseif ($type === 'pct_dec') {
+                $updates[] = "wholesale_price = wholesale_price * (1 - (:wholesale_price_pct / 100))";
+                $params[':wholesale_price_pct'] = $val;
+            }
+        }
+
+        // 4. Status
+        if (isset($_POST['update_status']) && $_POST['update_status'] === '1') {
+            $status = trim($_POST['status'] ?? 'active');
+            if ($status !== 'active' && $status !== 'inactive') {
+                $status = 'active';
+            }
+            $updates[] = "status = :status";
+            $params[':status'] = $status;
+        }
+
+        if (empty($updates)) {
+            echo json_encode(['success' => false, 'error' => 'No fields selected for update.']);
+            exit;
+        }
+
+        // Execute transaction
+        $this->db->beginTransaction();
+        try {
+            $updatesSql = implode(', ', $updates);
+            $queryStr = "UPDATE items SET {$updatesSql} WHERE id IN ({$idsPlaceholder})";
+            
+            $this->db->query($queryStr);
+            foreach ($params as $param => $val) {
+                if (is_int($val)) {
+                    $this->db->bind($param, $val, PDO::PARAM_INT);
+                } elseif (is_null($val)) {
+                    $this->db->bind($param, $val, PDO::PARAM_NULL);
+                } else {
+                    $this->db->bind($param, $val);
+                }
+            }
+
+            $this->db->execute();
+
+            // Log activity
+            $this->logActivity(
+                'Bulk Product Update',
+                'Inventory',
+                "Bulk updated fields for " . count($itemIds) . " products by user '{$_SESSION['username']}'.",
+                0
+            );
+
+            $this->db->commit();
+            echo json_encode(['success' => true, 'message' => 'Products updated successfully!']);
+            exit;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            echo json_encode(['success' => false, 'error' => 'Failed to execute bulk updates: ' . $e->getMessage()]);
+            exit;
+        }
+    }
 }
 
 

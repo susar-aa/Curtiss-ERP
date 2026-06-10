@@ -408,6 +408,9 @@ if ($importResults) {
                     <table class="w-full text-left whitespace-nowrap border-collapse">
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-200">
+                                <th class="py-4 px-6 text-center w-[4%]">
+                                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" class="rounded border-slate-200 text-primary-600 focus:ring-primary-500/20 cursor-pointer w-4 h-4">
+                                </th>
                                 <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider w-[10%]">Image</th>
                                 <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider w-[12%]">Product SKU</th>
                                 <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider w-[12%]">Sample Code</th>
@@ -422,7 +425,7 @@ if ($importResults) {
                         <tbody class="divide-y divide-slate-100">
                             <?php if (empty($items)): ?>
                                 <tr>
-                                    <td colspan="8" class="py-20 text-center">
+                                    <td colspan="10" class="py-20 text-center">
                                         <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
                                             <i class="fa-solid fa-box-open text-2xl text-slate-400"></i>
                                         </div>
@@ -456,6 +459,9 @@ if ($importResults) {
                                     }
                                     ?>
                                     <tr class="hover:bg-slate-50/80 transition-colors group">
+                                        <td class="py-4 px-6 text-center align-top">
+                                            <input type="checkbox" name="selected_items[]" value="<?php echo $item->id; ?>" onchange="updateSelection()" class="item-select-checkbox rounded border-slate-200 text-primary-600 focus:ring-primary-500/20 cursor-pointer w-4 h-4">
+                                        </td>
                                         <td class="py-4 px-6 align-top">
                                             <div class="h-12 w-12 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shadow-inner">
                                                 <img src="<?php echo $img_src; ?>" class="object-cover w-full h-full" onerror="this.src='https://placehold.co/300?text=Error'">
@@ -703,6 +709,7 @@ if ($importResults) {
 
                     // Update Address Bar/History URL so back actions are preserved
                     window.history.pushState({ path: requestUrl }, '', requestUrl);
+                    clearSelection();
                 })
                 .catch(err => {
                     console.error('Asynchronous Sync Error:', err);
@@ -834,6 +841,164 @@ if ($importResults) {
                 if (spinner) spinner.classList.add('hidden');
             });
         }
+
+        // ==========================================
+        // BULK EDIT SELECTION & MODAL ENGINE
+        // ==========================================
+        function toggleSelectAll(selectAllCheckbox) {
+            const checkboxes = document.querySelectorAll('.item-select-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = selectAllCheckbox.checked;
+            });
+            updateSelection();
+        }
+
+        function updateSelection() {
+            const checkboxes = document.querySelectorAll('.item-select-checkbox');
+            const selectedIds = [];
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    selectedIds.push(cb.value);
+                }
+            });
+
+            const toolbar = document.getElementById('bulkEditToolbar');
+            const countBadge = document.getElementById('selectedCountBadge');
+            const selectAllCb = document.getElementById('selectAllCheckbox');
+
+            if (selectedIds.length > 0) {
+                if (countBadge) countBadge.textContent = selectedIds.length;
+                if (toolbar) toolbar.classList.remove('hidden');
+                
+                // If all items are selected, check select all
+                if (selectAllCb) {
+                    selectAllCb.checked = (selectedIds.length === checkboxes.length);
+                }
+            } else {
+                if (toolbar) toolbar.classList.add('hidden');
+                if (selectAllCb) selectAllCb.checked = false;
+            }
+        }
+
+        function clearSelection() {
+            const checkboxes = document.querySelectorAll('.item-select-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = false;
+            });
+            const selectAllCb = document.getElementById('selectAllCheckbox');
+            if (selectAllCb) selectAllCb.checked = false;
+            updateSelection();
+        }
+
+        function openBulkEditModal() {
+            // Populate select item ids in hidden field inside modal form
+            const checkboxes = document.querySelectorAll('.item-select-checkbox');
+            const form = document.getElementById('bulkEditForm');
+            
+            // Remove any previously appended item_ids inputs
+            const oldInputs = form.querySelectorAll('input[name="item_ids[]"]');
+            oldInputs.forEach(input => input.remove());
+
+            // Append new ones
+            let selectedCount = 0;
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    selectedCount++;
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'item_ids[]';
+                    hiddenInput.value = cb.value;
+                    form.appendChild(hiddenInput);
+                }
+            });
+
+            document.getElementById('bulkSelectedCount').textContent = selectedCount;
+            
+            // Reset fields and checkboxes
+            document.getElementById('bulkUpdateCategory').checked = false;
+            toggleBulkField('category');
+            document.getElementById('bulkUpdateSellingPrice').checked = false;
+            toggleBulkField('selling_price');
+            document.getElementById('bulkUpdateWholesalePrice').checked = false;
+            toggleBulkField('wholesale_price');
+            document.getElementById('bulkUpdateStatus').checked = false;
+            toggleBulkField('status');
+
+            document.getElementById('bulkEditErrorContainer').classList.add('hidden');
+            document.getElementById('bulkEditErrorContainer').textContent = '';
+
+            document.getElementById('bulkEditModal').classList.remove('hidden');
+        }
+
+        function closeBulkEditModal() {
+            document.getElementById('bulkEditModal').classList.add('hidden');
+        }
+
+        function toggleBulkField(field) {
+            const isChecked = document.getElementById('bulkUpdate' + field.charAt(0).toUpperCase() + field.slice(1)).checked;
+            
+            if (field === 'category') {
+                document.getElementById('bulkCategorySelect').disabled = !isChecked;
+            } else if (field === 'selling_price') {
+                document.getElementById('bulkSellingPriceType').disabled = !isChecked;
+                document.getElementById('bulkSellingPriceVal').disabled = !isChecked;
+            } else if (field === 'wholesale_price') {
+                document.getElementById('bulkWholesalePriceType').disabled = !isChecked;
+                document.getElementById('bulkWholesalePriceVal').disabled = !isChecked;
+            } else if (field === 'status') {
+                document.getElementById('bulkStatusSelect').disabled = !isChecked;
+            }
+        }
+
+        function submitBulkEdit(e) {
+            e.preventDefault();
+
+            const form = document.getElementById('bulkEditForm');
+            const submitBtn = document.getElementById('bulkSubmitBtn');
+            const spinner = document.getElementById('bulkBtnSpinner');
+            const errorContainer = document.getElementById('bulkEditErrorContainer');
+
+            // Disable buttons and show spinner
+            if (submitBtn) submitBtn.disabled = true;
+            if (spinner) spinner.classList.remove('hidden');
+            if (errorContainer) {
+                errorContainer.classList.add('hidden');
+                errorContainer.textContent = '';
+            }
+
+            const formData = new FormData(form);
+
+            fetch('<?php echo APP_URL; ?>/inventory/bulkUpdate', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Bulk update failed');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    closeBulkEditModal();
+                    clearSelection();
+                    applyAjaxFilters();
+                } else {
+                    if (errorContainer) {
+                        errorContainer.textContent = data.error || 'Bulk update failed. Please try again.';
+                        errorContainer.classList.remove('hidden');
+                    }
+                }
+            })
+            .catch(err => {
+                if (errorContainer) {
+                    errorContainer.textContent = err.message || 'An error occurred during bulk update.';
+                    errorContainer.classList.remove('hidden');
+                }
+            })
+            .finally(() => {
+                if (submitBtn) submitBtn.disabled = false;
+                if (spinner) spinner.classList.add('hidden');
+            });
+        }
     </script>
 
     <!-- Product Delete Confirmation Modal (Rich Glassmorphism & Admin verification) -->
@@ -896,6 +1061,127 @@ if ($importResults) {
                             class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all flex items-center gap-2">
                         <span id="deleteBtnSpinner" class="hidden"><i class="fa-solid fa-spinner animate-spin"></i></span>
                         Authorize & Delete
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Floating Bulk Action Toolbar -->
+    <div id="bulkEditToolbar" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-white px-6 py-4 rounded-2xl shadow-2xl border border-slate-700/50 z-40 hidden flex items-center justify-between gap-8 animate-fade-in max-w-lg w-full">
+        <div class="flex items-center gap-3">
+            <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-600 text-xs font-bold font-mono text-white" id="selectedCountBadge">0</span>
+            <span class="text-xs font-semibold text-slate-350">items selected for update</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <button type="button" onclick="clearSelection()" class="px-3 py-1.5 hover:bg-slate-800 text-slate-300 rounded-lg text-xs font-semibold transition-all">
+                Cancel
+            </button>
+            <button type="button" onclick="openBulkEditModal()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-pen-to-square text-[10px]"></i> Bulk Edit
+            </button>
+        </div>
+    </div>
+
+    <!-- Product Bulk Edit Modal (Rich Glassmorphism & Custom Options) -->
+    <div id="bulkEditModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all border border-slate-200">
+            <!-- Modal Header -->
+            <div class="bg-indigo-50 border-b border-indigo-100 p-6 flex justify-between items-center">
+                <div class="flex items-center gap-2.5 text-indigo-950">
+                    <i class="fa-solid fa-pen-to-square text-indigo-600 text-xl"></i>
+                    <h3 class="text-base font-bold">Bulk Edit Products</h3>
+                </div>
+                <button onclick="closeBulkEditModal()" class="text-slate-400 hover:text-slate-600 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body / Form -->
+            <form id="bulkEditForm" onsubmit="submitBulkEdit(event)" class="p-6 space-y-5">
+                <p class="text-xs text-slate-500 font-semibold uppercase tracking-wider">
+                    You are editing <strong id="bulkSelectedCount" class="text-indigo-600 font-mono">0</strong> products simultaneously. Check the box next to any field to apply changes to all selected products.
+                </p>
+
+                <div id="bulkEditErrorContainer" class="hidden p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl font-medium"></div>
+
+                <!-- 1. Category -->
+                <div class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer">
+                            <input type="checkbox" name="update_category" value="1" id="bulkUpdateCategory" onchange="toggleBulkField('category')" class="rounded border-slate-350 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-4 h-4">
+                            Update Category
+                        </label>
+                    </div>
+                    <select name="category_id" id="bulkCategorySelect" disabled class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all disabled:opacity-50">
+                        <option value="">No Category</option>
+                        <?php foreach ($categories as $cat): ?>
+                            <option value="<?php echo $cat->id; ?>">
+                                <?php echo htmlspecialchars($cat->name); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- 2. Selling Price -->
+                <div class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer">
+                            <input type="checkbox" name="update_selling_price" value="1" id="bulkUpdateSellingPrice" onchange="toggleBulkField('selling_price')" class="rounded border-slate-350 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-4 h-4">
+                            Update Retail Price
+                        </label>
+                    </div>
+                    <div class="flex gap-2">
+                        <select name="selling_price_type" id="bulkSellingPriceType" disabled class="w-1/3 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all disabled:opacity-50 cursor-pointer">
+                            <option value="flat">Set Flat Value</option>
+                            <option value="pct_inc">Increase by %</option>
+                            <option value="pct_dec">Decrease by %</option>
+                        </select>
+                        <input type="number" step="0.01" name="selling_price_val" id="bulkSellingPriceVal" disabled placeholder="e.g. 10" class="w-2/3 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all disabled:opacity-50">
+                    </div>
+                </div>
+
+                <!-- 3. Wholesale Price -->
+                <div class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer">
+                            <input type="checkbox" name="update_wholesale_price" value="1" id="bulkUpdateWholesalePrice" onchange="toggleBulkField('wholesale_price')" class="rounded border-slate-355 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-4 h-4">
+                            Update B2B Base Price
+                        </label>
+                    </div>
+                    <div class="flex gap-2">
+                        <select name="wholesale_price_type" id="bulkWholesalePriceType" disabled class="w-1/3 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all disabled:opacity-50 cursor-pointer">
+                            <option value="flat">Set Flat Value</option>
+                            <option value="pct_inc">Increase by %</option>
+                            <option value="pct_dec">Decrease by %</option>
+                        </select>
+                        <input type="number" step="0.01" name="wholesale_price_val" id="bulkWholesalePriceVal" disabled placeholder="e.g. 10" class="w-2/3 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all disabled:opacity-50">
+                    </div>
+                </div>
+
+                <!-- 4. Status -->
+                <div class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer">
+                            <input type="checkbox" name="update_status" value="1" id="bulkUpdateStatus" onchange="toggleBulkField('status')" class="rounded border-slate-350 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-4 h-4">
+                            Update Status
+                        </label>
+                    </div>
+                    <select name="status" id="bulkStatusSelect" disabled class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all disabled:opacity-50 cursor-pointer">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeBulkEditModal()" 
+                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition-all">
+                        Cancel
+                    </button>
+                    <button type="submit" id="bulkSubmitBtn"
+                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all flex items-center gap-2">
+                        <span id="bulkBtnSpinner" class="hidden"><i class="fa-solid fa-spinner animate-spin"></i></span>
+                        Apply Bulk Changes
                     </button>
                 </div>
             </form>
