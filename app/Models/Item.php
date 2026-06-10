@@ -173,28 +173,33 @@ class Item {
         $whereClauses = [];
 
         if (!empty($filters['search'])) {
-            $whereClauses[] = "({$this->itemCodeColumn} LIKE :search OR {$this->nameColumn} LIKE :search)";
+            $whereClauses[] = "(i.{$this->itemCodeColumn} LIKE :search OR i.{$this->nameColumn} LIKE :search)";
             $params[':search'] = '%' . $filters['search'] . '%';
         }
 
         if (isset($filters['min_price']) && $filters['min_price'] !== '') {
-            $whereClauses[] = "CAST({$this->priceColumn} AS DECIMAL(10,2)) >= :min_price";
+            $whereClauses[] = "CAST(i.{$this->priceColumn} AS DECIMAL(10,2)) >= :min_price";
             $params[':min_price'] = floatval($filters['min_price']);
         }
 
         if (isset($filters['max_price']) && $filters['max_price'] !== '') {
-            $whereClauses[] = "CAST({$this->priceColumn} AS DECIMAL(10,2)) <= :max_price";
+            $whereClauses[] = "CAST(i.{$this->priceColumn} AS DECIMAL(10,2)) <= :max_price";
             $params[':max_price'] = floatval($filters['max_price']);
         }
 
         if (!empty($filters['stock_status'])) {
             if ($filters['stock_status'] === 'instock') {
-                $whereClauses[] = "CAST({$this->qtyColumn} AS SIGNED) > 5";
+                $whereClauses[] = "CAST(i.{$this->qtyColumn} AS SIGNED) > 5";
             } elseif ($filters['stock_status'] === 'lowstock') {
-                $whereClauses[] = "CAST({$this->qtyColumn} AS SIGNED) > 0 AND CAST({$this->qtyColumn} AS SIGNED) <= 5";
+                $whereClauses[] = "CAST(i.{$this->qtyColumn} AS SIGNED) > 0 AND CAST(i.{$this->qtyColumn} AS SIGNED) <= 5";
             } elseif ($filters['stock_status'] === 'outstock') {
-                $whereClauses[] = "(CAST({$this->qtyColumn} AS SIGNED) <= 0 OR {$this->qtyColumn} IS NULL)";
+                $whereClauses[] = "(CAST(i.{$this->qtyColumn} AS SIGNED) <= 0 OR i.{$this->qtyColumn} IS NULL)";
             }
+        }
+
+        if (!empty($filters['category_id'])) {
+            $whereClauses[] = "i.category_id = :category_id";
+            $params[':category_id'] = intval($filters['category_id']);
         }
 
         return !empty($whereClauses) ? "WHERE " . implode(" AND ", $whereClauses) : "";
@@ -207,15 +212,17 @@ class Item {
         $params = [];
         $whereSql = $this->buildFilterConditions($filters, $params);
 
-        $this->db->query("SELECT *, 
-                          {$this->priceColumn} AS selling_price, 
-                          {$this->wholesalePriceColumn} AS wholesale_price, 
-                          {$this->itemCodeColumn} AS item_code, 
-                          {$this->qtyColumn} AS qty, 
-                          {$this->descColumn} AS description 
-                          FROM items 
+        $this->db->query("SELECT i.*, 
+                          cat.name AS category_name,
+                          i.{$this->priceColumn} AS selling_price, 
+                          i.{$this->wholesalePriceColumn} AS wholesale_price, 
+                          i.{$this->itemCodeColumn} AS item_code, 
+                          i.{$this->qtyColumn} AS qty, 
+                          i.{$this->descColumn} AS description 
+                          FROM items i 
+                          LEFT JOIN item_categories cat ON i.category_id = cat.id
                           $whereSql 
-                          ORDER BY {$this->orderByColumn} 
+                          ORDER BY i.{$this->orderByColumn} 
                           LIMIT :limit OFFSET :offset");
 
         $this->db->bind(':limit', (int)$limit, PDO::PARAM_INT);
@@ -235,7 +242,7 @@ class Item {
         $params = [];
         $whereSql = $this->buildFilterConditions($filters, $params);
 
-        $this->db->query("SELECT COUNT(*) AS total FROM items $whereSql");
+        $this->db->query("SELECT COUNT(*) AS total FROM items i $whereSql");
         foreach ($params as $key => $val) {
             $this->db->bind($key, $val);
         }

@@ -41,7 +41,8 @@ class InventoryController extends Controller {
             'search' => isset($_GET['search']) ? trim($_GET['search']) : '',
             'min_price' => isset($_GET['min_price']) && $_GET['min_price'] !== '' ? floatval($_GET['min_price']) : '',
             'max_price' => isset($_GET['max_price']) && $_GET['max_price'] !== '' ? floatval($_GET['max_price']) : '',
-            'stock_status' => isset($_GET['stock_status']) ? trim($_GET['stock_status']) : ''
+            'stock_status' => isset($_GET['stock_status']) ? trim($_GET['stock_status']) : '',
+            'category_id' => isset($_GET['category_id']) && $_GET['category_id'] !== '' ? intval($_GET['category_id']) : ''
         ];
 
         $totalItems = $this->itemModel->countItems($filters);
@@ -53,11 +54,13 @@ class InventoryController extends Controller {
 
         $items = $this->itemModel->getItemsPaged($perPage, $offset, $filters);
         $stats = $this->itemModel->getStockStats();
+        $categories = $this->categoryModel->getCategories();
 
         $data = [
             'items' => $items,
             'stats' => $stats,
             'filters' => $filters,
+            'categories' => $categories,
             'pagination' => [
                 'current_page' => $page,
                 'per_page' => $perPage,

@@ -19,6 +19,8 @@ $filters['search'] = $filters['search'] ?? '';
 $filters['min_price'] = $filters['min_price'] ?? '';
 $filters['max_price'] = $filters['max_price'] ?? '';
 $filters['stock_status'] = $filters['stock_status'] ?? '';
+$filters['category_id'] = $filters['category_id'] ?? '';
+$categories = $data['categories'] ?? [];
 
 // Retrieve pagination config with safe fallbacks
 $pagination = $data['pagination'] ?? [
@@ -320,7 +322,7 @@ if ($importResults) {
                 <i class="fa-solid fa-sliders text-primary-500"></i> Interactive Search & Catalog Filters
             </h3>
             
-            <form id="filterForm" action="<?php echo APP_URL; ?>/inventory" method="GET" onsubmit="event.preventDefault(); applyAjaxFilters();" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <form id="filterForm" action="<?php echo APP_URL; ?>/inventory" method="GET" onsubmit="event.preventDefault(); applyAjaxFilters();" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                 <input type="hidden" name="page" id="currentPageInput" value="<?php echo $currentPage; ?>">
                 <input type="hidden" name="per_page" id="perPageInput" value="<?php echo $perPage; ?>">
 
@@ -345,6 +347,19 @@ if ($importResults) {
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Max Price (Rs.)</label>
                     <input type="number" step="0.01" name="max_price" id="maxPriceInput" value="<?php echo htmlspecialchars($filters['max_price']); ?>" oninput="triggerSearchDelay()" placeholder="0.00" 
                            class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all font-mono">
+                </div>
+
+                <!-- Category Filtering Option -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Filter Category</label>
+                    <select name="category_id" id="categorySelect" onchange="applyAjaxFilters()" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer">
+                        <option value="">All Categories</option>
+                        <?php foreach ($categories as $cat): ?>
+                            <option value="<?php echo $cat->id; ?>" <?php echo (string)$filters['category_id'] === (string)$cat->id ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($cat->name); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
 
                 <!-- Status Indicator -->
@@ -642,13 +657,7 @@ if ($importResults) {
         function applyAjaxFilters() {
             const form = document.getElementById('filterForm');
             const loader = document.getElementById('table-loader');
-            const searchInput = document.getElementById('searchInput');
 
-            // Capture current focus & cursor selection parameters of searchInput before update
-            const hasFocus = (document.activeElement === searchInput);
-            const selectionStart = searchInput ? searchInput.selectionStart : 0;
-            const selectionEnd = searchInput ? searchInput.selectionEnd : 0;
-            
             // Show local loading overlay inside table container
             if (loader) {
                 loader.classList.remove('pointer-events-none');
@@ -689,16 +698,6 @@ if ($importResults) {
 
                     // Update Address Bar/History URL so back actions are preserved
                     window.history.pushState({ path: requestUrl }, '', requestUrl);
-
-                    // Restore active selection index parameters to make typing fluid without jumps
-                    if (hasFocus && searchInput) {
-                        searchInput.focus();
-                        try {
-                            searchInput.setSelectionRange(selectionStart, selectionEnd);
-                        } catch (e) {
-                            // Safe fallback for browsers with restricted inputs
-                        }
-                    }
                 })
                 .catch(err => {
                     console.error('Asynchronous Sync Error:', err);
@@ -737,6 +736,7 @@ if ($importResults) {
             document.getElementById('minPriceInput').value = '';
             document.getElementById('maxPriceInput').value = '';
             document.getElementById('stockStatusSelect').value = '';
+            document.getElementById('categorySelect').value = '';
             document.getElementById('currentPageInput').value = '1';
             applyAjaxFilters();
         }
