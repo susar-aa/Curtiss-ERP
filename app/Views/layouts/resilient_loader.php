@@ -70,7 +70,7 @@ document.addEventListener('submit', function(e) {
         if (!response.ok) {
             return response.text().then(text => {
                 console.error('Server save error details:', text);
-                throw new Error('HTTP Status ' + response.status + ' - ' + (text.substring(0, 300) || 'Unknown Server Error'));
+                throw new Error(text || 'Unknown Server Error');
             });
         }
 
@@ -111,7 +111,44 @@ document.addEventListener('submit', function(e) {
     .catch(error => {
         if (overlay) overlay.style.display = 'none';
         console.error('Safe save failed:', error);
-        alert('⚠ Save Failed: A network or connection issue occurred. Please check your internet connection and try again. Your typed data has been kept safe.\n\nDetails:\n' + error.message);
+        
+        const errMsg = error.message || '';
+        const isSkuDuplicate = errMsg.toLowerCase().includes('item code (sku)') || errMsg.toLowerCase().includes('duplicate sku') || errMsg.toLowerCase().includes('item_code');
+        
+        if (isSkuDuplicate) {
+            const skuInput = form.querySelector('#mainItemCode') || form.querySelector('input[name="item_code"]');
+            if (skuInput) {
+                skuInput.focus();
+                skuInput.classList.remove('border-slate-200');
+                skuInput.classList.add('border-rose-500', 'focus:ring-rose-500/20', 'focus:border-rose-500');
+                
+                const existingMsg = skuInput.parentNode.parentNode.querySelector('.sku-error-msg');
+                if (existingMsg) {
+                    existingMsg.remove();
+                }
+                
+                const errorElement = document.createElement('p');
+                errorElement.className = 'text-xs text-rose-500 font-bold mt-1.5 sku-error-msg';
+                errorElement.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i> Duplicate SKU code. Please use a unique item code.';
+                
+                skuInput.parentNode.parentNode.appendChild(errorElement);
+                skuInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                skuInput.addEventListener('input', function() {
+                    skuInput.classList.remove('border-rose-500', 'focus:ring-rose-500/20', 'focus:border-rose-500');
+                    skuInput.classList.add('border-slate-200');
+                    const errorMsg = skuInput.parentNode.parentNode.querySelector('.sku-error-msg');
+                    if (errorMsg) {
+                        errorMsg.remove();
+                    }
+                }, { once: true });
+                
+                alert('⚠ Save Failed: Duplicate SKU code.');
+                return;
+            }
+        }
+        
+        alert('⚠ Save Failed: ' + errMsg);
     });
 });
 
