@@ -1205,16 +1205,8 @@ class InventoryController extends Controller {
         $authUsername = '';
 
         if ($isAdmin) {
-            // Verify current logged in admin password
-            $currentUsername = $_SESSION['username'] ?? '';
-            $user = $userModel->login($currentUsername, $password);
-            if ($user && strtolower($user->role) === 'admin') {
-                $authorized = true;
-                $authUsername = $currentUsername;
-            } else {
-                echo json_encode(['success' => false, 'error' => 'Incorrect password for your admin account.']);
-                exit;
-            }
+            $authorized = true;
+            $authUsername = $_SESSION['username'] ?? '';
         } else {
             // Verify provided admin credentials
             $adminUsername = trim($_POST['admin_username'] ?? '');

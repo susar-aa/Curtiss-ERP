@@ -861,12 +861,7 @@ if ($importResults) {
                 <div id="deleteErrorContainer" class="hidden p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl font-medium"></div>
 
                 <?php if ($isCurrentlyAdmin): ?>
-                    <!-- Currently Admin: Password verification only -->
-                    <div class="space-y-1.5">
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Confirm with your password</label>
-                        <input type="password" name="password" id="deleteAdminPassword" required placeholder="Enter your password" 
-                               class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 focus:outline-none transition-all">
-                    </div>
+                    <!-- Currently Admin: No password verification required -->
                 <?php else: ?>
                     <!-- Currently Non-Admin: Require both admin username and password -->
                     <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-xl mb-4">
