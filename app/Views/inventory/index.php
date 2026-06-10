@@ -181,7 +181,7 @@ if ($importResults) unset($_SESSION['import_results']);
         <aside class="w-full xl:w-80 flex-shrink-0 bg-white border-r border-surface-200 flex flex-col h-full xl:h-[calc(100vh-64px)] xl:sticky xl:top-0 overflow-y-auto">
             <div class="p-6 border-b border-surface-200 bg-surface-50/50">
                 <h1 class="text-xl font-bold text-surface-900 tracking-tight">Inventory System</h1>
-                <p class="text-xs text-surface-505 mt-1 text-surface-500">Track and manage physical stock catalog.</p>
+                <p class="text-xs text-surface-500 mt-1">Track and manage physical stock catalog.</p>
             </div>
 
             <!-- Insights (KPI Cards) -->
@@ -286,56 +286,26 @@ if ($importResults) unset($_SESSION['import_results']);
                     </div>
 
                     <!-- Divider -->
-                    <div class="hidden lg:block w-px h-6 bg-surface-200 flex-shrink-0"></div>
-
-                    <!-- Quick Navigation Buttons -->
-                    <div class="hidden lg:flex items-center gap-1.5 flex-shrink-0">
-                        <a href="<?= APP_URL ?>/inventory" class="px-3.5 py-2 rounded-full bg-brand-50 text-brand-700 hover:bg-brand-100 text-xs font-semibold flex items-center gap-2 ui-transition" title="Inventory catalog">
-                            <i class="fa-solid fa-boxes-stacked"></i>
-                            <span>Inventory</span>
-                        </a>
-                        <a href="<?= APP_URL ?>/category" class="px-3.5 py-2 rounded-full hover:bg-surface-100 text-surface-600 hover:text-surface-900 text-xs font-medium flex items-center gap-2 ui-transition" title="Product categories">
-                            <i class="fa-solid fa-tags"></i>
-                            <span>Categories</span>
-                        </a>
-                        <a href="<?= APP_URL ?>/variation" class="px-3.5 py-2 rounded-full hover:bg-surface-100 text-surface-600 hover:text-surface-900 text-xs font-medium flex items-center gap-2 ui-transition" title="Product variations">
-                            <i class="fa-solid fa-sliders"></i>
-                            <span>Variations</span>
-                        </a>
-                        <a href="<?= APP_URL ?>/warehouse" class="px-3.5 py-2 rounded-full hover:bg-surface-100 text-surface-600 hover:text-surface-900 text-xs font-medium flex items-center gap-2 ui-transition" title="Warehouses">
-                            <i class="fa-solid fa-warehouse"></i>
-                            <span>Warehouses</span>
-                        </a>
-                        <a href="<?= APP_URL ?>/stockledger" class="px-3.5 py-2 rounded-full hover:bg-surface-100 text-surface-600 hover:text-surface-900 text-xs font-medium flex items-center gap-2 ui-transition" title="Stock ledger history">
-                            <i class="fa-solid fa-receipt"></i>
-                            <span>Ledger</span>
-                        </a>
-                    </div>
-
-                    <!-- Divider -->
                     <div class="w-px h-6 bg-surface-200 flex-shrink-0"></div>
 
-                    <!-- Action buttons -->
+                    <!-- Current Page Actions (Import, Export, Add Product) -->
                     <div class="flex items-center gap-2 flex-shrink-0">
-                        <!-- Dropdown Menu for CSV Import/Export -->
-                        <div class="relative group">
-                            <button class="w-9 h-9 rounded-full bg-surface-50 border border-surface-200 hover:bg-surface-100 text-surface-600 flex items-center justify-center ui-transition" title="More Actions">
-                                <i class="fa-solid fa-ellipsis-vertical"></i>
-                            </button>
-                            <div class="absolute right-0 top-full mt-2 w-48 bg-white border border-surface-200 rounded-xl shadow-float py-1.5 z-30 hidden group-hover:block hover:block">
-                                <button type="button" onclick="openCsvModal()" class="w-full text-left px-4 py-2.5 hover:bg-surface-50 text-xs text-surface-700 flex items-center gap-2">
-                                    <i class="fa-solid fa-file-import text-surface-450"></i> Import Catalog
-                                </button>
-                                <a href="<?php echo APP_URL; ?>/inventory/exportCSV" class="w-full text-left px-4 py-2.5 hover:bg-surface-50 text-xs text-surface-700 flex items-center gap-2">
-                                    <i class="fa-solid fa-file-export text-surface-450"></i> Export Catalog
-                                </a>
-                            </div>
-                        </div>
+                        <!-- Import button -->
+                        <button type="button" onclick="openCsvModal()" class="h-9 px-4 rounded-full border border-surface-200 hover:bg-surface-50 text-surface-700 hover:text-surface-900 text-xs font-semibold flex items-center gap-2 ui-transition" title="Import CSV Catalog">
+                            <i class="fa-solid fa-file-import text-brand-600 text-xs"></i>
+                            <span class="hidden sm:inline">Import</span>
+                        </button>
+                        
+                        <!-- Export button -->
+                        <a href="<?php echo APP_URL; ?>/inventory/exportCSV" class="h-9 px-4 rounded-full border border-surface-200 hover:bg-surface-50 text-surface-700 hover:text-surface-900 text-xs font-semibold flex items-center gap-2 ui-transition" title="Export CSV Catalog">
+                            <i class="fa-solid fa-file-export text-brand-600 text-xs"></i>
+                            <span class="hidden sm:inline">Export</span>
+                        </a>
 
                         <!-- Add Product -->
-                        <a href="<?= APP_URL ?>/inventory/add" class="h-9 rounded-full bg-brand-600 hover:bg-brand-700 text-white px-4.5 flex items-center gap-2 text-xs font-semibold shadow-sm hover:shadow-md ui-transition">
-                            <i class="fa-solid fa-plus"></i>
-                            <span>Add Product</span>
+                        <a href="<?= APP_URL ?>/inventory/add" class="h-9 rounded-full bg-brand-600 hover:bg-brand-700 text-white px-4.5 flex items-center gap-2 text-xs font-bold shadow-sm hover:shadow-md ui-transition">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                            <span>New Product</span>
                         </a>
                     </div>
                 </div>
@@ -605,49 +575,83 @@ if ($importResults) unset($_SESSION['import_results']);
                 <form id="bulkEditForm" onsubmit="submitBulkEdit(event)" class="space-y-4">
                     <div id="bulkEditErrorContainer" class="hidden p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-lg mb-4"></div>
 
-                    <?php
-                    $bulkFields = [
-                        ['id'=>'category', 'label'=>'Category Assignment', 'field'=>'category_id', 'icon'=>'fa-folder'],
-                        ['id'=>'selling_price', 'label'=>'Retail Pricing', 'field'=>'selling_price', 'icon'=>'fa-tag'],
-                        ['id'=>'wholesale_price', 'label'=>'B2B Pricing', 'field'=>'wholesale_price', 'icon'=>'fa-tags'],
-                        ['id'=>'status', 'label'=>'Availability Status', 'field'=>'status', 'icon'=>'fa-power-off'],
-                    ];
-                    foreach ($bulkFields as $f):
-                    ?>
+                    <!-- 1. Category -->
                     <div class="border border-surface-200 rounded-xl overflow-hidden focus-within:border-brand-300 focus-within:ring-1 focus-within:ring-brand-300 ui-transition bg-white">
-                        <div class="flex items-center justify-between p-3 bg-surface-50 border-b border-surface-200">
-                            <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-surface-800 select-none">
-                                <input type="checkbox" name="update_<?= $f['id'] ?>" value="1" id="bulkUpdate<?= ucfirst($f['id']) ?>" onchange="toggleBulkField('<?= $f['id'] ?>')" class="custom-checkbox">
-                                <i class="fa-solid <?= $f['icon'] ?> text-surface-400 w-4 text-center text-xs"></i>
-                                <?= $f['label'] ?>
+                        <div class="flex items-center justify-between p-3.5 bg-surface-50 border-b border-surface-200">
+                            <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-surface-700 uppercase tracking-wider select-none">
+                                <input type="checkbox" name="update_category" value="1" id="bulkUpdateCategory" onchange="toggleBulkField('category')" class="custom-checkbox">
+                                <i class="fa-solid fa-folder text-surface-400 w-4 text-center"></i>
+                                Update Category
                             </label>
                         </div>
-                        <div class="p-3 bg-white">
-                        <?php if ($f['id'] === 'category'): ?>
+                        <div class="p-4 bg-white">
                             <select name="category_id" id="bulkCategorySelect" disabled class="premium-select w-full disabled:opacity-50 disabled:bg-surface-50">
                                 <option value="">No Category</option>
                                 <?php foreach ($categories as $cat): ?>
                                     <option value="<?php echo $cat->id; ?>"><?php echo htmlspecialchars($cat->name); ?></option>
                                 <?php endforeach; ?>
                             </select>
-                        <?php elseif ($f['id'] === 'status'): ?>
+                        </div>
+                    </div>
+
+                    <!-- 2. Selling Price -->
+                    <div class="border border-surface-200 rounded-xl overflow-hidden focus-within:border-brand-300 focus-within:ring-1 focus-within:ring-brand-300 ui-transition bg-white">
+                        <div class="flex items-center justify-between p-3.5 bg-surface-50 border-b border-surface-200">
+                            <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-surface-700 uppercase tracking-wider select-none">
+                                <input type="checkbox" name="update_selling_price" value="1" id="bulkUpdateSellingPrice" onchange="toggleBulkField('selling_price')" class="custom-checkbox">
+                                <i class="fa-solid fa-tag text-surface-400 w-4 text-center"></i>
+                                Update Retail Price
+                            </label>
+                        </div>
+                        <div class="p-4 bg-white">
+                            <div class="flex gap-2">
+                                <select name="selling_price_type" id="bulkSellingPriceType" disabled class="premium-select w-1/3 disabled:opacity-50 disabled:bg-surface-50">
+                                    <option value="flat">Set Flat Value</option>
+                                    <option value="pct_inc">Increase by %</option>
+                                    <option value="pct_dec">Decrease by %</option>
+                                </select>
+                                <input type="number" step="0.01" name="selling_price_val" id="bulkSellingPriceVal" disabled placeholder="e.g. 10.00" class="premium-input w-2/3 disabled:opacity-50 disabled:bg-surface-50">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Wholesale Price -->
+                    <div class="border border-surface-200 rounded-xl overflow-hidden focus-within:border-brand-300 focus-within:ring-1 focus-within:ring-brand-300 ui-transition bg-white">
+                        <div class="flex items-center justify-between p-3.5 bg-surface-50 border-b border-surface-200">
+                            <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-surface-700 uppercase tracking-wider select-none">
+                                <input type="checkbox" name="update_wholesale_price" value="1" id="bulkUpdateWholesalePrice" onchange="toggleBulkField('wholesale_price')" class="custom-checkbox">
+                                <i class="fa-solid fa-tags text-surface-400 w-4 text-center"></i>
+                                Update B2B Base Price
+                            </label>
+                        </div>
+                        <div class="p-4 bg-white">
+                            <div class="flex gap-2">
+                                <select name="wholesale_price_type" id="bulkWholesalePriceType" disabled class="premium-select w-1/3 disabled:opacity-50 disabled:bg-surface-50">
+                                    <option value="flat">Set Flat Value</option>
+                                    <option value="pct_inc">Increase by %</option>
+                                    <option value="pct_dec">Decrease by %</option>
+                                </select>
+                                <input type="number" step="0.01" name="wholesale_price_val" id="bulkWholesalePriceVal" disabled placeholder="e.g. 10.00" class="premium-input w-2/3 disabled:opacity-50 disabled:bg-surface-50">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Status -->
+                    <div class="border border-surface-200 rounded-xl overflow-hidden focus-within:border-brand-300 focus-within:ring-1 focus-within:ring-brand-300 ui-transition bg-white">
+                        <div class="flex items-center justify-between p-3.5 bg-surface-50 border-b border-surface-200">
+                            <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-surface-700 uppercase tracking-wider select-none">
+                                <input type="checkbox" name="update_status" value="1" id="bulkUpdateStatus" onchange="toggleBulkField('status')" class="custom-checkbox">
+                                <i class="fa-solid fa-power-off text-surface-400 w-4 text-center"></i>
+                                Update Status
+                            </label>
+                        </div>
+                        <div class="p-4 bg-white">
                             <select name="status" id="bulkStatusSelect" disabled class="premium-select w-full disabled:opacity-50 disabled:bg-surface-50">
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
                             </select>
-                        <?php else: ?>
-                            <div class="flex gap-2">
-                                <select name="<?= $f['id'] ?>_type" id="bulk<?= ucfirst(str_replace('_','',ucwords($f['id'],'_'))) ?>Type" disabled class="premium-select w-1/2 disabled:opacity-50 disabled:bg-surface-50">
-                                    <option value="flat">Set exact value</option>
-                                    <option value="pct_inc">Increase %</option>
-                                    <option value="pct_dec">Decrease %</option>
-                                </select>
-                                <input type="number" step="0.01" name="<?= $f['id'] ?>_val" id="bulk<?= ucfirst(str_replace('_','',ucwords($f['id'],'_'))) ?>Val" disabled class="premium-input w-1/2 disabled:opacity-50 disabled:bg-surface-50" placeholder="Amount">
-                            </div>
-                        <?php endif; ?>
                         </div>
                     </div>
-                    <?php endforeach; ?>
                 </form>
             </div>
             
