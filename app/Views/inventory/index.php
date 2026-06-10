@@ -278,7 +278,7 @@ if ($importResults) unset($_SESSION['import_results']);
             
             <!-- Floating Capsule Command & Search Bar -->
             <div class="px-6 pt-6 pb-4 flex-shrink-0 z-20">
-                <div class="w-full max-w-6xl mx-auto bg-white/95 backdrop-blur-md border border-surface-200/80 shadow-float rounded-full pl-6 pr-2 py-2 flex items-center justify-between gap-4 transition-all focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/10">
+                <div class="w-full max-w-6xl mx-auto bg-white/95 backdrop-blur-md border border-surface-200/80 shadow-float rounded-full pl-6 pr-3 py-2 flex items-center justify-between gap-4 transition-all focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/10">
                     <!-- Search Input Wrapper -->
                     <div class="flex items-center gap-3 flex-grow min-w-0">
                         <i class="fa-solid fa-magnifying-glass text-surface-400 text-sm flex-shrink-0"></i>
@@ -303,7 +303,7 @@ if ($importResults) unset($_SESSION['import_results']);
                         </a>
 
                         <!-- Add Product -->
-                        <a href="<?= APP_URL ?>/inventory/add" class="h-9 rounded-full bg-brand-600 hover:bg-brand-700 text-white px-4.5 flex items-center gap-2 text-xs font-bold shadow-sm hover:shadow-md ui-transition">
+                        <a href="<?= APP_URL ?>/inventory/add" class="h-9 rounded-full bg-brand-600 hover:bg-brand-700 text-white px-5 flex items-center gap-2 text-xs font-bold shadow-sm hover:shadow-md ui-transition whitespace-nowrap">
                             <i class="fa-solid fa-plus text-xs"></i>
                             <span>New Product</span>
                         </a>
@@ -432,7 +432,7 @@ if ($importResults) unset($_SESSION['import_results']);
                                             </div>
                                         </td>
                                         <td>
-                                            <div class="w-10 h-10 rounded-lg border border-surface-200 bg-surface-50 overflow-hidden flex-shrink-0">
+                                            <div onclick="openImageModal('<?php echo $img_src; ?>')" class="w-10 h-10 rounded-lg border border-surface-200 bg-surface-50 overflow-hidden flex-shrink-0 cursor-pointer hover:border-brand-500 hover:ring-2 hover:ring-brand-500/10 ui-transition" title="Click to preview image">
                                                 <img src="<?php echo $img_src; ?>" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/120?text=N/A'">
                                             </div>
                                         </td>
@@ -1162,7 +1162,40 @@ if ($importResults) unset($_SESSION['import_results']);
                 if (spinner) spinner.style.display = 'none';
             });
         }
+
+        function openImageModal(src) {
+            const modal = document.getElementById('imagePreviewModal');
+            const img = document.getElementById('previewModalImage');
+            if (modal && img) {
+                img.src = src;
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeImageModal() {
+            const modal = document.getElementById('imagePreviewModal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        // Close image modal on ESC keypress
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeImageModal();
+            }
+        });
     </script>
+
+    <!-- Image Preview Modal (Lightbox) -->
+    <div id="imagePreviewModal" onclick="closeImageModal()" class="fixed inset-0 bg-surface-900/60 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 cursor-zoom-out">
+        <div class="relative max-w-3xl w-full max-h-[85vh] flex items-center justify-center" onclick="event.stopPropagation()">
+            <button onclick="closeImageModal()" class="absolute -top-12 right-0 w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center rounded-full ui-transition" title="Close Preview">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <img id="previewModalImage" src="" class="max-w-full max-h-[85vh] rounded-2xl shadow-float object-contain border border-surface-200/20 bg-white/5">
+        </div>
+    </div>
 
     <?php include '../app/Views/layouts/resilient_loader.php'; ?>
 </body>

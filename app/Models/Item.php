@@ -173,8 +173,19 @@ class Item {
         $whereClauses = [];
 
         if (!empty($filters['search'])) {
-            $whereClauses[] = "(i.{$this->itemCodeColumn} LIKE :search OR i.{$this->nameColumn} LIKE :search)";
-            $params[':search'] = '%' . $filters['search'] . '%';
+            $words = preg_split('/\s+/', $filters['search']);
+            $wordClauses = [];
+            $i = 0;
+            foreach ($words as $word) {
+                if (trim($word) === '') continue;
+                $paramName = ':search_word_' . $i;
+                $wordClauses[] = "(i.{$this->itemCodeColumn} LIKE {$paramName} OR i.{$this->nameColumn} LIKE {$paramName} OR i.sample_code LIKE {$paramName})";
+                $params[$paramName] = '%' . $word . '%';
+                $i++;
+            }
+            if (!empty($wordClauses)) {
+                $whereClauses[] = "(" . implode(" AND ", $wordClauses) . ")";
+            }
         }
 
         if (isset($filters['min_price']) && $filters['min_price'] !== '') {
