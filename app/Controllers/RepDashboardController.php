@@ -65,8 +65,8 @@ class RepDashboardController extends Controller {
 
     public function sync_pull() {
         header('Content-Type: application/json');
-        
-        $userId = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
+        try {
+            $userId = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
         if ($userId <= 0) {
             echo json_encode(['success' => false, 'message' => 'Invalid user ID.']);
             exit;
@@ -100,7 +100,18 @@ class RepDashboardController extends Controller {
         }
         
         // 3. Get customers
-        $this->db->query("SELECT id, name, phone, whatsapp, address, territory, latitude, longitude, balance, mca_id, mca_name FROM customers ORDER BY name ASC");
+        $this->db->query("
+            SELECT c.id, c.name, c.phone, c.whatsapp, c.address, c.territory, c.latitude, c.longitude, c.mca_id, m.name as mca_name,
+                   ((SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = c.id AND status != 'Voided') 
+                   - 
+                   (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE customer_id = c.id AND status = 'Active') 
+                   - 
+                   (SELECT COALESCE(SUM(total_amount), 0) FROM credit_notes WHERE customer_id = c.id)) 
+                   AS balance
+            FROM customers c 
+            LEFT JOIN mca_areas m ON c.mca_id = m.id
+            ORDER BY c.name ASC
+        ");
         $customers = $this->db->resultSet() ?: [];
         $customersJson = [];
         foreach ($customers as $c) {
@@ -120,7 +131,7 @@ class RepDashboardController extends Controller {
         }
         
         // 4. Get server routes (territories)
-        $this->db->query("SELECT id, name, main_area_id FROM server_routes ORDER BY name ASC");
+        $this->db->query("SELECT id, name, main_area_id FROM mca_areas ORDER BY name ASC");
         $routes = $this->db->resultSet() ?: [];
         $routesJson = [];
         foreach ($routes as $r) {
@@ -262,21 +273,30 @@ class RepDashboardController extends Controller {
             ];
         }
 
-        echo json_encode([
-            'success' => true,
-            'products' => $productsJson,
-            'categories' => $categoriesJson,
-            'customers' => $customersJson,
-            'routes' => $routesJson,
-            'reps' => $repsJson,
-            'payment_terms' => $termsJson,
-            'credit_invoices' => $creditInvsJson,
-            'active_route' => $activeRouteJson,
-            'active_route_invoices' => $activeRouteInvsJson,
-            'active_route_invoice_items' => $activeRouteItemsJson,
-            'discount_rules' => $discountRulesJson
-        ]);
-        exit;
+            echo json_encode([
+                'success' => true,
+                'products' => $productsJson,
+                'categories' => $categoriesJson,
+                'customers' => $customersJson,
+                'routes' => $routesJson,
+                'reps' => $repsJson,
+                'payment_terms' => $termsJson,
+                'credit_invoices' => $creditInvsJson,
+                'active_route' => $activeRouteJson,
+                'active_route_invoices' => $activeRouteInvsJson,
+                'active_route_invoice_items' => $activeRouteItemsJson,
+                'discount_rules' => $discountRulesJson
+            ]);
+            exit;
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Internal server error during pull sync: ' . $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            exit;
+        }
     }
 
     public function sync_push() {
