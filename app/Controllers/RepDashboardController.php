@@ -82,7 +82,7 @@ class RepDashboardController extends Controller {
                 'category_name' => $item->category_name ?? 'General',
                 'selling_price' => floatval($item->selling_price),
                 'wholesale_price' => floatval($item->wholesale_price ?? $item->selling_price),
-                'quantity_on_hand' => intval($item->quantity_on_hand),
+                'quantity_on_hand' => intval($item->qty ?? $item->quantity_on_hand ?? 0),
                 'quantity_reserved' => intval($item->quantity_reserved),
                 'image_path' => $item->image_path ?? ''
             ];
