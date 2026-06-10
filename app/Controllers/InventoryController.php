@@ -780,28 +780,28 @@ class InventoryController extends Controller {
             $vendorId = isset($_POST['vendor_id']) && $_POST['vendor_id'] !== '' ? intval($_POST['vendor_id']) : null;
 
             $data = [
-                'item_code' => trim($_POST['item_code']),
-                'name' => trim($_POST['name']),
+                'item_code' => html_entity_decode(trim($_POST['item_code']), ENT_QUOTES, 'UTF-8'),
+                'name' => html_entity_decode(trim($_POST['name']), ENT_QUOTES, 'UTF-8'),
                 'selling_price' => trim($_POST['selling_price'] ?? '0.00'),
                 'wholesale_price' => trim($_POST['wholesale_price'] ?? '0.00'),
                 'cost_price' => trim($_POST['cost_price'] ?? '0.00'),
                 'qty' => 0, // Stock fields removed from form, defaulted to zero safely
-                'description' => trim($_POST['description'] ?? ''),
-                'barcode' => trim($_POST['barcode'] ?? ''),
+                'description' => html_entity_decode(trim($_POST['description'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                'barcode' => html_entity_decode(trim($_POST['barcode'] ?? ''), ENT_QUOTES, 'UTF-8'),
                 'category_id' => $catId,
-                'brand' => trim($_POST['brand'] ?? ''),
+                'brand' => html_entity_decode(trim($_POST['brand'] ?? ''), ENT_QUOTES, 'UTF-8'),
                 'warehouse' => '',
                 'warehouse_id' => $warehouseId,
                 'vendor_id' => $vendorId,
                 'alert_qty' => trim($_POST['alert_qty'] ?? '5'),
-                'unit' => trim($_POST['unit'] ?? 'pcs'),
+                'unit' => html_entity_decode(trim($_POST['unit'] ?? 'pcs'), ENT_QUOTES, 'UTF-8'),
                 'status' => trim($_POST['status'] ?? 'active'),
                 'weight' => trim($_POST['weight'] ?? ''),
                 'variations_json' => html_entity_decode(trim($_POST['variations_json'] ?? '[]'), ENT_QUOTES, 'UTF-8'),
                 'image_path' => $imagePath,
                 'retail_margin' => trim($_POST['retail_margin'] ?? '0.00'),
                 'wholesale_margin' => trim($_POST['wholesale_margin'] ?? '0.00'),
-                'sample_code' => trim($_POST['sample_code'] ?? '')
+                'sample_code' => html_entity_decode(trim($_POST['sample_code'] ?? ''), ENT_QUOTES, 'UTF-8')
             ];
 
             try {
@@ -930,28 +930,28 @@ class InventoryController extends Controller {
 
             $data = [
                 'id' => $id,
-                'item_code' => trim($_POST['item_code']),
-                'name' => trim($_POST['name']),
+                'item_code' => html_entity_decode(trim($_POST['item_code']), ENT_QUOTES, 'UTF-8'),
+                'name' => html_entity_decode(trim($_POST['name']), ENT_QUOTES, 'UTF-8'),
                 'selling_price' => trim($_POST['selling_price'] ?? '0.00'),
                 'wholesale_price' => trim($_POST['wholesale_price'] ?? '0.00'),
                 'cost_price' => trim($_POST['cost_price'] ?? '0.00'),
                 'qty' => $existingItem->qty ?? 0, // preserve stock levels safely, no manual form edits
-                'description' => trim($_POST['description'] ?? ''),
-                'barcode' => trim($_POST['barcode'] ?? ''),
+                'description' => html_entity_decode(trim($_POST['description'] ?? ''), ENT_QUOTES, 'UTF-8'),
+                'barcode' => html_entity_decode(trim($_POST['barcode'] ?? ''), ENT_QUOTES, 'UTF-8'),
                 'category_id' => $catId,
-                'brand' => trim($_POST['brand'] ?? ''),
+                'brand' => html_entity_decode(trim($_POST['brand'] ?? ''), ENT_QUOTES, 'UTF-8'),
                 'warehouse' => '',
                 'warehouse_id' => $warehouseId,
                 'vendor_id' => $vendorId,
                 'alert_qty' => trim($_POST['alert_qty'] ?? '5'),
-                'unit' => trim($_POST['unit'] ?? 'pcs'),
+                'unit' => html_entity_decode(trim($_POST['unit'] ?? 'pcs'), ENT_QUOTES, 'UTF-8'),
                 'status' => trim($_POST['status'] ?? 'active'),
                 'weight' => trim($_POST['weight'] ?? ''),
                 'variations_json' => html_entity_decode(trim($_POST['variations_json'] ?? '[]'), ENT_QUOTES, 'UTF-8'),
                 'image_path' => $imagePath,
                 'retail_margin' => trim($_POST['retail_margin'] ?? '0.00'),
                 'wholesale_margin' => trim($_POST['wholesale_margin'] ?? '0.00'),
-                'sample_code' => trim($_POST['sample_code'] ?? '')
+                'sample_code' => html_entity_decode(trim($_POST['sample_code'] ?? ''), ENT_QUOTES, 'UTF-8')
             ];
 
             try {

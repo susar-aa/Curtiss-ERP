@@ -35,8 +35,8 @@ class CategoryController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
-            $name = trim($_POST['name'] ?? '');
-            $description = trim($_POST['description'] ?? '');
+            $name = html_entity_decode(trim($_POST['name'] ?? ''), ENT_QUOTES, 'UTF-8');
+            $description = html_entity_decode(trim($_POST['description'] ?? ''), ENT_QUOTES, 'UTF-8');
 
             if (empty($name)) {
                 die("Category Name is required.");
@@ -58,8 +58,8 @@ class CategoryController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
-            $name = trim($_POST['name'] ?? '');
-            $description = trim($_POST['description'] ?? '');
+            $name = html_entity_decode(trim($_POST['name'] ?? ''), ENT_QUOTES, 'UTF-8');
+            $description = html_entity_decode(trim($_POST['description'] ?? ''), ENT_QUOTES, 'UTF-8');
 
             $existingCategory = $this->categoryModel->getCategoryById($id);
             if (!$existingCategory) {
