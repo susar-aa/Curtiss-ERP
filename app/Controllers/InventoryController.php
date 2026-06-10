@@ -31,6 +31,66 @@ class InventoryController extends Controller {
     }
 
     /**
+     * Map complex database and system errors to clean, human-readable feedback.
+     */
+    private function mapDatabaseError(Throwable $e) {
+        $msg = $e->getMessage();
+        
+        // 1. Duplicate SKU / Item Code
+        if (stripos($msg, 'Duplicate entry') !== false && (stripos($msg, 'item_code') !== false || stripos($msg, 'sku') !== false)) {
+            if (preg_match("/Duplicate entry '([^']+)'/", $msg, $matches)) {
+                return "The Item Code (SKU) '{$matches[1]}' is already in use by another product. Please use a unique code.";
+            }
+            return "This Item Code (SKU) is already in use. Please choose a unique code.";
+        }
+        
+        // 2. Generic Duplicate Entry
+        if (stripos($msg, 'Duplicate entry') !== false) {
+            if (preg_match("/Duplicate entry '([^']+)' for key '([^']+)'/", $msg, $matches)) {
+                $key = str_replace('_unique', '', strtolower($matches[2]));
+                $key = str_replace('items.', '', $key);
+                return "Duplicate value '{$matches[1]}' detected for field '{$key}'. Please use a unique value.";
+            }
+            return "A record with this value already exists in the database.";
+        }
+        
+        // 3. Foreign Key Integrity Constraint (Invalid category, vendor, warehouse)
+        if (stripos($msg, 'foreign key constraint fails') !== false) {
+            if (stripos($msg, 'category_id') !== false) {
+                return "The selected Category does not exist or is invalid.";
+            }
+            if (stripos($msg, 'vendor_id') !== false) {
+                return "The selected Vendor does not exist or is invalid.";
+            }
+            if (stripos($msg, 'warehouse_id') !== false) {
+                return "The selected Warehouse does not exist or is invalid.";
+            }
+            return "Database reference violation: One of the selected relationships (Category, Vendor, or Warehouse) is invalid.";
+        }
+        
+        // 4. Data Too Long (varchar overflow)
+        if (stripos($msg, 'Data too long') !== false) {
+            if (preg_match("/column '([^']+)'/", $msg, $matches)) {
+                return "The input value for field '{$matches[1]}' is too long. Please shorten it.";
+            }
+            return "One of the fields contains too many characters. Please shorten your input.";
+        }
+        
+        // 5. Numeric Out of Range
+        if (stripos($msg, 'Out of range value') !== false) {
+            return "One of the numbers (Cost, Price, Margin, or Quantity) is too large or out of range.";
+        }
+        
+        // 6. Incorrect Decimal / Numeric Format
+        if (stripos($msg, 'Incorrect decimal value') !== false || stripos($msg, 'truncated') !== false) {
+            return "Invalid number format. Please check that Cost, Price, margins, and quantities contain only valid numbers.";
+        }
+        
+        // Fallback to a cleaner version of the raw message
+        return "Database Error: " . $msg;
+    }
+
+    /**
      * Render inventory list view with database-level pagination and filtering
      */
     public function index() {
@@ -773,12 +833,13 @@ class InventoryController extends Controller {
                     throw new Exception("The database query failed to execute.");
                 }
             } catch (Throwable $e) {
+                $friendlyError = $this->mapDatabaseError($e);
                 if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
                     http_response_code(500);
-                    echo "Database/System Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine();
+                    echo $friendlyError;
                     exit;
                 } else {
-                    die("Database/System Error: " . $e->getMessage());
+                    die($friendlyError);
                 }
             }
         } else {
@@ -956,12 +1017,13 @@ class InventoryController extends Controller {
                     throw new Exception("The database query failed to execute.");
                 }
             } catch (Throwable $e) {
+                $friendlyError = $this->mapDatabaseError($e);
                 if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
                     http_response_code(500);
-                    echo "Database/System Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine();
+                    echo $friendlyError;
                     exit;
                 } else {
-                    die("Database/System Error: " . $e->getMessage());
+                    die($friendlyError);
                 }
             }
         } else {
@@ -1553,9 +1615,9 @@ class InventoryController extends Controller {
             $this->db->commit();
             echo json_encode(['success' => true, 'message' => 'Products updated successfully!']);
             exit;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $this->db->rollBack();
-            echo json_encode(['success' => false, 'error' => 'Failed to execute bulk updates: ' . $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => 'Failed to execute bulk updates: ' . $this->mapDatabaseError($e)]);
             exit;
         }
     }
