@@ -134,7 +134,8 @@ if (isset($_SESSION['flash_error'])) {
                     <tr>
                         <th class="py-3.5 px-6 text-left w-[15%]">Local ID</th>
                         <th class="py-3.5 px-6 text-left w-[35%]">Category Name</th>
-                        <th class="py-3.5 px-6 text-left w-[40%]">Description</th>
+                        <th class="py-3.5 px-6 text-left w-[30%]">Description</th>
+                        <th class="py-3.5 px-6 text-center w-[10%]">Linked Products</th>
                         <th class="py-3.5 px-6 text-right w-[10%]">Actions</th>
                     </tr>
                 </thead>
@@ -153,19 +154,35 @@ if (isset($_SESSION['flash_error'])) {
                             <?php 
                             $wooId = $cat->woo_category_id ?? null;
                             $has_synced = !empty($wooId);
+                            $prodCount = intval($cat->product_count ?? 0);
                             ?>
                              <tr class="hover:bg-slate-50/50 transition-colors group">
                                 <td class="py-3.5 px-6 font-mono font-bold text-slate-500">#<?php echo $cat->id; ?></td>
                                 <td class="py-3.5 px-6 font-semibold text-slate-900"><?php echo htmlspecialchars($cat->name); ?></td>
                                 <td class="py-3.5 px-6 text-slate-500"><?php echo htmlspecialchars($cat->description ?? '-'); ?></td>
+                                <td class="py-3.5 px-6 text-center">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold <?php echo $prodCount > 0 ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-600'; ?>">
+                                        <?php echo $prodCount; ?>
+                                    </span>
+                                </td>
                                 <td class="py-3.5 px-6 text-right whitespace-nowrap">
                                     <div class="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onclick="openEditModal(<?php echo $cat->id; ?>, '<?php echo addslashes($cat->name); ?>', '<?php echo addslashes($cat->description ?? ''); ?>')" 
-                                                class="text-indigo-600 hover:text-indigo-850 hover:underline font-semibold cursor-pointer">Edit</button>
-                                        <span class="text-slate-300">|</span>
-                                        <a href="<?php echo APP_URL; ?>/category/delete/<?php echo $cat->id; ?>" 
-                                           onclick="return confirm('Are you sure you want to delete this category?');"
-                                           class="text-rose-600 hover:text-rose-800 hover:underline font-semibold">Delete</a>
+                                        <button onclick="openEditModal(<?php echo $cat->id; ?>, '<?php echo htmlspecialchars(addslashes($cat->name)); ?>', '<?php echo htmlspecialchars(addslashes($cat->description ?? '')); ?>')" 
+                                                class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit Category">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                        <?php if ($prodCount > 0): ?>
+                                            <button type="button" onclick="alert('This category cannot be deleted because it is linked to <?php echo $prodCount; ?> products. Please reassign the products first.');"
+                                                    class="p-2 text-slate-300 cursor-not-allowed" title="Cannot delete: Linked to products">
+                                                <i class="fa-solid fa-trash-can"></i>
+                                            </button>
+                                        <?php else: ?>
+                                            <a href="<?php echo APP_URL; ?>/category/delete/<?php echo $cat->id; ?>" 
+                                               onclick="return confirm('Are you sure you want to delete the category \'<?php echo htmlspecialchars(addslashes($cat->name)); ?>\'?');"
+                                               class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Delete Category">
+                                                <i class="fa-solid fa-trash-can"></i>
+                                            </a>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>

@@ -36,7 +36,11 @@ class Category {
     }
 
     public function getCategories() {
-        $this->db->query("SELECT * FROM item_categories ORDER BY name ASC");
+        $this->db->query("SELECT cat.*, COUNT(i.id) AS product_count 
+                          FROM item_categories cat 
+                          LEFT JOIN items i ON cat.id = i.category_id 
+                          GROUP BY cat.id 
+                          ORDER BY cat.name ASC");
         return $this->db->resultSet();
     }
 
@@ -64,6 +68,14 @@ class Category {
     }
 
     public function deleteCategory($id) {
+        // Prevent deleting categories that have linked products
+        $this->db->query("SELECT COUNT(*) as count FROM items WHERE category_id = :id");
+        $this->db->bind(':id', $id);
+        $row = $this->db->single();
+        if ($row && intval($row->count) > 0) {
+            return false;
+        }
+
         $this->db->query("DELETE FROM item_categories WHERE id = :id");
         $this->db->bind(':id', $id);
         return $this->db->execute();
