@@ -290,9 +290,27 @@ class RepDashboardController extends Controller {
             exit;
         } catch (Throwable $e) {
             http_response_code(500);
+            
+            $schemaDebug = [];
+            try {
+                $tables = ['invoices', 'customer_payments', 'credit_notes', 'customers'];
+                foreach ($tables as $tbl) {
+                    $this->db->query("DESCRIBE `$tbl`");
+                    $rows = $this->db->resultSet() ?: [];
+                    $cols = [];
+                    foreach ($rows as $r) {
+                        $cols[] = $r->Field . ' (' . $r->Type . ')';
+                    }
+                    $schemaDebug[$tbl] = $cols;
+                }
+            } catch (Throwable $dbEx) {
+                $schemaDebug['error'] = $dbEx->getMessage();
+            }
+
             echo json_encode([
                 'success' => false,
                 'message' => 'Internal server error during pull sync: ' . $e->getMessage(),
+                'schema' => $schemaDebug,
                 'trace' => $e->getTraceAsString()
             ]);
             exit;
