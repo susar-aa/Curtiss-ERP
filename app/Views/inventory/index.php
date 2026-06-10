@@ -66,12 +66,16 @@ if ($importResults) unset($_SESSION['import_results']);
                             100: '#ccfbf1',
                             500: '#14b8a6', // Teal
                             600: '#0d9488',
+                            700: '#0f766e',
                             900: '#134e4a',
                         },
                         surface: {
                             50: '#fafafa',
                             100: '#f4f4f5',
                             200: '#e4e4e7',
+                            300: '#d4d4d8',
+                            500: '#71717a',
+                            700: '#3f3f46',
                             800: '#27272a',
                             900: '#18181b',
                         }
@@ -134,28 +138,36 @@ if ($importResults) unset($_SESSION['import_results']);
         /* Table Design */
         .modern-table { width: 100%; border-collapse: separate; border-spacing: 0; }
         .modern-table th { 
-            background: #fafafa; color: #71717a; font-size: 12px; font-weight: 500; text-transform: uppercase; 
-            letter-spacing: 0.05em; padding: 12px 16px; text-align: left; border-bottom: 1px solid #e4e4e7;
+            background: #fafafa; color: #71717a; font-size: 12px; font-weight: 650; text-transform: uppercase; 
+            letter-spacing: 0.05em; padding: 14px 16px; text-align: left; border-bottom: 1px solid #e4e4e7;
             position: sticky; top: 0; z-index: 10;
         }
         .modern-table td { padding: 14px 16px; border-bottom: 1px solid #f4f4f5; font-size: 13px; vertical-align: middle; }
         .modern-table tr:last-child td { border-bottom: none; }
-        .modern-table tr:hover td { background: #fcfcfc; }
+        .modern-table tbody tr { transition: background-color 0.15s ease; }
+        .modern-table tbody tr:hover td { background: rgba(20, 184, 166, 0.015); }
 
         /* Status Pills */
-        .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; font-size: 12px; font-weight: 500; }
-        .status-instock { background: #ecfdf5; color: #059669; border: 1px solid #d1fae5; }
-        .status-lowstock { background: #fffbeb; color: #d97706; border: 1px solid #fef3c7; }
-        .status-outstock { background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; }
+        .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+        .status-instock { background: #ecfdf5; color: #047857; border: 1px solid #d1fae5; }
+        .status-lowstock { background: #fffbeb; color: #b45309; border: 1px solid #fef3c7; }
+        .status-outstock { background: #fef2f2; color: #b91c1c; border: 1px solid #fee2e2; }
 
         /* Custom Checkbox */
-        .custom-checkbox { width: 16px; height: 16px; border-radius: 4px; border: 1px solid #d4d4d8; accent-color: #18181b; cursor: pointer; }
+        .custom-checkbox { width: 16px; height: 16px; border-radius: 4px; border: 1px solid #d4d4d8; accent-color: #0d9488; cursor: pointer; }
 
         /* Glass Panel */
-        .glass-panel { background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); border: 1px solid #e4e4e7; border-radius: 12px; }
+        .glass-panel { background: rgba(255,255,255,0.92); backdrop-filter: blur(16px); border: 1px solid rgba(228, 228, 231, 0.8); border-radius: 16px; }
 
         /* Checkbox wrapper animation */
         .checkbox-wrapper { display: flex; align-items: center; justify-content: center; }
+
+        /* Grid Background Pattern */
+        .bg-grid-pattern {
+            background-size: 24px 24px;
+            background-image: linear-gradient(to right, rgba(0, 0, 0, 0.015) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(0, 0, 0, 0.015) 1px, transparent 1px);
+        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -167,35 +179,37 @@ if ($importResults) unset($_SESSION['import_results']);
         
         <!-- Left Sidebar: Contextual Filters & Insights -->
         <aside class="w-full xl:w-80 flex-shrink-0 bg-white border-r border-surface-200 flex flex-col h-full xl:h-[calc(100vh-64px)] xl:sticky xl:top-0 overflow-y-auto">
-            <div class="p-6 border-b border-surface-200">
-                <h1 class="text-xl font-semibold text-surface-900 tracking-tight">Inventory</h1>
-                <p class="text-sm text-surface-500 mt-1">Manage catalog and stock levels.</p>
+            <div class="p-6 border-b border-surface-200 bg-surface-50/50">
+                <h1 class="text-xl font-bold text-surface-900 tracking-tight">Inventory System</h1>
+                <p class="text-xs text-surface-505 mt-1 text-surface-500">Track and manage physical stock catalog.</p>
             </div>
 
             <!-- Insights (KPI Cards) -->
-            <div class="p-6 border-b border-surface-200 space-y-4">
-                <h2 class="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Insights</h2>
+            <div class="p-6 border-b border-surface-200 space-y-4 bg-surface-50/20">
+                <h2 class="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2">Inventory Stats</h2>
                 
-                <div class="bg-surface-50 border border-surface-200 rounded-xl p-4 ui-transition hover:border-surface-300">
+                <!-- Total Products Card -->
+                <div class="bg-white border border-surface-200 rounded-xl p-4 ui-transition hover:border-surface-300 hover:shadow-subtle">
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="text-xs text-surface-500 font-medium">Total Products</p>
-                            <p class="text-2xl font-semibold text-surface-900 mt-1"><?php echo number_format($stats->total_items); ?></p>
+                            <p class="text-2xl font-bold text-surface-900 mt-1" id="stat-total-items"><?php echo number_format($stats->total_items); ?></p>
                         </div>
-                        <div class="w-8 h-8 rounded-lg bg-white border border-surface-200 flex items-center justify-center text-surface-500">
+                        <div class="w-8 h-8 rounded-lg bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-600">
                             <i class="fa-solid fa-layer-group text-sm"></i>
                         </div>
                     </div>
                 </div>
 
+                <!-- Low Stock and Out of Stock Grid -->
                 <div class="grid grid-cols-2 gap-3">
-                    <div class="bg-[#fffbeb] border border-[#fef3c7] rounded-xl p-3">
-                        <p class="text-[11px] text-[#b45309] font-semibold uppercase tracking-wider">Low Stock</p>
-                        <p class="text-xl font-semibold text-[#d97706] mt-1"><?php echo number_format($stats->low_stock_count); ?></p>
+                    <div class="bg-white border border-surface-200 rounded-xl p-3.5 ui-transition hover:border-amber-300">
+                        <p class="text-[10px] text-amber-600 font-semibold uppercase tracking-wider">Low Stock</p>
+                        <p class="text-xl font-bold text-amber-600 mt-1" id="stat-low-stock"><?php echo number_format($stats->low_stock_count); ?></p>
                     </div>
-                    <div class="bg-[#fef2f2] border border-[#fee2e2] rounded-xl p-3">
-                        <p class="text-[11px] text-[#b91c1c] font-semibold uppercase tracking-wider">Out of Stock</p>
-                        <p class="text-xl font-semibold text-[#dc2626] mt-1"><?php echo number_format($stats->out_of_stock_count); ?></p>
+                    <div class="bg-white border border-surface-200 rounded-xl p-3.5 ui-transition hover:border-rose-300">
+                        <p class="text-[10px] text-rose-600 font-semibold uppercase tracking-wider">Out of Stock</p>
+                        <p class="text-xl font-bold text-rose-600 mt-1" id="stat-out-of-stock"><?php echo number_format($stats->out_of_stock_count); ?></p>
                     </div>
                 </div>
             </div>
@@ -203,22 +217,21 @@ if ($importResults) unset($_SESSION['import_results']);
             <!-- Filters -->
             <div class="p-6 flex-grow">
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xs font-semibold text-surface-400 uppercase tracking-wider">Filters</h2>
-                    <button type="button" onclick="clearAllFilters()" class="text-xs text-brand-600 hover:text-brand-700 font-medium ui-transition">Clear all</button>
+                    <h2 class="text-xs font-semibold text-surface-400 uppercase tracking-wider">Advanced Filters</h2>
+                    <button type="button" onclick="clearAllFilters()" class="text-xs text-brand-600 hover:text-brand-700 font-semibold ui-transition">Clear all</button>
                 </div>
 
-                <form id="filterForm" class="space-y-5">
-                    <div>
-                        <label class="block text-xs font-medium text-surface-700 mb-1.5">Search Catalog</label>
-                        <div class="relative">
-                            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 text-xs"></i>
-                            <input type="text" id="searchInput" name="search" class="premium-input pl-9" placeholder="SKU, Name, Barcode..." value="<?php echo htmlspecialchars($filters['search']); ?>">
-                        </div>
-                    </div>
+                <form id="filterForm" onsubmit="event.preventDefault(); applyAjaxFilters();" class="space-y-4">
+                    <!-- Pagination and configuration states -->
+                    <input type="hidden" name="page" id="currentPageInput" value="<?php echo $currentPage; ?>">
+                    <input type="hidden" name="per_page" id="perPageInput" value="<?php echo $perPage; ?>">
+                    
+                    <!-- Search query state synced from the floating bar -->
+                    <input type="hidden" id="hiddenSearchInput" name="search" value="<?php echo htmlspecialchars($filters['search']); ?>">
 
                     <div>
-                        <label class="block text-xs font-medium text-surface-700 mb-1.5">Category</label>
-                        <select name="category_id" class="premium-select w-full">
+                        <label class="block text-xs font-semibold text-surface-700 mb-1.5">Category</label>
+                        <select name="category_id" onchange="applyAjaxFilters()" class="premium-select w-full">
                             <option value="">All Categories</option>
                             <?php foreach ($categories as $cat): ?>
                                 <option value="<?php echo $cat->id; ?>" <?php echo $filters['category_id'] == $cat->id ? 'selected' : ''; ?>>
@@ -229,8 +242,8 @@ if ($importResults) unset($_SESSION['import_results']);
                     </div>
 
                     <div>
-                        <label class="block text-xs font-medium text-surface-700 mb-1.5">Stock Status</label>
-                        <select name="stock_status" class="premium-select w-full">
+                        <label class="block text-xs font-semibold text-surface-700 mb-1.5">Stock Status</label>
+                        <select name="stock_status" onchange="applyAjaxFilters()" class="premium-select w-full">
                             <option value="">Any Status</option>
                             <option value="instock" <?php echo $filters['stock_status'] === 'instock' ? 'selected' : ''; ?>>In Stock</option>
                             <option value="lowstock" <?php echo $filters['stock_status'] === 'lowstock' ? 'selected' : ''; ?>>Low Stock</option>
@@ -240,60 +253,98 @@ if ($importResults) unset($_SESSION['import_results']);
 
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs font-medium text-surface-700 mb-1.5">Min Price</label>
-                            <input type="number" step="0.01" name="min_price" class="premium-input" placeholder="0.00" value="<?php echo htmlspecialchars($filters['min_price']); ?>">
+                            <label class="block text-xs font-semibold text-surface-700 mb-1.5">Min Price</label>
+                            <input type="number" step="0.01" name="min_price" oninput="triggerSearchDelay()" class="premium-input" placeholder="0.00" value="<?php echo htmlspecialchars($filters['min_price']); ?>">
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-surface-700 mb-1.5">Max Price</label>
-                            <input type="number" step="0.01" name="max_price" class="premium-input" placeholder="Any" value="<?php echo htmlspecialchars($filters['max_price']); ?>">
+                            <label class="block text-xs font-semibold text-surface-700 mb-1.5">Max Price</label>
+                            <input type="number" step="0.01" name="max_price" oninput="triggerSearchDelay()" class="premium-input" placeholder="Any" value="<?php echo htmlspecialchars($filters['max_price']); ?>">
                         </div>
                     </div>
 
-                    <button type="button" onclick="applyAjaxFilters()" class="btn-primary w-full mt-2">
-                        Apply Filters
+                    <button type="submit" class="btn-primary w-full bg-brand-600 hover:bg-brand-700 border-brand-600 text-white mt-4">
+                        <i class="fa-solid fa-filter text-xs mr-1"></i> Apply Filters
                     </button>
                     
-                    <div class="text-center mt-3">
-                        <span class="text-xs text-surface-500">Showing <strong id="matching-count" class="text-surface-900 font-medium"><?php echo $totalItems; ?></strong> results</span>
+                    <div class="text-center mt-4 pt-2 border-t border-surface-100">
+                        <span class="text-xs text-surface-400">Query Matches: <strong id="matching-count" class="text-surface-700 font-bold font-mono"><?php echo $totalItems; ?></strong> products</span>
                     </div>
                 </form>
             </div>
         </aside>
 
         <!-- Right Content Area: Main Table View -->
-        <main class="flex-grow flex flex-col bg-surface-50 min-w-0 xl:h-[calc(100vh-64px)] overflow-hidden relative">
+        <main class="flex-grow flex flex-col bg-surface-50 min-w-0 xl:h-[calc(100vh-64px)] overflow-hidden relative bg-grid-pattern">
             
-            <!-- Command Bar / Header -->
-            <header class="bg-white border-b border-surface-200 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-20 flex-shrink-0">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center text-brand-600 border border-brand-100">
-                        <i class="fa-solid fa-boxes-stacked"></i>
+            <!-- Floating Capsule Command & Search Bar -->
+            <div class="px-6 pt-6 pb-4 flex-shrink-0 z-20">
+                <div class="w-full max-w-6xl mx-auto bg-white/95 backdrop-blur-md border border-surface-200/80 shadow-float rounded-full pl-6 pr-2 py-2 flex items-center justify-between gap-4 transition-all focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/10">
+                    <!-- Search Input Wrapper -->
+                    <div class="flex items-center gap-3 flex-grow min-w-0">
+                        <i class="fa-solid fa-magnifying-glass text-surface-400 text-sm flex-shrink-0"></i>
+                        <input type="text" id="searchInput" placeholder="Search catalog by SKU, name, barcode..." class="w-full bg-transparent border-none outline-none text-sm text-surface-900 placeholder-surface-400 focus:ring-0 p-0" oninput="syncSearchAndTrigger(this.value)" value="<?php echo htmlspecialchars($filters['search']); ?>">
                     </div>
-                    <div>
-                        <h2 class="text-base font-semibold text-surface-900">Products List</h2>
-                        <p class="text-xs text-surface-500">Overview of all active inventory</p>
-                    </div>
-                </div>
 
-                <div class="flex items-center gap-2">
-                    <a href="<?php echo APP_URL; ?>/inventory/exportCSV" class="btn-secondary" title="Export CSV">
-                        <i class="fa-solid fa-download text-surface-500 text-xs"></i>
-                        <span class="hidden sm:inline">Export</span>
-                    </a>
-                    <button onclick="openCsvModal()" class="btn-secondary" title="Import CSV">
-                        <i class="fa-solid fa-upload text-surface-500 text-xs"></i>
-                        <span class="hidden sm:inline">Import</span>
-                    </button>
-                    <a href="<?php echo APP_URL; ?>/inventory/add" class="btn-primary">
-                        <i class="fa-solid fa-plus text-xs"></i> New Product
-                    </a>
+                    <!-- Divider -->
+                    <div class="hidden lg:block w-px h-6 bg-surface-200 flex-shrink-0"></div>
+
+                    <!-- Quick Navigation Buttons -->
+                    <div class="hidden lg:flex items-center gap-1.5 flex-shrink-0">
+                        <a href="<?= APP_URL ?>/inventory" class="px-3.5 py-2 rounded-full bg-brand-50 text-brand-700 hover:bg-brand-100 text-xs font-semibold flex items-center gap-2 ui-transition" title="Inventory catalog">
+                            <i class="fa-solid fa-boxes-stacked"></i>
+                            <span>Inventory</span>
+                        </a>
+                        <a href="<?= APP_URL ?>/category" class="px-3.5 py-2 rounded-full hover:bg-surface-100 text-surface-600 hover:text-surface-900 text-xs font-medium flex items-center gap-2 ui-transition" title="Product categories">
+                            <i class="fa-solid fa-tags"></i>
+                            <span>Categories</span>
+                        </a>
+                        <a href="<?= APP_URL ?>/variation" class="px-3.5 py-2 rounded-full hover:bg-surface-100 text-surface-600 hover:text-surface-900 text-xs font-medium flex items-center gap-2 ui-transition" title="Product variations">
+                            <i class="fa-solid fa-sliders"></i>
+                            <span>Variations</span>
+                        </a>
+                        <a href="<?= APP_URL ?>/warehouse" class="px-3.5 py-2 rounded-full hover:bg-surface-100 text-surface-600 hover:text-surface-900 text-xs font-medium flex items-center gap-2 ui-transition" title="Warehouses">
+                            <i class="fa-solid fa-warehouse"></i>
+                            <span>Warehouses</span>
+                        </a>
+                        <a href="<?= APP_URL ?>/stockledger" class="px-3.5 py-2 rounded-full hover:bg-surface-100 text-surface-600 hover:text-surface-900 text-xs font-medium flex items-center gap-2 ui-transition" title="Stock ledger history">
+                            <i class="fa-solid fa-receipt"></i>
+                            <span>Ledger</span>
+                        </a>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="w-px h-6 bg-surface-200 flex-shrink-0"></div>
+
+                    <!-- Action buttons -->
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <!-- Dropdown Menu for CSV Import/Export -->
+                        <div class="relative group">
+                            <button class="w-9 h-9 rounded-full bg-surface-50 border border-surface-200 hover:bg-surface-100 text-surface-600 flex items-center justify-center ui-transition" title="More Actions">
+                                <i class="fa-solid fa-ellipsis-vertical"></i>
+                            </button>
+                            <div class="absolute right-0 top-full mt-2 w-48 bg-white border border-surface-200 rounded-xl shadow-float py-1.5 z-30 hidden group-hover:block hover:block">
+                                <button type="button" onclick="openCsvModal()" class="w-full text-left px-4 py-2.5 hover:bg-surface-50 text-xs text-surface-700 flex items-center gap-2">
+                                    <i class="fa-solid fa-file-import text-surface-450"></i> Import Catalog
+                                </button>
+                                <a href="<?php echo APP_URL; ?>/inventory/exportCSV" class="w-full text-left px-4 py-2.5 hover:bg-surface-50 text-xs text-surface-700 flex items-center gap-2">
+                                    <i class="fa-solid fa-file-export text-surface-450"></i> Export Catalog
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Add Product -->
+                        <a href="<?= APP_URL ?>/inventory/add" class="h-9 rounded-full bg-brand-600 hover:bg-brand-700 text-white px-4.5 flex items-center gap-2 text-xs font-semibold shadow-sm hover:shadow-md ui-transition">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Add Product</span>
+                        </a>
+                    </div>
                 </div>
-            </header>
+            </div>
 
             <!-- Alerts Overlay (Absolute positioned over table area) -->
-            <div class="absolute top-4 left-0 right-0 z-30 px-6 pointer-events-none flex flex-col items-center gap-2">
+            <div class="absolute top-24 left-0 right-0 z-30 px-6 pointer-events-none flex flex-col items-center gap-2">
                 <?php if ($flashSuccess || isset($_GET['flash_success'])): ?>
-                    <div id="flash-success-alert" class="pointer-events-auto bg-white border border-green-200 shadow-float rounded-xl p-4 flex items-center gap-3 max-w-md w-full ui-transition">
+                    <div id="flash-success-alert" class="pointer-events-auto bg-white border border-green-200 shadow-float rounded-xl p-4 flex items-center gap-3 max-w-md w-full ui-transition animate-fade-in">
                         <div class="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-check text-sm"></i></div>
                         <div class="flex-grow">
                             <p class="text-sm font-semibold text-surface-900">Success</p>
@@ -304,7 +355,7 @@ if ($importResults) unset($_SESSION['import_results']);
                 <?php endif; ?>
 
                 <?php if ($flashError): ?>
-                    <div id="flash-error-alert" class="pointer-events-auto bg-white border border-red-200 shadow-float rounded-xl p-4 flex items-center gap-3 max-w-md w-full ui-transition">
+                    <div id="flash-error-alert" class="pointer-events-auto bg-white border border-red-200 shadow-float rounded-xl p-4 flex items-center gap-3 max-w-md w-full ui-transition animate-fade-in">
                         <div class="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-exclamation text-sm"></i></div>
                         <div class="flex-grow">
                             <p class="text-sm font-semibold text-surface-900">Error</p>
@@ -317,7 +368,7 @@ if ($importResults) unset($_SESSION['import_results']);
 
             <!-- Import Results -->
             <?php if ($importResults): ?>
-                <div id="import-results-panel" class="bg-white border-b border-surface-200 p-6 flex-shrink-0 z-10">
+                <div id="import-results-panel" class="bg-white border-b border-surface-200 p-6 flex-shrink-0 z-10 mx-6 mb-4 rounded-2xl shadow-subtle border">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-sm font-semibold text-surface-900">Import Results</h3>
                         <button onclick="document.getElementById('import-results-panel').style.display='none'" class="text-surface-400 hover:text-surface-600"><i class="fa-solid fa-xmark"></i></button>
@@ -341,7 +392,7 @@ if ($importResults) unset($_SESSION['import_results']);
             <?php endif; ?>
 
             <!-- Table Area (Scrollable) -->
-            <div class="flex-grow overflow-auto relative bg-white" id="table-wrapper">
+            <div class="flex-grow overflow-auto relative bg-white border-t border-surface-200" id="table-wrapper">
                 
                 <!-- Loader -->
                 <div id="table-loader" class="absolute inset-0 bg-white/60 backdrop-blur-sm z-20 flex items-center justify-center opacity-0 pointer-events-none ui-transition">
@@ -418,12 +469,12 @@ if ($importResults) unset($_SESSION['import_results']);
                                         <td>
                                             <p class="text-sm font-medium text-surface-900"><?php echo htmlspecialchars($item->name ?? 'Unnamed Item'); ?></p>
                                             <?php if (!empty($item->description)): ?>
-                                                <p class="text-xs text-surface-500 truncate max-w-[250px] mt-0.5"><?php echo htmlspecialchars($item->description); ?></p>
+                                                <p class="text-xs text-surface-500 truncate max-w-[250px] mt-0.5" title="<?php echo htmlspecialchars($item->description); ?>"><?php echo htmlspecialchars($item->description); ?></p>
                                             <?php endif; ?>
                                         </td>
                                         <td>
                                             <div class="flex flex-col gap-1">
-                                                <span class="font-mono text-xs font-medium text-surface-700 bg-surface-100 border border-surface-200 rounded px-1.5 py-0.5 w-fit"><?php echo htmlspecialchars($sku); ?></span>
+                                                <span class="font-mono text-xs font-medium text-surface-700 bg-surface-100 border border-surface-200 rounded px-1.5 py-0.5 w-fit select-all"><?php echo htmlspecialchars($sku); ?></span>
                                                 <span class="text-[11px] text-surface-400 font-mono">Sample: <?php echo htmlspecialchars($item->sample_code ?? '—'); ?></span>
                                             </div>
                                         </td>
@@ -469,7 +520,7 @@ if ($importResults) unset($_SESSION['import_results']);
             <!-- Footer Pagination -->
             <div class="bg-white border-t border-surface-200 px-6 py-3 flex items-center justify-between flex-shrink-0 z-10">
                 <p class="text-xs text-surface-500">
-                    Showing <span class="font-medium text-surface-900"><?php echo $startIndex; ?></span> to <span class="font-medium text-surface-900"><?php echo $endIndex; ?></span> of <span class="font-medium text-surface-900"><?php echo $totalItems; ?></span>
+                    Showing <span class="font-medium text-surface-900"><?php echo $startIndex; ?></span> to <span class="font-medium text-surface-900"><?php echo $endIndex; ?></span> of <span class="font-medium text-surface-900"><?php echo $totalItems; ?></span> entries
                 </p>
                 <div class="flex items-center gap-4">
                     <div class="flex items-center gap-2">
@@ -518,38 +569,18 @@ if ($importResults) unset($_SESSION['import_results']);
     </div>
 
     <!-- Contextual Action Bar (Linear/Stripe style floating toolbar) -->
-    <div id="bulkEditToolbar" class="fixed bottom-8 left-1/2 -translate-x-1/2 glass-panel shadow-float px-4 py-3 flex items-center gap-6 z-40 hidden ui-transition transform translate-y-4 opacity-0 transition-all duration-300">
+    <div id="bulkEditToolbar" class="fixed bottom-8 left-1/2 -translate-x-1/2 glass-panel shadow-float px-5 py-3.5 flex items-center gap-6 z-40 hidden ui-transition transform translate-y-4 opacity-0 transition-all duration-300">
         <div class="flex items-center gap-3 border-r border-surface-200/50 pr-6">
             <div class="bg-surface-900 text-white rounded text-xs font-bold px-2 py-0.5 font-mono" id="selectedCountBadge">0</div>
-            <span class="text-sm font-medium text-surface-700">selected</span>
+            <span class="text-xs font-semibold text-surface-600">items selected</span>
         </div>
         <div class="flex items-center gap-2">
-            <button type="button" onclick="clearSelection()" class="px-3 py-1.5 text-xs font-medium text-surface-500 hover:text-surface-900 ui-transition">Cancel</button>
-            <button type="button" onclick="openBulkEditModal()" class="px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium rounded-md shadow-sm flex items-center gap-2 ui-transition">
-                <i class="fa-solid fa-bolt text-[10px]"></i> Bulk Actions
+            <button type="button" onclick="clearSelection()" class="px-3 py-1.5 text-xs font-semibold text-surface-500 hover:text-surface-900 ui-transition">Cancel</button>
+            <button type="button" onclick="openBulkEditModal()" class="px-4.5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-2 ui-transition">
+                <i class="fa-solid fa-bolt text-[10px]"></i> Bulk Edit
             </button>
         </div>
     </div>
-    
-    <script>
-        // Intercept bulkEditToolbar showing to add animation classes
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                    const el = mutation.target;
-                    if (el.style.display === 'flex' || el.style.display === 'block') {
-                        setTimeout(() => {
-                            el.classList.remove('translate-y-4', 'opacity-0');
-                        }, 10);
-                    } else {
-                        el.classList.add('translate-y-4', 'opacity-0');
-                    }
-                }
-            });
-        });
-        const toolbar = document.getElementById('bulkEditToolbar');
-        if(toolbar) observer.observe(toolbar, { attributes: true });
-    </script>
 
     <!-- Bulk Edit Modal (Apple Settings Style) -->
     <div id="bulkEditModal" class="fixed inset-0 bg-surface-900/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
@@ -629,6 +660,505 @@ if ($importResults) unset($_SESSION['import_results']);
             </div>
         </div>
     </div>
+
+    <!-- Product Delete Confirmation Modal -->
+    <div id="deleteProductModal" class="fixed inset-0 bg-surface-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-float max-w-md w-full overflow-hidden border border-surface-200 flex flex-col">
+            <div class="bg-rose-50 px-5 py-4 border-b border-rose-100 flex justify-between items-center">
+                <div class="flex items-center gap-3 text-rose-800">
+                    <div class="w-8 h-8 rounded-lg bg-white border border-rose-200 flex items-center justify-center text-rose-600 shadow-sm">
+                        <i class="fa-solid fa-trash-can text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-rose-900">Delete Product</h3>
+                        <p class="text-xs text-rose-500">This action is destructive and permanent</p>
+                    </div>
+                </div>
+                <button onclick="closeDeleteModal()" class="w-8 h-8 flex items-center justify-center rounded-lg text-surface-400 hover:bg-rose-100 hover:text-surface-600 ui-transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="deleteProductForm" onsubmit="submitDeleteProduct(event)" class="p-6 space-y-4">
+                <input type="hidden" id="deleteItemId" name="item_id">
+                
+                <p class="text-sm text-surface-600 leading-relaxed">
+                    Are you sure you want to permanently delete <strong id="deleteItemName" class="text-surface-900 font-semibold"></strong>? All ledger history and stock associations for this product will be lost.
+                </p>
+
+                <div id="deleteErrorContainer" class="hidden p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-lg"></div>
+
+                <?php if ($isCurrentlyAdmin): ?>
+                    <!-- Administrator: password bypass allowed -->
+                <?php else: ?>
+                    <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-2.5 items-start">
+                        <i class="fa-solid fa-shield-halved text-amber-600 mt-0.5 text-xs"></i>
+                        <div class="text-[11px] text-amber-800 leading-relaxed font-medium">
+                            Administrative privileges are required to perform this action. An administrator must verify their credentials below to sign the deletion.
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-surface-500 uppercase tracking-wider mb-1.5">Admin Username</label>
+                            <input type="text" name="admin_username" id="deleteAdminUsername" required placeholder="Enter admin username" class="premium-input">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-surface-500 uppercase tracking-wider mb-1.5">Admin Password</label>
+                            <input type="password" name="password" id="deleteAdminPassword" required placeholder="Enter admin password" class="premium-input">
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-surface-200">
+                    <button type="button" onclick="closeDeleteModal()" class="btn-secondary">Cancel</button>
+                    <button type="submit" id="deleteSubmitBtn" class="btn-primary bg-rose-600 border-rose-600 hover:bg-rose-700 hover:border-rose-700 text-white">
+                        <span id="deleteBtnSpinner" style="display:none;" class="mr-2"><i class="fa-solid fa-circle-notch fa-spin"></i></span>
+                        Authorize & Delete
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CSV Import Modal (Glassmorphic) -->
+    <div id="csvImportModal" class="fixed inset-0 bg-surface-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-float max-w-lg w-full overflow-hidden border border-surface-200 flex flex-col">
+            <div class="bg-surface-50 px-5 py-4 border-b border-surface-200 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-white border border-surface-200 flex items-center justify-center text-brand-600 shadow-sm">
+                        <i class="fa-solid fa-file-import text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-surface-900">Import Products Catalog</h3>
+                        <p class="text-xs text-surface-500">Upload CSV to bulk add or update products</p>
+                    </div>
+                </div>
+                <button onclick="closeCsvModal()" class="w-8 h-8 flex items-center justify-center rounded-lg text-surface-400 hover:bg-surface-200 hover:text-surface-600 ui-transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-4">
+                <form action="<?php echo APP_URL; ?>/inventory/importERPCSV" method="POST" enctype="multipart/form-data" class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="block text-xs font-semibold text-surface-500 uppercase tracking-wider">Select Standard ERP CSV File</label>
+                        <div class="border-2 border-dashed border-surface-200 hover:border-brand-500 bg-surface-50 rounded-xl p-8 text-center cursor-pointer relative transition-colors duration-150">
+                            <input type="file" name="csv_file" accept=".csv" required class="absolute inset-0 opacity-0 cursor-pointer">
+                            <div class="space-y-2">
+                                <div class="h-10 w-10 bg-white border border-surface-200 text-brand-600 rounded-xl flex items-center justify-center mx-auto shadow-sm">
+                                    <i class="fa-solid fa-file-arrow-up text-lg"></i>
+                                </div>
+                                <p class="text-xs font-semibold text-surface-700">Drag & drop standard CSV here or <span class="text-brand-600 hover:underline">browse files</span></p>
+                                <p class="text-[10px] text-surface-400">Standard ERP format (resolves category, warehouse, vendor by name)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column Mapping Info -->
+                    <div class="bg-brand-50/50 border border-brand-100 rounded-xl p-4 space-y-2 text-xs text-brand-950">
+                        <h4 class="font-bold text-brand-900 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-info"></i> Smart Field Matcher
+                        </h4>
+                        <p class="text-[11px] leading-relaxed text-brand-800">
+                            Products are matched using the <strong class="font-semibold text-brand-900">SKU</strong>. If category, warehouse, or vendor names are not found in the database, they will be created dynamically.
+                        </p>
+                        <div class="text-[10px] text-brand-700/80 font-mono overflow-x-auto py-1 border-t border-brand-100 mt-2">
+                            Expected: SKU, Name, Selling Price, Wholesale Price, Cost Price, Quantity, Description, Barcode, Category, Brand, Warehouse, Vendor, Alert Qty, Unit, Status
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 pt-4 border-t border-surface-200">
+                        <button type="button" onclick="closeCsvModal()" class="btn-secondary flex-1">Cancel</button>
+                        <button type="submit" class="btn-primary bg-brand-600 border-brand-600 hover:bg-brand-700 text-white flex-1">Start Catalog Import</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client-Side Reactive Controller Scripts -->
+    <script>
+        let searchTimeout = null;
+
+        /**
+         * Synchronizes floating search input value to the hidden sidebar filter input
+         * and triggers the search debounce timer.
+         */
+        function syncSearchAndTrigger(val) {
+            document.getElementById('hiddenSearchInput').value = val;
+            triggerSearchDelay();
+        }
+
+        /**
+         * Trigger debounce search update to avoid database flooding while typing
+         */
+        function triggerSearchDelay() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                // Reset current page back to 1 on typing to get fresh filter results
+                document.getElementById('currentPageInput').value = '1';
+                applyAjaxFilters();
+            }, 300); // 300ms buffer
+        }
+
+        /**
+         * Submit form values asynchronously using HTML Fetch
+         * Parses the response and updates the table without losing search field focus
+         */
+        function applyAjaxFilters() {
+            const form = document.getElementById('filterForm');
+            const loader = document.getElementById('table-loader');
+
+            // Show local loading overlay inside table container
+            if (loader) {
+                loader.classList.remove('pointer-events-none');
+                loader.classList.add('opacity-100');
+            }
+
+            const formData = new FormData(form);
+            const queryParams = new URLSearchParams(formData).toString();
+            const requestUrl = '<?php echo APP_URL; ?>/inventory?' + queryParams;
+
+            // Fetch the template payload safely
+            fetch(requestUrl)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network error during inventory retrieval');
+                    return response.text();
+                })
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    // Swap table structure
+                    const newTable = doc.getElementById('table-container');
+                    const oldTable = document.getElementById('table-container');
+                    if (newTable && oldTable) {
+                        oldTable.innerHTML = newTable.innerHTML;
+                    }
+
+                    // Swap dynamic statistics counters without full page reloads
+                    const updateStat = (id) => {
+                        const newVal = doc.getElementById(id);
+                        const oldVal = document.getElementById(id);
+                        if (newVal && oldVal) oldVal.textContent = newVal.textContent;
+                    };
+                    updateStat('stat-total-items');
+                    updateStat('stat-low-stock');
+                    updateStat('stat-out-of-stock');
+                    updateStat('matching-count');
+
+                    // Update Address Bar/History URL so back actions are preserved
+                    window.history.pushState({ path: requestUrl }, '', requestUrl);
+                    clearSelection();
+                })
+                .catch(err => {
+                    console.error('Asynchronous Sync Error:', err);
+                })
+                .finally(() => {
+                    // Hide table loader
+                    if (loader) {
+                        loader.classList.add('pointer-events-none');
+                        loader.classList.remove('opacity-100');
+                    }
+                });
+        }
+
+        /**
+         * Handle page click navigations
+         */
+        function navigatePage(pageNum) {
+            document.getElementById('currentPageInput').value = pageNum;
+            applyAjaxFilters();
+        }
+
+        /**
+         * Handle page size limit changes
+         */
+        function updatePageSize(size) {
+            document.getElementById('perPageInput').value = size;
+            document.getElementById('currentPageInput').value = '1';
+            applyAjaxFilters();
+        }
+
+        /**
+         * Reset form inputs completely
+         */
+        function clearAllFilters() {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) searchInput.value = '';
+            
+            document.getElementById('hiddenSearchInput').value = '';
+            document.querySelector('select[name="category_id"]').value = '';
+            document.querySelector('select[name="stock_status"]').value = '';
+            document.querySelector('input[name="min_price"]').value = '';
+            document.querySelector('input[name="max_price"]').value = '';
+            document.getElementById('currentPageInput').value = '1';
+            applyAjaxFilters();
+        }
+
+        // Modal Control Functions
+        function openCsvModal() {
+            document.getElementById('csvImportModal').classList.remove('hidden');
+        }
+
+        function closeCsvModal() {
+            document.getElementById('csvImportModal').classList.add('hidden');
+        }
+
+        let activeDeleteId = null;
+
+        function confirmDelete(id, name) {
+            activeDeleteId = id;
+            document.getElementById('deleteItemId').value = id;
+            document.getElementById('deleteItemName').textContent = name;
+            
+            const errorContainer = document.getElementById('deleteErrorContainer');
+            if (errorContainer) {
+                errorContainer.classList.add('hidden');
+                errorContainer.textContent = '';
+            }
+            
+            const passwordInput = document.getElementById('deleteAdminPassword');
+            if (passwordInput) passwordInput.value = '';
+            
+            const usernameInput = document.getElementById('deleteAdminUsername');
+            if (usernameInput) usernameInput.value = '';
+
+            document.getElementById('deleteProductModal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteProductModal').classList.add('hidden');
+            activeDeleteId = null;
+        }
+
+        function submitDeleteProduct(e) {
+            e.preventDefault();
+
+            if (!activeDeleteId) return;
+
+            const form = document.getElementById('deleteProductForm');
+            const submitBtn = document.getElementById('deleteSubmitBtn');
+            const spinner = document.getElementById('deleteBtnSpinner');
+            const errorContainer = document.getElementById('deleteErrorContainer');
+
+            if (submitBtn) submitBtn.disabled = true;
+            if (spinner) spinner.style.display = 'inline-block';
+            if (errorContainer) {
+                errorContainer.classList.add('hidden');
+                errorContainer.textContent = '';
+            }
+
+            const formData = new FormData(form);
+
+            fetch('<?php echo APP_URL; ?>/inventory/delete/' + activeDeleteId, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to authorize deletion');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    closeDeleteModal();
+                    applyAjaxFilters();
+                } else {
+                    if (errorContainer) {
+                        errorContainer.textContent = data.error || 'Authorization failed. Please try again.';
+                        errorContainer.classList.remove('hidden');
+                    }
+                }
+            })
+            .catch(err => {
+                if (errorContainer) {
+                    errorContainer.textContent = err.message || 'An error occurred during verification.';
+                    errorContainer.classList.remove('hidden');
+                }
+            })
+            .finally(() => {
+                if (submitBtn) submitBtn.disabled = false;
+                if (spinner) spinner.style.display = 'none';
+            });
+        }
+
+        // ==========================================
+        // BULK EDIT SELECTION & MODAL ENGINE
+        // ==========================================
+        function toggleSelectAll(selectAllCheckbox) {
+            const checkboxes = document.querySelectorAll('.item-select-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = selectAllCheckbox.checked;
+            });
+            updateSelection();
+        }
+
+        function updateSelection() {
+            const checkboxes = document.querySelectorAll('.item-select-checkbox');
+            const selectedIds = [];
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    selectedIds.push(cb.value);
+                }
+            });
+
+            const toolbar = document.getElementById('bulkEditToolbar');
+            const countBadge = document.getElementById('selectedCountBadge');
+            const selectAllCb = document.getElementById('selectAllCheckbox');
+
+            if (selectedIds.length > 0) {
+                if (countBadge) countBadge.textContent = selectedIds.length;
+                if (toolbar) {
+                    if (toolbar.classList.contains('hidden')) {
+                        toolbar.classList.remove('hidden');
+                        toolbar.offsetHeight; // force reflow
+                    }
+                    toolbar.classList.remove('translate-y-4', 'opacity-0');
+                }
+                if (selectAllCb) {
+                    selectAllCb.checked = (selectedIds.length === checkboxes.length);
+                }
+            } else {
+                if (toolbar) {
+                    toolbar.classList.add('translate-y-4', 'opacity-0');
+                    setTimeout(() => {
+                        // verify array is still empty before hiding container
+                        const activeCheckboxes = document.querySelectorAll('.item-select-checkbox:checked');
+                        if (activeCheckboxes.length === 0) {
+                            toolbar.classList.add('hidden');
+                        }
+                    }, 300);
+                }
+                if (selectAllCb) selectAllCb.checked = false;
+            }
+        }
+
+        function clearSelection() {
+            const checkboxes = document.querySelectorAll('.item-select-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = false;
+            });
+            const selectAllCb = document.getElementById('selectAllCheckbox');
+            if (selectAllCb) selectAllCb.checked = false;
+            updateSelection();
+        }
+
+        function openBulkEditModal() {
+            const checkboxes = document.querySelectorAll('.item-select-checkbox');
+            const form = document.getElementById('bulkEditForm');
+            
+            const oldInputs = form.querySelectorAll('input[name="item_ids[]"]');
+            oldInputs.forEach(input => input.remove());
+
+            let selectedCount = 0;
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    selectedCount++;
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'item_ids[]';
+                    hiddenInput.value = cb.value;
+                    form.appendChild(hiddenInput);
+                }
+            });
+
+            document.getElementById('bulkSelectedCount').textContent = selectedCount;
+            
+            document.getElementById('bulkUpdateCategory').checked = false;
+            toggleBulkField('category');
+            document.getElementById('bulkUpdateSellingPrice').checked = false;
+            toggleBulkField('selling_price');
+            document.getElementById('bulkUpdateWholesalePrice').checked = false;
+            toggleBulkField('wholesale_price');
+            document.getElementById('bulkUpdateStatus').checked = false;
+            toggleBulkField('status');
+
+            document.getElementById('bulkEditErrorContainer').classList.add('hidden');
+            document.getElementById('bulkEditErrorContainer').textContent = '';
+
+            document.getElementById('bulkEditModal').classList.remove('hidden');
+            document.getElementById('bulkEditModal').classList.add('flex');
+        }
+
+        function closeBulkEditModal() {
+            document.getElementById('bulkEditModal').classList.add('hidden');
+            document.getElementById('bulkEditModal').classList.remove('flex');
+        }
+
+        function toggleBulkField(field) {
+            let id = 'bulkUpdateCategory';
+            if (field === 'selling_price') id = 'bulkUpdateSellingPrice';
+            else if (field === 'wholesale_price') id = 'bulkUpdateWholesalePrice';
+            else if (field === 'status') id = 'bulkUpdateStatus';
+            
+            const checkbox = document.getElementById(id);
+            if (!checkbox) return;
+            const isChecked = checkbox.checked;
+            
+            if (field === 'category') {
+                const select = document.getElementById('bulkCategorySelect');
+                select.disabled = !isChecked;
+            } else if (field === 'selling_price') {
+                document.getElementById('bulkSellingPriceType').disabled = !isChecked;
+                document.getElementById('bulkSellingPriceVal').disabled = !isChecked;
+            } else if (field === 'wholesale_price') {
+                document.getElementById('bulkWholesalePriceType').disabled = !isChecked;
+                document.getElementById('bulkWholesalePriceVal').disabled = !isChecked;
+            } else if (field === 'status') {
+                const select = document.getElementById('bulkStatusSelect');
+                select.disabled = !isChecked;
+            }
+        }
+
+        function submitBulkEdit(e) {
+            e.preventDefault();
+
+            const form = document.getElementById('bulkEditForm');
+            const submitBtn = document.getElementById('bulkSubmitBtn');
+            const spinner = document.getElementById('bulkBtnSpinner');
+            const errorContainer = document.getElementById('bulkEditErrorContainer');
+
+            if (submitBtn) submitBtn.disabled = true;
+            if (spinner) spinner.style.display = 'inline-block';
+            if (errorContainer) {
+                errorContainer.classList.add('hidden');
+                errorContainer.textContent = '';
+            }
+
+            const formData = new FormData(form);
+
+            fetch('<?php echo APP_URL; ?>/inventory/bulkUpdate', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Bulk update failed');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    closeBulkEditModal();
+                    clearSelection();
+                    applyAjaxFilters();
+                } else {
+                    if (errorContainer) {
+                        errorContainer.textContent = data.error || 'Bulk update failed. Please try again.';
+                        errorContainer.classList.remove('hidden');
+                    }
+                }
+            })
+            .catch(err => {
+                if (errorContainer) {
+                    errorContainer.textContent = err.message || 'An error occurred during bulk update.';
+                    errorContainer.classList.remove('hidden');
+                }
+            })
+            .finally(() => {
+                if (submitBtn) submitBtn.disabled = false;
+                if (spinner) spinner.style.display = 'none';
+            });
+        }
+    </script>
 
     <?php include '../app/Views/layouts/resilient_loader.php'; ?>
 </body>
