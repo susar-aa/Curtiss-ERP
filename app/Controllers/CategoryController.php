@@ -20,6 +20,7 @@ class CategoryController extends Controller {
      * Display categories list
      */
     public function index() {
+        $this->checkPermission('category', 'view');
         $categories = $this->categoryModel->getCategories();
         $data = [
             'title' => 'Category Management',
@@ -32,6 +33,7 @@ class CategoryController extends Controller {
      * Add category locally
      */
     public function add() {
+        $this->checkPermission('category', 'create_edit');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
@@ -55,6 +57,7 @@ class CategoryController extends Controller {
      * Edit category locally
      */
     public function edit($id) {
+        $this->checkPermission('category', 'create_edit');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
@@ -79,6 +82,7 @@ class CategoryController extends Controller {
      * Delete Category locally
      */
     public function delete($id) {
+        $this->checkPermission('category', 'delete');
         $existingCategory = $this->categoryModel->getCategoryById($id);
         if ($existingCategory) {
             if ($this->categoryModel->deleteCategory($id)) {

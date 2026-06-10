@@ -144,6 +144,21 @@ class AuthController extends Controller {
         $_SESSION['username'] = $user->username;
         $_SESSION['role'] = $user->role;
         
+        // Fetch and load user permissions from the database
+        $db = new Database();
+        $db->query("SELECT module, can_view, can_create_edit, can_delete FROM user_permissions WHERE user_id = :user_id");
+        $db->bind(':user_id', $user->id);
+        $perms = $db->resultSet();
+        $sessionPerms = [];
+        foreach ($perms as $p) {
+            $sessionPerms[$p->module] = [
+                'can_view' => (bool)$p->can_view,
+                'can_create_edit' => (bool)$p->can_create_edit,
+                'can_delete' => (bool)$p->can_delete
+            ];
+        }
+        $_SESSION['permissions'] = $sessionPerms;
+        
         $role = strtolower($user->role);
         if ($role === 'driver') {
             header('Location: ' . APP_URL . '/driver');

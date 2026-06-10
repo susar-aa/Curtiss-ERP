@@ -11,6 +11,28 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
     ini_set('display_errors', 0);
 }
 
+if (!function_exists('hasPermission')) {
+    function hasPermission($module, $action = 'view') {
+        if (isset($_SESSION['role']) && strtolower($_SESSION['role']) === 'admin') {
+            return true;
+        }
+        if (!isset($_SESSION['permissions'])) {
+            return false;
+        }
+        $perms = $_SESSION['permissions'];
+        if (!isset($perms[$module])) {
+            return false;
+        }
+        if ($action === 'view') {
+            return (bool)($perms[$module]['can_view'] ?? false);
+        } elseif ($action === 'create_edit') {
+            return (bool)($perms[$module]['can_create_edit'] ?? false);
+        } elseif ($action === 'delete') {
+            return (bool)($perms[$module]['can_delete'] ?? false);
+        }
+        return false;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -410,12 +432,17 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
             </a>
             
             <!-- 1. Sales & CRM -->
+            <?php 
+            $showSalesCRM = hasPermission('crm') || hasPermission('customer') || hasPermission('estimate') || hasPermission('sales') || hasPermission('creditnote') || hasPermission('dunning') || hasPermission('discount') || hasPermission('reptracking') || hasPermission('delivery') || hasPermission('territory');
+            if ($showSalesCRM): 
+            ?>
             <div class="mac-menu-container">
                 <div class="mac-menu-item">Sales & CRM</div>
                 <div class="mega-menu">
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Explore</div>
                         <div class="mega-cards-grid">
+                            <?php if (hasPermission('crm')): ?>
                             <a href="<?= APP_URL ?>/crm" class="mega-card">
                                 <div class="icon"><i class="ph ph-briefcase"></i></div>
                                 <div class="mega-card-text">
@@ -423,6 +450,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                     <div class="desc">Manage pipelines</div>
                                 </div>
                             </a>
+                            <?php endif; ?>
+                            <?php if (hasPermission('customer')): ?>
                             <a href="<?= APP_URL ?>/customer" class="mega-card">
                                 <div class="icon"><i class="ph ph-users"></i></div>
                                 <div class="mega-card-text">
@@ -430,10 +459,12 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                     <div class="desc">Client profiles</div>
                                 </div>
                             </a>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Billing & AR</div>
+                        <?php if (hasPermission('estimate')): ?>
                         <a href="<?= APP_URL ?>/estimate" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-file-text"></i></div>
                             <div class="mega-list-item-content">
@@ -441,6 +472,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Send tailored pricing</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('sales')): ?>
                         <a href="<?= APP_URL ?>/sales/create?type=sales_order" class="mega-list-item">
                             <div class="icon-wrapper text-primary"><i class="ph ph-pencil-simple"></i></div>
                             <div class="mega-list-item-content">
@@ -455,6 +488,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Manage receivables</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('creditnote')): ?>
                         <a href="<?= APP_URL ?>/creditnote" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-money"></i></div>
                             <div class="mega-list-item-content">
@@ -462,6 +497,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Issue client refunds</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('dunning')): ?>
                         <a href="<?= APP_URL ?>/dunning" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-clock"></i></div>
                             <div class="mega-list-item-content">
@@ -469,6 +506,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Automate follow-ups</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('discount')): ?>
                         <a href="<?= APP_URL ?>/discount" class="mega-list-item text-primary">
                             <div class="icon-wrapper text-primary"><i class="ph ph-tag"></i></div>
                             <div class="mega-list-item-content">
@@ -476,9 +515,11 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Configure rules & tiers</div>
                             </div>
                         </a>
+                        <?php endif; ?>
                     </div>
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Operations</div>
+                        <?php if (hasPermission('reptracking')): ?>
                         <a href="<?php echo APP_URL; ?>/RepTracking/index" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-map-pin"></i></div>
                             <div class="mega-list-item-content">
@@ -486,6 +527,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Monitor field agents</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('delivery')): ?>
                         <a href="<?= APP_URL ?>/delivery" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-truck"></i></div>
                             <div class="mega-list-item-content">
@@ -493,6 +536,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Manage dispatches</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('territory')): ?>
                         <a href="<?= APP_URL ?>/territory" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-map-trifold"></i></div>
                             <div class="mega-list-item-content">
@@ -500,6 +545,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Map sales zones</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('sales')): ?>
                         <a href="<?= APP_URL ?>/sales/deleted_list" class="mega-list-item">
                             <div class="icon-wrapper text-danger"><i class="ph ph-trash"></i></div>
                             <div class="mega-list-item-content">
@@ -507,17 +554,24 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">View removed records</div>
                             </div>
                         </a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
-
+            <?php endif; ?>
+ 
             <!-- 2. Supply Chain -->
+            <?php 
+            $showSupplyChain = hasPermission('inventory') || hasPermission('supplier') || hasPermission('category') || hasPermission('variation') || hasPermission('warehouse') || hasPermission('purchase') || hasPermission('grn') || hasPermission('supplier_return') || hasPermission('expenses');
+            if ($showSupplyChain):
+            ?>
             <div class="mac-menu-container">
                 <div class="mac-menu-item">Supply Chain</div>
                 <div class="mega-menu">
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Explore</div>
                         <div class="mega-cards-grid">
+                            <?php if (hasPermission('inventory')): ?>
                             <a href="<?= APP_URL ?>/inventory" class="mega-card">
                                 <div class="icon"><i class="ph ph-package"></i></div>
                                 <div class="mega-card-text">
@@ -525,6 +579,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                     <div class="desc">Inventory catalog</div>
                                 </div>
                             </a>
+                            <?php endif; ?>
+                            <?php if (hasPermission('supplier')): ?>
                             <a href="<?= APP_URL ?>/supplier" class="mega-card">
                                 <div class="icon"><i class="ph ph-factory"></i></div>
                                 <div class="mega-card-text">
@@ -532,10 +588,12 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                     <div class="desc">Manage suppliers</div>
                                 </div>
                             </a>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Catalog Setup</div>
+                        <?php if (hasPermission('category')): ?>
                         <a href="<?= APP_URL ?>/category" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-tag"></i></div>
                             <div class="mega-list-item-content">
@@ -543,6 +601,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Organize your items</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('variation')): ?>
                         <a href="<?= APP_URL ?>/variation" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-sparkle"></i></div>
                             <div class="mega-list-item-content">
@@ -550,6 +610,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Colors, sizes, types</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('warehouse')): ?>
                         <a href="<?= APP_URL ?>/warehouse" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-buildings"></i></div>
                             <div class="mega-list-item-content">
@@ -564,6 +626,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Move stock between depots</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('inventory')): ?>
                         <a href="<?= APP_URL ?>/inventory/reserved" class="mega-list-item text-primary">
                             <div class="icon-wrapper text-primary"><i class="ph ph-shield-check"></i></div>
                             <div class="mega-list-item-content">
@@ -585,6 +649,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Inventory audit trail</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('creditnote')): ?>
                         <a href="<?= APP_URL ?>/creditnote/damaged" class="mega-list-item">
                             <div class="icon-wrapper text-warning"><i class="ph ph-warning-circle"></i></div>
                             <div class="mega-list-item-content">
@@ -592,9 +658,11 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Faulty stock reports</div>
                             </div>
                         </a>
+                        <?php endif; ?>
                     </div>
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Purchasing</div>
+                        <?php if (hasPermission('purchase')): ?>
                         <a href="<?= APP_URL ?>/purchase" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-shopping-cart"></i></div>
                             <div class="mega-list-item-content">
@@ -602,6 +670,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Send stock requests</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('grn')): ?>
                         <a href="<?= APP_URL ?>/grn" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-tray-arrow-down"></i></div>
                             <div class="mega-list-item-content">
@@ -609,6 +679,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Receive inventory</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('supplier_return')): ?>
                         <a href="<?= APP_URL ?>/supplier-return" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-arrow-counter-clockwise"></i></div>
                             <div class="mega-list-item-content">
@@ -616,6 +688,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">RTV processing</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('expenses')): ?>
                         <a href="<?= APP_URL ?>/expenses" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-receipt"></i></div>
                             <div class="mega-list-item-content">
@@ -623,16 +697,23 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Payable tracking</div>
                             </div>
                         </a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
-
+            <?php endif; ?>
+ 
             <!-- 3. Operations -->
+            <?php 
+            $showOperations = hasPermission('hrm') || hasPermission('project') || hasPermission('vehicle') || hasPermission('cheque');
+            if ($showOperations):
+            ?>
             <div class="mac-menu-container">
                 <div class="mac-menu-item">Operations</div>
                 <div class="mega-menu">
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Human Resources</div>
+                        <?php if (hasPermission('hrm')): ?>
                         <a href="<?= APP_URL ?>/hrm" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-user-circle-gear"></i></div>
                             <div class="mega-list-item-content">
@@ -647,9 +728,11 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Process salaries</div>
                             </div>
                         </a>
+                        <?php endif; ?>
                     </div>
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Management</div>
+                        <?php if (hasPermission('project')): ?>
                         <a href="<?= APP_URL ?>/project" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-clipboard-text"></i></div>
                             <div class="mega-list-item-content">
@@ -657,6 +740,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Team assignments</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('vehicle')): ?>
                         <a href="<?= APP_URL ?>/vehicle" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-car-profile"></i></div>
                             <div class="mega-list-item-content">
@@ -664,6 +749,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Fleet maintenance</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('cheque')): ?>
                         <a href="<?= APP_URL ?>/cheque" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-signature"></i></div>
                             <div class="mega-list-item-content">
@@ -671,17 +758,24 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Track issuing</div>
                             </div>
                         </a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
-
+            <?php endif; ?>
+ 
             <!-- 4. Accounting -->
+            <?php 
+            $showAccounting = hasPermission('accounting') || hasPermission('customerpayment') || hasPermission('supplierpayment') || hasPermission('asset');
+            if ($showAccounting):
+            ?>
             <div class="mac-menu-container">
                 <div class="mac-menu-item">Accounting</div>
                 <div class="mega-menu">
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Explore</div>
                         <div class="mega-cards-grid">
+                            <?php if (hasPermission('accounting')): ?>
                             <a href="<?= APP_URL ?>/accounting/coa" class="mega-card">
                                 <div class="icon"><i class="ph ph-notebook"></i></div>
                                 <div class="mega-card-text">
@@ -696,10 +790,12 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                     <div class="desc">Manual adjustments</div>
                                 </div>
                             </a>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Banking & Assets</div>
+                        <?php if (hasPermission('accounting')): ?>
                         <a href="<?= APP_URL ?>/banking" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-bank"></i></div>
                             <div class="mega-list-item-content">
@@ -707,6 +803,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Accounts and recons</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('customerpayment')): ?>
                         <a href="<?= APP_URL ?>/customerpayment" class="mega-list-item">
                             <div class="icon-wrapper text-primary"><i class="ph ph-hand-coins"></i></div>
                             <div class="mega-list-item-content">
@@ -714,6 +812,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">AR Collections & Allocations</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('supplierpayment')): ?>
                         <a href="<?= APP_URL ?>/supplierpayment" class="mega-list-item">
                             <div class="icon-wrapper text-warning"><i class="ph ph-hand-deposit"></i></div>
                             <div class="mega-list-item-content">
@@ -721,6 +821,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">AP Payouts & GRN Allocations</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('asset')): ?>
                         <a href="<?= APP_URL ?>/asset" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-buildings"></i></div>
                             <div class="mega-list-item-content">
@@ -728,11 +830,14 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Depreciation tracking</div>
                             </div>
                         </a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
-
+            <?php endif; ?>
+ 
             <!-- 5. Analytics -->
+            <?php if (hasPermission('report')): ?>
             <div class="mac-menu-container align-right">
                 <div class="mac-menu-item">Analytics</div>
                 <div class="mega-menu">
@@ -755,8 +860,10 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                     </div>
                 </div>
             </div>
-
+            <?php endif; ?>
+ 
             <!-- 5.5 E-Commerce Operations -->
+            <?php if (hasPermission('ecommerce')): ?>
             <div class="mac-menu-container align-right">
                 <div class="mac-menu-item">E-Commerce</div>
                 <div class="mega-menu">
@@ -782,15 +889,20 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                     </div>
                 </div>
             </div>
-
+            <?php endif; ?>
+ 
             <!-- 6. Admin (Conditional) -->
-            <?php if(isset($_SESSION['role']) && ($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'Manager' || $_SESSION['role'] === 'Accountant')): ?>
+            <?php 
+            $showAdmin = hasPermission('settings') || hasPermission('user') || hasPermission('tax') || hasPermission('paymentterm') || hasPermission('audit');
+            if ($showAdmin):
+            ?>
             <div class="mac-menu-container align-right">
                 <div class="mac-menu-item">Admin</div>
                 <div class="mega-menu">
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Explore</div>
                         <div class="mega-cards-grid">
+                            <?php if (hasPermission('settings')): ?>
                             <a href="<?= APP_URL ?>/settings" class="mega-card">
                                 <div class="icon"><i class="ph ph-gear"></i></div>
                                 <div class="mega-card-text">
@@ -798,7 +910,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                     <div class="desc">Company config</div>
                                 </div>
                             </a>
-                            <?php if($_SESSION['role'] === 'Admin'): ?>
+                            <?php endif; ?>
+                            <?php if (hasPermission('user')): ?>
                             <a href="<?= APP_URL ?>/user" class="mega-card">
                                 <div class="icon"><i class="ph ph-lock-key"></i></div>
                                 <div class="mega-card-text">
@@ -809,9 +922,9 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                             <?php endif; ?>
                         </div>
                     </div>
-                    <?php if($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'Accountant'): ?>
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Compliance</div>
+                        <?php if (hasPermission('tax')): ?>
                         <a href="<?= APP_URL ?>/tax" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-scales"></i></div>
                             <div class="mega-list-item-content">
@@ -819,6 +932,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Manage VAT/GST</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('paymentterm')): ?>
                         <a href="<?= APP_URL ?>/paymentterm" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-handshake"></i></div>
                             <div class="mega-list-item-content">
@@ -826,6 +941,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Standard & Date-Driven</div>
                             </div>
                         </a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('accounting')): ?>
                         <a href="<?= APP_URL ?>/accounting/close_year" class="mega-list-item">
                             <div class="icon-wrapper text-danger"><i class="ph ph-lock"></i></div>
                             <div class="mega-list-item-content">
@@ -833,7 +950,8 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                                 <div class="desc">Lock historical data</div>
                             </div>
                         </a>
-                        <?php if($_SESSION['role'] === 'Admin'): ?>
+                        <?php endif; ?>
+                        <?php if (hasPermission('audit')): ?>
                         <a href="<?= APP_URL ?>/audit" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-shield-check"></i></div>
                             <div class="mega-list-item-content">
@@ -843,7 +961,6 @@ if (!isset($_SERVER['HTTP_ACCEPT']) || strpos($_SERVER['HTTP_ACCEPT'], 'applicat
                         </a>
                         <?php endif; ?>
                     </div>
-                    <?php endif; ?>
                 </div>
             </div>
             <?php endif; ?>

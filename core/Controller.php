@@ -30,4 +30,50 @@ class Controller {
             // Failsafe to avoid crashing the main application flow
         }
     }
+
+    /**
+     * Check permissions for module access
+     */
+    public function checkPermission($module, $action = 'view') {
+        // Admin role always has all access
+        if (isset($_SESSION['role']) && strtolower($_SESSION['role']) === 'admin') {
+            return true;
+        }
+        
+        // If not logged in, redirect to login
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: ' . APP_URL . '/auth/login');
+            exit;
+        }
+
+        $hasAccess = false;
+        if (isset($_SESSION['permissions']) && isset($_SESSION['permissions'][$module])) {
+            $perm = $_SESSION['permissions'][$module];
+            if ($action === 'view') {
+                $hasAccess = (bool)($perm['can_view'] ?? false);
+            } elseif ($action === 'create_edit') {
+                $hasAccess = (bool)($perm['can_create_edit'] ?? false);
+            } elseif ($action === 'delete') {
+                $hasAccess = (bool)($perm['can_delete'] ?? false);
+            }
+        }
+
+        if (!$hasAccess) {
+            // If AJAX request, return a clean JSON or plain error message
+            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                http_response_code(403);
+                echo "Access Denied: You do not have permission to perform this action.";
+                exit;
+            }
+
+            // Load error layout or page
+            $this->view('layouts/main', [
+                'title' => 'Access Denied',
+                'content_view' => 'auth/access_denied',
+                'error_message' => "You do not have permission to " . str_replace('_', ' and ', $action) . " the " . strtoupper($module) . " module. Please contact your system administrator."
+            ]);
+            exit;
+        }
+        return true;
+    }
 }

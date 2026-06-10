@@ -1,16 +1,15 @@
-<?php
-?>
 <style>
     .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .btn { padding: 8px 16px; background: #0066cc; color: #fff; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 14px;}
+    .btn { padding: 8px 16px; background: #0066cc; color: #fff; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s;}
     .btn:hover { background: #005bb5; }
     .btn-outline { background: transparent; border: 1px solid #0066cc; color: #0066cc; }
     .btn-outline:hover { background: rgba(0,102,204,0.05); }
+    .btn-danger { background: #ff3b30; }
+    .btn-danger:hover { background: #e0241b; }
     .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     .data-table th, .data-table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--mac-border); }
     .data-table th { background-color: rgba(0,0,0,0.02); font-weight: 600; font-size: 13px; }
     
-    /* Elegant and Robust Role Badges */
     .role-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
     .role-Admin, .role-admin { background: #ffebee; color: #c62828; }
     .role-Accountant, .role-accountant { background: #e3f2fd; color: #1565c0; }
@@ -20,21 +19,33 @@
     .role-Rep, .role-rep { background: #fff3e0; color: #e65100; }
     .role-Office, .role-office { background: #f3e5f5; color: #6a1b9a; }
 
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
-    .modal-content { background: var(--mac-bg); padding: 30px; border-radius: 12px; width: 450px; border: 1px solid var(--mac-border); backdrop-filter: blur(20px); }
-    .form-group { margin-bottom: 15px; }
-    .form-group label { display: block; margin-bottom: 5px; font-size: 13px; font-weight: 500; }
-    .form-control { width: 100%; padding: 8px 12px; border: 1px solid var(--mac-border); border-radius: 4px; background: transparent; color: var(--text-main); box-sizing: border-box;}
+    .action-links { display: flex; gap: 8px; }
 </style>
+
+<?php if (isset($_SESSION['flash_success'])): ?>
+    <div style="padding: 12px 16px; background:#e8f5e9; color:#2e7d32; border-radius:8px; margin-bottom:20px; font-weight:500; display:flex; align-items:center; gap:8px;">
+        <i class="ph-bold ph-check-circle" style="font-size: 18px;"></i>
+        <?= $_SESSION['flash_success']; unset($_SESSION['flash_success']); ?>
+    </div>
+<?php endif; ?>
+
+<?php if (isset($_SESSION['flash_error'])): ?>
+    <div style="padding: 12px 16px; background:#ffebee; color:#c62828; border-radius:8px; margin-bottom:20px; font-weight:500; display:flex; align-items:center; gap:8px;">
+        <i class="ph-bold ph-warning-circle" style="font-size: 18px;"></i>
+        <?= $_SESSION['flash_error']; unset($_SESSION['flash_error']); ?>
+    </div>
+<?php endif; ?>
 
 <div class="card">
     <div class="header-actions">
-        <h2>System Users & Access Control</h2>
-        <button class="btn" onclick="document.getElementById('userModal').style.display='flex'">+ Create User Account</button>
+        <div>
+            <h2 style="margin:0 0 5px 0; font-weight: 700;">System Users & Access Control</h2>
+            <p style="margin:0; font-size:13px; color:var(--text-muted);">Manage login credentials and granular modular permissions for employees.</p>
+        </div>
+        <a href="<?= APP_URL ?>/user/create" class="btn">
+            <i class="ph-bold ph-user-plus"></i> + Create User Account
+        </a>
     </div>
-
-    <?php if(!empty($data['error'])): ?><div style="padding: 10px; background:#ffebee; color:#c62828; border-radius:4px; margin-bottom:15px;"><?= $data['error'] ?></div><?php endif; ?>
-    <?php if(!empty($data['success'])): ?><div style="padding: 10px; background:#e8f5e9; color:#2e7d32; border-radius:4px; margin-bottom:15px;"><?= $data['success'] ?></div><?php endif; ?>
 
     <table class="data-table">
         <thead>
@@ -43,8 +54,9 @@
                 <th>Email Address</th>
                 <th>Linked Employee</th>
                 <th>System Role</th>
-                <th style="text-align: center;">Digital Signature</th>
-                <th>Account Created</th>
+                <th style="text-align: center;">Signature</th>
+                <th>Permissions Status</th>
+                <th style="width: 140px; text-align: right;">Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -62,70 +74,34 @@
                 <td><span class="role-badge role-<?= $u->role ?>"><?= $u->role ?></span></td>
                 <td style="text-align: center;">
                     <?php if(!empty($u->signature_path)): ?>
-                        <span style="color: #2e7d32; font-size: 12px; font-weight: bold;">✓ Uploaded</span>
+                        <span style="color: #2e7d32; font-size: 12px; font-weight: bold;"><i class="ph-bold ph-check"></i> Uploaded</span>
                     <?php else: ?>
-                        <span style="color: #888; font-size: 12px;">No Signature</span>
+                        <span style="color: #888; font-size: 12px;">None</span>
                     <?php endif; ?>
                 </td>
-                <td style="font-size: 13px; color: #666;"><?= date('M d, Y', strtotime($u->created_at)) ?></td>
+                <td>
+                    <?php if (strtolower($u->role) === 'admin'): ?>
+                        <span style="color: #c62828; font-size: 12px; font-weight: bold;"><i class="ph-bold ph-shield"></i> Full Access (Admin)</span>
+                    <?php else: ?>
+                        <span style="color: #0066cc; font-size: 12px; font-weight: bold;">
+                            <i class="ph-bold ph-key"></i> <?= count($u->permissions) ?> Module(s) Custom
+                        </span>
+                    <?php endif; ?>
+                </td>
+                <td style="text-align: right;">
+                    <div class="action-links" style="justify-content: flex-end;">
+                        <a href="<?= APP_URL ?>/user/edit/<?= $u->id ?>" class="btn btn-outline" style="padding: 5px 10px; font-size: 12px;">
+                            <i class="ph-bold ph-pencil"></i> Edit
+                        </a>
+                        <?php if ($u->id != $_SESSION['user_id']): ?>
+                            <a href="<?= APP_URL ?>/user/delete/<?= $u->id ?>" class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="return confirm('Are you sure you want to delete this user?');">
+                                <i class="ph-bold ph-trash"></i> Delete
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </td>
             </tr>
             <?php endforeach; ?>
         </tbody>
     </table>
-</div>
-
-<div class="modal" id="userModal">
-    <div class="modal-content">
-        <h3 style="margin-top:0;">Create ERP Login</h3>
-        <form action="<?= APP_URL ?>/user" method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="action" value="add_user">
-            
-            <div class="form-group">
-                <label>Username *</label>
-                <input type="text" name="username" class="form-control" required placeholder="e.g. kaveen.s">
-            </div>
-            
-            <div class="form-group">
-                <label>Email Address *</label>
-                <input type="email" name="email" class="form-control" required placeholder="e.g. kaveen@gmail.com">
-            </div>
-
-            <div class="form-group">
-                <label>Link to Employee Profile</label>
-                <select name="employee_id" class="form-control">
-                    <option value="">-- No Linked Employee --</option>
-                    <?php foreach($data['employees'] as $emp): ?>
-                        <option value="<?= $emp->id ?>"><?= htmlspecialchars($emp->first_name . ' ' . $emp->last_name) ?> (<?= htmlspecialchars($emp->job_title) ?>)</option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label>System Role / Permissions *</label>
-                <select name="role" class="form-control" required>
-                    <option value="driver">Driver</option>
-                    <option value="rep">Rep (Sales Representative)</option>
-                    <option value="admin">Admin (Full System Control)</option>
-                    <option value="accountant">Accountant (Full Finance Access)</option>
-                    <option value="office">Office Staff</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Temporary Password *</label>
-                <input type="password" name="password" class="form-control" required>
-            </div>
-            
-            <div class="form-group" style="background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px; border: 1px dashed var(--mac-border);">
-                <label>Digital Signature (PNG/JPG with transparent background)</label>
-                <input type="file" name="signature" class="form-control" accept=".png, .jpg, .jpeg" style="padding: 4px;">
-                <p style="font-size: 11px; color: #666; margin: 5px 0 0 0;">This will automatically appear on Purchase Orders and Documents created by this user.</p>
-            </div>
-            
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                <button type="button" class="btn btn-outline" onclick="document.getElementById('userModal').style.display='none'">Cancel</button>
-                <button type="submit" class="btn">Create Account</button>
-            </div>
-        </form>
-    </div>
 </div>

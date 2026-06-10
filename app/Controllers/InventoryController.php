@@ -94,6 +94,7 @@ class InventoryController extends Controller {
      * Render inventory list view with database-level pagination and filtering
      */
     public function index() {
+        $this->checkPermission('inventory', 'view');
         $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
         $perPage = isset($_GET['per_page']) ? max(5, min(100, intval($_GET['per_page']))) : 15;
 
@@ -136,6 +137,7 @@ class InventoryController extends Controller {
      * Dedicated Stock Reservation Dashboard Page
      */
     public function reserved() {
+        $this->checkPermission('inventory', 'view');
         // Query to get simple products with non-zero reserved quantities
         $this->db->query("
             SELECT i.id, i.item_code, i.name as item_name, i.price, i.quantity_on_hand, i.quantity_reserved,
@@ -194,6 +196,7 @@ class InventoryController extends Controller {
      * Mapped to resolve category, warehouse, and vendor names instead of their internal IDs.
      */
     public function exportCSV() {
+        $this->checkPermission('inventory', 'view');
         // Automatically regenerate sample codes before exporting to ensure they are up to date
         $this->itemModel->regenerateSampleCodes();
 
@@ -282,6 +285,7 @@ class InventoryController extends Controller {
      * Category, Warehouse, and Vendor names are matched or created automatically on-the-fly.
      */
     public function importERPCSV() {
+        $this->checkPermission('inventory', 'create_edit');
         if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_FILES['csv_file']['tmp_name'])) {
             $_SESSION['flash_error'] = "Please select a valid CSV file to upload.";
             header('Location: ' . APP_URL . '/inventory');
@@ -723,6 +727,7 @@ class InventoryController extends Controller {
     }
 
     public function add() {
+        $this->checkPermission('inventory', 'create_edit');
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $rawBase64 = $_POST['compressed_image_base64'] ?? '';
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
@@ -866,6 +871,7 @@ class InventoryController extends Controller {
      * Edit existing inventory item with live database categories, suppliers, and warehouses
      */
     public function edit($id) {
+        $this->checkPermission('inventory', 'create_edit');
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $rawBase64 = $_POST['compressed_image_base64'] ?? '';
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
@@ -1086,6 +1092,7 @@ class InventoryController extends Controller {
      * View Product Pricing & Inventory Transaction History Dashboard
      */
     public function history() {
+        $this->checkPermission('inventory', 'view');
         // Suppress errors for this method to prevent HTML output
         error_reporting(0);
         ini_set('display_errors', 0);
@@ -1111,6 +1118,7 @@ class InventoryController extends Controller {
      * Ajax Endpoint: Fetch pricing timeline and stock events of any product
      */
     public function get_price_history() {
+        $this->checkPermission('inventory', 'view');
         // Set up custom error handler to catch all PHP errors and return JSON
         set_error_handler(function($errno, $errstr, $errfile, $errline) {
             header('Content-Type: application/json');
@@ -1249,6 +1257,7 @@ class InventoryController extends Controller {
     }
 
     public function adjustStock($id, $newQty) {
+        $this->checkPermission('inventory', 'create_edit');
         $item = $this->itemModel->getItemById($id);
         if ($item) {
             $oldQty = intval($item->qty);
@@ -1426,6 +1435,7 @@ class InventoryController extends Controller {
     }
 
     public function delete($id) {
+        $this->checkPermission('inventory', 'delete');
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'error' => 'Invalid request method.']);
@@ -1490,6 +1500,7 @@ class InventoryController extends Controller {
     }
 
     public function bulkUpdate() {
+        $this->checkPermission('inventory', 'create_edit');
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'error' => 'Invalid request method.']);
