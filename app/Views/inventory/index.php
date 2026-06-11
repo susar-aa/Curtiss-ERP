@@ -888,6 +888,29 @@ if ($importResults) unset($_SESSION['import_results']);
 .txt-right { text-align: right; }
 .txt-center { text-align: center; }
 .gap-2 { gap: 8px; }
+
+/* ---- Custom Heading Styles matching Category Page ---- */
+.inv-header {
+    padding-top: 16px !important;
+    margin-bottom: 28px !important;
+}
+.inv-header-title {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 30px !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.025em !important;
+    color: #0f172a !important;
+    margin: 0 0 4px 0 !important;
+    line-height: 2.25rem !important;
+}
+.inv-header-desc {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 14px !important;
+    color: #64748b !important;
+    margin: 4px 0 24px 0 !important;
+    line-height: 1.25rem !important;
+    font-weight: 400 !important;
+}
 </style>
 
 <div class="inv-root">
@@ -898,9 +921,9 @@ if ($importResults) unset($_SESSION['import_results']);
     <div class="inv-wrap">
 
         <!-- Header -->
-        <div class="inv-header pt-4">
-            <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Inventory</h1>
-            <p class="text-sm text-slate-500 mt-1 mb-6">Organize products and manage catalog classifications locally.</p>
+        <div class="inv-header">
+            <h1 class="inv-header-title">Inventory</h1>
+            <p class="inv-header-desc">Monitor stock levels, manage physical warehouses, and track products across locations.</p>
 
             <!-- Stat Cards -->
             <div class="stat-row">
