@@ -220,22 +220,22 @@ if (isset($_SESSION['flash_error'])) {
                             </div>
                             <div class="flex items-center gap-1">
                                 <button onclick="openQuickView(<?php echo $cat->id; ?>, '<?php echo htmlspecialchars(addslashes($cat->name)); ?>', '<?php echo htmlspecialchars(addslashes($cat->description ?? '')); ?>', '<?php echo $grad; ?>')" 
-                                        class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="View Category Products">
+                                        class="w-9 h-9 inline-flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors duration-200" title="View Category Products">
                                     <i class="fa-solid fa-eye text-sm"></i>
                                 </button>
                                 <button onclick="openEditModal(<?php echo $cat->id; ?>, '<?php echo htmlspecialchars(addslashes($cat->name)); ?>', '<?php echo htmlspecialchars(addslashes($cat->description ?? '')); ?>')" 
-                                        class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="Edit Category">
+                                        class="w-9 h-9 inline-flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors duration-200" title="Edit Category">
                                     <i class="fa-solid fa-pen-to-square text-sm"></i>
                                 </button>
                                 <?php if ($prodCount > 0): ?>
                                     <button type="button" onclick="alert('This category cannot be deleted because it is linked to <?php echo $prodCount; ?> products. Please reassign the products first.');"
-                                            class="p-2 text-slate-300 cursor-not-allowed" title="Cannot delete: Linked to products">
+                                            class="w-9 h-9 inline-flex items-center justify-center text-slate-300 cursor-not-allowed" title="Cannot delete: Linked to products">
                                         <i class="fa-solid fa-trash-can text-sm"></i>
                                     </button>
                                 <?php else: ?>
                                     <a href="<?php echo APP_URL; ?>/category/delete/<?php echo $cat->id; ?>" 
                                        onclick="return confirm('Are you sure you want to delete the category \'<?php echo htmlspecialchars(addslashes($cat->name)); ?>\'?');"
-                                       class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all" title="Delete Category">
+                                       class="w-9 h-9 inline-flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors duration-200" title="Delete Category">
                                         <i class="fa-solid fa-trash-can text-sm"></i>
                                     </a>
                                 <?php endif; ?>
@@ -319,12 +319,7 @@ if (isset($_SESSION['flash_error'])) {
                 <input type="text" name="name" id="addName" required placeholder="e.g. Executive writing tools" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none">
             </div>
             <div>
-                <div class="flex justify-between items-center mb-2">
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Description</label>
-                    <button type="button" onclick="generateDescriptionWithAi('addName', 'addDescription', this)" class="text-indigo-600 hover:text-indigo-700 text-xs font-semibold flex items-center gap-1">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> Generate with AI
-                    </button>
-                </div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description</label>
                 <textarea name="description" id="addDescription" rows="3" placeholder="Category details and specifications..." class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"></textarea>
             </div>
 
@@ -349,12 +344,7 @@ if (isset($_SESSION['flash_error'])) {
                 <input type="text" name="name" id="editName" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none">
             </div>
             <div>
-                <div class="flex justify-between items-center mb-2">
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Description</label>
-                    <button type="button" onclick="generateDescriptionWithAi('editName', 'editDescription', this)" class="text-indigo-600 hover:text-indigo-700 text-xs font-semibold flex items-center gap-1">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> Generate with AI
-                    </button>
-                </div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description</label>
                 <textarea name="description" id="editDescription" rows="3" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"></textarea>
             </div>
 
@@ -513,45 +503,5 @@ if (isset($_SESSION['flash_error'])) {
         }
     }
 
-    function generateDescriptionWithAi(nameFieldId, descFieldId, btn) {
-        const nameVal = document.getElementById(nameFieldId).value.trim();
-        if (!nameVal) {
-            alert("Please enter a category name first.");
-            return;
-        }
-        
-        const originalText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = `<i class="fa-solid fa-spinner spin"></i> Generating...`;
-        
-        fetch(`<?php echo APP_URL; ?>/category/generateAiDescription?name=${encodeURIComponent(nameVal)}`)
-            .then(res => res.json())
-            .then(data => {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-                if (data.success && data.description) {
-                    typewriteText(document.getElementById(descFieldId), data.description);
-                } else {
-                    alert(data.error || "Failed to generate AI description.");
-                }
-            })
-            .catch(err => {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-                alert("Error connecting to AI service.");
-            });
-    }
 
-    function typewriteText(textarea, text) {
-        textarea.value = '';
-        let index = 0;
-        function type() {
-            if (index < text.length) {
-                textarea.value += text.charAt(index);
-                index++;
-                setTimeout(type, 15);
-            }
-        }
-        type();
-    }
 </script>
