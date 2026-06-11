@@ -183,20 +183,26 @@ class CategoryController extends Controller {
         }
 
         $cleanName = htmlspecialchars($name);
-        $apiKey = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : '';
+        $apiKey = defined('GROQ_API_KEY') ? GROQ_API_KEY : '';
         
         if (empty($apiKey)) {
-            echo json_encode(['success' => false, 'error' => 'API Connection Error: Google Gemini API Key is missing in database config file.']);
+            echo json_encode(['success' => false, 'error' => 'API Connection Error: Groq AI API Key is missing in database config file.']);
             exit;
         }
 
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+        $url = "https://api.groq.com/openai/v1/chat/completions";
         $prompt = "Generate a short, unique category description for an e-commerce website.\n\nCategory: \"{$cleanName}\"\n\nRequirements:\n* 1-2 sentences only (20-50 words).\n* Understand what products belong to this category.\n* Mention the category's purpose, common uses, or key features.\n* Avoid generic phrases and marketing fluff.\n* Do not simply repeat the category name.\n* Return only the description text.";
         
         $payload = [
-            'contents' => [
-                ['parts' => [['text' => $prompt]]]
-            ]
+            'model' => 'llama-3.3-70b-versatile',
+            'messages' => [
+                [
+                    'role' => 'user',
+                    'content' => $prompt
+                ]
+            ],
+            'temperature' => 0.7,
+            'max_tokens' => 100
         ];
         
         $ch = curl_init();
@@ -206,7 +212,7 @@ class CategoryController extends Controller {
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json',
-            'X-goog-api-key: ' . $apiKey
+            'Authorization: Bearer ' . $apiKey
         ]);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_TIMEOUT, 12);
@@ -217,8 +223,9 @@ class CategoryController extends Controller {
         
         if ($httpCode === 200 && !empty($response)) {
             $resData = json_decode($response, true);
-            $generatedText = $resData['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            $generatedText = $resData['choices'][0]['message']['content'] ?? '';
             $generatedText = trim($generatedText);
+            $generatedText = trim($generatedText, '"\'');
             if (!empty($generatedText)) {
                 echo json_encode(['success' => true, 'description' => $generatedText]);
                 exit;
@@ -237,7 +244,7 @@ class CategoryController extends Controller {
             }
         }
 
-        echo json_encode(['success' => false, 'error' => "Gemini API Connection Error: " . $errDetails]);
+        echo json_encode(['success' => false, 'error' => "Groq API Connection Error: " . $errDetails]);
         exit;
     }
 }
