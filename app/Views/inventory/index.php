@@ -1165,8 +1165,8 @@ if ($importResults) unset($_SESSION['import_results']);
                    placeholder="Search catalog…">
         </div>
         <div class="cmd-divider"></div>
-        <a href="<?= APP_URL ?>/inventory/exportCSV" class="cmd-icon" title="Export CSV"><i class="fa-solid fa-arrow-down-to-bracket"></i></a>
-        <button type="button" onclick="openCsvModal()" class="cmd-icon" title="Import CSV"><i class="fa-solid fa-arrow-up-from-bracket"></i></button>
+        <a href="<?= APP_URL ?>/inventory/exportCSV" class="cmd-icon" title="Export CSV"><i class="fa-solid fa-download"></i></a>
+        <button type="button" onclick="openCsvModal()" class="cmd-icon" title="Import CSV"><i class="fa-solid fa-upload"></i></button>
         <a href="<?= APP_URL ?>/inventory/add" class="cmd-cta"><i class="fa-solid fa-plus" style="font-size:13px;"></i> New</a>
     </div>
 </form>
