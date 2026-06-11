@@ -172,9 +172,6 @@ class CategoryController extends Controller {
         exit;
     }
 
-    /**
-     * AJAX Endpoint: Generate AI description based on category name
-     */
     public function generateAiDescription() {
         $this->checkPermission('category', 'create_edit');
         header('Content-Type: application/json');
@@ -188,58 +185,59 @@ class CategoryController extends Controller {
         $cleanName = htmlspecialchars($name);
         $apiKey = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : '';
         
-        if (!empty($apiKey)) {
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . $apiKey;
-            $prompt = "Generate a short, unique category description for an e-commerce website.\n\nCategory: \"{$cleanName}\"\n\nRequirements:\n* 1-2 sentences only (20-50 words).\n* Understand what products belong to this category.\n* Mention the category's purpose, common uses, or key features.\n* Avoid generic phrases and marketing fluff.\n* Do not simply repeat the category name.\n* Return only the description text.";
-            
-            $payload = [
-                'contents' => [
-                    ['parts' => [['text' => $prompt]]]
-                ]
-            ];
-            
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 6);
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            
-            if ($httpCode === 200 && !empty($response)) {
-                $resData = json_decode($response, true);
-                $generatedText = $resData['candidates'][0]['content']['parts'][0]['text'] ?? '';
-                $generatedText = trim($generatedText);
-                if (!empty($generatedText)) {
-                    echo json_encode(['success' => true, 'description' => $generatedText]);
-                    exit;
-                }
+        if (empty($apiKey)) {
+            echo json_encode(['success' => false, 'error' => 'API Connection Error: Google Gemini API Key is missing in database config file.']);
+            exit;
+        }
+
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+        $prompt = "Generate a short, unique category description for an e-commerce website.\n\nCategory: \"{$cleanName}\"\n\nRequirements:\n* 1-2 sentences only (20-50 words).\n* Understand what products belong to this category.\n* Mention the category's purpose, common uses, or key features.\n* Avoid generic phrases and marketing fluff.\n* Do not simply repeat the category name.\n* Return only the description text.";
+        
+        $payload = [
+            'contents' => [
+                ['parts' => [['text' => $prompt]]]
+            ]
+        ];
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'X-goog-api-key: ' . $apiKey
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr = curl_error($ch);
+        curl_close($ch);
+        
+        if ($httpCode === 200 && !empty($response)) {
+            $resData = json_decode($response, true);
+            $generatedText = $resData['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            $generatedText = trim($generatedText);
+            if (!empty($generatedText)) {
+                echo json_encode(['success' => true, 'description' => $generatedText]);
+                exit;
             }
         }
 
-        // Advanced dynamic template engine fallback if API is not set or fails
-        $words = explode(' ', $cleanName);
-        $coreNoun = end($words);
-        if (strlen($coreNoun) < 3) {
-            $coreNoun = $cleanName;
+        // Handle error responses explicitly
+        $errDetails = "HTTP Status {$httpCode}";
+        if (!empty($curlErr)) {
+            $errDetails .= " - Curl Error: " . $curlErr;
+        }
+        if (!empty($response)) {
+            $resData = json_decode($response, true);
+            if (isset($resData['error']['message'])) {
+                $errDetails = $resData['error']['message'];
+            }
         }
 
-        $adjectives = ["highly-durable", "precision-crafted", "essential", "curated", "premium-grade", "versatile"];
-        $adj = $adjectives[abs(crc32($cleanName)) % count($adjectives)];
-        
-        $uses = ["daily operations and consumer utility", "professional workloads", "optimizing organization and retail display", "reliable performance under demanding conditions"];
-        $use = $uses[abs(crc32($cleanName . 'use')) % count($uses)];
-
-        $features = ["refined design and robust construction", "industry-standard efficiency", "enhanced durability and easy integration", "exceptional reliability and modern aesthetics"];
-        $feat = $features[abs(crc32($cleanName . 'feat')) % count($features)];
-
-        $desc = "Discover our {$adj} range of {$coreNoun} designed specifically for {$use}. Featuring {$feat}, these items provide a dependable solution for retailers and professional users alike.";
-
-        echo json_encode(['success' => true, 'description' => $desc]);
+        echo json_encode(['success' => false, 'error' => "Gemini API Connection Error: " . $errDetails]);
         exit;
     }
 }
