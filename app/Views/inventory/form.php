@@ -298,7 +298,7 @@ if (!function_exists('erp_safe_json_encode')) {
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label>Barcode UPC/EAN</label>
-                            <input type="text" name="barcode" id="mainBarcode" value="<?php echo htmlspecialchars($barcode); ?>" placeholder="Barcode" required
+                            <input type="text" name="barcode" id="mainBarcode" value="<?php echo htmlspecialchars($barcode); ?>" placeholder="Barcode"
                                    class="font-mono">
                         </div>
                         <div>
@@ -1190,7 +1190,6 @@ if (!function_exists('erp_safe_json_encode')) {
         const requiredInputs = [
             { el: document.getElementById('mainProductName'), isSelect: false, label: 'Item Name' },
             { el: document.getElementById('mainItemCode'), isSelect: false, label: 'SKU' },
-            { el: document.getElementById('mainBarcode'), isSelect: false, label: 'Barcode' },
             { el: document.getElementById('mainAlertQty'), isSelect: false, label: 'Alert Qty' },
             { el: document.getElementById('costPriceInput'), isSelect: false, label: 'Cost' },
             { el: document.getElementById('retailMarginInput'), isSelect: false, label: 'Retail Margin' },
