@@ -38,6 +38,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Bypass service worker for page navigations or dynamic pages to avoid tracking prevention blocking
+  const url = new URL(event.request.url);
+  const isNavigate = event.request.mode === 'navigate';
+  const isDynamic = url.pathname.includes('.php') || !url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|json)$/i);
+  
+  if (isNavigate || isDynamic) {
+    if (url.pathname !== '/' && url.pathname !== '') {
+      return;
+    }
+  }
+
   // Suppress browser extension requests or non-http requests
   if (!event.request.url.startsWith(self.location.origin) && !event.request.url.startsWith('https://unpkg.com')) {
     return;
@@ -49,7 +60,16 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        return caches.match(event.request);
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          return new Response('Network error or resource offline', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: new Headers({ 'Content-Type': 'text/plain' })
+          });
+        });
       })
   );
 });
