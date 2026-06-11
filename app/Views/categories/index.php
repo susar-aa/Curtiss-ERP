@@ -125,45 +125,47 @@ if (isset($_SESSION['flash_error'])) {
 </style>
 
 <!-- Main Workspace Container -->
-<div class="p-8 max-w-[1400px] mx-auto space-y-6">
+<div class="px-8 pb-8 pt-0 max-w-[1400px] mx-auto space-y-6">
 
-    <!-- Inline Status Alerts -->
-    <div id="alert-container">
-        <?php if ($flashSuccess): ?>
-            <div id="success-alert" class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-4 mb-4 shadow-sm animate-fade-in">
-                <div class="bg-emerald-100 text-emerald-600 p-2 rounded-full mt-0.5 shrink-0">
-                    <i class="fa-solid fa-check"></i>
-                </div>
-                <div>
-                    <h4 class="text-emerald-800 font-semibold text-sm">Action Successful</h4>
-                    <p class="text-emerald-600 text-xs mt-0.5"><?php echo htmlspecialchars($flashSuccess); ?></p>
-                </div>
-                <button onclick="document.getElementById('success-alert').style.display='none'" class="ml-auto text-emerald-400 hover:text-emerald-600 cursor-pointer">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-            </div>
-        <?php endif; ?>
-
-        <?php if ($flashError): ?>
-            <div id="error-alert" class="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-4 mb-4 shadow-sm animate-fade-in">
-                <div class="bg-rose-100 text-rose-600 p-2 rounded-full mt-0.5 shrink-0">
-                    <i class="fa-solid fa-circle-exclamation"></i>
-                </div>
-                <div>
-                    <h4 class="text-rose-800 font-semibold text-sm">Sync Notification</h4>
-                    <p class="text-rose-600 text-xs mt-0.5"><?php echo htmlspecialchars($flashError); ?></p>
-                </div>
-                <button onclick="document.getElementById('error-alert').style.display='none'" class="ml-auto text-rose-400 hover:text-rose-600 cursor-pointer">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-            </div>
-        <?php endif; ?>
-    </div>
-
-    <!-- Section Title -->
     <div>
-        <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Category Management</h1>
-        <p class="text-sm text-slate-500 mt-1">Organize products and manage catalog classifications locally.</p>
+        <!-- Inline Status Alerts -->
+        <div id="alert-container">
+            <?php if ($flashSuccess): ?>
+                <div id="success-alert" class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-4 mb-4 shadow-sm animate-fade-in">
+                    <div class="bg-emerald-100 text-emerald-600 p-2 rounded-full mt-0.5 shrink-0">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-emerald-800 font-semibold text-sm">Action Successful</h4>
+                        <p class="text-emerald-600 text-xs mt-0.5"><?php echo htmlspecialchars($flashSuccess); ?></p>
+                    </div>
+                    <button onclick="document.getElementById('success-alert').style.display='none'" class="ml-auto text-emerald-400 hover:text-emerald-600 cursor-pointer">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($flashError): ?>
+                <div id="error-alert" class="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-4 mb-4 shadow-sm animate-fade-in">
+                    <div class="bg-rose-100 text-rose-600 p-2 rounded-full mt-0.5 shrink-0">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-rose-800 font-semibold text-sm">Sync Notification</h4>
+                        <p class="text-rose-600 text-xs mt-0.5"><?php echo htmlspecialchars($flashError); ?></p>
+                    </div>
+                    <button onclick="document.getElementById('error-alert').style.display='none'" class="ml-auto text-rose-400 hover:text-rose-600 cursor-pointer">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Section Title -->
+        <div class="mt-4">
+            <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Category Management</h1>
+            <p class="text-sm text-slate-500 mt-1">Organize products and manage catalog classifications locally.</p>
+        </div>
     </div>
 
     <!-- Split Workspace: Cards and Side Panel -->

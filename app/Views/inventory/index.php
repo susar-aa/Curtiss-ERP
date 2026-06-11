@@ -123,7 +123,7 @@ if ($importResults) unset($_SESSION['import_results']);
 .inv-wrap {
     max-width: 1420px;
     margin: 0 auto;
-    padding: 32px 24px 160px;
+    padding: 0px 24px 160px;
 }
 .inv-split {
     display: flex;
