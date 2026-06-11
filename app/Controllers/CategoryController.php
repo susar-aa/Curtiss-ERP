@@ -24,9 +24,10 @@ class CategoryController extends Controller {
         $categories = $this->categoryModel->getCategories();
         $data = [
             'title' => 'Category Management',
-            'categories' => $categories
+            'categories' => $categories,
+            'content_view' => 'categories/index'
         ];
-        $this->view('categories/index', $data);
+        $this->view('layouts/main', $data);
     }
 
     /**
@@ -150,6 +151,59 @@ class CategoryController extends Controller {
             'duplicates' => $skuDuplicates,
             'logs' => $logs
         ]);
+        exit;
+    }
+
+    /**
+     * AJAX Endpoint: Get products for a category
+     */
+    public function products($id) {
+        $this->checkPermission('category', 'view');
+        header('Content-Type: application/json');
+        
+        $this->db->query("SELECT id, name, sku, item_code, image_path, qty, selling_price, status 
+                          FROM items 
+                          WHERE category_id = :category_id 
+                          ORDER BY name ASC");
+        $this->db->bind(':category_id', $id);
+        $products = $this->db->resultSet();
+        
+        echo json_encode($products);
+        exit;
+    }
+
+    /**
+     * AJAX Endpoint: Generate AI description based on category name
+     */
+    public function generateAiDescription() {
+        $this->checkPermission('category', 'create_edit');
+        header('Content-Type: application/json');
+        
+        $name = trim($_GET['name'] ?? '');
+        if (empty($name)) {
+            echo json_encode(['success' => false, 'error' => 'Category name is required.']);
+            exit;
+        }
+
+        $cleanName = htmlspecialchars($name);
+        $lowerName = strtolower($name);
+        $desc = "";
+        
+        if (strpos($lowerName, 'tool') !== false || strpos($lowerName, 'equip') !== false || strpos($lowerName, 'machine') !== false) {
+            $desc = "A professional-grade collection of {$cleanName} engineered for high performance, structural durability, and operational excellence. This segment features premium items optimized for distribution, retail sales, and heavy-duty utility.";
+        } elseif (strpos($lowerName, 'electronic') !== false || strpos($lowerName, 'tech') !== false || strpos($lowerName, 'device') !== false) {
+            $desc = "High-performance {$cleanName} utilizing advanced technology and components. This category contains precision-engineered hardware, consumer devices, and technical units cataloged for streamlined ERP stock tracking and retail sales.";
+        } elseif (strpos($lowerName, 'wear') !== false || strpos($lowerName, 'cloth') !== false || strpos($lowerName, 'apparel') !== false || strpos($lowerName, 'shoe') !== false) {
+            $desc = "Modern and stylish {$cleanName} tailored for quality comfort, fashion standards, and retail appeal. This classification covers a wide selection of designs and materials, organized for inventory distribution and seasonal sales tracking.";
+        } elseif (strpos($lowerName, 'food') !== false || strpos($lowerName, 'bev') !== false || strpos($lowerName, 'drink') !== false || strpos($lowerName, 'snack') !== false) {
+            $desc = "Premium grade {$cleanName} prepared and packaged according to food safety and freshness regulations. This category maintains strict batch tracking, stock rotation, and warehouse distribution guidelines.";
+        } elseif (strpos($lowerName, 'stationery') !== false || strpos($lowerName, 'office') !== false || strpos($lowerName, 'pen') !== false || strpos($lowerName, 'book') !== false) {
+            $desc = "Essential {$cleanName} curated for office productivity, creative work, and corporate environments. This catalog segment is optimized for high-volume retail supply chains and warehouse inventory control.";
+        } else {
+            $desc = "A specialized collection of {$cleanName} designed for quality assurance, retail demand, and systematic stock categorization. This segment includes core items, accessories, and spare parts cataloged to optimize warehouse operations and sales tracking.";
+        }
+
+        echo json_encode(['success' => true, 'description' => $desc]);
         exit;
     }
 }
