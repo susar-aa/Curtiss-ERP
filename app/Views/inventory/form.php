@@ -119,10 +119,10 @@ if (!function_exists('erp_safe_json_encode')) {
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen pb-12">
 
-    <div class="max-w-5xl w-full mx-auto px-4 py-8">
+    <div class="max-w-[1400px] w-full mx-auto px-4 py-6">
         
         <!-- Navigation Breadcrumbs -->
-        <a href="<?php echo APP_URL; ?>/inventory" class="inline-flex items-center gap-2 text-slate-500 hover:text-primary-600 font-semibold text-sm transition-colors mb-6 group">
+        <a href="<?php echo APP_URL; ?>/inventory" class="inline-flex items-center gap-2 text-slate-500 hover:text-primary-600 font-semibold text-sm transition-colors mb-4 group">
             <i class="fa-solid fa-arrow-left transition-transform group-hover:-translate-x-1"></i> Back to Product Catalog
         </a>
 
@@ -130,413 +130,400 @@ if (!function_exists('erp_safe_json_encode')) {
         <div class="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
             
             <!-- Header section -->
-            <div class="p-6 md:p-8 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 class="text-2xl font-bold tracking-tight text-slate-900"><?php echo htmlspecialchars($title); ?></h1>
-                    <p class="text-slate-500 text-xs mt-1">Configure retail, cost, B2B wholesale prices, upload images, select suppliers, and map custom product attributes.</p>
+                    <h1 class="text-xl font-bold tracking-tight text-slate-900"><?php echo htmlspecialchars($title); ?></h1>
+                    <p class="text-slate-500 text-xs mt-0.5">Configure retail, cost, B2B wholesale prices, upload images, select suppliers, and map custom product attributes.</p>
                 </div>
-                <div class="w-12 h-12 rounded-2xl bg-primary-50 text-primary-600 flex items-center justify-center border border-primary-100">
-                    <i class="fa-solid <?php echo $is_edit ? 'fa-pen-to-square' : 'fa-plus'; ?> text-xl"></i>
+                <div class="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center border border-primary-100 flex-shrink-0">
+                    <i class="fa-solid <?php echo $is_edit ? 'fa-pen-to-square' : 'fa-plus'; ?> text-base"></i>
                 </div>
             </div>
 
             <!-- Form Body Fields -->
-            <form action="<?php echo $form_action; ?>" method="POST" id="productForm" class="p-6 md:p-8 space-y-8" enctype="multipart/form-data">
+            <form action="<?php echo $form_action; ?>" method="POST" id="productForm" class="p-6 space-y-6" enctype="multipart/form-data">
                 
                 <!-- Hidden inputs for variations and image compression base64 -->
                 <input type="hidden" name="variations_json" id="variationsJson" value="[]">
                 <input type="hidden" name="compressed_image_base64" id="compressedImageBase64" value="">
                 <input type="hidden" name="image_deleted" id="imageDeleted" value="0">
 
-                <!-- Section 1: Product Media Dropzone with Compressor -->
-                <div>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
-                        <i class="fa-solid fa-image text-primary-500"></i> Product Image (Auto-Compressing Dropzone)
-                    </h3>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-                        <div class="md:col-span-2">
-                            <!-- Drag and drop zone -->
-                            <div id="dropzone" class="border-2 border-dashed border-slate-300 hover:border-primary-500 bg-slate-50/50 hover:bg-primary-50/10 rounded-2xl p-6 transition-all duration-200 cursor-pointer text-center relative">
-                                <input type="file" id="imageFileInput" name="image_file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer">
-                                <div class="space-y-2">
-                                    <div class="h-10 w-10 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center mx-auto shadow-inner group-hover:scale-110 transition-transform">
-                                        <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
-                                    </div>
-                                    <p class="text-sm font-semibold text-slate-700">Drag & drop product photo or <span class="text-primary-600 hover:underline">browse files</span></p>
-                                    <p class="text-[10px] text-slate-400">Supports PNG, JPG, JPEG up to 10MB (automatically compressed to fast-loading size)</p>
-                                </div>
-                            </div>
-
-                            <!-- Upload & Compression Progress Bar -->
-                            <div id="progressWrapper" class="mt-4 bg-slate-100 rounded-full h-2.5 overflow-hidden hidden border border-slate-200">
-                                <div id="progressBar" class="bg-gradient-to-r from-primary-500 to-purple-500 h-full transition-all duration-300" style="width: 0%"></div>
-                            </div>
-                            <p id="progressText" class="text-[11px] text-slate-500 font-semibold mt-1.5 hidden"></p>
-                        </div>
-
-                        <!-- Image Preview Slot -->
-                        <div class="flex justify-center">
-                            <div class="relative w-36 h-36 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shadow-inner">
-                                <?php
-                                $preview_img_src = 'https://placehold.co/300?text=No+Product+Image';
-                                if (!empty($image_path)) {
-                                    $filename = basename($image_path);
-                                    $preview_img_src = APP_URL . '/uploads/products/' . $filename;
-                                }
-                                ?>
-                                <img id="previewImage" src="<?php echo $preview_img_src; ?>" class="object-cover w-full h-full" onerror="this.src='https://placehold.co/300?text=No+Product+Image'">
-                                <button type="button" id="removeImageBtn" class="absolute bottom-2 right-2 p-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow-md transition-colors text-xs <?php echo empty($image_path) ? 'hidden' : ''; ?>">
-                                    <i class="fa-solid fa-trash-can"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section 2: Core Product Identification -->
-                <div>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
-                        <i class="fa-solid fa-barcode mr-1 text-primary-500"></i> Core Product Identification
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <!-- Left Side: Product Basics & Organization (col-span-7) -->
+                    <div class="lg:col-span-7 space-y-6">
                         
-                        <!-- SKU Code -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Product SKU / Code *</label>
-                            <div class="relative">
-                                <i class="fa-solid fa-hashtag absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                                <input type="text" name="item_code" id="mainItemCode" value="<?php echo htmlspecialchars($item_code); ?>" placeholder="e.g. FCON-PEN-01" required
-                                       class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono font-bold">
-                            </div>
-                        </div>
-
-                        <!-- Sample Code -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Sample Code</label>
-                            <div class="relative">
-                                <i class="fa-solid fa-vial absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                                <input type="text" name="sample_code" value="<?php echo htmlspecialchars($sample_code ?? ''); ?>" placeholder="e.g. SMP-001" 
-                                       class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono">
-                            </div>
-                        </div>
-
-                        <!-- Barcode EAN/UPC -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Barcode UPC/EAN</label>
-                            <div class="relative">
-                                <i class="fa-solid fa-barcode absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                                <input type="text" name="barcode" value="<?php echo htmlspecialchars($barcode); ?>" placeholder="e.g. 4791234567890" 
-                                       class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono">
-                            </div>
-                        </div>
-
-                        <!-- Product Status Option -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Status</label>
-                            <select name="status" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-semibold">
-                                <option value="active" <?php echo $status === 'active' ? 'selected' : ''; ?>>Active</option>
-                                <option value="inactive" <?php echo $status === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
-                            </select>
-                        </div>
-
-                        <!-- Item Name/Title -->
-                        <div class="md:col-span-3">
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Item Name / Product Title *</label>
-                            <div class="relative">
-                                <i class="fa-solid fa-tag absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                                <input type="text" name="name" id="mainProductName" value="<?php echo htmlspecialchars($name); ?>" placeholder="e.g. Falcon Luxury Blue Ink Pen" required
-                                       class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-semibold">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section 3: Catalog Categorization & Database Relations -->
-                <div>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
-                        <i class="fa-solid fa-warehouse mr-1 text-primary-500"></i> Organization, Category & Database storage relations
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        
-                        <!-- Category list -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Category</label>
-                            <select name="category_id" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-semibold">
-                                <option value="">General Stationery</option>
-                                <?php foreach ($categories as $cat): ?>
-                                    <option value="<?php echo $cat->id; ?>" <?php echo $category_id == $cat->id ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($cat->name); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <!-- Supplier Selection from Database Vendors data -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Supplier / Vendor (ERP Database)</label>
-                            <select name="vendor_id" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-semibold">
-                                <option value="">Select Supplier</option>
-                                <?php foreach ($vendors as $v): ?>
-                                    <option value="<?php echo $v->id; ?>" <?php echo $vendor_id == $v->id ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($v->name); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <!-- Warehouse Selection from Database warehouses data -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Warehouse Storage Bin</label>
-                            <select name="warehouse_id" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-semibold">
-                                <option value="">Select Warehouse</option>
-                                <?php foreach ($warehouses as $wh): ?>
-                                    <option value="<?php echo $wh->id; ?>" <?php echo $warehouse_id == $wh->id ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($wh->name); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <!-- Brand/Manufacturer -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Brand / Manufacturer</label>
-                            <div class="relative">
-                                <i class="fa-solid fa-building-flag absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                                <input type="text" name="brand" value="<?php echo htmlspecialchars($brand); ?>" placeholder="e.g. Falcon Stationery" 
-                                       class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section 4: Product Attributes & Variations Builder -->
-                <div>
-                    <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <i class="fa-solid fa-diagram-project text-primary-500 animate-pulse"></i> Product Attributes & Variations
-                        </h3>
-                        <div class="text-xs text-slate-400 italic">No stock inputs required (Managed via GRN/PO transactions)</div>
-                    </div>
-
-                    <!-- Step-by-Step interactive builder panel linked with dynamic databases -->
-                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200 mb-6 space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-                            <!-- 1. Database Synced Attribute Select Dropdown -->
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">1. Select Product Attribute</label>
-                                <select id="attrGroupSelect" onchange="handleAttributeSelectionChange()" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none cursor-pointer font-semibold">
-                                    <option value="">-- Choose Synced Attribute --</option>
-                                    <?php foreach ($synced_attributes as $attr): ?>
-                                        <option value="<?php echo $attr->id; ?>">
-                                            <?php echo htmlspecialchars($attr->name); ?> (pa_<?php echo htmlspecialchars($attr->slug); ?>)
-                                        </option>
-                                    <?php endforeach; ?>
-                                    <option value="Custom">Custom Attribute Group...</option>
-                                </select>
-                            </div>
-
-                            <!-- Custom Group Text Box (Fallback option) -->
-                            <div id="customGroupWrapper" class="hidden">
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Custom Attribute Name</label>
-                                <input type="text" id="customGroupName" placeholder="e.g. Style, Size" class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-semibold">
-                            </div>
-
-                            <!-- Custom Values Entry Field -->
-                            <div id="customValuesWrapper" class="md:col-span-2 hidden">
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Type custom options (Press Enter to separate)</label>
-                                <div class="relative">
-                                    <i class="fa-solid fa-keyboard absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                                    <input type="text" id="customValuesInput" placeholder="Type value and hit Enter (e.g. Black, White)" class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none">
-                                </div>
-                            </div>
-
-                            <!-- Informational Term Selection Field -->
-                            <div id="syncedTermsWrapper" class="md:col-span-2">
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">2. Click a synced term to add as variation</label>
-                                <div id="syncedTermsContainer" class="flex flex-wrap gap-2 bg-white/70 border border-slate-200 rounded-xl p-3 min-h-[42px] items-center text-slate-400 italic text-xs">
-                                    Select a synced attribute on the left to show available terms list.
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Rendered Interactive Custom Tags (Only shown if custom selected) -->
-                        <div id="attributeTagsContainer" class="flex flex-wrap gap-2 pt-2 hidden"></div>
-                    </div>
-
-                    <!-- Variations table list (No stock column) -->
-                    <div class="border border-slate-200 rounded-xl overflow-hidden bg-slate-50 shadow-inner">
-                        <table class="w-full text-left text-xs border-collapse">
-                            <thead>
-                                <tr class="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase font-mono tracking-wider">
-                                    <th class="py-3 px-4 w-[20%]">Attribute option value</th>
-                                    <th class="py-3 px-4 w-[15%]">Variation SKU *</th>
-                                    <th class="py-3 px-4 w-[12%] text-right">Cost Price (LKR)</th>
-                                    <th class="py-3 px-4 w-[12%] text-right">Retail Margin %</th>
-                                    <th class="py-3 px-4 w-[12%] text-right">Retail Price (LKR)</th>
-                                    <th class="py-3 px-4 w-[12%] text-right">Wholesale Margin %</th>
-                                    <th class="py-3 px-4 w-[12%] text-right">B2B base Price (LKR)</th>
-                                    <th class="py-3 px-4 w-[5%] text-right">Remove</th>
-                                </tr>
-                            </thead>
-                            <tbody id="variationsTableBody" class="divide-y divide-slate-200">
-                                <!-- Dynamic variation rows populated via JS -->
-                                <tr id="noVariationsRow">
-                                    <td colspan="8" class="py-8 text-center text-slate-400 italic">No variations created. Product will be synced as a simple standard product.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Section 5: Pricing, Costing & WholesaleX B2B (Locked/Disabled if variations exist) -->
-                <div class="relative transition-all duration-300" id="basePricingContainer">
-                    
-                    <!-- Pricing Lock Alert Overlay -->
-                    <div id="basePricingAlert" class="bg-purple-50 border border-purple-200 text-purple-950 p-4 rounded-xl text-xs flex items-center gap-3.5 mb-6 hidden">
-                        <i class="fa-solid fa-lock text-purple-600 text-base animate-bounce"></i>
-                        <div>
-                            <strong class="font-bold">Base Pricing Deactivated:</strong> Product pricing is currently managed at the **variation level** above. Remove variations to reactive base catalog prices.
-                        </div>
-                    </div>
-
-                    <div id="basePricingSection" class="space-y-6">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center justify-between">
-                            <span><i class="fa-solid fa-wallet mr-1 text-primary-500"></i> Base Pricing, Costing & WholesaleX B2B Price</span>
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+                        <!-- Section 1: Compact Image Dropzone & Preview -->
+                        <div class="bg-slate-50/50 border border-slate-200 rounded-2xl p-4">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <i class="fa-solid fa-image text-primary-500"></i> Product Image (Auto-Compressing Dropzone)
+                            </h3>
                             
-                            <!-- Cost Price -->
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cost Price (Purchase)</label>
-                                <div class="relative">
-                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rs.</span>
-                                    <input type="number" step="0.01" name="cost_price" id="costPriceInput" value="<?php echo htmlspecialchars($cost_price); ?>" oninput="calculateMarkupProfit()" placeholder="0.00" 
-                                           class="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono font-bold">
-                                </div>
-                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                                <div class="sm:col-span-2">
+                                    <!-- Drag and drop zone -->
+                                    <div id="dropzone" class="border-2 border-dashed border-slate-300 hover:border-primary-500 bg-white hover:bg-primary-50/5 rounded-xl p-3.5 transition-all duration-200 cursor-pointer text-center relative">
+                                        <input type="file" id="imageFileInput" name="image_file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer">
+                                        <div class="space-y-1">
+                                            <i class="fa-solid fa-cloud-arrow-up text-base text-slate-400"></i>
+                                            <p class="text-xs font-semibold text-slate-700">Drag & drop photo or <span class="text-primary-600 hover:underline">browse files</span></p>
+                                            <p class="text-[9px] text-slate-400">PNG, JPG up to 10MB (automatically compressed)</p>
+                                        </div>
+                                    </div>
 
-                            <!-- Retail Margin % -->
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Retail Margin %</label>
-                                <div class="relative">
-                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">%</span>
-                                    <input type="number" step="0.1" name="retail_margin" id="retailMarginInput" value="<?php echo htmlspecialchars($retail_margin); ?>" oninput="calculatePriceFromMargin('retail')" placeholder="0.0" 
-                                           class="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono font-bold">
+                                    <!-- Upload & Compression Progress Bar -->
+                                    <div id="progressWrapper" class="mt-2 bg-slate-100 rounded-full h-1.5 overflow-hidden hidden border border-slate-200">
+                                        <div id="progressBar" class="bg-gradient-to-r from-primary-500 to-purple-500 h-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                    <p id="progressText" class="text-[9px] text-slate-500 font-semibold mt-1 hidden"></p>
                                 </div>
-                            </div>
 
-                            <!-- Selling Price (LKR Retail) -->
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Retail Price (LKR) *</label>
-                                <div class="relative">
-                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rs.</span>
-                                    <input type="number" step="0.01" name="selling_price" id="sellingPriceInput" value="<?php echo htmlspecialchars($selling_price); ?>" oninput="calculateMarginFromPrice('retail')" placeholder="0.00" required
-                                           class="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono font-bold">
-                                </div>
-                            </div>
-
-                            <!-- Wholesale Margin % -->
-                            <div>
-                                <label class="block text-xs font-bold text-purple-700 uppercase tracking-wider mb-2">Wholesale Margin %</label>
-                                <div class="relative">
-                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400 text-xs font-bold">%</span>
-                                    <input type="number" step="0.1" name="wholesale_margin" id="wholesaleMarginInput" value="<?php echo htmlspecialchars($wholesale_margin); ?>" oninput="calculatePriceFromMargin('wholesale')" placeholder="0.0" 
-                                           class="w-full pl-9 pr-3 py-2.5 bg-purple-50/20 border border-purple-200 focus:border-purple-500 rounded-xl text-sm focus:ring-2 focus:ring-purple-500/20 focus:outline-none font-mono font-bold text-purple-850">
-                                </div>
-                            </div>
-
-                            <!-- B2B Wholesale Price (WholesaleX) -->
-                            <div>
-                                <label class="block text-xs font-bold text-purple-700 uppercase tracking-wider mb-2">B2B User Base Price *</label>
-                                <div class="relative">
-                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400 text-xs font-bold">Rs.</span>
-                                    <input type="number" step="0.01" name="wholesale_price" id="wholesalePriceInput" value="<?php echo htmlspecialchars($wholesale_price); ?>" oninput="calculateMarginFromPrice('wholesale')" placeholder="0.00" 
-                                           class="w-full pl-9 pr-3 py-2.5 bg-purple-50/20 border border-purple-200 focus:border-purple-500 rounded-xl text-sm focus:ring-2 focus:ring-purple-500/20 focus:outline-none font-mono font-bold text-purple-850">
+                                <!-- Image Preview Slot -->
+                                <div class="flex justify-center">
+                                    <div class="relative w-24 h-24 rounded-xl border border-slate-200 bg-white flex items-center justify-center overflow-hidden shadow-inner">
+                                        <?php
+                                        $preview_img_src = 'https://placehold.co/300?text=No+Product+Image';
+                                        if (!empty($image_path)) {
+                                            $filename = basename($image_path);
+                                            $preview_img_src = APP_URL . '/uploads/products/' . $filename;
+                                        }
+                                        ?>
+                                        <img id="previewImage" src="<?php echo $preview_img_src; ?>" class="object-cover w-full h-full" onerror="this.src='https://placehold.co/300?text=No+Product+Image'">
+                                        <button type="button" id="removeImageBtn" class="absolute bottom-1 right-1 p-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg shadow-md transition-colors text-[10px] <?php echo empty($image_path) ? 'hidden' : ''; ?>">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Section 6: Non-Stock Physical Properties -->
-                <div>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
-                        <i class="fa-solid fa-scale-balanced mr-1 text-primary-500"></i> Physical Specifications & Reorder Alerts
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Section 2: Core Product Identification & Organization -->
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-barcode text-primary-500"></i> Core Identification & Organization
+                            </h3>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <!-- SKU Code -->
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Product SKU / Code *</label>
+                                    <div class="relative">
+                                        <i class="fa-solid fa-hashtag absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                        <input type="text" name="item_code" id="mainItemCode" value="<?php echo htmlspecialchars($item_code); ?>" placeholder="e.g. FCON-PEN-01" required
+                                               class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono font-bold">
+                                    </div>
+                                </div>
+
+                                <!-- Sample Code -->
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sample Code</label>
+                                    <div class="relative">
+                                        <i class="fa-solid fa-vial absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                        <input type="text" name="sample_code" value="<?php echo htmlspecialchars($sample_code ?? ''); ?>" placeholder="e.g. SMP-001" 
+                                               class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono">
+                                    </div>
+                                </div>
+
+                                <!-- Barcode EAN/UPC -->
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Barcode UPC/EAN</label>
+                                    <div class="relative">
+                                        <i class="fa-solid fa-barcode absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                        <input type="text" name="barcode" value="<?php echo htmlspecialchars($barcode); ?>" placeholder="e.g. 4791234567890" 
+                                               class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Product Name/Title -->
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Item Name / Product Title *</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-tag absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                    <input type="text" name="name" id="mainProductName" value="<?php echo htmlspecialchars($name); ?>" placeholder="e.g. Falcon Luxury Blue Ink Pen" required
+                                           class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-semibold">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <!-- Category list -->
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Category</label>
+                                    <select name="category_id" class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-semibold">
+                                        <option value="">General Stationery</option>
+                                        <?php foreach ($categories as $cat): ?>
+                                            <option value="<?php echo $cat->id; ?>" <?php echo $category_id == $cat->id ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($cat->name); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <!-- Supplier Selection -->
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Supplier / Vendor</label>
+                                    <select name="vendor_id" class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-semibold">
+                                        <option value="">Select Supplier</option>
+                                        <?php foreach ($vendors as $v): ?>
+                                            <option value="<?php echo $v->id; ?>" <?php echo $vendor_id == $v->id ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($v->name); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <!-- Warehouse Selection -->
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Warehouse Storage</label>
+                                    <select name="warehouse_id" class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-semibold">
+                                        <option value="">Select Warehouse</option>
+                                        <?php foreach ($warehouses as $wh): ?>
+                                            <option value="<?php echo $wh->id; ?>" <?php echo $warehouse_id == $wh->id ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($wh->name); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <!-- Brand/Manufacturer -->
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Brand / Manufacturer</label>
+                                    <div class="relative">
+                                        <i class="fa-solid fa-building-flag absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                        <input type="text" name="brand" value="<?php echo htmlspecialchars($brand); ?>" placeholder="e.g. Falcon Stationery" 
+                                               class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none">
+                                    </div>
+                                </div>
+
+                                <!-- Status -->
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Status</label>
+                                    <select name="status" class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-semibold">
+                                        <option value="active" <?php echo $status === 'active' ? 'selected' : ''; ?>>Active</option>
+                                        <option value="inactive" <?php echo $status === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 3: Physical Specifications & Description -->
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-scale-balanced text-primary-500"></i> Physical Specifications & Reorder Alerts
+                            </h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <!-- Alert Qty -->
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Alert Quantity</label>
+                                    <div class="relative">
+                                        <i class="fa-solid fa-triangle-exclamation absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                        <input type="number" name="alert_qty" value="<?php echo htmlspecialchars($alert_qty); ?>" placeholder="5" 
+                                               class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono">
+                                    </div>
+                                </div>
+
+                                <!-- UOM -->
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Unit (UOM)</label>
+                                    <select name="unit" class="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-bold">
+                                        <option value="pcs" <?php echo $unit === 'pcs' ? 'selected' : ''; ?>>Pieces (pcs)</option>
+                                        <option value="pack" <?php echo $unit === 'pack' ? 'selected' : ''; ?>>Packs (pack)</option>
+                                        <option value="box" <?php echo $unit === 'box' ? 'selected' : ''; ?>>Boxes (box)</option>
+                                        <option value="kg" <?php echo $unit === 'kg' ? 'selected' : ''; ?>>Kilograms (kg)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Weight -->
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Weight</label>
+                                    <div class="relative">
+                                        <i class="fa-solid fa-scale-balanced absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                        <input type="text" name="weight" value="<?php echo htmlspecialchars($weight); ?>" placeholder="e.g. 150g" 
+                                               class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Item Specifications & Notes</label>
+                                <textarea name="description" rows="2" placeholder="Enter product characteristics, properties, notes..."
+                                          class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none placeholder-slate-400 leading-relaxed"><?php echo htmlspecialchars($description); ?></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Facebook Autopost Option (Only visible when adding new product) -->
+                        <?php if (!$is_edit): ?>
+                        <div class="p-4 bg-blue-50/40 border border-blue-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" name="share_facebook" id="shareFacebook" value="1" 
+                                       class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
+                                <label for="shareFacebook" class="text-xs font-semibold text-slate-700 flex items-center gap-2 select-none cursor-pointer">
+                                    <i class="fa-brands fa-facebook text-blue-600 text-base"></i> Autopost new product to Facebook Business Page
+                                </label>
+                            </div>
+                            <?php if (empty($data['settings']->facebook_page_id) || empty($data['settings']->facebook_access_token)): ?>
+                                <span class="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-lg font-medium flex items-center gap-1 self-start sm:self-auto">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> API keys not configured.
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Right Side: Financials & Options (col-span-5) -->
+                    <div class="lg:col-span-5 space-y-6">
                         
-                        <!-- Minimum Reorder Alert Threshold -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Alert Quantity Limit</label>
-                            <div class="relative">
-                                <i class="fa-solid fa-triangle-exclamation absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                                <input type="number" name="alert_qty" value="<?php echo htmlspecialchars($alert_qty); ?>" placeholder="5" 
-                                       class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono">
+                        <!-- Section 4: Base Pricing, Costing & WholesaleX B2B -->
+                        <div id="basePricingContainer" class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between pb-1">
+                                <span><i class="fa-solid fa-wallet text-primary-500"></i> Base Pricing & Costing</span>
+                            </h3>
+                            
+                            <div id="basePricingAlert" class="bg-purple-50 border border-purple-200 text-purple-950 p-3 rounded-xl text-xs flex items-center gap-3 hidden">
+                                <i class="fa-solid fa-lock text-purple-600 text-sm animate-bounce"></i>
+                                <div class="leading-relaxed">
+                                    Pricing is managed at the <strong class="font-bold">variation level</strong> below. Remove variations to reactivate base prices.
+                                </div>
+                            </div>
+
+                            <div id="basePricingSection" class="space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <!-- Cost Price -->
+                                    <div class="col-span-2">
+                                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Cost Price (Purchase)</label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rs.</span>
+                                            <input type="number" step="0.01" name="cost_price" id="costPriceInput" value="<?php echo htmlspecialchars($cost_price); ?>" oninput="calculateMarkupProfit()" placeholder="0.00" 
+                                                   class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono font-bold">
+                                        </div>
+                                    </div>
+
+                                    <!-- Retail Margin % -->
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Retail Margin %</label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">%</span>
+                                            <input type="number" step="0.1" name="retail_margin" id="retailMarginInput" value="<?php echo htmlspecialchars($retail_margin); ?>" oninput="calculatePriceFromMargin('retail')" placeholder="0.0" 
+                                                   class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono font-bold">
+                                        </div>
+                                    </div>
+
+                                    <!-- Retail Price -->
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Retail Price (LKR) *</label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rs.</span>
+                                            <input type="number" step="0.01" name="selling_price" id="sellingPriceInput" value="<?php echo htmlspecialchars($selling_price); ?>" oninput="calculateMarginFromPrice('retail')" placeholder="0.00" required
+                                                   class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-mono font-bold">
+                                        </div>
+                                    </div>
+
+                                    <!-- Wholesale Margin % -->
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-purple-700 uppercase tracking-wider mb-1.5">Wholesale Margin %</label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 text-xs font-bold">%</span>
+                                            <input type="number" step="0.1" name="wholesale_margin" id="wholesaleMarginInput" value="<?php echo htmlspecialchars($wholesale_margin); ?>" oninput="calculatePriceFromMargin('wholesale')" placeholder="0.0" 
+                                                   class="w-full pl-8 pr-3 py-1.5 bg-purple-50/20 border border-purple-200 focus:border-purple-500 rounded-lg text-xs focus:ring-2 focus:ring-purple-500/20 focus:outline-none font-mono font-bold text-purple-850 font-bold">
+                                        </div>
+                                    </div>
+
+                                    <!-- Wholesale Price -->
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-purple-700 uppercase tracking-wider mb-1.5">B2B Base Price *</label>
+                                        <div class="relative">
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 text-xs font-bold">Rs.</span>
+                                            <input type="number" step="0.01" name="wholesale_price" id="wholesalePriceInput" value="<?php echo htmlspecialchars($wholesale_price); ?>" oninput="calculateMarginFromPrice('wholesale')" placeholder="0.00" 
+                                                   class="w-full pl-8 pr-3 py-1.5 bg-purple-50/20 border border-purple-200 focus:border-purple-500 rounded-lg text-xs focus:ring-2 focus:ring-purple-500/20 focus:outline-none font-mono font-bold text-purple-850 font-bold">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Unit of Measure -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Unit of Measure (UOM)</label>
-                            <select name="unit" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer font-bold">
-                                <option value="pcs" <?php echo $unit === 'pcs' ? 'selected' : ''; ?>>Pieces (pcs)</option>
-                                <option value="pack" <?php echo $unit === 'pack' ? 'selected' : ''; ?>>Packs (pack)</option>
-                                <option value="box" <?php echo $unit === 'box' ? 'selected' : ''; ?>>Boxes (box)</option>
-                                <option value="kg" <?php echo $unit === 'kg' ? 'selected' : ''; ?>>Kilograms (kg)</option>
-                            </select>
-                        </div>
+                        <!-- Section 5: Attributes & Variations Builder -->
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between pb-1">
+                                <span><i class="fa-solid fa-diagram-project text-primary-500"></i> Attributes & Variations</span>
+                                <span class="text-[10px] text-slate-400 italic">Stock handled via GRN/PO</span>
+                            </h3>
+                            
+                            <div class="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-3">
+                                <!-- Select Attribute -->
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">1. Choose Attribute Group</label>
+                                    <select id="attrGroupSelect" onchange="handleAttributeSelectionChange()" class="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none cursor-pointer font-semibold">
+                                        <option value="">-- Choose Synced Attribute --</option>
+                                        <?php foreach ($synced_attributes as $attr): ?>
+                                            <option value="<?php echo $attr->id; ?>">
+                                                <?php echo htmlspecialchars($attr->name); ?> (pa_<?php echo htmlspecialchars($attr->slug); ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                        <option value="Custom">Custom Attribute Group...</option>
+                                    </select>
+                                </div>
 
-                        <!-- Physical Item Weight -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Weight (grams / kg)</label>
-                            <div class="relative">
-                                <i class="fa-solid fa-scale-balanced absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                                <input type="text" name="weight" value="<?php echo htmlspecialchars($weight); ?>" placeholder="e.g. 150g" 
-                                       class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none">
+                                <!-- Custom Group input -->
+                                <div id="customGroupWrapper" class="hidden">
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Custom Attribute Name</label>
+                                    <input type="text" id="customGroupName" placeholder="e.g. Style" class="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none font-semibold">
+                                </div>
+
+                                <!-- Custom Values input -->
+                                <div id="customValuesWrapper" class="hidden">
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Custom values (Enter/Comma to split)</label>
+                                    <div class="relative">
+                                        <i class="fa-solid fa-keyboard absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                        <input type="text" id="customValuesInput" placeholder="Type and hit Enter" class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none">
+                                    </div>
+                                </div>
+
+                                <!-- Synced terms list -->
+                                <div id="syncedTermsWrapper">
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">2. Click terms to add as variation</label>
+                                    <div id="syncedTermsContainer" class="flex flex-wrap gap-1.5 bg-white border border-slate-200 rounded-lg p-2 min-h-[36px] items-center text-slate-400 italic text-[10px]">
+                                        Select a synced attribute above.
+                                    </div>
+                                </div>
+
+                                <div id="attributeTagsContainer" class="flex flex-wrap gap-1.5 pt-1 hidden"></div>
+                            </div>
+
+                            <!-- Variations List Table -->
+                            <div class="border border-slate-200 rounded-xl overflow-x-auto bg-slate-50">
+                                <table class="w-full text-left text-[11px] border-collapse min-w-[700px]">
+                                    <thead>
+                                        <tr class="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
+                                            <th class="py-2 px-3 w-[15%]">Option</th>
+                                            <th class="py-2 px-3 w-[18%]">SKU *</th>
+                                            <th class="py-2 px-2 text-right w-[11%]">Cost</th>
+                                            <th class="py-2 px-2 text-right w-[11%]">Retail Margin %</th>
+                                            <th class="py-2 px-2 text-right w-[12%]">Retail Price</th>
+                                            <th class="py-2 px-2 text-right w-[11%]">Wholesale Margin %</th>
+                                            <th class="py-2 px-2 text-right w-[12%]">Wholesale Price</th>
+                                            <th class="py-2 px-2 text-center w-[10%]">Del</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="variationsTableBody" class="divide-y divide-slate-200">
+                                        <tr id="noVariationsRow">
+                                            <td colspan="8" class="py-4 text-center text-slate-400 italic">No variations. Handled as standard simple product.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Section 7: Description Specifications & Notes -->
-                <div>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
-                        <i class="fa-solid fa-file-lines mr-1 text-primary-500"></i> Specifications & Notes
-                    </h3>
-                    
-                    <!-- Description Textarea -->
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Item Specifications Description & Metadata</label>
-                        <textarea name="description" rows="4" placeholder="Enter product characteristics, properties, notes, or compatibility features..."
-                                  class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none placeholder-slate-400 leading-relaxed"><?php echo htmlspecialchars($description); ?></textarea>
-                    </div>
-                </div>
-
-                <!-- Facebook Autopost Option (Only visible when adding new product) -->
-                <?php if (!$is_edit): ?>
-                <div class="p-4 bg-blue-50/40 border border-blue-150 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div class="flex items-center gap-3">
-                        <input type="checkbox" name="share_facebook" id="shareFacebook" value="1" 
-                               class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
-                        <label for="shareFacebook" class="text-sm font-semibold text-slate-700 flex items-center gap-2 select-none cursor-pointer">
-                            <i class="fa-brands fa-facebook text-blue-600 text-lg"></i> Autopost new product to Facebook Business Page
-                        </label>
-                    </div>
-                    <?php if (empty($data['settings']->facebook_page_id) || empty($data['settings']->facebook_access_token)): ?>
-                        <span class="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1 rounded-xl font-medium flex items-center gap-1.5 self-start md:self-auto">
-                            <i class="fa-solid fa-triangle-exclamation"></i> API keys not configured. Setup in Settings.
-                        </span>
-                    <?php endif; ?>
-                </div>
-                <?php endif; ?>
 
                 <!-- Form Footer Actions -->
-                <div class="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
-                    <a href="<?php echo APP_URL; ?>/inventory" class="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 text-sm font-semibold rounded-xl transition-colors">
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+                    <a href="<?php echo APP_URL; ?>/inventory" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 text-xs font-semibold rounded-xl transition-colors">
                         Cancel
                     </a>
-                    <button type="submit" class="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold rounded-xl shadow-md shadow-primary-500/30 transition-all duration-200 transform hover:-translate-y-0.5 flex items-center gap-1.5 cursor-pointer">
+                    <button type="submit" class="px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-xl shadow-md shadow-primary-500/30 transition-all duration-200 transform hover:-translate-y-0.5 flex items-center gap-1.5 cursor-pointer">
                         <i class="fa-solid fa-save"></i> Save Product Entry
                     </button>
                 </div>
