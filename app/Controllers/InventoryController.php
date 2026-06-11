@@ -130,7 +130,9 @@ class InventoryController extends Controller {
             ]
         ];
 
-        $this->view('inventory/index', $data);
+        $data['title'] = 'Inventory Catalog';
+        $data['content_view'] = 'inventory/index';
+        $this->view('layouts/main', $data);
     }
 
     /**
