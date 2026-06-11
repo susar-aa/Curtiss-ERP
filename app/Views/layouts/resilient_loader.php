@@ -430,9 +430,14 @@ document.addEventListener('submit', function(e) {
             buildOptionsList();
         });
 
+        let justFocused = false;
+
         // Click to open/close
         input.addEventListener('click', function(e) {
             e.stopPropagation();
+            if (justFocused) {
+                return;
+            }
             if (dropdown.style.display === 'block') {
                 dropdown.style.display = 'none';
                 syncSelection();
@@ -465,6 +470,8 @@ document.addEventListener('submit', function(e) {
             });
             buildOptionsList(true);
             dropdown.style.display = 'block';
+            justFocused = true;
+            setTimeout(() => { justFocused = false; }, 200);
         });
 
         // Keydown support

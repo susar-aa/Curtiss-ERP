@@ -313,7 +313,91 @@ if (!function_exists('erp_safe_json_encode')) {
                     <div>
                         <label>Item Name / Product Title *</label>
                         <input type="text" name="name" id="mainProductName" value="<?php echo htmlspecialchars($name); ?>" placeholder="Falcon Luxury Pen" required
-                               class="font-semibold" spellcheck="true">
+                               class="font-semibold" spellcheck="true" list="englishProductWords">
+                        <datalist id="englishProductWords">
+                            <option value="Pen"></option>
+                            <option value="Pencil"></option>
+                            <option value="Paper"></option>
+                            <option value="Notebook"></option>
+                            <option value="File"></option>
+                            <option value="Folder"></option>
+                            <option value="Marker"></option>
+                            <option value="Eraser"></option>
+                            <option value="Ruler"></option>
+                            <option value="Tape"></option>
+                            <option value="Glue"></option>
+                            <option value="Scissors"></option>
+                            <option value="Stapler"></option>
+                            <option value="Organizer"></option>
+                            <option value="Holder"></option>
+                            <option value="Desk"></option>
+                            <option value="Office"></option>
+                            <option value="School"></option>
+                            <option value="Highlighter"></option>
+                            <option value="Crayon"></option>
+                            <option value="Watercolor"></option>
+                            <option value="Canvas"></option>
+                            <option value="Brush"></option>
+                            <option value="Sketchbook"></option>
+                            <option value="Ink"></option>
+                            <option value="Cartridge"></option>
+                            <option value="Calculator"></option>
+                            <option value="Board"></option>
+                            <option value="Chalk"></option>
+                            <option value="Card"></option>
+                            <option value="Envelope"></option>
+                            <option value="Label"></option>
+                            <option value="Box"></option>
+                            <option value="Pack"></option>
+                            <option value="Set"></option>
+                            <option value="Black"></option>
+                            <option value="Blue"></option>
+                            <option value="Red"></option>
+                            <option value="Green"></option>
+                            <option value="White"></option>
+                            <option value="Yellow"></option>
+                            <option value="Metal"></option>
+                            <option value="Plastic"></option>
+                            <option value="Wooden"></option>
+                            <option value="Leather"></option>
+                            <option value="Clear"></option>
+                            <option value="Gel"></option>
+                            <option value="Ballpoint"></option>
+                            <option value="Fountain"></option>
+                            <option value="Rollerball"></option>
+                            <option value="Mechanical"></option>
+                            <option value="A4"></option>
+                            <option value="A3"></option>
+                            <option value="Premium"></option>
+                            <option value="Luxury"></option>
+                            <option value="Standard"></option>
+                            <option value="Executive"></option>
+                            <option value="Classic"></option>
+                            <option value="Deluxe"></option>
+                            <option value="Pro"></option>
+                            <option value="Ultra"></option>
+                            <option value="Super"></option>
+                            <option value="Pocket"></option>
+                            <option value="Desktop"></option>
+                            <option value="Portable"></option>
+                            <option value="Heavy"></option>
+                            <option value="Duty"></option>
+                            <option value="Double"></option>
+                            <option value="Single"></option>
+                            <option value="Color"></option>
+                            <option value="Coloured"></option>
+                            <option value="Sheet"></option>
+                            <option value="Book"></option>
+                            <option value="Binder"></option>
+                            <option value="Clips"></option>
+                            <option value="Pins"></option>
+                            <option value="Rubber"></option>
+                            <option value="Band"></option>
+                            <option value="Sharpener"></option>
+                            <option value="Cutter"></option>
+                            <option value="Whiteboard"></option>
+                            <option value="Magnetic"></option>
+                        </datalist>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -1083,6 +1167,25 @@ if (!function_exists('erp_safe_json_encode')) {
 
         let skuHasDuplicate = false;
         let sampleHasDuplicate = false;
+
+        const mainProductName = document.getElementById('mainProductName');
+        
+        // Auto-capitalize every word's first letter as they type (without cursor jumping)
+        if (mainProductName) {
+            mainProductName.addEventListener('input', function() {
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                const originalValue = this.value;
+                const capitalizedValue = originalValue.replace(/\b\w/g, char => char.toUpperCase());
+                if (originalValue !== capitalizedValue) {
+                    this.value = capitalizedValue;
+                    this.setSelectionRange(start, end);
+                }
+            });
+            mainProductName.addEventListener('blur', function() {
+                this.value = this.value.replace(/\b\w/g, char => char.toUpperCase());
+            });
+        }
 
         const requiredInputs = [
             { el: document.getElementById('mainProductName'), isSelect: false, label: 'Item Name' },
