@@ -1,7 +1,7 @@
 <?php
 // Database Constants
 define('DB_HOST', 'localhost');
-define('DB_USER', 'suzxlabs'); // Plesk DB User
+define('DB_USER', 'suzxlabs'); 
 define('DB_PASS', 'Susara@200611003614');    
 define('DB_NAME', 'curtiss_erp'); 
 

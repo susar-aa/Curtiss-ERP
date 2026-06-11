@@ -196,7 +196,7 @@ if (isset($_SESSION['flash_error'])) {
                     $prodCount = intval($cat->product_count ?? 0);
                     $grad = $gradients[$cat->id % count($gradients)];
                     ?>
-                    <div class="category-card bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group" 
+                    <div class="category-card bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between group" 
                          data-name="<?php echo strtolower(htmlspecialchars($cat->name)); ?>" 
                          data-desc="<?php echo strtolower(htmlspecialchars($cat->description ?? '')); ?>">
                         <div>
