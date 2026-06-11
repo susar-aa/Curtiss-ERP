@@ -46,7 +46,6 @@ if (isset($_SESSION['flash_error'])) {
         }
 
         /* TOP NAV HOVER GAP REMOVAL BRIDGE OVERRIDES */
-        /* Targets hover dropdown structures globally to prevent loss of focus */
         .group:hover > div,
         .group:hover > ul {
             display: block !important;
@@ -54,7 +53,6 @@ if (isset($_SESSION['flash_error'])) {
             visibility: visible !important;
         }
 
-        /* Virtual hit-area bridge to cover physical spacing gaps between button trigger and content container */
         .group > div::before,
         .group > ul::before {
             content: '';
@@ -71,9 +69,59 @@ if (isset($_SESSION['flash_error'])) {
             position: relative;
             z-index: 40 !important;
         }
+
+        /* ---- Command Bar (Dynamic Island style) ---- */
+        .cmd-bar {
+            position: fixed;
+            bottom: 28px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(28, 28, 30, 0.92);
+            backdrop-filter: saturate(180%) blur(28px);
+            -webkit-backdrop-filter: saturate(180%) blur(28px);
+            border: 0.5px solid rgba(255,255,255,0.12);
+            border-radius: 999px;
+            padding: 7px 10px;
+            display: flex; align-items: center; gap: 4px;
+            box-shadow: 0 24px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+        .cmd-search {
+            display: flex; align-items: center; gap: 9px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 999px;
+            padding: 8px 14px;
+            width: 196px;
+            transition: width 0.42s cubic-bezier(0.25, 0.1, 0.25, 1),
+                        background 0.28s;
+        }
+        .cmd-search:focus-within {
+            width: 300px;
+            background: rgba(255,255,255,0.18);
+        }
+        .cmd-search i { color: rgba(255,255,255,0.55); font-size: 14px; flex-shrink: 0; }
+        .cmd-search input {
+            background: transparent; border: none; outline: none;
+            color: #fff; font-size: 14px; font-weight: 500;
+            font-family: inherit; width: 100%;
+        }
+        .cmd-search input::placeholder { color: rgba(255,255,255,0.45); }
+        .cmd-divider { width: 0.5px; height: 22px; background: rgba(255,255,255,0.15); margin: 0 3px; }
+        .cmd-cta {
+            display: flex; align-items: center; gap: 7px;
+            background: #fff; color: #1c1c1e;
+            border: none; border-radius: 999px;
+            padding: 0 18px; height: 38px;
+            font-size: 14px; font-weight: 700;
+            font-family: inherit;
+            cursor: pointer; text-decoration: none;
+            transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        background 0.18s;
+            margin-left: 2px;
+        }
+        .cmd-cta:hover { background: #e5e5ea; transform: scale(0.97); }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen">
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen pb-32">
 
     <!-- Included Unified System Top Menu Bar from Layouts Folder -->
     <?php include '../app/Views/layouts/main.php'; ?>
@@ -117,8 +165,8 @@ if (isset($_SESSION['flash_error'])) {
         <!-- Section Title and Sync Actions Toolbar -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                <h1 class="text-2xl font-bold tracking-tight text-slate-955">Category Management</h1>
-                <p class="text-xs text-slate-500 mt-1">Organize products and manage catalog classifications locally.</p>
+                <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Category Management</h1>
+                <p class="text-sm text-slate-500 mt-1">Organize products and manage catalog classifications locally.</p>
             </div>
             <div class="flex items-center gap-2">
                 <button onclick="openAddModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow transition-all transform hover:-translate-y-0.5 cursor-pointer">
@@ -127,70 +175,98 @@ if (isset($_SESSION['flash_error'])) {
             </div>
         </div>
 
-        <!-- Mapped Categories Table Registry -->
-        <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-            <table class="w-full text-sm border-collapse">
-                <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs font-semibold uppercase tracking-wider">
-                    <tr>
-                        <th class="py-3.5 px-6 text-left w-[15%]">Local ID</th>
-                        <th class="py-3.5 px-6 text-left w-[35%]">Category Name</th>
-                        <th class="py-3.5 px-6 text-left w-[30%]">Description</th>
-                        <th class="py-3.5 px-6 text-center w-[10%]">Linked Products</th>
-                        <th class="py-3.5 px-6 text-right w-[10%]">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 text-sm">
-                    <?php if (empty($categories)): ?>
-                        <tr>
-                            <td colspan="5" class="py-12 text-center text-slate-400 italic">
-                                <div class="flex flex-col items-center gap-2">
-                                    <i class="fa-solid fa-folder-open text-2xl text-slate-300"></i>
-                                    <span>No categories found in ERP. Click 'Add New Category' above to register one.</span>
+        <!-- Cards Layout Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="categoriesGrid">
+            <?php if (empty($categories)): ?>
+                <div class="col-span-full py-16 text-center text-slate-400 italic bg-white border border-slate-200 rounded-2xl">
+                    <div class="flex flex-col items-center gap-2">
+                        <i class="fa-solid fa-folder-open text-3xl text-slate-300"></i>
+                        <span class="text-sm font-medium text-slate-500">No categories found in ERP. Click "Add New Category" above to register one.</span>
+                    </div>
+                </div>
+            <?php else: ?>
+                <?php 
+                $gradients = [
+                    'from-blue-500 to-cyan-500 shadow-blue-100',
+                    'from-emerald-500 to-teal-500 shadow-emerald-100',
+                    'from-indigo-500 to-purple-500 shadow-indigo-100',
+                    'from-pink-500 to-rose-500 shadow-pink-100',
+                    'from-orange-500 to-amber-500 shadow-orange-100',
+                    'from-violet-500 to-fuchsia-500 shadow-violet-100'
+                ];
+                ?>
+                <?php foreach ($categories as $cat): ?>
+                    <?php 
+                    $wooId = $cat->woo_category_id ?? null;
+                    $has_synced = !empty($wooId);
+                    $prodCount = intval($cat->product_count ?? 0);
+                    $grad = $gradients[$cat->id % count($gradients)];
+                    ?>
+                    <div class="category-card bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between" 
+                         data-name="<?php echo strtolower(htmlspecialchars($cat->name)); ?>" 
+                         data-desc="<?php echo strtolower(htmlspecialchars($cat->description ?? '')); ?>">
+                        <div>
+                            <!-- Top header info / Gradient badge -->
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 rounded-xl bg-gradient-to-tr <?php echo $grad; ?> flex items-center justify-center text-white text-lg font-bold shadow-md">
+                                    <i class="fa-solid fa-folder"></i>
                                 </div>
-                            </td>
-                        </tr>
-                    <?php else: ?>
-                        <?php foreach ($categories as $cat): ?>
-                            <?php 
-                            $wooId = $cat->woo_category_id ?? null;
-                            $has_synced = !empty($wooId);
-                            $prodCount = intval($cat->product_count ?? 0);
-                            ?>
-                             <tr class="hover:bg-slate-50/50 transition-colors group">
-                                <td class="py-3.5 px-6 font-mono font-bold text-slate-500">#<?php echo $cat->id; ?></td>
-                                <td class="py-3.5 px-6 font-semibold text-slate-900"><?php echo htmlspecialchars($cat->name); ?></td>
-                                <td class="py-3.5 px-6 text-slate-500"><?php echo htmlspecialchars($cat->description ?? '-'); ?></td>
-                                <td class="py-3.5 px-6 text-center">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold <?php echo $prodCount > 0 ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-600'; ?>">
-                                        <?php echo $prodCount; ?>
-                                    </span>
-                                </td>
-                                <td class="py-3.5 px-6 text-right whitespace-nowrap">
-                                    <div class="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onclick="openEditModal(<?php echo $cat->id; ?>, '<?php echo htmlspecialchars(addslashes($cat->name)); ?>', '<?php echo htmlspecialchars(addslashes($cat->description ?? '')); ?>')" 
-                                                class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit Category">
-                                            <i class="fa-solid fa-pen-to-square"></i>
-                                        </button>
-                                        <?php if ($prodCount > 0): ?>
-                                            <button type="button" onclick="alert('This category cannot be deleted because it is linked to <?php echo $prodCount; ?> products. Please reassign the products first.');"
-                                                    class="p-2 text-slate-300 cursor-not-allowed" title="Cannot delete: Linked to products">
-                                                <i class="fa-solid fa-trash-can"></i>
-                                            </button>
-                                        <?php else: ?>
-                                            <a href="<?php echo APP_URL; ?>/category/delete/<?php echo $cat->id; ?>" 
-                                               onclick="return confirm('Are you sure you want to delete the category \'<?php echo htmlspecialchars(addslashes($cat->name)); ?>\'?');"
-                                               class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Delete Category">
-                                                <i class="fa-solid fa-trash-can"></i>
-                                            </a>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                                <span class="text-xs font-bold text-slate-400 font-mono">#<?php echo $cat->id; ?></span>
+                            </div>
+                            <!-- Name -->
+                            <h3 class="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors duration-200 mb-1"><?php echo htmlspecialchars($cat->name); ?></h3>
+                            <!-- Description -->
+                            <p class="text-xs text-slate-500 line-clamp-2 min-h-[2.5rem] leading-relaxed mb-4"><?php echo !empty($cat->description) ? htmlspecialchars($cat->description) : '<span class="italic text-slate-300">No description provided</span>'; ?></p>
+                        </div>
+                        <!-- Footer/Counter and Actions -->
+                        <div class="pt-4 border-t border-slate-100 flex items-center justify-between mt-auto">
+                            <div class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-box-open text-slate-400 text-xs"></i>
+                                <span class="text-xs font-bold text-slate-600"><?php echo $prodCount; ?> <?php echo $prodCount == 1 ? 'Product' : 'Products'; ?></span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="openEditModal(<?php echo $cat->id; ?>, '<?php echo htmlspecialchars(addslashes($cat->name)); ?>', '<?php echo htmlspecialchars(addslashes($cat->description ?? '')); ?>')" 
+                                        class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="Edit Category">
+                                    <i class="fa-solid fa-pen-to-square text-sm"></i>
+                                </button>
+                                <?php if ($prodCount > 0): ?>
+                                    <button type="button" onclick="alert('This category cannot be deleted because it is linked to <?php echo $prodCount; ?> products. Please reassign the products first.');"
+                                            class="p-2 text-slate-300 cursor-not-allowed" title="Cannot delete: Linked to products">
+                                        <i class="fa-solid fa-trash-can text-sm"></i>
+                                    </button>
+                                <?php else: ?>
+                                    <a href="<?php echo APP_URL; ?>/category/delete/<?php echo $cat->id; ?>" 
+                                       onclick="return confirm('Are you sure you want to delete the category \'<?php echo htmlspecialchars(addslashes($cat->name)); ?>\'?');"
+                                       class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all" title="Delete Category">
+                                        <i class="fa-solid fa-trash-can text-sm"></i>
+                                    </a>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+
+            <!-- No categories matching search -->
+            <div id="noCategoriesFound" class="hidden col-span-full py-16 text-center text-slate-400 italic">
+                <div class="flex flex-col items-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass text-3xl text-slate-300"></i>
+                    <span class="text-sm font-medium text-slate-500">No categories match your search criteria.</span>
+                </div>
+            </div>
         </div>
+    </div>
+
+    <!-- Floating Command Bar (Dynamic Island style) -->
+    <div class="cmd-bar">
+        <div class="cmd-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="categorySearchInput"
+                   oninput="filterCategories()"
+                   placeholder="Search categories…">
+        </div>
+        <div class="cmd-divider"></div>
+        <button type="button" onclick="openAddModal()" class="cmd-cta"><i class="fa-solid fa-plus" style="font-size:13px;"></i> New</button>
     </div>
 
     <!-- Modals Configuration -->
@@ -261,6 +337,30 @@ if (isset($_SESSION['flash_error'])) {
         }
         function closeEditModal() {
             document.getElementById('editModal').classList.add('hidden');
+        }
+
+        function filterCategories() {
+            const query = document.getElementById('categorySearchInput').value.toLowerCase().trim();
+            const cards = document.querySelectorAll('.category-card');
+            let visibleCount = 0;
+            
+            cards.forEach(card => {
+                const name = card.getAttribute('data-name') || '';
+                const desc = card.getAttribute('data-desc') || '';
+                if (name.includes(query) || desc.includes(query)) {
+                    card.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+
+            const emptyState = document.getElementById('noCategoriesFound');
+            if (visibleCount === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
         }
     </script>
 
