@@ -173,8 +173,29 @@ class Item {
         $whereClauses = [];
 
         if (!empty($filters['search'])) {
-            $whereClauses[] = "(i.{$this->itemCodeColumn} LIKE :search OR i.{$this->nameColumn} LIKE :search)";
-            $params[':search'] = '%' . $filters['search'] . '%';
+            $searchStr = trim($filters['search']);
+            
+            // Split search string into individual words/tokens
+            $tokens = preg_split('/\s+/', $searchStr);
+            
+            // Limit tokens to prevent extreme database load on complex queries
+            if (count($tokens) > 8) {
+                $tokens = array_slice($tokens, 0, 8);
+            }
+            
+            $tokenConditions = [];
+            foreach ($tokens as $index => $token) {
+                if (strlen($token) === 0) continue;
+                
+                $tokenParam = ':search_token_' . $index;
+                // Match each word against SKU, Name, and Sample Code (order-independent)
+                $tokenConditions[] = "(i.{$this->itemCodeColumn} LIKE {$tokenParam} OR i.{$this->nameColumn} LIKE {$tokenParam} OR i.sample_code LIKE {$tokenParam})";
+                $params[$tokenParam] = '%' . $token . '%';
+            }
+            
+            if (!empty($tokenConditions)) {
+                $whereClauses[] = "(" . implode(" AND ", $tokenConditions) . ")";
+            }
         }
 
         if (isset($filters['min_price']) && $filters['min_price'] !== '') {
