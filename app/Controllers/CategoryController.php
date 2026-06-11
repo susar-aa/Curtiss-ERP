@@ -183,80 +183,112 @@ class CategoryController extends Controller {
         }
 
         $cleanName = htmlspecialchars($name);
-        $apiKey = defined('GROQ_API_KEY') ? GROQ_API_KEY : '';
         
-        if (empty($apiKey)) {
-            echo json_encode(['success' => false, 'error' => 'API Connection Error: Groq AI API Key is missing in database config file.']);
-            exit;
+        // 1. Try Groq AI first
+        $groqKey = defined('GROQ_API_KEY') ? GROQ_API_KEY : '';
+        if (!empty($groqKey)) {
+            $url = "https://api.groq.com/openai/v1/chat/completions";
+            $prompt = "Generate a short, unique category description for an e-commerce website.\n\nCategory: \"{$cleanName}\"\n\nRequirements:\n* 1-2 sentences only (20-50 words).\n* Understand what products belong to this category.\n* Mention the category's purpose, common uses, or key features.\n* Avoid generic phrases and marketing fluff.\n* Do not simply repeat the category name.\n* Return only the description text.";
+            
+            $payload = [
+                'model' => 'llama-3.3-70b-versatile',
+                'messages' => [
+                    [
+                        'role' => 'user',
+                        'content' => $prompt
+                    ]
+                ],
+                'temperature' => 0.7,
+                'max_tokens' => 100
+            ];
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+            curl_setopt($ch, CURLOPT_ENCODING, '');
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $groqKey,
+                'Accept: application/json'
+            ]);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode === 200 && !empty($response)) {
+                $resData = json_decode($response, true);
+                $generatedText = $resData['choices'][0]['message']['content'] ?? '';
+                $generatedText = trim($generatedText);
+                $generatedText = trim($generatedText, '"\'');
+                if (!empty($generatedText)) {
+                    echo json_encode(['success' => true, 'description' => $generatedText]);
+                    exit;
+                }
+            }
         }
 
-        $url = "https://api.groq.com/openai/v1/chat/completions";
-        $prompt = "Generate a short, unique category description for an e-commerce website.\n\nCategory: \"{$cleanName}\"\n\nRequirements:\n* 1-2 sentences only (20-50 words).\n* Understand what products belong to this category.\n* Mention the category's purpose, common uses, or key features.\n* Avoid generic phrases and marketing fluff.\n* Do not simply repeat the category name.\n* Return only the description text.";
-        
-        $payload = [
-            'model' => 'llama-3.3-70b-versatile',
-            'messages' => [
-                [
-                    'role' => 'user',
-                    'content' => $prompt
+        // 2. Try Gemini AI as fallback
+        $geminiKey = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : '';
+        if (!empty($geminiKey)) {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+            $prompt = "Generate a short, unique category description for an e-commerce website.\n\nCategory: \"{$cleanName}\"\n\nRequirements:\n* 1-2 sentences only (20-50 words).\n* Understand what products belong to this category.\n* Mention the category's purpose, common uses, or key features.\n* Avoid generic phrases and marketing fluff.\n* Do not simply repeat the category name.\n* Return only the description text.";
+            
+            $payload = [
+                'contents' => [
+                    ['parts' => [['text' => $prompt]]]
                 ]
-            ],
-            'temperature' => 0.7,
-            'max_tokens' => 100
-        ];
-        
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-        curl_setopt($ch, CURLOPT_ENCODING, '');
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . $apiKey,
-            'Accept: application/json'
-        ]);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 12);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlErr = curl_error($ch);
-        curl_close($ch);
-        
-        if ($httpCode === 200 && !empty($response)) {
-            $resData = json_decode($response, true);
-            $generatedText = $resData['choices'][0]['message']['content'] ?? '';
-            $generatedText = trim($generatedText);
-            $generatedText = trim($generatedText, '"\'');
-            if (!empty($generatedText)) {
-                echo json_encode(['success' => true, 'description' => $generatedText]);
+            ];
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'X-goog-api-key: ' . $geminiKey
+            ]);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlErr = curl_error($ch);
+            curl_close($ch);
+            
+            if ($httpCode === 200 && !empty($response)) {
+                $resData = json_decode($response, true);
+                $generatedText = $resData['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                $generatedText = trim($generatedText);
+                if (!empty($generatedText)) {
+                    echo json_encode(['success' => true, 'description' => $generatedText]);
+                    exit;
+                }
+            } else {
+                $errDetails = "HTTP Status {$httpCode}";
+                if (!empty($curlErr)) {
+                    $errDetails .= " - Curl Error: " . $curlErr;
+                }
+                if (!empty($response)) {
+                    $resData = json_decode($response, true);
+                    if (isset($resData['error']['message'])) {
+                        $errDetails = $resData['error']['message'];
+                    }
+                }
+                echo json_encode(['success' => false, 'error' => "Gemini API Fallback Error: " . $errDetails]);
                 exit;
             }
         }
 
-        // Handle error responses explicitly
-        $errDetails = "HTTP Status {$httpCode}";
-        if (!empty($curlErr)) {
-            $errDetails .= " - Curl Error: " . $curlErr;
-        }
-        if (!empty($response)) {
-            if (stripos($response, '<html') !== false) {
-                if (stripos($response, 'cloudflare') !== false || stripos($response, 'access denied') !== false) {
-                    $errDetails = "Access Denied by Cloudflare/Groq. The hosting server's IP range is blocked by Groq's security firewall. Consider using Google Gemini or a VPN/Proxy on the server.";
-                } else {
-                    $errDetails = "HTML Response (HTTP {$httpCode})";
-                }
-            } else {
-                $resData = json_decode($response, true);
-                if (isset($resData['error']['message'])) {
-                    $errDetails = $resData['error']['message'];
-                }
-            }
-        }
-
-        echo json_encode(['success' => false, 'error' => "Groq API Connection Error: " . $errDetails]);
+        echo json_encode([
+            'success' => false, 
+            'error' => 'Groq API returned "Access Denied" (your VPS IP range is blocked by Groq/Cloudflare) and no fallback Gemini API Key was found in database config.'
+        ]);
         exit;
     }
 }
