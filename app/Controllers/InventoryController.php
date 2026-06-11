@@ -856,6 +856,7 @@ class InventoryController extends Controller {
             $warehouses = $this->getWarehousesDropdown();
             $companyModel = $this->model('Company');
             $settings = $companyModel->getSettings();
+            $productSuggestions = $this->getProductNameSuggestions();
 
             $data = [
                 'title' => 'Create New Inventory Product',
@@ -863,7 +864,8 @@ class InventoryController extends Controller {
                 'categories' => $categories,
                 'vendors' => $vendors,
                 'warehouses' => $warehouses,
-                'settings' => $settings
+                'settings' => $settings,
+                'product_suggestions' => $productSuggestions
             ];
             $this->view('inventory/form', $data);
         }
@@ -1043,6 +1045,7 @@ class InventoryController extends Controller {
             $warehouses = $this->getWarehousesDropdown();
             $companyModel = $this->model('Company');
             $settings = $companyModel->getSettings();
+            $productSuggestions = $this->getProductNameSuggestions();
 
             $data = [
                 'title' => 'Edit Inventory Product Profile',
@@ -1050,7 +1053,8 @@ class InventoryController extends Controller {
                 'categories' => $categories,
                 'vendors' => $vendors,
                 'warehouses' => $warehouses,
-                'settings' => $settings
+                'settings' => $settings,
+                'product_suggestions' => $productSuggestions
             ];
             $this->view('inventory/form', $data);
         }
@@ -1631,6 +1635,174 @@ class InventoryController extends Controller {
         } catch (Throwable $e) {
             $this->db->rollBack();
             echo json_encode(['success' => false, 'error' => 'Failed to execute bulk updates: ' . $this->mapDatabaseError($e)]);
+            exit;
+        }
+    }
+
+    /**
+     * Helper to get autocomplete suggestions from database product names
+     */
+    private function getProductNameSuggestions() {
+        try {
+            $this->db->query("SELECT DISTINCT name FROM items WHERE name IS NOT NULL AND name != '' ORDER BY name ASC");
+            $rawNames = $this->db->resultSet() ?: [];
+            $names = [];
+            $words = [];
+            foreach ($rawNames as $rn) {
+                $name = trim($rn->name);
+                if (!empty($name)) {
+                    $names[] = $name;
+                    $parts = preg_split('/[\s,\.\-\(\)\/]+/', $name);
+                    foreach ($parts as $p) {
+                        $p = trim($p);
+                        if (strlen($p) > 2 && !is_numeric($p)) {
+                            $words[strtolower($p)] = $p;
+                        }
+                    }
+                }
+            }
+            $suggestions = array_merge($names, array_values($words));
+            sort($suggestions);
+            return array_values(array_unique($suggestions));
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * AJAX endpoint to generate a sample code for a category
+     */
+    public function generateSampleCode() {
+        if (!isset($_SESSION['user_id'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Unauthorized']);
+            exit;
+        }
+
+        $categoryId = isset($_GET['category_id']) ? intval($_GET['category_id']) : 0;
+        $itemId = isset($_GET['item_id']) ? intval($_GET['item_id']) : 0;
+
+        if ($categoryId <= 0) {
+            header('Content-Type: application/json');
+            echo json_encode(['sample_code' => '']);
+            exit;
+        }
+
+        try {
+            // Check if item already belongs to this category and has a sample code
+            if ($itemId > 0) {
+                $this->db->query("SELECT category_id, sample_code FROM items WHERE id = :id");
+                $this->db->bind(':id', $itemId);
+                $orig = $this->db->single();
+                if ($orig && intval($orig->category_id) === $categoryId && !empty($orig->sample_code)) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['sample_code' => $orig->sample_code]);
+                    exit;
+                }
+            }
+
+            // 1. Get alphabetized categories
+            $this->db->query("SELECT id FROM item_categories ORDER BY name ASC");
+            $categories = $this->db->resultSet() ?: [];
+            
+            $categoryIndex = -1;
+            foreach ($categories as $index => $cat) {
+                if (intval($cat->id) === $categoryId) {
+                    $categoryIndex = $index;
+                    break;
+                }
+            }
+
+            if ($categoryIndex === -1) {
+                header('Content-Type: application/json');
+                echo json_encode(['sample_code' => '']);
+                exit;
+            }
+
+            $baseCode = ($categoryIndex + 1) * 100;
+
+            // 2. Count other items in this category
+            $this->db->query("SELECT COUNT(*) as count FROM items WHERE category_id = :category_id" . ($itemId > 0 ? " AND id != :item_id" : ""));
+            $this->db->bind(':category_id', $categoryId);
+            if ($itemId > 0) {
+                $this->db->bind(':item_id', $itemId);
+            }
+            
+            $row = $this->db->single();
+            $count = $row ? intval($row->count) : 0;
+
+            $sampleCode = (string)($baseCode + $count);
+
+            header('Content-Type: application/json');
+            echo json_encode(['sample_code' => $sampleCode]);
+            exit;
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['error' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    /**
+     * AJAX endpoint to check if SKU or Sample Code is duplicate
+     */
+    public function checkDuplicates() {
+        if (!isset($_SESSION['user_id'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Unauthorized']);
+            exit;
+        }
+
+        $sku = isset($_GET['item_code']) ? trim($_GET['item_code']) : '';
+        $sampleCode = isset($_GET['sample_code']) ? trim($_GET['sample_code']) : '';
+        $itemId = isset($_GET['item_id']) ? intval($_GET['item_id']) : 0;
+
+        $response = [
+            'sku_exists' => false,
+            'sku_owner' => '',
+            'sample_exists' => false,
+            'sample_owner' => ''
+        ];
+
+        try {
+            if ($sku !== '') {
+                if ($itemId > 0) {
+                    $this->db->query("SELECT id, name FROM items WHERE item_code = :sku AND id != :item_id LIMIT 1");
+                    $this->db->bind(':sku', $sku);
+                    $this->db->bind(':item_id', $itemId);
+                } else {
+                    $this->db->query("SELECT id, name FROM items WHERE item_code = :sku LIMIT 1");
+                    $this->db->bind(':sku', $sku);
+                }
+                $row = $this->db->single();
+                if ($row) {
+                    $response['sku_exists'] = true;
+                    $response['sku_owner'] = $row->name;
+                }
+            }
+
+            if ($sampleCode !== '') {
+                if ($itemId > 0) {
+                    $this->db->query("SELECT id, name FROM items WHERE sample_code = :sample_code AND id != :item_id LIMIT 1");
+                    $this->db->bind(':sample_code', $sampleCode);
+                    $this->db->bind(':item_id', $itemId);
+                } else {
+                    $this->db->query("SELECT id, name FROM items WHERE sample_code = :sample_code LIMIT 1");
+                    $this->db->bind(':sample_code', $sampleCode);
+                }
+                $row = $this->db->single();
+                if ($row) {
+                    $response['sample_exists'] = true;
+                    $response['sample_owner'] = $row->name;
+                }
+            }
+
+            header('Content-Type: application/json');
+            echo json_encode($response);
+            exit;
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['error' => $e->getMessage()]);
             exit;
         }
     }

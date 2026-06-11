@@ -290,7 +290,7 @@ if (!function_exists('erp_safe_json_encode')) {
                         </div>
                         <div>
                             <label>Sample Code</label>
-                            <input type="text" name="sample_code" value="<?php echo htmlspecialchars($sample_code ?? ''); ?>" placeholder="SMP-001"
+                            <input type="text" name="sample_code" id="mainSampleCode" value="<?php echo htmlspecialchars($sample_code ?? ''); ?>" placeholder="SMP-001"
                                    class="font-mono">
                         </div>
                     </div>
@@ -313,13 +313,21 @@ if (!function_exists('erp_safe_json_encode')) {
                     <div>
                         <label>Item Name / Product Title *</label>
                         <input type="text" name="name" id="mainProductName" value="<?php echo htmlspecialchars($name); ?>" placeholder="Falcon Luxury Pen" required
-                               class="font-semibold">
+                               class="font-semibold" list="productNameSuggestions">
+                        <datalist id="productNameSuggestions">
+                            <?php 
+                            $suggestions = $data['product_suggestions'] ?? [];
+                            foreach ($suggestions as $suggestion): 
+                            ?>
+                                <option value="<?php echo htmlspecialchars($suggestion); ?>"></option>
+                            <?php endforeach; ?>
+                        </datalist>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label>Category</label>
-                            <select name="category_id" class="font-semibold cursor-pointer">
+                            <select name="category_id" id="mainCategorySelect" class="font-semibold cursor-pointer">
                                 <option value="">General Stationery</option>
                                 <?php foreach ($categories as $cat): ?>
                                     <option value="<?php echo $cat->id; ?>" <?php echo $category_id == $cat->id ? 'selected' : ''; ?>>
@@ -1077,6 +1085,141 @@ if (!function_exists('erp_safe_json_encode')) {
         // Form submission parameters mapping
         document.getElementById('productForm').addEventListener('submit', (e) => {
             serializeVariations();
+            if (skuHasDuplicate || sampleHasDuplicate) {
+                e.preventDefault();
+                let errMsg = "Please resolve duplicate conflicts before saving:\n";
+                if (skuHasDuplicate) errMsg += "- SKU / Code is already in use.\n";
+                if (sampleHasDuplicate) errMsg += "- Sample Code is already in use.\n";
+                alert(errMsg);
+                const overlay = document.getElementById('saveLoadingOverlay');
+                if (overlay) overlay.style.display = 'none';
+            }
+        });
+
+        // ==========================================
+        // DYNAMIC UNIQUE VALIDATION & CODE GENERATOR
+        // ==========================================
+        const itemId = <?php echo json_encode($item_id ? intval($item_id) : 0); ?>;
+        const mainCategorySelect = document.getElementById('mainCategorySelect');
+        const mainSampleCode = document.getElementById('mainSampleCode');
+        const mainItemCode = document.getElementById('mainItemCode');
+
+        let skuHasDuplicate = false;
+        let sampleHasDuplicate = false;
+
+        if (mainCategorySelect) {
+            mainCategorySelect.addEventListener('change', function() {
+                const categoryId = this.value;
+                if (!categoryId) {
+                    if (mainSampleCode) {
+                        mainSampleCode.value = '';
+                        clearSampleError();
+                    }
+                    return;
+                }
+
+                fetch('<?php echo APP_URL; ?>/inventory/generateSampleCode?category_id=' + categoryId + '&item_id=' + itemId)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.sample_code && mainSampleCode) {
+                            mainSampleCode.value = data.sample_code;
+                            checkDuplicates();
+                        }
+                    })
+                    .catch(err => console.error('Error generating sample code:', err));
+            });
+        }
+
+        let debounceTimer;
+        function debouncedCheck() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(checkDuplicates, 300);
+        }
+
+        if (mainItemCode) mainItemCode.addEventListener('input', debouncedCheck);
+        if (mainSampleCode) mainSampleCode.addEventListener('input', debouncedCheck);
+
+        function checkDuplicates() {
+            const skuVal = mainItemCode ? mainItemCode.value.trim() : '';
+            const sampleVal = mainSampleCode ? mainSampleCode.value.trim() : '';
+
+            if (skuVal === '' && sampleVal === '') {
+                clearSkuError();
+                clearSampleError();
+                return;
+            }
+
+            fetch('<?php echo APP_URL; ?>/inventory/checkDuplicates?item_code=' + encodeURIComponent(skuVal) + '&sample_code=' + encodeURIComponent(sampleVal) + '&item_id=' + itemId)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.sku_exists) {
+                        skuHasDuplicate = true;
+                        showSkuError("SKU is already in use by '" + data.sku_owner + "'.");
+                    } else {
+                        skuHasDuplicate = false;
+                        clearSkuError();
+                    }
+
+                    if (data.sample_exists) {
+                        sampleHasDuplicate = true;
+                        showSampleError("Sample Code is already in use by '" + data.sample_owner + "'.");
+                    } else {
+                        sampleHasDuplicate = false;
+                        clearSampleError();
+                    }
+                })
+                .catch(err => console.error('Error checking duplicates:', err));
+        }
+
+        function showSkuError(msg) {
+            if (!mainItemCode) return;
+            mainItemCode.classList.remove('border-slate-200');
+            mainItemCode.classList.add('border-rose-500', 'focus:ring-rose-500/20', 'focus:border-rose-500');
+            let errEl = document.getElementById('skuDuplicateError');
+            if (!errEl) {
+                errEl = document.createElement('p');
+                errEl.id = 'skuDuplicateError';
+                errEl.className = 'text-xs text-rose-500 font-semibold mt-1';
+                mainItemCode.parentNode.appendChild(errEl);
+            }
+            errEl.textContent = msg;
+        }
+
+        function clearSkuError() {
+            if (mainItemCode) {
+                mainItemCode.classList.remove('border-rose-500', 'focus:ring-rose-500/20', 'focus:border-rose-500');
+                mainItemCode.classList.add('border-slate-200');
+            }
+            const errEl = document.getElementById('skuDuplicateError');
+            if (errEl) errEl.remove();
+        }
+
+        function showSampleError(msg) {
+            if (!mainSampleCode) return;
+            mainSampleCode.classList.remove('border-slate-200');
+            mainSampleCode.classList.add('border-rose-500', 'focus:ring-rose-500/20', 'focus:border-rose-500');
+            let errEl = document.getElementById('sampleDuplicateError');
+            if (!errEl) {
+                errEl = document.createElement('p');
+                errEl.id = 'sampleDuplicateError';
+                errEl.className = 'text-xs text-rose-500 font-semibold mt-1';
+                mainSampleCode.parentNode.appendChild(errEl);
+            }
+            errEl.textContent = msg;
+        }
+
+        function clearSampleError() {
+            if (mainSampleCode) {
+                mainSampleCode.classList.remove('border-rose-500', 'focus:ring-rose-500/20', 'focus:border-rose-500');
+                mainSampleCode.classList.add('border-slate-200');
+            }
+            const errEl = document.getElementById('sampleDuplicateError');
+            if (errEl) errEl.remove();
+        }
+
+        // Run initial duplicate check on load to catch pre-existing duplicate inputs if any
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(checkDuplicates, 500);
         });
     </script>
 <?php include '../app/Views/layouts/resilient_loader.php'; ?>

@@ -297,12 +297,15 @@ document.addEventListener('submit', function(e) {
         let visibleItems = [];
 
         // Build list elements from options
-        function buildOptionsList() {
+        function buildOptionsList(ignoreSelectedText = false) {
             dropdown.innerHTML = '';
             visibleItems = [];
             highlightedIndex = -1;
 
-            const query = input.value.toLowerCase().trim();
+            const selectedOpt = select.options[select.selectedIndex];
+            const selectedText = selectedOpt ? selectedOpt.textContent.toLowerCase().trim() : '';
+            const rawQuery = input.value.toLowerCase().trim();
+            const query = (ignoreSelectedText || rawQuery === selectedText) ? '' : rawQuery;
             const children = Array.from(select.children);
 
             // Rebuild option structure, respecting optgroups
@@ -438,7 +441,7 @@ document.addEventListener('submit', function(e) {
                 document.querySelectorAll('.searchable-select-dropdown').forEach(d => {
                     if (d !== dropdown) d.style.display = 'none';
                 });
-                buildOptionsList();
+                buildOptionsList(true);
                 dropdown.style.display = 'block';
                 // Safe positioning checks
                 const rect = wrapper.getBoundingClientRect();
@@ -455,12 +458,21 @@ document.addEventListener('submit', function(e) {
             }
         });
 
+        // Focus listener to show all options when opened
+        input.addEventListener('focus', function() {
+            document.querySelectorAll('.searchable-select-dropdown').forEach(d => {
+                if (d !== dropdown) d.style.display = 'none';
+            });
+            buildOptionsList(true);
+            dropdown.style.display = 'block';
+        });
+
         // Keydown support
         input.addEventListener('keydown', function(e) {
             if (dropdown.style.display !== 'block') {
                 if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
                     dropdown.style.display = 'block';
-                    buildOptionsList();
+                    buildOptionsList(true);
                     e.preventDefault();
                 }
                 return;
