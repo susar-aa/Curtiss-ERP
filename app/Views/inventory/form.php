@@ -298,12 +298,12 @@ if (!function_exists('erp_safe_json_encode')) {
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label>Barcode UPC/EAN</label>
-                            <input type="text" name="barcode" value="<?php echo htmlspecialchars($barcode); ?>" placeholder="Barcode"
+                            <input type="text" name="barcode" id="mainBarcode" value="<?php echo htmlspecialchars($barcode); ?>" placeholder="Barcode" required
                                    class="font-mono">
                         </div>
                         <div>
                             <label>Status</label>
-                            <select name="status" class="font-semibold cursor-pointer">
+                            <select name="status" id="mainStatusSelect" class="font-semibold cursor-pointer" required>
                                 <option value="active" <?php echo $status === 'active' ? 'selected' : ''; ?>>Active</option>
                                 <option value="inactive" <?php echo $status === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
                             </select>
@@ -313,21 +313,13 @@ if (!function_exists('erp_safe_json_encode')) {
                     <div>
                         <label>Item Name / Product Title *</label>
                         <input type="text" name="name" id="mainProductName" value="<?php echo htmlspecialchars($name); ?>" placeholder="Falcon Luxury Pen" required
-                               class="font-semibold" list="productNameSuggestions">
-                        <datalist id="productNameSuggestions">
-                            <?php 
-                            $suggestions = $data['product_suggestions'] ?? [];
-                            foreach ($suggestions as $suggestion): 
-                            ?>
-                                <option value="<?php echo htmlspecialchars($suggestion); ?>"></option>
-                            <?php endforeach; ?>
-                        </datalist>
+                               class="font-semibold" spellcheck="true">
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label>Category</label>
-                            <select name="category_id" id="mainCategorySelect" class="font-semibold cursor-pointer">
+                            <select name="category_id" id="mainCategorySelect" class="font-semibold cursor-pointer" required>
                                 <option value="">General Stationery</option>
                                 <?php foreach ($categories as $cat): ?>
                                     <option value="<?php echo $cat->id; ?>" <?php echo $category_id == $cat->id ? 'selected' : ''; ?>>
@@ -345,7 +337,7 @@ if (!function_exists('erp_safe_json_encode')) {
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label>Supplier / Vendor</label>
-                            <select name="vendor_id" class="font-semibold cursor-pointer">
+                            <select name="vendor_id" id="mainVendorSelect" class="font-semibold cursor-pointer" required>
                                 <option value="">Select Supplier</option>
                                 <?php foreach ($vendors as $v): ?>
                                     <option value="<?php echo $v->id; ?>" <?php echo $vendor_id == $v->id ? 'selected' : ''; ?>>
@@ -356,7 +348,7 @@ if (!function_exists('erp_safe_json_encode')) {
                         </div>
                         <div>
                             <label>Warehouse storage bin</label>
-                            <select name="warehouse_id" class="font-semibold cursor-pointer">
+                            <select name="warehouse_id" id="mainWarehouseSelect" class="font-semibold cursor-pointer" required>
                                 <option value="">Select Warehouse</option>
                                 <?php foreach ($warehouses as $wh): ?>
                                     <option value="<?php echo $wh->id; ?>" <?php echo $warehouse_id == $wh->id ? 'selected' : ''; ?>>
@@ -368,7 +360,6 @@ if (!function_exists('erp_safe_json_encode')) {
                     </div>
                 </div>
 
-                <!-- Specifications Limits Card -->
                 <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
                     <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
                         <i class="fa-solid fa-scale-balanced text-slate-500"></i> Specs & alert limits
@@ -376,8 +367,8 @@ if (!function_exists('erp_safe_json_encode')) {
                     <div class="grid grid-cols-3 gap-4">
                         <div>
                             <label>Alert Qty</label>
-                            <input type="number" name="alert_qty" value="<?php echo htmlspecialchars($alert_qty); ?>" placeholder="5"
-                                   class="font-mono">
+                            <input type="number" name="alert_qty" id="mainAlertQty" value="<?php echo htmlspecialchars($alert_qty); ?>" placeholder="5"
+                                   class="font-mono" required>
                         </div>
                         <div>
                             <label>UOM</label>
@@ -416,12 +407,12 @@ if (!function_exists('erp_safe_json_encode')) {
                             <div>
                                 <label>Cost (LKR)</label>
                                 <input type="number" step="0.01" name="cost_price" id="costPriceInput" value="<?php echo htmlspecialchars($cost_price); ?>" oninput="calculateMarkupProfit()" placeholder="0.00"
-                                       class="font-mono font-bold">
+                                       class="font-mono font-bold" required>
                             </div>
                             <div>
                                 <label>Retail Marg. %</label>
                                 <input type="number" step="0.1" name="retail_margin" id="retailMarginInput" value="<?php echo htmlspecialchars($retail_margin); ?>" oninput="calculatePriceFromMargin('retail')" placeholder="0.0"
-                                       class="font-mono font-bold">
+                                       class="font-mono font-bold" required>
                             </div>
                             <div>
                                 <label>Retail Price *</label>
@@ -431,12 +422,12 @@ if (!function_exists('erp_safe_json_encode')) {
                             <div>
                                 <label class="purple-lbl">B2B Margin %</label>
                                 <input type="number" step="0.1" name="wholesale_margin" id="wholesaleMarginInput" value="<?php echo htmlspecialchars($wholesale_margin); ?>" oninput="calculatePriceFromMargin('wholesale')" placeholder="0.0"
-                                       class="font-mono font-bold wholesale-input">
+                                       class="font-mono font-bold wholesale-input" required>
                             </div>
                             <div>
                                 <label class="purple-lbl">B2B Price *</label>
                                 <input type="number" step="0.01" name="wholesale_price" id="wholesalePriceInput" value="<?php echo htmlspecialchars($wholesale_price); ?>" oninput="calculateMarginFromPrice('wholesale')" placeholder="0.00"
-                                       class="font-mono font-bold wholesale-input">
+                                       class="font-mono font-bold wholesale-input" required>
                             </div>
                         </div>
                     </div>
@@ -1082,20 +1073,6 @@ if (!function_exists('erp_safe_json_encode')) {
             <?php endif; ?>
         });
 
-        // Form submission parameters mapping
-        document.getElementById('productForm').addEventListener('submit', (e) => {
-            serializeVariations();
-            if (skuHasDuplicate || sampleHasDuplicate) {
-                e.preventDefault();
-                let errMsg = "Please resolve duplicate conflicts before saving:\n";
-                if (skuHasDuplicate) errMsg += "- SKU / Code is already in use.\n";
-                if (sampleHasDuplicate) errMsg += "- Sample Code is already in use.\n";
-                alert(errMsg);
-                const overlay = document.getElementById('saveLoadingOverlay');
-                if (overlay) overlay.style.display = 'none';
-            }
-        });
-
         // ==========================================
         // DYNAMIC UNIQUE VALIDATION & CODE GENERATOR
         // ==========================================
@@ -1106,6 +1083,132 @@ if (!function_exists('erp_safe_json_encode')) {
 
         let skuHasDuplicate = false;
         let sampleHasDuplicate = false;
+
+        const requiredInputs = [
+            { el: document.getElementById('mainProductName'), isSelect: false, label: 'Item Name' },
+            { el: document.getElementById('mainItemCode'), isSelect: false, label: 'SKU' },
+            { el: document.getElementById('mainBarcode'), isSelect: false, label: 'Barcode' },
+            { el: document.getElementById('mainAlertQty'), isSelect: false, label: 'Alert Qty' },
+            { el: document.getElementById('costPriceInput'), isSelect: false, label: 'Cost' },
+            { el: document.getElementById('retailMarginInput'), isSelect: false, label: 'Retail Margin' },
+            { el: document.getElementById('sellingPriceInput'), isSelect: false, label: 'Retail Price' },
+            { el: document.getElementById('wholesaleMarginInput'), isSelect: false, label: 'B2B Margin' },
+            { el: document.getElementById('wholesalePriceInput'), isSelect: false, label: 'B2B Price' },
+            { el: document.getElementById('mainCategorySelect'), isSelect: true, label: 'Category' },
+            { el: document.getElementById('mainVendorSelect'), isSelect: true, label: 'Supplier' },
+            { el: document.getElementById('mainWarehouseSelect'), isSelect: true, label: 'Warehouse' },
+            { el: document.getElementById('mainStatusSelect'), isSelect: true, label: 'Status' }
+        ];
+
+        function validateField(element, isSelect = false) {
+            if (!element) return true;
+            
+            // If it's a base pricing field and variations exist, ignore validation
+            const hasVariations = (typeof variations !== 'undefined') && variations.filter(v => v !== null).length > 0;
+            if (hasVariations && ['costPriceInput', 'retailMarginInput', 'sellingPriceInput', 'wholesaleMarginInput', 'wholesalePriceInput'].includes(element.id)) {
+                clearFieldError(element, isSelect);
+                return true;
+            }
+
+            const val = element.value.trim();
+            if (val === '') {
+                showFieldError(element, isSelect);
+                return false;
+            } else {
+                clearFieldError(element, isSelect);
+                return true;
+            }
+        }
+
+        function showFieldError(element, isSelect) {
+            if (isSelect) {
+                const wrapper = element.closest('.searchable-select-wrapper') || element.nextElementSibling;
+                if (wrapper) {
+                    const inputEl = wrapper.querySelector('.searchable-select-input');
+                    if (inputEl) {
+                        inputEl.classList.remove('border-slate-200');
+                        inputEl.classList.add('border-rose-500', 'focus:ring-rose-500/20', 'focus:border-rose-500');
+                    }
+                }
+            } else {
+                element.classList.remove('border-slate-200');
+                element.classList.add('border-rose-500', 'focus:ring-rose-500/20', 'focus:border-rose-500');
+            }
+        }
+
+        function clearFieldError(element, isSelect) {
+            if (isSelect) {
+                const wrapper = element.closest('.searchable-select-wrapper') || element.nextElementSibling;
+                if (wrapper) {
+                    const inputEl = wrapper.querySelector('.searchable-select-input');
+                    if (inputEl) {
+                        inputEl.classList.remove('border-rose-500', 'focus:ring-rose-500/20', 'focus:border-rose-500');
+                        inputEl.classList.add('border-slate-200');
+                    }
+                }
+            } else {
+                element.classList.remove('border-rose-500', 'focus:ring-rose-500/20', 'focus:border-rose-500');
+                element.classList.add('border-slate-200');
+            }
+        }
+
+        requiredInputs.forEach(item => {
+            if (item.el) {
+                const eventType = item.isSelect ? 'change' : 'input';
+                item.el.addEventListener(eventType, () => {
+                    validateField(item.el, item.isSelect);
+                });
+            }
+        });
+
+        // Form submission parameters mapping & validation
+        document.getElementById('productForm').addEventListener('submit', (e) => {
+            serializeVariations();
+            
+            let missingFields = [];
+            requiredInputs.forEach(item => {
+                if (item.el && !validateField(item.el, item.isSelect)) {
+                    missingFields.push(item.label);
+                }
+            });
+
+            if (missingFields.length > 0) {
+                e.preventDefault();
+                alert("Please fill in all required fields:\n" + missingFields.map(f => "- " + f).join("\n"));
+                const overlay = document.getElementById('saveLoadingOverlay');
+                if (overlay) overlay.style.display = 'none';
+                
+                // Scroll to the first invalid field
+                const firstInvalid = requiredInputs.find(item => {
+                    if (!item.el) return false;
+                    const hasVariations = (typeof variations !== 'undefined') && variations.filter(v => v !== null).length > 0;
+                    if (hasVariations && ['costPriceInput', 'retailMarginInput', 'sellingPriceInput', 'wholesaleMarginInput', 'wholesalePriceInput'].includes(item.el.id)) {
+                        return false;
+                    }
+                    return !item.el.value.trim();
+                });
+                if (firstInvalid && firstInvalid.el) {
+                    const scrollTarget = firstInvalid.isSelect ? 
+                        (firstInvalid.el.closest('.searchable-select-wrapper') || firstInvalid.el) : 
+                        firstInvalid.el;
+                    scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (!firstInvalid.isSelect) {
+                        firstInvalid.el.focus();
+                    }
+                }
+                return;
+            }
+
+            if (skuHasDuplicate || sampleHasDuplicate) {
+                e.preventDefault();
+                let errMsg = "Please resolve duplicate conflicts before saving:\n";
+                if (skuHasDuplicate) errMsg += "- SKU / Code is already in use.\n";
+                if (sampleHasDuplicate) errMsg += "- Sample Code is already in use.\n";
+                alert(errMsg);
+                const overlay = document.getElementById('saveLoadingOverlay');
+                if (overlay) overlay.style.display = 'none';
+            }
+        });
 
         if (mainCategorySelect) {
             mainCategorySelect.addEventListener('change', function() {
