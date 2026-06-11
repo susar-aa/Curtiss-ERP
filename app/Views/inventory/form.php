@@ -25,6 +25,11 @@ $brand = $item ? ($item->brand ?? '') : '';
 $unit = $item ? ($item->unit ?? 'pcs') : 'pcs';
 $status = $item ? ($item->status ?? 'active') : 'active';
 $image_path = $item ? ($item->image_path ?? '') : '';
+$additional_images = $item ? ($item->additional_images ?? '[]') : '[]';
+$additional_images_arr = [];
+if (!empty($additional_images)) {
+    $additional_images_arr = json_decode($additional_images, true) ?: [];
+}
 $weight = $item ? ($item->weight ?? '') : '';
 $sample_code = $item ? ($item->sample_code ?? '') : '';
 
@@ -238,6 +243,10 @@ if (!function_exists('erp_safe_json_encode')) {
             <input type="hidden" name="variations_json" id="variationsJson" value="[]">
             <input type="hidden" name="compressed_image_base64" id="compressedImageBase64" value="">
             <input type="hidden" name="image_deleted" id="imageDeleted" value="0">
+            <input type="hidden" name="additional_images_base64" id="additionalImagesBase64" value="[]">
+            <input type="hidden" name="existing_additional_images" id="existingAdditionalImages" value='<?php echo json_encode($additional_images_arr); ?>'>
+            <!-- Hidden File Input for Variation Images -->
+            <input type="file" id="varImageFileInput" accept="image/*" class="hidden">
 
             <!-- LEFT COLUMN (5/12 span): Media + Identifiers + Specs -->
             <div class="lg:col-span-5 space-y-6">
@@ -247,33 +256,26 @@ if (!function_exists('erp_safe_json_encode')) {
                     <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
                         <i class="fa-solid fa-image text-slate-500"></i> Product Media
                     </h3>
-                    <div class="flex gap-4 items-center">
-                        <div id="dropzone" class="flex-1 border-2 border-dashed border-slate-200 hover:border-black bg-slate-50/50 hover:bg-slate-50 rounded-xl p-4 transition-all duration-200 cursor-pointer text-center relative">
-                            <input type="file" id="imageFileInput" name="image_file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer">
-                            <div class="space-y-1">
-                                <i class="fa-solid fa-cloud-arrow-up text-lg text-slate-450"></i>
-                                <p class="text-xs font-semibold text-slate-700">Drag & drop or <span class="text-black underline">browse</span></p>
-                            </div>
-                        </div>
-                        <div class="relative w-20 h-20 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden flex-shrink-0">
-                            <?php
-                            $preview_img_src = 'https://placehold.co/300?text=No+Image';
-                            if (!empty($image_path)) {
-                                $filename = basename($image_path);
-                                $preview_img_src = APP_URL . '/uploads/products/' . $filename;
-                            }
-                            ?>
-                            <img id="previewImage" src="<?php echo $preview_img_src; ?>" class="object-cover w-full h-full" onerror="this.src='https://placehold.co/300?text=No+Image'">
-                            <button type="button" id="removeImageBtn" class="absolute bottom-1 right-1 p-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-md transition-colors text-[10px] <?php echo empty($image_path) ? 'hidden' : ''; ?>">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
+                    
+                    <div id="dropzone" class="border-2 border-dashed border-slate-200 hover:border-black bg-slate-50/50 hover:bg-slate-50 rounded-xl p-4 transition-all duration-200 cursor-pointer text-center relative">
+                        <input type="file" id="imageFileInput" accept="image/*" multiple class="absolute inset-0 opacity-0 cursor-pointer">
+                        <div class="space-y-1">
+                            <i class="fa-solid fa-cloud-arrow-up text-lg text-slate-450"></i>
+                            <p class="text-xs font-semibold text-slate-700">Drag & drop or <span class="text-black underline">browse</span> to upload multiple images</p>
+                            <p class="text-[10px] text-slate-400">First image in the grid below will be set as primary.</p>
                         </div>
                     </div>
+
                     <!-- Upload Progress -->
                     <div id="progressWrapper" class="bg-slate-100 rounded-full h-1.5 overflow-hidden hidden border border-slate-200">
                         <div id="progressBar" class="bg-black h-full transition-all duration-300" style="width: 0%"></div>
                     </div>
                     <p id="progressText" class="text-[10px] text-slate-500 font-semibold mt-1 hidden"></p>
+
+                    <!-- Main Product Images Grid -->
+                    <div id="mainImagesGrid" class="grid grid-cols-4 gap-2 mt-2">
+                        <!-- Populated dynamically by JS -->
+                    </div>
                 </div>
 
                 <!-- Product Identifiers & Database Relations Card -->
@@ -567,19 +569,20 @@ if (!function_exists('erp_safe_json_encode')) {
                         <table class="w-full text-left text-xs border-collapse">
                             <thead>
                                 <tr class="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
-                                    <th class="py-2.5 px-3 w-[20%]">Option</th>
+                                    <th class="py-2.5 px-3 w-[15%]">Option</th>
+                                    <th class="py-2.5 px-3 w-[10%]">Image</th>
                                     <th class="py-2.5 px-3 w-[15%]">SKU *</th>
-                                    <th class="py-2.5 px-3 w-[12%] text-right">Cost</th>
-                                    <th class="py-2.5 px-3 w-[12%] text-right">Retail Marg.</th>
+                                    <th class="py-2.5 px-3 w-[10%] text-right">Cost</th>
+                                    <th class="py-2.5 px-3 w-[10%] text-right">Retail Marg.</th>
                                     <th class="py-2.5 px-3 w-[12%] text-right">Retail Price</th>
-                                    <th class="py-2.5 px-3 w-[12%] text-right">B2B Marg.</th>
+                                    <th class="py-2.5 px-3 w-[10%] text-right">B2B Marg.</th>
                                     <th class="py-2.5 px-3 w-[12%] text-right">B2B Price</th>
-                                    <th class="py-2.5 px-3 w-[5%] text-right"></th>
+                                    <th class="py-2.5 px-3 w-[6%] text-right"></th>
                                 </tr>
                             </thead>
                             <tbody id="variationsTableBody" class="divide-y divide-slate-200">
                                 <tr id="noVariationsRow">
-                                    <td colspan="8" class="py-6 text-center text-slate-400 empty-table-msg">No variations created. Simple standard product.</td>
+                                    <td colspan="9" class="py-6 text-center text-slate-400 empty-table-msg">No variations created. Simple standard product.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -729,133 +732,212 @@ if (!function_exists('erp_safe_json_encode')) {
         }
 
         // ==========================================
-        // CLIENT-SIDE IMAGE COMPRESSOR & DROPZONE
+        // CLIENT-SIDE MULTI-IMAGE GALLERY SYSTEM
         // ==========================================
+        let mainImages = []; // Each: { id, src, type: 'existing'|'new', path: '...' }
+
+        // Initialize with PHP values
+        const phpPrimaryImage = <?php echo json_encode($image_path); ?>;
+        const phpAdditionalImages = <?php echo json_encode($additional_images_arr); ?>;
+
+        if (phpPrimaryImage) {
+            mainImages.push({
+                id: 'primary_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                src: '<?php echo APP_URL; ?>/' + phpPrimaryImage.replace(/^public\//, ''),
+                type: 'existing',
+                path: phpPrimaryImage
+            });
+        }
+        phpAdditionalImages.forEach(path => {
+            mainImages.push({
+                id: 'existing_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                src: '<?php echo APP_URL; ?>/' + path.replace(/^public\//, ''),
+                type: 'existing',
+                path: path
+            });
+        });
+
+        // Function to update the hidden inputs based on current mainImages state
+        function updateMainImagesInputs() {
+            if (mainImages.length > 0) {
+                const primary = mainImages[0];
+                if (primary.type === 'new') {
+                    document.getElementById('compressedImageBase64').value = primary.src;
+                    document.getElementById('imageDeleted').value = '0';
+                } else {
+                    document.getElementById('compressedImageBase64').value = '';
+                    document.getElementById('imageDeleted').value = '0';
+                }
+            } else {
+                document.getElementById('compressedImageBase64').value = '';
+                document.getElementById('imageDeleted').value = '1';
+            }
+
+            // Additional images (remaining existing paths)
+            const remainingExisting = mainImages.slice(1)
+                .filter(img => img.type === 'existing')
+                .map(img => img.path);
+            document.getElementById('existingAdditionalImages').value = JSON.stringify(remainingExisting);
+
+            // Additional images (newly uploaded base64 strings)
+            const newAdditional = mainImages.slice(1)
+                .filter(img => img.type === 'new')
+                .map(img => img.src);
+            document.getElementById('additionalImagesBase64').value = JSON.stringify(newAdditional);
+        }
+
+        // Render main product images grid
+        function renderMainImagesGrid() {
+            const grid = document.getElementById('mainImagesGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            mainImages.forEach((img, idx) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = "relative w-full aspect-square rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden group shadow-sm";
+                
+                const isPrimary = (idx === 0);
+                
+                wrapper.innerHTML = `
+                    <img src="${img.src}" class="object-cover w-full h-full">
+                    ${isPrimary ? `<span class="absolute top-1 left-1 px-1.5 py-0.5 text-[8px] font-bold text-white bg-black/75 rounded-md uppercase tracking-wider">Primary</span>` : ''}
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                        ${!isPrimary ? `<button type="button" onclick="setAsPrimary(${idx})" title="Set as primary" class="p-1.5 bg-white hover:bg-black hover:text-white text-slate-800 rounded-lg shadow transition-all text-[9px] cursor-pointer"><i class="fa-solid fa-star"></i></button>` : ''}
+                        <button type="button" onclick="removeMainImage(${idx})" title="Delete image" class="p-1.5 bg-red-650 hover:bg-red-700 text-white rounded-lg shadow transition-all text-[9px] cursor-pointer"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                `;
+                grid.appendChild(wrapper);
+            });
+
+            updateMainImagesInputs();
+        }
+
+        window.setAsPrimary = function(index) {
+            if (index > 0 && index < mainImages.length) {
+                const img = mainImages.splice(index, 1)[0];
+                mainImages.unshift(img);
+                renderMainImagesGrid();
+            }
+        };
+
+        window.removeMainImage = function(index) {
+            mainImages.splice(index, 1);
+            renderMainImagesGrid();
+        };
+
         const dropzone = document.getElementById('dropzone');
         const fileInput = document.getElementById('imageFileInput');
-        const previewImage = document.getElementById('previewImage');
-        const removeImageBtn = document.getElementById('removeImageBtn');
         const progressWrapper = document.getElementById('progressWrapper');
         const progressBar = document.getElementById('progressBar');
         const progressText = document.getElementById('progressText');
-        const base64Input = document.getElementById('compressedImageBase64');
 
-        // Drag/Drop Events
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropzone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                dropzone.classList.add('border-black', 'bg-slate-100');
-            }, false);
-        });
+        if (dropzone) {
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropzone.classList.add('border-black', 'bg-slate-100');
+                }, false);
+            });
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropzone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                dropzone.classList.remove('border-black', 'bg-slate-100');
-            }, false);
-        });
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropzone.classList.remove('border-black', 'bg-slate-100');
+                }, false);
+            });
 
-        dropzone.addEventListener('drop', (e) => {
-            const files = e.dataTransfer.files;
-            if (files.length) handleImageUpload(files[0]);
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length) handleImageUpload(e.target.files[0]);
-        });
-
-        function handleImageUpload(file) {
-            if (!file.type.match('image.*')) {
-                alert('Oops! Only image files (PNG, JPG, JPEG) are accepted.');
-                return;
-            }
-
-            progressWrapper.classList.remove('hidden');
-            progressText.classList.remove('hidden');
-            progressBar.style.width = '5%';
-            progressText.innerText = "Initializing file stream...";
-
-            const reader = new FileReader();
-            
-            // Real-time reader loading progress (maps to 0% - 50%)
-            reader.onprogress = function(e) {
-                if (e.lengthComputable) {
-                    const percent = Math.round((e.loaded / e.total) * 50);
-                    progressBar.style.width = percent + '%';
-                    progressText.innerText = `Reading file stream: ${percent * 2}%...`;
-                }
-            };
-
-            reader.onload = function(event) {
-                progressBar.style.width = '60%';
-                progressText.innerText = "Decompressing raw bitmap layers...";
-
-                const img = new Image();
-                img.src = event.target.result;
-                img.onload = function() {
-                    progressBar.style.width = '80%';
-                    progressText.innerText = "Compressing dimensions with Smart High-Fidelity scaling (80%)...";
-
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-
-                    // Support up to 1600px width/height for beautiful retina screens without massive bandwidth cost
-                    const max_size = 1600;
-                    if (width > height) {
-                        if (width > max_size) {
-                            height *= max_size / width;
-                            width = max_size;
-                        }
-                    } else {
-                        if (height > max_size) {
-                            width *= max_size / height;
-                            height = max_size;
-                        }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-
-                    const ctx = canvas.getContext('2d');
-                    
-                    // Enable high quality image scaling parameters in browser canvas context
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
-                    
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    // 0.85 jpeg quality is visually indistinguishable from original, yet reduces size by 70%-80%
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
-                    
-                    setTimeout(() => {
-                        progressBar.style.width = '100%';
-                        progressText.innerText = "High-Fidelity compression complete! Image optimized successfully.";
-                        
-                        // Show preview and restore active status ONLY after upload/compression is done!
-                        previewImage.src = compressedBase64;
-                        base64Input.value = compressedBase64;
-                        removeImageBtn.classList.remove('hidden');
-                        document.getElementById('imageDeleted').value = '0';
-                        
-                        setTimeout(() => {
-                            progressWrapper.classList.add('hidden');
-                            progressText.classList.add('hidden');
-                        }, 1500);
-                    }, 400);
-                };
-            };
-            
-            reader.readAsDataURL(file);
+            dropzone.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                if (files.length) handleMultipleImagesUpload(files);
+            });
         }
 
-        removeImageBtn.addEventListener('click', () => {
-            previewImage.src = 'https://placehold.co/300?text=No+Image';
-            base64Input.value = '';
-            fileInput.value = '';
-            document.getElementById('imageDeleted').value = '1';
-            removeImageBtn.classList.add('hidden');
-        });
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length) handleMultipleImagesUpload(e.target.files);
+            });
+        }
+
+        async function handleMultipleImagesUpload(files) {
+            if (!progressWrapper || !progressBar || !progressText) return;
+            progressWrapper.classList.remove('hidden');
+            progressText.classList.remove('hidden');
+            
+            const totalFiles = files.length;
+            for (let i = 0; i < totalFiles; i++) {
+                const file = files[i];
+                if (!file.type.match('image.*')) {
+                    alert(`Skipped non-image file: ${file.name}`);
+                    continue;
+                }
+                
+                progressBar.style.width = '10%';
+                progressText.innerText = `Processing image ${i + 1} of ${totalFiles}...`;
+                
+                try {
+                    const base64 = await compressImageAsync(file);
+                    mainImages.push({
+                        id: 'new_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                        src: base64,
+                        type: 'new'
+                    });
+                } catch (err) {
+                    console.error("Compression failed", err);
+                }
+            }
+            
+            progressBar.style.width = '100%';
+            progressText.innerText = "All images processed successfully!";
+            renderMainImagesGrid();
+            
+            setTimeout(() => {
+                progressWrapper.classList.add('hidden');
+                progressText.classList.add('hidden');
+            }, 1000);
+            
+            if (fileInput) fileInput.value = '';
+        }
+
+        function compressImageAsync(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        const max_size = 1600;
+                        if (width > height) {
+                            if (width > max_size) {
+                                height *= max_size / width;
+                                width = max_size;
+                            }
+                        } else {
+                            if (height > max_size) {
+                                width *= max_size / height;
+                                height = max_size;
+                            }
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+                        resolve(compressedBase64);
+                    };
+                    img.onerror = () => reject("Image load error");
+                };
+                reader.onerror = () => reject("File read error");
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Render initially
+        renderMainImagesGrid();
 
         // ==========================================
         // DYNAMIC SYNCED ATTRIBUTES & VARIATIONS
@@ -1017,6 +1099,75 @@ if (!function_exists('erp_safe_json_encode')) {
             }
         }
 
+        window.getVarImageSrc = function(rowData) {
+            if (rowData.image_base64) {
+                return rowData.image_base64;
+            }
+            if (rowData.image_path) {
+                return '<?php echo APP_URL; ?>/' + rowData.image_path.replace(/^public\//, '');
+            }
+            return 'https://placehold.co/100?text=No+Img';
+        };
+
+        let currentVarUploadIndex = null;
+        window.triggerVarImageUpload = function(index) {
+            currentVarUploadIndex = index;
+            document.getElementById('varImageFileInput').click();
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const varFileInput = document.getElementById('varImageFileInput');
+            if (varFileInput) {
+                varFileInput.addEventListener('change', async (e) => {
+                    if (e.target.files.length && currentVarUploadIndex !== null) {
+                        const file = e.target.files[0];
+                        if (!file.type.match('image.*')) {
+                            alert('Oops! Only image files (PNG, JPG, JPEG) are accepted.');
+                            return;
+                        }
+                        try {
+                            const base64 = await compressImageAsync(file);
+                            updateVariationValue(currentVarUploadIndex, 'image_base64', base64);
+                            refreshVarImageCell(currentVarUploadIndex);
+                        } catch (err) {
+                            console.error("Variation image compression failed", err);
+                        }
+                    }
+                    varFileInput.value = '';
+                });
+            }
+        });
+
+        function refreshVarImageCell(index) {
+            const rowData = variations[index];
+            if (!rowData) return;
+            const row = document.getElementById(`variation-row-${index}`);
+            if (!row) return;
+            const cells = row.getElementsByTagName('td');
+            if (cells.length > 1) {
+                cells[1].innerHTML = `
+                    <div class="relative w-8 h-8 rounded-lg border border-slate-250 bg-white flex items-center justify-center overflow-hidden mx-auto group shadow-sm">
+                        <img id="var-img-preview-${index}" src="${getVarImageSrc(rowData)}" class="object-cover w-full h-full">
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 cursor-pointer" onclick="triggerVarImageUpload(${index})">
+                            <i class="fa-solid fa-camera text-[10px] text-white"></i>
+                        </div>
+                        ${(rowData.image_path || rowData.image_base64) ? `
+                        <button type="button" onclick="event.stopPropagation(); removeVarImage(${index});" class="absolute -top-0.5 -right-0.5 p-0.5 bg-red-650 hover:bg-red-750 text-white rounded-full transition-all text-[8px] leading-none shadow flex items-center justify-center w-3 h-3 cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+                        ` : ''}
+                    </div>
+                `;
+            }
+        }
+
+        window.removeVarImage = function(index) {
+            if (variations[index]) {
+                variations[index].image_path = '';
+                variations[index].image_base64 = '';
+                refreshVarImageCell(index);
+                serializeVariations();
+            }
+        };
+
         /**
          * Appends an interactive variation item row
          */
@@ -1035,7 +1186,9 @@ if (!function_exists('erp_safe_json_encode')) {
                 price: existing ? (existing.price || defaultSellPrice) : defaultSellPrice,
                 wholesale_price: existing ? (existing.wholesale_price || defaultWholePrice) : defaultWholePrice,
                 retail_margin: existing ? (existing.retail_margin || '') : '',
-                wholesale_margin: existing ? (existing.wholesale_margin || '') : ''
+                wholesale_margin: existing ? (existing.wholesale_margin || '') : '',
+                image_path: existing ? (existing.image_path || '') : '',
+                image_base64: ''
             };
 
             // Calculate default margins if empty
@@ -1061,6 +1214,17 @@ if (!function_exists('erp_safe_json_encode')) {
                     </span>
                     <input type="hidden" value="${escapeHtml(rowData.attribute)}" oninput="updateVariationValue(${index}, 'attribute', this.value)">
                 </td>
+                <td class="py-2 px-2 text-center">
+                    <div class="relative w-8 h-8 rounded-lg border border-slate-250 bg-white flex items-center justify-center overflow-hidden mx-auto group shadow-sm">
+                        <img id="var-img-preview-${index}" src="${getVarImageSrc(rowData)}" class="object-cover w-full h-full">
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 cursor-pointer" onclick="triggerVarImageUpload(${index})">
+                            <i class="fa-solid fa-camera text-[10px] text-white"></i>
+                        </div>
+                        ${(rowData.image_path || rowData.image_base64) ? `
+                        <button type="button" onclick="event.stopPropagation(); removeVarImage(${index});" class="absolute -top-0.5 -right-0.5 p-0.5 bg-red-650 hover:bg-red-750 text-white rounded-full transition-all text-[8px] leading-none shadow flex items-center justify-center w-3 h-3 cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+                        ` : ''}
+                    </div>
+                </td>
                 <td class="py-2 px-2">
                     <input type="text" value="${escapeHtml(rowData.sku)}" oninput="updateVariationValue(${index}, 'sku', this.value)" placeholder="SKU" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono focus:border-black focus:ring-0 focus:outline-none">
                 </td>
@@ -1074,7 +1238,7 @@ if (!function_exists('erp_safe_json_encode')) {
                     <input type="number" step="0.01" id="var-retail-price-${index}" value="${rowData.price}" oninput="updateVariationValue(${index}, 'price', this.value); calculateVarMarginFromPrice(${index}, 'retail');" placeholder="0.00" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono text-right focus:border-black focus:ring-0 focus:outline-none">
                 </td>
                 <td class="py-2 px-2 text-right">
-                    <input type="number" step="0.1" id="var-wholesale-margin-${index}" value="${rowData.wholesale_margin}" oninput="updateVariationValue(${index}, 'wholesale_margin', this.value); calculateVarPriceFromMargin(${index}, 'wholesale');" placeholder="0.0" class="w-full bg-purple-50/20 border border-purple-200 rounded-lg px-2 py-1 text-xs font-mono text-right text-purple-900 focus:border-purple-500 focus:ring-0 focus:outline-none font-bold">
+                    <input type="number" step="0.1" id="var-wholesale-margin-${index}" value="${rowData.wholesale_margin}" oninput="updateVariationValue(${index}, 'wholesale_margin', this.value); calculateVarPriceFromMargin(${index}, 'wholesale');" placeholder="0.0" class="w-full bg-purple-50/20 border border-purple-200 rounded-lg px-2 py-1 text-xs font-mono text-right text-purple-900 focus:border-purple-500 focus:ring-0 focus:outline-none font-bold font-bold">
                 </td>
                 <td class="py-2 px-2 text-right">
                     <input type="number" step="0.01" id="var-wholesale-price-${index}" value="${rowData.wholesale_price}" oninput="updateVariationValue(${index}, 'wholesale_price', this.value); calculateVarMarginFromPrice(${index}, 'wholesale');" placeholder="0.00" class="w-full bg-purple-50/20 border border-purple-200 rounded-lg px-2 py-1 text-xs font-mono text-right text-purple-900 focus:border-purple-500 focus:ring-0 focus:outline-none font-bold">

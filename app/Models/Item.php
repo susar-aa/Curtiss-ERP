@@ -125,6 +125,7 @@ class Item {
                 $migrations = [
                     'variations_json' => "ALTER TABLE items ADD variations_json TEXT NULL",
                     'image_path' => "ALTER TABLE items ADD image_path VARCHAR(255) NULL",
+                    'additional_images' => "ALTER TABLE items ADD additional_images TEXT NULL",
                     'barcode' => "ALTER TABLE items ADD barcode VARCHAR(100) NULL",
                     'category_id' => "ALTER TABLE items ADD category_id INT NULL",
                     'warehouse_id' => "ALTER TABLE items ADD warehouse_id INT NULL",
@@ -358,11 +359,11 @@ class Item {
         $this->db->query("INSERT INTO items (
             {$this->itemCodeColumn}, name, {$this->priceColumn}, {$this->wholesalePriceColumn}, {$this->qtyColumn}, {$this->descColumn},
             barcode, category_id, brand, warehouse, alert_qty, unit, status, weight, sync_woo, variations_json, image_path,
-            cost_price, warehouse_id, vendor_id, sample_code, retail_margin, wholesale_margin
+            additional_images, cost_price, warehouse_id, vendor_id, sample_code, retail_margin, wholesale_margin
         ) VALUES (
             :item_code, :name, :price, :wholesale_price, :qty, :description,
             :barcode, :category_id, :brand, :warehouse, :alert_qty, :unit, :status, :weight, :sync_woo, :variations_json, :image_path,
-            :cost_price, :warehouse_id, :vendor_id, :sample_code, :retail_margin, :wholesale_margin
+            :additional_images, :cost_price, :warehouse_id, :vendor_id, :sample_code, :retail_margin, :wholesale_margin
         )");
 
         $this->db->bind(':item_code', $data['item_code']);
@@ -382,6 +383,7 @@ class Item {
         $this->db->bind(':sync_woo', intval($data['sync_woo'] ?? 1));
         $this->db->bind(':variations_json', $data['variations_json'] ?? '[]');
         $this->db->bind(':image_path', $data['image_path'] ?? '');
+        $this->db->bind(':additional_images', $data['additional_images'] ?? '[]');
         $this->db->bind(':cost_price', $data['cost_price'] ?? '0.00');
         $this->db->bind(':warehouse_id', $data['warehouse_id'] ?? null);
         $this->db->bind(':vendor_id', $data['vendor_id'] ?? null);
@@ -411,6 +413,7 @@ class Item {
             sync_woo = :sync_woo,
             variations_json = :variations_json,
             image_path = :image_path,
+            additional_images = :additional_images,
             cost_price = :cost_price,
             warehouse_id = :warehouse_id,
             vendor_id = :vendor_id,
@@ -437,6 +440,7 @@ class Item {
         $this->db->bind(':sync_woo', intval($data['sync_woo'] ?? 1));
         $this->db->bind(':variations_json', $data['variations_json'] ?? '[]');
         $this->db->bind(':image_path', $data['image_path'] ?? '');
+        $this->db->bind(':additional_images', $data['additional_images'] ?? '[]');
         $this->db->bind(':cost_price', $data['cost_price'] ?? '0.00');
         $this->db->bind(':warehouse_id', $data['warehouse_id'] ?? null);
         $this->db->bind(':vendor_id', $data['vendor_id'] ?? null);

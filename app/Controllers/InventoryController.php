@@ -732,6 +732,76 @@ class InventoryController extends Controller {
         $this->checkPermission('inventory', 'create_edit');
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $rawBase64 = $_POST['compressed_image_base64'] ?? '';
+            
+            // 1. Process variation images before full sanitization
+            $rawVarsJson = isset($_POST['variations_json']) ? html_entity_decode(trim($_POST['variations_json']), ENT_QUOTES, 'UTF-8') : '[]';
+            $variationsParsed = json_decode($rawVarsJson, true);
+            if (is_array($variationsParsed)) {
+                foreach ($variationsParsed as &$var) {
+                    if (!empty($var['image_base64'])) {
+                        $base64 = html_entity_decode($var['image_base64'], ENT_QUOTES, 'UTF-8');
+                        if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
+                            $base64 = substr($base64, strpos($base64, ',') + 1);
+                            $ext = strtolower($type[1]);
+                        } else {
+                            $ext = 'jpg';
+                        }
+                        $binary = base64_decode($base64);
+                        if ($binary) {
+                            $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
+                            if (!file_exists($uploadDir)) {
+                                @mkdir($uploadDir, 0777, true);
+                            }
+                            $fileName = 'var_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+                            if (file_put_contents($uploadDir . '/' . $fileName, $binary)) {
+                                $var['image_path'] = 'public/uploads/products/' . $fileName;
+                            }
+                        }
+                        unset($var['image_base64']);
+                    }
+                }
+                $processedVarsJson = json_encode($variationsParsed);
+            } else {
+                $processedVarsJson = '[]';
+            }
+
+            // 2. Process additional product images
+            $rawExistingAddImages = isset($_POST['existing_additional_images']) ? html_entity_decode($_POST['existing_additional_images'], ENT_QUOTES, 'UTF-8') : '[]';
+            $existingAddImages = json_decode($rawExistingAddImages, true);
+            if (!is_array($existingAddImages)) {
+                $existingAddImages = [];
+            }
+
+            $rawNewAddImagesBase64 = isset($_POST['additional_images_base64']) ? html_entity_decode($_POST['additional_images_base64'], ENT_QUOTES, 'UTF-8') : '[]';
+            $newAddImagesBase64 = json_decode($rawNewAddImagesBase64, true);
+            if (!is_array($newAddImagesBase64)) {
+                $newAddImagesBase64 = [];
+            }
+
+            $additionalImagePaths = $existingAddImages;
+            foreach ($newAddImagesBase64 as $base64) {
+                if (empty($base64)) continue;
+                $base64 = html_entity_decode($base64, ENT_QUOTES, 'UTF-8');
+                if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
+                    $base64 = substr($base64, strpos($base64, ',') + 1);
+                    $ext = strtolower($type[1]);
+                } else {
+                    $ext = 'jpg';
+                }
+                $binary = base64_decode($base64);
+                if ($binary) {
+                    $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
+                    if (!file_exists($uploadDir)) {
+                        @mkdir($uploadDir, 0777, true);
+                    }
+                    $fileName = 'prod_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+                    if (file_put_contents($uploadDir . '/' . $fileName, $binary)) {
+                        $additionalImagePaths[] = 'public/uploads/products/' . $fileName;
+                    }
+                }
+            }
+            $additionalImagesJson = json_encode($additionalImagePaths);
+
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
             // Save locally uploaded photo (supports standard multipart file or client-side base64)
@@ -804,8 +874,9 @@ class InventoryController extends Controller {
                 'unit' => html_entity_decode(trim($_POST['unit'] ?? 'pcs'), ENT_QUOTES, 'UTF-8'),
                 'status' => trim($_POST['status'] ?? 'active'),
                 'weight' => trim($_POST['weight'] ?? ''),
-                'variations_json' => html_entity_decode(trim($_POST['variations_json'] ?? '[]'), ENT_QUOTES, 'UTF-8'),
+                'variations_json' => $processedVarsJson,
                 'image_path' => $imagePath,
+                'additional_images' => $additionalImagesJson,
                 'retail_margin' => trim($_POST['retail_margin'] ?? '0.00'),
                 'wholesale_margin' => trim($_POST['wholesale_margin'] ?? '0.00'),
                 'sample_code' => html_entity_decode(trim($_POST['sample_code'] ?? ''), ENT_QUOTES, 'UTF-8')
@@ -878,6 +949,76 @@ class InventoryController extends Controller {
         $this->checkPermission('inventory', 'create_edit');
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $rawBase64 = $_POST['compressed_image_base64'] ?? '';
+            
+            // 1. Process variation images before full sanitization
+            $rawVarsJson = isset($_POST['variations_json']) ? html_entity_decode(trim($_POST['variations_json']), ENT_QUOTES, 'UTF-8') : '[]';
+            $variationsParsed = json_decode($rawVarsJson, true);
+            if (is_array($variationsParsed)) {
+                foreach ($variationsParsed as &$var) {
+                    if (!empty($var['image_base64'])) {
+                        $base64 = html_entity_decode($var['image_base64'], ENT_QUOTES, 'UTF-8');
+                        if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
+                            $base64 = substr($base64, strpos($base64, ',') + 1);
+                            $ext = strtolower($type[1]);
+                        } else {
+                            $ext = 'jpg';
+                        }
+                        $binary = base64_decode($base64);
+                        if ($binary) {
+                            $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
+                            if (!file_exists($uploadDir)) {
+                                @mkdir($uploadDir, 0777, true);
+                            }
+                            $fileName = 'var_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+                            if (file_put_contents($uploadDir . '/' . $fileName, $binary)) {
+                                $var['image_path'] = 'public/uploads/products/' . $fileName;
+                            }
+                        }
+                        unset($var['image_base64']);
+                    }
+                }
+                $processedVarsJson = json_encode($variationsParsed);
+            } else {
+                $processedVarsJson = '[]';
+            }
+
+            // 2. Process additional product images
+            $rawExistingAddImages = isset($_POST['existing_additional_images']) ? html_entity_decode($_POST['existing_additional_images'], ENT_QUOTES, 'UTF-8') : '[]';
+            $existingAddImages = json_decode($rawExistingAddImages, true);
+            if (!is_array($existingAddImages)) {
+                $existingAddImages = [];
+            }
+
+            $rawNewAddImagesBase64 = isset($_POST['additional_images_base64']) ? html_entity_decode($_POST['additional_images_base64'], ENT_QUOTES, 'UTF-8') : '[]';
+            $newAddImagesBase64 = json_decode($rawNewAddImagesBase64, true);
+            if (!is_array($newAddImagesBase64)) {
+                $newAddImagesBase64 = [];
+            }
+
+            $additionalImagePaths = $existingAddImages;
+            foreach ($newAddImagesBase64 as $base64) {
+                if (empty($base64)) continue;
+                $base64 = html_entity_decode($base64, ENT_QUOTES, 'UTF-8');
+                if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
+                    $base64 = substr($base64, strpos($base64, ',') + 1);
+                    $ext = strtolower($type[1]);
+                } else {
+                    $ext = 'jpg';
+                }
+                $binary = base64_decode($base64);
+                if ($binary) {
+                    $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
+                    if (!file_exists($uploadDir)) {
+                        @mkdir($uploadDir, 0777, true);
+                    }
+                    $fileName = 'prod_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+                    if (file_put_contents($uploadDir . '/' . $fileName, $binary)) {
+                        $additionalImagePaths[] = 'public/uploads/products/' . $fileName;
+                    }
+                }
+            }
+            $additionalImagesJson = json_encode($additionalImagePaths);
+
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
             $existingItem = $this->itemModel->getItemById($id);
@@ -957,8 +1098,9 @@ class InventoryController extends Controller {
                 'unit' => html_entity_decode(trim($_POST['unit'] ?? 'pcs'), ENT_QUOTES, 'UTF-8'),
                 'status' => trim($_POST['status'] ?? 'active'),
                 'weight' => trim($_POST['weight'] ?? ''),
-                'variations_json' => html_entity_decode(trim($_POST['variations_json'] ?? '[]'), ENT_QUOTES, 'UTF-8'),
+                'variations_json' => $processedVarsJson,
                 'image_path' => $imagePath,
+                'additional_images' => $additionalImagesJson,
                 'retail_margin' => trim($_POST['retail_margin'] ?? '0.00'),
                 'wholesale_margin' => trim($_POST['wholesale_margin'] ?? '0.00'),
                 'sample_code' => html_entity_decode(trim($_POST['sample_code'] ?? ''), ENT_QUOTES, 'UTF-8')

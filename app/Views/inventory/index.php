@@ -784,12 +784,48 @@ if ($importResults) unset($_SESSION['import_results']);
     transition: background var(--dur-fast);
 }
 .qv-close:hover { background: var(--c-fill2); }
-.qv-img {
-    width: 200px; height: 200px;
+.qv-carousel-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
     border-radius: var(--r-lg);
-    object-fit: cover;
+    overflow: hidden;
+    margin-bottom: 14px;
     border: 0.5px solid var(--c-separator);
-    display: block; margin: 0 auto 14px;
+    background: var(--c-surface2);
+}
+.qv-carousel-track {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    transition: transform var(--dur-mid) var(--ease-ios);
+}
+.qv-carousel-slide {
+    width: 100%;
+    height: 100%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.qv-carousel-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.qv-carousel-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.2);
+    border: none;
+    padding: 0;
+    transition: background var(--dur-fast), transform var(--dur-fast);
+    cursor: pointer;
+}
+.qv-carousel-dot.active {
+    background: var(--c-blue);
+    transform: scale(1.2);
 }
 .qv-name { font-size: 17px; font-weight: 700; color: var(--t-primary); text-align: center; margin-bottom: 3px; }
 .qv-sku  { font-size: 11px; font-family: var(--f-mono); color: var(--t-label); text-align: center; margin-bottom: 8px; }
@@ -1021,6 +1057,37 @@ if ($importResults) unset($_SESSION['import_results']);
                                         if ($qty <= 0)     { $badgeCls = 'badge-out';    $badgeTxt = 'Out of stock'; }
                                         elseif ($qty <= 5) { $badgeCls = 'badge-low';    $badgeTxt = 'Low stock'; }
                                         else               { $badgeCls = 'badge-active';  $badgeTxt = 'Active'; }
+
+                                        // Build all images gallery array for quick view slider
+                                        $all_imgs = [];
+                                        if (!empty($image)) {
+                                            $all_imgs[] = APP_URL . '/uploads/products/' . basename($image);
+                                        } else {
+                                            $all_imgs[] = 'https://placehold.co/300x300/f2f2f7/8e8e93?text=' . urlencode(substr($item->name ?? 'P', 0, 1));
+                                        }
+
+                                        if (!empty($item->additional_images)) {
+                                            $decoded = json_decode($item->additional_images, true);
+                                            if (is_array($decoded)) {
+                                                foreach ($decoded as $add_img) {
+                                                    $all_imgs[] = APP_URL . '/uploads/products/' . basename($add_img);
+                                                }
+                                            }
+                                        }
+
+                                        if (!empty($item->variations_json)) {
+                                            $vars = json_decode(html_entity_decode($item->variations_json, ENT_QUOTES, 'UTF-8'), true);
+                                            if (is_array($vars)) {
+                                                foreach ($vars as $v) {
+                                                    if (!empty($v['image_path'])) {
+                                                        $all_imgs[] = APP_URL . '/uploads/products/' . basename($v['image_path']);
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        $all_imgs = array_values(array_unique($all_imgs));
+                                        $all_imgs_json = json_encode($all_imgs);
                                     ?>
                                     <tr>
                                         <td class="txt-center">
@@ -1057,6 +1124,7 @@ if ($importResults) unset($_SESSION['import_results']);
                                                     data-b2b="<?= number_format($b2b, 2) ?>"
                                                     data-qty="<?= $qty ?>"
                                                     data-img="<?= $img_src ?>"
+                                                    data-images='<?= htmlspecialchars($all_imgs_json, ENT_QUOTES, 'UTF-8') ?>'
                                                     data-desc="<?= htmlspecialchars($item->description ?? '') ?>"
                                                     data-category="<?= htmlspecialchars($item->category_name ?? 'Uncategorized') ?>"
                                                     data-brand="<?= htmlspecialchars($item->brand ?? '') ?>"
@@ -1113,7 +1181,19 @@ if ($importResults) unset($_SESSION['import_results']);
             <div class="qv-panel" id="quickViewPanel">
                 <div class="qv-inner" style="position:relative;">
                     <button type="button" class="qv-close" onclick="closeQuickView()"><i class="fa-solid fa-xmark"></i></button>
-                    <img id="qv-image" src="" class="qv-img" alt="">
+                    <!-- Modern Image Carousel -->
+                    <div class="qv-carousel-container">
+                        <div id="qv-carousel-track" class="qv-carousel-track">
+                            <!-- Images will be dynamically inserted here -->
+                        </div>
+                        <!-- Navigation Arrows -->
+                        <button type="button" onclick="prevQvImage()" class="absolute left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/95 hover:bg-white text-slate-800 border border-slate-200 shadow flex items-center justify-center transition-all cursor-pointer text-[10px]" style="z-index:20; position: absolute; border: 0.5px solid var(--c-separator);"><i class="fa-solid fa-chevron-left"></i></button>
+                        <button type="button" onclick="nextQvImage()" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/95 hover:bg-white text-slate-800 border border-slate-200 shadow flex items-center justify-center transition-all cursor-pointer text-[10px]" style="z-index:20; position: absolute; border: 0.5px solid var(--c-separator);"><i class="fa-solid fa-chevron-right"></i></button>
+                        <!-- Indicators dots -->
+                        <div id="qv-carousel-dots" class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-25" style="position: absolute;">
+                            <!-- Dots will be dynamically inserted here -->
+                        </div>
+                    </div>
                     <div id="qv-name" class="qv-name"></div>
                     <div id="qv-sku"  class="qv-sku"></div>
                     <div class="qv-tags">
@@ -1344,6 +1424,99 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+let qvImages = [];
+let qvCurrentIndex = 0;
+let qvAutoRotateInterval = null;
+
+function renderQvCarousel() {
+    const track = document.getElementById('qv-carousel-track');
+    const dotsContainer = document.getElementById('qv-carousel-dots');
+    if (!track || !dotsContainer) return;
+
+    track.innerHTML = '';
+    dotsContainer.innerHTML = '';
+
+    if (!qvImages || qvImages.length === 0) {
+        track.innerHTML = `<div class="qv-carousel-slide"><img src="https://placehold.co/300x300/f2f2f7/8e8e93?text=No+Img" alt=""></div>`;
+        return;
+    }
+
+    qvImages.forEach((imgSrc, idx) => {
+        const slide = document.createElement('div');
+        slide.className = 'qv-carousel-slide';
+        slide.innerHTML = `<img src="${imgSrc}" alt="" onerror="this.src='https://placehold.co/300x300/f2f2f7/8e8e93?text=Err'">`;
+        track.appendChild(slide);
+
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = `qv-carousel-dot ${idx === 0 ? 'active' : ''}`;
+        dot.onclick = () => goToQvImage(idx);
+        dotsContainer.appendChild(dot);
+    });
+
+    qvCurrentIndex = 0;
+    updateQvCarouselPosition();
+    startQvAutoRotate();
+}
+
+function updateQvCarouselPosition() {
+    const track = document.getElementById('qv-carousel-track');
+    if (!track) return;
+    track.style.transform = `translateX(-${qvCurrentIndex * 100}%)`;
+
+    const dots = document.querySelectorAll('.qv-carousel-dot');
+    dots.forEach((dot, idx) => {
+        if (idx === qvCurrentIndex) {
+            dot.classList.add('active');
+        } else {
+            dot.classList.remove('active');
+        }
+    });
+}
+
+function goToQvImage(index) {
+    if (index < 0) {
+        qvCurrentIndex = qvImages.length - 1;
+    } else if (index >= qvImages.length) {
+        qvCurrentIndex = 0;
+    } else {
+        qvCurrentIndex = index;
+    }
+    updateQvCarouselPosition();
+    resetQvAutoRotate();
+}
+
+function prevQvImage() {
+    if (!qvImages || qvImages.length <= 1) return;
+    goToQvImage(qvCurrentIndex - 1);
+}
+
+function nextQvImage() {
+    if (!qvImages || qvImages.length <= 1) return;
+    goToQvImage(qvCurrentIndex + 1);
+}
+
+function startQvAutoRotate() {
+    stopQvAutoRotate();
+    if (qvImages && qvImages.length > 1) {
+        qvAutoRotateInterval = setInterval(() => {
+            qvCurrentIndex = (qvCurrentIndex + 1) % qvImages.length;
+            updateQvCarouselPosition();
+        }, 3000);
+    }
+}
+
+function stopQvAutoRotate() {
+    if (qvAutoRotateInterval) {
+        clearInterval(qvAutoRotateInterval);
+        qvAutoRotateInterval = null;
+    }
+}
+
+function resetQvAutoRotate() {
+    startQvAutoRotate();
+}
+
 function openQuickView(btn) {
     const id    = btn.dataset.id;
     const name  = btn.dataset.name;
@@ -1352,10 +1525,18 @@ function openQuickView(btn) {
     const price = btn.dataset.price;
     const b2b   = btn.dataset.b2b;
     const qty   = parseInt(btn.dataset.qty, 10);
-    const img   = btn.dataset.img;
     const desc  = btn.dataset.desc;
     const category = btn.dataset.category;
     const brand = btn.dataset.brand;
+
+    try {
+        qvImages = JSON.parse(btn.dataset.images || '[]');
+    } catch (e) {
+        qvImages = [btn.dataset.img || ''];
+    }
+    if ((!qvImages || qvImages.length === 0) && btn.dataset.img) {
+        qvImages = [btn.dataset.img];
+    }
 
     document.getElementById('qv-name').textContent  = name;
     document.getElementById('qv-sku').textContent   = 'SKU: ' + sku + (code ? ' · ' + code : '');
@@ -1373,16 +1554,18 @@ function openQuickView(btn) {
     else              { badge = '<span class="sf-badge badge-active"><span class="dot"></span>Active</span>';   qvQty.style.color = 'var(--t-primary)'; }
     document.getElementById('qv-status').innerHTML = badge;
 
-    document.getElementById('qv-image').src        = img;
     document.getElementById('qv-desc').textContent = desc || 'No description available.';
     document.getElementById('qv-edit-link').href   = '<?= APP_URL ?>/inventory/edit/' + id;
     document.getElementById('qv-ledger-link').href = '<?= APP_URL ?>/stockledger/product/' + id;
+
+    renderQvCarousel();
 
     document.getElementById('quickViewPanel').classList.add('open');
 }
 
 function closeQuickView() {
     document.getElementById('quickViewPanel').classList.remove('open');
+    stopQvAutoRotate();
 }
 
 function selectCategory(val, name) {
