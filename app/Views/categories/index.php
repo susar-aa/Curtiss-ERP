@@ -213,12 +213,12 @@ if (isset($_SESSION['flash_error'])) {
                             <p class="text-xs text-slate-500 line-clamp-2 min-h-[2.5rem] leading-relaxed mb-4"><?php echo !empty($cat->description) ? htmlspecialchars($cat->description) : '<span class="italic text-slate-300">No description provided</span>'; ?></p>
                         </div>
                         <!-- Footer/Counter and Actions -->
-                        <div class="pt-4 border-t border-slate-100 flex items-center justify-between mt-auto">
-                            <div class="flex items-center gap-1.5">
-                                <i class="fa-solid fa-box-open text-slate-400 text-xs"></i>
-                                <span class="text-xs font-bold text-slate-600"><?php echo $prodCount; ?> <?php echo $prodCount == 1 ? 'Product' : 'Products'; ?></span>
+                        <div class="pt-4 border-t border-slate-100 flex items-center justify-between mt-auto flex-nowrap gap-1">
+                            <div class="flex items-center gap-1.5 min-w-0 flex-shrink">
+                                <i class="fa-solid fa-box-open text-slate-400 text-xs flex-shrink-0"></i>
+                                <span class="text-xs font-bold text-slate-600 truncate"><?php echo $prodCount; ?> <?php echo $prodCount == 1 ? 'Product' : 'Products'; ?></span>
                             </div>
-                            <div class="flex items-center gap-1">
+                            <div class="flex items-center gap-1 flex-shrink-0">
                                 <button onclick="openQuickView(<?php echo $cat->id; ?>, '<?php echo htmlspecialchars(addslashes($cat->name)); ?>', '<?php echo htmlspecialchars(addslashes($cat->description ?? '')); ?>', '<?php echo $grad; ?>')" 
                                         class="w-9 h-9 inline-flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors duration-200" title="View Category Products">
                                     <i class="fa-solid fa-eye text-sm"></i>
