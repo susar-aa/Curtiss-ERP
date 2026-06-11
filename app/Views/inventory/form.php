@@ -96,28 +96,67 @@ if (!function_exists('erp_safe_json_encode')) {
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <!-- Inter Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
                     colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6', // Teal
+                            600: '#0d9488',
+                            700: '#0f766e',
+                            900: '#134e4a',
+                        },
                         primary: {
-                            50: '#eef2ff',
-                            100: '#e0e7ff',
-                            500: '#6366f1',
-                            600: '#4f46e5',
-                            700: '#4338ca',
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6', // Maps primary components to teal for consistency
+                            600: '#0d9488',
+                            700: '#0f766e',
+                            900: '#134e4a',
+                        },
+                        surface: {
+                            50: '#fafafa',
+                            100: '#f4f4f5',
+                            200: '#e4e4e7',
+                            300: '#d4d4d8',
+                            500: '#71717a',
+                            700: '#3f3f46',
+                            800: '#27272a',
+                            900: '#18181b',
                         }
+                    },
+                    boxShadow: {
+                        'subtle': '0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+                        'float': '0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 10px -5px rgba(0, 0, 0, 0.03)',
+                        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.05)',
                     }
                 }
             }
         }
     </script>
+    <style>
+        body { background: #fafafa; color: #18181b; }
+        
+        /* Premium Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+
+        /* Smooth UI Transitions */
+        .ui-transition { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen pb-12">
+<body class="bg-surface-50 text-surface-900 font-sans antialiased min-h-screen pb-12">
 
     <div class="max-w-[1400px] w-full mx-auto px-4 py-6">
         
@@ -817,7 +856,7 @@ if (!function_exists('erp_safe_json_encode')) {
                     attrObj.terms.forEach(term => {
                         const btn = document.createElement('button');
                         btn.type = 'button';
-                        btn.className = "px-3 py-1.5 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer";
+                        btn.className = "px-3 py-1.5 bg-brand-50 hover:bg-brand-600 hover:text-white text-brand-700 text-xs font-bold rounded-lg border border-brand-100 transition-all flex items-center gap-1.5 cursor-pointer";
                         btn.innerHTML = `<i class="fa-solid fa-plus-circle text-[10px]"></i> Add ${escapeHtml(term.name)}`;
                         btn.onclick = () => {
                             addVariationRow({ attribute: term.name });
@@ -855,7 +894,7 @@ if (!function_exists('erp_safe_json_encode')) {
             activeCustomTags.forEach(tag => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = "px-3 py-1.5 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer";
+                btn.className = "px-3 py-1.5 bg-brand-50 hover:bg-brand-600 hover:text-white text-brand-700 text-xs font-bold rounded-lg border border-brand-100 transition-all flex items-center gap-1.5 cursor-pointer";
                 btn.innerHTML = `<i class="fa-solid fa-plus-circle text-[10px]"></i> Add <strong>${escapeHtml(tag)}</strong>`;
                 btn.onclick = () => {
                     addVariationRow({ attribute: tag });
