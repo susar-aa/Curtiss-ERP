@@ -210,9 +210,13 @@ class CategoryController extends Controller {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        curl_setopt($ch, CURLOPT_ENCODING, '');
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json',
-            'Authorization: Bearer ' . $apiKey
+            'Authorization: Bearer ' . $apiKey,
+            'Accept: application/json'
         ]);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_TIMEOUT, 12);
@@ -238,9 +242,17 @@ class CategoryController extends Controller {
             $errDetails .= " - Curl Error: " . $curlErr;
         }
         if (!empty($response)) {
-            $resData = json_decode($response, true);
-            if (isset($resData['error']['message'])) {
-                $errDetails = $resData['error']['message'];
+            if (stripos($response, '<html') !== false) {
+                if (stripos($response, 'cloudflare') !== false || stripos($response, 'access denied') !== false) {
+                    $errDetails = "Access Denied by Cloudflare/Groq. The hosting server's IP range is blocked by Groq's security firewall. Consider using Google Gemini or a VPN/Proxy on the server.";
+                } else {
+                    $errDetails = "HTML Response (HTTP {$httpCode})";
+                }
+            } else {
+                $resData = json_decode($response, true);
+                if (isset($resData['error']['message'])) {
+                    $errDetails = $resData['error']['message'];
+                }
             }
         }
 
