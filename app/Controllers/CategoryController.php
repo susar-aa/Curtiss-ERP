@@ -161,7 +161,7 @@ class CategoryController extends Controller {
         $this->checkPermission('category', 'view');
         header('Content-Type: application/json');
         
-        $this->db->query("SELECT id, name, sku, item_code, image_path, qty, selling_price, status 
+        $this->db->query("SELECT * 
                           FROM items 
                           WHERE category_id = :category_id 
                           ORDER BY name ASC");
@@ -186,22 +186,58 @@ class CategoryController extends Controller {
         }
 
         $cleanName = htmlspecialchars($name);
-        $lowerName = strtolower($name);
-        $desc = "";
+        $apiKey = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : '';
         
-        if (strpos($lowerName, 'tool') !== false || strpos($lowerName, 'equip') !== false || strpos($lowerName, 'machine') !== false) {
-            $desc = "A professional-grade collection of {$cleanName} engineered for high performance, structural durability, and operational excellence. This segment features premium items optimized for distribution, retail sales, and heavy-duty utility.";
-        } elseif (strpos($lowerName, 'electronic') !== false || strpos($lowerName, 'tech') !== false || strpos($lowerName, 'device') !== false) {
-            $desc = "High-performance {$cleanName} utilizing advanced technology and components. This category contains precision-engineered hardware, consumer devices, and technical units cataloged for streamlined ERP stock tracking and retail sales.";
-        } elseif (strpos($lowerName, 'wear') !== false || strpos($lowerName, 'cloth') !== false || strpos($lowerName, 'apparel') !== false || strpos($lowerName, 'shoe') !== false) {
-            $desc = "Modern and stylish {$cleanName} tailored for quality comfort, fashion standards, and retail appeal. This classification covers a wide selection of designs and materials, organized for inventory distribution and seasonal sales tracking.";
-        } elseif (strpos($lowerName, 'food') !== false || strpos($lowerName, 'bev') !== false || strpos($lowerName, 'drink') !== false || strpos($lowerName, 'snack') !== false) {
-            $desc = "Premium grade {$cleanName} prepared and packaged according to food safety and freshness regulations. This category maintains strict batch tracking, stock rotation, and warehouse distribution guidelines.";
-        } elseif (strpos($lowerName, 'stationery') !== false || strpos($lowerName, 'office') !== false || strpos($lowerName, 'pen') !== false || strpos($lowerName, 'book') !== false) {
-            $desc = "Essential {$cleanName} curated for office productivity, creative work, and corporate environments. This catalog segment is optimized for high-volume retail supply chains and warehouse inventory control.";
-        } else {
-            $desc = "A specialized collection of {$cleanName} designed for quality assurance, retail demand, and systematic stock categorization. This segment includes core items, accessories, and spare parts cataloged to optimize warehouse operations and sales tracking.";
+        if (!empty($apiKey)) {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . $apiKey;
+            $prompt = "Generate a short, unique category description for an e-commerce website.\n\nCategory: \"{$cleanName}\"\n\nRequirements:\n* 1-2 sentences only (20-50 words).\n* Understand what products belong to this category.\n* Mention the category's purpose, common uses, or key features.\n* Avoid generic phrases and marketing fluff.\n* Do not simply repeat the category name.\n* Return only the description text.";
+            
+            $payload = [
+                'contents' => [
+                    ['parts' => [['text' => $prompt]]]
+                ]
+            ];
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode === 200 && !empty($response)) {
+                $resData = json_decode($response, true);
+                $generatedText = $resData['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                $generatedText = trim($generatedText);
+                if (!empty($generatedText)) {
+                    echo json_encode(['success' => true, 'description' => $generatedText]);
+                    exit;
+                }
+            }
         }
+
+        // Advanced dynamic template engine fallback if API is not set or fails
+        $words = explode(' ', $cleanName);
+        $coreNoun = end($words);
+        if (strlen($coreNoun) < 3) {
+            $coreNoun = $cleanName;
+        }
+
+        $adjectives = ["highly-durable", "precision-crafted", "essential", "curated", "premium-grade", "versatile"];
+        $adj = $adjectives[abs(crc32($cleanName)) % count($adjectives)];
+        
+        $uses = ["daily operations and consumer utility", "professional workloads", "optimizing organization and retail display", "reliable performance under demanding conditions"];
+        $use = $uses[abs(crc32($cleanName . 'use')) % count($uses)];
+
+        $features = ["refined design and robust construction", "industry-standard efficiency", "enhanced durability and easy integration", "exceptional reliability and modern aesthetics"];
+        $feat = $features[abs(crc32($cleanName . 'feat')) % count($features)];
+
+        $desc = "Discover our {$adj} range of {$coreNoun} designed specifically for {$use}. Featuring {$feat}, these items provide a dependable solution for retailers and professional users alike.";
 
         echo json_encode(['success' => true, 'description' => $desc]);
         exit;

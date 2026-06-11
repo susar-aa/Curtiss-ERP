@@ -196,8 +196,7 @@ if (isset($_SESSION['flash_error'])) {
                     $prodCount = intval($cat->product_count ?? 0);
                     $grad = $gradients[$cat->id % count($gradients)];
                     ?>
-                    <div class="category-card bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between cursor-pointer group" 
-                         onclick="openQuickView(<?php echo $cat->id; ?>, '<?php echo htmlspecialchars(addslashes($cat->name)); ?>', '<?php echo htmlspecialchars(addslashes($cat->description ?? '')); ?>', '<?php echo $grad; ?>')"
+                    <div class="category-card bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group" 
                          data-name="<?php echo strtolower(htmlspecialchars($cat->name)); ?>" 
                          data-desc="<?php echo strtolower(htmlspecialchars($cat->description ?? '')); ?>">
                         <div>
@@ -219,7 +218,11 @@ if (isset($_SESSION['flash_error'])) {
                                 <i class="fa-solid fa-box-open text-slate-400 text-xs"></i>
                                 <span class="text-xs font-bold text-slate-600"><?php echo $prodCount; ?> <?php echo $prodCount == 1 ? 'Product' : 'Products'; ?></span>
                             </div>
-                            <div class="flex items-center gap-1" onclick="event.stopPropagation()">
+                            <div class="flex items-center gap-1">
+                                <button onclick="openQuickView(<?php echo $cat->id; ?>, '<?php echo htmlspecialchars(addslashes($cat->name)); ?>', '<?php echo htmlspecialchars(addslashes($cat->description ?? '')); ?>', '<?php echo $grad; ?>')" 
+                                        class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="View Category Products">
+                                    <i class="fa-solid fa-eye text-sm"></i>
+                                </button>
                                 <button onclick="openEditModal(<?php echo $cat->id; ?>, '<?php echo htmlspecialchars(addslashes($cat->name)); ?>', '<?php echo htmlspecialchars(addslashes($cat->description ?? '')); ?>')" 
                                         class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="Edit Category">
                                     <i class="fa-solid fa-pen-to-square text-sm"></i>
@@ -420,7 +423,7 @@ if (isset($_SESSION['flash_error'])) {
                         : `<?php echo APP_URL; ?>/uploads/products/${imgPath.split('/').pop()}`;
                     
                     const sku = p.item_code ? p.item_code : (p.sku ? p.sku : '-');
-                    const price = parseFloat(p.selling_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const price = parseFloat(p.selling_price || p.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                     const qty = parseInt(p.qty || 0);
                     
                     let qtyBadge = '';

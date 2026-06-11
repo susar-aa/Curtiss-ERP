@@ -49,7 +49,15 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        return caches.match(event.request);
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          return new Response('Network error occurred.', {
+            status: 408,
+            statusText: 'Network Connect Timeout'
+          });
+        });
       })
   );
 });
