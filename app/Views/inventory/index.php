@@ -3,14 +3,17 @@
 // VARIABLE SAFETY & ROBUST FALLBACK ENGINE
 // ==========================================
 
+// Ensure items array is always defined
 $items = $data['items'] ?? [];
 
+// Stock analytics
 $stats = $data['stats'] ?? (object)[
     'total_items' => count($items),
     'low_stock_count' => 0,
     'out_of_stock_count' => 0
 ];
 
+// Ensure filters are fully initialized
 $filters = $data['filters'] ?? [];
 $filters['search'] = $filters['search'] ?? '';
 $filters['min_price'] = $filters['min_price'] ?? '';
@@ -20,6 +23,7 @@ $filters['category_id'] = $filters['category_id'] ?? '';
 $categories = $data['categories'] ?? [];
 $isCurrentlyAdmin = (strtolower($_SESSION['role'] ?? '') === 'admin');
 
+// Retrieve pagination config with safe fallbacks
 $pagination = $data['pagination'] ?? [
     'current_page' => 1,
     'per_page' => 15,
@@ -32,446 +36,519 @@ $perPage = (int)$pagination['per_page'];
 $totalItems = (int)$pagination['total_items'];
 $totalPages = (int)$pagination['total_pages'];
 
+// Calculate display bounds
 $startIndex = $totalItems > 0 ? (($currentPage - 1) * $perPage) + 1 : 0;
 $endIndex = min($currentPage * $perPage, $totalItems);
 
+// Capture bulk action status feedback
 $flashSuccess = $_SESSION['flash_success'] ?? null;
-if ($flashSuccess) unset($_SESSION['flash_success']);
+if ($flashSuccess) {
+    unset($_SESSION['flash_success']);
+}
 $flashError = $_SESSION['flash_error'] ?? null;
-if ($flashError) unset($_SESSION['flash_error']);
+if ($flashError) {
+    unset($_SESSION['flash_error']);
+}
 $importResults = $_SESSION['import_results'] ?? null;
-if ($importResults) unset($_SESSION['import_results']);
+if ($importResults) {
+    unset($_SESSION['import_results']);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Catalog — Curtiss ERP</title>
+    <title>Inventory Management - Curtiss ERP</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"SF Pro Display"', '"Helvetica Neue"', 'Arial', 'sans-serif'],
-                        display: ['"SF Pro Display"', '-apple-system', 'BlinkMacSystemFont', '"Helvetica Neue"', 'sans-serif'],
-                        mono: ['"SF Mono"', '"Fira Code"', '"Cascadia Code"', 'monospace'],
+                        sans: ['Inter', 'sans-serif'],
                     },
                     colors: {
-                        blue: {
-                            50: '#f0f5ff',
-                            100: '#e0eaff',
-                            500: '#0066cc',
-                            600: '#0055b3',
-                            700: '#004499',
-                        },
-                        purple: {
-                            50: '#f5f0ff',
-                            100: '#ede5ff',
-                            600: '#6e4de0',
-                            700: '#5c3ec4',
-                            900: '#2d1f62',
+                        primary: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
                         }
-                    },
-                    letterSpacing: {
-                        'sf': '-0.01em',
-                        'sf-tight': '-0.02em',
-                        'sf-wide': '0.01em',
                     }
                 }
             }
         }
     </script>
     <style>
-        /* ─── SF Pro System Font Stack ─── */
-        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
+        /* Custom Scrollbar for the table container */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
 
-        /* ─── Typography Scale ─── */
-        .sf-largetitle { font-size: 34px; font-weight: 700; letter-spacing: -0.021em; line-height: 1.2; }
-        .sf-title1     { font-size: 28px; font-weight: 700; letter-spacing: -0.021em; line-height: 1.22; }
-        .sf-title2     { font-size: 22px; font-weight: 700; letter-spacing: -0.018em; line-height: 1.27; }
-        .sf-title3     { font-size: 20px; font-weight: 600; letter-spacing: -0.014em; line-height: 1.3; }
-        .sf-headline   { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.41; }
-        .sf-body       { font-size: 15px; font-weight: 400; letter-spacing: -0.006em; line-height: 1.6; }
-        .sf-callout    { font-size: 16px; font-weight: 400; letter-spacing: -0.01em; line-height: 1.5; }
-        .sf-subhead    { font-size: 13px; font-weight: 400; letter-spacing: -0.003em; line-height: 1.54; }
-        .sf-footnote   { font-size: 13px; font-weight: 400; letter-spacing: 0; line-height: 1.38; }
-        .sf-caption1   { font-size: 12px; font-weight: 400; letter-spacing: 0; line-height: 1.33; }
-        .sf-caption2   { font-size: 11px; font-weight: 400; letter-spacing: 0.06em; line-height: 1.18; }
-        .sf-label-caps { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; }
+        /* FORCE SCROLLING ENGINE OVERRIDES */
+        html, body {
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            height: auto !important;
+            min-height: 100vh !important;
+        }
 
-        /* ─── Scrollbar ─── */
-        .sf-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
-        .sf-scroll::-webkit-scrollbar-track { background: #f5f5f7; }
-        .sf-scroll::-webkit-scrollbar-thumb { background: #c7c7cc; border-radius: 4px; }
+        /* TOP NAV HOVER GAP REMOVAL BRIDGE OVERRIDES */
+        /* Targets hover dropdown structures globally to prevent loss of focus */
+        .group:hover > div,
+        .group:hover > ul {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
 
-        html, body { overflow-y: auto !important; overflow-x: hidden !important; height: auto !important; min-height: 100vh !important; }
-        .group:hover > div, .group:hover > ul { display: block !important; opacity: 1 !important; visibility: visible !important; }
-        .group > div::before, .group > ul::before { content: ''; position: absolute; top: -24px; left: 0; right: 0; height: 24px; background: transparent !important; z-index: 10; }
-        nav, header { position: relative; z-index: 40 !important; }
+        /* Virtual hit-area bridge to cover physical spacing gaps between button trigger and content container */
+        .group > div::before,
+        .group > ul::before {
+            content: '';
+            position: absolute;
+            top: -24px;
+            left: 0;
+            right: 0;
+            height: 24px;
+            background: transparent !important;
+            z-index: 10;
+        }
 
-        /* ─── Table row hover ─── */
-        .sf-table-row:hover { background: rgba(0,0,0,0.02); }
-
-        /* ─── Stat card ─── */
-        .sf-stat-card { background: #ffffff; border: 1px solid #e5e5ea; border-radius: 16px; transition: box-shadow 0.2s; }
-        .sf-stat-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-
-        /* ─── Button styles ─── */
-        .sf-btn-primary { background: #0066cc; color: #fff; font-size: 14px; font-weight: 500; border-radius: 10px; padding: 8px 18px; border: none; cursor: pointer; transition: background 0.15s, transform 0.1s; display: inline-flex; align-items: center; gap: 7px; letter-spacing: -0.01em; }
-        .sf-btn-primary:hover { background: #0055b3; }
-        .sf-btn-primary:active { transform: scale(0.98); }
-        .sf-btn-secondary { background: #f5f5f7; color: #1d1d1f; font-size: 14px; font-weight: 500; border-radius: 10px; padding: 8px 18px; border: 1px solid #e5e5ea; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; gap: 7px; letter-spacing: -0.01em; }
-        .sf-btn-secondary:hover { background: #ebebf0; }
-        .sf-btn-green { background: #34c759; color: #fff; font-size: 14px; font-weight: 500; border-radius: 10px; padding: 8px 18px; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; gap: 7px; letter-spacing: -0.01em; }
-        .sf-btn-green:hover { background: #2db34e; }
-        .sf-btn-indigo { background: #5856d6; color: #fff; font-size: 14px; font-weight: 500; border-radius: 10px; padding: 8px 18px; cursor: pointer; transition: background 0.15s; display: inline-flex; align-items: center; gap: 7px; letter-spacing: -0.01em; }
-        .sf-btn-indigo:hover { background: #4745c0; }
-
-        /* ─── Input ─── */
-        .sf-input { background: #f5f5f7; border: 1.5px solid #e5e5ea; border-radius: 10px; padding: 8px 12px; font-size: 14px; color: #1d1d1f; outline: none; transition: all 0.18s; font-family: inherit; width: 100%; box-sizing: border-box; }
-        .sf-input:focus { background: #fff; border-color: #0066cc; box-shadow: 0 0 0 3px rgba(0,102,204,0.15); }
-        .sf-select { background: #f5f5f7; border: 1.5px solid #e5e5ea; border-radius: 10px; padding: 8px 12px; font-size: 14px; color: #1d1d1f; outline: none; transition: all 0.18s; cursor: pointer; width: 100%; font-family: inherit; }
-        .sf-select:focus { background: #fff; border-color: #0066cc; box-shadow: 0 0 0 3px rgba(0,102,204,0.15); }
-
-        /* ─── Badge ─── */
-        .sf-badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 6px; font-size: 12px; font-weight: 500; padding: 3px 9px; letter-spacing: 0; }
-        .sf-badge-green { background: #e6f9ee; color: #1c7b3a; }
-        .sf-badge-amber { background: #fff5e0; color: #9a5e00; }
-        .sf-badge-red { background: #fff0f0; color: #c0392b; }
-
-        /* ─── Section card ─── */
-        .sf-card { background: #fff; border: 1px solid #e5e5ea; border-radius: 16px; overflow: hidden; }
-        .sf-filter-card { background: #fff; border: 1px solid #e5e5ea; border-radius: 16px; padding: 20px 24px; }
+        nav, header {
+            position: relative;
+            z-index: 40 !important;
+        }
     </style>
 </head>
-<body style="background: #f5f5f7; color: #1d1d1f;" class="min-h-screen flex flex-col">
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
 
+    <!-- Included Unified System Top Menu Bar from Layouts Folder -->
     <?php include '../app/Views/layouts/main.php'; ?>
 
-    <div style="max-width: 1440px;" class="w-full mx-auto px-6 py-8 space-y-6 flex-grow">
-
-        <!-- ─── Page Header ─── -->
-        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5">
+    <!-- Main Workspace Container -->
+    <div class="p-8 max-w-[1400px] mx-auto space-y-6 flex-grow">
+        
+        <!-- Page Header & Actions -->
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 pb-6 border-b border-slate-200">
             <div>
-                <p class="sf-label-caps" style="color: #6e6e73; margin-bottom: 4px;">Inventory Management</p>
-                <h1 class="sf-largetitle" style="color: #1d1d1f; margin: 0;">Product Catalog</h1>
-                <p class="sf-subhead" style="color: #6e6e73; margin-top: 4px;">Track stock levels, manage pricing, and administer catalog entries.</p>
+                <div class="flex items-center gap-3 mb-1">
+                    <div class="w-10 h-10 rounded-xl bg-primary-100 text-primary-600 flex items-center justify-center shadow-inner">
+                        <i class="fa-solid fa-boxes-stacked text-xl"></i>
+                    </div>
+                    <h1 class="text-3xl font-bold tracking-tight text-slate-900">Inventory Catalog</h1>
+                </div>
+                <p class="text-slate-500 text-sm ml-13">View physical stock, track alert levels, and manage catalog parameters locally.</p>
             </div>
-            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
-                <a href="<?php echo APP_URL; ?>/inventory/exportCSV" class="sf-btn-indigo" style="text-decoration:none;">
-                    <i class="fa-solid fa-file-export" style="font-size:13px;"></i> Export Catalog
+
+            <div class="flex flex-wrap items-center gap-3">
+                <a href="<?php echo APP_URL; ?>/inventory/exportCSV" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-indigo-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5 cursor-pointer">
+                    <i class="fa-solid fa-file-export"></i> Export Catalog
                 </a>
-                <button onclick="openCsvModal()" class="sf-btn-green">
-                    <i class="fa-solid fa-file-import" style="font-size:13px;"></i> Import CSV
+                <button onclick="openCsvModal()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-emerald-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5 cursor-pointer">
+                    <i class="fa-solid fa-file-import"></i> Import Catalog
                 </button>
-                <a href="<?php echo APP_URL; ?>/inventory/add" class="sf-btn-primary" style="text-decoration:none;">
-                    <i class="fa-solid fa-plus" style="font-size:13px;"></i> Add Product
+                <a href="<?php echo APP_URL; ?>/inventory/add" class="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-primary-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5">
+                    <i class="fa-solid fa-plus"></i> Add New Product
                 </a>
             </div>
         </div>
 
-        <!-- ─── Flash Alerts ─── -->
+        <!-- Notification Alerts -->
         <?php if ($flashSuccess || isset($_GET['flash_success'])): ?>
-            <div id="flash-success-alert" style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:14px 18px; display:flex; align-items:flex-start; gap:12px;">
-                <div style="background:#dcfce7; color:#16a34a; border-radius:8px; padding:6px; flex-shrink:0;"><i class="fa-solid fa-check text-sm"></i></div>
-                <div>
-                    <p class="sf-headline" style="color:#15803d; margin:0 0 2px;">Success</p>
-                    <p class="sf-footnote" style="color:#16a34a; margin:0;"><?php echo htmlspecialchars($flashSuccess ?? $_GET['flash_success'] ?? ''); ?></p>
+            <div id="flash-success-alert" class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-4 shadow-sm animate-fade-in">
+                <div class="bg-emerald-100 text-emerald-600 p-2 rounded-full mt-0.5 shrink-0">
+                    <i class="fa-solid fa-check"></i>
                 </div>
-                <button onclick="document.getElementById('flash-success-alert').style.display='none'" style="margin-left:auto; background:none; border:none; cursor:pointer; color:#86efac;"><i class="fa-solid fa-xmark"></i></button>
+                <div>
+                    <h4 class="text-emerald-800 font-semibold text-sm">Success Action</h4>
+                    <p class="text-emerald-600 text-xs mt-0.5"><?php echo htmlspecialchars($flashSuccess ?? $_GET['flash_success'] ?? ''); ?></p>
+                </div>
+                <button onclick="document.getElementById('flash-success-alert').style.display='none'" class="ml-auto text-emerald-400 hover:text-emerald-600 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
             </div>
         <?php endif; ?>
 
         <?php if ($flashError): ?>
-            <div id="flash-error-alert" style="background:#fff5f5; border:1px solid #fecaca; border-radius:12px; padding:14px 18px; display:flex; align-items:flex-start; gap:12px;">
-                <div style="background:#fee2e2; color:#dc2626; border-radius:8px; padding:6px; flex-shrink:0;"><i class="fa-solid fa-circle-exclamation text-sm"></i></div>
-                <div>
-                    <p class="sf-headline" style="color:#b91c1c; margin:0 0 2px;">Error</p>
-                    <p class="sf-footnote" style="color:#dc2626; margin:0;"><?php echo htmlspecialchars($flashError); ?></p>
+            <div id="flash-error-alert" class="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-4 shadow-sm animate-fade-in">
+                <div class="bg-rose-100 text-rose-600 p-2 rounded-full mt-0.5 shrink-0">
+                    <i class="fa-solid fa-circle-exclamation"></i>
                 </div>
-                <button onclick="document.getElementById('flash-error-alert').style.display='none'" style="margin-left:auto; background:none; border:none; cursor:pointer; color:#fca5a5;"><i class="fa-solid fa-xmark"></i></button>
+                <div>
+                    <h4 class="text-rose-800 font-semibold text-sm">Error</h4>
+                    <p class="text-rose-600 text-xs mt-0.5"><?php echo htmlspecialchars($flashError); ?></p>
+                </div>
+                <button onclick="document.getElementById('flash-error-alert').style.display='none'" class="ml-auto text-rose-400 hover:text-rose-600 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
             </div>
         <?php endif; ?>
 
-        <!-- ─── Import Results Panel ─── -->
         <?php if ($importResults): ?>
-        <div id="import-results-panel" class="sf-card" style="padding:24px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid #f2f2f7;">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <div style="background:#f0fdf4; color:#16a34a; border-radius:10px; padding:8px 10px;"><i class="fa-solid fa-file-circle-check"></i></div>
-                    <div>
-                        <p class="sf-headline" style="margin:0; color:#1d1d1f;">CSV Import Complete</p>
-                        <p class="sf-caption1" style="margin:2px 0 0; color:#6e6e73;">All records from your inventory CSV have been processed.</p>
+            <div id="import-results-panel" class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4 animate-fade-in">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                            <i class="fa-solid fa-file-circle-check text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800">CSV Import Completed</h3>
+                            <p class="text-xs text-slate-500">Processed all records from your custom inventory CSV.</p>
+                        </div>
+                    </div>
+                    <button onclick="document.getElementById('import-results-panel').style.display='none'" class="text-slate-400 hover:text-slate-600 cursor-pointer">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 text-center">
+                        <div class="text-xs font-semibold text-slate-500 mb-1">New Products Added</div>
+                        <div class="text-xl font-bold text-emerald-600 font-mono"><?= $importResults['added']; ?></div>
+                    </div>
+                    <div class="bg-blue-50/50 border border-blue-100 rounded-xl p-3 text-center">
+                        <div class="text-xs font-semibold text-slate-500 mb-1">Products Updated</div>
+                        <div class="text-xl font-bold text-blue-600 font-mono"><?= $importResults['updated']; ?></div>
+                    </div>
+                    <div class="bg-amber-50/50 border border-amber-100 rounded-xl p-3 text-center">
+                        <div class="text-xs font-semibold text-slate-500 mb-1">Relations Created</div>
+                        <div class="text-xl font-bold text-amber-600 font-mono"><?= count($importResults['success_logs']); ?></div>
+                    </div>
+                    <div class="bg-rose-50/50 border border-rose-100 rounded-xl p-3 text-center">
+                        <div class="text-xs font-semibold text-slate-500 mb-1">Errors Encountered</div>
+                        <div class="text-xl font-bold text-rose-600 font-mono"><?= count($importResults['errors']); ?></div>
                     </div>
                 </div>
-                <button onclick="document.getElementById('import-results-panel').style.display='none'" style="background:none; border:none; cursor:pointer; color:#8e8e93;"><i class="fa-solid fa-xmark text-lg"></i></button>
+
+                <?php if (!empty($importResults['success_logs'])): ?>
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
+                        <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wider">Created Database Entities:</h4>
+                        <ul class="text-[11px] text-slate-500 font-mono list-disc list-inside space-y-0.5">
+                            <?php foreach ($importResults['success_logs'] as $log): ?>
+                                <li><?= htmlspecialchars($log); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!empty($importResults['errors'])): ?>
+                    <div class="bg-rose-50/50 border border-rose-100 rounded-2xl p-5 space-y-3">
+                        <h4 class="text-xs font-bold text-rose-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Detailed Validation & Error Log:
+                        </h4>
+                        <div class="overflow-x-auto rounded-xl border border-rose-100 bg-white shadow-sm max-h-[350px] custom-scrollbar">
+                            <table class="min-w-full divide-y divide-rose-100 text-xs">
+                                <thead class="bg-rose-50/70 sticky top-0 backdrop-blur-md z-10">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left font-bold text-rose-800 uppercase tracking-wider w-16">Row</th>
+                                        <th class="px-4 py-3 text-left font-bold text-rose-800 uppercase tracking-wider w-36">SKU / Code</th>
+                                        <th class="px-4 py-3 text-left font-bold text-rose-800 uppercase tracking-wider w-48">Product Name</th>
+                                        <th class="px-4 py-3 text-left font-bold text-rose-800 uppercase tracking-wider">Validation Errors & Issues</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-rose-50/50 font-medium">
+                                    <?php foreach ($importResults['errors'] as $err): ?>
+                                        <?php if (is_array($err)): ?>
+                                            <tr class="hover:bg-rose-50/10 transition-colors">
+                                                <td class="px-4 py-3 text-rose-700 font-mono"><?= htmlspecialchars($err['row'] ?? '-'); ?></td>
+                                                <td class="px-4 py-3 text-slate-700 font-mono"><?= htmlspecialchars($err['sku'] ?? '-'); ?></td>
+                                                <td class="px-4 py-3 text-slate-700 font-semibold truncate max-w-[180px]" title="<?= htmlspecialchars($err['name'] ?? '-'); ?>"><?= htmlspecialchars($err['name'] ?? '-'); ?></td>
+                                                <td class="px-4 py-3">
+                                                    <div class="flex flex-col gap-1">
+                                                        <?php foreach ($err['messages'] as $msg): ?>
+                                                            <div class="flex items-start gap-1.5 text-rose-600">
+                                                                <span class="text-[10px] text-rose-400 mt-0.5">•</span>
+                                                                <span><?= htmlspecialchars($msg); ?></span>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php else: ?>
+                                            <tr class="hover:bg-rose-50/10 transition-colors">
+                                                <td class="px-4 py-3 text-rose-700 font-mono">-</td>
+                                                <td class="px-4 py-3 text-slate-700 font-mono">-</td>
+                                                <td class="px-4 py-3 text-slate-700 font-semibold">-</td>
+                                                <td class="px-4 py-3 text-rose-600"><?= htmlspecialchars($err); ?></td>
+                                            </tr>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                <?php endif; ?>
             </div>
-            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px;">
-                <div style="background:#f0fdf4; border:1px solid #d1fae5; border-radius:12px; padding:14px; text-align:center;">
-                    <p class="sf-caption2" style="color:#6e6e73; margin:0 0 4px;">New Products</p>
-                    <p style="font-size:22px; font-weight:700; color:#16a34a; font-family:SF Mono,monospace; margin:0;"><?= $importResults['added']; ?></p>
-                </div>
-                <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:14px; text-align:center;">
-                    <p class="sf-caption2" style="color:#6e6e73; margin:0 0 4px;">Updated</p>
-                    <p style="font-size:22px; font-weight:700; color:#2563eb; font-family:SF Mono,monospace; margin:0;"><?= $importResults['updated']; ?></p>
-                </div>
-                <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:14px; text-align:center;">
-                    <p class="sf-caption2" style="color:#6e6e73; margin:0 0 4px;">Relations</p>
-                    <p style="font-size:22px; font-weight:700; color:#d97706; font-family:SF Mono,monospace; margin:0;"><?= count($importResults['success_logs']); ?></p>
-                </div>
-                <div style="background:#fff5f5; border:1px solid #fecaca; border-radius:12px; padding:14px; text-align:center;">
-                    <p class="sf-caption2" style="color:#6e6e73; margin:0 0 4px;">Errors</p>
-                    <p style="font-size:22px; font-weight:700; color:#dc2626; font-family:SF Mono,monospace; margin:0;"><?= count($importResults['errors']); ?></p>
-                </div>
-            </div>
-            <?php if (!empty($importResults['errors'])): ?>
-            <div style="background:#fff5f5; border:1px solid #fecaca; border-radius:12px; padding:16px;">
-                <p class="sf-label-caps" style="color:#b91c1c; margin:0 0 10px; display:flex; align-items:center; gap:6px;"><i class="fa-solid fa-triangle-exclamation"></i> Validation Errors</p>
-                <div class="sf-scroll" style="max-height:280px; overflow-y:auto;">
-                    <table style="width:100%; border-collapse:collapse; font-size:12px;">
-                        <thead>
-                            <tr style="background:#fef2f2; position:sticky; top:0;">
-                                <th style="padding:10px 14px; text-align:left; color:#b91c1c; font-weight:600; width:50px;">Row</th>
-                                <th style="padding:10px 14px; text-align:left; color:#b91c1c; font-weight:600; width:130px;">SKU</th>
-                                <th style="padding:10px 14px; text-align:left; color:#b91c1c; font-weight:600;">Product Name</th>
-                                <th style="padding:10px 14px; text-align:left; color:#b91c1c; font-weight:600;">Issues</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        <?php foreach ($importResults['errors'] as $err): ?>
-                            <?php if (is_array($err)): ?>
-                            <tr style="border-top:1px solid #fee2e2;">
-                                <td style="padding:8px 14px; color:#dc2626; font-family:monospace;"><?= htmlspecialchars($err['row'] ?? '-'); ?></td>
-                                <td style="padding:8px 14px; color:#374151; font-family:monospace;"><?= htmlspecialchars($err['sku'] ?? '-'); ?></td>
-                                <td style="padding:8px 14px; color:#374151; font-weight:500;"><?= htmlspecialchars($err['name'] ?? '-'); ?></td>
-                                <td style="padding:8px 14px; color:#dc2626;"><?= implode(', ', array_map('htmlspecialchars', $err['messages'] ?? [])); ?></td>
-                            </tr>
-                            <?php else: ?>
-                            <tr style="border-top:1px solid #fee2e2;">
-                                <td colspan="4" style="padding:8px 14px; color:#dc2626;"><?= htmlspecialchars($err); ?></td>
-                            </tr>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <?php endif; ?>
-        </div>
         <?php endif; ?>
 
-        <!-- ─── Stats Row ─── -->
-        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px;">
-            <div class="sf-stat-card" style="padding:22px 24px;">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <!-- Summary Statistics Dashboard -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+                <div class="absolute -right-6 -top-6 w-24 h-24 bg-primary-50 rounded-full opacity-50"></div>
+                <div class="flex justify-between items-start relative z-10">
                     <div>
-                        <p class="sf-label-caps" style="color:#6e6e73; margin:0 0 6px;">Total Catalog Items</p>
-                        <p style="font-size:34px; font-weight:700; color:#1d1d1f; margin:0; letter-spacing:-0.021em; font-family:-apple-system,BlinkMacSystemFont,sans-serif;"><?php echo number_format($stats->total_items); ?></p>
+                        <p class="text-sm font-medium text-slate-500 mb-1">Total Catalog Items</p>
+                        <h3 class="text-3xl font-extrabold text-slate-800" id="stat-total-items"><?php echo number_format($stats->total_items); ?></h3>
                     </div>
-                    <div style="background:#e8f0fe; color:#0066cc; border-radius:12px; padding:10px 12px; font-size:20px;">
-                        <i class="fa-solid fa-cubes"></i>
+                    <div class="p-3 bg-primary-50 text-primary-600 rounded-xl">
+                        <i class="fa-solid fa-cubes text-xl"></i>
                     </div>
                 </div>
-                <p class="sf-caption1" style="color:#0066cc; margin:12px 0 0; display:flex; align-items:center; gap:5px; font-weight:500;">
-                    <i class="fa-solid fa-check-double" style="font-size:11px;"></i> Complete SKU records on file
-                </p>
+                <div class="mt-4 text-xs font-semibold text-primary-600 flex items-center gap-1">
+                    <i class="fa-solid fa-check-double"></i> Complete catalog SKU records
+                </div>
             </div>
-            <div class="sf-stat-card" style="padding:22px 24px;">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+                 <div class="absolute -right-6 -top-6 w-24 h-24 bg-amber-50 rounded-full opacity-50"></div>
+                <div class="flex justify-between items-start relative z-10">
                     <div>
-                        <p class="sf-label-caps" style="color:#6e6e73; margin:0 0 6px;">Low Stock Alerts</p>
-                        <p style="font-size:34px; font-weight:700; color:#d97706; margin:0; letter-spacing:-0.021em; font-family:-apple-system,BlinkMacSystemFont,sans-serif;"><?php echo number_format($stats->low_stock_count); ?></p>
+                        <p class="text-sm font-medium text-slate-500 mb-1">Low Stock Alerts</p>
+                        <h3 class="text-3xl font-extrabold text-amber-600" id="stat-low-stock"><?php echo number_format($stats->low_stock_count); ?></h3>
                     </div>
-                    <div style="background:#fffbeb; color:#d97706; border-radius:12px; padding:10px 12px; font-size:20px;">
-                        <i class="fa-solid fa-circle-exclamation"></i>
+                    <div class="p-3 bg-amber-50 text-amber-500 rounded-xl">
+                        <i class="fa-solid fa-circle-exclamation text-xl animate-pulse"></i>
                     </div>
                 </div>
-                <p class="sf-caption1" style="color:#d97706; margin:12px 0 0; display:flex; align-items:center; gap:5px; font-weight:500;">
-                    <i class="fa-solid fa-box-open" style="font-size:11px;"></i> Items below reorder threshold
-                </p>
+                 <div class="mt-4 text-xs font-semibold text-amber-500 flex items-center gap-1">
+                    <i class="fa-solid fa-box-open"></i> Items below reorder threshold (1-5 units)
+                </div>
             </div>
-            <div class="sf-stat-card" style="padding:22px 24px;">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+                <div class="absolute -right-6 -top-6 w-24 h-24 bg-rose-50 rounded-full opacity-50"></div>
+                <div class="flex justify-between items-start relative z-10">
                     <div>
-                        <p class="sf-label-caps" style="color:#6e6e73; margin:0 0 6px;">Out of Stock</p>
-                        <p style="font-size:34px; font-weight:700; color:#dc2626; margin:0; letter-spacing:-0.021em; font-family:-apple-system,BlinkMacSystemFont,sans-serif;"><?php echo number_format($stats->out_of_stock_count); ?></p>
+                        <p class="text-sm font-medium text-slate-500 mb-1">Out of Stock</p>
+                        <h3 class="text-3xl font-extrabold text-rose-600" id="stat-out-of-stock"><?php echo number_format($stats->out_of_stock_count); ?></h3>
                     </div>
-                    <div style="background:#fff5f5; color:#dc2626; border-radius:12px; padding:10px 12px; font-size:20px;">
-                        <i class="fa-solid fa-ban"></i>
+                    <div class="p-3 bg-rose-50 text-red-500 rounded-xl">
+                        <i class="fa-solid fa-ban text-xl"></i>
                     </div>
                 </div>
-                <p class="sf-caption1" style="color:#dc2626; margin:12px 0 0; display:flex; align-items:center; gap:5px; font-weight:500;">
-                    <i class="fa-solid fa-triangle-exclamation" style="font-size:11px;"></i> Zero stock — needs replenishment
-                </p>
+                 <div class="mt-4 text-xs font-semibold text-rose-500 flex items-center gap-1">
+                    <i class="fa-solid fa-truck-ramp-box"></i> Requires immediate reordering
+                </div>
             </div>
         </div>
 
-        <!-- ─── Filters ─── -->
-        <div class="sf-filter-card">
-            <p class="sf-label-caps" style="color:#6e6e73; margin:0 0 16px; display:flex; align-items:center; gap:6px;">
-                <i class="fa-solid fa-sliders" style="color:#0066cc;"></i> Filter &amp; Search
-            </p>
-            <form id="filterForm" style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1fr; gap:12px; align-items:end;">
-                <div>
-                    <label class="sf-label-caps" style="color:#6e6e73; display:block; margin-bottom:6px;">Search</label>
-                    <div style="position:relative;">
-                        <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:11px; top:50%; transform:translateY(-50%); color:#8e8e93; font-size:12px;"></i>
-                        <input type="text" id="searchInput" name="search" class="sf-input" style="padding-left:32px;" placeholder="Name, SKU, barcode…" value="<?php echo htmlspecialchars($filters['search']); ?>">
+        <!-- Filter Form Controls -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 class="text-xs font-bold uppercase text-slate-400 tracking-wider mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-primary-500"></i> Interactive Search & Catalog Filters
+            </h3>
+            
+            <form id="filterForm" action="<?php echo APP_URL; ?>/inventory" method="GET" onsubmit="event.preventDefault(); applyAjaxFilters();" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                <input type="hidden" name="page" id="currentPageInput" value="<?php echo $currentPage; ?>">
+                <input type="hidden" name="per_page" id="perPageInput" value="<?php echo $perPage; ?>">
+
+                <!-- Search field -->
+                <div class="md:col-span-1">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Search Code / Title</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" name="search" id="searchInput" value="<?php echo htmlspecialchars($filters['search']); ?>" oninput="triggerSearchDelay()" placeholder="Type SKU or Name..." 
+                               class="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all placeholder-slate-400">
                     </div>
                 </div>
+
+                <!-- Pricing Thresholds -->
                 <div>
-                    <label class="sf-label-caps" style="color:#6e6e73; display:block; margin-bottom:6px;">Category</label>
-                    <select name="category_id" class="sf-select">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Min Price (Rs.)</label>
+                    <input type="number" step="0.01" name="min_price" id="minPriceInput" value="<?php echo htmlspecialchars($filters['min_price']); ?>" oninput="triggerSearchDelay()" placeholder="0.00" 
+                           class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all font-mono">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Max Price (Rs.)</label>
+                    <input type="number" step="0.01" name="max_price" id="maxPriceInput" value="<?php echo htmlspecialchars($filters['max_price']); ?>" oninput="triggerSearchDelay()" placeholder="0.00" 
+                           class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all font-mono">
+                </div>
+
+                <!-- Category Filtering Option -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Filter Category</label>
+                    <select name="category_id" id="categorySelect" onchange="applyAjaxFilters()" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer">
                         <option value="">All Categories</option>
                         <?php foreach ($categories as $cat): ?>
-                            <option value="<?php echo $cat->id; ?>" <?php echo $filters['category_id'] == $cat->id ? 'selected' : ''; ?>>
+                            <option value="<?php echo $cat->id; ?>" <?php echo (string)$filters['category_id'] === (string)$cat->id ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($cat->name); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
+
+                <!-- Status Indicator -->
                 <div>
-                    <label class="sf-label-caps" style="color:#6e6e73; display:block; margin-bottom:6px;">Min Price (Rs.)</label>
-                    <input type="number" step="0.01" name="min_price" class="sf-input" placeholder="0.00" value="<?php echo htmlspecialchars($filters['min_price']); ?>">
-                </div>
-                <div>
-                    <label class="sf-label-caps" style="color:#6e6e73; display:block; margin-bottom:6px;">Max Price (Rs.)</label>
-                    <input type="number" step="0.01" name="max_price" class="sf-input" placeholder="Any" value="<?php echo htmlspecialchars($filters['max_price']); ?>">
-                </div>
-                <div>
-                    <label class="sf-label-caps" style="color:#6e6e73; display:block; margin-bottom:6px;">Stock Status</label>
-                    <select name="stock_status" class="sf-select">
-                        <option value="">All Status</option>
-                        <option value="instock" <?php echo $filters['stock_status'] === 'instock' ? 'selected' : ''; ?>>In Stock</option>
-                        <option value="lowstock" <?php echo $filters['stock_status'] === 'lowstock' ? 'selected' : ''; ?>>Low Stock</option>
-                        <option value="outstock" <?php echo $filters['stock_status'] === 'outstock' ? 'selected' : ''; ?>>Out of Stock</option>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Stock Level status</label>
+                    <select name="stock_status" id="stockStatusSelect" onchange="applyAjaxFilters()" class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:outline-none transition-all cursor-pointer">
+                        <option value="">All Stock Levels</option>
+                        <option value="instock" <?php echo $filters['stock_status'] === 'instock' ? 'selected' : ''; ?>>In Stock (>5)</option>
+                        <option value="lowstock" <?php echo $filters['stock_status'] === 'lowstock' ? 'selected' : ''; ?>>Low Stock (1-5)</option>
+                        <option value="outstock" <?php echo $filters['stock_status'] === 'outstock' ? 'selected' : ''; ?>>Out of Stock (0)</option>
                     </select>
                 </div>
             </form>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:14px; border-top:1px solid #f2f2f7;">
-                <p class="sf-footnote" style="color:#8e8e93; margin:0;">
-                    Query result: <strong id="matching-count" style="color:#0066cc; font-variant-numeric:tabular-nums;"><?php echo $totalItems; ?></strong> items
-                </p>
-                <div style="display:flex; gap:8px;">
-                    <button type="button" onclick="clearAllFilters()" class="sf-btn-secondary" style="font-size:13px; padding:7px 14px;">
-                        <i class="fa-solid fa-xmark" style="font-size:11px;"></i> Clear
+
+            <div class="flex justify-between items-center mt-5 pt-4 border-t border-slate-100">
+                <span class="text-xs text-slate-400 font-medium">Matching Database Query Results: <span id="matching-count" class="text-primary-600 font-bold font-mono"><?php echo $totalItems; ?></span> items</span>
+                <div class="flex gap-2">
+                    <button type="button" onclick="clearAllFilters()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-all border border-slate-200">
+                        <i class="fa-solid fa-trash-can mr-1.5"></i> Clear Filters
                     </button>
-                    <button type="button" onclick="applyAjaxFilters()" class="sf-btn-primary" style="font-size:13px; padding:7px 14px;">
-                        <i class="fa-solid fa-magnifying-glass" style="font-size:11px;"></i> Search
+                    <button type="button" onclick="applyAjaxFilters()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg transition-all">
+                        <i class="fa-solid fa-filter mr-1.5"></i> Run Query
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- ─── Table Card ─── -->
-        <div class="sf-card" id="table-wrapper" style="position:relative;">
-
-            <!-- Loader Overlay -->
-            <div id="table-loader" style="position:absolute; inset:0; background:rgba(255,255,255,0.7); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; z-index:10; opacity:0; pointer-events:none; transition:opacity 0.15s;">
-                <div style="text-align:center;">
-                    <svg style="animation:spin 1s linear infinite; width:28px; height:28px; color:#0066cc;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        <!-- Live Ajax Swap Table Container -->
+        <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm transition-all duration-300 relative" id="table-wrapper">
+            
+            <!-- Table Loader Overlay -->
+            <div id="table-loader" class="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center z-10 opacity-0 pointer-events-none transition-opacity duration-150">
+                <div class="flex flex-col items-center gap-2">
+                    <svg class="animate-spin h-8 w-8 text-primary-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <p class="sf-label-caps" style="color:#8e8e93; margin:8px 0 0;">Loading…</p>
+                    <span class="text-[11px] font-bold text-slate-400 tracking-wider uppercase font-sans">Updating Query...</span>
                 </div>
             </div>
-            <style>@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</style>
 
             <div id="table-container">
-                <div class="sf-scroll" style="overflow-x:auto;">
-                    <table style="width:100%; border-collapse:collapse; text-align:left; white-space:nowrap;">
+                <!-- Data Grid -->
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left whitespace-nowrap border-collapse">
                         <thead>
-                            <tr style="background:#f5f5f7; border-bottom:1px solid #e5e5ea;">
-                                <th style="padding:13px 16px; text-align:center; width:44px;">
-                                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" style="width:15px; height:15px; cursor:pointer; accent-color:#0066cc;">
+                            <tr class="bg-slate-50 border-b border-slate-200">
+                                <th class="py-4 px-6 text-center w-[4%]">
+                                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" class="rounded border-slate-200 text-primary-600 focus:ring-primary-500/20 cursor-pointer w-4 h-4">
                                 </th>
-                                <th style="padding:13px 16px; width:64px;"><span class="sf-label-caps" style="color:#6e6e73;">Image</span></th>
-                                <th style="padding:13px 16px;"><span class="sf-label-caps" style="color:#6e6e73;">SKU / Code</span></th>
-                                <th style="padding:13px 16px;"><span class="sf-label-caps" style="color:#6e6e73;">Sample</span></th>
-                                <th style="padding:13px 16px;"><span class="sf-label-caps" style="color:#6e6e73;">Product</span></th>
-                                <th style="padding:13px 16px; text-align:right;"><span class="sf-label-caps" style="color:#6e6e73;">Retail (Rs.)</span></th>
-                                <th style="padding:13px 16px; text-align:right;"><span class="sf-label-caps" style="color:#5856d6;">B2B Base</span></th>
-                                <th style="padding:13px 16px; text-align:center;"><span class="sf-label-caps" style="color:#6e6e73;">Stock</span></th>
-                                <th style="padding:13px 16px; text-align:center;"><span class="sf-label-caps" style="color:#6e6e73;">Status</span></th>
-                                <th style="padding:13px 16px; text-align:right;"><span class="sf-label-caps" style="color:#6e6e73;">Actions</span></th>
+                                <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider w-[10%]">Image</th>
+                                <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider w-[12%]">Product SKU</th>
+                                <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider w-[12%]">Sample Code</th>
+                                <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider w-[26%]">Product Details</th>
+                                <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right w-[15%]">Retail Price</th>
+                                <th class="py-4 px-6 text-xs font-bold text-purple-700 uppercase tracking-wider text-right w-[15%]">B2B Base Price</th>
+                                <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center w-[8%]">Stock</th>
+                                <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-center w-[10%]">Status</th>
+                                <th class="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider text-right w-[5%]">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody class="divide-y divide-slate-100">
                             <?php if (empty($items)): ?>
                                 <tr>
-                                    <td colspan="10" style="padding:60px 16px; text-align:center;">
-                                        <div style="display:inline-flex; align-items:center; justify-content:center; width:56px; height:56px; border-radius:50%; background:#f5f5f7; margin-bottom:14px;">
-                                            <i class="fa-solid fa-box-open" style="font-size:22px; color:#8e8e93;"></i>
+                                    <td colspan="10" class="py-20 text-center">
+                                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
+                                            <i class="fa-solid fa-box-open text-2xl text-slate-400"></i>
                                         </div>
-                                        <p class="sf-headline" style="color:#1d1d1f; margin:0 0 4px;">No products found</p>
-                                        <p class="sf-subhead" style="color:#8e8e93; margin:0;">Adjust your filters or add a new product to get started.</p>
+                                        <h3 class="text-base font-bold text-slate-900 mb-1">Catalog empty or no records match</h3>
+                                        <p class="text-xs text-slate-500">Change your filter values or search criteria to find products.</p>
                                     </td>
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($items as $item): ?>
-                                    <?php
+                                    <?php 
                                     $qty = intval($item->qty ?? 0);
                                     $price = floatval($item->selling_price ?? $item->price ?? 0);
                                     $b2b_price = floatval($item->wholesale_price ?? 0);
                                     $sku = !empty($item->item_code) ? $item->item_code : ($item->sku ?? '-');
                                     $image = $item->image_path ?? '';
-                                    $img_src = empty($image) ? 'https://placehold.co/120?text=No+Image' : APP_URL . '/uploads/products/' . basename($image);
+                                    
+                                    // Render exclusively from local uploads/products/ folder by extracting the filename
+                                    if (empty($image)) {
+                                        $img_src = 'https://placehold.co/300?text=No+Image';
+                                    } else {
+                                        $filename = basename($image);
+                                        $img_src = APP_URL . '/uploads/products/' . $filename;
+                                    }
 
                                     if ($qty <= 0) {
-                                        $statusBadge = '<span class="sf-badge sf-badge-red"><span style="width:6px;height:6px;border-radius:50%;background:#ef4444;flex-shrink:0;"></span>Out of Stock</span>';
+                                        $statusBadge = '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-red-50 text-red-700 border border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Out of Stock</span>';
                                     } elseif ($qty <= 5) {
-                                        $statusBadge = '<span class="sf-badge sf-badge-amber"><span style="width:6px;height:6px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></span>Low Stock</span>';
+                                        $statusBadge = '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Low Stock</span>';
                                     } else {
-                                        $statusBadge = '<span class="sf-badge sf-badge-green"><span style="width:6px;height:6px;border-radius:50%;background:#22c55e;flex-shrink:0;"></span>In Stock</span>';
+                                        $statusBadge = '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>In Stock</span>';
                                     }
                                     ?>
-                                    <tr class="sf-table-row" style="border-bottom:1px solid #f2f2f7; transition:background 0.12s;">
-                                        <td style="padding:14px 16px; text-align:center; vertical-align:middle;">
-                                            <input type="checkbox" name="selected_items[]" value="<?php echo $item->id; ?>" onchange="updateSelection()" class="item-select-checkbox" style="width:15px; height:15px; cursor:pointer; accent-color:#0066cc;">
+                                    <tr class="hover:bg-slate-50/80 transition-colors group">
+                                        <td class="py-4 px-6 text-center align-top">
+                                            <input type="checkbox" name="selected_items[]" value="<?php echo $item->id; ?>" onchange="updateSelection()" class="item-select-checkbox rounded border-slate-200 text-primary-600 focus:ring-primary-500/20 cursor-pointer w-4 h-4">
                                         </td>
-                                        <td style="padding:14px 16px; vertical-align:middle;">
-                                            <div style="width:46px; height:46px; border-radius:10px; border:1px solid #e5e5ea; background:#f5f5f7; overflow:hidden;">
-                                                <img src="<?php echo $img_src; ?>" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='https://placehold.co/120?text=N/A'">
+                                        <td class="py-4 px-6 align-top">
+                                            <div class="h-12 w-12 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shadow-inner">
+                                                <img src="<?php echo $img_src; ?>" class="object-cover w-full h-full" onerror="this.src='https://placehold.co/300?text=Error'">
                                             </div>
                                         </td>
-                                        <td style="padding:14px 16px; vertical-align:middle;">
-                                            <span style="background:#f5f5f7; border:1px solid #e5e5ea; border-radius:6px; padding:3px 8px; font-family:'SF Mono',monospace; font-size:12px; font-weight:600; color:#3a3a3c; user-select:all;"><?php echo htmlspecialchars($sku); ?></span>
+                                        <td class="py-4 px-6 align-top">
+                                            <div class="inline-flex items-center px-2 py-1 rounded text-xs font-mono font-bold bg-slate-100 text-slate-600 border border-slate-200 select-all">
+                                                <?php echo htmlspecialchars($sku); ?>
+                                            </div>
                                         </td>
-                                        <td style="padding:14px 16px; vertical-align:middle;">
-                                            <span style="font-family:'SF Mono',monospace; font-size:12px; color:#6e6e73;"><?php echo htmlspecialchars($item->sample_code ?? '—'); ?></span>
+                                        <td class="py-4 px-6 align-top">
+                                            <div class="text-xs font-mono font-bold text-slate-600 select-all">
+                                                <?php echo htmlspecialchars($item->sample_code ?? '-'); ?>
+                                            </div>
                                         </td>
-                                        <td style="padding:14px 16px; vertical-align:middle; max-width:280px; white-space:normal;">
-                                            <p class="sf-body" style="font-weight:600; color:#1d1d1f; margin:0 0 2px; letter-spacing:-0.01em;"><?php echo htmlspecialchars($item->name ?? 'Unnamed Item'); ?></p>
+                                        <td class="py-4 px-6 align-top whitespace-normal">
+                                            <div class="text-sm font-bold text-slate-900 mb-1 leading-tight"><?php echo htmlspecialchars($item->name ?? 'Unnamed Item'); ?></div>
                                             <?php if (!empty($item->description)): ?>
-                                                <p class="sf-caption1" style="color:#8e8e93; margin:0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical;"><?php echo htmlspecialchars($item->description); ?></p>
+                                                <div class="text-xs text-slate-500 line-clamp-2 leading-relaxed" title="<?php echo htmlspecialchars($item->description); ?>">
+                                                    <?php echo htmlspecialchars($item->description); ?>
+                                                </div>
                                             <?php endif; ?>
                                         </td>
-                                        <td style="padding:14px 16px; text-align:right; vertical-align:middle;">
-                                            <p style="font-size:14px; font-weight:700; color:#1d1d1f; margin:0; font-family:'SF Mono',monospace; letter-spacing:-0.01em;"><?php echo number_format($price, 2); ?></p>
-                                            <p class="sf-caption2" style="color:#8e8e93; margin:2px 0 0;">LKR</p>
+                                        <td class="py-4 px-6 text-right align-top">
+                                            <div class="text-sm font-bold text-slate-950 font-mono"><?php echo number_format($price, 2); ?></div>
+                                            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">LKR</div>
                                         </td>
-                                        <td style="padding:14px 16px; text-align:right; vertical-align:middle; background:rgba(88,86,214,0.025);">
-                                            <p style="font-size:14px; font-weight:700; color:#5856d6; margin:0; font-family:'SF Mono',monospace;"><?php echo number_format($b2b_price, 2); ?></p>
-                                            <p class="sf-caption2" style="color:#5856d6; margin:2px 0 0; opacity:0.7;">WholesaleX</p>
+                                        <td class="py-4 px-6 text-right align-top bg-purple-50/10">
+                                            <div class="text-sm font-bold text-purple-950 font-mono"><?php echo number_format($b2b_price, 2); ?></div>
+                                            <div class="text-[10px] text-purple-400 font-bold uppercase tracking-wider mt-0.5">B2B Base (WholesaleX)</div>
                                         </td>
-                                        <td style="padding:14px 16px; text-align:center; vertical-align:middle;">
-                                            <span style="font-size:15px; font-weight:700; font-family:'SF Mono',monospace; color:<?php echo $qty <= 0 ? '#dc2626' : ($qty <= 5 ? '#d97706' : '#1d1d1f'); ?>;"><?php echo $qty; ?></span>
+                                        <td class="py-4 px-6 text-center align-top font-mono text-sm">
+                                            <span class="font-bold <?php echo $qty <= 0 ? 'text-red-600' : ($qty <= 5 ? 'text-amber-600' : 'text-slate-700'); ?>">
+                                                <?php echo $qty; ?>
+                                            </span>
                                         </td>
-                                        <td style="padding:14px 16px; text-align:center; vertical-align:middle;"><?php echo $statusBadge; ?></td>
-                                        <td style="padding:14px 16px; text-align:right; vertical-align:middle;">
-                                            <div style="display:flex; align-items:center; justify-content:flex-end; gap:4px;">
-                                                <a href="<?php echo APP_URL; ?>/stockledger/product/<?php echo $item->id; ?>" style="width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:8px; color:#8e8e93; text-decoration:none; transition:all 0.12s;" onmouseover="this.style.background='#eff6ff'; this.style.color='#0066cc';" onmouseout="this.style.background='none'; this.style.color='#8e8e93';" title="Stock Ledger">
-                                                    <i class="fa-solid fa-chart-line" style="font-size:13px;"></i>
+                                        <td class="py-4 px-6 text-center align-top">
+                                            <?php echo $statusBadge; ?>
+                                        </td>
+                                        <td class="py-4 px-6 text-right align-top">
+                                            <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-100">
+                                                <a href="<?php echo APP_URL; ?>/stockledger/product/<?php echo $item->id; ?>" 
+                                                   class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View Stock Card / Ledger">
+                                                    <i class="fa-solid fa-chart-line"></i>
                                                 </a>
-                                                <a href="<?php echo APP_URL; ?>/inventory/edit/<?php echo $item->id; ?>" style="width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:8px; color:#8e8e93; text-decoration:none; transition:all 0.12s;" onmouseover="this.style.background='#eff6ff'; this.style.color='#0066cc';" onmouseout="this.style.background='none'; this.style.color='#8e8e93';" title="Edit">
-                                                    <i class="fa-solid fa-pen-to-square" style="font-size:13px;"></i>
+                                                <a href="<?php echo APP_URL; ?>/inventory/edit/<?php echo $item->id; ?>" 
+                                                   class="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors" title="Edit Catalog Entry">
+                                                    <i class="fa-solid fa-pen-to-square"></i>
                                                 </a>
-                                                <button type="button" onclick="confirmDelete(<?php echo $item->id; ?>, '<?php echo htmlspecialchars(addslashes($item->name)); ?>')" style="width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:8px; color:#8e8e93; background:none; border:none; cursor:pointer; transition:all 0.12s;" onmouseover="this.style.background='#fff5f5'; this.style.color='#dc2626';" onmouseout="this.style.background='none'; this.style.color='#8e8e93';" title="Delete">
-                                                    <i class="fa-solid fa-trash-can" style="font-size:13px;"></i>
+                                                <button type="button" onclick="confirmDelete(<?php echo $item->id; ?>, '<?php echo htmlspecialchars(addslashes($item->name)); ?>')" 
+                                                        class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Delete Product">
+                                                    <i class="fa-solid fa-trash-can"></i>
                                                 </button>
                                             </div>
                                         </td>
@@ -482,15 +559,17 @@ if ($importResults) unset($_SESSION['import_results']);
                     </table>
                 </div>
 
-                <!-- ─── Pagination ─── -->
-                <div style="padding:14px 20px; border-top:1px solid #f2f2f7; background:#fafafa; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-                    <p class="sf-footnote" style="color:#6e6e73; margin:0;">
-                        Showing <strong style="color:#1d1d1f;"><?php echo $startIndex; ?></strong>–<strong style="color:#1d1d1f;"><?php echo $endIndex; ?></strong> of <strong style="color:#1d1d1f;"><?php echo $totalItems; ?></strong>
-                    </p>
-                    <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <label class="sf-caption2" style="color:#6e6e73;">Per page</label>
-                            <select onchange="updatePageSize(this.value)" style="background:#f5f5f7; border:1px solid #e5e5ea; border-radius:8px; padding:5px 10px; font-size:13px; font-family:inherit; outline:none; cursor:pointer;">
+                <!-- Pagination Controls -->
+                <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="text-xs font-medium text-slate-500">
+                        Displaying <span class="font-bold text-slate-900 font-mono"><?php echo $startIndex; ?></span> to <span class="font-bold text-slate-900 font-mono"><?php echo $endIndex; ?></span> of <span class="font-bold text-slate-900 font-mono"><?php echo $totalItems; ?></span> entries
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-4">
+                        <!-- Page Size -->
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs text-slate-500 font-semibold uppercase">Show Rows:</label>
+                            <select onchange="updatePageSize(this.value)" class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 focus:ring-primary-500 focus:border-primary-500 focus:outline-none text-slate-700 bg-white shadow-sm cursor-pointer font-mono font-bold">
                                 <option value="10" <?php echo $perPage === 10 ? 'selected' : ''; ?>>10</option>
                                 <option value="15" <?php echo $perPage === 15 ? 'selected' : ''; ?>>15</option>
                                 <option value="25" <?php echo $perPage === 25 ? 'selected' : ''; ?>>25</option>
@@ -498,117 +577,670 @@ if ($importResults) unset($_SESSION['import_results']);
                                 <option value="100" <?php echo $perPage === 100 ? 'selected' : ''; ?>>100</option>
                             </select>
                         </div>
-                        <nav style="display:flex; border:1px solid #e5e5ea; border-radius:10px; overflow:hidden; background:#fff;">
-                            <button type="button" onclick="navigatePage(<?php echo max(1, $currentPage - 1); ?>)" style="padding:7px 13px; background:none; border:none; cursor:pointer; color:#6e6e73; font-size:12px; <?php echo $currentPage <= 1 ? 'opacity:0.35; pointer-events:none;' : ''; ?>" onmouseover="this.style.background='#f5f5f7';" onmouseout="this.style.background='none';">
-                                <i class="fa-solid fa-chevron-left"></i>
+
+                        <!-- Navigation Drawer -->
+                        <nav class="inline-flex -space-x-px rounded-lg shadow-sm border border-slate-200 text-xs font-mono font-bold" aria-label="Pagination">
+                            <button type="button" onclick="navigatePage(<?php echo max(1, $currentPage - 1); ?>)" 
+                                    class="relative inline-flex items-center rounded-l-lg px-3 py-2 text-slate-500 hover:text-slate-900 bg-white hover:bg-slate-50 focus:outline-none cursor-pointer <?php echo $currentPage <= 1 ? 'opacity-40 pointer-events-none' : ''; ?>">
+                                <i class="fa-solid fa-chevron-left text-[10px]"></i>
                             </button>
-                            <?php
+                            
+                            <?php 
                             $range = 1;
                             $startPage = max(1, $currentPage - $range);
                             $endPage = min($totalPages, $currentPage + $range);
 
                             if ($startPage > 1) {
-                                echo '<button type="button" onclick="navigatePage(1)" style="padding:7px 13px; background:none; border:none; cursor:pointer; color:#6e6e73; font-size:13px; font-weight:500; border-left:1px solid #f2f2f7;">1</button>';
-                                if ($startPage > 2) echo '<span style="padding:7px 8px; color:#8e8e93; font-size:13px; border-left:1px solid #f2f2f7;">…</span>';
+                                echo '<button type="button" onclick="navigatePage(1)" class="relative inline-flex items-center px-3 py-2 bg-white text-slate-500 hover:bg-slate-50 cursor-pointer">1</button>';
+                                if ($startPage > 2) {
+                                    echo '<span class="relative inline-flex items-center px-2 py-2 bg-white text-slate-400">...</span>';
+                                }
                             }
+
                             for ($i = $startPage; $i <= $endPage; $i++) {
-                                $active = $i === $currentPage;
-                                echo '<button type="button" onclick="navigatePage('.$i.')" style="padding:7px 13px; background:'.($active ? '#0066cc' : 'none').'; color:'.($active ? '#fff' : '#1d1d1f').'; border:none; cursor:pointer; font-size:13px; font-weight:'.($active ? '700' : '500').'; border-left:1px solid #f2f2f7;">'.$i.'</button>';
+                                if ($i === $currentPage) {
+                                    echo '<button type="button" class="relative inline-flex items-center bg-primary-600 px-3.5 py-2 text-white border-y border-primary-600 cursor-default">' . $i . '</button>';
+                                } else {
+                                    echo '<button type="button" onclick="navigatePage(' . $i . ')" class="relative inline-flex items-center px-3.5 py-2 bg-white text-slate-500 hover:bg-slate-50 cursor-pointer">' . $i . '</button>';
+                                }
                             }
+
                             if ($endPage < $totalPages) {
-                                if ($endPage < $totalPages - 1) echo '<span style="padding:7px 8px; color:#8e8e93; font-size:13px; border-left:1px solid #f2f2f7;">…</span>';
-                                echo '<button type="button" onclick="navigatePage('.$totalPages.')" style="padding:7px 13px; background:none; border:none; cursor:pointer; color:#6e6e73; font-size:13px; font-weight:500; border-left:1px solid #f2f2f7;">'.$totalPages.'</button>';
+                                if ($endPage < $totalPages - 1) {
+                                    echo '<span class="relative inline-flex items-center px-2 py-2 bg-white text-slate-400">...</span>';
+                                }
+                                echo '<button type="button" onclick="navigatePage(' . $totalPages . ')" class="relative inline-flex items-center px-3 py-2 bg-white text-slate-500 hover:bg-slate-50 cursor-pointer">' . $totalPages . '</button>';
                             }
                             ?>
-                            <button type="button" onclick="navigatePage(<?php echo min($totalPages, $currentPage + 1); ?>)" style="padding:7px 13px; background:none; border:none; cursor:pointer; color:#6e6e73; font-size:12px; border-left:1px solid #f2f2f7; <?php echo $currentPage >= $totalPages ? 'opacity:0.35; pointer-events:none;' : ''; ?>" onmouseover="this.style.background='#f5f5f7';" onmouseout="this.style.background='none';">
-                                <i class="fa-solid fa-chevron-right"></i>
+
+                            <button type="button" onclick="navigatePage(<?php echo min($totalPages, $currentPage + 1); ?>)" 
+                                    class="relative inline-flex items-center rounded-r-lg px-3 py-2 text-slate-500 hover:text-slate-900 bg-white hover:bg-slate-50 focus:outline-none cursor-pointer <?php echo $currentPage >= $totalPages ? 'opacity-40 pointer-events-none' : ''; ?>">
+                                <i class="fa-solid fa-chevron-right text-[10px]"></i>
                             </button>
                         </nav>
                     </div>
                 </div>
             </div>
-        </div>
 
-    </div>
-
-    <!-- ─── Bulk Toolbar ─── -->
-    <div id="bulkEditToolbar" style="position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:rgba(28,28,30,0.92); backdrop-filter:blur(20px) saturate(180%); color:#fff; padding:14px 24px; border-radius:16px; box-shadow:0 8px 30px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); z-index:40; display:none; align-items:center; gap:24px; min-width:380px;">
-        <div style="display:flex; align-items:center; gap:10px;">
-            <span id="selectedCountBadge" style="background:#0066cc; border-radius:6px; font-size:13px; font-weight:700; padding:2px 9px; font-family:SF Mono,monospace;">0</span>
-            <span class="sf-footnote" style="color:#aeaeb2;">items selected</span>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
-            <button type="button" onclick="clearSelection()" style="background:none; border:none; cursor:pointer; color:#aeaeb2; font-size:13px; font-weight:500; padding:6px 12px; border-radius:8px; font-family:inherit;" onmouseover="this.style.background='rgba(255,255,255,0.1)';" onmouseout="this.style.background='none';">Cancel</button>
-            <button type="button" onclick="openBulkEditModal()" style="background:#0066cc; border:none; cursor:pointer; color:#fff; font-size:13px; font-weight:500; padding:7px 16px; border-radius:9px; display:flex; align-items:center; gap:7px; font-family:inherit;" onmouseover="this.style.background='#0055b3';" onmouseout="this.style.background='#0066cc';">
-                <i class="fa-solid fa-pen-to-square" style="font-size:12px;"></i> Bulk Edit
-            </button>
         </div>
     </div>
 
-    <!-- ─── Bulk Edit Modal ─── -->
-    <div id="bulkEditModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(8px); z-index:50; display:none; align-items:center; justify-content:center; padding:16px;">
-        <div style="background:#fff; border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,0.2); max-width:500px; width:100%; overflow:hidden; border:1px solid #e5e5ea;">
-            <div style="background:#f5f5f7; border-bottom:1px solid #e5e5ea; padding:20px 24px; display:flex; justify-content:space-between; align-items:center;">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <i class="fa-solid fa-pen-to-square" style="color:#5856d6; font-size:18px;"></i>
-                    <p class="sf-title3" style="margin:0; color:#1d1d1f;">Bulk Edit Products</p>
+    <!-- Combined Import Overlay Modal (Fully Custom Styled with Tabs) -->
+    <div id="csvImportModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all border border-slate-200">
+            <!-- Modal Header -->
+            <div class="bg-slate-50 border-b border-slate-100 p-6 flex justify-between items-center">
+                <div class="flex items-center gap-2.5 text-slate-900">
+                    <i class="fa-solid fa-file-import text-emerald-600 text-xl"></i>
+                    <h3 class="text-base font-bold">Import Products Catalog</h3>
                 </div>
-                <button onclick="closeBulkEditModal()" style="background:none; border:none; cursor:pointer; color:#8e8e93; width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px;" onmouseover="this.style.background='#ebebf0';" onmouseout="this.style.background='none';"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="closeCsvModal()" class="text-slate-400 hover:text-slate-600 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
-            <form id="bulkEditForm" onsubmit="submitBulkEdit(event)" style="padding:24px; display:flex; flex-direction:column; gap:16px;">
-                <p class="sf-footnote" style="color:#8e8e93; margin:0;">Editing <strong id="bulkSelectedCount" style="color:#5856d6; font-variant-numeric:tabular-nums;">0</strong> products. Check a field to apply that change to all selected items.</p>
-                <div id="bulkEditErrorContainer" style="display:none; padding:12px 14px; background:#fff5f5; border:1px solid #fecaca; color:#dc2626; font-size:13px; border-radius:10px;"></div>
 
-                <?php
-                $bulkFields = [
-                    ['id'=>'category', 'label'=>'Update Category', 'field'=>'category_id'],
-                    ['id'=>'selling_price', 'label'=>'Update Retail Price', 'field'=>'selling_price'],
-                    ['id'=>'wholesale_price', 'label'=>'Update B2B Base Price', 'field'=>'wholesale_price'],
-                    ['id'=>'status', 'label'=>'Update Status', 'field'=>'status'],
-                ];
-                foreach ($bulkFields as $f):
-                ?>
-                <div style="border:1px solid #f2f2f7; border-radius:12px; padding:16px; background:#fafafa;">
-                    <label style="display:flex; align-items:center; gap:9px; cursor:pointer; margin-bottom:10px;">
-                        <input type="checkbox" name="update_<?= $f['id'] ?>" value="1" id="bulkUpdate<?= ucfirst($f['id']) ?>" onchange="toggleBulkField('<?= $f['id'] ?>')" style="width:15px; height:15px; accent-color:#5856d6; cursor:pointer;">
-                        <span class="sf-label-caps" style="color:#1d1d1f;"><?= $f['label'] ?></span>
-                    </label>
-                    <?php if ($f['id'] === 'category'): ?>
-                        <select name="category_id" id="bulkCategorySelect" disabled class="sf-select" style="opacity:0.45;">
-                            <option value="">No Category</option>
-                            <?php foreach ($categories as $cat): ?>
-                                <option value="<?php echo $cat->id; ?>"><?php echo htmlspecialchars($cat->name); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    <?php elseif ($f['id'] === 'status'): ?>
-                        <select name="status" id="bulkStatusSelect" disabled class="sf-select" style="opacity:0.45;">
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    <?php else: ?>
-                        <div style="display:flex; gap:10px;">
-                            <select name="<?= $f['id'] ?>_type" id="bulk<?= ucfirst(str_replace('_','',ucwords($f['id'],'_'))) ?>Type" disabled class="sf-select" style="width:40%; opacity:0.45;">
-                                <option value="flat">Set flat value</option>
-                                <option value="pct_inc">Increase by %</option>
-                                <option value="pct_dec">Decrease by %</option>
-                            </select>
-                            <input type="number" step="0.01" name="<?= $f['id'] ?>_val" id="bulk<?= ucfirst(str_replace('_','',ucwords($f['id'],'_'))) ?>Val" disabled class="sf-input" style="opacity:0.45;" placeholder="e.g. 10">
+            </div>
+
+            <!-- Tab Content: ERP Standard -->
+            <div id="import-tab-erp" class="p-6 space-y-6">
+                <form action="<?php echo APP_URL; ?>/inventory/importERPCSV" method="POST" enctype="multipart/form-data" class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Select Standard ERP CSV File</label>
+                        <div class="border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-slate-50 rounded-xl p-6 text-center cursor-pointer relative transition-colors duration-150">
+                            <input type="file" name="csv_file" accept=".csv" required class="absolute inset-0 opacity-0 cursor-pointer">
+                            <div class="space-y-2">
+                                <div class="h-10 w-10 bg-slate-100 text-emerald-600 rounded-xl flex items-center justify-center mx-auto shadow-inner">
+                                    <i class="fa-solid fa-file-arrow-up text-lg"></i>
+                                </div>
+                                <p class="text-xs font-semibold text-slate-700">Drag & drop standard CSV here or <span class="text-emerald-600 hover:underline">browse files</span></p>
+                                <p class="text-[10px] text-slate-400 font-medium">Standard ERP format (resolves category, warehouse, vendor by name)</p>
+                            </div>
                         </div>
-                    <?php endif; ?>
-                </div>
-                <?php endforeach; ?>
+                    </div>
 
-                <div style="display:flex; justify-content:flex-end; gap:10px; padding-top:10px; border-top:1px solid #f2f2f7;">
-                    <button type="button" onclick="closeBulkEditModal()" class="sf-btn-secondary" style="font-size:13px;">Cancel</button>
-                    <button type="submit" id="bulkSubmitBtn" style="background:#5856d6; color:#fff; font-size:14px; font-weight:500; border-radius:10px; padding:8px 20px; border:none; cursor:pointer; display:flex; align-items:center; gap:7px; letter-spacing:-0.01em; font-family:inherit;">
-                        <span id="bulkBtnSpinner" style="display:none;"><i class="fa-solid fa-spinner fa-spin"></i></span>
-                        Apply Changes
+                    <!-- Column Mapping Info -->
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 space-y-2 text-xs text-indigo-950">
+                        <h4 class="font-bold text-indigo-900 flex items-center gap-1">
+                            <i class="fa-solid fa-circle-info"></i> Self-Healing Smart Mappings
+                        </h4>
+                        <p class="text-[11px] leading-relaxed text-indigo-850">
+                            The importer matches existing products using the <span class="font-bold">SKU</span> column. If category, warehouse, or vendor names are new, the system creates them dynamically on-the-fly!
+                        </p>
+                        <p class="text-[10px] text-indigo-600/80 font-mono mt-1">
+                            Accepted Headers: SKU, Name, Selling Price, Wholesale Price, Cost Price, Quantity, Description, Barcode, Category, Brand, Warehouse, Vendor, Alert Qty, Unit, Status, Weight, Retail Margin, Wholesale Margin, Sample Code, Variations
+                        </p>
+                    </div>
+
+                    <div class="flex gap-2 pt-4 border-t border-slate-100">
+                        <button type="button" onclick="closeCsvModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition">Cancel</button>
+                        <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-750 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/30 transition">Start ERP Import</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- AJAX-based real-time search, filter logic, and step-by-step progress importer -->
+    <script>
+        let searchTimeout = null;
+
+        /**
+         * Trigger debounce search update to avoid database flooding while typing
+         */
+        function triggerSearchDelay() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                // Reset current page back to 1 on typing to get fresh filter results
+                document.getElementById('currentPageInput').value = '1';
+                applyAjaxFilters();
+            }, 350); // 350ms buffer
+        }
+
+        /**
+         * Submit form values asynchronously using HTML Fetch
+         * Parses the response and updates the table without losing search field focus
+         */
+        function applyAjaxFilters() {
+            const form = document.getElementById('filterForm');
+            const loader = document.getElementById('table-loader');
+
+            // Show local loading overlay inside table container
+            if (loader) {
+                loader.classList.remove('pointer-events-none');
+                loader.classList.add('opacity-100');
+            }
+
+            const formData = new FormData(form);
+            const queryParams = new URLSearchParams(formData).toString();
+            const requestUrl = form.getAttribute('action') + '?' + queryParams;
+
+            // Fetch the template payload safely
+            fetch(requestUrl)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network error during inventory retrieval');
+                    return response.text();
+                })
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    // Swap table structure
+                    const newTable = doc.getElementById('table-container');
+                    const oldTable = document.getElementById('table-container');
+                    if (newTable && oldTable) {
+                        oldTable.innerHTML = newTable.innerHTML;
+                    }
+
+                    // Swap dynamic statistics counters without full page reloads
+                    const updateStat = (id) => {
+                        const newVal = doc.getElementById(id);
+                        const oldVal = document.getElementById(id);
+                        if (newVal && oldVal) oldVal.textContent = newVal.textContent;
+                    };
+                    updateStat('stat-total-items');
+                    updateStat('stat-low-stock');
+                    updateStat('stat-out-of-stock');
+                    updateStat('matching-count');
+
+                    // Update Address Bar/History URL so back actions are preserved
+                    window.history.pushState({ path: requestUrl }, '', requestUrl);
+                    clearSelection();
+                })
+                .catch(err => {
+                    console.error('Asynchronous Sync Error:', err);
+                })
+                .finally(() => {
+                    // Hide table loader
+                    if (loader) {
+                        loader.classList.add('pointer-events-none');
+                        loader.classList.remove('opacity-100');
+                    }
+                });
+        }
+
+        /**
+         * Handle page click navigations
+         */
+        function navigatePage(pageNum) {
+            document.getElementById('currentPageInput').value = pageNum;
+            applyAjaxFilters();
+        }
+
+        /**
+         * Handle page size limit changes
+         */
+        function updatePageSize(size) {
+            document.getElementById('perPageInput').value = size;
+            document.getElementById('currentPageInput').value = '1';
+            applyAjaxFilters();
+        }
+
+        /**
+         * Reset form inputs completely
+         */
+        function clearAllFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('minPriceInput').value = '';
+            document.getElementById('maxPriceInput').value = '';
+            document.getElementById('stockStatusSelect').value = '';
+            document.getElementById('categorySelect').value = '';
+            document.getElementById('currentPageInput').value = '1';
+            applyAjaxFilters();
+        }
+
+        // Modal Control Functions
+        function openCsvModal() {
+            document.getElementById('csvImportModal').classList.remove('hidden');
+        }
+
+        // Close csv modal helper
+        function closeCsvModal() {
+            document.getElementById('csvImportModal').classList.add('hidden');
+        }
+
+        let activeDeleteId = null;
+
+        function confirmDelete(id, name) {
+            activeDeleteId = id;
+            document.getElementById('deleteItemId').value = id;
+            document.getElementById('deleteItemName').textContent = name;
+            
+            // Clear inputs and error message
+            const errorContainer = document.getElementById('deleteErrorContainer');
+            if (errorContainer) {
+                errorContainer.classList.add('hidden');
+                errorContainer.textContent = '';
+            }
+            
+            const passwordInput = document.getElementById('deleteAdminPassword');
+            if (passwordInput) passwordInput.value = '';
+            
+            const usernameInput = document.getElementById('deleteAdminUsername');
+            if (usernameInput) usernameInput.value = '';
+
+            document.getElementById('deleteProductModal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteProductModal').classList.add('hidden');
+            activeDeleteId = null;
+        }
+
+        function submitDeleteProduct(e) {
+            e.preventDefault();
+
+            if (!activeDeleteId) return;
+
+            const form = document.getElementById('deleteProductForm');
+            const submitBtn = document.getElementById('deleteSubmitBtn');
+            const spinner = document.getElementById('deleteBtnSpinner');
+            const errorContainer = document.getElementById('deleteErrorContainer');
+
+            // Disable buttons and show spinner
+            if (submitBtn) submitBtn.disabled = true;
+            if (spinner) spinner.classList.remove('hidden');
+            if (errorContainer) {
+                errorContainer.classList.add('hidden');
+                errorContainer.textContent = '';
+            }
+
+            const formData = new FormData(form);
+
+            fetch('<?php echo APP_URL; ?>/inventory/delete/' + activeDeleteId, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to authorize deletion');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    closeDeleteModal();
+                    applyAjaxFilters();
+                } else {
+                    if (errorContainer) {
+                        errorContainer.textContent = data.error || 'Authorization failed. Please try again.';
+                        errorContainer.classList.remove('hidden');
+                    }
+                }
+            })
+            .catch(err => {
+                if (errorContainer) {
+                    errorContainer.textContent = err.message || 'An error occurred during verification.';
+                    errorContainer.classList.remove('hidden');
+                }
+            })
+            .finally(() => {
+                if (submitBtn) submitBtn.disabled = false;
+                if (spinner) spinner.classList.add('hidden');
+            });
+        }
+
+        // ==========================================
+        // BULK EDIT SELECTION & MODAL ENGINE
+        // ==========================================
+        function toggleSelectAll(selectAllCheckbox) {
+            const checkboxes = document.querySelectorAll('.item-select-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = selectAllCheckbox.checked;
+            });
+            updateSelection();
+        }
+
+        function updateSelection() {
+            const checkboxes = document.querySelectorAll('.item-select-checkbox');
+            const selectedIds = [];
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    selectedIds.push(cb.value);
+                }
+            });
+
+            const toolbar = document.getElementById('bulkEditToolbar');
+            const countBadge = document.getElementById('selectedCountBadge');
+            const selectAllCb = document.getElementById('selectAllCheckbox');
+
+            if (selectedIds.length > 0) {
+                if (countBadge) countBadge.textContent = selectedIds.length;
+                if (toolbar) toolbar.classList.remove('hidden');
+                
+                // If all items are selected, check select all
+                if (selectAllCb) {
+                    selectAllCb.checked = (selectedIds.length === checkboxes.length);
+                }
+            } else {
+                if (toolbar) toolbar.classList.add('hidden');
+                if (selectAllCb) selectAllCb.checked = false;
+            }
+        }
+
+        function clearSelection() {
+            const checkboxes = document.querySelectorAll('.item-select-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = false;
+            });
+            const selectAllCb = document.getElementById('selectAllCheckbox');
+            if (selectAllCb) selectAllCb.checked = false;
+            updateSelection();
+        }
+
+        function openBulkEditModal() {
+            // Populate select item ids in hidden field inside modal form
+            const checkboxes = document.querySelectorAll('.item-select-checkbox');
+            const form = document.getElementById('bulkEditForm');
+            
+            // Remove any previously appended item_ids inputs
+            const oldInputs = form.querySelectorAll('input[name="item_ids[]"]');
+            oldInputs.forEach(input => input.remove());
+
+            // Append new ones
+            let selectedCount = 0;
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    selectedCount++;
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'item_ids[]';
+                    hiddenInput.value = cb.value;
+                    form.appendChild(hiddenInput);
+                }
+            });
+
+            document.getElementById('bulkSelectedCount').textContent = selectedCount;
+            
+            // Reset fields and checkboxes
+            document.getElementById('bulkUpdateCategory').checked = false;
+            toggleBulkField('category');
+            document.getElementById('bulkUpdateSellingPrice').checked = false;
+            toggleBulkField('selling_price');
+            document.getElementById('bulkUpdateWholesalePrice').checked = false;
+            toggleBulkField('wholesale_price');
+            document.getElementById('bulkUpdateStatus').checked = false;
+            toggleBulkField('status');
+
+            document.getElementById('bulkEditErrorContainer').classList.add('hidden');
+            document.getElementById('bulkEditErrorContainer').textContent = '';
+
+            document.getElementById('bulkEditModal').classList.remove('hidden');
+        }
+
+        function closeBulkEditModal() {
+            document.getElementById('bulkEditModal').classList.add('hidden');
+        }
+
+        function toggleBulkField(field) {
+            let id = 'bulkUpdateCategory';
+            if (field === 'selling_price') id = 'bulkUpdateSellingPrice';
+            else if (field === 'wholesale_price') id = 'bulkUpdateWholesalePrice';
+            else if (field === 'status') id = 'bulkUpdateStatus';
+            
+            const checkbox = document.getElementById(id);
+            if (!checkbox) return;
+            const isChecked = checkbox.checked;
+            
+            if (field === 'category') {
+                const select = document.getElementById('bulkCategorySelect');
+                select.disabled = !isChecked;
+                const wrapper = select.previousElementSibling;
+                if (wrapper && wrapper.classList.contains('searchable-select-wrapper')) {
+                    const input = wrapper.querySelector('.searchable-select-input');
+                    if (input) input.disabled = !isChecked;
+                }
+            } else if (field === 'selling_price') {
+                document.getElementById('bulkSellingPriceType').disabled = !isChecked;
+                document.getElementById('bulkSellingPriceVal').disabled = !isChecked;
+            } else if (field === 'wholesale_price') {
+                document.getElementById('bulkWholesalePriceType').disabled = !isChecked;
+                document.getElementById('bulkWholesalePriceVal').disabled = !isChecked;
+            } else if (field === 'status') {
+                const select = document.getElementById('bulkStatusSelect');
+                select.disabled = !isChecked;
+                const wrapper = select.previousElementSibling;
+                if (wrapper && wrapper.classList.contains('searchable-select-wrapper')) {
+                    const input = wrapper.querySelector('.searchable-select-input');
+                    if (input) input.disabled = !isChecked;
+                }
+            }
+        }
+
+        function submitBulkEdit(e) {
+            e.preventDefault();
+
+            const form = document.getElementById('bulkEditForm');
+            const submitBtn = document.getElementById('bulkSubmitBtn');
+            const spinner = document.getElementById('bulkBtnSpinner');
+            const errorContainer = document.getElementById('bulkEditErrorContainer');
+
+            // Disable buttons and show spinner
+            if (submitBtn) submitBtn.disabled = true;
+            if (spinner) spinner.classList.remove('hidden');
+            if (errorContainer) {
+                errorContainer.classList.add('hidden');
+                errorContainer.textContent = '';
+            }
+
+            const formData = new FormData(form);
+
+            fetch('<?php echo APP_URL; ?>/inventory/bulkUpdate', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Bulk update failed');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    closeBulkEditModal();
+                    clearSelection();
+                    applyAjaxFilters();
+                } else {
+                    if (errorContainer) {
+                        errorContainer.textContent = data.error || 'Bulk update failed. Please try again.';
+                        errorContainer.classList.remove('hidden');
+                    }
+                }
+            })
+            .catch(err => {
+                if (errorContainer) {
+                    errorContainer.textContent = err.message || 'An error occurred during bulk update.';
+                    errorContainer.classList.remove('hidden');
+                }
+            })
+            .finally(() => {
+                if (submitBtn) submitBtn.disabled = false;
+                if (spinner) spinner.classList.add('hidden');
+            });
+        }
+    </script>
+
+    <!-- Product Delete Confirmation Modal (Rich Glassmorphism & Admin verification) -->
+    <div id="deleteProductModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all border border-slate-200">
+            <!-- Modal Header -->
+            <div class="bg-rose-50 border-b border-rose-100 p-6 flex justify-between items-center">
+                <div class="flex items-center gap-2.5 text-rose-800">
+                    <i class="fa-solid fa-trash-can text-rose-600 text-xl"></i>
+                    <h3 class="text-base font-bold">Delete Product</h3>
+                </div>
+                <button onclick="closeDeleteModal()" class="text-slate-400 hover:text-slate-600 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body / Form -->
+            <form id="deleteProductForm" onsubmit="submitDeleteProduct(event)" class="p-6 space-y-4">
+                <input type="hidden" id="deleteItemId" name="item_id">
+                
+                <p class="text-sm text-slate-600">
+                    Are you sure you want to delete <strong id="deleteItemName" class="text-slate-900"></strong>? This action cannot be undone.
+                </p>
+
+                <div id="deleteErrorContainer" class="hidden p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl font-medium"></div>
+
+                <?php if ($isCurrentlyAdmin): ?>
+                    <!-- Currently Admin: No password verification required -->
+                <?php else: ?>
+                    <!-- Currently Non-Admin: Require both admin username and password -->
+                    <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-xl mb-4">
+                        <div class="flex gap-2">
+                            <i class="fa-solid fa-shield-halved text-amber-600 mt-0.5 text-sm"></i>
+                            <div class="text-xs text-amber-800 font-medium">
+                                Admin authorization is required to delete products. Please ask an administrator to sign this action.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Admin Username</label>
+                            <input type="text" name="admin_username" id="deleteAdminUsername" required placeholder="Admin username" 
+                                   class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 focus:outline-none transition-all">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Admin Password</label>
+                            <input type="password" name="password" id="deleteAdminPassword" required placeholder="Admin password" 
+                                   class="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 focus:outline-none transition-all">
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Form Actions -->
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeDeleteModal()" 
+                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition-all">
+                        Cancel
+                    </button>
+                    <button type="submit" id="deleteSubmitBtn"
+                            class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all flex items-center gap-2">
+                        <span id="deleteBtnSpinner" class="hidden"><i class="fa-solid fa-spinner animate-spin"></i></span>
+                        Authorize & Delete
                     </button>
                 </div>
             </form>
         </div>
     </div>
+    <!-- Floating Bulk Action Toolbar -->
+    <div id="bulkEditToolbar" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-white px-6 py-4 rounded-2xl shadow-2xl border border-slate-700/50 z-40 hidden flex items-center justify-between gap-8 animate-fade-in max-w-lg w-full">
+        <div class="flex items-center gap-3">
+            <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-600 text-xs font-bold font-mono text-white" id="selectedCountBadge">0</span>
+            <span class="text-xs font-semibold text-slate-350">items selected for update</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <button type="button" onclick="clearSelection()" class="px-3 py-1.5 hover:bg-slate-800 text-slate-300 rounded-lg text-xs font-semibold transition-all">
+                Cancel
+            </button>
+            <button type="button" onclick="openBulkEditModal()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-1.5">
+                <i class="fa-solid fa-pen-to-square text-[10px]"></i> Bulk Edit
+            </button>
+        </div>
+    </div>
 
-    <?php include '../app/Views/layouts/resilient_loader.php'; ?>
+    <!-- Product Bulk Edit Modal (Rich Glassmorphism & Custom Options) -->
+    <div id="bulkEditModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden transform transition-all border border-slate-200">
+            <!-- Modal Header -->
+            <div class="bg-indigo-50 border-b border-indigo-100 p-6 flex justify-between items-center">
+                <div class="flex items-center gap-2.5 text-indigo-950">
+                    <i class="fa-solid fa-pen-to-square text-indigo-600 text-xl"></i>
+                    <h3 class="text-base font-bold">Bulk Edit Products</h3>
+                </div>
+                <button onclick="closeBulkEditModal()" class="text-slate-400 hover:text-slate-600 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body / Form -->
+            <form id="bulkEditForm" onsubmit="submitBulkEdit(event)" class="p-6 space-y-5">
+                <p class="text-xs text-slate-500 font-semibold uppercase tracking-wider">
+                    You are editing <strong id="bulkSelectedCount" class="text-indigo-600 font-mono">0</strong> products simultaneously. Check the box next to any field to apply changes to all selected products.
+                </p>
+
+                <div id="bulkEditErrorContainer" class="hidden p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl font-medium"></div>
+
+                <!-- 1. Category -->
+                <div class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer">
+                            <input type="checkbox" name="update_category" value="1" id="bulkUpdateCategory" onchange="toggleBulkField('category')" class="rounded border-slate-350 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-4 h-4">
+                            Update Category
+                        </label>
+                    </div>
+                    <select name="category_id" id="bulkCategorySelect" disabled class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all disabled:opacity-50">
+                        <option value="">No Category</option>
+                        <?php foreach ($categories as $cat): ?>
+                            <option value="<?php echo $cat->id; ?>">
+                                <?php echo htmlspecialchars($cat->name); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- 2. Selling Price -->
+                <div class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer">
+                            <input type="checkbox" name="update_selling_price" value="1" id="bulkUpdateSellingPrice" onchange="toggleBulkField('selling_price')" class="rounded border-slate-350 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-4 h-4">
+                            Update Retail Price
+                        </label>
+                    </div>
+                    <div class="flex gap-2">
+                        <select name="selling_price_type" id="bulkSellingPriceType" disabled class="w-1/3 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all disabled:opacity-50 cursor-pointer">
+                            <option value="flat">Set Flat Value</option>
+                            <option value="pct_inc">Increase by %</option>
+                            <option value="pct_dec">Decrease by %</option>
+                        </select>
+                        <input type="number" step="0.01" name="selling_price_val" id="bulkSellingPriceVal" disabled placeholder="e.g. 10" class="w-2/3 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all disabled:opacity-50">
+                    </div>
+                </div>
+
+                <!-- 3. Wholesale Price -->
+                <div class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer">
+                            <input type="checkbox" name="update_wholesale_price" value="1" id="bulkUpdateWholesalePrice" onchange="toggleBulkField('wholesale_price')" class="rounded border-slate-355 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-4 h-4">
+                            Update B2B Base Price
+                        </label>
+                    </div>
+                    <div class="flex gap-2">
+                        <select name="wholesale_price_type" id="bulkWholesalePriceType" disabled class="w-1/3 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all disabled:opacity-50 cursor-pointer">
+                            <option value="flat">Set Flat Value</option>
+                            <option value="pct_inc">Increase by %</option>
+                            <option value="pct_dec">Decrease by %</option>
+                        </select>
+                        <input type="number" step="0.01" name="wholesale_price_val" id="bulkWholesalePriceVal" disabled placeholder="e.g. 10" class="w-2/3 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all disabled:opacity-50">
+                    </div>
+                </div>
+
+                <!-- 4. Status -->
+                <div class="border border-slate-100 rounded-xl p-4 bg-slate-50/50 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer">
+                            <input type="checkbox" name="update_status" value="1" id="bulkUpdateStatus" onchange="toggleBulkField('status')" class="rounded border-slate-350 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-4 h-4">
+                            Update Status
+                        </label>
+                    </div>
+                    <select name="status" id="bulkStatusSelect" disabled class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all disabled:opacity-50 cursor-pointer">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeBulkEditModal()" 
+                            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition-all">
+                        Cancel
+                    </button>
+                    <button type="submit" id="bulkSubmitBtn"
+                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all flex items-center gap-2">
+                        <span id="bulkBtnSpinner" class="hidden"><i class="fa-solid fa-spinner animate-spin"></i></span>
+                        Apply Bulk Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+<?php include '../app/Views/layouts/resilient_loader.php'; ?>
 </body>
 </html>
