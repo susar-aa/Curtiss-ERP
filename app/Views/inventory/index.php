@@ -898,9 +898,9 @@ if ($importResults) unset($_SESSION['import_results']);
     <div class="inv-wrap">
 
         <!-- Header -->
-        <div class="inv-header">
-            <div class="inv-eyebrow">Catalog</div>
-            <h1 class="inv-title">Inventory</h1>
+        <div class="inv-header pt-4">
+            <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Inventory</h1>
+            <p class="text-sm text-slate-500 mt-1 mb-6">Organize products and manage catalog classifications locally.</p>
 
             <!-- Stat Cards -->
             <div class="stat-row">
