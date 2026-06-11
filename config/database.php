@@ -15,5 +15,5 @@ define('APP_NAME', 'CURTISS ERP');
 define('BREVO_API_KEY', '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');
 
 // Google Gemini API Configuration (Replace with your actual API Key from Google AI Studio)
-define('GEMINI_API_KEY', '');
+define('GEMINI_API_KEY', 'AQ.Ab8RN6LhKJJiXgDhUBzX2suDdZkmziIa9CjtHBpalqzdU1uFFA');
 
