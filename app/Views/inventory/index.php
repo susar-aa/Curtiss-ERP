@@ -26,7 +26,7 @@ $isCurrentlyAdmin = (strtolower($_SESSION['role'] ?? '') === 'admin');
 // Retrieve pagination config with safe fallbacks
 $pagination = $data['pagination'] ?? [
     'current_page' => 1,
-    'per_page' => 15,
+    'per_page' => 1000, // Default to huge number to "show all data"
     'total_items' => count($items),
     'total_pages' => 1
 ];
@@ -61,7 +61,7 @@ if ($importResults) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory Management - Curtiss ERP</title>
     
-    <!-- Tailwind CSS (Kept strictly for layout/main.php & resilient_loader.php compatibility) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- FontAwesome Icons -->
@@ -93,15 +93,16 @@ if ($importResults) {
             --transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
         }
 
-        body {
+        /* Enforce Scrolling */
+        html, body {
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            height: auto !important;
             background-color: var(--ios-bg) !important;
             color: var(--ios-text) !important;
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif !important;
             -webkit-font-smoothing: antialiased;
             margin: 0;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
         }
 
         /* Helpers */
@@ -111,67 +112,69 @@ if ($importResults) {
         .opacity-100 { opacity: 1 !important; }
         .pointer-events-none { pointer-events: none !important; }
 
-        /* Workspace Core */
+        /* Workspace Core & Split View */
         .workspace-core {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 40px 20px 140px 20px; /* Extra padding at bottom for the floating bar */
+            padding: 40px 20px 140px 20px;
             width: 100%;
             box-sizing: border-box;
-            flex-grow: 1;
+        }
+        .app-layout {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        .main-list-area {
+            flex: 1;
+            min-width: 0; /* Prevents flex blowout */
+            transition: var(--transition);
+        }
+        
+        /* Slide-over Quick View Panel */
+        .quick-view-panel {
+            width: 0;
+            opacity: 0;
+            overflow: hidden;
+            background: var(--ios-surface);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--ios-border);
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+        .quick-view-panel.active {
+            width: 340px;
+            opacity: 1;
         }
 
-        /* iOS Hero Header */
+        /* iOS Hero Header (Redesigned Stats) */
         .ios-hero {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-bottom: 32px;
-            flex-wrap: wrap;
-            gap: 24px;
+            margin-bottom: 24px;
         }
         .ios-title {
             font-size: 34px;
             font-weight: 700;
             letter-spacing: -0.04em;
-            margin: 0;
+            margin: 0 0 8px 0;
             color: var(--ios-text);
         }
         .ios-subtitle {
             font-size: 15px;
+            font-weight: 500;
             color: var(--ios-text-secondary);
-            margin: 4px 0 0 0;
-        }
-
-        /* Stats Micro-Widgets */
-        .ios-stats-row {
+            margin: 0;
             display: flex;
-            gap: 16px;
+            gap: 12px;
+            align-items: center;
         }
-        .ios-stat-widget {
+        .stat-badge {
             background: var(--ios-surface);
-            border-radius: 12px;
-            padding: 12px 20px;
+            padding: 4px 10px;
+            border-radius: 8px;
             box-shadow: var(--shadow-sm);
-            display: flex;
-            flex-direction: column;
-            min-width: 100px;
+            border: 1px solid var(--ios-border);
         }
-        .ios-stat-val {
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-        }
-        .ios-stat-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            font-weight: 600;
-            color: var(--ios-text-secondary);
-            letter-spacing: 0.05em;
-            margin-top: 2px;
-        }
-        .ios-stat-widget.warning .ios-stat-val { color: var(--ios-orange); }
-        .ios-stat-widget.danger .ios-stat-val { color: var(--ios-red); }
 
         /* Pill Filters */
         .pill-filters {
@@ -194,10 +197,7 @@ if ($importResults) {
             color: var(--ios-text-secondary);
             transition: var(--transition);
         }
-        .pill-item:hover {
-            border-color: var(--ios-border-dark);
-        }
-        .pill-item select, .pill-item input {
+        .pill-item input {
             border: none;
             background: transparent;
             outline: none;
@@ -207,17 +207,6 @@ if ($importResults) {
             font-family: inherit;
             margin-left: 6px;
             padding: 0;
-        }
-        .pill-item select {
-            appearance: none;
-            cursor: pointer;
-            padding-right: 18px;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8a8e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right center;
-            background-size: 14px;
-        }
-        .pill-item input {
             width: 70px;
         }
         .pill-btn {
@@ -232,6 +221,63 @@ if ($importResults) {
             transition: var(--transition);
         }
         .pill-btn:hover { background: var(--ios-border); }
+
+        /* Custom Dropdown (Bypasses Select2 / Searchable Select script entirely) */
+        .custom-dropdown {
+            position: relative;
+            cursor: pointer;
+            outline: none;
+            margin-left: 6px;
+        }
+        .custom-dropdown-value {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ios-text);
+        }
+        .custom-dropdown-value::after {
+            content: '';
+            width: 14px;
+            height: 14px;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8a8e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+        }
+        .custom-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 12px;
+            background: var(--ios-surface);
+            border: 1px solid var(--ios-border);
+            border-radius: 12px;
+            box-shadow: var(--shadow-float);
+            min-width: 200px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000; /* High z-index */
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: var(--transition);
+        }
+        .custom-dropdown:focus-within .custom-dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .custom-dropdown-item {
+            padding: 10px 16px;
+            font-size: 14px;
+            color: var(--ios-text);
+            transition: background 0.2s;
+            border-bottom: 1px solid var(--ios-border);
+        }
+        .custom-dropdown-item:last-child { border-bottom: none; }
+        .custom-dropdown-item:hover { background: var(--ios-bg); color: var(--ios-blue); }
 
         /* The Main Floating Command Bar (Dynamic Island style) */
         .command-bar {
@@ -263,10 +309,7 @@ if ($importResults) {
             width: 200px;
             transition: width 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
         }
-        .cmd-search:focus-within {
-            width: 320px;
-            background: rgba(255,255,255,0.2);
-        }
+        .cmd-search:focus-within { width: 320px; background: rgba(255,255,255,0.2); }
         .cmd-search input {
             background: transparent;
             border: none;
@@ -277,9 +320,7 @@ if ($importResults) {
             width: 100%;
             font-family: inherit;
         }
-        .cmd-search input::placeholder {
-            color: rgba(255,255,255,0.6);
-        }
+        .cmd-search input::placeholder { color: rgba(255,255,255,0.6); }
         .cmd-divider {
             width: 1px;
             height: 24px;
@@ -322,7 +363,7 @@ if ($importResults) {
         /* Bulk Edit Overlay Bar */
         .bulk-toolbar {
             position: fixed;
-            bottom: 100px; /* Floats above command bar */
+            bottom: 100px;
             left: 50%;
             transform: translateX(-50%) translateY(100px);
             background: var(--ios-blue);
@@ -387,7 +428,7 @@ if ($importResults) {
             border-radius: var(--radius-card);
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--ios-border);
-            overflow: hidden;
+            overflow-x: auto;
             position: relative;
         }
         .ios-table {
@@ -404,6 +445,9 @@ if ($importResults) {
             letter-spacing: 0.05em;
             border-bottom: 1px solid var(--ios-border);
             background: var(--ios-surface);
+            position: sticky;
+            top: 0;
+            z-index: 5;
         }
         .ios-table td {
             padding: 16px 20px;
@@ -430,10 +474,7 @@ if ($importResults) {
             margin: 0;
             display: block;
         }
-        .ios-checkbox:checked {
-            background: var(--ios-blue);
-            border-color: var(--ios-blue);
-        }
+        .ios-checkbox:checked { background: var(--ios-blue); border-color: var(--ios-blue); }
         .ios-checkbox:checked::after {
             content: '';
             position: absolute;
@@ -480,8 +521,8 @@ if ($importResults) {
             justify-content: flex-end;
         }
         .row-action-btn {
-            width: 32px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
             border-radius: 50%;
             display: inline-flex;
             align-items: center;
@@ -494,6 +535,7 @@ if ($importResults) {
             transition: var(--transition);
         }
         .row-action-btn:hover { background: var(--ios-border-dark); color: var(--ios-text); }
+        .row-action-btn.view:hover { background: #e0f2fe; color: #0284c7; }
         .row-action-btn.delete:hover { background: var(--ios-red-bg); color: var(--ios-red); }
 
         /* Table Loader */
@@ -523,42 +565,8 @@ if ($importResults) {
         }
         .page-info { font-size: 13px; color: var(--ios-text-secondary); }
         .page-controls { display: flex; align-items: center; gap: 16px; }
-        .page-select {
-            appearance: none;
-            background: var(--ios-bg);
-            border: 1px solid var(--ios-border);
-            border-radius: 8px;
-            padding: 6px 30px 6px 12px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8a8e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 8px center;
-            background-size: 12px;
-        }
-        .page-nav-group {
-            display: flex;
-            border: 1px solid var(--ios-border);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        .page-nav-btn {
-            background: var(--ios-surface);
-            border: none;
-            padding: 6px 12px;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--ios-text);
-            cursor: pointer;
-            border-left: 1px solid var(--ios-border);
-            transition: background 0.2s;
-        }
-        .page-nav-btn:first-child { border-left: none; }
-        .page-nav-btn:hover { background: var(--ios-bg); }
-        .page-nav-btn.active { background: var(--ios-text); color: #fff; }
-
-        /* Glassmorphism Modals */
+        
+        /* Modals... */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -574,10 +582,7 @@ if ($importResults) {
             pointer-events: none;
             transition: var(--transition);
         }
-        .modal-overlay:not(.hidden) {
-            opacity: 1;
-            pointer-events: auto;
-        }
+        .modal-overlay:not(.hidden) { opacity: 1; pointer-events: auto; }
         .ios-modal {
             background: var(--ios-surface);
             width: 100%;
@@ -588,15 +593,8 @@ if ($importResults) {
             transition: var(--transition);
             overflow: hidden;
         }
-        .modal-overlay:not(.hidden) .ios-modal {
-            transform: scale(1);
-        }
-        .ios-modal-header {
-            padding: 24px;
-            text-align: center;
-            border-bottom: 1px solid var(--ios-border);
-            position: relative;
-        }
+        .modal-overlay:not(.hidden) .ios-modal { transform: scale(1); }
+        .ios-modal-header { padding: 24px; text-align: center; border-bottom: 1px solid var(--ios-border); position: relative; }
         .ios-modal-title { font-size: 17px; font-weight: 600; margin: 0; }
         .ios-modal-close {
             position: absolute;
@@ -636,7 +634,6 @@ if ($importResults) {
         .modal-btn.primary { background: var(--ios-text); color: #fff; }
         .modal-btn.danger { background: var(--ios-red); color: #fff; }
 
-        /* Input fields in modals */
         .ios-input-stack { display: flex; flex-direction: column; gap: 16px; }
         .ios-input-field {
             background: var(--ios-bg);
@@ -650,21 +647,6 @@ if ($importResults) {
             transition: border-color 0.2s;
         }
         .ios-input-field:focus { border-color: var(--ios-blue); }
-
-        /* Banner Alerts */
-        .ios-alert {
-            background: var(--ios-surface);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 24px;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            box-shadow: var(--shadow-sm);
-            border-left: 4px solid transparent;
-        }
-        .ios-alert.success { border-left-color: var(--ios-green); }
-        .ios-alert.error { border-left-color: var(--ios-red); }
     </style>
 </head>
 <body>
@@ -679,108 +661,94 @@ if ($importResults) {
 
         <div class="workspace-core">
             
-            <!-- Hero Header & Stats -->
+            <!-- Sleek Hero Header -->
             <div class="ios-hero">
-                <div>
-                    <h1 class="ios-title">Inventory</h1>
-                    <p class="ios-subtitle">Manage your catalog, pricing, and stock levels.</p>
+                <h1 class="ios-title">Inventory Catalog</h1>
+                <p class="ios-subtitle">
+                    <span class="stat-badge"><span id="stat-total-items" style="font-weight:700; color:var(--ios-text);"><?= number_format($stats->total_items) ?></span> total</span>
+                    <span class="stat-badge" style="color: #d97706;"><span id="stat-low-stock" style="font-weight:700;"><?= number_format($stats->low_stock_count) ?></span> low stock</span>
+                    <span class="stat-badge" style="color: var(--ios-red);"><span id="stat-out-of-stock" style="font-weight:700;"><?= number_format($stats->out_of_stock_count) ?></span> out of stock</span>
+                </p>
+            </div>
+
+            <!-- Pill Filters -->
+            <div class="pill-filters">
+                
+                <!-- Custom Category Dropdown (Bypasses Select2 overlay) -->
+                <div class="pill-item">
+                    <span style="color: var(--ios-text-secondary);">Category:</span>
+                    <div class="custom-dropdown" tabindex="0">
+                        <?php 
+                        $selectedCatName = 'All Categories';
+                        foreach ($categories as $cat) {
+                            if ((string)$filters['category_id'] === (string)$cat->id) $selectedCatName = $cat->name;
+                        }
+                        ?>
+                        <div class="custom-dropdown-value" id="cat-dropdown-val"><?= htmlspecialchars($selectedCatName) ?></div>
+                        <div class="custom-dropdown-menu">
+                            <div class="custom-dropdown-item" onclick="selectCategory('', 'All Categories')">All Categories</div>
+                            <?php foreach ($categories as $cat): ?>
+                                <div class="custom-dropdown-item" onclick="selectCategory('<?= $cat->id ?>', '<?= htmlspecialchars(addslashes($cat->name)) ?>')"><?= htmlspecialchars($cat->name) ?></div>
+                            <?php endforeach; ?>
+                        </div>
+                        <input type="hidden" name="category_id" id="categoryInput" value="<?= htmlspecialchars($filters['category_id']) ?>">
+                    </div>
                 </div>
-                <div class="ios-stats-row">
-                    <div class="ios-stat-widget">
-                        <span class="ios-stat-val" id="stat-total-items"><?= number_format($stats->total_items) ?></span>
-                        <span class="ios-stat-label">Total</span>
+
+                <!-- Custom Status Dropdown -->
+                <div class="pill-item">
+                    <span style="color: var(--ios-text-secondary);">Status:</span>
+                    <div class="custom-dropdown" tabindex="0">
+                        <?php 
+                        $statusNames = ['' => 'All Statuses', 'instock' => 'In Stock', 'lowstock' => 'Low Stock', 'outstock' => 'Out of Stock'];
+                        $selectedStatusName = $statusNames[$filters['stock_status']] ?? 'All Statuses';
+                        ?>
+                        <div class="custom-dropdown-value" id="status-dropdown-val"><?= $selectedStatusName ?></div>
+                        <div class="custom-dropdown-menu">
+                            <div class="custom-dropdown-item" onclick="selectStatus('', 'All Statuses')">All Statuses</div>
+                            <div class="custom-dropdown-item" onclick="selectStatus('instock', 'In Stock')">In Stock</div>
+                            <div class="custom-dropdown-item" onclick="selectStatus('lowstock', 'Low Stock')">Low Stock</div>
+                            <div class="custom-dropdown-item" onclick="selectStatus('outstock', 'Out of Stock')">Out of Stock</div>
+                        </div>
+                        <input type="hidden" name="stock_status" id="stockStatusInput" value="<?= htmlspecialchars($filters['stock_status']) ?>">
                     </div>
-                    <div class="ios-stat-widget warning">
-                        <span class="ios-stat-val" id="stat-low-stock"><?= number_format($stats->low_stock_count) ?></span>
-                        <span class="ios-stat-label">Low Stock</span>
-                    </div>
-                    <div class="ios-stat-widget danger">
-                        <span class="ios-stat-val" id="stat-out-of-stock"><?= number_format($stats->out_of_stock_count) ?></span>
-                        <span class="ios-stat-label">Out of Stock</span>
-                    </div>
+                </div>
+
+                <div class="pill-item">
+                    <span style="color: var(--ios-text-secondary);">Min Rs:</span>
+                    <input type="number" step="0.01" name="min_price" id="minPriceInput" value="<?= htmlspecialchars($filters['min_price']) ?>" oninput="triggerSearchDelay()" placeholder="0.00">
+                </div>
+                <div class="pill-item">
+                    <span style="color: var(--ios-text-secondary);">Max Rs:</span>
+                    <input type="number" step="0.01" name="max_price" id="maxPriceInput" value="<?= htmlspecialchars($filters['max_price']) ?>" oninput="triggerSearchDelay()" placeholder="0.00">
+                </div>
+                <button type="button" onclick="clearAllFilters()" class="pill-btn">Reset</button>
+
+                <div style="margin-left: auto; font-size: 13px; color: var(--ios-text-secondary); font-weight: 500;">
+                    <span id="matching-count" style="color: var(--ios-text); font-weight: 600;"><?= $totalItems ?></span> items
                 </div>
             </div>
 
-            <!-- Alerts -->
-            <?php if ($flashSuccess || isset($_GET['flash_success'])): ?>
-                <div id="flash-success-alert" class="ios-alert success">
-                    <i class="fa-solid fa-circle-check" style="color: var(--ios-green); font-size: 20px;"></i>
-                    <div style="flex-grow: 1;">
-                        <div style="font-weight: 600; font-size: 14px;">Success</div>
-                        <div style="font-size: 13px; color: var(--ios-text-secondary);"><?= htmlspecialchars($flashSuccess ?? $_GET['flash_success'] ?? '') ?></div>
-                    </div>
-                    <button type="button" onclick="document.getElementById('flash-success-alert').style.display='none'" style="background:none; border:none; color: var(--ios-text-secondary); cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-            <?php endif; ?>
-
-            <?php if ($flashError): ?>
-                <div id="flash-error-alert" class="ios-alert error">
-                    <i class="fa-solid fa-circle-exclamation" style="color: var(--ios-red); font-size: 20px;"></i>
-                    <div style="flex-grow: 1;">
-                        <div style="font-weight: 600; font-size: 14px;">Error</div>
-                        <div style="font-size: 13px; color: var(--ios-text-secondary);"><?= htmlspecialchars($flashError) ?></div>
-                    </div>
-                    <button type="button" onclick="document.getElementById('flash-error-alert').style.display='none'" style="background:none; border:none; color: var(--ios-text-secondary); cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-            <?php endif; ?>
-
-            <!-- Table Panel & Inline Filters -->
-            <div class="ios-table-panel">
+            <!-- SPLIT VIEW LAYOUT -->
+            <div class="app-layout">
                 
-                <div style="padding: 20px 20px 0 20px;">
-                    <!-- Sleek Pill Filters -->
-                    <div class="pill-filters">
-                        <div class="pill-item">
-                            <span style="color: var(--ios-text-secondary);">Category:</span>
-                            <select name="category_id" id="categorySelect" onchange="applyAjaxFilters()">
-                                <option value="">All</option>
-                                <?php foreach ($categories as $cat): ?>
-                                    <option value="<?= $cat->id ?>" <?= (string)$filters['category_id'] === (string)$cat->id ? 'selected' : '' ?>><?= htmlspecialchars($cat->name) ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                <!-- Main Table Area -->
+                <div class="main-list-area">
+                    <div class="ios-table-panel" id="table-wrapper">
+                        <div id="table-loader" class="pointer-events-none">
+                            <i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: var(--ios-text-secondary);"></i>
                         </div>
-                        <div class="pill-item">
-                            <span style="color: var(--ios-text-secondary);">Status:</span>
-                            <select name="stock_status" id="stockStatusSelect" onchange="applyAjaxFilters()">
-                                <option value="">All Statuses</option>
-                                <option value="instock" <?= $filters['stock_status'] === 'instock' ? 'selected' : '' ?>>In Stock</option>
-                                <option value="lowstock" <?= $filters['stock_status'] === 'lowstock' ? 'selected' : '' ?>>Low Stock</option>
-                                <option value="outstock" <?= $filters['stock_status'] === 'outstock' ? 'selected' : '' ?>>Out of Stock</option>
-                            </select>
-                        </div>
-                        <div class="pill-item">
-                            <span style="color: var(--ios-text-secondary);">Min Rs:</span>
-                            <input type="number" step="0.01" name="min_price" id="minPriceInput" value="<?= htmlspecialchars($filters['min_price']) ?>" oninput="triggerSearchDelay()" placeholder="0.00">
-                        </div>
-                        <div class="pill-item">
-                            <span style="color: var(--ios-text-secondary);">Max Rs:</span>
-                            <input type="number" step="0.01" name="max_price" id="maxPriceInput" value="<?= htmlspecialchars($filters['max_price']) ?>" oninput="triggerSearchDelay()" placeholder="0.00">
-                        </div>
-                        <button type="button" onclick="clearAllFilters()" class="pill-btn">Reset</button>
 
-                        <div style="margin-left: auto; font-size: 13px; color: var(--ios-text-secondary); font-weight: 500;">
-                            <span id="matching-count" style="color: var(--ios-text); font-weight: 600;"><?= $totalItems ?></span> items
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Table Content Wrapper -->
-                <div id="table-wrapper">
-                    <div id="table-loader" class="pointer-events-none">
-                        <i class="fa-solid fa-spinner fa-spin" style="font-size: 24px; color: var(--ios-text-secondary);"></i>
-                    </div>
-
-                    <div id="table-container">
-                        <div class="table-container">
+                        <div id="table-container">
                             <table class="ios-table">
                                 <thead>
                                     <tr>
                                         <th style="width: 40px; text-align: center;">
                                             <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" class="ios-checkbox">
                                         </th>
-                                        <th style="width: 300px;">Product</th>
-                                        <th style="text-align: right;">Retail LKR</th>
-                                        <th style="text-align: right;">B2B LKR</th>
+                                        <th style="width: 280px;">Product</th>
+                                        <th style="text-align: right;">Retail</th>
+                                        <th style="text-align: right;">B2B</th>
                                         <th style="text-align: center;">Qty</th>
                                         <th>Status</th>
                                         <th style="text-align: right;">Manage</th>
@@ -834,7 +802,19 @@ if ($importResults) {
                                                 <td><?= $statusBadge ?></td>
                                                 <td>
                                                     <div class="row-actions">
-                                                        <a href="<?= APP_URL ?>/stockledger/product/<?= $item->id ?>" class="row-action-btn" title="Ledger"><i class="fa-solid fa-chart-line"></i></a>
+                                                        <button type="button" onclick="openQuickView(this)" 
+                                                                data-id="<?= $item->id ?>"
+                                                                data-name="<?= htmlspecialchars($item->name ?? 'Unnamed') ?>"
+                                                                data-sku="<?= htmlspecialchars($sku) ?>"
+                                                                data-code="<?= htmlspecialchars($item->sample_code ?? '') ?>"
+                                                                data-price="<?= number_format($price, 2) ?>"
+                                                                data-b2b="<?= number_format($b2b_price, 2) ?>"
+                                                                data-qty="<?= $qty ?>"
+                                                                data-img="<?= $img_src ?>"
+                                                                data-desc="<?= htmlspecialchars($item->description ?? '') ?>"
+                                                                class="row-action-btn view" title="Quick View">
+                                                            <i class="fa-solid fa-eye"></i>
+                                                        </button>
                                                         <a href="<?= APP_URL ?>/inventory/edit/<?= $item->id ?>" class="row-action-btn" title="Edit"><i class="fa-solid fa-pen-to-square"></i></a>
                                                         <button type="button" onclick="confirmDelete(<?= $item->id ?>, '<?= htmlspecialchars(addslashes($item->name)) ?>')" class="row-action-btn delete" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
                                                     </div>
@@ -844,57 +824,78 @@ if ($importResults) {
                                     <?php endif; ?>
                                 </tbody>
                             </table>
-                        </div>
 
-                        <!-- Pagination Footer -->
-                        <div class="ios-pagination">
-                            <div class="page-info">
-                                Viewing <strong><?= $startIndex ?></strong> to <strong><?= $endIndex ?></strong> of <strong><?= $totalItems ?></strong>
-                            </div>
-                            <div class="page-controls">
-                                <select onchange="updatePageSize(this.value)" class="page-select">
-                                    <option value="10" <?= $perPage === 10 ? 'selected' : '' ?>>10 / page</option>
-                                    <option value="15" <?= $perPage === 15 ? 'selected' : '' ?>>15 / page</option>
-                                    <option value="25" <?= $perPage === 25 ? 'selected' : '' ?>>25 / page</option>
-                                    <option value="50" <?= $perPage === 50 ? 'selected' : '' ?>>50 / page</option>
-                                </select>
-                                
-                                <div class="page-nav-group">
-                                    <button type="button" onclick="navigatePage(<?= max(1, $currentPage - 1) ?>)" class="page-nav-btn" <?= $currentPage <= 1 ? 'disabled' : '' ?>><i class="fa-solid fa-chevron-left" style="font-size: 11px;"></i></button>
+                            <!-- Pagination Footer -->
+                            <div class="ios-pagination">
+                                <div class="page-info">
+                                    Viewing <strong><?= $startIndex ?></strong> to <strong><?= $endIndex ?></strong> of <strong><?= $totalItems ?></strong>
+                                </div>
+                                <div class="page-controls">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 13px; color: var(--ios-text-secondary);">Per page:</span>
+                                        <select onchange="updatePageSize(this.value)" class="native-select" style="background: transparent; border: 1px solid var(--ios-border); border-radius: 6px; padding: 4px 8px; font-size: 13px;">
+                                            <option value="15" <?= $perPage === 15 ? 'selected' : '' ?>>15</option>
+                                            <option value="50" <?= $perPage === 50 ? 'selected' : '' ?>>50</option>
+                                            <option value="100" <?= $perPage === 100 ? 'selected' : '' ?>>100</option>
+                                            <option value="1000" <?= $perPage === 1000 ? 'selected' : '' ?>>All Data</option>
+                                        </select>
+                                    </div>
                                     
-                                    <?php 
-                                    $range = 1;
-                                    $startPage = max(1, $currentPage - $range);
-                                    $endPage = min($totalPages, $currentPage + $range);
-
-                                    if ($startPage > 1) {
-                                        echo '<button type="button" onclick="navigatePage(1)" class="page-nav-btn">1</button>';
-                                        if ($startPage > 2) {
-                                            echo '<div class="page-nav-btn pointer-events-none" style="color: var(--ios-text-secondary);">...</div>';
-                                        }
-                                    }
-
-                                    for ($i = $startPage; $i <= $endPage; $i++) {
-                                        if ($i === $currentPage) {
-                                            echo '<div class="page-nav-btn active">'.$i.'</div>';
-                                        } else {
-                                            echo '<button type="button" onclick="navigatePage('.$i.')" class="page-nav-btn">'.$i.'</button>';
-                                        }
-                                    }
-
-                                    if ($endPage < $totalPages) {
-                                        if ($endPage < $totalPages - 1) {
-                                            echo '<div class="page-nav-btn pointer-events-none" style="color: var(--ios-text-secondary);">...</div>';
-                                        }
-                                        echo '<button type="button" onclick="navigatePage('.$totalPages.')" class="page-nav-btn">'.$totalPages.'</button>';
-                                    }
-                                    ?>
-                                    <button type="button" onclick="navigatePage(<?= min($totalPages, $currentPage + 1) ?>)" class="page-nav-btn" <?= $currentPage >= $totalPages ? 'disabled' : '' ?>><i class="fa-solid fa-chevron-right" style="font-size: 11px;"></i></button>
+                                    <?php if ($totalPages > 1): ?>
+                                    <div style="display: flex; border: 1px solid var(--ios-border); border-radius: 8px; overflow: hidden;">
+                                        <button type="button" onclick="navigatePage(<?= max(1, $currentPage - 1) ?>)" class="modal-btn secondary" style="border-radius: 0; padding: 6px 12px;" <?= $currentPage <= 1 ? 'disabled' : '' ?>><i class="fa-solid fa-chevron-left" style="font-size: 11px;"></i></button>
+                                        <div style="padding: 6px 12px; background: var(--ios-surface); font-size: 13px; font-weight: 600; border-left: 1px solid var(--ios-border); border-right: 1px solid var(--ios-border);"><?= $currentPage ?> / <?= $totalPages ?></div>
+                                        <button type="button" onclick="navigatePage(<?= min($totalPages, $currentPage + 1) ?>)" class="modal-btn secondary" style="border-radius: 0; padding: 6px 12px;" <?= $currentPage >= $totalPages ? 'disabled' : '' ?>><i class="fa-solid fa-chevron-right" style="font-size: 11px;"></i></button>
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Side Panel (Quick Overview) -->
+                <div class="quick-view-panel" id="quickViewPanel">
+                    <div style="padding: 24px; position: relative;">
+                        <button type="button" onclick="closeQuickView()" style="position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 20px; color: var(--ios-text-secondary); cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+                        
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <img id="qv-image" src="" style="width: 120px; height: 120px; border-radius: 20px; object-fit: cover; border: 1px solid var(--ios-border); margin: 0 auto 16px auto; display: block;">
+                            <h3 id="qv-name" style="margin: 0 0 4px 0; font-size: 18px; font-weight: 700; color: var(--ios-text);"></h3>
+                            <p id="qv-sku" style="margin: 0; font-size: 13px; color: var(--ios-text-secondary); font-family: ui-monospace, SFMono-Regular, monospace;"></p>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                            <div style="background: var(--ios-bg); padding: 16px; border-radius: 16px; text-align: center;">
+                                <div style="font-size: 11px; text-transform: uppercase; color: var(--ios-text-secondary); font-weight: 600;">Current Stock</div>
+                                <div id="qv-qty" style="font-size: 24px; font-weight: 700; margin-top: 4px; font-family: ui-monospace, SFMono-Regular, monospace;"></div>
+                            </div>
+                            <div style="background: var(--ios-bg); padding: 16px; border-radius: 16px; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                                <div style="font-size: 11px; text-transform: uppercase; color: var(--ios-text-secondary); font-weight: 600; margin-bottom: 8px;">Status</div>
+                                <div id="qv-status"></div>
+                            </div>
+                        </div>
+
+                        <div style="background: var(--ios-bg); padding: 16px; border-radius: 16px; margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid var(--ios-border); padding-bottom: 12px;">
+                                <span style="font-size: 14px; color: var(--ios-text-secondary); font-weight: 500;">Retail Price</span>
+                                <span id="qv-price" style="font-weight: 600; font-size: 15px; font-family: ui-monospace, SFMono-Regular, monospace;"></span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="font-size: 14px; color: var(--ios-text-secondary); font-weight: 500;">B2B Price</span>
+                                <span id="qv-b2b" style="font-weight: 600; font-size: 15px; font-family: ui-monospace, SFMono-Regular, monospace;"></span>
+                            </div>
+                        </div>
+
+                        <div id="qv-desc" style="font-size: 14px; color: var(--ios-text-secondary); line-height: 1.5; margin-bottom: 24px; max-height: 100px; overflow-y: auto;"></div>
+                        
+                        <div style="display: flex; gap: 8px;">
+                            <a id="qv-edit-link" href="#" class="modal-btn primary" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 6px;"><i class="fa-solid fa-pen"></i> Edit Product</a>
+                            <a id="qv-ledger-link" href="#" class="modal-btn secondary" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 6px;"><i class="fa-solid fa-chart-line"></i> Ledger</a>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -1080,6 +1081,77 @@ if ($importResults) {
 
     <!-- JavaScript Engine (Unmodified API Contracts) -->
     <script>
+        // Ensure ALL DATA is loaded by default if not already initialized
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (!urlParams.has('per_page') && document.getElementById('perPageInput').value != '1000') {
+                document.getElementById('perPageInput').value = '1000';
+                applyAjaxFilters();
+            }
+        });
+
+        // Quick View Functionality
+        function openQuickView(btn) {
+            const id = btn.getAttribute('data-id');
+            const name = btn.getAttribute('data-name');
+            const sku = btn.getAttribute('data-sku');
+            const code = btn.getAttribute('data-code');
+            const price = btn.getAttribute('data-price');
+            const b2b = btn.getAttribute('data-b2b');
+            const qty = parseInt(btn.getAttribute('data-qty'), 10);
+            const img = btn.getAttribute('data-img');
+            const desc = btn.getAttribute('data-desc');
+
+            document.getElementById('qv-name').textContent = name;
+            document.getElementById('qv-sku').textContent = 'SKU: ' + sku + (code ? ' • Code: ' + code : '');
+            document.getElementById('qv-price').textContent = 'LKR ' + price;
+            document.getElementById('qv-b2b').textContent = 'LKR ' + b2b;
+            document.getElementById('qv-qty').textContent = qty;
+            
+            let statusHtml = '';
+            if (qty <= 0) {
+                statusHtml = '<span class="badge-status" style="background: var(--ios-red-bg); color: var(--ios-red);"><span class="dot" style="background: var(--ios-red);"></span>Out</span>';
+                document.getElementById('qv-qty').style.color = 'var(--ios-red)';
+            } else if (qty <= 5) {
+                statusHtml = '<span class="badge-status" style="background: var(--ios-orange-bg); color: #d97706;"><span class="dot" style="background: var(--ios-orange);"></span>Low</span>';
+                document.getElementById('qv-qty').style.color = '#d97706';
+            } else {
+                statusHtml = '<span class="badge-status" style="background: var(--ios-green-bg); color: #15803d;"><span class="dot" style="background: var(--ios-green);"></span>Active</span>';
+                document.getElementById('qv-qty').style.color = 'var(--ios-text)';
+            }
+            document.getElementById('qv-status').innerHTML = statusHtml;
+            
+            document.getElementById('qv-image').src = img;
+            document.getElementById('qv-desc').textContent = desc || 'No detailed description available.';
+
+            document.getElementById('qv-edit-link').href = '<?= APP_URL ?>/inventory/edit/' + id;
+            document.getElementById('qv-ledger-link').href = '<?= APP_URL ?>/stockledger/product/' + id;
+
+            const panel = document.getElementById('quickViewPanel');
+            panel.classList.add('active');
+        }
+
+        function closeQuickView() {
+            const panel = document.getElementById('quickViewPanel');
+            panel.classList.remove('active');
+        }
+
+        // Custom Popover Dropdown selections
+        function selectCategory(val, name) {
+            document.getElementById('categoryInput').value = val;
+            document.getElementById('cat-dropdown-val').textContent = name;
+            document.activeElement.blur(); // dismiss popover
+            document.getElementById('currentPageInput').value = '1';
+            applyAjaxFilters();
+        }
+        function selectStatus(val, name) {
+            document.getElementById('stockStatusInput').value = val;
+            document.getElementById('status-dropdown-val').textContent = name;
+            document.activeElement.blur(); // dismiss popover
+            document.getElementById('currentPageInput').value = '1';
+            applyAjaxFilters();
+        }
+
         let searchTimeout = null;
 
         function triggerSearchDelay() {
@@ -1166,10 +1238,8 @@ if ($importResults) {
             document.getElementById('searchInput').value = '';
             document.getElementById('minPriceInput').value = '';
             document.getElementById('maxPriceInput').value = '';
-            document.getElementById('stockStatusSelect').value = '';
-            document.getElementById('categorySelect').value = '';
-            document.getElementById('currentPageInput').value = '1';
-            applyAjaxFilters();
+            selectStatus('', 'All Statuses');
+            selectCategory('', 'All Categories');
         }
 
         function openCsvModal() { document.getElementById('csvImportModal').classList.remove('hidden'); }
