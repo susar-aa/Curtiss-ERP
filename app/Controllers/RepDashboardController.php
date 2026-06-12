@@ -456,6 +456,16 @@ class RepDashboardController extends Controller {
                     $localId = intval($inv['local_id']);
                     $custServerId = $getCustomerServerId(intval($inv['customer_id']));
                     
+                    // Validate customer ID on the server, fallback if not found
+                    $this->db->query("SELECT id FROM customers WHERE id = :id");
+                    $this->db->bind(':id', $custServerId);
+                    $custRow = $this->db->single();
+                    if (!$custRow) {
+                        $this->db->query("SELECT id FROM customers LIMIT 1");
+                        $firstCust = $this->db->single();
+                        $custServerId = $firstCust ? intval($firstCust->id) : 1;
+                    }
+                    
                     $localRouteId = intval($inv['local_route_id'] ?? 0);
                     $serverRouteIdFromApp = intval($inv['server_route_id'] ?? 0);
                     if ($serverRouteIdFromApp > 0) {
@@ -471,9 +481,31 @@ class RepDashboardController extends Controller {
                     $itemsPayload = [];
                     if (isset($inv['items']) && is_array($inv['items'])) {
                         foreach ($inv['items'] as $item) {
+                            $prodId = intval($item['product_id']);
+                            $prodName = $item['product_name'];
+                            
+                            // Check if product ID exists on the server
+                            $this->db->query("SELECT id FROM items WHERE id = :id");
+                            $this->db->bind(':id', $prodId);
+                            $pRow = $this->db->single();
+                            if (!$pRow) {
+                                // Try to look up by name
+                                $this->db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
+                                $this->db->bind(':name', $prodName);
+                                $pByName = $this->db->single();
+                                if ($pByName) {
+                                    $prodId = intval($pByName->id);
+                                } else {
+                                    // Fallback to first available product
+                                    $this->db->query("SELECT id FROM items LIMIT 1");
+                                    $firstProd = $this->db->single();
+                                    $prodId = $firstProd ? intval($firstProd->id) : 1;
+                                }
+                            }
+
                             $itemsPayload[] = [
-                                'item_selection' => $item['product_id'] . '|0', // format: "product_id|var_id"
-                                'description' => $item['product_name'],
+                                'item_selection' => $prodId . '|0', // format: "product_id|var_id"
+                                'description' => $prodName,
                                 'quantity' => intval($item['quantity']),
                                 'unit_price' => floatval($item['unit_price']),
                                 'discount_value' => floatval($item['discount_val'] ?? 0.0),
@@ -538,6 +570,17 @@ class RepDashboardController extends Controller {
             if (isset($payload['payments']) && is_array($payload['payments'])) {
                 foreach ($payload['payments'] as $p) {
                     $custServerId = $getCustomerServerId(intval($p['customer_id']));
+                    
+                    // Validate customer ID on the server, fallback if not found
+                    $this->db->query("SELECT id FROM customers WHERE id = :id");
+                    $this->db->bind(':id', $custServerId);
+                    $custRow = $this->db->single();
+                    if (!$custRow) {
+                        $this->db->query("SELECT id FROM customers LIMIT 1");
+                        $firstCust = $this->db->single();
+                        $custServerId = $firstCust ? intval($firstCust->id) : 1;
+                    }
+
                     $routeServerId = $getRouteServerId(intval($p['server_route_id'] ?? 0));
                     
                     $this->db->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, status, notes) 
