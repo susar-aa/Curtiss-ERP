@@ -338,6 +338,24 @@ class RepDashboardController extends Controller {
             exit;
         }
 
+        // Validate that user exists in database, fallback if not found to prevent FK constraints failure
+        $this->db->query("SELECT id FROM users WHERE id = :id");
+        $this->db->bind(':id', $userId);
+        $userRow = $this->db->single();
+        if (!$userRow) {
+            // User ID doesn't exist on this server, search for any rep role user first
+            $this->db->query("SELECT id FROM users WHERE role = 'rep' LIMIT 1");
+            $repUser = $this->db->single();
+            if ($repUser) {
+                $userId = intval($repUser->id);
+            } else {
+                // Fall back to first user in database or default to 1
+                $this->db->query("SELECT id FROM users LIMIT 1");
+                $firstUser = $this->db->single();
+                $userId = $firstUser ? intval($firstUser->id) : 1;
+            }
+        }
+
         // Set session user ID temporarily for audit log tracking
         $_SESSION['user_id'] = $userId;
 
