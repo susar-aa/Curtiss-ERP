@@ -437,7 +437,14 @@ class RepDashboardController extends Controller {
                 foreach ($payload['invoices'] as $inv) {
                     $localId = intval($inv['local_id']);
                     $custServerId = $getCustomerServerId(intval($inv['customer_id']));
-                    $routeServerId = $getRouteServerId(intval($inv['local_route_id'] ?? 0));
+                    
+                    $localRouteId = intval($inv['local_route_id'] ?? 0);
+                    $serverRouteIdFromApp = intval($inv['server_route_id'] ?? 0);
+                    if ($serverRouteIdFromApp > 0) {
+                        $routeServerId = $serverRouteIdFromApp;
+                    } else {
+                        $routeServerId = $getRouteServerId($localRouteId);
+                    }
                     
                     // Generate new invoice number if sequence is used or keep what mobile generated
                     $invNo = $inv['invoice_number'];
@@ -501,6 +508,10 @@ class RepDashboardController extends Controller {
                             'server_id' => intval($invoiceId),
                             'invoice_number' => $invNo
                         ];
+                    } else {
+                        $err = isset($_SESSION['invoice_error']) ? $_SESSION['invoice_error'] : 'Unknown error during creation';
+                        unset($_SESSION['invoice_error']);
+                        throw new Exception("Invoice creation failed for invoice number {$invNo}: " . $err);
                     }
                 }
             }
