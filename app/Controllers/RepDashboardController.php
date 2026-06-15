@@ -145,6 +145,7 @@ class RepDashboardController extends Controller {
             $deltaCust = $getDeltaFilter('customers', $lastSync, true, 'c');
             $this->db->query("
                 SELECT c.id, c.name, c.phone, c.whatsapp, c.address, c.territory, c.latitude, c.longitude, c.mca_id, m.name as mca_name,
+                       c.email, c.credit_limit, c.customer_type, c.notes,
                        ((SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = c.id AND status != 'Voided') 
                        - 
                        (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE customer_id = c.id AND status = 'Active') 
@@ -173,7 +174,11 @@ class RepDashboardController extends Controller {
                     'longitude' => floatval($c->longitude ?? 0.0),
                     'outstanding' => floatval($c->balance ?? 0.0),
                     'mca_id' => intval($c->mca_id ?? 0),
-                    'mca_name' => $c->mca_name ?? ''
+                    'mca_name' => $c->mca_name ?? '',
+                    'email' => $c->email ?? '',
+                    'credit_limit' => floatval($c->credit_limit ?? 0.00),
+                    'customer_type' => $c->customer_type ?? 'Standard',
+                    'notes' => $c->notes ?? ''
                 ];
             }
             
@@ -455,7 +460,10 @@ class RepDashboardController extends Controller {
                             'lat' => $c['latitude'] ?? null,
                             'lng' => $c['longitude'] ?? null,
                             'mca_id' => $mcaId,
-                            'territory' => $territory
+                            'territory' => $territory,
+                            'credit_limit' => isset($c['credit_limit']) ? floatval($c['credit_limit']) : 0.00,
+                            'customer_type' => $c['customer_type'] ?? 'Standard',
+                            'notes' => $c['notes'] ?? null
                         ]);
                         $this->logActivity('Update Customer', 'Customer', "Updated customer profile via mobile sync: {$c['name']}", $serverId);
                     } else {
@@ -489,7 +497,10 @@ class RepDashboardController extends Controller {
                                 'lat' => $c['latitude'] ?? null,
                                 'lng' => $c['longitude'] ?? null,
                                 'mca_id' => $mcaId,
-                                'territory' => $territory
+                                'territory' => $territory,
+                                'credit_limit' => isset($c['credit_limit']) ? floatval($c['credit_limit']) : 0.00,
+                                'customer_type' => $c['customer_type'] ?? 'Standard',
+                                'notes' => $c['notes'] ?? null
                             ]);
                             $this->logActivity('Update Customer', 'Customer', "Updated customer profile via mobile sync: {$c['name']}", $serverId);
                         } else {
@@ -502,7 +513,10 @@ class RepDashboardController extends Controller {
                                 'lat' => $c['latitude'] ?? null,
                                 'lng' => $c['longitude'] ?? null,
                                 'mca_id' => null,
-                                'territory' => $c['territory'] ?? null
+                                'territory' => $c['territory'] ?? null,
+                                'credit_limit' => isset($c['credit_limit']) ? floatval($c['credit_limit']) : 0.00,
+                                'customer_type' => $c['customer_type'] ?? 'Standard',
+                                'notes' => $c['notes'] ?? null
                             ]);
                             $serverId = $this->customerModel->getLastInsertId();
                             $this->logActivity('Add Customer', 'Customer', "Registered new customer profile via mobile sync: {$c['name']}", $serverId);

@@ -94,8 +94,8 @@ class Customer {
     }
 
     public function addCustomer($data) {
-        $this->db->query("INSERT INTO customers (name, email, phone, whatsapp, address, latitude, longitude, mca_id, territory) 
-                          VALUES (:name, :email, :phone, :whatsapp, :address, :lat, :lng, :mca_id, :territory)");
+        $this->db->query("INSERT INTO customers (name, email, phone, whatsapp, address, latitude, longitude, mca_id, territory, credit_limit, customer_type, notes) 
+                          VALUES (:name, :email, :phone, :whatsapp, :address, :lat, :lng, :mca_id, :territory, :credit_limit, :customer_type, :notes)");
         $this->db->bind(':name', $data['name']);
         $this->db->bind(':email', $data['email'] ?: null);
         $this->db->bind(':phone', $data['phone'] ?: null);
@@ -105,6 +105,9 @@ class Customer {
         $this->db->bind(':lng', $data['lng'] ?: null);
         $this->db->bind(':mca_id', $data['mca_id'] ?: null);
         $this->db->bind(':territory', $data['territory'] ?: null);
+        $this->db->bind(':credit_limit', $data['credit_limit'] ?? 0.00);
+        $this->db->bind(':customer_type', $data['customer_type'] ?? 'Standard');
+        $this->db->bind(':notes', $data['notes'] ?: null);
         return $this->db->execute();
     }
 
@@ -114,7 +117,8 @@ class Customer {
 
     public function updateCustomer($data) {
         $this->db->query("UPDATE customers SET name = :name, email = :email, phone = :phone, whatsapp = :whatsapp, address = :address, 
-                          latitude = :lat, longitude = :lng, mca_id = :mca_id, territory = :territory 
+                          latitude = :lat, longitude = :lng, mca_id = :mca_id, territory = :territory, 
+                          credit_limit = :credit_limit, customer_type = :customer_type, notes = :notes 
                           WHERE id = :id");
         $this->db->bind(':id', $data['id']);
         $this->db->bind(':name', $data['name']);
@@ -126,6 +130,9 @@ class Customer {
         $this->db->bind(':lng', $data['lng'] ?: null);
         $this->db->bind(':mca_id', $data['mca_id'] ?: null);
         $this->db->bind(':territory', $data['territory'] ?: null);
+        $this->db->bind(':credit_limit', $data['credit_limit'] ?? 0.00);
+        $this->db->bind(':customer_type', $data['customer_type'] ?? 'Standard');
+        $this->db->bind(':notes', $data['notes'] ?: null);
         return $this->db->execute();
     }
 
