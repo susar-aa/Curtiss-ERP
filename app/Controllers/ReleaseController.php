@@ -5,7 +5,13 @@ class ReleaseController extends Controller {
     public function __construct() {
         // We only bypass auth for the api method
         $url = $this->parseUrl();
-        $isApi = isset($url[1]) && strpos($url[1], 'api_') === 0;
+        $isApi = false;
+        foreach ($url as $segment) {
+            if (strpos($segment, 'api_') === 0) {
+                $isApi = true;
+                break;
+            }
+        }
 
         if (!$isApi) {
             if (!isset($_SESSION['user_id'])) {
