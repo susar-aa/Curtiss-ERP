@@ -424,6 +424,9 @@
                 <label for="apk">APK Binary File</label>
                 <input type="file" name="apk" id="apk" class="form-control" accept=".apk" required style="padding: 8px;">
                 <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block;">Upload the compiled Android app binary package.</small>
+                <small style="color: #d32f2f; font-weight: 600; font-size: 12px; margin-top: 6px; display: block; line-height: 1.4; background: rgba(211, 47, 47, 0.05); padding: 8px; border-left: 3px solid #d32f2f; border-radius: 4px;">
+                    ⚠️ IMPORTANT: Before building and compiling your release APK, you must update the <code>versionName</code> (and optionally <code>versionCode</code>) in your Android project's <code>app/build.gradle.kts</code> file (e.g. from "1.0" to "1.0.1") to match the version you enter here! If the uploaded APK contains the old version number, the app will get stuck in an infinite update loop after installation.
+                </small>
             </div>
 
             <div class="form-group">
