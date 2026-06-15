@@ -1,14 +1,26 @@
 <style>
     .release-container {
         display: grid;
-        grid-template-columns: 1fr 2fr;
-        gap: 30px;
+        grid-template-columns: 320px 1fr 300px;
+        gap: 20px;
         margin-top: 20px;
     }
     
-    @media (max-width: 992px) {
+    @media (max-width: 1400px) {
+        .release-container {
+            grid-template-columns: 1fr 1fr;
+        }
+        .timeline-card-wrapper {
+            grid-column: span 2;
+        }
+    }
+    
+    @media (max-width: 768px) {
         .release-container {
             grid-template-columns: 1fr;
+        }
+        .timeline-card-wrapper {
+            grid-column: span 1;
         }
     }
 
@@ -269,6 +281,99 @@
         color: var(--text-muted);
         line-height: 1.4;
     }
+
+    /* Timeline Stepper CSS styles */
+    .timeline {
+        position: relative;
+        padding-left: 24px;
+        list-style: none;
+        margin: 10px 0 0 0;
+    }
+
+    .timeline::before {
+        content: '';
+        position: absolute;
+        top: 8px;
+        bottom: 8px;
+        left: 7px;
+        width: 2px;
+        background: var(--mac-border);
+    }
+
+    .timeline-item {
+        position: relative;
+        margin-bottom: 24px;
+    }
+
+    .timeline-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .timeline-marker {
+        position: absolute;
+        left: -24px;
+        top: 4px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #94a3b8;
+        border: 3px solid #fff;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: all 0.2s ease;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .timeline-marker {
+            border-color: #1e1e24;
+        }
+    }
+
+    .timeline-item.is-latest .timeline-marker {
+        background: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+    }
+
+    .timeline-item.is-forced .timeline-marker {
+        background: #ef4444;
+    }
+
+    .timeline-content {
+        background: rgba(0, 0, 0, 0.02);
+        border: 1px solid var(--mac-border);
+        border-radius: 8px;
+        padding: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .timeline-content {
+            background: rgba(255, 255, 255, 0.02);
+        }
+    }
+
+    .timeline-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+    }
+
+    .timeline-version {
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--text-main);
+    }
+
+    .timeline-date {
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+
+    .timeline-notes {
+        font-size: 12px;
+        color: var(--text-muted);
+        line-height: 1.4;
+        white-space: pre-wrap;
+    }
 </style>
 
 <div class="header-actions" style="margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
@@ -286,24 +391,29 @@
 </div>
 
 <?php if(!empty($data['success'])): ?>
-    <div class="alert alert-success">
+    <div class="alert alert-success" id="syncSuccessAlert">
         <i class="ph ph-check-circle" style="font-size: 18px;"></i> <?= htmlspecialchars($data['success']) ?>
     </div>
 <?php endif; ?>
 <?php if(!empty($data['error'])): ?>
-    <div class="alert alert-error">
+    <div class="alert alert-error" id="syncErrorAlert">
         <i class="ph ph-warning-circle" style="font-size: 18px;"></i> <?= htmlspecialchars($data['error']) ?>
     </div>
 <?php endif; ?>
 
+<!-- Client-side script notification banner -->
+<div class="alert alert-error" id="ajaxErrorAlert" style="display:none;">
+    <i class="ph ph-warning-circle" style="font-size: 18px;"></i> <span id="ajaxErrorMsg"></span>
+</div>
+
 <div class="release-container">
-    <!-- Upload Panel -->
-    <div class="card">
+    <!-- 1. Upload Panel -->
+    <div class="card" style="height: fit-content;">
         <h3 class="card-title">
             <i class="ph ph-plus-circle"></i> Create New Release
         </h3>
         
-        <form action="<?= APP_URL ?>/release/upload" method="POST" enctype="multipart/form-data">
+        <form action="<?= APP_URL ?>/release/upload" method="POST" enctype="multipart/form-data" id="uploadReleaseForm">
             <div class="form-group">
                 <label for="version">Version Number (Semantic)</label>
                 <input type="text" name="version" id="version" class="form-control" placeholder="e.g. 1.0.1" value="<?= htmlspecialchars($data['suggested_version']) ?>" required>
@@ -324,7 +434,7 @@
             <div class="checkbox-group">
                 <label class="checkbox-label">
                     <input type="checkbox" name="force_update" value="1">
-                    <span>Force Update (Blocks app access if not installed)</span>
+                    <span>Force Update (Blocks app access)</span>
                 </label>
                 <label class="checkbox-label">
                     <input type="checkbox" name="is_latest" value="1" checked>
@@ -332,13 +442,24 @@
                 </label>
             </div>
 
-            <button type="submit" class="btn" style="width: 100%;">
+            <!-- Upload Progress Bar (AJAX Mode) -->
+            <div id="uploadProgressContainer" style="display: none; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+                    <span style="color: var(--text-muted); font-weight: 500;">Uploading APK File...</span>
+                    <span id="uploadPercent" style="font-weight: 700; color: #0066cc;">0%</span>
+                </div>
+                <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.05); border-radius: 3px; overflow: hidden;">
+                    <div id="uploadProgressBar" style="width: 0%; height: 100%; background: #0066cc; transition: width 0.1s ease;"></div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn" style="width: 100%;" id="btnUploadSubmit">
                 <i class="ph ph-cloud-arrow-up"></i> Upload and Deploy Release
             </button>
         </form>
     </div>
 
-    <!-- History Panel -->
+    <!-- 2. Deployment History Panel -->
     <div class="card">
         <h3 class="card-title">
             <i class="ph ph-clock"></i> Deployment History
@@ -415,4 +536,135 @@
             </div>
         <?php endif; ?>
     </div>
+
+    <!-- 3. Vertical Timeline Panel (Right) -->
+    <div class="card timeline-card-wrapper" style="height: fit-content;">
+        <h3 class="card-title">
+            <i class="ph ph-git-commit"></i> Release Timeline
+        </h3>
+
+        <?php if (empty($data['releases'])): ?>
+            <div style="text-align: center; padding: 20px 0; color: var(--text-muted); font-size: 13px;">
+                No milestone timeline available.
+            </div>
+        <?php else: ?>
+            <ul class="timeline">
+                <?php foreach($data['releases'] as $r): ?>
+                    <?php 
+                        $class = '';
+                        if ($r->is_latest == 1) $class .= ' is-latest';
+                        if ($r->force_update == 1) $class .= ' is-forced';
+                    ?>
+                    <li class="timeline-item<?= $class ?>">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <span class="timeline-version">v<?= htmlspecialchars($r->version) ?></span>
+                                <span class="timeline-date"><?= date('M d, Y', strtotime($r->created_at)) ?></span>
+                            </div>
+                            <div class="timeline-notes"><?= htmlspecialchars($r->release_notes ?: 'Initial system release/upload.') ?></div>
+                        </div>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+    </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const uploadForm = document.getElementById("uploadReleaseForm");
+    
+    if (uploadForm) {
+        uploadForm.addEventListener("submit", function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById("apk");
+            const versionInput = document.getElementById("version");
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert("Please select an APK file to upload.");
+                return;
+            }
+
+            const version = versionInput.value;
+            console.log("--- APK Upload Initiated ---");
+            console.log("Version: " + version);
+            console.log("File Name: " + fileInput.files[0].name);
+            console.log("File Size: " + (fileInput.files[0].size / (1024 * 1024)).toFixed(2) + " MB");
+
+            const formData = new FormData(uploadForm);
+            const xhr = new XMLHttpRequest();
+            
+            const progressContainer = document.getElementById("uploadProgressContainer");
+            const progressBar = document.getElementById("uploadProgressBar");
+            const percentText = document.getElementById("uploadPercent");
+            const submitBtn = document.getElementById("btnUploadSubmit");
+            const errorAlert = document.getElementById("ajaxErrorAlert");
+            const errorMsgSpan = document.getElementById("ajaxErrorMsg");
+
+            // Hide standard status banners if visible
+            const syncSuccessAlert = document.getElementById("syncSuccessAlert");
+            const syncErrorAlert = document.getElementById("syncErrorAlert");
+            if (syncSuccessAlert) syncSuccessAlert.style.display = 'none';
+            if (syncErrorAlert) syncErrorAlert.style.display = 'none';
+            errorAlert.style.display = 'none';
+
+            // Show progress elements and disable submit button
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            percentText.innerText = '0%';
+            submitBtn.disabled = true;
+
+            // Track upload progress in real-time
+            xhr.upload.addEventListener("progress", function(e) {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    progressBar.style.width = percent + '%';
+                    percentText.innerText = percent + '%';
+                    console.log("Upload progress: " + percent + "% (" + (e.loaded / (1024*1024)).toFixed(2) + " / " + (e.total / (1024*1024)).toFixed(2) + " MB)");
+                }
+            });
+
+            // Handle server completion response
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    submitBtn.disabled = false;
+                    progressContainer.style.display = 'none';
+                    
+                    console.log("Server response code: " + xhr.status);
+                    console.log("Server response body: " + xhr.responseText);
+
+                    if (xhr.status === 200) {
+                        try {
+                            const res = JSON.parse(xhr.responseText);
+                            if (res.success) {
+                                console.log("Upload completed successfully!");
+                                alert(res.message || "Upload completed successfully!");
+                                window.location.reload();
+                            } else {
+                                console.error("Upload failed: " + res.error);
+                                errorMsgSpan.innerText = res.error || "Upload failed.";
+                                errorAlert.style.display = 'flex';
+                                errorAlert.scrollIntoView({ behavior: 'smooth' });
+                            }
+                        } catch (err) {
+                            console.error("Failed to parse JSON response. Falling back to page reload.");
+                            window.location.reload();
+                        }
+                    } else {
+                        console.error("HTTP upload error status: " + xhr.status);
+                        errorMsgSpan.innerText = "Upload failed with status code " + xhr.status + ". Please check PHP post_max_size/upload_max_filesize parameters.";
+                        errorAlert.style.display = 'flex';
+                        errorAlert.scrollIntoView({ behavior: 'smooth' });
+                    }
+                }
+            };
+
+            xhr.open("POST", uploadForm.action, true);
+            xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+            xhr.send(formData);
+        });
+    }
+});
+</script>

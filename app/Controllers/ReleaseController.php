@@ -56,7 +56,37 @@ class ReleaseController extends Controller {
     }
 
     public function upload() {
+        $isAjax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
+        error_log("--- APK Upload Trace Start ---");
+        error_log("Request Method: " . $_SERVER['REQUEST_METHOD']);
+        error_log("POST fields: " . json_encode($_POST));
+        error_log("FILES metadata: " . json_encode($_FILES));
+
+        $maxUpload = ini_get('upload_max_filesize');
+        $maxPost = ini_get('post_max_size');
+
+        // Check if content length exceeded post_max_size
+        if (empty($_POST) && empty($_FILES) && isset($_SERVER['CONTENT_LENGTH']) && $_SERVER['CONTENT_LENGTH'] > 0) {
+            $err = "Upload failed: The file size exceeds the server's post_max_size limit ({$maxPost}). Please update your php.ini.";
+            error_log($err);
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => $err]);
+                exit;
+            } else {
+                $_SESSION['release_error'] = $err;
+                header('Location: ' . APP_URL . '/release');
+                exit;
+            }
+        }
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Invalid request method.']);
+                exit;
+            }
             header('Location: ' . APP_URL . '/release');
             exit;
         }
@@ -68,9 +98,17 @@ class ReleaseController extends Controller {
 
         // 1. Validate version format (Semantic Versioning: X.Y.Z)
         if (!preg_match('/^\d+\.\d+\.\d+$/', $version)) {
-            $_SESSION['release_error'] = "Invalid version format. Must follow MAJOR.MINOR.PATCH format (e.g. 1.0.1).";
-            header('Location: ' . APP_URL . '/release');
-            exit;
+            $err = "Invalid version format. Must follow MAJOR.MINOR.PATCH format (e.g. 1.0.1).";
+            error_log($err);
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => $err]);
+                exit;
+            } else {
+                $_SESSION['release_error'] = $err;
+                header('Location: ' . APP_URL . '/release');
+                exit;
+            }
         }
 
         $parts = explode('.', $version);
@@ -80,9 +118,28 @@ class ReleaseController extends Controller {
 
         // 2. Validate file upload
         if (!isset($_FILES['apk']) || $_FILES['apk']['error'] !== UPLOAD_ERR_OK) {
-            $_SESSION['release_error'] = "Please select a valid APK file to upload.";
-            header('Location: ' . APP_URL . '/release');
-            exit;
+            $errorCode = $_FILES['apk']['error'] ?? UPLOAD_ERR_NO_FILE;
+            $errMapping = [
+                UPLOAD_ERR_INI_SIZE => "The uploaded file exceeds the upload_max_filesize directive in php.ini (Limit: {$maxUpload}).",
+                UPLOAD_ERR_FORM_SIZE => "The uploaded file exceeds the MAX_FILE_SIZE directive specified in the HTML form.",
+                UPLOAD_ERR_PARTIAL => "The uploaded file was only partially uploaded.",
+                UPLOAD_ERR_NO_FILE => "No file was uploaded.",
+                UPLOAD_ERR_NO_TMP_DIR => "Missing a temporary folder for uploads.",
+                UPLOAD_ERR_CANT_WRITE => "Failed to write file to disk.",
+                UPLOAD_ERR_EXTENSION => "A PHP extension stopped the file upload."
+            ];
+            $err = $errMapping[$errorCode] ?? "Unknown upload error code: {$errorCode}";
+            error_log("APK file upload error: " . $err);
+
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => $err]);
+                exit;
+            } else {
+                $_SESSION['release_error'] = $err;
+                header('Location: ' . APP_URL . '/release');
+                exit;
+            }
         }
 
         $fileTmpPath = $_FILES['apk']['tmp_name'];
@@ -90,9 +147,17 @@ class ReleaseController extends Controller {
         $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
         if ($fileExtension !== 'apk') {
-            $_SESSION['release_error'] = "Invalid file type. Only .apk files are allowed.";
-            header('Location: ' . APP_URL . '/release');
-            exit;
+            $err = "Invalid file type. Only .apk files are allowed.";
+            error_log($err);
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => $err]);
+                exit;
+            } else {
+                $_SESSION['release_error'] = $err;
+                header('Location: ' . APP_URL . '/release');
+                exit;
+            }
         }
 
         // Create releases folder if not exists
@@ -121,27 +186,63 @@ class ReleaseController extends Controller {
             try {
                 $id = $this->releaseModel->addRelease($releaseData);
                 if ($id) {
-                    $_SESSION['release_success'] = "New release v{$version} uploaded and registered successfully.";
+                    $msg = "New release v{$version} uploaded and registered successfully.";
+                    error_log($msg);
                     
                     if ($isLatest) {
                         // Copy to latest.apk
                         $latestPath = $uploadDir . '/latest.apk';
                         copy($destPath, $latestPath);
                     }
+
+                    if ($isAjax) {
+                        header('Content-Type: application/json');
+                        echo json_encode(['success' => true, 'message' => $msg]);
+                        exit;
+                    } else {
+                        $_SESSION['release_success'] = $msg;
+                    }
                 } else {
-                    $_SESSION['release_error'] = "Failed to save release to database. Version might already exist.";
+                    $err = "Failed to save release to database. Version might already exist.";
+                    error_log($err);
                     unlink($destPath); // Remove the file
+                    
+                    if ($isAjax) {
+                        header('Content-Type: application/json');
+                        echo json_encode(['success' => false, 'error' => $err]);
+                        exit;
+                    } else {
+                        $_SESSION['release_error'] = $err;
+                    }
                 }
             } catch (Exception $e) {
-                $_SESSION['release_error'] = "Error registering release: " . $e->getMessage();
+                $err = "Error registering release: " . $e->getMessage();
+                error_log($err);
                 if (file_exists($destPath)) {
                     unlink($destPath);
                 }
+
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'error' => $err]);
+                    exit;
+                } else {
+                    $_SESSION['release_error'] = $err;
+                }
             }
         } else {
-            $_SESSION['release_error'] = "Failed to upload APK file. Check directory permissions.";
+            $err = "Failed to upload APK file. Check directory permissions on standard public/releases folder.";
+            error_log($err);
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => $err]);
+                exit;
+            } else {
+                $_SESSION['release_error'] = $err;
+            }
         }
 
+        error_log("--- APK Upload Trace End ---");
         header('Location: ' . APP_URL . '/release');
         exit;
     }
