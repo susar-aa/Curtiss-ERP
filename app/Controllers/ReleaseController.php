@@ -337,11 +337,24 @@ class ReleaseController extends Controller {
                 }
             }
 
+            // Calculate MD5 of latest APK
+            $apkMd5 = '';
+            $latestApkPath = '../public/releases/latest.apk';
+            if (file_exists($latestApkPath)) {
+                $apkMd5 = md5_file($latestApkPath);
+            } else {
+                $versionedApkPath = '../' . $latest->apk_path;
+                if (file_exists($versionedApkPath)) {
+                    $apkMd5 = md5_file($versionedApkPath);
+                }
+            }
+
             echo json_encode([
                 'latestVersion' => $latest->version,
                 'apkUrl' => APP_URL . '/releases/latest.apk?v=' . $latest->version . '&t=' . time(),
                 'forceUpdate' => (bool)$latest->force_update,
-                'releaseNotes' => $notes
+                'releaseNotes' => $notes,
+                'apkMd5' => $apkMd5
             ]);
         } else {
             // Suggest default if no releases uploaded yet
@@ -349,7 +362,8 @@ class ReleaseController extends Controller {
                 'latestVersion' => '1.0.0',
                 'apkUrl' => APP_URL . '/releases/latest.apk',
                 'forceUpdate' => false,
-                'releaseNotes' => ['Initial release']
+                'releaseNotes' => ['Initial release'],
+                'apkMd5' => ''
             ]);
         }
         exit;
