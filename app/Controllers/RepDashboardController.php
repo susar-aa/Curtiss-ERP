@@ -120,7 +120,9 @@ class RepDashboardController extends Controller {
                     'image_path' => $item->image_path ?? '',
                     'sku' => $item->item_code ?? $item->sku ?? '',
                     'sample_code' => $item->sample_code ?? '',
-                    'variations_json' => $item->variations_json ?? ''
+                    'variations_json' => $item->variations_json ?? '',
+                    'brand' => $item->brand ?? '',
+                    'description' => $item->description ?? ''
                 ];
             }
             

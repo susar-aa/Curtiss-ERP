@@ -152,11 +152,6 @@ $totalOutstanding = $billed - $paid - $credited;
 <body>
     <div class="a4-container">
         <div class="controls">
-            <!-- Checking if viewed inside ERP vs viewed by public guest -->
-            <?php if(isset($_SESSION['user_id'])): ?>
-                <a href="<?= APP_URL ?>/sales" class="btn" style="background:#fff; color:#0066cc;">&larr; Back to ERP</a>
-                <a href="<?= APP_URL ?>/sales/edit/<?= $data['invoice']->id ?>" class="btn" style="background:#f0ad4e; color:#fff; border: none;">✏️ Edit Invoice</a>
-            <?php endif; ?>
             <button onclick="window.print()" class="btn">Print / PDF (A4)</button>
         </div>
 
