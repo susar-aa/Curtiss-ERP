@@ -348,4 +348,121 @@ class ReleaseController extends Controller {
         }
         exit;
     }
+
+    // Chunked Upload Handlers to bypass server-side file upload limits (e.g. 2MB)
+    public function upload_chunk() {
+        header('Content-Type: application/json');
+        
+        $version = trim($_POST['version'] ?? '');
+        $chunkIndex = intval($_POST['chunk_index'] ?? 0);
+        
+        if (!preg_match('/^\d+\.\d+\.\d+$/', $version)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid version format.']);
+            exit;
+        }
+
+        if (!isset($_FILES['chunk']) || $_FILES['chunk']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'error' => 'Chunk file upload error or exceeded server limits.']);
+            exit;
+        }
+
+        $uploadDir = '../public/releases/temp';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $tempChunkPath = $uploadDir . "/temp_{$version}_{$chunkIndex}";
+        if (move_uploaded_file($_FILES['chunk']['tmp_name'], $tempChunkPath)) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Failed to save temporary chunk on server.']);
+        }
+        exit;
+    }
+
+    public function assemble_chunks() {
+        header('Content-Type: application/json');
+        
+        $version = trim($_POST['version'] ?? '');
+        $releaseNotes = trim($_POST['release_notes'] ?? '');
+        $forceUpdate = isset($_POST['force_update']) ? 1 : 0;
+        $isLatest = isset($_POST['is_latest']) ? 1 : 0;
+        $totalChunks = intval($_POST['total_chunks'] ?? 0);
+
+        if (!preg_match('/^\d+\.\d+\.\d+$/', $version)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid version format.']);
+            exit;
+        }
+
+        $parts = explode('.', $version);
+        $major = intval($parts[0]);
+        $minor = intval($parts[1]);
+        $patch = intval($parts[2]);
+
+        $uploadDir = '../public/releases';
+        $tempDir = $uploadDir . '/temp';
+        $finalFileName = 'app-v' . $version . '.apk';
+        $finalPath = $uploadDir . '/' . $finalFileName;
+
+        // Open final file for writing in binary append mode
+        $finalFile = fopen($finalPath, 'wb');
+        if (!$finalFile) {
+            echo json_encode(['success' => false, 'error' => 'Failed to write final assembled file on server. Check folder permissions.']);
+            exit;
+        }
+
+        // Stitch chunk files together in order
+        for ($i = 0; $i < $totalChunks; $i++) {
+            $chunkPath = $tempDir . "/temp_{$version}_{$i}";
+            if (!file_exists($chunkPath)) {
+                fclose($finalFile);
+                if (file_exists($finalPath)) {
+                    unlink($finalPath);
+                }
+                echo json_encode(['success' => false, 'error' => "Missing temporary chunk index {$i} on server."]);
+                exit;
+            }
+
+            $chunkData = file_get_contents($chunkPath);
+            fwrite($finalFile, $chunkData);
+            unlink($chunkPath); // clean up chunk file immediately
+        }
+
+        fclose($finalFile);
+
+        // Save metadata to database
+        $apkRelativePath = 'public/releases/' . $finalFileName;
+        $releaseData = [
+            'version' => $version,
+            'major' => $major,
+            'minor' => $minor,
+            'patch' => $patch,
+            'release_notes' => $releaseNotes,
+            'apk_path' => $apkRelativePath,
+            'force_update' => $forceUpdate,
+            'is_latest' => $isLatest
+        ];
+
+        try {
+            $id = $this->releaseModel->addRelease($releaseData);
+            if ($id) {
+                if ($isLatest) {
+                    $latestPath = $uploadDir . '/latest.apk';
+                    copy($finalPath, $latestPath);
+                }
+                echo json_encode(['success' => true, 'message' => "New release v{$version} uploaded and assembled successfully."]);
+            } else {
+                if (file_exists($finalPath)) {
+                    unlink($finalPath);
+                }
+                echo json_encode(['success' => false, 'error' => 'Failed to register release in database. Version may already exist.']);
+            }
+        } catch (Exception $e) {
+            if (file_exists($finalPath)) {
+                unlink($finalPath);
+            }
+            echo json_encode(['success' => false, 'error' => 'Database registration error: ' . $e->getMessage()]);
+        }
+        exit;
+    }
 }

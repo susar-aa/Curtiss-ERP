@@ -581,21 +581,26 @@ document.addEventListener("DOMContentLoaded", function() {
             
             const fileInput = document.getElementById("apk");
             const versionInput = document.getElementById("version");
+            const releaseNotesInput = document.getElementById("release_notes");
+            const forceUpdateInput = uploadForm.querySelector('input[name="force_update"]');
+            const isLatestInput = uploadForm.querySelector('input[name="is_latest"]');
             
             if (!fileInput.files || fileInput.files.length === 0) {
                 alert("Please select an APK file to upload.");
                 return;
             }
 
+            const file = fileInput.files[0];
             const version = versionInput.value;
-            console.log("--- APK Upload Initiated ---");
-            console.log("Version: " + version);
-            console.log("File Name: " + fileInput.files[0].name);
-            console.log("File Size: " + (fileInput.files[0].size / (1024 * 1024)).toFixed(2) + " MB");
+            const releaseNotes = releaseNotesInput.value;
+            const forceUpdate = forceUpdateInput.checked ? "1" : "0";
+            const isLatest = isLatestInput.checked ? "1" : "0";
 
-            const formData = new FormData(uploadForm);
-            const xhr = new XMLHttpRequest();
-            
+            console.log("--- Chunked APK Upload Initiated ---");
+            console.log("Version: " + version);
+            console.log("File Name: " + file.name);
+            console.log("File Size: " + (file.size / (1024 * 1024)).toFixed(2) + " MB");
+
             const progressContainer = document.getElementById("uploadProgressContainer");
             const progressBar = document.getElementById("uploadProgressBar");
             const percentText = document.getElementById("uploadPercent");
@@ -616,54 +621,123 @@ document.addEventListener("DOMContentLoaded", function() {
             percentText.innerText = '0%';
             submitBtn.disabled = true;
 
-            // Track upload progress in real-time
-            xhr.upload.addEventListener("progress", function(e) {
-                if (e.lengthComputable) {
-                    const percent = Math.round((e.loaded / e.total) * 100);
-                    progressBar.style.width = percent + '%';
-                    percentText.innerText = percent + '%';
-                    console.log("Upload progress: " + percent + "% (" + (e.loaded / (1024*1024)).toFixed(2) + " / " + (e.total / (1024*1024)).toFixed(2) + " MB)");
-                }
-            });
+            const CHUNK_SIZE = 1024 * 1024; // 1MB chunk size (well below the 2MB server limit)
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            let chunkIndex = 0;
 
-            // Handle server completion response
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === XMLHttpRequest.DONE) {
-                    submitBtn.disabled = false;
-                    progressContainer.style.display = 'none';
-                    
-                    console.log("Server response code: " + xhr.status);
-                    console.log("Server response body: " + xhr.responseText);
+            console.log("Total chunks to upload: " + totalChunks);
 
-                    if (xhr.status === 200) {
-                        try {
-                            const res = JSON.parse(xhr.responseText);
-                            if (res.success) {
-                                console.log("Upload completed successfully!");
-                                alert(res.message || "Upload completed successfully!");
-                                window.location.reload();
-                            } else {
-                                console.error("Upload failed: " + res.error);
-                                errorMsgSpan.innerText = res.error || "Upload failed.";
-                                errorAlert.style.display = 'flex';
-                                errorAlert.scrollIntoView({ behavior: 'smooth' });
-                            }
-                        } catch (err) {
-                            console.error("Failed to parse JSON response. Falling back to page reload.");
-                            window.location.reload();
-                        }
-                    } else {
-                        console.error("HTTP upload error status: " + xhr.status);
-                        errorMsgSpan.innerText = "Upload failed with status code " + xhr.status + ". Please check PHP post_max_size/upload_max_filesize parameters.";
-                        errorAlert.style.display = 'flex';
-                        errorAlert.scrollIntoView({ behavior: 'smooth' });
+            function uploadNextChunk() {
+                const start = chunkIndex * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, file.size);
+                const chunk = file.slice(start, end);
+
+                const chunkData = new FormData();
+                chunkData.append("version", version);
+                chunkData.append("chunk_index", chunkIndex);
+                chunkData.append("chunk", chunk);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open("POST", "<?= APP_URL ?>/release/upload_chunk", true);
+                xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+
+                xhr.upload.addEventListener("progress", function(evt) {
+                    if (evt.lengthComputable) {
+                        // Calculate total overall percentage
+                        const overallLoaded = (chunkIndex * CHUNK_SIZE) + evt.loaded;
+                        const overallPercent = Math.round((overallLoaded / file.size) * 100);
+                        progressBar.style.width = overallPercent + '%';
+                        percentText.innerText = overallPercent + '%';
+                        console.log("Upload progress: " + overallPercent + "% (" + (overallLoaded / (1024*1024)).toFixed(2) + " / " + (file.size / (1024*1024)).toFixed(2) + " MB)");
                     }
-                }
-            };
+                });
 
-            xhr.open("POST", uploadForm.action, true);
-            xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
-            xhr.send(formData);
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === XMLHttpRequest.DONE) {
+                        if (xhr.status === 200) {
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                if (response.success) {
+                                    console.log("Successfully uploaded chunk " + (chunkIndex + 1) + "/" + totalChunks);
+                                    chunkIndex++;
+                                    if (chunkIndex < totalChunks) {
+                                        uploadNextChunk();
+                                    } else {
+                                        // Trigger assembly
+                                        assembleUploadedChunks();
+                                    }
+                                } else {
+                                    showError("Chunk upload error: " + response.error);
+                                }
+                            } catch (e) {
+                                showError("Failed to parse server chunk response: " + xhr.responseText);
+                            }
+                        } else {
+                            showError("Chunk upload request failed with status: " + xhr.status);
+                        }
+                    }
+                };
+
+                xhr.send(chunkData);
+            }
+
+            function assembleUploadedChunks() {
+                console.log("All chunks uploaded. Assembling file on server...");
+                percentText.innerText = "Assembling...";
+                progressBar.style.width = '100%';
+
+                const assembleData = new FormData();
+                assembleData.append("version", version);
+                assembleData.append("release_notes", releaseNotes);
+                assembleData.append("force_update", forceUpdate);
+                assembleData.append("is_latest", isLatest);
+                assembleData.append("total_chunks", totalChunks);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open("POST", "<?= APP_URL ?>/release/assemble_chunks", true);
+                xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === XMLHttpRequest.DONE) {
+                        submitBtn.disabled = false;
+                        progressContainer.style.display = 'none';
+
+                        console.log("Assemble response code: " + xhr.status);
+                        console.log("Assemble response body: " + xhr.responseText);
+
+                        if (xhr.status === 200) {
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                if (response.success) {
+                                    console.log("Assembled successfully!");
+                                    alert(response.message || "Upload and assembly completed successfully!");
+                                    window.location.reload();
+                                } else {
+                                    showError("Assembly failed: " + response.error);
+                                }
+                            } catch (e) {
+                                showError("Failed to parse assembly response: " + xhr.responseText);
+                            }
+                        } else {
+                            showError("Assemble request failed with status: " + xhr.status);
+                        }
+                    }
+                };
+
+                xhr.send(assembleData);
+            }
+
+            function showError(msg) {
+                console.error(msg);
+                submitBtn.disabled = false;
+                progressContainer.style.display = 'none';
+                errorMsgSpan.innerText = msg;
+                errorAlert.style.display = 'flex';
+                errorAlert.scrollIntoView({ behavior: 'smooth' });
+            }
+
+            // Start uploading the first chunk
+            uploadNextChunk();
         });
     }
 });
