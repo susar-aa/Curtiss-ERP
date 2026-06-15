@@ -79,28 +79,22 @@ class Invoice {
     }
 
     public function getInvoiceById($id) {
-        $whereClause = is_numeric($id) ? "i.id = :id" : "i.invoice_number = :id";
         $this->db->query("SELECT i.*, c.name as customer_name, c.email, c.phone, c.address, c.whatsapp,
                                  t.tax_name, t.rate_percentage 
                           FROM invoices i 
                           JOIN customers c ON i.customer_id = c.id 
                           LEFT JOIN tax_rates t ON i.tax_rate_id = t.id
-                          WHERE " . $whereClause);
+                          WHERE i.id = :id OR i.invoice_number = :id");
         $this->db->bind(':id', $id);
         return $this->db->single();
     }
 
     public function getInvoiceItems($id) {
-        if (is_numeric($id)) {
-            $this->db->query("SELECT * FROM invoice_items WHERE invoice_id = :id");
-            $this->db->bind(':id', $id);
-        } else {
-            $this->db->query("SELECT ii.* FROM invoice_items ii 
-                              JOIN invoices i ON ii.invoice_id = i.id 
-                              WHERE i.invoice_number = :id");
-            $this->db->bind(':id', $id);
-        }
-        return $this->db->resultSet();
+        $this->db->query("SELECT ii.* FROM invoice_items ii 
+                          JOIN invoices i ON ii.invoice_id = i.id 
+                          WHERE i.id = :id OR i.invoice_number = :id");
+        $this->db->bind(':id', $id);
+        return $this->db->resultSet() ?: [];
     }
 
     public function createInvoiceWithAccounting($invoiceData, $items, $arAccountId, $revenueAccountId, $userId, $taxData = null) {
