@@ -339,7 +339,7 @@ class ReleaseController extends Controller {
 
             echo json_encode([
                 'latestVersion' => $latest->version,
-                'apkUrl' => APP_URL . '/releases/latest.apk',
+                'apkUrl' => APP_URL . '/releases/latest.apk?v=' . $latest->version . '&t=' . time(),
                 'forceUpdate' => (bool)$latest->force_update,
                 'releaseNotes' => $notes
             ]);
