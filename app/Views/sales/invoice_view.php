@@ -78,6 +78,67 @@ $totalOutstanding = $billed - $paid - $credited;
         
         .footer-notes { position: absolute; bottom: 15mm; left: 20mm; right: 20mm; border-top: 1px solid #ccc; padding-top: 10mm; font-size: 11px; color: #666; text-align: center; }
 
+        /* Mobile Responsive Media Query */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+                background-color: #f8fafc;
+                display: block;
+            }
+            .a4-container {
+                width: 100%;
+                min-height: auto;
+                padding: 20px 15px;
+                box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            }
+            .controls {
+                position: static;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                margin-bottom: 20px;
+            }
+            .btn {
+                margin: 0;
+                width: 100%;
+                box-sizing: border-box;
+                text-align: center;
+                padding: 12px;
+            }
+            .header-area {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            .header-area > div {
+                text-align: left !important;
+                width: 100%;
+            }
+            .billing-grid {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .billing-grid > div {
+                text-align: left !important;
+                width: 100%;
+            }
+            table.items th, table.items td {
+                padding: 8px 4px;
+                font-size: 11px;
+            }
+            .totals-section {
+                justify-content: stretch;
+            }
+            .totals-box {
+                width: 100%;
+            }
+            .footer-notes {
+                position: static;
+                margin-top: 30px;
+                padding-top: 15px;
+            }
+        }
+
         /* Print Media Query */
         @media print { 
             @page { size: A4; margin: 0; }

@@ -6,7 +6,17 @@ class SalesController extends Controller {
     private $db;
 
     public function __construct() {
-        if (!isset($_SESSION['user_id'])) {
+        $isPublicInvoice = false;
+        $url = explode('/', filter_var(rtrim($_GET['url'] ?? '', '/'), FILTER_SANITIZE_URL));
+        if (isset($url[0]) && strtolower($url[0]) === 'sales' && isset($url[1]) && strtolower($url[1]) === 'show' && isset($url[2])) {
+            $invoiceId = $url[2];
+            $providedToken = $_GET['token'] ?? '';
+            if ($providedToken === md5($invoiceId . 'secure_salt_curtiss')) {
+                $isPublicInvoice = true;
+            }
+        }
+
+        if (!isset($_SESSION['user_id']) && !$isPublicInvoice) {
             header('Location: ' . APP_URL . '/auth/login');
             exit;
         }

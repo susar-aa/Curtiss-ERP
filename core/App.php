@@ -17,8 +17,19 @@ class App {
         // Check if this is an API sync request
         $isApiSync = $isMobileApi || isset($_GET['api_sync']) || (isset($url[1]) && (strpos($url[1], 'api_') === 0 || strpos($url[1], 'sync_') === 0));
 
-        // Check if user is logged in. If not, force routing to AuthController (unless it is auth controller or an API sync request)
-        if (!isset($_SESSION['user_id']) && !$isApiSync && (isset($url[0]) ? strtolower($url[0]) !== 'auth' : true)) {
+        // Allow public access to sales/show if token matches
+        $isPublicInvoice = false;
+        if (isset($url[0]) && strtolower($url[0]) === 'sales' && isset($url[1]) && strtolower($url[1]) === 'show' && isset($url[2])) {
+            $invoiceId = $url[2];
+            $providedToken = $_GET['token'] ?? '';
+            $expectedToken = md5($invoiceId . 'secure_salt_curtiss');
+            if ($providedToken === $expectedToken) {
+                $isPublicInvoice = true;
+            }
+        }
+
+        // Check if user is logged in. If not, force routing to AuthController (unless it is auth controller, an API sync request, or a public invoice view)
+        if (!isset($_SESSION['user_id']) && !$isApiSync && !$isPublicInvoice && (isset($url[0]) ? strtolower($url[0]) !== 'auth' : true)) {
             $this->controller = 'AuthController';
             $this->method = 'login';
         } else {
