@@ -128,11 +128,7 @@ class RepDashboardController extends Controller {
             }
             
             // 2. Get categories
-            $deltaCat = $getDeltaFilter('item_categories', $lastSync);
-            $this->db->query("SELECT id, name FROM item_categories $deltaCat ORDER BY name ASC");
-            if (!empty($deltaCat)) {
-                $this->db->bind(':last_sync', $lastSync);
-            }
+            $this->db->query("SELECT id, name FROM item_categories ORDER BY name ASC");
             $cats = $this->db->resultSet() ?: [];
             $categoriesJson = [];
             foreach ($cats as $cat) {
@@ -183,12 +179,8 @@ class RepDashboardController extends Controller {
                 ];
             }
             
-            // 4. Get server routes (territories)
-            $deltaRoutes = $getDeltaFilter('mca_areas', $lastSync);
-            $this->db->query("SELECT id, name, main_area_id FROM mca_areas $deltaRoutes ORDER BY name ASC");
-            if (!empty($deltaRoutes)) {
-                $this->db->bind(':last_sync', $lastSync);
-            }
+            // 4. Get server routes (territories) - ALWAYS FULL LIST
+            $this->db->query("SELECT id, name, main_area_id FROM mca_areas ORDER BY name ASC");
             $routes = $this->db->resultSet() ?: [];
             $routesJson = [];
             foreach ($routes as $r) {
@@ -199,15 +191,11 @@ class RepDashboardController extends Controller {
                 ];
             }
             
-            // 5. Get representatives
-            $deltaReps = $getDeltaFilter('users', $lastSync, true, 'u');
+            // 5. Get representatives - ALWAYS FULL LIST
             $this->db->query("SELECT u.id, u.username, u.password_hash, u.employee_id, e.first_name, e.last_name 
                         FROM users u 
                         LEFT JOIN employees e ON u.employee_id = e.id 
-                        WHERE u.role = 'rep' $deltaReps");
-            if (!empty($deltaReps)) {
-                $this->db->bind(':last_sync', $lastSync);
-            }
+                        WHERE u.role = 'rep'");
             $reps = $this->db->resultSet() ?: [];
             $repsJson = [];
             foreach ($reps as $rep) {
@@ -221,12 +209,8 @@ class RepDashboardController extends Controller {
                 ];
             }
             
-            // 6. Get payment terms
-            $deltaTerms = $getDeltaFilter('payment_terms', $lastSync);
-            $this->db->query("SELECT id, name, days_due FROM payment_terms $deltaTerms ORDER BY days_due ASC");
-            if (!empty($deltaTerms)) {
-                $this->db->bind(':last_sync', $lastSync);
-            }
+            // 6. Get payment terms - ALWAYS FULL LIST
+            $this->db->query("SELECT id, name, days_due FROM payment_terms ORDER BY days_due ASC");
             $terms = $this->db->resultSet() ?: [];
             $termsJson = [];
             foreach ($terms as $t) {
@@ -237,18 +221,14 @@ class RepDashboardController extends Controller {
                 ];
             }
             
-            // 7. Get outstanding credit invoices for the customers
-            $deltaInvs = $getDeltaFilter('invoices', $lastSync, true, 'i');
+            // 7. Get outstanding credit invoices for the customers - ALWAYS FULL LIST
             $this->db->query("SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date, 
                                (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
                                c.name as customer_name, c.address as customer_address
                         FROM invoices i
                         JOIN customers c ON i.customer_id = c.id
-                        WHERE (i.status = 'Unpaid' OR i.status = 'Partially Paid') $deltaInvs
+                        WHERE (i.status = 'Unpaid' OR i.status = 'Partially Paid')
                         ORDER BY i.invoice_date ASC");
-            if (!empty($deltaInvs)) {
-                $this->db->bind(':last_sync', $lastSync);
-            }
             $creditInvs = $this->db->resultSet() ?: [];
             $creditInvsJson = [];
             foreach ($creditInvs as $ci) {
