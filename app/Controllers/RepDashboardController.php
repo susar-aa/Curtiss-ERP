@@ -84,7 +84,7 @@ class RepDashboardController extends Controller {
                 }
             };
 
-            $getDeltaFilter = function($table, $lastSync, $hasWhere = false) use ($columnExists) {
+            $getDeltaFilter = function($table, $lastSync, $hasWhere = false, $alias = null) use ($columnExists) {
                 if (empty($lastSync)) {
                     return '';
                 }
@@ -95,7 +95,8 @@ class RepDashboardController extends Controller {
                     $col = 'created_at';
                 }
                 if ($col) {
-                    return ($hasWhere ? " AND " : " WHERE ") . "`$table`.`$col` > :last_sync";
+                    $target = $alias ? $alias : $table;
+                    return ($hasWhere ? " AND " : " WHERE ") . "`$target`.`$col` > :last_sync";
                 }
                 return '';
             };
@@ -139,7 +140,7 @@ class RepDashboardController extends Controller {
             }
             
             // 3. Get customers
-            $deltaCust = $getDeltaFilter('customers', $lastSync, true);
+            $deltaCust = $getDeltaFilter('customers', $lastSync, true, 'c');
             $this->db->query("
                 SELECT c.id, c.name, c.phone, c.whatsapp, c.address, c.territory, c.latitude, c.longitude, c.mca_id, m.name as mca_name,
                        ((SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = c.id AND status != 'Voided') 
@@ -191,7 +192,7 @@ class RepDashboardController extends Controller {
             }
             
             // 5. Get representatives
-            $deltaReps = $getDeltaFilter('users', $lastSync, true);
+            $deltaReps = $getDeltaFilter('users', $lastSync, true, 'u');
             $this->db->query("SELECT u.id, u.username, u.password_hash, u.employee_id, e.first_name, e.last_name 
                         FROM users u 
                         LEFT JOIN employees e ON u.employee_id = e.id 
@@ -229,7 +230,7 @@ class RepDashboardController extends Controller {
             }
             
             // 7. Get outstanding credit invoices for the customers
-            $deltaInvs = $getDeltaFilter('invoices', $lastSync, true);
+            $deltaInvs = $getDeltaFilter('invoices', $lastSync, true, 'i');
             $this->db->query("SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date, 
                                (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
                                c.name as customer_name, c.address as customer_address
