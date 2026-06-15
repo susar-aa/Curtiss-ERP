@@ -337,20 +337,28 @@ class ReleaseController extends Controller {
                 }
             }
 
-            // Calculate MD5 of latest APK
+            // Calculate MD5 of versioned APK first, fallback to latest.apk
             $apkMd5 = '';
-            $latestApkPath = '../public/releases/latest.apk';
-            if (file_exists($latestApkPath)) {
-                $apkMd5 = md5_file($latestApkPath);
+            $versionedApkPath = '../' . $latest->apk_path;
+            if (file_exists($versionedApkPath)) {
+                $apkMd5 = md5_file($versionedApkPath);
             } else {
-                $versionedApkPath = '../' . $latest->apk_path;
-                if (file_exists($versionedApkPath)) {
-                    $apkMd5 = md5_file($versionedApkPath);
+                $latestApkPath = '../public/releases/latest.apk';
+                if (file_exists($latestApkPath)) {
+                    $apkMd5 = md5_file($latestApkPath);
                 }
             }
 
+            $major = intval($latest->major);
+            $minor = intval($latest->minor);
+            $patch = intval($latest->patch);
+            $latestVersionCode = $major * 100 + $minor * 10 + $patch;
+            $latestVersionCodeNormalized = $major * 10000 + $minor * 100 + $patch;
+
             echo json_encode([
                 'latestVersion' => $latest->version,
+                'latestVersionCode' => $latestVersionCode,
+                'latestVersionCodeNormalized' => $latestVersionCodeNormalized,
                 'apkUrl' => APP_URL . '/releases/latest.apk?v=' . $latest->version . '&t=' . time(),
                 'forceUpdate' => (bool)$latest->force_update,
                 'releaseNotes' => $notes,
@@ -360,6 +368,8 @@ class ReleaseController extends Controller {
             // Suggest default if no releases uploaded yet
             echo json_encode([
                 'latestVersion' => '1.0.0',
+                'latestVersionCode' => 100,
+                'latestVersionCodeNormalized' => 10000,
                 'apkUrl' => APP_URL . '/releases/latest.apk',
                 'forceUpdate' => false,
                 'releaseNotes' => ['Initial release'],
