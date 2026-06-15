@@ -429,17 +429,24 @@ class RepDashboardController extends Controller {
             if (isset($payload['customers']) && is_array($payload['customers'])) {
                 foreach ($payload['customers'] as $c) {
                     $localId = intval($c['local_id']);
+                    $serverId = isset($c['server_id']) ? intval($c['server_id']) : 0;
                     
-                    // Check if customer with same name and phone already exists to prevent duplicate
-                    $this->db->query("SELECT id FROM customers WHERE name = :name AND phone = :phone LIMIT 1");
-                    $this->db->bind(':name', $c['name']);
-                    $this->db->bind(':phone', $c['phone'] ?? null);
-                    $existingCust = $this->db->single();
+                    if ($serverId > 0) {
+                        // This is an update to an existing customer
+                        $mcaId = null;
+                        $territory = $c['territory'] ?? null;
+                        $this->db->query("SELECT mca_id, territory FROM customers WHERE id = :id");
+                        $this->db->bind(':id', $serverId);
+                        $existingInfo = $this->db->single();
+                        if ($existingInfo) {
+                            $mcaId = $existingInfo->mca_id;
+                            if (!$territory) {
+                                $territory = $existingInfo->territory;
+                            }
+                        }
 
-                    if ($existingCust) {
-                        $serverId = $existingCust->id;
-                    } else {
-                        $this->customerModel->addCustomer([
+                        $this->customerModel->updateCustomer([
+                            'id' => $serverId,
                             'name' => $c['name'],
                             'email' => $c['email'] ?? null,
                             'phone' => $c['phone'] ?? null,
@@ -447,11 +454,59 @@ class RepDashboardController extends Controller {
                             'address' => $c['address'] ?? null,
                             'lat' => $c['latitude'] ?? null,
                             'lng' => $c['longitude'] ?? null,
-                            'mca_id' => null,
-                            'territory' => $c['territory'] ?? null
+                            'mca_id' => $mcaId,
+                            'territory' => $territory
                         ]);
-                        $serverId = $this->customerModel->getLastInsertId();
-                        $this->logActivity('Add Customer', 'Customer', "Registered new customer profile via mobile sync: {$c['name']}", $serverId);
+                        $this->logActivity('Update Customer', 'Customer', "Updated customer profile via mobile sync: {$c['name']}", $serverId);
+                    } else {
+                        // Check if customer with same name and phone already exists to prevent duplicate
+                        $this->db->query("SELECT id FROM customers WHERE name = :name AND phone = :phone LIMIT 1");
+                        $this->db->bind(':name', $c['name']);
+                        $this->db->bind(':phone', $c['phone'] ?? null);
+                        $existingCust = $this->db->single();
+
+                        if ($existingCust) {
+                            $serverId = $existingCust->id;
+                            $mcaId = null;
+                            $territory = $c['territory'] ?? null;
+                            $this->db->query("SELECT mca_id, territory FROM customers WHERE id = :id");
+                            $this->db->bind(':id', $serverId);
+                            $existingInfo = $this->db->single();
+                            if ($existingInfo) {
+                                $mcaId = $existingInfo->mca_id;
+                                if (!$territory) {
+                                    $territory = $existingInfo->territory;
+                                }
+                            }
+
+                            $this->customerModel->updateCustomer([
+                                'id' => $serverId,
+                                'name' => $c['name'],
+                                'email' => $c['email'] ?? null,
+                                'phone' => $c['phone'] ?? null,
+                                'whatsapp' => $c['whatsapp'] ?? null,
+                                'address' => $c['address'] ?? null,
+                                'lat' => $c['latitude'] ?? null,
+                                'lng' => $c['longitude'] ?? null,
+                                'mca_id' => $mcaId,
+                                'territory' => $territory
+                            ]);
+                            $this->logActivity('Update Customer', 'Customer', "Updated customer profile via mobile sync: {$c['name']}", $serverId);
+                        } else {
+                            $this->customerModel->addCustomer([
+                                'name' => $c['name'],
+                                'email' => $c['email'] ?? null,
+                                'phone' => $c['phone'] ?? null,
+                                'whatsapp' => $c['whatsapp'] ?? null,
+                                'address' => $c['address'] ?? null,
+                                'lat' => $c['latitude'] ?? null,
+                                'lng' => $c['longitude'] ?? null,
+                                'mca_id' => null,
+                                'territory' => $c['territory'] ?? null
+                            ]);
+                            $serverId = $this->customerModel->getLastInsertId();
+                            $this->logActivity('Add Customer', 'Customer', "Registered new customer profile via mobile sync: {$c['name']}", $serverId);
+                        }
                     }
                     
                     $mappings['customers'][] = [
