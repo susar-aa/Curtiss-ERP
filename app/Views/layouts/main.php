@@ -910,6 +910,13 @@ if (!function_exists('hasPermission')) {
                                     <div class="desc">Company config</div>
                                 </div>
                             </a>
+                            <a href="<?= APP_URL ?>/release" class="mega-card">
+                                <div class="icon"><i class="ph ph-upload-simple"></i></div>
+                                <div class="mega-card-text">
+                                    <div class="title">App Releases</div>
+                                    <div class="desc">APK updates</div>
+                                </div>
+                            </a>
                             <?php endif; ?>
                             <?php if (hasPermission('user')): ?>
                             <a href="<?= APP_URL ?>/user" class="mega-card">
