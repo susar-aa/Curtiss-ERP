@@ -67,136 +67,189 @@ class RepDashboardController extends Controller {
         header('Content-Type: application/json');
         try {
             $userId = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
-        if ($userId <= 0) {
-            echo json_encode(['success' => false, 'message' => 'Invalid user ID.']);
-            exit;
-        }
-        
-        // 1. Get products (items)
-        $items = $this->itemModel->getItems();
-        $productsJson = [];
-        foreach ($items as $item) {
-            $wholesalePrice = floatval($item->wholesale_price ?? 0);
-            if ($wholesalePrice <= 0) {
-                $wholesalePrice = floatval($item->selling_price ?? 0);
+            if ($userId <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid user ID.']);
+                exit;
             }
-            $productsJson[] = [
-                'id' => intval($item->id),
-                'name' => $item->name,
-                'category_name' => $item->category_name ?? 'General',
-                'selling_price' => $wholesalePrice,
-                'wholesale_price' => $wholesalePrice,
-                'quantity_on_hand' => intval($item->qty ?? $item->quantity_on_hand ?? 0),
-                'quantity_reserved' => intval($item->quantity_reserved),
-                'image_path' => $item->image_path ?? ''
-            ];
-        }
-        
-        // 2. Get categories
-        $this->db->query("SELECT id, name FROM item_categories ORDER BY name ASC");
-        $cats = $this->db->resultSet() ?: [];
-        $categoriesJson = [];
-        foreach ($cats as $cat) {
-            $categoriesJson[] = [
-                'id' => intval($cat->id),
-                'name' => $cat->name
-            ];
-        }
-        
-        // 3. Get customers
-        $this->db->query("
-            SELECT c.id, c.name, c.phone, c.whatsapp, c.address, c.territory, c.latitude, c.longitude, c.mca_id, m.name as mca_name,
-                   ((SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = c.id AND status != 'Voided') 
-                   - 
-                   (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE customer_id = c.id AND status = 'Active') 
-                   - 
-                   (SELECT COALESCE(SUM(total_amount), 0) FROM credit_notes WHERE customer_id = c.id)) 
-                   AS balance
-            FROM customers c 
-            LEFT JOIN mca_areas m ON c.mca_id = m.id
-            ORDER BY c.name ASC
-        ");
-        $customers = $this->db->resultSet() ?: [];
-        $customersJson = [];
-        foreach ($customers as $c) {
-            $customersJson[] = [
-                'id' => intval($c->id),
-                'name' => $c->name,
-                'phone' => $c->phone ?? '',
-                'whatsapp' => $c->whatsapp ?? '',
-                'address' => $c->address ?? '',
-                'territory' => $c->territory ?? '',
-                'latitude' => floatval($c->latitude ?? 0.0),
-                'longitude' => floatval($c->longitude ?? 0.0),
-                'outstanding' => floatval($c->balance ?? 0.0),
-                'mca_id' => intval($c->mca_id ?? 0),
-                'mca_name' => $c->mca_name ?? ''
-            ];
-        }
-        
-        // 4. Get server routes (territories)
-        $this->db->query("SELECT id, name, main_area_id FROM mca_areas ORDER BY name ASC");
-        $routes = $this->db->resultSet() ?: [];
-        $routesJson = [];
-        foreach ($routes as $r) {
-            $routesJson[] = [
-                'id' => intval($r->id),
-                'name' => $r->name,
-                'main_area_id' => intval($r->main_area_id ?? 0)
-            ];
-        }
-        
-        // 5. Get representatives
-        $this->db->query("SELECT u.id, u.username, u.password_hash, u.employee_id, e.first_name, e.last_name 
-                    FROM users u 
-                    LEFT JOIN employees e ON u.employee_id = e.id 
-                    WHERE u.role = 'rep'");
-        $reps = $this->db->resultSet() ?: [];
-        $repsJson = [];
-        foreach ($reps as $rep) {
-            $repsJson[] = [
-                'id' => intval($rep->id),
-                'username' => $rep->username,
-                'password_hash' => $rep->password_hash,
-                'employee_id' => intval($rep->employee_id),
-                'first_name' => $rep->first_name ?? $rep->username,
-                'last_name' => $rep->last_name ?? ''
-            ];
-        }
-        
-        // 6. Get payment terms
-        $this->db->query("SELECT id, name, days_due FROM payment_terms ORDER BY days_due ASC");
-        $terms = $this->db->resultSet() ?: [];
-        $termsJson = [];
-        foreach ($terms as $t) {
-            $termsJson[] = [
-                'id' => intval($t->id),
-                'name' => $t->name,
-                'days_due' => intval($t->days_due)
-            ];
-        }
-        
-        // 7. Get outstanding credit invoices for the customers
-        $this->db->query("SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date, 
-                           (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
-                           c.name as customer_name, c.address as customer_address
-                    FROM invoices i
-                    JOIN customers c ON i.customer_id = c.id
-                    WHERE i.status = 'Unpaid' OR i.status = 'Partially Paid'
-                    ORDER BY i.invoice_date ASC");
-        $creditInvs = $dbInvs = $this->db->resultSet() ?: [];
-        $creditInvsJson = [];
-        foreach ($creditInvs as $ci) {
-            $creditInvsJson[] = [
-                'id' => intval($ci->id),
-                'invoice_number' => $ci->invoice_number,
-                'customer_id' => intval($ci->customer_id),
-                'invoice_date' => $ci->invoice_date,
-                'true_grand_total' => floatval($ci->true_grand_total),
-                'customer_name' => $ci->customer_name,
-                'customer_address' => $ci->customer_address
-            ];
-        }
+
+            $lastSync = isset($_GET['last_sync_timestamp']) ? trim($_GET['last_sync_timestamp']) : '';
+
+            $columnExists = function($table, $column) {
+                try {
+                    $this->db->query("SHOW COLUMNS FROM `$table` LIKE :col");
+                    $this->db->bind(':col', $column);
+                    return $this->db->single() ? true : false;
+                } catch (Exception $e) {
+                    return false;
+                }
+            };
+
+            $getDeltaFilter = function($table, $lastSync, $hasWhere = false) use ($columnExists) {
+                if (empty($lastSync)) {
+                    return '';
+                }
+                $col = null;
+                if ($columnExists($table, 'updated_at')) {
+                    $col = 'updated_at';
+                } elseif ($columnExists($table, 'created_at')) {
+                    $col = 'created_at';
+                }
+                if ($col) {
+                    return ($hasWhere ? " AND " : " WHERE ") . "`$table`.`$col` > :last_sync";
+                }
+                return '';
+            };
+            
+            // 1. Get products (items)
+            $items = $this->itemModel->getItemsDelta($lastSync);
+            $productsJson = [];
+            foreach ($items as $item) {
+                $wholesalePrice = floatval($item->wholesale_price ?? 0);
+                if ($wholesalePrice <= 0) {
+                    $wholesalePrice = floatval($item->selling_price ?? 0);
+                }
+                $productsJson[] = [
+                    'id' => intval($item->id),
+                    'name' => $item->name,
+                    'category_name' => $item->category_name ?? 'General',
+                    'selling_price' => $wholesalePrice,
+                    'wholesale_price' => $wholesalePrice,
+                    'quantity_on_hand' => intval($item->qty ?? $item->quantity_on_hand ?? 0),
+                    'quantity_reserved' => intval($item->quantity_reserved),
+                    'image_path' => $item->image_path ?? ''
+                ];
+            }
+            
+            // 2. Get categories
+            $deltaCat = $getDeltaFilter('item_categories', $lastSync);
+            $this->db->query("SELECT id, name FROM item_categories $deltaCat ORDER BY name ASC");
+            if (!empty($deltaCat)) {
+                $this->db->bind(':last_sync', $lastSync);
+            }
+            $cats = $this->db->resultSet() ?: [];
+            $categoriesJson = [];
+            foreach ($cats as $cat) {
+                $categoriesJson[] = [
+                    'id' => intval($cat->id),
+                    'name' => $cat->name
+                ];
+            }
+            
+            // 3. Get customers
+            $deltaCust = $getDeltaFilter('customers', $lastSync, true);
+            $this->db->query("
+                SELECT c.id, c.name, c.phone, c.whatsapp, c.address, c.territory, c.latitude, c.longitude, c.mca_id, m.name as mca_name,
+                       ((SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = c.id AND status != 'Voided') 
+                       - 
+                       (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE customer_id = c.id AND status = 'Active') 
+                       - 
+                       (SELECT COALESCE(SUM(total_amount), 0) FROM credit_notes WHERE customer_id = c.id)) 
+                       AS balance
+                FROM customers c 
+                LEFT JOIN mca_areas m ON c.mca_id = m.id
+                WHERE 1=1 $deltaCust
+                ORDER BY c.name ASC
+            ");
+            if (!empty($deltaCust)) {
+                $this->db->bind(':last_sync', $lastSync);
+            }
+            $customers = $this->db->resultSet() ?: [];
+            $customersJson = [];
+            foreach ($customers as $c) {
+                $customersJson[] = [
+                    'id' => intval($c->id),
+                    'name' => $c->name,
+                    'phone' => $c->phone ?? '',
+                    'whatsapp' => $c->whatsapp ?? '',
+                    'address' => $c->address ?? '',
+                    'territory' => $c->territory ?? '',
+                    'latitude' => floatval($c->latitude ?? 0.0),
+                    'longitude' => floatval($c->longitude ?? 0.0),
+                    'outstanding' => floatval($c->balance ?? 0.0),
+                    'mca_id' => intval($c->mca_id ?? 0),
+                    'mca_name' => $c->mca_name ?? ''
+                ];
+            }
+            
+            // 4. Get server routes (territories)
+            $deltaRoutes = $getDeltaFilter('mca_areas', $lastSync);
+            $this->db->query("SELECT id, name, main_area_id FROM mca_areas $deltaRoutes ORDER BY name ASC");
+            if (!empty($deltaRoutes)) {
+                $this->db->bind(':last_sync', $lastSync);
+            }
+            $routes = $this->db->resultSet() ?: [];
+            $routesJson = [];
+            foreach ($routes as $r) {
+                $routesJson[] = [
+                    'id' => intval($r->id),
+                    'name' => $r->name,
+                    'main_area_id' => intval($r->main_area_id ?? 0)
+                ];
+            }
+            
+            // 5. Get representatives
+            $deltaReps = $getDeltaFilter('users', $lastSync, true);
+            $this->db->query("SELECT u.id, u.username, u.password_hash, u.employee_id, e.first_name, e.last_name 
+                        FROM users u 
+                        LEFT JOIN employees e ON u.employee_id = e.id 
+                        WHERE u.role = 'rep' $deltaReps");
+            if (!empty($deltaReps)) {
+                $this->db->bind(':last_sync', $lastSync);
+            }
+            $reps = $this->db->resultSet() ?: [];
+            $repsJson = [];
+            foreach ($reps as $rep) {
+                $repsJson[] = [
+                    'id' => intval($rep->id),
+                    'username' => $rep->username,
+                    'password_hash' => $rep->password_hash,
+                    'employee_id' => intval($rep->employee_id),
+                    'first_name' => $rep->first_name ?? $rep->username,
+                    'last_name' => $rep->last_name ?? ''
+                ];
+            }
+            
+            // 6. Get payment terms
+            $deltaTerms = $getDeltaFilter('payment_terms', $lastSync);
+            $this->db->query("SELECT id, name, days_due FROM payment_terms $deltaTerms ORDER BY days_due ASC");
+            if (!empty($deltaTerms)) {
+                $this->db->bind(':last_sync', $lastSync);
+            }
+            $terms = $this->db->resultSet() ?: [];
+            $termsJson = [];
+            foreach ($terms as $t) {
+                $termsJson[] = [
+                    'id' => intval($t->id),
+                    'name' => $t->name,
+                    'days_due' => intval($t->days_due)
+                ];
+            }
+            
+            // 7. Get outstanding credit invoices for the customers
+            $deltaInvs = $getDeltaFilter('invoices', $lastSync, true);
+            $this->db->query("SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date, 
+                               (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
+                               c.name as customer_name, c.address as customer_address
+                        FROM invoices i
+                        JOIN customers c ON i.customer_id = c.id
+                        WHERE (i.status = 'Unpaid' OR i.status = 'Partially Paid') $deltaInvs
+                        ORDER BY i.invoice_date ASC");
+            if (!empty($deltaInvs)) {
+                $this->db->bind(':last_sync', $lastSync);
+            }
+            $creditInvs = $this->db->resultSet() ?: [];
+            $creditInvsJson = [];
+            foreach ($creditInvs as $ci) {
+                $creditInvsJson[] = [
+                    'id' => intval($ci->id),
+                    'invoice_number' => $ci->invoice_number,
+                    'customer_id' => intval($ci->customer_id),
+                    'invoice_date' => $ci->invoice_date,
+                    'true_grand_total' => floatval($ci->true_grand_total),
+                    'customer_name' => $ci->customer_name,
+                    'customer_address' => $ci->customer_address
+                ];
+            }
         
         // 8. Get ongoing active route for this rep
         $this->db->query("SELECT * FROM rep_daily_routes WHERE user_id = :uid AND status = 'Active' ORDER BY id DESC LIMIT 1");
@@ -371,21 +424,30 @@ class RepDashboardController extends Controller {
                 foreach ($payload['customers'] as $c) {
                     $localId = intval($c['local_id']);
                     
-                    // Always register new customer profile
-                    $this->customerModel->addCustomer([
-                        'name' => $c['name'],
-                        'email' => $c['email'] ?? null,
-                        'phone' => $c['phone'] ?? null,
-                        'whatsapp' => $c['whatsapp'] ?? null,
-                        'address' => $c['address'] ?? null,
-                        'lat' => $c['latitude'] ?? null,
-                        'lng' => $c['longitude'] ?? null,
-                        'mca_id' => null,
-                        'territory' => $c['territory'] ?? null
-                    ]);
-                    $serverId = $this->customerModel->getLastInsertId();
+                    // Check if customer with same name and phone already exists to prevent duplicate
+                    $this->db->query("SELECT id FROM customers WHERE name = :name AND phone = :phone LIMIT 1");
+                    $this->db->bind(':name', $c['name']);
+                    $this->db->bind(':phone', $c['phone'] ?? null);
+                    $existingCust = $this->db->single();
+
+                    if ($existingCust) {
+                        $serverId = $existingCust->id;
+                    } else {
+                        $this->customerModel->addCustomer([
+                            'name' => $c['name'],
+                            'email' => $c['email'] ?? null,
+                            'phone' => $c['phone'] ?? null,
+                            'whatsapp' => $c['whatsapp'] ?? null,
+                            'address' => $c['address'] ?? null,
+                            'lat' => $c['latitude'] ?? null,
+                            'lng' => $c['longitude'] ?? null,
+                            'mca_id' => null,
+                            'territory' => $c['territory'] ?? null
+                        ]);
+                        $serverId = $this->customerModel->getLastInsertId();
+                        $this->logActivity('Add Customer', 'Customer', "Registered new customer profile via mobile sync: {$c['name']}", $serverId);
+                    }
                     
-                    $this->logActivity('Add Customer', 'Customer', "Registered new customer profile via mobile sync: {$c['name']}", $serverId);
                     $mappings['customers'][] = [
                         'local_id' => $localId,
                         'server_id' => intval($serverId)
@@ -398,23 +460,34 @@ class RepDashboardController extends Controller {
                 foreach ($payload['routes'] as $r) {
                     $localId = intval($r['local_id']);
                     
-                    $this->db->query("INSERT INTO rep_daily_routes (user_id, route_name, start_meter, start_time, start_lat, start_lng, end_meter, end_time, end_lat, end_lng, status) 
-                                      VALUES (:user_id, :route_name, :start_meter, :start_time, :start_lat, :start_lng, :end_meter, :end_time, :end_lat, :end_lng, :status)");
+                    // Check if a route with the same user_id, route_name and start_time already exists to prevent duplicate
+                    $this->db->query("SELECT id FROM rep_daily_routes WHERE user_id = :user_id AND route_name = :route_name AND start_time = :start_time LIMIT 1");
                     $this->db->bind(':user_id', $userId);
                     $this->db->bind(':route_name', $r['route_name']);
-                    $this->db->bind(':start_meter', $r['start_meter']);
                     $this->db->bind(':start_time', $r['start_time']);
-                    $this->db->bind(':start_lat', $r['start_lat']);
-                    $this->db->bind(':start_lng', $r['start_lng']);
-                    $this->db->bind(':end_meter', isset($r['end_meter']) && $r['end_meter'] !== '' ? $r['end_meter'] : null);
-                    $this->db->bind(':end_time', $r['end_time'] ?? null);
-                    $this->db->bind(':end_lat', $r['end_lat'] ?? null);
-                    $this->db->bind(':end_lng', $r['end_lng'] ?? null);
-                    $this->db->bind(':status', $r['status'] ?? 'Active');
-                    $this->db->execute();
-                    $serverId = $this->db->lastInsertId();
+                    $existingRoute = $this->db->single();
 
-                    $this->logActivity('Create Route', 'RepTracking', "Created daily representative route via mobile sync: {$r['route_name']}", $serverId);
+                    if ($existingRoute) {
+                        $serverId = $existingRoute->id;
+                    } else {
+                        $this->db->query("INSERT INTO rep_daily_routes (user_id, route_name, start_meter, start_time, start_lat, start_lng, end_meter, end_time, end_lat, end_lng, status) 
+                                          VALUES (:user_id, :route_name, :start_meter, :start_time, :start_lat, :start_lng, :end_meter, :end_time, :end_lat, :end_lng, :status)");
+                        $this->db->bind(':user_id', $userId);
+                        $this->db->bind(':route_name', $r['route_name']);
+                        $this->db->bind(':start_meter', $r['start_meter']);
+                        $this->db->bind(':start_time', $r['start_time']);
+                        $this->db->bind(':start_lat', $r['start_lat']);
+                        $this->db->bind(':start_lng', $r['start_lng']);
+                        $this->db->bind(':end_meter', isset($r['end_meter']) && $r['end_meter'] !== '' ? $r['end_meter'] : null);
+                        $this->db->bind(':end_time', $r['end_time'] ?? null);
+                        $this->db->bind(':end_lat', $r['end_lat'] ?? null);
+                        $this->db->bind(':end_lng', $r['end_lng'] ?? null);
+                        $this->db->bind(':status', $r['status'] ?? 'Active');
+                        $this->db->execute();
+                        $serverId = $this->db->lastInsertId();
+                        $this->logActivity('Create Route', 'RepTracking', "Created daily representative route via mobile sync: {$r['route_name']}", $serverId);
+                    }
+
                     $mappings['routes'][] = [
                         'local_id' => $localId,
                         'server_id' => intval($serverId)
@@ -477,6 +550,19 @@ class RepDashboardController extends Controller {
                     // Generate new invoice number if sequence is used or keep what mobile generated
                     $invNo = $inv['invoice_number'];
                     
+                    // Idempotency: Check if an invoice with the same invoice_number already exists
+                    $this->db->query("SELECT id FROM invoices WHERE invoice_number = :invoice_number LIMIT 1");
+                    $this->db->bind(':invoice_number', $invNo);
+                    $existingInv = $this->db->single();
+                    if ($existingInv) {
+                        $mappings['invoices'][] = [
+                            'local_id' => $localId,
+                            'server_id' => intval($existingInv->id),
+                            'invoice_number' => $invNo
+                        ];
+                        continue;
+                    }
+
                     // Format invoice items for createInvoiceWithAccounting method
                     $itemsPayload = [];
                     if (isset($inv['items']) && is_array($inv['items'])) {
@@ -569,6 +655,7 @@ class RepDashboardController extends Controller {
             // 4. Process Payments
             if (isset($payload['payments']) && is_array($payload['payments'])) {
                 foreach ($payload['payments'] as $p) {
+                    $localId = isset($p['local_id']) ? intval($p['local_id']) : 0;
                     $custServerId = $getCustomerServerId(intval($p['customer_id']));
                     
                     // Validate customer ID on the server, fallback if not found
@@ -583,8 +670,19 @@ class RepDashboardController extends Controller {
 
                     $routeServerId = $getRouteServerId(intval($p['server_route_id'] ?? 0));
                     
-                    $this->db->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, status, notes) 
-                                      VALUES (:customer_id, :route_id, :payment_method, :amount, :bank_name, :cheque_number, :cheque_date, 'Pending', 'Synced from mobile app')");
+                    // Idempotency: Check if this payment was already synced via mobile_local_id and mobile_rep_id
+                    if ($localId > 0) {
+                        $this->db->query("SELECT id FROM pending_collections WHERE mobile_local_id = :mlid AND mobile_rep_id = :mrepid LIMIT 1");
+                        $this->db->bind(':mlid', $localId);
+                        $this->db->bind(':mrepid', $userId);
+                        $existingPmt = $this->db->single();
+                        if ($existingPmt) {
+                            continue; // Already processed, skip creating duplicate
+                        }
+                    }
+
+                    $this->db->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, status, notes, mobile_local_id, mobile_rep_id) 
+                                      VALUES (:customer_id, :route_id, :payment_method, :amount, :bank_name, :cheque_number, :cheque_date, 'Pending', 'Synced from mobile app', :mobile_local_id, :mobile_rep_id)");
                     $this->db->bind(':customer_id', $custServerId);
                     $this->db->bind(':route_id', $routeServerId ?: null);
                     $this->db->bind(':payment_method', $p['payment_method']);
@@ -592,6 +690,8 @@ class RepDashboardController extends Controller {
                     $this->db->bind(':bank_name', $p['bank_name'] ?? null);
                     $this->db->bind(':cheque_number', $p['cheque_number'] ?? null);
                     $this->db->bind(':cheque_date', !empty($p['cheque_date']) ? $p['cheque_date'] : null);
+                    $this->db->bind(':mobile_local_id', $localId > 0 ? $localId : null);
+                    $this->db->bind(':mobile_rep_id', $userId);
                     $this->db->execute();
                     
                     $this->logActivity('Record Collection', 'Billing', "Recorded payment collection Rs: " . number_format(floatval($p['amount']), 2) . " for Customer ID {$custServerId} via mobile sync");
