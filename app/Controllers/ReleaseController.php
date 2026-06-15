@@ -391,8 +391,8 @@ class ReleaseController extends Controller {
         
         $version = trim($_POST['version'] ?? '');
         $releaseNotes = trim($_POST['release_notes'] ?? '');
-        $forceUpdate = isset($_POST['force_update']) ? 1 : 0;
-        $isLatest = isset($_POST['is_latest']) ? 1 : 0;
+        $forceUpdate = (isset($_POST['force_update']) && $_POST['force_update'] === '1') ? 1 : 0;
+        $isLatest = (isset($_POST['is_latest']) && $_POST['is_latest'] === '1') ? 1 : 0;
         $totalChunks = intval($_POST['total_chunks'] ?? 0);
 
         if (!preg_match('/^\d+\.\d+\.\d+$/', $version)) {
