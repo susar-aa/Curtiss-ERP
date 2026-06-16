@@ -523,17 +523,8 @@ if (!function_exists('hasPermission')) {
                         <a href="<?php echo APP_URL; ?>/RepTracking/index" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-map-pin"></i></div>
                             <div class="mega-list-item-content">
-                                <div class="title">Rep Route Tracking</div>
-                                <div class="desc">Monitor field agents</div>
-                            </div>
-                        </a>
-                        <?php endif; ?>
-                        <?php if (hasPermission('delivery')): ?>
-                        <a href="<?= APP_URL ?>/delivery" class="mega-list-item">
-                            <div class="icon-wrapper"><i class="ph ph-truck"></i></div>
-                            <div class="mega-list-item-content">
-                                <div class="title">Arranged Deliveries</div>
-                                <div class="desc">Manage dispatches</div>
+                                <div class="title">Master Route Control Panel</div>
+                                <div class="desc">Unified route lifecycle & deliveries</div>
                             </div>
                         </a>
                         <?php endif; ?>

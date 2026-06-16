@@ -8,15 +8,8 @@ class DeliveryController extends Controller {
     }
 
     public function index() {
-        $data = [
-            'title' => 'Arranged Deliveries',
-            'content_view' => 'deliveries/index',
-            'deliveries' => $this->deliveryModel->getAllDeliveries(),
-            'error' => '',
-            'success' => ''
-        ];
-
-        $this->view('layouts/main', $data);
+        header('Location: ' . APP_URL . '/RepTracking/index');
+        exit;
     }
 
     // Endpoint for AJAX saving of delivery arrangements

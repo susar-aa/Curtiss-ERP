@@ -148,6 +148,50 @@ error_reporting(E_ALL);
         .rb-bill-item { border-bottom-color: #1e1e2d; }
         .rb-bound-tag { background: #1c2438 !important; color: #7986cb !important; }
     }
+
+    /* Scrollable Stage Tab styling */
+    .scroll-tabs {
+        display: flex;
+        overflow-x: auto;
+        gap: 6px;
+        padding: 8px 12px;
+        background: #f8fafc;
+        border-bottom: 1px solid var(--mac-border);
+        flex-shrink: 0;
+        scrollbar-width: none; /* Firefox */
+    }
+    .scroll-tabs::-webkit-scrollbar {
+        display: none; /* Safari and Chrome */
+    }
+    .scroll-tab-btn {
+        flex: 0 0 auto;
+        padding: 6px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 700;
+        background: #fff;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        outline: none;
+    }
+    .scroll-tab-btn:hover {
+        background: #f1f5f9;
+        color: #1e293b;
+    }
+    .scroll-tab-btn.active {
+        background: #3f51b5;
+        color: #fff;
+        border-color: #3f51b5;
+        box-shadow: 0 2px 4px rgba(63, 81, 181, 0.2);
+    }
+    @media (prefers-color-scheme: dark) {
+        .scroll-tabs { background: #12121a; }
+        .scroll-tab-btn { background: #1e1e2d; color: #94a3b8; border-color: #3f3f46; }
+        .scroll-tab-btn:hover { background: #2d2d3d; color: #f1f5f9; }
+        .scroll-tab-btn.active { background: #3f51b5; color: #fff; border-color: #3f51b5; }
+    }
 </style>
 
 <div class="header-actions" style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
@@ -166,11 +210,16 @@ error_reporting(E_ALL);
     <!-- Left Pane: Routes Master List -->
     <div class="pane-left">
         <!-- Filter Tabs for Route Status -->
-        <div style="display: flex; border-bottom: 1px solid var(--mac-border); background: var(--surface); padding: 8px; gap: 4px; flex-shrink: 0; position: sticky; top: 0; z-index: 20;">
-            <button type="button" class="left-tab-btn active" onclick="filterLeftPane('active', this)">⚡ Active</button>
-            <button type="button" class="left-tab-btn" onclick="filterLeftPane('pending_gl', this)">📄 GL Audit</button>
-            <button type="button" class="left-tab-btn" onclick="filterLeftPane('logistics', this)">🚚 Logistics</button>
-            <button type="button" class="left-tab-btn" onclick="filterLeftPane('completed', this)">🏁 Ended</button>
+        <div class="scroll-tabs" style="position: sticky; top: 0; z-index: 20;">
+            <button type="button" class="scroll-tab-btn active" onclick="filterLeftPane('active', this)">🟢 Active</button>
+            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('pending_gl', this)">🟡 Pending GL</button>
+            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('pending_delivery', this)">🔵 Pending Deliv</button>
+            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('arrangement', this)">🟣 Arrange</button>
+            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('pre_loading', this)">🟠 Pre-Load</button>
+            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('final_loading', this)">🔴 Final Load</button>
+            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('variance', this)">⚫ Variance</button>
+            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('finalizing', this)">⚫ Finalizing</button>
+            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('completed', this)">🏁 Ended</button>
         </div>
 
         <div style="flex: 1; overflow-y: auto;" id="routeListItemsContainer">
@@ -181,8 +230,18 @@ error_reporting(E_ALL);
                         $dataType = 'active';
                     } elseif ($status === 'Pending GL') {
                         $dataType = 'pending_gl';
-                    } elseif (in_array($status, ['Pending Delivery', 'Arrange Summary', 'Pre-Loading', 'Final Loading', 'Variance Adjustment', 'Finalizing'])) {
-                        $dataType = 'logistics';
+                    } elseif ($status === 'Pending Delivery') {
+                        $dataType = 'pending_delivery';
+                    } elseif ($status === 'Arrange Summary') {
+                        $dataType = 'arrangement';
+                    } elseif ($status === 'Pre-Loading') {
+                        $dataType = 'pre_loading';
+                    } elseif ($status === 'Final Loading') {
+                        $dataType = 'final_loading';
+                    } elseif ($status === 'Variance Adjustment') {
+                        $dataType = 'variance';
+                    } elseif ($status === 'Finalizing') {
+                        $dataType = 'finalizing';
                     } else {
                         $dataType = 'completed';
                     }
@@ -669,14 +728,14 @@ error_reporting(E_ALL);
     });
 
     window.addEventListener('DOMContentLoaded', () => {
-        filterLeftPane('active', document.querySelector('.left-tab-btn'));
+        filterLeftPane('active', document.querySelector('.scroll-tab-btn'));
     });
 
     function filterLeftPane(type, btn) {
-        document.querySelectorAll('.left-tab-btn').forEach(b => {
+        document.querySelectorAll('.scroll-tab-btn').forEach(b => {
             b.classList.remove('active');
         });
-        btn.classList.add('active');
+        if (btn) btn.classList.add('active');
         
         document.querySelectorAll('.route-item').forEach(item => {
             if (item.getAttribute('data-route-type') === type) {
