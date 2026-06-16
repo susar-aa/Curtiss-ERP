@@ -536,7 +536,7 @@ class RepDashboardController extends Controller {
                         $this->db->bind(':end_time', $r['end_time'] ?? null);
                         $this->db->bind(':end_lat', $r['end_lat'] ?? null);
                         $this->db->bind(':end_lng', $r['end_lng'] ?? null);
-                        $this->db->bind(':status', $r['status'] ?? 'Active');
+                        $this->db->bind(':status', ($r['status'] ?? 'Active') === 'Completed' ? 'Pending GL' : ($r['status'] ?? 'Active'));
                         $this->db->bind(':id', $serverId);
                         $this->db->execute();
                         $this->logActivity('Update Route', 'RepTracking', "Finalized and closed daily representative route via mobile sync: {$r['route_name']}", $serverId);
@@ -553,34 +553,10 @@ class RepDashboardController extends Controller {
                         $this->db->bind(':end_time', $r['end_time'] ?? null);
                         $this->db->bind(':end_lat', $r['end_lat'] ?? null);
                         $this->db->bind(':end_lng', $r['end_lng'] ?? null);
-                        $this->db->bind(':status', $r['status'] ?? 'Active');
+                        $this->db->bind(':status', ($r['status'] ?? 'Active') === 'Completed' ? 'Pending GL' : ($r['status'] ?? 'Active'));
                         $this->db->execute();
                         $serverId = $this->db->lastInsertId();
                         $this->logActivity('Create Route', 'RepTracking', "Created daily representative route via mobile sync: {$r['route_name']}", $serverId);
-                    }
-
-                    // Check if route has been completed and update associated deliveries status
-                    if (($r['status'] ?? '') === 'Completed') {
-                        $this->db->query("SELECT id FROM deliveries WHERE (rep_route_id = :route_id OR secondary_rep_route_id = :route_id) AND status = 'Arranged'");
-                        $this->db->bind(':route_id', $serverId);
-                        $delRow = $this->db->single();
-                        if ($delRow) {
-                            $delId = $delRow->id;
-                            $this->db->query("
-                                SELECT COUNT(*) as total, 
-                                       SUM(CASE WHEN is_verified = 1 THEN 1 ELSE 0 END) as verified
-                                FROM delivery_picking_items
-                                WHERE delivery_id = :id
-                            ");
-                            $this->db->bind(':id', $delId);
-                            $delStats = $this->db->single();
-                            
-                            if ($delStats && $delStats->total > 0 && $delStats->verified == $delStats->total) {
-                                $this->db->query("UPDATE deliveries SET status = 'Completed' WHERE id = :id AND status != 'Finalized'");
-                                $this->db->bind(':id', $delId);
-                                $this->db->execute();
-                            }
-                        }
                     }
 
                     $mappings['routes'][] = [

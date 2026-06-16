@@ -42,47 +42,8 @@ class PickingController extends Controller {
 
     // Update delivery status based on picking items completion and route status
     private function updateDeliveryStatus($deliveryId) {
-        $this->db->query("
-            SELECT COUNT(*) as total, 
-                   SUM(CASE WHEN is_picked = 1 THEN 1 ELSE 0 END) as picked,
-                   SUM(CASE WHEN is_verified = 1 THEN 1 ELSE 0 END) as verified
-            FROM delivery_picking_items
-            WHERE delivery_id = :id
-        ");
-        $this->db->bind(':id', $deliveryId);
-        $stats = $this->db->single();
-        
-        if ($stats && $stats->total > 0) {
-            // Fetch associated route status
-            $this->db->query("
-                SELECT r.status 
-                FROM rep_daily_routes r
-                JOIN deliveries d ON d.rep_route_id = r.id
-                WHERE d.id = :id
-            ");
-            $this->db->bind(':id', $deliveryId);
-            $routeRow = $this->db->single();
-            $routeStatus = $routeRow ? $routeRow->status : 'Active';
-
-            // By default, the delivery status stays 'Arranged'
-            $newStatus = 'Arranged';
-            
-            // Only transition to Completed (Ended) if the rep route is ended AND all items are verified
-            if ($routeStatus === 'Completed' && $stats->verified == $stats->total) {
-                $newStatus = 'Completed';
-            }
-            
-            // Do not overwrite 'Finalized' status as it is admin-controlled
-            $this->db->query("SELECT status FROM deliveries WHERE id = :id");
-            $this->db->bind(':id', $deliveryId);
-            $curr = $this->db->single();
-            if ($curr && $curr->status !== 'Finalized') {
-                $this->db->query("UPDATE deliveries SET status = :status WHERE id = :id");
-                $this->db->bind(':status', $newStatus);
-                $this->db->bind(':id', $deliveryId);
-                $this->db->execute();
-            }
-        }
+        // No-op to comply with the strict rule: "Route status must NOT change during Pre-loading, Final loading, Product picking."
+        // All stage transitions are controlled explicitly by the administrator in the Master Route Control Panel.
     }
 
     // API: Verify login credentials
@@ -120,38 +81,22 @@ class PickingController extends Controller {
         exit;
     }
 
-    // API: Fetch all loading sheets (deliveries)
+    // API: Fetch all loading sheets (deliveries) in Pre-Loading and Final Loading stages
     public function api_get_sheets() {
         $this->db->query("
-            SELECT * FROM (
-                SELECT d.id, d.delivery_date, d.vehicle_number, d.driver_name, d.status as db_status, 
-                       r.route_name, r.id as route_id, d.secondary_rep_route_id,
-                       (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id) as total_items,
-                       (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_picked = 1) as picked_items
-                FROM deliveries d
-                JOIN rep_daily_routes r ON d.rep_route_id = r.id
-
-                UNION ALL
-
-                SELECT NULL as id, COALESCE(DATE(r.start_time), DATE(r.created_at), CURDATE()) as delivery_date, 'Not Assigned' as vehicle_number, 'Not Assigned' as driver_name, 'Pending' as db_status,
-                       r.route_name, r.id as route_id, NULL as secondary_rep_route_id,
-                       0 as total_items,
-                       0 as picked_items
-                FROM rep_daily_routes r
-                WHERE r.status IN ('Completed', 'Finalized')
-                  AND r.id NOT IN (SELECT DISTINCT rep_route_id FROM deliveries WHERE rep_route_id IS NOT NULL)
-                  AND r.id NOT IN (SELECT DISTINCT secondary_rep_route_id FROM deliveries WHERE secondary_rep_route_id IS NOT NULL)
-            ) as combined_sheets
-            ORDER BY delivery_date DESC, id DESC
+            SELECT d.id, d.delivery_date, d.vehicle_number, d.driver_name, d.status as db_status, 
+                   r.route_name, r.id as route_id, d.secondary_rep_route_id,
+                   r.status as route_status,
+                   (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id) as total_items,
+                   (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_picked = 1) as picked_items
+            FROM deliveries d
+            JOIN rep_daily_routes r ON d.rep_route_id = r.id
+            WHERE r.status IN ('Pre-Loading', 'Final Loading')
+            ORDER BY d.delivery_date DESC, d.id DESC
         ");
-        $sheets = $this->db->resultSet();
+        $sheets = $this->db->resultSet() ?: [];
 
         foreach ($sheets as $sheet) {
-            // Assign a virtual route ID format for the frontend (e.g. route-[id]) if not arranged yet
-            if ($sheet->id === null) {
-                $sheet->id = 'route-' . $sheet->route_id;
-            }
-
             // Retrieve customer names for this delivery's routes
             $rids = [$sheet->route_id];
             if ($sheet->secondary_rep_route_id) {
@@ -175,14 +120,16 @@ class PickingController extends Controller {
             }
 
             // Determine picking status
-            if ($sheet->db_status === 'Finalized' || $sheet->db_status === 'Completed') {
-                $sheet->status = 'Completed';
-            } else if ($sheet->picked_items > 0 && $sheet->picked_items < $sheet->total_items) {
-                $sheet->status = 'In Progress';
-            } else if ($sheet->total_items > 0 && $sheet->picked_items == $sheet->total_items) {
-                $sheet->status = 'Completed';
+            if ($sheet->route_status === 'Final Loading') {
+                $sheet->status = 'Final Loading';
             } else {
-                $sheet->status = 'Pending';
+                if ($sheet->picked_items > 0 && $sheet->picked_items < $sheet->total_items) {
+                    $sheet->status = 'In Progress';
+                } else if ($sheet->total_items > 0 && $sheet->picked_items == $sheet->total_items) {
+                    $sheet->status = 'Ready for Final';
+                } else {
+                    $sheet->status = 'Pending';
+                }
             }
         }
 
@@ -190,43 +137,12 @@ class PickingController extends Controller {
         exit;
     }
 
-    // API: Fetch single loading sheet detail with items list (initializes items if not exists)
+    // API: Fetch single loading sheet detail with items list
     public function api_get_sheet_details($deliveryId) {
-        // Intercept route-[route_id] virtual sheets and dynamically insert an arranged delivery record
-        if (is_string($deliveryId) && strpos($deliveryId, 'route-') === 0) {
-            $routeId = intval(substr($deliveryId, 6));
-
-            $this->db->query("SELECT * FROM rep_daily_routes WHERE id = :id");
-            $this->db->bind(':id', $routeId);
-            $route = $this->db->single();
-
-            if (!$route) {
-                http_response_code(404);
-                echo json_encode(['success' => false, 'error' => 'Daily route record not found']);
-                exit;
-            }
-
-            $deliveryDate = date('Y-m-d');
-            if (!empty($route->start_time)) {
-                $deliveryDate = date('Y-m-d', strtotime($route->start_time));
-            }
-
-            // Create delivery entry
-            $this->db->query("
-                INSERT INTO deliveries (rep_route_id, delivery_date, vehicle_number, driver_name, status)
-                VALUES (:rep_route_id, :delivery_date, 'Not Assigned', 'Not Assigned', 'Arranged')
-            ");
-            $this->db->bind(':rep_route_id', $routeId);
-            $this->db->bind(':delivery_date', $deliveryDate);
-            $this->db->execute();
-
-            $deliveryId = intval($this->db->lastInsertId());
-        } else {
-            $deliveryId = intval($deliveryId);
-        }
+        $deliveryId = intval($deliveryId);
         
         $this->db->query("
-            SELECT d.*, r.route_name, r.id as route_id 
+            SELECT d.*, r.route_name, r.id as route_id, r.status as route_status 
             FROM deliveries d 
             JOIN rep_daily_routes r ON d.rep_route_id = r.id 
             WHERE d.id = :id
