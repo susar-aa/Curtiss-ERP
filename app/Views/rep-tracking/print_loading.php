@@ -5,12 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Route Loading Report - <?= htmlspecialchars($data['route']->route_name) ?></title>
     <style>
-        /* A4 Optimization Framework */
         @page {
             size: A4 portrait;
-            margin: 10mm 12mm 10mm 12mm;
+            margin: 12mm 15mm 12mm 15mm;
         }
-        
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; 
             margin: 0; 
@@ -21,16 +19,13 @@
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
-
         .report-container {
             width: 100%;
-            max-width: 190mm; /* Maximum writable space inside A4 portrait boundaries */
+            max-width: 190mm;
             margin: 0 auto;
         }
-
-        /* High Density Header Layout */
         .header-section { 
-            margin-bottom: 12px; 
+            margin-bottom: 15px; 
             border-bottom: 2px solid #000; 
             padding-bottom: 8px;
         }
@@ -41,7 +36,6 @@
             letter-spacing: 0.5px;
             color: #000;
         }
-        
         .meta-grid {
             display: grid;
             grid-template-columns: 1.2fr 0.8fr;
@@ -49,8 +43,6 @@
             margin-top: 5px;
         }
         .meta-group p { margin: 2px 0; line-height: 1.3; font-size: 11px; }
-        
-        /* Stats Dashboard Panel */
         .stats-summary {
             background: #f5f5f5 !important;
             border: 1px solid #ddd;
@@ -63,8 +55,6 @@
         .stat-item { text-align: center; }
         .stat-item span { display: block; font-size: 9px; text-transform: uppercase; color: #555; font-weight: bold; }
         .stat-item strong { font-size: 13px; color: #000; font-family: monospace, sans-serif; }
-
-        /* Highly Compact Cost-Saving Table Layout */
         table { 
             width: 100%; 
             border-collapse: collapse; 
@@ -76,28 +66,15 @@
             text-transform: uppercase; 
             font-size: 9px; 
             border: 1px solid #000;
-            padding: 4px 6px;
+            padding: 5px 6px;
         }
         td { 
             border: 1px solid #666; 
-            padding: 3px 6px; /* Ultra-tight padding to save paper vertical space */
+            padding: 4px 6px;
             font-size: 11px;
             line-height: 1.2;
         }
-        
-        /* Alternating row background for easier scanning */
         tr:nth-child(even) { background-color: #fcfcfc; }
-        
-        /* Exact Column Constraints */
-        .col-num { width: 5%; text-align: center; color: #555; font-size: 10px; }
-        .col-name { width: 51%; font-weight: 500; }
-        .col-qty { width: 10%; text-align: center; font-weight: bold; font-family: monospace; font-size: 12px; }
-        
-        /* Compact Tracking Column Controls */
-        .col-tick { width: 7%; text-align: center; }
-        .col-actual { width: 13%; text-align: center; }
-        .col-double { width: 7%; text-align: center; }
-
         .tick-box-placeholder {
             display: inline-block;
             width: 12px;
@@ -107,7 +84,6 @@
             vertical-align: middle;
             background: #fff;
         }
-        
         .line-input-placeholder {
             display: inline-block;
             width: 90%;
@@ -115,8 +91,6 @@
             height: 12px;
             vertical-align: bottom;
         }
-        
-        /* Interactive Print Bar Controls */
         .no-print { 
             margin-bottom: 15px; 
             text-align: right; 
@@ -132,9 +106,14 @@
             border-radius: 4px; 
             cursor: pointer; 
         }
-        .btn-print { background: #0066cc; color: #fff; border: none; }
+        .btn-print { background: #3f51b5; color: #fff; border: none; }
         .btn-close { background: #fff; color: #333; border: 1px solid #ccc; margin-left: 8px; }
-
+        .category-header-row {
+            background-color: #f1f3f9 !important;
+            font-weight: bold;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
         @media print {
             .no-print { display: none !important; }
             body { padding: 0; }
@@ -144,20 +123,29 @@
     </style>
 </head>
 <body onload="window.print()">
-
     <div class="report-container">
         <div class="no-print">
-            <button class="btn-print" onclick="window.print()">🖨️ Print Loading Sheet</button>
+            <button class="btn-print" onclick="window.print()">🖨️ Print Document</button>
             <button class="btn-close" onclick="window.close()">Close Window</button>
         </div>
 
         <div class="header-section">
-            <h1>Route Loading Report</h1>
+            <h1>
+                <?php 
+                if ($data['type'] === 'final') {
+                    echo 'Final Loading Verification Sheet';
+                } elseif ($data['type'] === 'summary') {
+                    echo 'Route Loading Summary & Dispatch Report';
+                } else {
+                    echo 'Pre-Loading Picking Sheet';
+                }
+                ?>
+            </h1>
             <div class="meta-grid">
                 <div class="meta-group">
-                    <p><strong>Route Code/Name:</strong> <?= htmlspecialchars($data['route']->route_name) ?></p>
-                    <p><strong>Assigned Representative:</strong> <?= htmlspecialchars($data['route']->first_name . ' ' . $data['route']->last_name) ?></p>
-                    <p><strong>Generated Stamp:</strong> <?= date('Y-m-d g:i A') ?></p>
+                    <p><strong>Route Name:</strong> <?= htmlspecialchars($data['route']->route_name) ?></p>
+                    <p><strong>Assigned Rep:</strong> <?= htmlspecialchars($data['route']->first_name . ' ' . $data['route']->last_name) ?></p>
+                    <p><strong>Printed On:</strong> <?= date('Y-m-d g:i A') ?></p>
                 </div>
                 <div class="stats-summary">
                     <div class="stat-item">
@@ -173,41 +161,213 @@
             </div>
         </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th class="col-num">#</th>
-                    <th class="col-name">Item Description</th>
-                    <th class="col-qty">Req. Qty</th>
-                    <th class="col-tick">Loaded</th>
-                    <th class="col-actual">Actual Qty Loaded</th>
-                    <th class="col-double">Audited</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php 
-                $counter = 1;
-                if (empty($data['items'])): 
-                ?>
+        <?php if ($data['type'] === 'final'): ?>
+            <!-- FINAL LOADING TABLE -->
+            <table>
+                <thead>
                     <tr>
-                        <td colspan="6" style="text-align:center; padding: 15px; color: #555;">No products or orders found matching this tracking reference.</td>
+                        <th style="width:5%;">#</th>
+                        <th style="text-align:left; width:45%;">Item Description</th>
+                        <th style="text-align:center; width:10%;">Required Qty</th>
+                        <th style="text-align:center; width:10%;">Pre-loaded Qty</th>
+                        <th style="text-align:center; width:10%;">Final Loaded</th>
+                        <th style="text-align:center; width:10%;">Variance</th>
+                        <th style="text-align:center; width:10%;">Audited</th>
                     </tr>
-                <?php else: ?>
-                    <?php foreach ($data['items'] as $item): ?>
+                </thead>
+                <tbody>
+                    <?php 
+                    $counter = 1;
+                    $currentCategory = null;
+                    if (empty($data['items'])): 
+                    ?>
                         <tr>
-                            <td class="col-num"><?= $counter++ ?></td>
-                            <td class="col-name"><?= htmlspecialchars($item->item_name) ?></td>
-                            <td class="col-qty"><?= floatval($item->total_qty) ?></td>
-                            
-                            <td class="col-tick"><span class="tick-box-placeholder"></span></td>
-                            <td class="col-actual"><span class="line-input-placeholder"></span></td>
-                            <td class="col-double"><span class="tick-box-placeholder"></span></td>
+                            <td colspan="7" style="text-align:center; padding: 15px; color: #555;">No picking items verified for final loading.</td>
                         </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
+                    <?php else: ?>
+                        <?php foreach ($data['items'] as $item): ?>
+                            <?php if ($currentCategory !== $item->category_name): ?>
+                                <?php $currentCategory = $item->category_name; ?>
+                                <tr class="category-header-row">
+                                    <td colspan="7" style="padding: 6px 8px; font-weight: bold; background: #f1f3f9;">📁 Category: <?= htmlspecialchars($currentCategory) ?></td>
+                                </tr>
+                            <?php endif; ?>
+                            <tr>
+                                <td style="text-align:center;"><?= $counter++ ?></td>
+                                <td style="font-weight: 500;"><?= htmlspecialchars($item->item_name) ?></td>
+                                <td style="text-align:center; font-family: monospace; font-size:11px; font-weight:bold;"><?= floatval($item->required_qty) ?></td>
+                                <td style="text-align:center; font-family: monospace; font-size:11px;"><?= floatval($item->pre_loaded_qty) ?></td>
+                                <td style="text-align:center; font-family: monospace; font-size:11px; font-weight:bold; background:#fafafa;"><?= $item->final_loaded_qty !== null ? floatval($item->final_loaded_qty) : '-' ?></td>
+                                <td style="text-align:center; font-family: monospace; font-size:11px; font-weight:bold; color:<?= floatval($item->variance) < 0 ? '#c62828' : (floatval($item->variance) > 0 ? '#ef6c00' : '#2e7d32') ?>;">
+                                    <?= floatval($item->variance) > 0 ? '+' : '' ?><?= floatval($item->variance) ?>
+                                </td>
+                                <td style="text-align:center;"><span class="tick-box-placeholder"></span></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
 
+            <!-- Route Variance Summary Box -->
+            <div style="margin-top: 20px; border: 1px solid #000; border-radius: 4px; padding: 10px; background: #fafafa;">
+                <h3 style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase;">Total Route Summary & Verification</h3>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; font-size: 11px;">
+                    <div>
+                        <strong>Total Items Count:</strong><br>
+                        <?= count($data['items']) ?> items
+                    </div>
+                    <div>
+                        <strong>Total Shortages:</strong><br>
+                        <?php 
+                        $shortages = 0;
+                        foreach($data['items'] as $item) {
+                            if (floatval($item->variance) < 0) $shortages += abs(floatval($item->variance));
+                        }
+                        echo $shortages . ' pcs';
+                        ?>
+                    </div>
+                    <div>
+                        <strong>Total Overages:</strong><br>
+                        <?php 
+                        $overages = 0;
+                        foreach($data['items'] as $item) {
+                            if (floatval($item->variance) > 0) $overages += floatval($item->variance);
+                        }
+                        echo $overages . ' pcs';
+                        ?>
+                    </div>
+                    <div>
+                        <strong>Physical Verification:</strong><br>
+                        <span style="display:inline-block; border-bottom:1px solid #444; width:100px; height:12px;"></span>
+                    </div>
+                </div>
+            </div>
+
+        <?php elseif ($data['type'] === 'summary'): ?>
+            <!-- LOADING SUMMARY: ORDER GROUPING & CUSTOMER BREAKDOWN -->
+            <h3 style="margin-top: 15px; margin-bottom: 5px; font-size: 12px; text-transform: uppercase;">1. Sales Orders Grouping (Customer-wise)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 5%; text-align: center;">#</th>
+                        <th style="width: 25%; text-align: left;">Customer Name</th>
+                        <th style="width: 25%; text-align: left;">Invoice / Sales Order No</th>
+                        <th style="width: 20%; text-align: center;">Date & Time</th>
+                        <th style="width: 15%; text-align: right;">Grand Total (Rs)</th>
+                        <th style="width: 10%; text-align: center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php 
+                    $counter = 1;
+                    $grandTotal = 0;
+                    if (empty($data['bills'])):
+                    ?>
+                        <tr>
+                            <td colspan="6" style="text-align:center; padding: 15px; color: #555;">No orders bound to this route.</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($data['bills'] as $bill): ?>
+                            <?php $grandTotal += floatval($bill->true_grand_total); ?>
+                            <tr>
+                                <td style="text-align: center;"><?= $counter++ ?></td>
+                                <td style="font-weight: bold;"><?= htmlspecialchars($bill->customer_name) ?></td>
+                                <td style="font-family: monospace; font-weight: bold;"><?= htmlspecialchars($bill->invoice_number) ?></td>
+                                <td style="text-align: center;"><?= date('Y-m-d g:i A', strtotime($bill->created_at)) ?></td>
+                                <td style="text-align: right; font-family: monospace; font-weight: bold;">Rs. <?= number_format($bill->true_grand_total, 2) ?></td>
+                                <td style="text-align: center; text-transform: uppercase; font-weight: bold; color: <?= $bill->status === 'Paid' ? '#2e7d32' : '#ef6c00' ?>;"><?= htmlspecialchars($bill->status) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        <tr style="background-color: #eaeaea; font-weight: bold;">
+                            <td colspan="4" style="text-align: right; text-transform: uppercase;">Route Dispatch Grand Total:</td>
+                            <td style="text-align: right; font-family: monospace; font-size: 12px;">Rs. <?= number_format($grandTotal, 2) ?></td>
+                            <td></td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 25px; margin-bottom: 5px; font-size: 12px; text-transform: uppercase;">2. Customer Dispatch breakdown</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 5px;">
+                <div style="border: 1px solid #ccc; border-radius: 4px; padding: 10px; background: #fafafa;">
+                    <h4 style="margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase;">Delivery Checklist</h4>
+                    <ul style="margin: 0; padding-left: 15px; line-height: 1.6;">
+                        <li>Ensure all physical collections are registered</li>
+                        <li>Match invoice counts with warehouse loading sheets</li>
+                        <li>Have rep sign off on vehicle loading verification</li>
+                        <li>Record dispatch vehicle departure odometer reading</li>
+                    </ul>
+                </div>
+                <div style="border: 1px solid #ccc; border-radius: 4px; padding: 10px; background: #fafafa; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <h4 style="margin: 0 0 5px 0; font-size: 11px; text-transform: uppercase;">Odometer Verification</h4>
+                        <p style="margin: 2px 0;">Departure Odometer: ___________________ km</p>
+                        <p style="margin: 2px 0;">Arrival Odometer: _____________________ km</p>
+                    </div>
+                    <div>
+                        <p style="margin: 0; font-size: 9px; color: #555;">Verify helper/partner crew status prior to gate pass approval.</p>
+                    </div>
+                </div>
+            </div>
+
+        <?php else: ?>
+            <!-- PRE LOADING TABLE -->
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:5%;">#</th>
+                        <th style="text-align:left; width:65%;">Item Description</th>
+                        <th style="text-align:center; width:15%;">Required Qty</th>
+                        <th style="text-align:center; width:15%;">Picked Check</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php 
+                    $counter = 1;
+                    $currentCategory = null;
+                    if (empty($data['items'])): 
+                    ?>
+                        <tr>
+                            <td colspan="4" style="text-align:center; padding: 15px; color: #555;">No items found for pre-loading on this route.</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($data['items'] as $item): ?>
+                            <?php if ($currentCategory !== $item->category_name): ?>
+                                <?php $currentCategory = $item->category_name; ?>
+                                <tr class="category-header-row">
+                                    <td colspan="4" style="padding: 6px 8px; font-weight: bold; background: #f1f3f9;">📁 Category: <?= htmlspecialchars($currentCategory) ?></td>
+                                </tr>
+                            <?php endif; ?>
+                            <tr>
+                                <td style="text-align:center;"><?= $counter++ ?></td>
+                                <td style="font-weight: 500;"><?= htmlspecialchars($item->item_name) ?></td>
+                                <td style="text-align:center; font-family: monospace; font-size:12px; font-weight:bold;"><?= floatval($item->total_qty) ?></td>
+                                <td style="text-align:center;"><span class="tick-box-placeholder"></span></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+
+        <!-- Signature Block -->
+        <div style="margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; text-align: center; font-size: 10px;">
+            <div>
+                <p style="margin-bottom: 25px;">Prepared By:</p>
+                <p>___________________________</p>
+                <p style="color: #666;">Logistics / Admin</p>
+            </div>
+            <div>
+                <p style="margin-bottom: 25px;">Verified By (OIC):</p>
+                <p>___________________________</p>
+                <p style="color: #666;">Warehouse Keeper</p>
+            </div>
+            <div>
+                <p style="margin-bottom: 25px;">Acknowledged By:</p>
+                <p>___________________________</p>
+                <p style="color: #666;">Driver / Representative</p>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

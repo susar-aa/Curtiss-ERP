@@ -152,6 +152,25 @@ class RepTracking {
         return $this->db->resultSet();
     }
 
+    public function getRouteFinalLoadingItems($routeId) {
+        $this->db->query("
+            SELECT dpi.item_name,
+                   dpi.required_qty,
+                   dpi.loaded_qty as pre_loaded_qty,
+                   dpi.final_loaded_qty,
+                   dpi.variance,
+                   COALESCE(ic.name, 'Uncategorized') as category_name
+            FROM delivery_picking_items dpi
+            JOIN deliveries d ON dpi.delivery_id = d.id
+            LEFT JOIN items it ON dpi.item_id = it.id
+            LEFT JOIN item_categories ic ON it.category_id = ic.id
+            WHERE d.rep_route_id = :rid OR d.secondary_rep_route_id = :rid
+            ORDER BY category_name ASC, dpi.item_name ASC
+        ");
+        $this->db->bind(':rid', $routeId);
+        return $this->db->resultSet() ?: [];
+    }
+
     /**
      * Chronological GPS path: day start → each invoice → day end.
      */
@@ -281,6 +300,7 @@ class RepTracking {
             SELECT pc.id, pc.customer_id, pc.route_id as rep_route_id, pc.payment_method, pc.amount, 
                    pc.bank_name, pc.cheque_number, pc.cheque_date, pc.created_at, pc.status,
                    c.name as customer_name, pc.finalized_by, pc.notes,
+                   pc.is_verified, pc.is_flagged, pc.adjusted_amount, pc.verification_notes,
                    CASE WHEN pc.status = 'Finalized' THEN 999999 ELSE NULL END as journal_entry_id,
                    DATE(pc.created_at) as payment_date,
                    COALESCE(pc.cheque_number, pc.bank_name, '') as reference

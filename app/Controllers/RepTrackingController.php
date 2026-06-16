@@ -607,9 +607,17 @@ class RepTrackingController extends Controller {
     }
 
     public function print_loading($routeId) {
+        $type = $_GET['type'] ?? 'pre';
+        if ($type === 'final') {
+            $items = $this->trackingModel->getRouteFinalLoadingItems($routeId);
+        } else {
+            $items = $this->trackingModel->getRouteLoadingItems($routeId);
+        }
         $data = [
+            'type' => $type,
             'route' => $this->trackingModel->getRouteById($routeId),
-            'items' => $this->trackingModel->getRouteLoadingItems($routeId)
+            'items' => $items,
+            'bills' => $this->trackingModel->getRouteBills($routeId)
         ];
         $this->view('rep-tracking/print_loading', $data);
     }
@@ -620,6 +628,266 @@ class RepTrackingController extends Controller {
         header('Content-Type: application/json');
         echo json_encode(['status' => 'success', 'collections' => $collections]);
         exit;
+    }
+
+    public function api_verify_collections() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $updates = $payload['updates'] ?? [];
+        $userId = $_SESSION['user_id'] ?? 1;
+
+        try {
+            $db = new Database();
+            $db->beginTransaction();
+            foreach ($updates as $up) {
+                $paymentId = intval($up['id']);
+                $isVerified = isset($up['is_verified']) ? intval($up['is_verified']) : 0;
+                $isFlagged = isset($up['is_flagged']) ? intval($up['is_flagged']) : 0;
+                $adjAmount = isset($up['adjusted_amount']) && $up['adjusted_amount'] !== '' ? floatval($up['adjusted_amount']) : null;
+                $notes = isset($up['verification_notes']) ? trim($up['verification_notes']) : null;
+
+                $db->query("UPDATE pending_collections 
+                            SET is_verified = :is_v, is_flagged = :is_f, adjusted_amount = :adj, verification_notes = :notes, verified_by = :vby, verified_at = NOW() 
+                            WHERE id = :id");
+                $db->bind(':is_v', $isVerified);
+                $db->bind(':is_f', $isFlagged);
+                $db->bind(':adj', $adjAmount);
+                $db->bind(':notes', $notes);
+                $db->bind(':vby', $userId);
+                $db->bind(':id', $paymentId);
+                $db->execute();
+            }
+            $db->commit();
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => 'Collections verified successfully!']);
+            exit;
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            exit;
+    }
+
+    public function api_get_product_invoices() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') { die("Invalid Request"); }
+        $routeId = intval($_GET['route_id'] ?? 0);
+        $itemId = intval($_GET['item_id'] ?? 0);
+
+        try {
+            $db = new Database();
+            $routeIds = [$routeId];
+            $db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
+            $db->bind(':rid', $routeId);
+            $routeRow = $db->single();
+            if ($routeRow && $routeRow->route_binding_id) {
+                $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
+                $db->bind(':bid', $routeRow->route_binding_id);
+                $boundRoutes = $db->resultSet();
+                foreach ($boundRoutes as $br) {
+                    $routeIds[] = intval($br->id);
+                }
+            }
+            $routeIds = array_unique($routeIds);
+            $routeIdsStr = implode(',', $routeIds);
+
+            $db->query("
+                SELECT i.id as invoice_id, i.invoice_number, c.name as customer_name, ii.quantity, ii.unit_price, ii.total as line_total
+                FROM invoices i
+                JOIN customers c ON i.customer_id = c.id
+                JOIN invoice_items ii ON ii.invoice_id = i.id
+                WHERE i.rep_route_id IN ($routeIdsStr) AND ii.item_id = :item_id AND i.status != 'Voided'
+            ");
+            $db->bind(':item_id', $itemId);
+            $invoices = $db->resultSet() ?: [];
+
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'invoices' => $invoices]);
+            exit;
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    public function api_adjust_variance_billing() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $routeId = intval($payload['route_id'] ?? 0);
+        $adjustments = $payload['adjustments'] ?? [];
+        $userId = $_SESSION['user_id'] ?? 1;
+
+        try {
+            $db = new Database();
+            $db->beginTransaction();
+
+            $db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1200' OR account_name LIKE '%Receivable%' LIMIT 1");
+            $arAccRow = $db->single();
+            $arAccId = $arAccRow ? intval($arAccRow->id) : null;
+
+            $db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' LIMIT 1");
+            $revAccRow = $db->single();
+            $revAccId = $revAccRow ? intval($revAccRow->id) : null;
+
+            $modifiedInvoices = [];
+
+            foreach ($adjustments as $adj) {
+                $itemId = intval($adj['item_id']);
+                $invoiceAdjs = $adj['invoice_adjustments'] ?? [];
+
+                foreach ($invoiceAdjs as $ia) {
+                    $invoiceId = intval($ia['invoice_id']);
+                    $newQty = floatval($ia['new_qty']);
+
+                    $db->query("SELECT ii.id, ii.quantity as old_qty, ii.unit_price, ii.discount_value, ii.discount_type, i.stock_status, i.invoice_number
+                                FROM invoice_items ii
+                                JOIN invoices i ON ii.invoice_id = i.id
+                                WHERE ii.invoice_id = :iid AND ii.item_id = :item_id");
+                    $db->bind(':iid', $invoiceId);
+                    $db->bind(':item_id', $itemId);
+                    $line = $db->single();
+
+                    if ($line) {
+                        $oldQty = floatval($line->old_qty);
+                        if ($oldQty === $newQty) {
+                            continue;
+                        }
+
+                        $unitPrice = floatval($line->unit_price);
+                        $discVal = floatval($line->discount_value);
+                        $discType = $line->discount_type;
+
+                        $lineTotal = $newQty * $unitPrice;
+                        if ($discType === '%') {
+                            $lineTotal -= ($lineTotal * $discVal / 100);
+                        } else {
+                            $lineTotal -= ($discVal * $newQty);
+                        }
+
+                        $db->query("UPDATE invoice_items SET quantity = :qty, total = :total WHERE id = :id");
+                        $db->bind(':qty', $newQty);
+                        $db->bind(':total', $lineTotal);
+                        $db->bind(':id', $line->id);
+                        $db->execute();
+
+                        $diff = $newQty - $oldQty;
+                        if ($line->stock_status === 'reserved') {
+                            $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) + :diff) WHERE id = :item_id");
+                            $db->bind(':diff', $diff);
+                            $db->bind(':item_id', $itemId);
+                            $db->execute();
+                        } else {
+                            $db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :diff) WHERE id = :item_id");
+                            $db->bind(':diff', $diff);
+                            $db->bind(':item_id', $itemId);
+                            $db->execute();
+
+                            require_once '../app/Models/StockLedger.php';
+                            $ledger = new StockLedger();
+                            $db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                            $db->bind(':id', $itemId);
+                            $itemRow = $db->single();
+                            $whId = $itemRow ? $itemRow->warehouse_id : null;
+                            $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
+                            if ($diff > 0) {
+                                $ledger->logMovement($itemId, null, 0, $diff, 'Sales Invoice Variance Increase', $line->invoice_number, $whId, $userId, 'Variance Audit Adjust', $itemCost);
+                            } else {
+                                $ledger->logMovement($itemId, null, abs($diff), 0, 'Sales Invoice Variance Decrease', $line->invoice_number, $whId, $userId, 'Variance Audit Adjust', $itemCost);
+                            }
+                        }
+
+                        if (!in_array($invoiceId, $modifiedInvoices)) {
+                            $modifiedInvoices[] = $invoiceId;
+                        }
+                    }
+                }
+            }
+
+            foreach ($modifiedInvoices as $invId) {
+                $db->query("SELECT SUM(total) as subtotal FROM invoice_items WHERE invoice_id = :id");
+                $db->bind(':id', $invId);
+                $subrow = $db->single();
+                $subtotal = $subrow ? floatval($subrow->subtotal) : 0.0;
+
+                $db->query("SELECT total_amount, global_discount_val, global_discount_type, tax_rate_id, tax_amount, journal_entry_id FROM invoices WHERE id = :id");
+                $db->bind(':id', $invId);
+                $invRow = $db->single();
+
+                if ($invRow) {
+                    $oldSub = floatval($invRow->total_amount);
+                    $oldDiscVal = floatval($invRow->global_discount_val);
+                    $oldDiscType = $invRow->global_discount_type;
+                    $oldDisc = ($oldDiscType === '%') ? ($oldSub * $oldDiscVal / 100) : $oldDiscVal;
+                    $oldGrand = ($oldSub - $oldDisc) + floatval($invRow->tax_amount);
+
+                    $disc = ($oldDiscType === '%') ? ($subtotal * $oldDiscVal / 100) : $oldDiscVal;
+                    $taxVal = 0.0;
+
+                    if ($invRow->tax_rate_id) {
+                        $db->query("SELECT rate_percentage FROM tax_rates WHERE id = :tid");
+                        $db->bind(':tid', $invRow->tax_rate_id);
+                        $taxRateRow = $db->single();
+                        if ($taxRateRow) {
+                            $taxVal = ($subtotal - $disc) * floatval($taxRateRow->rate_percentage) / 100;
+                        }
+                    }
+
+                    $grandTotal = ($subtotal - $disc) + $taxVal;
+
+                    $db->query("UPDATE invoices SET total_amount = :sub, tax_amount = :tax WHERE id = :id");
+                    $db->bind(':sub', $subtotal);
+                    $db->bind(':tax', $taxVal);
+                    $db->bind(':id', $invId);
+                    $db->execute();
+
+                    $jid = $invRow->journal_entry_id;
+                    if ($jid) {
+                        if ($arAccId) {
+                            $db->query("UPDATE transactions SET debit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
+                            $db->bind(':grand', $grandTotal);
+                            $db->bind(':jid', $jid);
+                            $db->bind(':aid', $arAccId);
+                            $db->execute();
+                        }
+                        if ($revAccId) {
+                            $db->query("UPDATE transactions SET credit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
+                            $db->bind(':grand', $grandTotal);
+                            $db->bind(':jid', $jid);
+                            $db->bind(':aid', $revAccId);
+                            $db->execute();
+                        }
+
+                        $diffGrand = $grandTotal - $oldGrand;
+                        if ($diffGrand !== 0.0) {
+                            if ($arAccId) {
+                                $db->query("UPDATE chart_of_accounts SET balance = balance + :diff WHERE id = :id");
+                                $db->bind(':diff', $diffGrand);
+                                $db->bind(':id', $arAccId);
+                                $db->execute();
+                            }
+                            if ($revAccId) {
+                                $db->query("UPDATE chart_of_accounts SET balance = balance + :diff WHERE id = :id");
+                                $db->bind(':diff', $diffGrand);
+                                $db->bind(':id', $revAccId);
+                                $db->execute();
+                            }
+                        }
+                    }
+                }
+            }
+
+            $db->query("UPDATE rep_daily_routes SET status = 'Finalizing' WHERE id = :rid");
+            $db->bind(':rid', $routeId);
+            $db->execute();
+
+            $db->commit();
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => 'Variances reconciled and bills adjusted successfully!']);
+            exit;
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            exit;
+        }
     }
 
     public function api_finalize_collections() {

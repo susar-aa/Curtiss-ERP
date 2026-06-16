@@ -186,11 +186,34 @@ error_reporting(E_ALL);
         border-color: #3f51b5;
         box-shadow: 0 2px 4px rgba(63, 81, 181, 0.2);
     }
+    .global-filter-btn {
+        padding: 6px 14px;
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-radius: 20px;
+        color: #475569;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+    .global-filter-btn:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+        border-color: #94a3b8;
+    }
+    .global-filter-btn.active {
+        background: #3f51b5;
+        color: #fff;
+        border-color: #3f51b5;
+        box-shadow: 0 2px 4px rgba(63, 81, 181, 0.2);
+    }
     @media (prefers-color-scheme: dark) {
-        .scroll-tabs { background: #12121a; }
-        .scroll-tab-btn { background: #1e1e2d; color: #94a3b8; border-color: #3f3f46; }
-        .scroll-tab-btn:hover { background: #2d2d3d; color: #f1f5f9; }
-        .scroll-tab-btn.active { background: #3f51b5; color: #fff; border-color: #3f51b5; }
+        .global-status-filter-bar { background: #1a1a2e !important; border-color: #3f3f46 !important; }
+        .global-filter-btn { background: #1e1e2d; color: #94a3b8; border-color: #3f3f46; }
+        .global-filter-btn:hover { background: #2d2d3d; color: #f1f5f9; }
+        .global-filter-btn.active { background: #3f51b5; color: #fff; border-color: #3f51b5; }
     }
 </style>
 
@@ -206,21 +229,23 @@ error_reporting(E_ALL);
     </div>
 </div>
 
+<!-- TOP GLOBAL STATUS FILTER BAR -->
+<div class="global-status-filter-bar" style="display: flex; gap: 8px; background: #fff; border: 1px solid var(--mac-border); border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; overflow-x: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.05); align-items: center;">
+    <span style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #64748b; margin-right: 10px; white-space: nowrap;">⚡ Status Filter:</span>
+    <button type="button" class="global-filter-btn active" onclick="filterLeftPane('all', this)">All</button>
+    <button type="button" class="global-filter-btn" onclick="filterLeftPane('active', this)">🟢 Active Rep Routes</button>
+    <button type="button" class="global-filter-btn" onclick="filterLeftPane('pending_gl', this)">💰 Credit Collections</button>
+    <button type="button" class="global-filter-btn" onclick="filterLeftPane('pending_loading', this)">📦 Pending Loading</button>
+    <button type="button" class="global-filter-btn" onclick="filterLeftPane('pre_loading', this)">🟠 Pre-Loading</button>
+    <button type="button" class="global-filter-btn" onclick="filterLeftPane('final_loading', this)">🚛 Final Loading</button>
+    <button type="button" class="global-filter-btn" onclick="filterLeftPane('variance', this)">⚖️ Variance Audit</button>
+    <button type="button" class="global-filter-btn" onclick="filterLeftPane('finalizing', this)">🔒 Finalizing</button>
+    <button type="button" class="global-filter-btn" onclick="filterLeftPane('completed', this)">🏁 Completed</button>
+</div>
+
 <div class="app-workspace">
     <!-- Left Pane: Routes Master List -->
     <div class="pane-left">
-        <!-- Filter Tabs for Route Status -->
-        <div class="scroll-tabs" style="position: sticky; top: 0; z-index: 20;">
-            <button type="button" class="scroll-tab-btn active" onclick="filterLeftPane('active', this)">🟢 Active</button>
-            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('pending_gl', this)">🟡 Pending GL</button>
-            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('pending_delivery', this)">🔵 Pending Deliv</button>
-            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('arrangement', this)">🟣 Arrange</button>
-            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('pre_loading', this)">🟠 Pre-Load</button>
-            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('final_loading', this)">🔴 Final Load</button>
-            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('variance', this)">⚫ Variance</button>
-            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('finalizing', this)">⚫ Finalizing</button>
-            <button type="button" class="scroll-tab-btn" onclick="filterLeftPane('completed', this)">🏁 Ended</button>
-        </div>
 
         <div style="flex: 1; overflow-y: auto;" id="routeListItemsContainer">
             <?php foreach($data['routes'] as $route): ?>
@@ -306,13 +331,13 @@ error_reporting(E_ALL);
 
         <!-- Visual 8-Stage Progress Wizard -->
         <div class="workflow-wizard" id="workflowWizard" style="display: none;">
-            <div class="wizard-step" id="wstep-Active">1. Active</div>
-            <div class="wizard-step" id="wstep-PendingGL">2. GL Audit</div>
-            <div class="wizard-step" id="wstep-PendingDelivery">3. Logistics Form</div>
-            <div class="wizard-step" id="wstep-ArrangeSummary">4. Summary</div>
+            <div class="wizard-step" id="wstep-Active">1. Active Route</div>
+            <div class="wizard-step" id="wstep-PendingGL">2. Credit Collections</div>
+            <div class="wizard-step" id="wstep-PendingDelivery">3. Pending Loading</div>
+            <div class="wizard-step" id="wstep-ArrangeSummary">4. Arrange Summary</div>
             <div class="wizard-step" id="wstep-Pre-Loading">5. Pre-Loading</div>
             <div class="wizard-step" id="wstep-FinalLoading">6. Final Loading</div>
-            <div class="wizard-step" id="wstep-VarianceAdjustment">7. Variance</div>
+            <div class="wizard-step" id="wstep-VarianceAdjustment">7. Variance Audit</div>
             <div class="wizard-step" id="wstep-Finalizing">8. Finalizing</div>
         </div>
 
@@ -367,21 +392,61 @@ error_reporting(E_ALL);
                         <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">📄 General Ledger Audit & Verification</h4>
                         <p style="margin:0; font-size:12px;">Please audit all invoices generated. Double check item details and customer ledger reservations. Once verified, move the route to Logistics arrangement.</p>
                     </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Invoice Number</th>
-                                <th>Time</th>
-                                <th>Customer Name</th>
-                                <th style="text-align:right;">Grand Total (Rs)</th>
-                                <th style="text-align:center;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody class="render-invoices-tbody"></tbody>
-                    </table>
-                    <div style="display:flex; justify-content:space-between; margin-top:25px;">
+                    <div style="display:grid; grid-template-columns: 1fr 1.2fr; gap: 20px; margin-bottom:20px;">
+                        <!-- Invoices Generated Card -->
+                        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+                            <h5 style="margin:0 0 10px 0; font-size:13px; font-weight:bold; color:#1e293b;">📄 Route Sales Invoices</h5>
+                            <table class="data-table" style="font-size:11px;">
+                                <thead>
+                                    <tr>
+                                        <th>Invoice No</th>
+                                        <th>Customer</th>
+                                        <th style="text-align:right;">Grand Total (Rs)</th>
+                                        <th style="text-align:center;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="render-invoices-tbody"></tbody>
+                            </table>
+                        </div>
+
+                        <!-- Collections Verification Table Card -->
+                        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:flex; flex-direction:column; justify-content:space-between;">
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                    <h5 style="margin:0; font-size:13px; font-weight:bold; color:#1e293b;">💵 Credit Collections & Verification</h5>
+                                    <button onclick="saveCollectionsVerificationStage2()" style="padding:5px 12px; background:#2e7d32; color:#fff; border:none; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; transition:0.2s;">💾 Save Verification</button>
+                                </div>
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+                                    <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:8px; border-radius:6px; font-size:11px; text-align:center;">
+                                        Cash: <strong id="glTotalCash" style="font-family:monospace; color:#2e7d32;">Rs 0.00</strong>
+                                    </div>
+                                    <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:8px; border-radius:6px; font-size:11px; text-align:center;">
+                                        Cheque: <strong id="glTotalCheque" style="font-family:monospace; color:#0066cc;">Rs 0.00</strong>
+                                    </div>
+                                </div>
+                                <div style="max-height: 250px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
+                                    <table class="data-table" style="font-size:11px; margin-top:0;">
+                                        <thead style="position: sticky; top: 0; z-index: 10;">
+                                            <tr style="background:#f8fafc;">
+                                                <th style="text-align:left; padding:8px 4px; font-size:10px;">Customer / Pay</th>
+                                                <th style="text-align:right; padding:8px 4px; font-size:10px;">Collected</th>
+                                                <th style="text-align:center; padding:8px 4px; font-size:10px;">Status</th>
+                                                <th style="text-align:right; padding:8px 4px; font-size:10px;">Adjusted</th>
+                                                <th style="text-align:left; padding:8px 4px; font-size:10px;">Notes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="glCollectionsTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:25px; border-top:1px solid #eee; padding-top:15px;">
                         <button onclick="advanceRouteStatus('Active')" style="padding:10px 20px; background:#e2e8f0; color:#333; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">↩ Send back to Active</button>
-                        <button onclick="advanceRouteStatus('Pending Delivery')" style="padding:10px 20px; background:#0066cc; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">✅ Approve Sales & Move to Logistics</button>
+                        <div style="display:flex; align-items:center; gap:15px;">
+                            <span id="glVerificationStatusText" style="font-size:12px; font-weight:bold;"></span>
+                            <button id="glApproveSalesBtn" onclick="advanceRouteStatus('Pending Delivery')" style="padding:10px 20px; background:#0066cc; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; opacity:0.5; cursor:not-allowed;" disabled>✅ Approve Sales & Move to Logistics</button>
+                        </div>
                     </div>
                 </div>
 
@@ -463,8 +528,11 @@ error_reporting(E_ALL);
                     <div id="arrangeSummaryPanel" style="background:#f8fafc; border:1px solid #e2e8f0; padding:20px; border-radius:8px; font-size:13px; line-height:1.6; margin-bottom:20px;">
                         <!-- Filled by JS -->
                     </div>
-                    <div style="display:flex; justify-content:space-between;">
-                        <button onclick="advanceRouteStatus('Pending Delivery')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Edit Arrangement Form</button>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <button onclick="advanceRouteStatus('Pending Delivery')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Edit Arrangement Form</button>
+                            <button onclick="printLoadingSheet('summary')" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;">🖨️ Print Loading Summary</button>
+                        </div>
                         <button onclick="advanceRouteStatus('Pre-Loading')" style="padding:10px 20px; background:#0066cc; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">⚡ Dispatch to Warehouse Picking</button>
                     </div>
                 </div>
@@ -476,8 +544,11 @@ error_reporting(E_ALL);
                         <p style="margin:0; font-size:12px;">Warehouse staff are currently picking products using their mobile PWA. You can monitor progress below. Route status changes are disabled on the mobile app to preserve workflow integrity.</p>
                     </div>
                     <div id="pickingProgressBox" style="margin-bottom:20px;"></div>
-                    <div style="display:flex; justify-content:space-between;">
-                        <button onclick="advanceRouteStatus('Arrange Summary')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Back to Summary</button>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <button onclick="advanceRouteStatus('Arrange Summary')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Back to Summary</button>
+                            <button onclick="printLoadingSheet('pre')" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;">🖨️ Print Pre-Loading Sheet</button>
+                        </div>
                         <button onclick="advanceRouteStatus('Final Loading')" style="padding:10px 20px; background:#ef6c00; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">⚡ Lock Picking & Proceed to Final Loading</button>
                     </div>
                 </div>
@@ -489,8 +560,11 @@ error_reporting(E_ALL);
                         <p style="margin:0; font-size:12px;">Perform physical count checks before the vehicle dispatches. Discrepancies will be reported under Variance Adjustment.</p>
                     </div>
                     <div id="finalLoadingBox" style="margin-bottom:20px;"></div>
-                    <div style="display:flex; justify-content:space-between;">
-                        <button onclick="advanceRouteStatus('Pre-Loading')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Re-open Picking</button>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <button onclick="advanceRouteStatus('Pre-Loading')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Re-open Picking</button>
+                            <button onclick="printLoadingSheet('final')" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;">🖨️ Print Final Loading Sheet</button>
+                        </div>
                         <button onclick="advanceRouteStatus('Variance Adjustment')" style="padding:10px 20px; background:#0066cc; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">🔍 Submit for Variance Audit</button>
                     </div>
                 </div>
@@ -516,17 +590,26 @@ error_reporting(E_ALL);
                     </div>
 
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
-                        <!-- Cash, Cheques card -->
-                        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff;">
-                            <h5 style="margin:0 0 10px 0; font-size:13px;">💵 Collected Payment Settle Verification</h5>
-                            <div style="margin-bottom:10px;"><label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="settleVerifyCash" onchange="checkSettleVerification()"> Verified Cash Collections</label></div>
-                            <div><label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="settleVerifyCheque" onchange="checkSettleVerification()"> Verified Cheques list</label></div>
-                            <table class="data-table" style="font-size:11px; margin-top:10px;">
-                                <thead>
-                                    <tr><th>Customer</th><th>Bank</th><th>No.</th><th style="text-align:right;">Amount</th></tr>
-                                </thead>
-                                <tbody id="settleChequesTableBody"></tbody>
-                            </table>
+                        <!-- Collections Verification Table Card -->
+                        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; display:flex; flex-direction:column; justify-content:space-between;">
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                    <h5 style="margin:0; font-size:13px;">💵 Collected Payment Settle Verification</h5>
+                                    <button onclick="saveCollectionsVerification()" style="padding:4px 10px; background:#2e7d32; color:#fff; border:none; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">💾 Save Verification</button>
+                                </div>
+                                <table class="data-table" style="font-size:11px; margin-top:5px; border: 1px solid #eee;">
+                                    <thead>
+                                        <tr style="background:#f8fafc;">
+                                            <th style="text-align:left; padding:6px 4px;">Customer / Payment</th>
+                                            <th style="text-align:right; padding:6px 4px;">Collected</th>
+                                            <th style="text-align:center; padding:6px 4px;">Status</th>
+                                            <th style="text-align:right; padding:6px 4px;">Adjusted Amt</th>
+                                            <th style="text-align:left; padding:6px 4px;">Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="settleCollectionsTableBody"></tbody>
+                                </table>
+                            </div>
                         </div>
 
                         <!-- Stock and returns card -->
@@ -572,7 +655,8 @@ error_reporting(E_ALL);
                         </div>
                         <div style="display:flex; gap:10px;">
                             <button onclick="printBalancingReport()" style="padding:8px 12px; background:#0066cc; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Print Balancing Report 🖨</button>
-                            <button onclick="printLoadingSheet()" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Print Loading Sheet 🚚</button>
+                            <button onclick="printLoadingSheetSpreadsheet()" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Print Spreadsheet 📊</button>
+                            <button onclick="printLoadingSheet('summary')" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Print Loading Summary 🚚</button>
                             <button onclick="exportCSV()" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Export CSV 📥</button>
                         </div>
                     </div>
@@ -728,17 +812,26 @@ error_reporting(E_ALL);
     });
 
     window.addEventListener('DOMContentLoaded', () => {
-        filterLeftPane('active', document.querySelector('.scroll-tab-btn'));
+        filterLeftPane('all', document.querySelector('.global-filter-btn'));
     });
 
     function filterLeftPane(type, btn) {
-        document.querySelectorAll('.scroll-tab-btn').forEach(b => {
+        document.querySelectorAll('.global-filter-btn').forEach(b => {
             b.classList.remove('active');
         });
         if (btn) btn.classList.add('active');
         
         document.querySelectorAll('.route-item').forEach(item => {
-            if (item.getAttribute('data-route-type') === type) {
+            const rType = item.getAttribute('data-route-type');
+            if (type === 'all') {
+                item.style.display = 'block';
+            } else if (type === 'pending_loading') {
+                if (rType === 'pending_delivery' || rType === 'arrangement') {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            } else if (rType === type) {
                 item.style.display = 'block';
             } else {
                 item.style.display = 'none';
@@ -817,6 +910,7 @@ error_reporting(E_ALL);
         } else if (status === 'Pending GL') {
             document.getElementById('ssec-PendingGL').style.display = 'block';
             loadActiveStageBills(routeId);
+            loadCollectionsVerificationStage2(routeId);
         } else if (status === 'Pending Delivery') {
             document.getElementById('ssec-PendingDelivery').style.display = 'block';
             loadPendingDeliveryStage(routeId);
@@ -1077,7 +1171,7 @@ error_reporting(E_ALL);
                     </div>
                     <table class="data-table">
                         <thead>
-                            <tr><th>Product Name</th><th style="text-align:center;">Required</th><th style="text-align:center;">Pre-Loaded</th><th style="text-align:center;">Final Dispatch</th><th style="text-align:center;">Status</th></tr>
+                            <tr><th>Product Name</th><th style="text-align:center;">Required</th><th style="text-align:center;">Pre-Loaded</th><th style="text-align:center;">Final Loaded</th><th style="text-align:center;">Status</th></tr>
                         </thead>
                         <tbody>${listHtml}</tbody>
                     </table>
@@ -1085,102 +1179,370 @@ error_reporting(E_ALL);
             });
     }
 
+    let currentVarianceState = {};
+
     function loadVarianceAdjustmentStage(routeId) {
         const box = document.getElementById('varianceAuditBox');
-        box.innerHTML = 'Loading shortages & overages... ⏳';
+        box.innerHTML = '<div style="padding:20px; text-align:center;">Loading shortages & overages... ⏳</div>';
+        currentVarianceState = {};
 
         fetch('<?= APP_URL ?>/RepTracking/api_get_route_variances/' + routeId)
             .then(res => res.json())
             .then(data => {
                 if (data.status !== 'success' || !data.deliveries || data.deliveries.length === 0) {
-                    box.innerHTML = '<p style="color:red;">No variance records.</p>';
+                    box.innerHTML = '<p style="color:red; padding:10px;">No variance records found.</p>';
                     return;
                 }
                 const del = data.deliveries[0];
-                let listHtml = '';
-                del.items.forEach(item => {
-                    let varColor = '#000';
-                    let varText = '0';
-                    if (item.variance < 0) {
-                        varColor = '#c62828';
-                        varText = `${item.variance} (Shortage)`;
-                    } else if (item.variance > 0) {
-                        varColor = '#ef6c00';
-                        varText = `+${item.variance} (Overage)`;
-                    } else {
-                        varColor = '#2e7d32';
-                        varText = 'Match';
-                    }
+                const items = del.items || [];
+                
+                if (items.length === 0) {
+                    box.innerHTML = '<p style="color:green; padding:10px; font-weight:bold;">No products picked on this route.</p>';
+                    return;
+                }
 
-                    listHtml += `
-                        <tr style="border-bottom:1px solid #eee;">
-                            <td style="padding:8px 0; font-weight:bold;">${item.item_name}</td>
-                            <td style="text-align:center; font-weight:bold;">${item.required_qty}</td>
-                            <td style="text-align:center;">${item.pre_loaded_qty}</td>
-                            <td style="text-align:center; font-weight:bold;">${item.final_loaded_qty !== null ? item.final_loaded_qty : '-'}</td>
-                            <td style="text-align:center; font-weight:bold; color:${varColor};">${varText}</td>
-                        </tr>
-                    `;
+                let fetchPromises = [];
+                items.forEach(item => {
+                    const itemId = item.item_id;
+                    currentVarianceState[itemId] = {
+                        item_id: itemId,
+                        item_name: item.item_name,
+                        required_qty: parseFloat(item.required_qty),
+                        pre_loaded_qty: parseFloat(item.pre_loaded_qty),
+                        final_loaded_qty: item.final_loaded_qty !== null ? parseFloat(item.final_loaded_qty) : parseFloat(item.required_qty),
+                        variance: parseFloat(item.variance),
+                        invoices: []
+                    };
+
+                    if (parseFloat(item.variance) !== 0) {
+                        const p = fetch('<?= APP_URL ?>/RepTracking/api_get_product_invoices?route_id=' + routeId + '&item_id=' + itemId)
+                            .then(res => res.json())
+                            .then(invData => {
+                                if (invData.status === 'success') {
+                                    currentVarianceState[itemId].invoices = invData.invoices.map(inv => ({
+                                        invoice_id: parseInt(inv.invoice_id),
+                                        invoice_number: inv.invoice_number,
+                                        customer_name: inv.customer_name,
+                                        original_qty: parseFloat(inv.quantity),
+                                        quantity: parseFloat(inv.quantity),
+                                        unit_price: parseFloat(inv.unit_price)
+                                    }));
+                                }
+                            });
+                        fetchPromises.push(p);
+                    }
                 });
 
-                box.innerHTML = `
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
-                        <div style="background:#ffebee; border:1px solid #ffcdd2; border-radius:6px; padding:12px; text-align:center; color:#c62828;">
-                            <span>Shortages</span><br><strong style="font-size:16px;">${del.shortages} pcs</strong>
-                        </div>
-                        <div style="background:#fff3e0; border:1px solid #ffe0b2; border-radius:6px; padding:12px; text-align:center; color:#e65100;">
-                            <span>Overages</span><br><strong style="font-size:16px;">${del.overages} pcs</strong>
-                        </div>
-                    </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr><th>Product Name</th><th style="text-align:center;">Required</th><th style="text-align:center;">Pre-Loaded</th><th style="text-align:center;">Final Dispatch</th><th style="text-align:center;">Variance</th></tr>
-                        </thead>
-                        <tbody>${listHtml}</tbody>
-                    </table>
-                `;
+                Promise.all(fetchPromises).then(() => {
+                    renderVarianceReconciliation();
+                });
             });
     }
+
+    function renderVarianceReconciliation() {
+        const box = document.getElementById('varianceAuditBox');
+        let html = '';
+
+        let totalShortages = 0;
+        let totalOverages = 0;
+        let hasUnbalanced = false;
+
+        let tableRows = '';
+        
+        Object.values(currentVarianceState).forEach(item => {
+            const variance = item.variance;
+            if (variance < 0) totalShortages += Math.abs(variance);
+            if (variance > 0) totalOverages += variance;
+
+            let varColor = '#2e7d32';
+            let varText = 'Match (0)';
+            if (variance < 0) {
+                varColor = '#c62828';
+                varText = `${variance} (Shortage)`;
+            } else if (variance > 0) {
+                varColor = '#ef6c00';
+                varText = `+${variance} (Overage)`;
+            }
+
+            let allocatedSum = 0;
+            if (variance === 0) {
+                allocatedSum = item.final_loaded_qty;
+            } else {
+                item.invoices.forEach(inv => {
+                    allocatedSum += inv.quantity;
+                });
+            }
+
+            const isItemBalanced = (Math.abs(allocatedSum - item.final_loaded_qty) < 0.01);
+            if (!isItemBalanced) {
+                hasUnbalanced = true;
+            }
+
+            const statusBadge = isItemBalanced 
+                ? `<span style="background:#d1fae5; color:#065f46; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;">✔ Balanced</span>`
+                : `<span style="background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;">⚠️ Unbalanced</span>`;
+
+            tableRows += `
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                    <td style="padding:10px; font-weight:bold; color:#1e293b;">${item.item_name}</td>
+                    <td style="padding:10px; text-align:center; font-weight:bold; font-family:monospace;">${item.required_qty}</td>
+                    <td style="padding:10px; text-align:center; font-family:monospace;">${item.pre_loaded_qty}</td>
+                    <td style="padding:10px; text-align:center; font-weight:bold; font-family:monospace; background:#f8fafc;">${item.final_loaded_qty}</td>
+                    <td style="padding:10px; text-align:center; font-weight:bold; color:${varColor}; font-family:monospace;">${varText}</td>
+                    <td style="padding:10px; text-align:center;">${statusBadge}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
+                <div style="background:#fee2e2; border:1px solid #fca5a5; border-radius:6px; padding:12px; text-align:center; color:#991b1b;">
+                    <span>Shortages to Reconcile</span><br><strong style="font-size:16px;">${totalShortages} pcs</strong>
+                </div>
+                <div style="background:#fff3e0; border:1px solid #ffe0b2; border-radius:6px; padding:12px; text-align:center; color:#e65100;">
+                    <span>Overages to Reconcile</span><br><strong style="font-size:16px;">${totalOverages} pcs</strong>
+                </div>
+            </div>
+            
+            <h5 style="margin:0 0 10px 0; font-size:13px; color:#475569; text-transform:uppercase; font-weight:bold;">📦 Product Loading Variances</h5>
+            <table class="data-table" style="margin-bottom:25px; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden;">
+                <thead>
+                    <tr style="background:#f1f5f9;">
+                        <th style="padding:10px; text-align:left;">Product Name</th>
+                        <th style="padding:10px; text-align:center;">Required</th>
+                        <th style="padding:10px; text-align:center;">Pre-Loaded</th>
+                        <th style="padding:10px; text-align:center; background:#e2e8f0;">Final Loaded</th>
+                        <th style="padding:10px; text-align:center;">Variance</th>
+                        <th style="padding:10px; text-align:center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+        `;
+
+        let reconciliationPanels = '';
+        let hasAnyVariance = false;
+
+        Object.values(currentVarianceState).forEach(item => {
+            if (item.variance === 0) return;
+            hasAnyVariance = true;
+
+            let invoiceRows = '';
+            let currentTotal = 0;
+
+            item.invoices.forEach((inv, index) => {
+                currentTotal += inv.quantity;
+                invoiceRows += `
+                    <div style="display:grid; grid-template-columns:1.5fr 1fr 1fr 1.2fr; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;">
+                        <div style="font-size:12px; font-weight:500;">
+                            📄 <strong>${inv.invoice_number}</strong><br>
+                            <span style="font-size:10px; color:#64748b;">${inv.customer_name}</span>
+                        </div>
+                        <div style="text-align:center; font-family:monospace;">
+                            Original: <strong>${inv.original_qty}</strong>
+                        </div>
+                        <div style="text-align:center;">
+                            <input type="number" step="1" min="0" value="${inv.quantity}" 
+                                   oninput="updateInvoiceAllocation(${item.item_id}, ${inv.invoice_id}, this.value)" 
+                                   style="width:70px; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px; text-align:center; font-weight:bold; font-family:monospace;" />
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="font-size:11px; color:#64748b;">Rs. ${(inv.quantity * inv.unit_price).toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (item.invoices.length === 0) {
+                invoiceRows = `<p style="color:#64748b; font-size:12px; margin:10px 0; font-style:italic;">No invoices contain this product on this route.</p>`;
+            }
+
+            const unbalancedVal = item.final_loaded_qty - currentTotal;
+            const panelStatus = (Math.abs(unbalancedVal) < 0.01)
+                ? `<span style="color:#16a34a; font-weight:bold;">✔ Balanced</span>`
+                : `<span style="color:#dc2626; font-weight:bold;">⚠️ Unbalanced (${unbalancedVal > 0 ? '+' : ''}${unbalancedVal.toFixed(1)} pcs)</span>`;
+
+            reconciliationPanels += `
+                <div style="border:1px solid #cbd5e1; border-radius:8px; padding:15px; margin-bottom:20px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #e2e8f0; padding-bottom:8px;">
+                        <div>
+                            <strong style="font-size:13px; color:#0f172a;">🛠️ Reconcile: ${item.item_name}</strong><br>
+                            <span style="font-size:11px; color:#475569;">Variance: <strong>${item.variance > 0 ? '+' : ''}${item.variance}</strong> | Required: <strong>${item.required_qty}</strong> | Final Loaded: <strong>${item.final_loaded_qty}</strong></span>
+                        </div>
+                        <div style="text-align:right;">
+                            <button onclick="autoDistributeVariance(${item.item_id})" style="padding:4px 10px; background:#3b82f6; color:#fff; border:none; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; margin-right:10px;">⚡ Auto-Distribute</button>
+                            ${panelStatus}
+                        </div>
+                    </div>
+                    <div>
+                        ${invoiceRows}
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:11px; color:#475569; background:#f8fafc; padding:8px; border-radius:4px;">
+                        <span>Allocated: <strong style="font-family:monospace; font-size:12px;">${currentTotal.toFixed(1)}</strong></span>
+                        <span>Remaining to Allocate: <strong style="font-family:monospace; font-size:12px; color:${unbalancedVal !== 0 ? '#dc2626' : '#16a34a'};">${unbalancedVal.toFixed(1)}</strong></span>
+                    </div>
+                </div>
+            `;
+        });
+
+        if (!hasAnyVariance) {
+            reconciliationPanels = `
+                <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:20px; text-align:center; color:#166534; font-weight:bold; margin-bottom:20px;">
+                    🎉 All items are fully balanced! No billing adjustments required.
+                </div>
+            `;
+        }
+
+        html += `
+            <h5 style="margin:0 0 10px 0; font-size:13px; color:#475569; text-transform:uppercase; font-weight:bold;">⚖️ Bill Reconciliation Engine</h5>
+            ${reconciliationPanels}
+        `;
+
+        box.innerHTML = html;
+
+        const submitBtn = document.querySelector("#ssec-VarianceAdjustment button[onclick*='Finalizing']");
+        if (submitBtn) {
+            if (hasUnbalanced) {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.5';
+                submitBtn.style.cursor = 'not-allowed';
+                submitBtn.title = "Please balance all product variances across invoices before proceeding.";
+                submitBtn.setAttribute('onclick', "alert('Please balance all product variances across invoices before proceeding.');");
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+                submitBtn.style.cursor = 'pointer';
+                submitBtn.title = "";
+                submitBtn.setAttribute('onclick', 'submitVarianceAdjustments()');
+            }
+        }
+    }
+
+    function updateInvoiceAllocation(itemId, invoiceId, value) {
+        let qty = parseFloat(value);
+        if (isNaN(qty) || qty < 0) {
+            qty = 0;
+        }
+        
+        const item = currentVarianceState[itemId];
+        if (item) {
+            const inv = item.invoices.find(i => i.invoice_id === invoiceId);
+            if (inv) {
+                inv.quantity = qty;
+            }
+        }
+        renderVarianceReconciliation();
+    }
+
+    function autoDistributeVariance(itemId) {
+        const item = currentVarianceState[itemId];
+        if (!item || item.invoices.length === 0) return;
+
+        let targetTotal = item.final_loaded_qty;
+        let originalTotal = item.required_qty;
+        let diff = targetTotal - originalTotal;
+
+        if (diff === 0) {
+            item.invoices.forEach(inv => {
+                inv.quantity = inv.original_qty;
+            });
+        } else if (diff < 0) {
+            let shortageToDeduct = Math.abs(diff);
+            item.invoices.forEach(inv => {
+                if (shortageToDeduct <= 0) return;
+                if (inv.quantity >= shortageToDeduct) {
+                    inv.quantity -= shortageToDeduct;
+                    shortageToDeduct = 0;
+                } else {
+                    shortageToDeduct -= inv.quantity;
+                    inv.quantity = 0;
+                }
+            });
+        } else {
+            item.invoices[0].quantity += diff;
+        }
+
+        renderVarianceReconciliation();
+    }
+
+    function submitVarianceAdjustments() {
+        if (!currentRouteId) return;
+
+        const adjustments = [];
+        Object.values(currentVarianceState).forEach(item => {
+            if (item.variance === 0) return;
+            
+            const invoiceAdjustments = item.invoices.map(inv => ({
+                invoice_id: inv.invoice_id,
+                new_qty: inv.quantity
+            }));
+
+            adjustments.push({
+                item_id: item.item_id,
+                invoice_adjustments: invoiceAdjustments
+            });
+        });
+
+        if (adjustments.length > 0 && !confirm('Are you sure you want to approve these variance adjustments and update invoice billing? This action will modify invoice line quantities.')) {
+            return;
+        }
+
+        const payload = {
+            route_id: currentRouteId,
+            adjustments: adjustments
+        };
+
+        fetch('<?= APP_URL ?>/RepTracking/api_adjust_variance_billing', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                loadRouteDetails(currentRouteId);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('An unexpected error occurred during submission.');
+        });
+    }
+
+    function printLoadingSheet(type) {
+        if (!currentRouteId) return;
+        window.open('<?= APP_URL ?>/RepTracking/print_loading/' + currentRouteId + '?type=' + type, '_blank');
+    }
+
+    let currentCollectionsState = [];
 
     function loadFinalizingStage(routeId) {
         const d = document.getElementById('route_data_' + routeId);
         const delId = d.getAttribute('data-delivery-id');
 
-        document.getElementById('settleVerifyCash').checked = false;
-        document.getElementById('settleVerifyCheque').checked = false;
         document.getElementById('settleVerifyStock').checked = false;
-
-        document.getElementById('settleChequesTableBody').innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading...</td></tr>';
         document.getElementById('settleStockTableBody').innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading...</td></tr>';
         
         document.getElementById('settleSubmitBtn').disabled = true;
         document.getElementById('settleSubmitBtn').style.opacity = '0.5';
         document.getElementById('settleSubmitBtn').style.cursor = 'not-allowed';
-        document.getElementById('settleStatusText').innerHTML = 'Please verify Cash, Cheques, and Return stock counts above to unlock Finalization.';
+        document.getElementById('settleStatusText').innerHTML = 'Please approve all collections and verify Return stock counts to unlock Finalization.';
+
+        // Fetch collections verification
+        loadCollectionsVerification(routeId);
 
         fetch('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
             .then(res => res.json())
             .then(data => {
                 currentDeliveryDetails = data;
                 
-                // Render cheques
-                const chequeTbody = document.getElementById('settleChequesTableBody');
-                chequeTbody.innerHTML = '';
-                if (!data.balancing.cheques || data.balancing.cheques.length === 0) {
-                    chequeTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">No cheques collected.</td></tr>';
-                } else {
-                    data.balancing.cheques.forEach(ch => {
-                        chequeTbody.innerHTML += `
-                            <tr>
-                                <td>${ch.customer_name}</td>
-                                <td>${ch.bank_name}</td>
-                                <td>${ch.cheque_number}</td>
-                                <td style="text-align:right; font-family:monospace;">Rs ${parseFloat(ch.amount).toFixed(2)}</td>
-                            </tr>
-                        `;
-                    });
-                }
-
                 // Render Stock/returns
                 const stockTbody = document.getElementById('settleStockTableBody');
                 stockTbody.innerHTML = '';
@@ -1209,15 +1571,157 @@ error_reporting(E_ALL);
             });
     }
 
+    function loadCollectionsVerification(routeId) {
+        const tbody = document.getElementById('settleCollectionsTableBody');
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading collections... ⏳</td></tr>';
+        currentCollectionsState = [];
+
+        fetch('<?= APP_URL ?>/RepTracking/api_get_route_collections/' + routeId)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    currentCollectionsState = data.collections || [];
+                    renderCollectionsVerification();
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Failed to load collections.</td></tr>';
+                }
+            });
+    }
+
+    function renderCollectionsVerification() {
+        const tbody = document.getElementById('settleCollectionsTableBody');
+        tbody.innerHTML = '';
+
+        if (currentCollectionsState.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888; padding: 10px;">No payments collected on this route.</td></tr>';
+            checkSettleVerification();
+            return;
+        }
+
+        currentCollectionsState.forEach((col, index) => {
+            const isVerified = parseInt(col.is_verified) === 1;
+            const isFlagged = parseInt(col.is_flagged) === 1;
+            
+            let statusSelect = `
+                <select onchange="updateCollectionStatus(${index}, this.value)" style="padding:4px; border:1px solid #ccc; border-radius:4px; font-size:11px; font-weight:bold; color:${isVerified ? '#16a34a' : (isFlagged ? '#dc2626' : '#475569')};">
+                    <option value="pending" ${(!isVerified && !isFlagged) ? 'selected' : ''} style="color:#475569;">Pending</option>
+                    <option value="approved" ${isVerified ? 'selected' : ''} style="color:#16a34a;">Approved</option>
+                    <option value="flagged" ${isFlagged ? 'selected' : ''} style="color:#dc2626;">Flagged</option>
+                </select>
+            `;
+
+            const adjustedVal = col.adjusted_amount !== null ? col.adjusted_amount : col.amount;
+
+            tbody.innerHTML += `
+                <tr style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:6px 4px;">
+                        <strong>${col.customer_name}</strong><br>
+                        <span style="font-size:10px; color:#64748b;">${col.payment_method} ${col.reference ? '(' + col.reference + ')' : ''}</span>
+                    </td>
+                    <td style="padding:6px 4px; text-align:right; font-family:monospace; font-weight:bold;">
+                        Rs ${parseFloat(col.amount).toFixed(2)}
+                    </td>
+                    <td style="padding:6px 4px; text-align:center;">
+                        ${statusSelect}
+                    </td>
+                    <td style="padding:6px 4px; text-align:center;">
+                        <input type="number" step="0.01" min="0" value="${parseFloat(adjustedVal).toFixed(2)}"
+                               oninput="updateCollectionAdjustedAmount(${index}, this.value)"
+                               style="width:80px; padding:3px; border:1px solid #cbd5e1; border-radius:4px; text-align:right; font-family:monospace; font-size:11px;" />
+                    </td>
+                    <td style="padding:6px 4px; text-align:center;">
+                        <input type="text" value="${col.verification_notes || ''}" placeholder="Notes"
+                               oninput="updateCollectionNotes(${index}, this.value)"
+                               style="width:100px; padding:3px; border:1px solid #cbd5e1; border-radius:4px; font-size:11px;" />
+                    </td>
+                </tr>
+            `;
+        });
+
+        checkSettleVerification();
+    }
+
+    function updateCollectionStatus(index, val) {
+        const col = currentCollectionsState[index];
+        if (col) {
+            if (val === 'approved') {
+                col.is_verified = 1;
+                col.is_flagged = 0;
+            } else if (val === 'flagged') {
+                col.is_verified = 0;
+                col.is_flagged = 1;
+            } else {
+                col.is_verified = 0;
+                col.is_flagged = 0;
+            }
+        }
+        renderCollectionsVerification();
+    }
+
+    function updateCollectionAdjustedAmount(index, val) {
+        const col = currentCollectionsState[index];
+        if (col) {
+            col.adjusted_amount = val !== '' ? parseFloat(val) : null;
+        }
+        checkSettleVerification();
+    }
+
+    function updateCollectionNotes(index, val) {
+        const col = currentCollectionsState[index];
+        if (col) {
+            col.verification_notes = val;
+        }
+    }
+
+    function saveCollectionsVerification() {
+        if (!currentRouteId) return;
+
+        const updates = currentCollectionsState.map(col => ({
+            id: col.id,
+            is_verified: col.is_verified,
+            is_flagged: col.is_flagged,
+            adjusted_amount: col.adjusted_amount !== null ? parseFloat(col.adjusted_amount) : parseFloat(col.amount),
+            verification_notes: col.verification_notes
+        }));
+
+        fetch('<?= APP_URL ?>/RepTracking/api_verify_collections', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ updates: updates })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                loadCollectionsVerification(currentRouteId);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('An error occurred while saving verification.');
+        });
+    }
+
     function checkSettleVerification() {
-        const verifyCash = document.getElementById('settleVerifyCash').checked;
-        const verifyCheque = document.getElementById('settleVerifyCheque').checked;
         const verifyStock = document.getElementById('settleVerifyStock').checked;
 
         const btn = document.getElementById('settleSubmitBtn');
         const text = document.getElementById('settleStatusText');
 
-        if (verifyCash && verifyCheque && verifyStock) {
+        let allCollectionsApproved = true;
+        let pendingOrFlaggedCount = 0;
+        currentCollectionsState.forEach(col => {
+            if (parseInt(col.is_verified) !== 1) {
+                allCollectionsApproved = false;
+                pendingOrFlaggedCount++;
+            }
+        });
+
+        if (allCollectionsApproved && verifyStock) {
             btn.disabled = false;
             btn.style.opacity = '1';
             btn.style.cursor = 'pointer';
@@ -1226,7 +1730,15 @@ error_reporting(E_ALL);
             btn.disabled = true;
             btn.style.opacity = '0.5';
             btn.style.cursor = 'not-allowed';
-            text.innerHTML = 'Please verify Cash, Cheques, and Return stock counts above to unlock Finalization.';
+            
+            let msg = '';
+            if (!allCollectionsApproved) {
+                msg += `Please approve/verify all collections (${pendingOrFlaggedCount} remaining). `;
+            }
+            if (!verifyStock) {
+                msg += 'Please verify Returned Stock count.';
+            }
+            text.innerHTML = `<span style="color:#dc2626; font-weight:bold;">Locked:</span> ${msg}`;
         }
     }
 
@@ -1483,7 +1995,7 @@ error_reporting(E_ALL);
         if (delId) { window.open('<?= APP_URL ?>/RepTracking/balancing_report/' + delId, '_blank'); }
     }
 
-    function printLoadingSheet() {
+    function printLoadingSheetSpreadsheet() {
         const d = document.getElementById('route_data_' + currentRouteId);
         const delId = d.getAttribute('data-delivery-id');
         if (delId) { window.open('<?= APP_URL ?>/RepTracking/spreadsheet/' + delId, '_blank'); }
@@ -1887,5 +2399,185 @@ error_reporting(E_ALL);
         document.getElementById('soFilterEndDate').value = '';
         document.getElementById('soFilterStatus').value = '';
         searchUnattachedInvoices();
+    }
+
+    // --- Credit Collections Stage 2 Verification JS ---
+    let currentGLCollectionsState = [];
+
+    function loadCollectionsVerificationStage2(routeId) {
+        const tbody = document.getElementById('glCollectionsTableBody');
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading collections... ⏳</td></tr>';
+        currentGLCollectionsState = [];
+        
+        document.getElementById('glTotalCash').innerText = 'Rs 0.00';
+        document.getElementById('glTotalCheque').innerText = 'Rs 0.00';
+
+        fetch('<?= APP_URL ?>/RepTracking/api_get_route_collections/' + routeId)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    currentGLCollectionsState = data.collections || [];
+                    renderGLCollectionsVerification();
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Failed to load collections.</td></tr>';
+                }
+            });
+    }
+
+    function renderGLCollectionsVerification() {
+        const tbody = document.getElementById('glCollectionsTableBody');
+        tbody.innerHTML = '';
+
+        let cashSum = 0;
+        let chequeSum = 0;
+
+        if (currentGLCollectionsState.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888; padding: 10px;">No payments collected on this route.</td></tr>';
+            checkGLVerification();
+            return;
+        }
+
+        currentGLCollectionsState.forEach((col, index) => {
+            const isVerified = parseInt(col.is_verified) === 1;
+            const isFlagged = parseInt(col.is_flagged) === 1;
+            const amt = parseFloat(col.amount);
+            
+            if (col.payment_method === 'Cash') {
+                cashSum += amt;
+            } else {
+                chequeSum += amt;
+            }
+
+            let statusSelect = `
+                <select onchange="updateGLCollectionStatus(${index}, this.value)" style="padding:4px; border:1px solid #ccc; border-radius:4px; font-size:11px; font-weight:bold; color:${isVerified ? '#16a34a' : (isFlagged ? '#dc2626' : '#475569')};">
+                    <option value="pending" ${(!isVerified && !isFlagged) ? 'selected' : ''} style="color:#475569;">Pending</option>
+                    <option value="approved" ${isVerified ? 'selected' : ''} style="color:#16a34a;">Approved</option>
+                    <option value="flagged" ${isFlagged ? 'selected' : ''} style="color:#dc2626;">Flagged</option>
+                </select>
+            `;
+
+            const adjustedVal = col.adjusted_amount !== null ? col.adjusted_amount : col.amount;
+
+            tbody.innerHTML += `
+                <tr style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:6px 4px;">
+                        <strong>${col.customer_name}</strong><br>
+                        <span style="font-size:10px; color:#64748b;">${col.payment_method} ${col.reference ? '(' + col.reference + ')' : ''}</span>
+                    </td>
+                    <td style="padding:6px 4px; text-align:right; font-family:monospace; font-weight:bold;">
+                        Rs ${amt.toFixed(2)}
+                    </td>
+                    <td style="padding:6px 4px; text-align:center;">
+                        ${statusSelect}
+                    </td>
+                    <td style="padding:6px 4px; text-align:center;">
+                        <input type="number" step="0.01" min="0" value="${parseFloat(adjustedVal).toFixed(2)}"
+                               oninput="updateGLCollectionAdjustedAmount(${index}, this.value)"
+                               style="width:80px; padding:3px; border:1px solid #cbd5e1; border-radius:4px; text-align:right; font-family:monospace; font-size:11px;" />
+                    </td>
+                    <td style="padding:6px 4px; text-align:center;">
+                        <input type="text" value="${col.verification_notes || ''}" placeholder="Notes"
+                               oninput="updateGLCollectionNotes(${index}, this.value)"
+                               style="width:100px; padding:3px; border:1px solid #cbd5e1; border-radius:4px; font-size:11px;" />
+                    </td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('glTotalCash').innerText = 'Rs ' + cashSum.toLocaleString('en-US', {minimumFractionDigits: 2});
+        document.getElementById('glTotalCheque').innerText = 'Rs ' + chequeSum.toLocaleString('en-US', {minimumFractionDigits: 2});
+
+        checkGLVerification();
+    }
+
+    function updateGLCollectionStatus(index, val) {
+        const col = currentGLCollectionsState[index];
+        if (col) {
+            if (val === 'approved') {
+                col.is_verified = 1;
+                col.is_flagged = 0;
+            } else if (val === 'flagged') {
+                col.is_verified = 0;
+                col.is_flagged = 1;
+            } else {
+                col.is_verified = 0;
+                col.is_flagged = 0;
+            }
+        }
+        renderGLCollectionsVerification();
+    }
+
+    function updateGLCollectionAdjustedAmount(index, val) {
+        const col = currentGLCollectionsState[index];
+        if (col) {
+            col.adjusted_amount = val !== '' ? parseFloat(val) : null;
+        }
+        checkGLVerification();
+    }
+
+    function updateGLCollectionNotes(index, val) {
+        const col = currentGLCollectionsState[index];
+        if (col) {
+            col.verification_notes = val;
+        }
+    }
+
+    function saveCollectionsVerificationStage2() {
+        if (!currentRouteId) return;
+
+        const updates = currentGLCollectionsState.map(col => ({
+            id: col.id,
+            is_verified: col.is_verified,
+            is_flagged: col.is_flagged,
+            adjusted_amount: col.adjusted_amount !== null ? parseFloat(col.adjusted_amount) : parseFloat(col.amount),
+            verification_notes: col.verification_notes
+        }));
+
+        fetch('<?= APP_URL ?>/RepTracking/api_verify_collections', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ updates: updates })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                loadCollectionsVerificationStage2(currentRouteId);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('An error occurred while saving verification.');
+        });
+    }
+
+    function checkGLVerification() {
+        const btn = document.getElementById('glApproveSalesBtn');
+        const text = document.getElementById('glVerificationStatusText');
+
+        let allCollectionsApproved = true;
+        let pendingOrFlaggedCount = 0;
+        currentGLCollectionsState.forEach(col => {
+            if (parseInt(col.is_verified) !== 1) {
+                allCollectionsApproved = false;
+                pendingOrFlaggedCount++;
+            }
+        });
+
+        if (allCollectionsApproved) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            text.innerHTML = '<span style="color:#2e7d32; font-weight:bold;">Verification Complete!</span> collections approved.';
+        } else {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+            text.innerHTML = `<span style="color:#dc2626; font-weight:bold;">Verification Pending:</span> ${pendingOrFlaggedCount} collections remaining.`;
+        }
     }
 </script>
