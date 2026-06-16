@@ -400,19 +400,19 @@ class MasterRouteController extends Controller {
 
         header('Content-Type: application/json');
         if ($deliveryId) {
-            // Update route status to Pending Loading
+            // Update route status to Loading
             $db = new Database();
-            $db->query("UPDATE rep_daily_routes SET status = 'Pending Loading' WHERE id = :id");
+            $db->query("UPDATE rep_daily_routes SET status = 'Loading' WHERE id = :id");
             $db->bind(':id', $deliveryData['rep_route_id']);
             $db->execute();
 
             if ($deliveryData['secondary_rep_route_id']) {
-                $db->query("UPDATE rep_daily_routes SET status = 'Pending Loading' WHERE id = :id");
+                $db->query("UPDATE rep_daily_routes SET status = 'Loading' WHERE id = :id");
                 $db->bind(':id', $deliveryData['secondary_rep_route_id']);
                 $db->execute();
             }
 
-            $this->logActivity('Arrange Delivery', 'RepTracking', "Created delivery arrangement ID: {$deliveryId} and moved routes to Pending Loading status", $deliveryData['rep_route_id']);
+            $this->logActivity('Arrange Delivery', 'RepTracking', "Created delivery arrangement ID: {$deliveryId} and moved routes to Loading status", $deliveryData['rep_route_id']);
 
             echo json_encode(['status' => 'success', 'message' => 'Delivery arranged successfully!', 'delivery_id' => $deliveryId]);
         } else {
@@ -495,7 +495,7 @@ class MasterRouteController extends Controller {
         $targetStatus = trim($postData['status'] ?? '');
 
         $allowedStatuses = [
-            'Active', 'Pending GL', 'Adjustments', 'Pending Loading', 'Final Loading', 
+            'Active', 'Pending GL', 'Adjustments', 'Loading', 
             'Variance Adjustment', 'Finalizing', 'Completed'
         ];
 
@@ -511,6 +511,65 @@ class MasterRouteController extends Controller {
         $oldRoute = $db->single();
         $oldStatus = $oldRoute ? $oldRoute->status : 'Unknown';
         $routeName = $oldRoute ? $oldRoute->route_name : '';
+
+        // Automatically create and expose loading task if moving to Loading status
+        if ($targetStatus === 'Loading') {
+            $db->query("SELECT id FROM deliveries WHERE rep_route_id = :rid OR secondary_rep_route_id = :rid");
+            $db->bind(':rid', $routeId);
+            $del = $db->single();
+            if (!$del) {
+                $db->query("SELECT r.route_name, COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name 
+                            FROM rep_daily_routes r 
+                            LEFT JOIN users u ON r.user_id = u.id 
+                            LEFT JOIN employees e ON u.email = e.email 
+                            WHERE r.id = :rid");
+                $db->bind(':rid', $routeId);
+                $routeInfo = $db->single();
+                $repName = $routeInfo ? trim($routeInfo->first_name . ' ' . $routeInfo->last_name) : 'Pending Rep';
+
+                $db->query("INSERT INTO deliveries (rep_route_id, delivery_date, vehicle_number, driver_name, partner_name, status) 
+                            VALUES (:rid, CURDATE(), 'Pending Vehicle', :driver, '', 'Arranged')");
+                $db->bind(':rid', $routeId);
+                $db->bind(':driver', $repName);
+                $db->execute();
+                $deliveryId = $db->lastInsertId();
+
+                // Populate picking items
+                $rids = [intval($routeId)];
+                if ($oldRoute && $oldRoute->route_binding_id) {
+                    $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
+                    $db->bind(':bid', $oldRoute->route_binding_id);
+                    $boundRoutes = $db->resultSet();
+                    foreach ($boundRoutes as $br) {
+                        $rids[] = intval($br->id);
+                    }
+                }
+                $rids = array_unique($rids);
+                $ridsStr = implode(',', $rids);
+
+                $db->query("
+                    SELECT ii.item_id, ii.variation_option_id, ii.description as item_name, SUM(ii.quantity) as required_qty
+                    FROM invoice_items ii
+                    JOIN invoices i ON ii.invoice_id = i.id
+                    WHERE i.rep_route_id IN ($ridsStr) AND i.status != 'Voided'
+                    GROUP BY ii.item_id, ii.variation_option_id, ii.description
+                ");
+                $invoiceItems = $db->resultSet() ?: [];
+                foreach ($invoiceItems as $item) {
+                    $db->query("
+                        INSERT INTO delivery_picking_items (delivery_id, item_name, item_id, variation_option_id, required_qty, loaded_qty, is_picked)
+                        VALUES (:delivery_id, :item_name, :item_id, :variation_option_id, :required_qty, :loaded_qty, 0)
+                    ");
+                    $db->bind(':delivery_id', $deliveryId);
+                    $db->bind(':item_name', $item->item_name);
+                    $db->bind(':item_id', $item->item_id);
+                    $db->bind(':variation_option_id', $item->variation_option_id);
+                    $db->bind(':required_qty', $item->required_qty);
+                    $db->bind(':loaded_qty', $item->required_qty);
+                    $db->execute();
+                }
+            }
+        }
 
         $db->query("UPDATE rep_daily_routes SET status = :status WHERE id = :id");
         $db->bind(':status', $targetStatus);

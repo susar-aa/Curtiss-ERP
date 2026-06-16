@@ -231,8 +231,7 @@
     <button type="button" class="global-filter-btn" onclick="filterLeftPane('active', this)">🟢 Active Rep Routes</button>
     <button type="button" class="global-filter-btn" onclick="filterLeftPane('pending_gl', this)">💰 Credit Collections</button>
     <button type="button" class="global-filter-btn" onclick="filterLeftPane('adjustments', this)">⚙️ Adjustments</button>
-    <button type="button" class="global-filter-btn" onclick="filterLeftPane('pending_loading', this)">📦 Pending Loading</button>
-    <button type="button" class="global-filter-btn" onclick="filterLeftPane('final_loading', this)">🚛 Final Loading</button>
+    <button type="button" class="global-filter-btn" onclick="filterLeftPane('loading', this)">🚛 Loading</button>
     <button type="button" class="global-filter-btn" onclick="filterLeftPane('variance', this)">⚖️ Variance Audit</button>
     <button type="button" class="global-filter-btn" onclick="filterLeftPane('finalizing', this)">🔒 Finalizing</button>
     <button type="button" class="global-filter-btn" onclick="filterLeftPane('completed', this)">🏁 Completed</button>
@@ -252,10 +251,8 @@
                         $dataType = 'pending_gl';
                     } elseif ($status === 'Adjustments') {
                         $dataType = 'adjustments';
-                    } elseif ($status === 'Pending Loading') {
-                        $dataType = 'pending_loading';
-                    } elseif ($status === 'Final Loading') {
-                        $dataType = 'final_loading';
+                    } elseif ($status === 'Loading') {
+                        $dataType = 'loading';
                     } elseif ($status === 'Variance Adjustment') {
                         $dataType = 'variance';
                     } elseif ($status === 'Finalizing') {
@@ -323,15 +320,14 @@
             </div>
         </div>
 
-        <!-- Visual 8-Stage Progress Wizard -->
+        <!-- Visual 7-Stage Progress Wizard -->
         <div class="workflow-wizard" id="workflowWizard" style="display: none;">
             <div class="wizard-step" id="wstep-Active">1. Active Route</div>
             <div class="wizard-step" id="wstep-PendingGL">2. Credit Collections</div>
             <div class="wizard-step" id="wstep-Adjustments">3. Adjustments</div>
-            <div class="wizard-step" id="wstep-PendingLoading">4. Pending Loading</div>
-            <div class="wizard-step" id="wstep-FinalLoading">5. Final Loading</div>
-            <div class="wizard-step" id="wstep-VarianceAdjustment">6. Variance Audit</div>
-            <div class="wizard-step" id="wstep-Finalizing">7. Finalizing</div>
+            <div class="wizard-step" id="wstep-Loading">4. Loading</div>
+            <div class="wizard-step" id="wstep-VarianceAdjustment">5. Variance Audit</div>
+            <div class="wizard-step" id="wstep-Finalizing">6. Finalizing</div>
         </div>
 
         <!-- Content Area -->
@@ -449,8 +445,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- STAGE 3: PENDING LOADING -->
                 <!-- STAGE 3: ADJUSTMENTS -->
                 <div class="stage-section-panel" id="ssec-Adjustments" style="display:none;">
                     <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
@@ -526,53 +520,28 @@
 
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:25px; border-top:1px solid #eee; padding-top:15px;">
                         <button onclick="advanceRouteStatus('Pending GL')" style="padding:10px 20px; background:#e2e8f0; color:#333; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">↩ Back to GL Audit</button>
-                        <button onclick="advanceRouteStatus('Pending Loading')" style="padding:10px 20px; background:#ef6c00; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">⚡ Confirm Adjustments & Move to Pending Loading</button>
+                        <button onclick="advanceRouteStatus('Loading')" style="padding:10px 20px; background:#ef6c00; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">⚡ Confirm Adjustments & Move to Loading</button>
                     </div>
                 </div>
 
-                <!-- STAGE 4: PENDING LOADING -->
-                <div class="stage-section-panel" id="ssec-PendingLoading" style="display:none;">
-                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">📦 Warehouse Loading Preparation</h4>
-                        <p style="margin:0; font-size:12px;">Physical picking is underway. You can print the loading sheet or summary here. When ready for physical vehicle verification, move the route to Final Loading.</p>
-                    </div>
-
-                    <!-- Manifest Detail Summary -->
-                    <div id="arrangeSummaryPanel" style="background:#f8fafc; border:1px solid #e2e8f0; padding:15px; border-radius:8px; font-size:13px; line-height:1.6; margin-bottom:20px;"></div>
-
-                    <!-- Aggregated Products to Load List -->
-                    <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02); margin-bottom:20px;">
-                        <h4 style="margin:0 0 15px 0; font-size:14px; font-weight:bold;">Aggregated Loading Products Checklist</h4>
-                        <div id="pendingLoadingItemsBox"></div>
-                    </div>
-
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:25px; border-top:1px solid #eee; padding-top:15px;">
-                        <div>
-                            <button onclick="advanceRouteStatus('Adjustments')" style="padding:10px 20px; background:#e2e8f0; color:#333; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">↩ Back to Adjustments</button>
-                            <button onclick="printLoadingSheet('pre')" style="padding:10px 20px; background:#3f51b5; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer; margin-left:10px;">🖨️ Print Loading Sheet</button>
-                            <button onclick="printLoadingSheet('summary')" style="padding:10px 20px; background:#673ab7; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer; margin-left:10px;">🖨️ Print Loading Summary</button>
-                        </div>
-                        <button onclick="advanceRouteStatus('Final Loading')" style="padding:10px 20px; background:#ef6c00; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">⚡ Send to Final Loading</button>
-                    </div>
-                </div>
-
-                <!-- STAGE 4: FINAL LOADING -->
-                <div class="stage-section-panel" id="ssec-FinalLoading" style="display:none;">
+                <!-- STAGE 4: LOADING -->
+                <div class="stage-section-panel" id="ssec-Loading" style="display:none;">
                     <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:15px; margin-bottom:20px; color:#78350f;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">🔍 Final Loading Verification Checklist</h4>
-                        <p style="margin:0; font-size:12px;">Perform physical count checks before the vehicle dispatches. Discrepancies will be reported under Variance Adjustment.</p>
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">🔍 Loading Verification Checklist</h4>
+                        <p style="margin:0; font-size:12px;">Perform physical count checks before the vehicle dispatches. Discrepancies will be reported under Variance Audit.</p>
                     </div>
-                    <div id="finalLoadingBox" style="margin-bottom:20px;"></div>
+                    <div id="loadingBox" style="margin-bottom:20px;"></div>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div>
-                            <button onclick="advanceRouteStatus('Pending Loading')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Re-open Picking</button>
-                            <button onclick="printLoadingSheet('final')" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;">🖨️ Print Final Loading Sheet</button>
+                            <button onclick="advanceRouteStatus('Adjustments')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Back to Adjustments</button>
+                            <button onclick="printLoadingSheet('final')" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;">🖨️ Print Loading Sheet</button>
+                            <button onclick="printLoadingSheet('summary')" style="padding:8px 16px; background:#673ab7; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;">🖨️ Print Loading Summary</button>
                         </div>
                         <button onclick="advanceRouteStatus('Variance Adjustment')" style="padding:10px 20px; background:#0066cc; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">🔍 Submit for Variance Audit</button>
                     </div>
                 </div>
 
-                <!-- STAGE 7: VARIANCE ADJUSTMENT -->
+                <!-- STAGE 5: VARIANCE ADJUSTMENT -->
                 <div class="stage-section-panel" id="ssec-VarianceAdjustment" style="display:none;">
                     <div style="background:#fee2e2; border:1px solid #fca5a5; border-radius:8px; padding:15px; margin-bottom:20px; color:#991b1b;">
                         <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">🚨 Variance Adjustment Approval</h4>
@@ -580,7 +549,7 @@
                     </div>
                     <div id="varianceAuditBox" style="margin-bottom:20px;"></div>
                     <div style="display:flex; justify-content:space-between;">
-                        <button onclick="advanceRouteStatus('Final Loading')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Back to Verification</button>
+                        <button onclick="advanceRouteStatus('Loading')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Back to Loading</button>
                         <button onclick="advanceRouteStatus('Finalizing')" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">⚖️ Approve Variances & Proceed to Settlements</button>
                     </div>
                 </div>
@@ -904,7 +873,7 @@
 
     function updateWizardProgress(status) {
         document.getElementById('workflowWizard').style.display = 'flex';
-        const steps = ['Active', 'PendingGL', 'Adjustments', 'PendingLoading', 'FinalLoading', 'VarianceAdjustment', 'Finalizing'];
+        const steps = ['Active', 'PendingGL', 'Adjustments', 'Loading', 'VarianceAdjustment', 'Finalizing'];
         
         let statusIndex = steps.indexOf(status.replace(' ', ''));
         if (status === 'Completed' || status === 'Finalized') {
@@ -999,12 +968,9 @@
         } else if (status === 'Adjustments') {
             document.getElementById('ssec-Adjustments').style.display = 'block';
             loadAdjustmentsStage(routeId);
-        } else if (status === 'Pending Loading') {
-            document.getElementById('ssec-PendingLoading').style.display = 'block';
-            loadPendingLoadingStage(routeId);
-        } else if (status === 'Final Loading') {
-            document.getElementById('ssec-FinalLoading').style.display = 'block';
-            loadFinalLoadingStage(routeId);
+        } else if (status === 'Loading') {
+            document.getElementById('ssec-Loading').style.display = 'block';
+            loadLoadingStage(routeId);
         } else if (status === 'Variance Adjustment') {
             document.getElementById('ssec-VarianceAdjustment').style.display = 'block';
             loadVarianceAdjustmentStage(routeId);
@@ -1217,82 +1183,8 @@
         });
     }
 
-    function loadPendingLoadingStage(routeId) {
-        loadArrangeSummaryStage(routeId);
-        loadPendingLoadingItemsChecklist(routeId);
-    }
-
-    function loadPendingLoadingItemsChecklist(routeId) {
-        const box = document.getElementById('pendingLoadingItemsBox');
-        box.innerHTML = 'Loading loading items checklist... ⏳';
-
-        fetch('<?= APP_URL ?>/RepTracking/api_get_route_variances/' + routeId)
-            .then(res => res.json())
-            .then(data => {
-                if (data.status !== 'success' || !data.deliveries || data.deliveries.length === 0) {
-                    box.innerHTML = '<p style="color:red; padding:10px;">No verification records found. Please ensure delivery is bound in Adjustments stage.</p>';
-                    return;
-                }
-                const del = data.deliveries[0];
-                let listHtml = '';
-                del.items.forEach(item => {
-                    listHtml += `
-                        <tr style="border-bottom:1px solid #eee;">
-                            <td style="padding:8px 0; font-weight:bold;">${item.item_name}</td>
-                            <td style="text-align:center; font-family:monospace; font-size:12px; font-weight:bold;">${item.required_qty}</td>
-                        </tr>
-                    `;
-                });
-
-                box.innerHTML = `
-                    <div style="background:#f1f5f9; padding:12px; border-radius:6px; margin-bottom:15px; font-size:12px; font-weight:bold; color:#1e293b;">
-                        📦 Picking Manifest ID: #${del.delivery_id} | Total Unique Items: ${del.total_items}
-                    </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr><th>Product Name / Item Description</th><th style="text-align:center; width:120px;">Required Quantity</th></tr>
-                        </thead>
-                        <tbody>${listHtml}</tbody>
-                    </table>
-                `;
-            });
-    }
-
-    function loadArrangeSummaryStage(routeId) {
-        const d = document.getElementById('route_data_' + routeId);
-        const delId = d.getAttribute('data-delivery-id');
-        const container = document.getElementById('arrangeSummaryPanel');
-        container.innerHTML = 'Loading manifest details... ⏳';
-
-        if (!delId) {
-            container.innerHTML = '<p style="color:red; font-weight:bold;">No arranged delivery ID found for this route.</p>';
-            return;
-        }
-
-        fetch('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
-            .then(res => res.json())
-            .then(data => {
-                if (data.status !== 'success') {
-                    container.innerHTML = '<p style="color:red;">Failed to retrieve delivery data.</p>';
-                    return;
-                }
-                const del = data.delivery;
-                container.innerHTML = `
-                    <h4 style="margin:0 0 10px 0; border-bottom:1px solid #ddd; padding-bottom:8px;">🚚 Delivery Arrangement Manifest Details</h4>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
-                        <div>Vehicle: <strong>${del.vehicle_number || 'Not Assigned Yet'}</strong></div>
-                        <div>Delivery Date: <strong>${del.delivery_date}</strong></div>
-                        <div>Driver Name: <strong>${del.driver_name || 'Not Assigned Yet'}</strong></div>
-                        <div>Partner Name: <strong>${del.partner_name || 'None'}</strong></div>
-                    </div>
-                    <div>Invoices Assigned: <strong>${data.invoices.length}</strong></div>
-                    <div>Credit Invoices Assigned: <strong>${data.credit_invoices.length}</strong></div>
-                `;
-            });
-    }
-
-    function loadFinalLoadingStage(routeId) {
-        const box = document.getElementById('finalLoadingBox');
+    function loadLoadingStage(routeId) {
+        const box = document.getElementById('loadingBox');
         box.innerHTML = 'Loading loading items checklist... ⏳';
 
         fetch('<?= APP_URL ?>/RepTracking/api_get_route_variances/' + routeId)
@@ -2182,8 +2074,7 @@
         if (status === 'Active') return 'active';
         if (status === 'Pending GL') return 'pending_gl';
         if (status === 'Adjustments') return 'adjustments';
-        if (status === 'Pending Loading') return 'pending_loading';
-        if (status === 'Final Loading') return 'final_loading';
+        if (status === 'Loading') return 'loading';
         if (status === 'Variance Adjustment') return 'variance';
         if (status === 'Finalizing') return 'finalizing';
         return 'completed';

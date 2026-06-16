@@ -42,8 +42,41 @@ class PickingController extends Controller {
 
     // Update delivery status based on picking items completion and route status
     private function updateDeliveryStatus($deliveryId) {
-        // No-op to comply with the strict rule: "Route status must NOT change during Pre-loading, Final loading, Product picking."
-        // All stage transitions are controlled explicitly by the administrator in the Master Route Control Panel.
+        // Automatically transition to Variance Adjustment if all items are verified
+        $this->db->query("SELECT COUNT(*) as unverified FROM delivery_picking_items WHERE delivery_id = :did AND is_verified = 0");
+        $this->db->bind(':did', $deliveryId);
+        $row = $this->db->single();
+        if ($row && intval($row->unverified) === 0) {
+            // Also check if there is at least one item
+            $this->db->query("SELECT COUNT(*) as total FROM delivery_picking_items WHERE delivery_id = :did");
+            $this->db->bind(':did', $deliveryId);
+            $totalRow = $this->db->single();
+            if ($totalRow && intval($totalRow->total) > 0) {
+                // Fetch delivery details to get route ID
+                $this->db->query("SELECT rep_route_id, secondary_rep_route_id FROM deliveries WHERE id = :id");
+                $this->db->bind(':id', $deliveryId);
+                $delivery = $this->db->single();
+                if ($delivery) {
+                    // Update delivery status to Completed
+                    $this->db->query("UPDATE deliveries SET status = 'Completed' WHERE id = :id");
+                    $this->db->bind(':id', $deliveryId);
+                    $this->db->execute();
+
+                    // Update route status
+                    $rids = [intval($delivery->rep_route_id)];
+                    if ($delivery->secondary_rep_route_id) {
+                        $rids[] = intval($delivery->secondary_rep_route_id);
+                    }
+                    $rids = $this->resolveAllBoundRouteIds($rids);
+                    $ridsStr = implode(',', $rids);
+
+                    $this->db->query("UPDATE rep_daily_routes SET status = 'Variance Adjustment' WHERE id IN ($ridsStr)");
+                    $this->db->execute();
+
+                    $this->logActivity('Loading Completed (Auto)', 'Picking', "All picking items verified. Automatically completed loading for delivery #{$deliveryId}. Route(s) moved to Variance Adjustment.", $delivery->rep_route_id);
+                }
+            }
+        }
     }
 
     // API: Verify login credentials
@@ -81,7 +114,7 @@ class PickingController extends Controller {
         exit;
     }
 
-    // API: Fetch all loading sheets (deliveries) in Pre-Loading and Final Loading stages
+    // API: Fetch all loading sheets (deliveries) in Loading stage
     public function api_get_sheets() {
         $this->db->query("
             SELECT d.id, d.delivery_date, d.vehicle_number, d.driver_name, d.status as db_status, 
@@ -91,7 +124,7 @@ class PickingController extends Controller {
                    (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_picked = 1) as picked_items
             FROM deliveries d
             JOIN rep_daily_routes r ON d.rep_route_id = r.id
-            WHERE r.status = 'Final Loading'
+            WHERE r.status = 'Loading'
             ORDER BY d.delivery_date DESC, d.id DESC
         ");
         $sheets = $this->db->resultSet() ?: [];
@@ -120,8 +153,8 @@ class PickingController extends Controller {
             }
 
             // Determine picking status
-            if ($sheet->route_status === 'Final Loading') {
-                $sheet->status = 'Final Loading';
+            if ($sheet->route_status === 'Loading') {
+                $sheet->status = 'Loading';
             } else {
                 if ($sheet->picked_items > 0 && $sheet->picked_items < $sheet->total_items) {
                     $sheet->status = 'In Progress';
@@ -425,5 +458,86 @@ class PickingController extends Controller {
 
         echo json_encode(['success' => true, 'synced_count' => count($updates)]);
         exit;
+    }
+
+    // API: Complete the loading process and transition the route to 'Variance Adjustment'
+    public function api_complete_loading() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $deliveryId = intval($input['delivery_id'] ?? 0);
+
+        if (!$deliveryId) {
+            echo json_encode(['success' => false, 'error' => 'Delivery ID is required']);
+            exit;
+        }
+
+        // Fetch delivery details to get route ID
+        $this->db->query("SELECT rep_route_id, secondary_rep_route_id FROM deliveries WHERE id = :id");
+        $this->db->bind(':id', $deliveryId);
+        $delivery = $this->db->single();
+
+        if (!$delivery) {
+            echo json_encode(['success' => false, 'error' => 'Delivery not found']);
+            exit;
+        }
+
+        $this->db->beginTransaction();
+        try {
+            // Update delivery status to Completed
+            $this->db->query("UPDATE deliveries SET status = 'Completed' WHERE id = :id");
+            $this->db->bind(':id', $deliveryId);
+            $this->db->execute();
+
+            // Mark all items as verified if they are not already verified
+            $this->db->query("
+                UPDATE delivery_picking_items 
+                SET final_loaded_qty = COALESCE(final_loaded_qty, loaded_qty, required_qty),
+                    is_verified = 1,
+                    variance = COALESCE(final_loaded_qty, loaded_qty, required_qty) - required_qty
+                WHERE delivery_id = :delivery_id AND is_verified = 0
+            ");
+            $this->db->bind(':delivery_id', $deliveryId);
+            $this->db->execute();
+
+            // Update route status to 'Variance Adjustment'
+            $rids = [intval($delivery->rep_route_id)];
+            if ($delivery->secondary_rep_route_id) {
+                $rids[] = intval($delivery->secondary_rep_route_id);
+            }
+            $rids = $this->resolveAllBoundRouteIds($rids);
+            $ridsStr = implode(',', $rids);
+
+            $this->db->query("UPDATE rep_daily_routes SET status = 'Variance Adjustment' WHERE id IN ($ridsStr)");
+            $this->db->execute();
+
+            // Log activity
+            $this->logActivity('Loading Completed', 'Picking', "Completed loading process for delivery #{$deliveryId} from Curtiss Portal App. Route(s) moved to Variance Adjustment.", $delivery->rep_route_id);
+
+            $this->db->commit();
+            echo json_encode(['success' => true, 'message' => 'Loading completed. Route moved to Variance Audit.']);
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+
+    private function logActivity($action, $module, $desc, $refId = null) {
+        try {
+            $this->db->query("INSERT INTO audit_logs (user_id, action, module, description, reference_id, ip_address) 
+                              VALUES (:uid, :action, :module, :desc, :ref, :ip)");
+            $this->db->bind(':uid', null); // System/PWA action
+            $this->db->bind(':action', $action);
+            $this->db->bind(':module', $module);
+            $this->db->bind(':desc', $desc);
+            $this->db->bind(':ref', $refId);
+            $this->db->bind(':ip', $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
+            $this->db->execute();
+        } catch (Exception $e) {}
     }
 }
