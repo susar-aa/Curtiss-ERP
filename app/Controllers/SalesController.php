@@ -507,7 +507,7 @@ class SalesController extends Controller {
                             }
                             
                             if ($routeId) {
-                                header('Location: ' . APP_URL . '/RepTracking?route_id=' . $routeId);
+                                header('Location: ' . APP_URL . '/RepTracking?route_id=' . $routeId . '&filter=adjustments');
                             } else {
                                 header('Location: ' . APP_URL . '/sales/show/' . $editingId);
                             }
@@ -543,7 +543,11 @@ class SalesController extends Controller {
 
                             if ($routeId) {
                                 $_SESSION['flash_success'] = "Sales Order {$invoiceNumber} successfully created!";
-                                header('Location: ' . APP_URL . '/RepTracking?route_id=' . $routeId);
+                                if ($saveAction === 'new') {
+                                    header('Location: ' . APP_URL . '/sales/create?type=sales_order&route_id=' . $routeId);
+                                } else {
+                                    header('Location: ' . APP_URL . '/RepTracking?route_id=' . $routeId . '&filter=adjustments');
+                                }
                             } else if ($saveAction === 'print') {
                                 header('Location: ' . APP_URL . '/sales/create?print_id=' . $invoiceId);
                             } elseif ($saveAction === 'whatsapp') {

@@ -283,7 +283,7 @@ $editingItems = $data['editing_items'] ?? [];
     <?php endif; ?>
 
     <?php
-    $rep_route_id = $_GET['rep_route_id'] ?? (isset($inv->rep_route_id) ? $inv->rep_route_id : '');
+    $rep_route_id = $_GET['rep_route_id'] ?? $_GET['route_id'] ?? (isset($inv->rep_route_id) ? $inv->rep_route_id : '');
     $rep_route_name = '';
     if (!empty($rep_route_id)) {
         try {
@@ -479,7 +479,7 @@ $editingItems = $data['editing_items'] ?? [];
                         <button type="submit" name="save_action" value="print" class="qb-btn">Save & Print 🖨️</button>
                         <button type="submit" name="save_action" value="whatsapp" class="qb-btn wa-btn">Save & WhatsApp 💬</button>
                     <?php endif; ?>
-                    <button type="button" class="qb-btn" onclick="window.location.href='<?= APP_URL ?>/sales'">Cancel</button>
+                    <button type="button" class="qb-btn" onclick="window.location.href='<?= !empty($rep_route_id) ? (APP_URL . '/RepTracking?route_id=' . $rep_route_id . '&filter=adjustments') : (APP_URL . '/sales') ?>'">Cancel</button>
                 </div>
             </div>
 

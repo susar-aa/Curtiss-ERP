@@ -378,27 +378,11 @@
                 <div class="stage-section-panel" id="ssec-PendingGL" style="display:none;">
                     <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:15px; margin-bottom:20px; color:#78350f;">
                         <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">📄 General Ledger Audit & Verification</h4>
-                        <p style="margin:0; font-size:12px;">Please audit all invoices generated. Double check item details and customer ledger reservations. Once verified, move the route to Adjustments stage.</p>
+                        <p style="margin:0; font-size:12px;">Please audit all credit collections. Verify debit/credit accounts and approve collections before moving the route to Adjustments stage.</p>
                     </div>
-                    <div style="display:grid; grid-template-columns: 1fr 1.2fr; gap: 20px; margin-bottom:20px;">
-                        <!-- Invoices Generated Card -->
-                        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
-                            <h5 style="margin:0 0 10px 0; font-size:13px; font-weight:bold; color:#1e293b;">📄 Route Sales Invoices</h5>
-                            <table class="data-table" style="font-size:11px;">
-                                <thead>
-                                    <tr>
-                                        <th>Invoice No</th>
-                                        <th>Customer</th>
-                                        <th style="text-align:right;">Grand Total (Rs)</th>
-                                        <th style="text-align:center;">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="render-invoices-tbody"></tbody>
-                            </table>
-                        </div>
-
+                    <div>
                         <!-- Collections Verification Table Card -->
-                        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:flex; flex-direction:column; justify-content:space-between;">
+                        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:flex; flex-direction:column; justify-content:space-between; margin-bottom:20px;">
                             <div>
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                                     <h5 style="margin:0; font-size:13px; font-weight:bold; color:#1e293b;">💵 Credit Collections & Verification</h5>
@@ -840,7 +824,31 @@
     });
 
     window.addEventListener('DOMContentLoaded', () => {
-        filterLeftPane('all', document.querySelector('.global-filter-btn'));
+        const urlParams = new URLSearchParams(window.location.search);
+        const routeId = urlParams.get('route_id');
+        const filterType = urlParams.get('filter');
+
+        if (filterType) {
+            const filterBtns = document.querySelectorAll('.global-filter-btn');
+            let matchedBtn = null;
+            filterBtns.forEach(btn => {
+                const onclickAttr = btn.getAttribute('onclick') || '';
+                if (onclickAttr.includes(`'${filterType}'`)) {
+                    matchedBtn = btn;
+                }
+            });
+            filterLeftPane(filterType, matchedBtn || filterBtns[0]);
+        } else {
+            filterLeftPane('all', document.querySelector('.global-filter-btn'));
+        }
+
+        if (routeId) {
+            const routeEl = document.getElementById('route_' + routeId);
+            if (routeEl) {
+                loadRouteDetails(routeId, routeEl);
+                routeEl.scrollIntoView({ block: 'nearest' });
+            }
+        }
     });
 
     function filterLeftPane(type, btn) {
@@ -2121,6 +2129,17 @@
         if (delId) { window.location.href = '<?= APP_URL ?>/RepTracking/export_csv/' + delId; }
     }
 
+    function getDataTypeFromStatus(status) {
+        if (status === 'Active') return 'active';
+        if (status === 'Pending GL') return 'pending_gl';
+        if (status === 'Adjustments') return 'adjustments';
+        if (status === 'Pending Loading') return 'pending_loading';
+        if (status === 'Final Loading') return 'final_loading';
+        if (status === 'Variance Adjustment') return 'variance';
+        if (status === 'Finalizing') return 'finalizing';
+        return 'completed';
+    }
+
     function advanceRouteStatus(targetStatus) {
         if (!confirm(`Are you sure you want to advance this route to "${targetStatus}" stage?`)) {
             return;
@@ -2134,7 +2153,8 @@
         .then(data => {
             if (data.status === 'success') {
                 alert(`🎉 Route advanced to ${targetStatus}`);
-                window.location.reload();
+                const filterType = getDataTypeFromStatus(targetStatus);
+                window.location.href = window.location.pathname + `?route_id=${currentRouteId}&filter=${filterType}`;
             } else {
                 alert("⚠️ Error: " + data.message);
             }
