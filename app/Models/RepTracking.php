@@ -5,6 +5,31 @@ class RepTracking {
 
     public function __construct() {
         $this->db = new Database();
+
+        // Auto-heal schema for pending_collections table
+        $columns = [
+            'is_verified' => "TINYINT(1) NOT NULL DEFAULT 0",
+            'is_flagged' => "TINYINT(1) NOT NULL DEFAULT 0",
+            'adjusted_amount' => "DECIMAL(12,2) NULL",
+            'verification_notes' => "TEXT NULL",
+            'verified_by' => "INT(11) NULL",
+            'verified_at' => "DATETIME NULL",
+            'mobile_local_id' => "INT NULL",
+            'mobile_rep_id' => "INT NULL"
+        ];
+
+        foreach ($columns as $col => $definition) {
+            try {
+                $this->db->query("SHOW COLUMNS FROM pending_collections LIKE :col");
+                $this->db->bind(':col', $col);
+                if (!$this->db->single()) {
+                    $this->db->query("ALTER TABLE pending_collections ADD COLUMN `$col` $definition");
+                    $this->db->execute();
+                }
+            } catch (Exception $e) {
+                // Failsafe to avoid crashing page initialization
+            }
+        }
     }
 
     public function getAllRoutes() {
