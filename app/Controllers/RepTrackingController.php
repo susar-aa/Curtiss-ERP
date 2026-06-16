@@ -1037,8 +1037,23 @@ class RepTrackingController extends Controller {
                 }
             }
 
-            $db->query("UPDATE rep_daily_routes SET status = 'Finalizing' WHERE id = :rid");
+            // Resolve all bound/merged route IDs to transition them together
+            $routeIds = [$routeId];
+            $db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
             $db->bind(':rid', $routeId);
+            $routeRow = $db->single();
+            if ($routeRow && $routeRow->route_binding_id) {
+                $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
+                $db->bind(':bid', $routeRow->route_binding_id);
+                $boundRoutes = $db->resultSet();
+                foreach ($boundRoutes as $br) {
+                    $routeIds[] = intval($br->id);
+                }
+            }
+            $routeIds = array_unique($routeIds);
+            $routeIdsStr = implode(',', $routeIds);
+
+            $db->query("UPDATE rep_daily_routes SET status = 'Finalizing' WHERE id IN ($routeIdsStr)");
             $db->execute();
 
             $db->commit();

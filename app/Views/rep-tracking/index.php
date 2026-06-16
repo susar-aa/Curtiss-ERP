@@ -1319,7 +1319,7 @@
                 });
             }
 
-            const isItemBalanced = (Math.abs(allocatedSum - item.final_loaded_qty) < 0.01);
+            const isItemBalanced = (item.invoices.length === 0 || Math.abs(allocatedSum - item.final_loaded_qty) < 0.01);
             if (!isItemBalanced) {
                 hasUnbalanced = true;
             }
@@ -1455,13 +1455,17 @@
                 submitBtn.style.opacity = '0.5';
                 submitBtn.style.cursor = 'not-allowed';
                 submitBtn.title = "Please balance all product variances across invoices before proceeding.";
-                submitBtn.setAttribute('onclick', "alert('Please balance all product variances across invoices before proceeding.');");
+                submitBtn.onclick = function() {
+                    alert('Please balance all product variances across invoices before proceeding.');
+                };
             } else {
                 submitBtn.disabled = false;
                 submitBtn.style.opacity = '1';
                 submitBtn.style.cursor = 'pointer';
                 submitBtn.title = "";
-                submitBtn.setAttribute('onclick', 'submitVarianceAdjustments()');
+                submitBtn.onclick = function() {
+                    submitVarianceAdjustments();
+                };
             }
         }
     }
