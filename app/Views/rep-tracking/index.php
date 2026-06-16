@@ -1437,12 +1437,24 @@ error_reporting(E_ALL);
         const activeSelected = document.querySelector('.route-item.active');
         if (activeSelected && activeSelected.style.display === 'none') {
             activeSelected.classList.remove('active');
-            document.getElementById('midHeader').style.visibility = 'hidden';
-            document.getElementById('routeTabs').style.display = 'none';
-            document.getElementById('midEmptyState').style.display = 'flex';
-            document.getElementById('billsTable').style.display = 'none';
-            document.getElementById('collectionsWrapper').style.display = 'none';
-            document.getElementById('mapSection').style.display = 'none';
+            const midHeader = document.getElementById('midHeader');
+            if (midHeader) midHeader.style.visibility = 'hidden';
+            
+            const routeTabs = document.getElementById('routeTabs');
+            if (routeTabs) routeTabs.style.display = 'none';
+            
+            const midEmptyState = document.getElementById('midEmptyState');
+            if (midEmptyState) midEmptyState.style.display = 'flex';
+            
+            const billsTable = document.getElementById('billsTable');
+            if (billsTable) billsTable.style.display = 'none';
+            
+            const collectionsWrapper = document.getElementById('collectionsWrapper');
+            if (collectionsWrapper) collectionsWrapper.style.display = 'none';
+            
+            const btnViewMap = document.getElementById('btnViewMap');
+            if (btnViewMap) btnViewMap.style.display = 'none';
+            
             currentRouteId = null;
         }
 
