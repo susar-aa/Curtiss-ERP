@@ -46,6 +46,7 @@ class RepTracking {
             LEFT JOIN employees e ON u.email = e.email
             LEFT JOIN route_bindings rb ON r.route_binding_id = rb.id
             WHERE r.id NOT IN (SELECT rep_route_id FROM deliveries)
+              AND r.status != 'Bound' AND r.status != 'Bound Into Route'
             ORDER BY r.start_time DESC
         ");
         $rawRoutes = $this->db->resultSet() ?: [];
@@ -54,7 +55,7 @@ class RepTracking {
         $unbound = [];
         
         foreach ($rawRoutes as $route) {
-            if ($route->route_binding_id) {
+            if ($route->route_binding_id && $route->is_merged_route == 0) {
                 $grouped[$route->route_binding_id][] = $route;
             } else {
                 $unbound[] = $route;

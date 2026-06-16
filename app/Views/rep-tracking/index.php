@@ -296,7 +296,8 @@
                      data-bound="<?= !empty($route->is_bound_group) ? '1' : '0' ?>"
                      data-binding-id="<?= $route->route_binding_id ?: '' ?>"
                      data-delivery-id="<?= $route->delivery_id ?: '' ?>"
-                     data-delivery-status="<?= $route->delivery_status ?: '' ?>">
+                     data-delivery-status="<?= $route->delivery_status ?: '' ?>"
+                     data-merged="<?= $route->is_merged_route ? '1' : '0' ?>">
                 </div>
             <?php endforeach; ?>
         </div>
@@ -348,6 +349,31 @@
             <!-- Dynamic Stage Containers -->
             <div id="stageContentWrapper" style="display:none; padding:20px 25px;">
                 
+                <!-- Bound Route Summary Card -->
+                <div id="boundRouteSummaryContainer" style="display:none; background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:15px; margin-bottom:20px; color:#0369a1; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                        <div style="flex: 1; min-width: 280px;">
+                            <h4 style="margin:0 0 8px 0; font-size:14px; font-weight:bold; display:flex; align-items:center; gap:6px; color: #0284c7;">
+                                🔗 Bound Route Consolidation
+                            </h4>
+                            <div style="font-size:12px; margin-bottom:8px; line-height: 1.4;">
+                                <strong>Constituent Routes:</strong> <span id="brsConstituentsList" style="background:#e0f2fe; padding:2px 6px; border-radius:4px; font-weight:bold;">Route A, Route B</span>
+                            </div>
+                            <div style="font-size:12px; display:flex; gap:15px; flex-wrap:wrap; font-weight:500;">
+                                <span>👥 Total Customers: <strong id="brsTotalCustomers" style="color:#0f172a;">0</strong></span>
+                                <span>📄 Total Invoices: <strong id="brsTotalInvoices" style="color:#0f172a;">0</strong></span>
+                                <span>💰 Total Route Value: <strong id="brsTotalValue" style="color:#16a34a;">Rs 0.00</strong></span>
+                                <span>📦 Total Products: <strong id="brsTotalProducts" style="color:#0f172a;">0 (Qty: 0)</strong></span>
+                            </div>
+                        </div>
+                        <div>
+                            <button onclick="unbindCombinedRoute()" style="padding:8px 16px; background:#ef4444; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(239,68,68,0.2); transition: all 0.2s;">
+                                ↩️ Undo Route Binding
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- STAGE 1: ACTIVE -->
                 <div class="stage-section-panel" id="ssec-Active" style="display:none;">
                     <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
@@ -437,6 +463,7 @@
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                             <h4 style="margin:0; font-size:14px; font-weight:bold;">Sales Order Operations</h4>
                             <div style="display:flex; gap:10px;">
+                                <button onclick="openRouteBindingModal()" style="padding:6px 12px; background:#3f51b5; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">🔗 Bind Routes</button>
                                 <button onclick="redirectToAddInvoice()" style="padding:6px 12px; background:#0066cc; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">➕ Create Sales Order</button>
                                 <button onclick="openAttachInvoiceModal()" style="padding:6px 12px; background:#5c6bc0; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">🔗 Attach Sales Order</button>
                             </div>
@@ -916,6 +943,28 @@
         document.getElementById('mhEnd').innerText = d.getAttribute('data-end');
         document.getElementById('mhSales').innerText = d.getAttribute('data-sales');
         document.getElementById('mhBills').innerText = d.getAttribute('data-bills');
+
+        const boundSummary = document.getElementById('boundRouteSummaryContainer');
+        if (boundSummary) {
+            boundSummary.style.display = 'none';
+        }
+        const isMerged = d.getAttribute('data-merged') === '1';
+        if (isMerged) {
+            fetch('<?= APP_URL ?>/RepTracking/api_get_bound_routes_summary/' + routeId)
+                .then(res => res.json())
+                .then(resData => {
+                    if (resData.status === 'success') {
+                        document.getElementById('brsConstituentsList').innerText = resData.constituents.map(c => `${c.route_name} (ID: #${c.id})`).join(', ');
+                        document.getElementById('brsTotalCustomers').innerText = resData.total_customers;
+                        document.getElementById('brsTotalInvoices').innerText = resData.total_invoices;
+                        document.getElementById('brsTotalValue').innerText = 'Rs ' + parseFloat(resData.total_value).toLocaleString('en-IN', {minimumFractionDigits:2});
+                        document.getElementById('brsTotalProducts').innerText = `${resData.unique_products} unique items (Total Qty: ${resData.total_products_qty})`;
+                        if (boundSummary) {
+                            boundSummary.style.display = 'block';
+                        }
+                    }
+                });
+        }
 
         document.getElementById('midHeader').style.visibility = 'visible';
         document.getElementById('midEmptyState').style.display = 'none';
@@ -2298,7 +2347,8 @@
     function getEligibleBindingRoutes() {
         const routes = [];
         document.querySelectorAll('.route-item').forEach(item => {
-            if (item.getAttribute('data-route-type') === 'pending_gl') {
+            const rType = item.getAttribute('data-route-type');
+            if (rType && rType !== 'completed') {
                 const id = item.id.replace('route_', '');
                 const dataDiv = document.getElementById('route_data_' + id);
                 if (dataDiv) {
@@ -2365,29 +2415,63 @@
             return;
         }
         
+        // Find the selected route object
+        const eligibleRoutes = getEligibleBindingRoutes();
+        const selectedRoute = eligibleRoutes.find(r => r.id === parseInt(routeId));
+        const selectedRouteName = selectedRoute ? selectedRoute.name : '';
+        const selectedRepName = selectedRoute ? selectedRoute.rep : '';
+
         icon.innerText = '🔗';
         billsContainer.style.display = 'block';
-        billsContainer.innerHTML = '<p style="text-align: center; color: #888;">Loading bills... ⏳</p>';
+        billsContainer.innerHTML = '<p style="text-align: center; color: #888;">Loading details... ⏳</p>';
         
         fetch('<?= APP_URL ?>/RepTracking/api_get_route_details/' + routeId)
             .then(res => res.json())
             .then(data => {
-                if (data.status !== 'success' || !data.bills || data.bills.length === 0) {
-                    billsContainer.innerHTML = '<p style="text-align: center; color: #888;">No sales orders in this route.</p>';
+                if (data.status !== 'success' || !data.bills) {
+                    billsContainer.innerHTML = '<p style="text-align: center; color: #888;">Error loading details.</p>';
                     return;
                 }
                 
-                let html = '<div style="font-weight: bold; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 6px; font-size: 11px; text-transform: uppercase; color: #666;">Sales Orders</div>';
-                data.bills.forEach(b => {
+                // Calculate values for Route Preview
+                const invoices = data.bills;
+                const invoiceCount = invoices.length;
+                const uniqueCustomers = new Set(invoices.map(b => b.customer_id)).size;
+                const totalRouteValue = invoices.reduce((sum, b) => sum + parseFloat(b.true_grand_total), 0);
+
+                let previewHtml = `
+                    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; margin-bottom: 12px; font-size: 11px; line-height: 1.5; color: #334155; text-align: left; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                        <div style="margin-bottom: 3px;"><strong>Route:</strong> ${selectedRouteName}</div>
+                        <div style="margin-bottom: 3px;"><strong>Route ID:</strong> #${routeId}</div>
+                        <div style="margin-bottom: 3px;"><strong>Rep Name:</strong> ${selectedRepName}</div>
+                        <div style="margin-bottom: 3px;"><strong>Customers Count:</strong> ${uniqueCustomers}</div>
+                        <div style="margin-bottom: 3px;"><strong>Invoice Count:</strong> ${invoiceCount}</div>
+                        <div><strong>Total Value:</strong> <strong style="color: #16a34a;">Rs ${totalRouteValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong></div>
+                    </div>
+                `;
+
+                if (invoices.length === 0) {
+                    previewHtml += '<p style="text-align: center; color: #888; font-size: 11px;">No sales orders in this route.</p>';
+                    billsContainer.innerHTML = previewHtml;
+                    return;
+                }
+                
+                previewHtml += '<div style="font-weight: bold; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 8px; font-size: 10px; text-transform: uppercase; color: #475569;">Sales Orders / Bills</div>';
+                previewHtml += '<div style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;">';
+                invoices.forEach(b => {
                     let trueTotal = parseFloat(b.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits: 2});
-                    html += `
-                        <div class="rb-bill-item">
-                            <span><strong>${b.invoice_number}</strong> (${b.customer_name})</span>
-                            <strong style="font-family: monospace; color: #2e7d32;">Rs ${trueTotal}</strong>
+                    previewHtml += `
+                        <div class="rb-bill-item" style="display: flex; justify-content: space-between; align-items: flex-start; background: #fff; border: 1px solid #e2e8f0; padding: 6px; border-radius: 4px; font-size: 11px;">
+                            <div style="display: flex; flex-direction: column; max-width: 65%;">
+                                <strong>${b.invoice_number}</strong>
+                                <span style="color: #64748b; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${b.customer_name}</span>
+                            </div>
+                            <strong style="font-family: monospace; color: #0f172a; white-space: nowrap;">Rs ${trueTotal}</strong>
                         </div>
                     `;
                 });
-                billsContainer.innerHTML = html;
+                previewHtml += '</div>';
+                billsContainer.innerHTML = previewHtml;
             });
     }
 
@@ -2416,7 +2500,8 @@
             if (data.status === 'success') {
                 alert("🎉 Success: " + data.message);
                 closeRouteBindingModal();
-                window.location.reload();
+                // Redirect/reload switching filter to Adjustments
+                window.location.href = window.location.pathname + `?filter=adjustments`;
             } else {
                 alert("⚠️ Error: " + data.message);
             }
@@ -2439,9 +2524,33 @@
         .then(data => {
             if (data.status === 'success') {
                 alert("🎉 Success: " + data.message);
-                window.location.reload();
+                window.location.href = window.location.pathname + `?filter=adjustments`;
             } else {
                 alert("⚠️ Error: " + data.message);
+            }
+        });
+    }
+
+    function unbindCombinedRoute() {
+        if (!currentRouteId) return;
+        if (!confirm("Are you sure you want to Undo this route binding? All invoices, loading data, and collections will be restored to their original separate routes, and this combined route will be removed.")) {
+            return;
+        }
+        
+        fetch('<?= APP_URL ?>/RepTracking/api_unbind_route', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ route_id: currentRouteId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                window.location.href = window.location.pathname + `?filter=adjustments`;
+            } else {
+                alert("Error: " + data.message);
             }
         });
     }
