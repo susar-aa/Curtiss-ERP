@@ -297,6 +297,10 @@ class PickingController extends Controller {
             $item->required_qty = floatval($item->required_qty);
             $item->loaded_qty = floatval($item->loaded_qty);
             $item->is_picked = intval($item->is_picked);
+            $item->final_loaded_qty = $item->final_loaded_qty !== null ? floatval($item->final_loaded_qty) : null;
+            $item->is_verified = intval($item->is_verified);
+            $item->variance = floatval($item->variance);
+            $item->verified_by = $item->verified_by ? intval($item->verified_by) : null;
         }
 
         echo json_encode([
@@ -336,20 +340,72 @@ class PickingController extends Controller {
             exit;
         }
 
+        // Simple direct overwrite update to ensure data reliability
         $this->db->query("
             UPDATE delivery_picking_items 
             SET loaded_qty = :loaded_qty, is_picked = :is_picked, updated_at = :updated_at 
-            WHERE id = :id AND (updated_at < :updated_at_check OR updated_at IS NULL)
+            WHERE id = :id
         ");
         $this->db->bind(':loaded_qty', $loadedQty);
         $this->db->bind(':is_picked', $isPicked);
         $this->db->bind(':updated_at', $updatedAt);
         $this->db->bind(':id', $id);
-        $this->db->bind(':updated_at_check', $updatedAt);
         $this->db->execute();
 
         // Recalculate and update the overall delivery status
         $this->updateDeliveryStatus($item->delivery_id);
+
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    // API: Update single item details for final loading (final_loaded_qty, is_verified, variance)
+    public function api_update_final_item() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $id = intval($input['id'] ?? 0);
+        $finalLoadedQty = floatval($input['final_loaded_qty'] ?? 0);
+        $isVerified = intval($input['is_verified'] ?? 0);
+        $userId = intval($input['user_id'] ?? 0);
+
+        if (!$id) {
+            echo json_encode(['success' => false, 'error' => 'Item ID is required']);
+            exit;
+        }
+
+        // Fetch item details (required_qty) to compute variance
+        $this->db->query("SELECT required_qty, delivery_id FROM delivery_picking_items WHERE id = :id");
+        $this->db->bind(':id', $id);
+        $item = $this->db->single();
+
+        if (!$item) {
+            echo json_encode(['success' => false, 'error' => 'Item not found']);
+            exit;
+        }
+
+        // Variance = Final Loaded Quantity - Required Quantity
+        $variance = $finalLoadedQty - floatval($item->required_qty);
+
+        $this->db->query("
+            UPDATE delivery_picking_items 
+            SET final_loaded_qty = :final_loaded_qty, 
+                is_verified = :is_verified, 
+                variance = :variance, 
+                verified_at = NOW(), 
+                verified_by = :verified_by
+            WHERE id = :id
+        ");
+        $this->db->bind(':final_loaded_qty', $finalLoadedQty);
+        $this->db->bind(':is_verified', $isVerified);
+        $this->db->bind(':variance', $variance);
+        $this->db->bind(':verified_by', $userId ? $userId : null);
+        $this->db->bind(':id', $id);
+        $this->db->execute();
 
         echo json_encode(['success' => true]);
         exit;
@@ -375,32 +431,57 @@ class PickingController extends Controller {
 
         foreach ($updates as $upd) {
             $id = intval($upd['id'] ?? 0);
-            $loadedQty = floatval($upd['loaded_qty'] ?? 0);
-            $isPicked = intval($upd['is_picked'] ?? 0);
-            $updatedAt = $upd['updated_at'] ?? date('Y-m-d H:i:s');
-
             if (!$id) continue;
 
-            // Find delivery ID
-            $this->db->query("SELECT delivery_id FROM delivery_picking_items WHERE id = :id");
+            // Find current details
+            $this->db->query("SELECT required_qty, delivery_id FROM delivery_picking_items WHERE id = :id");
             $this->db->bind(':id', $id);
             $item = $this->db->single();
             if ($item) {
                 $affectedDeliveries[] = intval($item->delivery_id);
+            } else {
+                continue;
             }
 
-            // Perform conditional update based on timestamp comparison
-            $this->db->query("
-                UPDATE delivery_picking_items 
-                SET loaded_qty = :loaded_qty, is_picked = :is_picked, updated_at = :updated_at 
-                WHERE id = :id AND (updated_at < :updated_at_check OR updated_at IS NULL)
-            ");
-            $this->db->bind(':loaded_qty', $loadedQty);
-            $this->db->bind(':is_picked', $isPicked);
-            $this->db->bind(':updated_at', $updatedAt);
-            $this->db->bind(':id', $id);
-            $this->db->bind(':updated_at_check', $updatedAt);
-            $this->db->execute();
+            if (isset($upd['final_loaded_qty'])) {
+                // Final Loading Update
+                $finalLoadedQty = floatval($upd['final_loaded_qty']);
+                $isVerified = intval($upd['is_verified'] ?? 0);
+                $userId = intval($upd['user_id'] ?? 0);
+                $variance = $finalLoadedQty - floatval($item->required_qty);
+
+                $this->db->query("
+                    UPDATE delivery_picking_items 
+                    SET final_loaded_qty = :final_loaded_qty, 
+                        is_verified = :is_verified, 
+                        variance = :variance, 
+                        verified_at = NOW(), 
+                        verified_by = :verified_by
+                    WHERE id = :id
+                ");
+                $this->db->bind(':final_loaded_qty', $finalLoadedQty);
+                $this->db->bind(':is_verified', $isVerified);
+                $this->db->bind(':variance', $variance);
+                $this->db->bind(':verified_by', $userId ? $userId : null);
+                $this->db->bind(':id', $id);
+                $this->db->execute();
+            } else {
+                // Pre-Loading Update (Warehouse Pick)
+                $loadedQty = floatval($upd['loaded_qty'] ?? 0);
+                $isPicked = intval($upd['is_picked'] ?? 0);
+                $updatedAt = $upd['updated_at'] ?? date('Y-m-d H:i:s');
+
+                $this->db->query("
+                    UPDATE delivery_picking_items 
+                    SET loaded_qty = :loaded_qty, is_picked = :is_picked, updated_at = :updated_at 
+                    WHERE id = :id
+                ");
+                $this->db->bind(':loaded_qty', $loadedQty);
+                $this->db->bind(':is_picked', $isPicked);
+                $this->db->bind(':updated_at', $updatedAt);
+                $this->db->bind(':id', $id);
+                $this->db->execute();
+            }
         }
 
         // Update overall statuses for all affected loading sheets

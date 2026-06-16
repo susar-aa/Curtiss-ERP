@@ -340,6 +340,7 @@ error_reporting(E_ALL);
         <div id="routeTabs" style="display: none; padding: 10px 25px; background: rgba(0,0,0,0.02); border-bottom: 1px solid var(--mac-border); gap: 15px;">
             <button id="tabInvoices" class="btn" style="background: #0066cc; color: white; padding: 6px 12px; font-size: 13px;" onclick="switchRouteTab('invoices')">📄 Route Sales Orders</button>
             <button id="tabCollections" class="btn" style="background: transparent; color: #0066cc; border: 1px solid #0066cc; padding: 6px 12px; font-size: 13px;" onclick="switchRouteTab('collections')">💰 Route Collections & GL Finalization</button>
+            <button id="tabVariances" class="btn" style="background: transparent; color: #ef6c00; border: 1px solid #ef6c00; padding: 6px 12px; font-size: 13px; display: none;" onclick="switchRouteTab('variances')">🚚 Dispatch Loading Variances</button>
         </div>
 
         <div style="flex:1; overflow-y:auto; position:relative;">
@@ -378,6 +379,19 @@ error_reporting(E_ALL);
                     <button class="btn" id="btnPostGL" style="background: #2e7d32; color: #fff; padding: 8px 16px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px;" onclick="postSelectedCollectionsGL()">
                         ⚡ Post GL Updates & Finalize
                     </button>
+                </div>
+            </div>
+
+            <!-- DISPATCH LOADING VARIANCES VIEW -->
+            <div id="variancesWrapper" style="display: none; padding: 20px 25px;">
+                <div id="variancesOverview" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <!-- Dynamically populated stats -->
+                </div>
+
+                <h4 style="margin: 0 0 15px 0; color: var(--text-dark);">Final Dispatch Verification & Variances</h4>
+
+                <div id="variancesList" style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px;">
+                    <!-- AJAX populated cards -->
                 </div>
             </div>
 
@@ -769,9 +783,11 @@ error_reporting(E_ALL);
         // Do not show route route collection finalization system until rep end the route
         if (status !== 'Completed') {
             document.getElementById('tabCollections').style.display = 'none';
+            document.getElementById('tabVariances').style.display = 'none';
             switchRouteTab('invoices');
         } else {
             document.getElementById('tabCollections').style.display = 'inline-block';
+            document.getElementById('tabVariances').style.display = 'inline-block';
         }
 
         // Show Arrange Delivery only for completed & finalized routes
@@ -986,30 +1002,154 @@ error_reporting(E_ALL);
         currentRouteTab = tabName;
         const btnInv = document.getElementById('tabInvoices');
         const btnCol = document.getElementById('tabCollections');
+        const btnVar = document.getElementById('tabVariances');
         const tblInv = document.getElementById('billsTable');
         const wrpCol = document.getElementById('collectionsWrapper');
+        const wrpVar = document.getElementById('variancesWrapper');
+
+        // Reset styles
+        btnInv.style.background = 'transparent';
+        btnInv.style.color = '#0066cc';
+        btnCol.style.background = 'transparent';
+        btnCol.style.color = '#0066cc';
+        btnVar.style.background = 'transparent';
+        btnVar.style.color = '#ef6c00';
+
+        tblInv.style.display = 'none';
+        wrpCol.style.display = 'none';
+        wrpVar.style.display = 'none';
 
         if (tabName === 'invoices') {
             btnInv.style.background = '#0066cc';
             btnInv.style.color = 'white';
-            btnCol.style.background = 'transparent';
-            btnCol.style.color = '#0066cc';
-            
             tblInv.style.display = 'table';
-            wrpCol.style.display = 'none';
-        } else {
+        } else if (tabName === 'collections') {
             btnCol.style.background = '#0066cc';
             btnCol.style.color = 'white';
-            btnInv.style.background = 'transparent';
-            btnInv.style.color = '#0066cc';
-            
-            tblInv.style.display = 'none';
             wrpCol.style.display = 'block';
-            
             if (currentRouteId) {
                 loadRouteCollections(currentRouteId);
             }
+        } else if (tabName === 'variances') {
+            btnVar.style.background = '#ef6c00';
+            btnVar.style.color = 'white';
+            wrpVar.style.display = 'block';
+            if (currentRouteId) {
+                loadRouteVariances(currentRouteId);
+            }
         }
+    }
+
+    function loadRouteVariances(routeId) {
+        const listDiv = document.getElementById('variancesList');
+        const overviewDiv = document.getElementById('variancesOverview');
+        listDiv.innerHTML = '<div style="text-align:center; padding:30px; font-weight:bold; color:#ef6c00;">Loading Variances... ⏳</div>';
+        overviewDiv.innerHTML = '';
+
+        fetch('<?= APP_URL ?>/RepTracking/api_get_route_variances/' + routeId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success' || !data.deliveries || data.deliveries.length === 0) {
+                    listDiv.innerHTML = '<div style="text-align:center; padding:30px; color:#888;">No dispatch loading records or variances found for this route.</div>';
+                    return;
+                }
+
+                listDiv.innerHTML = '';
+                let totalShort = 0;
+                let totalOver = 0;
+
+                data.deliveries.forEach(del => {
+                    totalShort += del.shortages;
+                    totalOver += del.overages;
+
+                    let itemsHtml = '';
+                    if (del.items.length === 0) {
+                        itemsHtml = '<p style="color:#888; padding: 10px;">No items in this loading sheet.</p>';
+                    } else {
+                        itemsHtml = `
+                            <table class="data-table" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                                <thead>
+                                    <tr style="background: rgba(0,0,0,0.02);">
+                                        <th style="padding: 8px; text-align: left; font-size:11px;">Product Name</th>
+                                        <th style="padding: 8px; text-align: center; font-size:11px;">Required</th>
+                                        <th style="padding: 8px; text-align: center; font-size:11px;">Pre-Loaded</th>
+                                        <th style="padding: 8px; text-align: center; font-size:11px;">Final Dispatch</th>
+                                        <th style="padding: 8px; text-align: center; font-size:11px;">Variance</th>
+                                        <th style="padding: 8px; text-align: center; font-size:11px;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                        `;
+
+                        del.items.forEach(item => {
+                            let varColor = '#000';
+                            let varText = '0';
+                            
+                            if (item.variance < 0) {
+                                varColor = '#c62828';
+                                varText = `${item.variance} (Short)`;
+                            } else if (item.variance > 0) {
+                                varColor = '#ef6c00';
+                                varText = `+${item.variance} (Over)`;
+                            } else {
+                                varColor = '#2e7d32';
+                                varText = 'Match';
+                            }
+
+                            let finalVal = item.final_loaded_qty !== null ? item.final_loaded_qty : '-';
+                            let statusText = item.is_verified ? '<span style="color:#2e7d32; font-weight:bold;">Verified</span>' : '<span style="color:#ef6c00; font-weight:bold;">Pending</span>';
+
+                            itemsHtml += `
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px; font-weight:bold; font-size:12px;">${item.item_name}</td>
+                                    <td style="padding: 8px; text-align: center; font-weight:bold;">${item.required_qty}</td>
+                                    <td style="padding: 8px; text-align: center;">${item.pre_loaded_qty}</td>
+                                    <td style="padding: 8px; text-align: center; font-weight:bold;">${finalVal}</td>
+                                    <td style="padding: 8px; text-align: center; font-weight:bold; color:${varColor};">${varText}</td>
+                                    <td style="padding: 8px; text-align: center;">${statusText}</td>
+                                </tr>
+                            `;
+                        });
+
+                        itemsHtml += '</tbody></table>';
+                    }
+
+                    listDiv.innerHTML += `
+                        <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:15px; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:15px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:10px; margin-bottom:10px;">
+                                <h3 style="margin:0; font-size:14px; color:#1e293b;">🚚 Loading Sheet #${del.delivery_id} (${del.vehicle_number})</h3>
+                                <span style="background:#e0f2fe; color:#0369a1; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:bold;">Driver: ${del.driver_name}</span>
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; font-size:12px; margin-bottom:10px;">
+                                <div>Items: <strong>${del.verified_items}/${del.total_items} verified</strong></div>
+                                <div style="color:#c62828;">Shortages: <strong>${del.shortages} pcs</strong></div>
+                                <div style="color:#ef6c00;">Overages: <strong>${del.overages} pcs</strong></div>
+                            </div>
+                            ${itemsHtml}
+                        </div>
+                    `;
+                });
+
+                // Render Overview panel stats
+                overviewDiv.innerHTML = `
+                    <div class="stat-box" style="flex:1; min-width:150px;">
+                        <span>Total Shortages</span>
+                        <strong style="color:#c62828;">${totalShort} pcs</strong>
+                    </div>
+                    <div class="stat-box" style="flex:1; min-width:150px;">
+                        <span>Total Overages</span>
+                        <strong style="color:#ef6c00;">${totalOver} pcs</strong>
+                    </div>
+                    <div class="stat-box" style="flex:1; min-width:150px;">
+                        <span>Status</span>
+                        <strong style="color:#2e7d32;">Audited</strong>
+                    </div>
+                `;
+            })
+            .catch(err => {
+                listDiv.innerHTML = '<div style="text-align:center; padding:30px; color:#c62828;">Failed to load loading variances.</div>';
+                console.error(err);
+            });
     }
 
     function renderAccountSelect(paymentId, type, selectedCode) {

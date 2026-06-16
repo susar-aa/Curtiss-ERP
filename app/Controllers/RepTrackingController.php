@@ -481,4 +481,73 @@ class RepTrackingController extends Controller {
             exit;
         }
     }
+
+    // NEW: Get loading variances for a route
+    public function api_get_route_variances($routeId) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') { die("Invalid Request"); }
+        
+        $db = new Database();
+        
+        // Find deliveries linked to this route
+        $db->query("
+            SELECT d.id as id, d.vehicle_number, d.driver_name, d.status
+            FROM deliveries d
+            WHERE d.rep_route_id = :rid OR d.secondary_rep_route_id = :rid
+        ");
+        $db->bind(':rid', $routeId);
+        $deliveries = $db->resultSet() ?: [];
+        
+        $results = [];
+        
+        foreach ($deliveries as $del) {
+            $db->query("
+                SELECT dpi.item_id, dpi.item_name, dpi.required_qty, dpi.loaded_qty as pre_loaded_qty, 
+                       dpi.final_loaded_qty, dpi.variance, dpi.is_verified, dpi.verified_at, u.username as verifier_name
+                FROM delivery_picking_items dpi
+                LEFT JOIN users u ON dpi.verified_by = u.id
+                WHERE dpi.delivery_id = :did
+            ");
+            $db->bind(':did', $del->id);
+            $items = $db->resultSet() ?: [];
+            
+            $shortages = 0;
+            $overages = 0;
+            $totalItems = count($items);
+            $verifiedItems = 0;
+            
+            foreach ($items as $item) {
+                $item->required_qty = floatval($item->required_qty);
+                $item->pre_loaded_qty = floatval($item->pre_loaded_qty);
+                $item->final_loaded_qty = $item->final_loaded_qty !== null ? floatval($item->final_loaded_qty) : null;
+                $item->variance = floatval($item->variance);
+                $item->is_verified = intval($item->is_verified);
+                
+                if ($item->is_verified) {
+                    $verifiedItems++;
+                }
+                
+                if ($item->variance < 0) {
+                    $shortages += abs($item->variance);
+                } elseif ($item->variance > 0) {
+                    $overages += $item->variance;
+                }
+            }
+            
+            $results[] = [
+                'delivery_id' => $del->id,
+                'vehicle_number' => $del->vehicle_number,
+                'driver_name' => $del->driver_name,
+                'status' => $del->status,
+                'total_items' => $totalItems,
+                'verified_items' => $verifiedItems,
+                'shortages' => $shortages,
+                'overages' => $overages,
+                'items' => $items
+            ];
+        }
+        
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'success', 'deliveries' => $results]);
+        exit;
+    }
 }
