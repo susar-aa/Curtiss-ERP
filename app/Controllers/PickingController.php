@@ -73,7 +73,7 @@ class PickingController extends Controller {
                     $this->db->query("UPDATE rep_daily_routes SET status = 'Variance Adjustment' WHERE id IN ($ridsStr)");
                     $this->db->execute();
 
-                    $this->logActivity('Loading Completed (Auto)', 'Picking', "All picking items verified. Automatically completed loading for delivery #{$deliveryId}. Route(s) moved to Variance Adjustment.", $delivery->rep_route_id);
+                    $this->logPickingActivity('Loading Completed (Auto)', 'Picking', "All picking items verified. Automatically completed loading for delivery #{$deliveryId}. Route(s) moved to Variance Adjustment.", $delivery->rep_route_id);
                 }
             }
         }
@@ -540,7 +540,7 @@ class PickingController extends Controller {
             $this->db->execute();
 
             // Log activity
-            $this->logActivity('Loading Completed', 'Picking', "Completed loading process for delivery #{$deliveryId} from Curtiss Portal App. Route(s) moved to Variance Adjustment.", $delivery->rep_route_id);
+            $this->logPickingActivity('Loading Completed', 'Picking', "Completed loading process for delivery #{$deliveryId} from Curtiss Portal App. Route(s) moved to Variance Adjustment.", $delivery->rep_route_id);
 
             $this->db->commit();
             echo json_encode(['success' => true, 'message' => 'Loading completed. Route moved to Variance Audit.']);
@@ -551,7 +551,7 @@ class PickingController extends Controller {
         exit;
     }
 
-    private function logActivity($action, $module, $desc, $refId = null) {
+    protected function logPickingActivity($action, $module, $desc, $refId = null) {
         try {
             $this->db->query("INSERT INTO audit_logs (user_id, action, module, description, reference_id, ip_address) 
                               VALUES (:uid, :action, :module, :desc, :ref, :ip)");
