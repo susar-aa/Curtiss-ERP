@@ -167,12 +167,10 @@
                 <thead>
                     <tr>
                         <th style="width:5%;">#</th>
-                        <th style="text-align:left; width:45%;">Item Description</th>
-                        <th style="text-align:center; width:10%;">Required Qty</th>
-                        <th style="text-align:center; width:10%;">Pre-loaded Qty</th>
-                        <th style="text-align:center; width:10%;">Final Loaded</th>
+                        <th style="text-align:left; width:55%;">Product Name / Item Description</th>
+                        <th style="text-align:center; width:15%;">Required Qty</th>
+                        <th style="text-align:center; width:15%;">Actual Loaded Qty</th>
                         <th style="text-align:center; width:10%;">Variance</th>
-                        <th style="text-align:center; width:10%;">Audited</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -182,26 +180,24 @@
                     if (empty($data['items'])): 
                     ?>
                         <tr>
-                            <td colspan="7" style="text-align:center; padding: 15px; color: #555;">No picking items verified for final loading.</td>
+                            <td colspan="5" style="text-align:center; padding: 15px; color: #555;">No picking items verified for final loading.</td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($data['items'] as $item): ?>
                             <?php if ($currentCategory !== $item->category_name): ?>
                                 <?php $currentCategory = $item->category_name; ?>
                                 <tr class="category-header-row">
-                                    <td colspan="7" style="padding: 6px 8px; font-weight: bold; background: #f1f3f9;">📁 Category: <?= htmlspecialchars($currentCategory) ?></td>
+                                    <td colspan="5" style="padding: 6px 8px; font-weight: bold; background: #f1f3f9;">📁 Category: <?= htmlspecialchars($currentCategory) ?></td>
                                 </tr>
                             <?php endif; ?>
                             <tr>
                                 <td style="text-align:center;"><?= $counter++ ?></td>
                                 <td style="font-weight: 500;"><?= htmlspecialchars($item->item_name) ?></td>
                                 <td style="text-align:center; font-family: monospace; font-size:11px; font-weight:bold;"><?= floatval($item->required_qty) ?></td>
-                                <td style="text-align:center; font-family: monospace; font-size:11px;"><?= floatval($item->pre_loaded_qty) ?></td>
                                 <td style="text-align:center; font-family: monospace; font-size:11px; font-weight:bold; background:#fafafa;"><?= $item->final_loaded_qty !== null ? floatval($item->final_loaded_qty) : '-' ?></td>
                                 <td style="text-align:center; font-family: monospace; font-size:11px; font-weight:bold; color:<?= floatval($item->variance) < 0 ? '#c62828' : (floatval($item->variance) > 0 ? '#ef6c00' : '#2e7d32') ?>;">
                                     <?= floatval($item->variance) > 0 ? '+' : '' ?><?= floatval($item->variance) ?>
                                 </td>
-                                <td style="text-align:center;"><span class="tick-box-placeholder"></span></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>

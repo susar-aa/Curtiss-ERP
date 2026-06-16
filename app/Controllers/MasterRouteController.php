@@ -390,9 +390,9 @@ class MasterRouteController extends Controller {
             'selected_credit_invoices' => !empty($postData['selected_credit_invoices']) ? json_encode($postData['selected_credit_invoices']) : null
         ];
 
-        if (empty($deliveryData['rep_route_id']) || empty($deliveryData['delivery_date']) || empty($deliveryData['vehicle_number']) || empty($deliveryData['driver_name'])) {
+        if (empty($deliveryData['rep_route_id']) || empty($deliveryData['delivery_date'])) {
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'error', 'message' => 'All mandatory fields (Route, Date, Vehicle, Driver) are required.']);
+            echo json_encode(['status' => 'error', 'message' => 'All mandatory fields (Route, Date) are required.']);
             exit;
         }
 
@@ -400,19 +400,19 @@ class MasterRouteController extends Controller {
 
         header('Content-Type: application/json');
         if ($deliveryId) {
-            // Update route status to Pre-Loading
+            // Update route status to Pending Loading
             $db = new Database();
-            $db->query("UPDATE rep_daily_routes SET status = 'Pre-Loading' WHERE id = :id");
+            $db->query("UPDATE rep_daily_routes SET status = 'Pending Loading' WHERE id = :id");
             $db->bind(':id', $deliveryData['rep_route_id']);
             $db->execute();
 
             if ($deliveryData['secondary_rep_route_id']) {
-                $db->query("UPDATE rep_daily_routes SET status = 'Pre-Loading' WHERE id = :id");
+                $db->query("UPDATE rep_daily_routes SET status = 'Pending Loading' WHERE id = :id");
                 $db->bind(':id', $deliveryData['secondary_rep_route_id']);
                 $db->execute();
             }
 
-            $this->logActivity('Arrange Delivery', 'RepTracking', "Created delivery arrangement ID: {$deliveryId} and moved routes to Pre-Loading status", $deliveryData['rep_route_id']);
+            $this->logActivity('Arrange Delivery', 'RepTracking', "Created delivery arrangement ID: {$deliveryId} and moved routes to Pending Loading status", $deliveryData['rep_route_id']);
 
             echo json_encode(['status' => 'success', 'message' => 'Delivery arranged successfully!', 'delivery_id' => $deliveryId]);
         } else {
@@ -495,8 +495,8 @@ class MasterRouteController extends Controller {
         $targetStatus = trim($postData['status'] ?? '');
 
         $allowedStatuses = [
-            'Active', 'Pending GL', 'Pending Delivery', 'Arrange Summary', 
-            'Pre-Loading', 'Final Loading', 'Variance Adjustment', 'Finalizing', 'Completed'
+            'Active', 'Pending GL', 'Adjustments', 'Pending Loading', 'Final Loading', 
+            'Variance Adjustment', 'Finalizing', 'Completed'
         ];
 
         header('Content-Type: application/json');
@@ -604,5 +604,29 @@ class MasterRouteController extends Controller {
         }
         fclose($output);
         exit;
+    }
+
+    public function api_detach_invoice() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $invoiceId = intval($payload['invoice_id'] ?? 0);
+        if ($invoiceId <= 0) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Invalid invoice ID.']);
+            exit;
+        }
+        try {
+            $db = new Database();
+            $db->query("UPDATE invoices SET rep_route_id = NULL WHERE id = :id");
+            $db->bind(':id', $invoiceId);
+            $db->execute();
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => 'Invoice detached successfully!']);
+            exit;
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            exit;
+        }
     }
 }

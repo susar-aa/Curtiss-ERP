@@ -230,8 +230,8 @@
     <button type="button" class="global-filter-btn active" onclick="filterLeftPane('all', this)">All</button>
     <button type="button" class="global-filter-btn" onclick="filterLeftPane('active', this)">🟢 Active Rep Routes</button>
     <button type="button" class="global-filter-btn" onclick="filterLeftPane('pending_gl', this)">💰 Credit Collections</button>
+    <button type="button" class="global-filter-btn" onclick="filterLeftPane('adjustments', this)">⚙️ Adjustments</button>
     <button type="button" class="global-filter-btn" onclick="filterLeftPane('pending_loading', this)">📦 Pending Loading</button>
-    <button type="button" class="global-filter-btn" onclick="filterLeftPane('pre_loading', this)">🟠 Pre-Loading</button>
     <button type="button" class="global-filter-btn" onclick="filterLeftPane('final_loading', this)">🚛 Final Loading</button>
     <button type="button" class="global-filter-btn" onclick="filterLeftPane('variance', this)">⚖️ Variance Audit</button>
     <button type="button" class="global-filter-btn" onclick="filterLeftPane('finalizing', this)">🔒 Finalizing</button>
@@ -250,12 +250,10 @@
                         $dataType = 'active';
                     } elseif ($status === 'Pending GL') {
                         $dataType = 'pending_gl';
-                    } elseif ($status === 'Pending Delivery') {
-                        $dataType = 'pending_delivery';
-                    } elseif ($status === 'Arrange Summary') {
-                        $dataType = 'arrangement';
-                    } elseif ($status === 'Pre-Loading') {
-                        $dataType = 'pre_loading';
+                    } elseif ($status === 'Adjustments') {
+                        $dataType = 'adjustments';
+                    } elseif ($status === 'Pending Loading') {
+                        $dataType = 'pending_loading';
                     } elseif ($status === 'Final Loading') {
                         $dataType = 'final_loading';
                     } elseif ($status === 'Variance Adjustment') {
@@ -328,12 +326,11 @@
         <div class="workflow-wizard" id="workflowWizard" style="display: none;">
             <div class="wizard-step" id="wstep-Active">1. Active Route</div>
             <div class="wizard-step" id="wstep-PendingGL">2. Credit Collections</div>
-            <div class="wizard-step" id="wstep-PendingDelivery">3. Pending Loading</div>
-            <div class="wizard-step" id="wstep-ArrangeSummary">4. Arrange Summary</div>
-            <div class="wizard-step" id="wstep-Pre-Loading">5. Pre-Loading</div>
-            <div class="wizard-step" id="wstep-FinalLoading">6. Final Loading</div>
-            <div class="wizard-step" id="wstep-VarianceAdjustment">7. Variance Audit</div>
-            <div class="wizard-step" id="wstep-Finalizing">8. Finalizing</div>
+            <div class="wizard-step" id="wstep-Adjustments">3. Adjustments</div>
+            <div class="wizard-step" id="wstep-PendingLoading">4. Pending Loading</div>
+            <div class="wizard-step" id="wstep-FinalLoading">5. Final Loading</div>
+            <div class="wizard-step" id="wstep-VarianceAdjustment">6. Variance Audit</div>
+            <div class="wizard-step" id="wstep-Finalizing">7. Finalizing</div>
         </div>
 
         <!-- Content Area -->
@@ -355,14 +352,10 @@
                 <div class="stage-section-panel" id="ssec-Active" style="display:none;">
                     <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
                         <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">⚡ Live Route Operations Active</h4>
-                        <p style="margin:0; font-size:12px;">The field agent is currently performing active route sales. You can add or attach invoices here. When they submit their end-day meter, this route is ready for GL Audit.</p>
+                        <p style="margin:0; font-size:12px;">The field agent is currently performing active route sales. When they submit their end-day meter, this route is ready for GL Audit.</p>
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                         <h4 style="margin:0;">Created Sales Orders</h4>
-                        <div style="display:flex; gap:10px;">
-                            <button onclick="redirectToAddInvoice()" style="padding:6px 12px; background:#0066cc; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">➕ Create Sales Order</button>
-                            <button onclick="openAttachInvoiceModal()" style="padding:6px 12px; background:#5c6bc0; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">🔗 Attach Sales Order</button>
-                        </div>
                     </div>
                     <table class="data-table">
                         <thead>
@@ -385,7 +378,7 @@
                 <div class="stage-section-panel" id="ssec-PendingGL" style="display:none;">
                     <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:15px; margin-bottom:20px; color:#78350f;">
                         <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">📄 General Ledger Audit & Verification</h4>
-                        <p style="margin:0; font-size:12px;">Please audit all invoices generated. Double check item details and customer ledger reservations. Once verified, move the route to Logistics arrangement.</p>
+                        <p style="margin:0; font-size:12px;">Please audit all invoices generated. Double check item details and customer ledger reservations. Once verified, move the route to Adjustments stage.</p>
                     </div>
                     <div style="display:grid; grid-template-columns: 1fr 1.2fr; gap: 20px; margin-bottom:20px;">
                         <!-- Invoices Generated Card -->
@@ -442,79 +435,117 @@
                         <button onclick="advanceRouteStatus('Active')" style="padding:10px 20px; background:#e2e8f0; color:#333; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">↩ Send back to Active</button>
                         <div style="display:flex; align-items:center; gap:15px;">
                             <span id="glVerificationStatusText" style="font-size:12px; font-weight:bold;"></span>
-                            <button id="glApproveSalesBtn" onclick="advanceRouteStatus('Pending Delivery')" style="padding:10px 20px; background:#0066cc; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; opacity:0.5; cursor:not-allowed;" disabled>✅ Approve Sales & Move to Logistics</button>
+                            <button id="glApproveSalesBtn" onclick="advanceRouteStatus('Adjustments')" style="padding:10px 20px; background:#0066cc; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; opacity:0.5; cursor:not-allowed;" disabled>✅ Approve Sales & Move to Adjustments</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- STAGE 3: PENDING DELIVERY (ARRANGE FORM) -->
-                <div class="stage-section-panel" id="ssec-PendingDelivery" style="display:none;">
-                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:15px; margin-bottom:20px; color:#166534;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">🚚 Logistics Dispatch Arrangement</h4>
-                        <p style="margin:0; font-size:12px;">Specify delivery date, target vehicle, driver, and optionally select secondary bound routes or credit bills in the area to generate the loading sheets.</p>
+                <!-- STAGE 3: PENDING LOADING -->
+                <!-- STAGE 3: ADJUSTMENTS -->
+                <div class="stage-section-panel" id="ssec-Adjustments" style="display:none;">
+                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">⚙️ Route Adjustments & Delivery Binding</h4>
+                        <p style="margin:0; font-size:12px;">Add, attach or remove Sales Orders, and bind this route to a vehicle/delivery arrangement before physical warehouse loading preparation.</p>
                     </div>
-                    <form id="deliveryArrangeForm" style="display:flex; flex-direction:column; gap:15px; max-width:650px; background:#fafafa; border:1px solid #e2e8f0; padding:20px; border-radius:8px; margin:0 auto;">
-                        <div>
-                            <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Delivery Date</label>
-                            <input type="date" id="formDaDate" value="<?= date('Y-m-d') ?>" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
-                        </div>
 
-                        <div>
-                            <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Bind Secondary Route (Optional)</label>
-                            <select id="formDaSecondaryRoute" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
-                                <option value="">-- Select Route --</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:6px;">Select Territory Credit Invoices to dispatch with this vehicle</label>
-                            <div id="formDaBillsContainer" style="border:1px solid #ccc; border-radius:6px; max-height:160px; overflow-y:auto; background:#fff; padding:8px;">
-                                <!-- AJAX outstanding credit bills list -->
+                    <!-- Invoice & Sales Order Management Section -->
+                    <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02); margin-bottom:20px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h4 style="margin:0; font-size:14px; font-weight:bold;">Sales Order Operations</h4>
+                            <div style="display:flex; gap:10px;">
+                                <button onclick="redirectToAddInvoice()" style="padding:6px 12px; background:#0066cc; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">➕ Create Sales Order</button>
+                                <button onclick="openAttachInvoiceModal()" style="padding:6px 12px; background:#5c6bc0; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">🔗 Attach Sales Order</button>
                             </div>
                         </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Invoice Number</th>
+                                    <th>Time</th>
+                                    <th>Customer Name</th>
+                                    <th style="text-align:right;">Grand Total (Rs)</th>
+                                    <th style="text-align:center;">Status</th>
+                                    <th style="text-align:center; width:100px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adjustmentsInvoicesTbody"></tbody>
+                        </table>
+                    </div>
 
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-                            <button type="button" onclick="advanceRouteStatus('Pending GL')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Back to GL Audit</button>
-                            <button type="button" onclick="submitLogisticsArrange()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">🚚 Arrange & Save Delivery</button>
+                    <!-- Delivery Arrangement Section -->
+                    <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02); margin-bottom:20px;">
+                        <h4 style="margin:0 0 15px 0; font-size:14px; font-weight:bold;">🚚 Delivery / Logistics Binding</h4>
+                        
+                        <!-- 1. Form View -->
+                        <div id="adjDeliveryFormView" style="display:none;">
+                            <form id="adjDeliveryArrangeForm" style="display:flex; flex-direction:column; gap:15px; max-width:650px; background:#fafafa; border:1px solid #e2e8f0; padding:20px; border-radius:8px; margin:0 auto;">
+                                <div>
+                                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Delivery Date</label>
+                                    <input type="date" id="adjDaDate" value="<?= date('Y-m-d') ?>" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+                                </div>
+
+                                <div>
+                                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Bind Secondary Route (Optional)</label>
+                                    <select id="adjDaSecondaryRoute" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+                                        <option value="">-- Select Route --</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:6px;">Select Territory Credit Invoices to dispatch with this vehicle</label>
+                                    <div id="adjDaBillsContainer" style="border:1px solid #ccc; border-radius:6px; max-height:160px; overflow-y:auto; background:#fff; padding:8px;">
+                                        <!-- Outstanding credit bills list -->
+                                    </div>
+                                </div>
+
+                                <div style="text-align:right;">
+                                    <button type="button" onclick="submitAdjustmentsLogisticsArrange()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">🚚 Bind Delivery Manifest</button>
+                                </div>
+                            </form>
                         </div>
-                    </form>
+
+                        <!-- 2. Arranged View -->
+                        <div id="adjDeliveryArrangedView" style="display:none;">
+                            <div id="adjArrangedDetailsContainer" style="background:#f8fafc; border:1px solid #e2e8f0; padding:15px; border-radius:8px; font-size:13px; line-height:1.6; margin-bottom:15px;"></div>
+                            <div>
+                                <button onclick="document.getElementById('adjDeliveryFormView').style.display='block'; document.getElementById('adjDeliveryArrangedView').style.display='none';" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">✏️ Edit/Re-arrange Delivery</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:25px; border-top:1px solid #eee; padding-top:15px;">
+                        <button onclick="advanceRouteStatus('Pending GL')" style="padding:10px 20px; background:#e2e8f0; color:#333; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">↩ Back to GL Audit</button>
+                        <button onclick="advanceRouteStatus('Pending Loading')" style="padding:10px 20px; background:#ef6c00; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">⚡ Confirm Adjustments & Move to Pending Loading</button>
+                    </div>
                 </div>
 
-                <!-- STAGE 4: ARRANGE SUMMARY -->
-                <div class="stage-section-panel" id="ssec-ArrangeSummary" style="display:none;">
+                <!-- STAGE 4: PENDING LOADING -->
+                <div class="stage-section-panel" id="ssec-PendingLoading" style="display:none;">
                     <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">📦 Planned Delivery Manifest Summary</h4>
-                        <p style="margin:0; font-size:12px;">Confirm details below to save and forward to warehouse loading picker queues.</p>
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">📦 Warehouse Loading Preparation</h4>
+                        <p style="margin:0; font-size:12px;">Physical picking is underway. You can print the loading sheet or summary here. When ready for physical vehicle verification, move the route to Final Loading.</p>
                     </div>
-                    <div id="arrangeSummaryPanel" style="background:#f8fafc; border:1px solid #e2e8f0; padding:20px; border-radius:8px; font-size:13px; line-height:1.6; margin-bottom:20px;">
-                        <!-- Filled by JS -->
+
+                    <!-- Manifest Detail Summary -->
+                    <div id="arrangeSummaryPanel" style="background:#f8fafc; border:1px solid #e2e8f0; padding:15px; border-radius:8px; font-size:13px; line-height:1.6; margin-bottom:20px;"></div>
+
+                    <!-- Aggregated Products to Load List -->
+                    <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02); margin-bottom:20px;">
+                        <h4 style="margin:0 0 15px 0; font-size:14px; font-weight:bold;">Aggregated Loading Products Checklist</h4>
+                        <div id="pendingLoadingItemsBox"></div>
                     </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:25px; border-top:1px solid #eee; padding-top:15px;">
                         <div>
-                            <button onclick="advanceRouteStatus('Pending Delivery')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Edit Arrangement Form</button>
-                            <button onclick="printLoadingSheet('summary')" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;">🖨️ Print Loading Summary</button>
+                            <button onclick="advanceRouteStatus('Adjustments')" style="padding:10px 20px; background:#e2e8f0; color:#333; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">↩ Back to Adjustments</button>
+                            <button onclick="printLoadingSheet('pre')" style="padding:10px 20px; background:#3f51b5; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer; margin-left:10px;">🖨️ Print Loading Sheet</button>
+                            <button onclick="printLoadingSheet('summary')" style="padding:10px 20px; background:#673ab7; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer; margin-left:10px;">🖨️ Print Loading Summary</button>
                         </div>
-                        <button onclick="advanceRouteStatus('Pre-Loading')" style="padding:10px 20px; background:#0066cc; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">⚡ Dispatch to Warehouse Picking</button>
+                        <button onclick="advanceRouteStatus('Final Loading')" style="padding:10px 20px; background:#ef6c00; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">⚡ Send to Final Loading</button>
                     </div>
                 </div>
 
-                <!-- STAGE 5: PRE-LOADING (PICKING) -->
-                <div class="stage-section-panel" id="ssec-Pre-Loading" style="display:none;">
-                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">📥 Warehouse Picking & Manifest Load (Pre-Loading)</h4>
-                        <p style="margin:0; font-size:12px;">Warehouse staff are currently picking products using their mobile PWA. You can monitor progress below. Route status changes are disabled on the mobile app to preserve workflow integrity.</p>
-                    </div>
-                    <div id="pickingProgressBox" style="margin-bottom:20px;"></div>
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <button onclick="advanceRouteStatus('Arrange Summary')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Back to Summary</button>
-                            <button onclick="printLoadingSheet('pre')" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;">🖨️ Print Pre-Loading Sheet</button>
-                        </div>
-                        <button onclick="advanceRouteStatus('Final Loading')" style="padding:10px 20px; background:#ef6c00; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">⚡ Lock Picking & Proceed to Final Loading</button>
-                    </div>
-                </div>
-
-                <!-- STAGE 6: FINAL LOADING -->
+                <!-- STAGE 4: FINAL LOADING -->
                 <div class="stage-section-panel" id="ssec-FinalLoading" style="display:none;">
                     <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:15px; margin-bottom:20px; color:#78350f;">
                         <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">🔍 Final Loading Verification Checklist</h4>
@@ -523,7 +554,7 @@
                     <div id="finalLoadingBox" style="margin-bottom:20px;"></div>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div>
-                            <button onclick="advanceRouteStatus('Pre-Loading')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Re-open Picking</button>
+                            <button onclick="advanceRouteStatus('Pending Loading')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Re-open Picking</button>
                             <button onclick="printLoadingSheet('final')" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;">🖨️ Print Final Loading Sheet</button>
                         </div>
                         <button onclick="advanceRouteStatus('Variance Adjustment')" style="padding:10px 20px; background:#0066cc; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">🔍 Submit for Variance Audit</button>
@@ -838,7 +869,7 @@
 
     function updateWizardProgress(status) {
         document.getElementById('workflowWizard').style.display = 'flex';
-        const steps = ['Active', 'PendingGL', 'PendingDelivery', 'ArrangeSummary', 'Pre-Loading', 'FinalLoading', 'VarianceAdjustment', 'Finalizing'];
+        const steps = ['Active', 'PendingGL', 'Adjustments', 'PendingLoading', 'FinalLoading', 'VarianceAdjustment', 'Finalizing'];
         
         let statusIndex = steps.indexOf(status.replace(' ', ''));
         if (status === 'Completed' || status === 'Finalized') {
@@ -908,15 +939,12 @@
             document.getElementById('ssec-PendingGL').style.display = 'block';
             loadActiveStageBills(routeId);
             loadCollectionsVerificationStage2(routeId);
-        } else if (status === 'Pending Delivery') {
-            document.getElementById('ssec-PendingDelivery').style.display = 'block';
-            loadPendingDeliveryStage(routeId);
-        } else if (status === 'Arrange Summary') {
-            document.getElementById('ssec-ArrangeSummary').style.display = 'block';
-            loadArrangeSummaryStage(routeId);
-        } else if (status === 'Pre-Loading') {
-            document.getElementById('ssec-Pre-Loading').style.display = 'block';
-            loadPickingProgressStage(routeId);
+        } else if (status === 'Adjustments') {
+            document.getElementById('ssec-Adjustments').style.display = 'block';
+            loadAdjustmentsStage(routeId);
+        } else if (status === 'Pending Loading') {
+            document.getElementById('ssec-PendingLoading').style.display = 'block';
+            loadPendingLoadingStage(routeId);
         } else if (status === 'Final Loading') {
             document.getElementById('ssec-FinalLoading').style.display = 'block';
             loadFinalLoadingStage(routeId);
@@ -965,22 +993,25 @@
             });
     }
 
-    function loadPendingDeliveryStage(routeId) {
-        // Load secondary routes
-        const secSelect = document.getElementById('formDaSecondaryRoute');
+    function loadAdjustmentsStage(routeId) {
+        const tbody = document.getElementById('adjustmentsInvoicesTbody');
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Loading Sales Orders... ⏳</td></tr>';
+
+        // Load secondary routes for logistics binding dropdown
+        const secSelect = document.getElementById('adjDaSecondaryRoute');
         secSelect.innerHTML = '<option value="">-- Choose Route --</option>';
         document.querySelectorAll('.route-item').forEach(item => {
             const id = item.id.replace('route_', '');
             if (parseInt(id) !== parseInt(routeId)) {
                 const rdata = document.getElementById('route_data_' + id);
-                if (rdata && rdata.getAttribute('data-status') === 'Pending Delivery') {
+                if (rdata && rdata.getAttribute('data-status') === 'Adjustments') {
                     secSelect.innerHTML += `<option value="${id}">${rdata.getAttribute('data-rname')} (Rep: ${rdata.getAttribute('data-rep')})</option>`;
                 }
             }
         });
 
         // Load outstanding bills
-        const container = document.getElementById('formDaBillsContainer');
+        const container = document.getElementById('adjDaBillsContainer');
         container.innerHTML = '<p style="text-align:center; color:#888;">Loading credit bills... ⏳</p>';
 
         fetch('<?= APP_URL ?>/RepTracking/api_get_outstanding_bills/' + routeId)
@@ -988,36 +1019,114 @@
             .then(data => {
                 if (data.status !== 'success' || !data.bills || data.bills.length === 0) {
                     container.innerHTML = '<p style="text-align:center; color:#888; margin:10px 0;">No outstanding credit bills found in these territories.</p>';
-                    return;
+                } else {
+                    let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+                    data.bills.forEach(cust => {
+                        cust.bills.forEach(b => {
+                            let amtFormatted = parseFloat(b.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2});
+                            html += `
+                                <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; padding:6px; border-bottom:1px solid #f0f0f0;">
+                                    <input type="checkbox" class="adj-da-bill-checkbox" value="${b.id}" style="width:16px; height:16px;">
+                                    <div style="flex:1;">
+                                        <div style="font-weight:bold;">${b.invoice_number}</div>
+                                        <div style="font-size:11px; color:#666;">Customer: <strong>${cust.customer_name}</strong> | Date: ${b.invoice_date}</div>
+                                    </div>
+                                    <div style="font-weight:bold; font-family:monospace; color:#c62828;">Rs ${amtFormatted}</div>
+                                </label>
+                            `;
+                        });
+                    });
+                    html += '</div>';
+                    container.innerHTML = html;
                 }
-                
-                let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
-                data.bills.forEach(cust => {
-                    cust.bills.forEach(b => {
-                        let amtFormatted = parseFloat(b.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2});
-                        html += `
-                            <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; padding:6px; border-bottom:1px solid #f0f0f0;">
-                                <input type="checkbox" class="form-da-bill-checkbox" value="${b.id}" style="width:16px; height:16px;">
-                                <div style="flex:1;">
-                                    <div style="font-weight:bold;">${b.invoice_number}</div>
-                                    <div style="font-size:11px; color:#666;">Customer: <strong>${cust.customer_name}</strong> | Date: ${b.invoice_date}</div>
-                                </div>
-                                <div style="font-weight:bold; font-family:monospace; color:#c62828;">Rs ${amtFormatted}</div>
-                            </label>
+
+                // Now fetch current route details & delivery status
+                return fetch('<?= APP_URL ?>/RepTracking/api_get_route_details/' + routeId);
+            })
+            .then(res => res.json())
+            .then(data => {
+                const bills = data.bills || [];
+                tbody.innerHTML = '';
+                if (bills.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#888;">No sales orders attached to this route.</td></tr>';
+                } else {
+                    bills.forEach(bill => {
+                        let time = new Date(bill.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        let statColor = bill.status === 'Paid' ? '#2e7d32' : (bill.status === 'Unpaid' ? '#ef6c00' : '#666');
+                        tbody.innerHTML += `
+                            <tr>
+                                <td style="font-weight:bold; color:var(--primary); cursor:pointer;" onclick="openInvoiceSlider(${bill.id})">${bill.invoice_number}</td>
+                                <td>${time}</td>
+                                <td><strong>${bill.customer_name}</strong></td>
+                                <td style="text-align:right; font-family:monospace; font-weight:bold;">${parseFloat(bill.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+                                <td style="text-align:center;"><span style="color:${statColor}; font-weight:bold; text-transform:uppercase;">${bill.status}</span></td>
+                                <td style="text-align:center;">
+                                    <button onclick="detachInvoice(${bill.id})" style="padding:4px 8px; background:#ef4444; color:#fff; border:none; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold;">❌ Remove</button>
+                                </td>
+                            </tr>
                         `;
                     });
-                });
-                html += '</div>';
-                container.innerHTML = html;
+                }
+
+                // Check delivery details
+                const rdata = document.getElementById('route_data_' + routeId);
+                const delId = rdata.getAttribute('data-delivery-id');
+                if (!delId || delId === '0' || delId === '') {
+                    // Not arranged yet
+                    document.getElementById('adjDeliveryArrangedView').style.display = 'none';
+                    document.getElementById('adjDeliveryFormView').style.display = 'block';
+                } else {
+                    // Already arranged
+                    document.getElementById('adjDeliveryFormView').style.display = 'none';
+                    document.getElementById('adjDeliveryArrangedView').style.display = 'block';
+                    
+                    // Fetch delivery info
+                    fetch('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
+                        .then(res => res.json())
+                        .then(dData => {
+                            const container = document.getElementById('adjArrangedDetailsContainer');
+                            if (dData.delivery) {
+                                container.innerHTML = `
+                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                                        <div><strong>Delivery Date:</strong> ${dData.delivery.delivery_date}</div>
+                                        <div><strong>Secondary Bound Route:</strong> ${dData.delivery.secondary_route_name || 'None'}</div>
+                                    </div>
+                                    <div style="margin-top:10px; font-weight:bold; font-size:12px; color:#1e3a8a;">
+                                        🔗 Bound Manifest successfully generated. Ready for warehouse.
+                                    </div>
+                                `;
+                            } else {
+                                container.innerHTML = 'Error loading delivery details.';
+                            }
+                        });
+                }
             });
     }
 
-    function submitLogisticsArrange() {
-        const date = document.getElementById('formDaDate').value;
-        const secondary = document.getElementById('formDaSecondaryRoute').value;
+    function detachInvoice(invoiceId) {
+        if (!confirm("Are you sure you want to remove/detach this Sales Order from this route?")) return;
+        fetch('<?= APP_URL ?>/RepTracking/api_detach_invoice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ invoice_id: invoiceId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert("Sales Order successfully detached from route!");
+                loadAdjustmentsStage(currentRouteId);
+            } else {
+                alert("Error: " + data.message);
+            }
+        });
+    }
+
+    function submitAdjustmentsLogisticsArrange() {
+        const date = document.getElementById('adjDaDate').value;
+        const secondary = document.getElementById('adjDaSecondaryRoute').value;
 
         const checkedBills = [];
-        document.querySelectorAll('.form-da-bill-checkbox:checked').forEach(cb => {
+        document.querySelectorAll('.adj-da-bill-checkbox:checked').forEach(cb => {
             checkedBills.push(parseInt(cb.value));
         });
 
@@ -1039,18 +1148,57 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert("🎉 Delivery arranged successfully!");
-                // Update local list route statuses
+                alert("🎉 Delivery bound successfully!");
                 const rdata = document.getElementById('route_data_' + currentRouteId);
                 if (rdata) {
-                    rdata.setAttribute('data-status', 'Pre-Loading');
                     rdata.setAttribute('data-delivery-id', data.delivery_id);
                 }
-                loadRouteDetails(currentRouteId);
+                loadAdjustmentsStage(currentRouteId);
             } else {
                 alert("⚠️ Error: " + data.message);
             }
         });
+    }
+
+    function loadPendingLoadingStage(routeId) {
+        loadArrangeSummaryStage(routeId);
+        loadPendingLoadingItemsChecklist(routeId);
+    }
+
+    function loadPendingLoadingItemsChecklist(routeId) {
+        const box = document.getElementById('pendingLoadingItemsBox');
+        box.innerHTML = 'Loading loading items checklist... ⏳';
+
+        fetch('<?= APP_URL ?>/RepTracking/api_get_route_variances/' + routeId)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status !== 'success' || !data.deliveries || data.deliveries.length === 0) {
+                    box.innerHTML = '<p style="color:red; padding:10px;">No verification records found. Please ensure delivery is bound in Adjustments stage.</p>';
+                    return;
+                }
+                const del = data.deliveries[0];
+                let listHtml = '';
+                del.items.forEach(item => {
+                    listHtml += `
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:8px 0; font-weight:bold;">${item.item_name}</td>
+                            <td style="text-align:center; font-family:monospace; font-size:12px; font-weight:bold;">${item.required_qty}</td>
+                        </tr>
+                    `;
+                });
+
+                box.innerHTML = `
+                    <div style="background:#f1f5f9; padding:12px; border-radius:6px; margin-bottom:15px; font-size:12px; font-weight:bold; color:#1e293b;">
+                        📦 Picking Manifest ID: #${del.delivery_id} | Total Unique Items: ${del.total_items}
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Product Name / Item Description</th><th style="text-align:center; width:120px;">Required Quantity</th></tr>
+                        </thead>
+                        <tbody>${listHtml}</tbody>
+                    </table>
+                `;
+            });
     }
 
     function loadArrangeSummaryStage(routeId) {
@@ -1082,48 +1230,6 @@
                     </div>
                     <div>Invoices Assigned: <strong>${data.invoices.length}</strong></div>
                     <div>Credit Invoices Assigned: <strong>${data.credit_invoices.length}</strong></div>
-                `;
-            });
-    }
-
-    function loadPickingProgressStage(routeId) {
-        const d = document.getElementById('route_data_' + routeId);
-        const delId = d.getAttribute('data-delivery-id');
-        const box = document.getElementById('pickingProgressBox');
-        box.innerHTML = 'Loading warehouse picking status... ⏳';
-
-        fetch('<?= APP_URL ?>/RepTracking/api_get_route_variances/' + routeId)
-            .then(res => res.json())
-            .then(data => {
-                if (data.status !== 'success' || !data.deliveries || data.deliveries.length === 0) {
-                    box.innerHTML = '<p style="color:red;">No dispatch loading sheets found.</p>';
-                    return;
-                }
-                const del = data.deliveries[0];
-                let listHtml = '';
-                del.items.forEach(item => {
-                    let pickingStat = item.is_picked ? '<span style="color:#2e7d32; font-weight:bold;">Picked</span>' : '<span style="color:#ef6c00; font-weight:bold;">Pending</span>';
-                    listHtml += `
-                        <tr style="border-bottom:1px solid #eee;">
-                            <td style="padding:8px 0; font-weight:bold;">${item.item_name}</td>
-                            <td style="text-align:center; font-weight:bold;">${item.required_qty}</td>
-                            <td style="text-align:center; font-weight:bold;">${item.pre_loaded_qty}</td>
-                            <td style="text-align:center;">${pickingStat}</td>
-                        </tr>
-                    `;
-                });
-
-                box.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center; background:#f1f5f9; padding:12px; border-radius:6px; margin-bottom:15px;">
-                        <div>Picking Manifest ID: <strong>#${del.delivery_id}</strong></div>
-                        <div>Progress: <strong>${del.verified_items} / ${del.total_items} items completed</strong></div>
-                    </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr><th>Product Name</th><th style="text-align:center;">Required</th><th style="text-align:center;">Picked Qty</th><th style="text-align:center;">Status</th></tr>
-                        </thead>
-                        <tbody>${listHtml}</tbody>
-                    </table>
                 `;
             });
     }

@@ -91,7 +91,7 @@ class PickingController extends Controller {
                    (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_picked = 1) as picked_items
             FROM deliveries d
             JOIN rep_daily_routes r ON d.rep_route_id = r.id
-            WHERE r.status IN ('Pre-Loading', 'Final Loading')
+            WHERE r.status = 'Final Loading'
             ORDER BY d.delivery_date DESC, d.id DESC
         ");
         $sheets = $this->db->resultSet() ?: [];
