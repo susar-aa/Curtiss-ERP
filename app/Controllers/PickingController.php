@@ -116,6 +116,30 @@ class PickingController extends Controller {
 
     // API: Fetch all loading sheets (deliveries) in Loading stage
     public function api_get_sheets() {
+        // Auto-create deliveries for any routes in 'Loading' status that don't have one
+        $this->db->query("
+            SELECT r.id, r.route_name, r.route_binding_id, 
+                   COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name
+            FROM rep_daily_routes r
+            LEFT JOIN users u ON r.user_id = u.id
+            LEFT JOIN employees e ON u.employee_id = e.id
+            WHERE r.status = 'Loading' 
+              AND r.id NOT IN (SELECT rep_route_id FROM deliveries WHERE rep_route_id IS NOT NULL)
+              AND r.id NOT IN (SELECT secondary_rep_route_id FROM deliveries WHERE secondary_rep_route_id IS NOT NULL)
+        ");
+        $missingDeliveries = $this->db->resultSet() ?: [];
+        foreach ($missingDeliveries as $route) {
+            $repName = trim($route->first_name . ' ' . $route->last_name);
+            if (empty($repName)) {
+                $repName = 'Pending Rep';
+            }
+            $this->db->query("INSERT INTO deliveries (rep_route_id, delivery_date, vehicle_number, driver_name, partner_name, status) 
+                              VALUES (:rid, CURDATE(), 'Pending Vehicle', :driver, '', 'Arranged')");
+            $this->db->bind(':rid', $route->id);
+            $this->db->bind(':driver', $repName);
+            $this->db->execute();
+        }
+
         $this->db->query("
             SELECT d.id, d.delivery_date, d.vehicle_number, d.driver_name, d.status as db_status, 
                    r.route_name, r.id as route_id, d.secondary_rep_route_id,
