@@ -109,34 +109,56 @@ class PickingController extends Controller {
     // API: Fetch all loading sheets (deliveries)
     public function api_get_sheets() {
         $this->db->query("
-            SELECT d.id, d.delivery_date, d.vehicle_number, d.driver_name, d.status as db_status, 
-                   r.route_name, r.id as route_id, d.secondary_rep_route_id,
-                   (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id) as total_items,
-                   (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_picked = 1) as picked_items
-            FROM deliveries d
-            JOIN rep_daily_routes r ON d.rep_route_id = r.id
-            ORDER BY d.delivery_date DESC, d.id DESC
+            SELECT * FROM (
+                SELECT d.id, d.delivery_date, d.vehicle_number, d.driver_name, d.status as db_status, 
+                       r.route_name, r.id as route_id, d.secondary_rep_route_id,
+                       (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id) as total_items,
+                       (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_picked = 1) as picked_items
+                FROM deliveries d
+                JOIN rep_daily_routes r ON d.rep_route_id = r.id
+
+                UNION ALL
+
+                SELECT NULL as id, COALESCE(DATE(r.start_time), DATE(r.created_at), CURDATE()) as delivery_date, 'Not Assigned' as vehicle_number, 'Not Assigned' as driver_name, 'Pending' as db_status,
+                       r.route_name, r.id as route_id, NULL as secondary_rep_route_id,
+                       0 as total_items,
+                       0 as picked_items
+                FROM rep_daily_routes r
+                WHERE r.status IN ('Completed', 'Finalized')
+                  AND r.id NOT IN (SELECT DISTINCT rep_route_id FROM deliveries WHERE rep_route_id IS NOT NULL)
+                  AND r.id NOT IN (SELECT DISTINCT secondary_rep_route_id FROM deliveries WHERE secondary_rep_route_id IS NOT NULL)
+            ) as combined_sheets
+            ORDER BY delivery_date DESC, id DESC
         ");
         $sheets = $this->db->resultSet();
 
         foreach ($sheets as $sheet) {
+            // Assign a virtual route ID format for the frontend (e.g. route-[id]) if not arranged yet
+            if ($sheet->id === null) {
+                $sheet->id = 'route-' . $sheet->route_id;
+            }
+
             // Retrieve customer names for this delivery's routes
             $rids = [$sheet->route_id];
             if ($sheet->secondary_rep_route_id) {
                 $rids[] = $sheet->secondary_rep_route_id;
             }
             $rids = $this->resolveAllBoundRouteIds($rids);
-            $ridsStr = implode(',', $rids);
-
-            $this->db->query("
-                SELECT DISTINCT c.name 
-                FROM invoices i 
-                JOIN customers c ON i.customer_id = c.id 
-                WHERE i.rep_route_id IN ($ridsStr) AND i.status != 'Voided'
-            ");
-            $custs = $this->db->resultSet();
-            $custNames = array_map(function($c) { return $c->name; }, $custs);
-            $sheet->customer_info = !empty($custNames) ? implode(', ', $custNames) : 'No Customer Invoices';
+            
+            if (!empty($rids)) {
+                $ridsStr = implode(',', $rids);
+                $this->db->query("
+                    SELECT DISTINCT c.name 
+                    FROM invoices i 
+                    JOIN customers c ON i.customer_id = c.id 
+                    WHERE i.rep_route_id IN ($ridsStr) AND i.status != 'Voided'
+                ");
+                $custs = $this->db->resultSet();
+                $custNames = array_map(function($c) { return $c->name; }, $custs);
+                $sheet->customer_info = !empty($custNames) ? implode(', ', $custNames) : 'No Customer Invoices';
+            } else {
+                $sheet->customer_info = 'No Customer Invoices';
+            }
 
             // Determine picking status
             if ($sheet->db_status === 'Finalized' || $sheet->db_status === 'Completed') {
@@ -156,7 +178,38 @@ class PickingController extends Controller {
 
     // API: Fetch single loading sheet detail with items list (initializes items if not exists)
     public function api_get_sheet_details($deliveryId) {
-        $deliveryId = intval($deliveryId);
+        // Intercept route-[route_id] virtual sheets and dynamically insert an arranged delivery record
+        if (is_string($deliveryId) && strpos($deliveryId, 'route-') === 0) {
+            $routeId = intval(substr($deliveryId, 6));
+
+            $this->db->query("SELECT * FROM rep_daily_routes WHERE id = :id");
+            $this->db->bind(':id', $routeId);
+            $route = $this->db->single();
+
+            if (!$route) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'error' => 'Daily route record not found']);
+                exit;
+            }
+
+            $deliveryDate = date('Y-m-d');
+            if (!empty($route->start_time)) {
+                $deliveryDate = date('Y-m-d', strtotime($route->start_time));
+            }
+
+            // Create delivery entry
+            $this->db->query("
+                INSERT INTO deliveries (rep_route_id, delivery_date, vehicle_number, driver_name, status)
+                VALUES (:rep_route_id, :delivery_date, 'Not Assigned', 'Not Assigned', 'Arranged')
+            ");
+            $this->db->bind(':rep_route_id', $routeId);
+            $this->db->bind(':delivery_date', $deliveryDate);
+            $this->db->execute();
+
+            $deliveryId = intval($this->db->lastInsertId());
+        } else {
+            $deliveryId = intval($deliveryId);
+        }
         
         $this->db->query("
             SELECT d.*, r.route_name, r.id as route_id 
