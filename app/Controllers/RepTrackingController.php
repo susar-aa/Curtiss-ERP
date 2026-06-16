@@ -665,6 +665,7 @@ class RepTrackingController extends Controller {
             header('Content-Type: application/json');
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
             exit;
+        }
     }
 
     public function api_get_product_invoices() {
