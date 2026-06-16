@@ -1555,7 +1555,7 @@
         .then(data => {
             if (data.status === 'success') {
                 alert(data.message);
-                loadRouteDetails(currentRouteId);
+                window.location.href = window.location.pathname + `?route_id=${currentRouteId}&filter=finalizing`;
             } else {
                 alert('Error: ' + data.message);
             }
