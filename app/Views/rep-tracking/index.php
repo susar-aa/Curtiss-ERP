@@ -423,11 +423,13 @@
                                     <table class="data-table" style="font-size:11px; margin-top:0;">
                                         <thead style="position: sticky; top: 0; z-index: 10;">
                                             <tr style="background:#f8fafc;">
-                                                <th style="text-align:left; padding:8px 4px; font-size:10px;">Customer / Pay</th>
-                                                <th style="text-align:right; padding:8px 4px; font-size:10px;">Collected</th>
-                                                <th style="text-align:center; padding:8px 4px; font-size:10px;">Status</th>
-                                                <th style="text-align:right; padding:8px 4px; font-size:10px;">Adjusted</th>
-                                                <th style="text-align:left; padding:8px 4px; font-size:10px;">Notes</th>
+                                                <th style="text-align:left; padding:8px 4px; font-size:10px; width:20%;">Customer / Pay</th>
+                                                <th style="text-align:right; padding:8px 4px; font-size:10px; width:12%;">Collected</th>
+                                                <th style="text-align:center; padding:8px 4px; font-size:10px; width:8%;">Approve</th>
+                                                <th style="text-align:left; padding:8px 4px; font-size:10px; width:20%;">Debit Account</th>
+                                                <th style="text-align:left; padding:8px 4px; font-size:10px; width:20%;">Credit Account</th>
+                                                <th style="text-align:right; padding:8px 4px; font-size:10px; width:10%;">Adjusted</th>
+                                                <th style="text-align:left; padding:8px 4px; font-size:10px; width:10%;">Notes</th>
                                             </tr>
                                         </thead>
                                         <tbody id="glCollectionsTableBody"></tbody>
@@ -452,45 +454,9 @@
                         <p style="margin:0; font-size:12px;">Specify delivery date, target vehicle, driver, and optionally select secondary bound routes or credit bills in the area to generate the loading sheets.</p>
                     </div>
                     <form id="deliveryArrangeForm" style="display:flex; flex-direction:column; gap:15px; max-width:650px; background:#fafafa; border:1px solid #e2e8f0; padding:20px; border-radius:8px; margin:0 auto;">
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
-                            <div>
-                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Delivery Date</label>
-                                <input type="date" id="formDaDate" value="<?= date('Y-m-d') ?>" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
-                            </div>
-                            <div>
-                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Vehicle Number *</label>
-                                <select id="formDaVehicle" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;" required>
-                                    <option value="">-- Select Vehicle --</option>
-                                    <?php foreach($data['vehicles'] as $v): ?>
-                                        <?php if($v->status === 'Active'): ?>
-                                            <option value="<?= htmlspecialchars($v->vehicle_number) ?>"><?= htmlspecialchars($v->vehicle_number) ?></option>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
-                            <div>
-                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Driver Name *</label>
-                                <select id="formDaDriver" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;" required>
-                                    <option value="">-- Select Driver --</option>
-                                    <?php foreach($data['drivers'] as $d): ?>
-                                        <option value="<?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?>"><?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Partner / Helper</label>
-                                <select id="formDaPartner" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
-                                    <option value="">-- None --</option>
-                                    <?php foreach($data['employees'] as $e): ?>
-                                        <?php if($e->status === 'Active'): ?>
-                                            <option value="<?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?>"><?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?> (<?= htmlspecialchars($e->job_title) ?>)</option>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
+                        <div>
+                            <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Delivery Date</label>
+                            <input type="date" id="formDaDate" value="<?= date('Y-m-d') ?>" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
                         </div>
 
                         <div>
@@ -617,6 +583,42 @@
                                 </thead>
                                 <tbody id="settleStockTableBody"></tbody>
                             </table>
+                        </div>
+                    <!-- Driver, Vehicle, Partner Assignment (Finalize) -->
+                    <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; margin-bottom:20px;">
+                        <h5 style="margin:0 0 10px 0; font-size:13px; font-weight:bold; color:#1e293b;">🚚 Dispatch & Logistics Assignment</h5>
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px;">
+                            <div>
+                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Vehicle Number *</label>
+                                <select id="settleDaVehicle" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;" required>
+                                    <option value="">-- Select Vehicle --</option>
+                                    <?php foreach($data['vehicles'] as $v): ?>
+                                        <?php if($v->status === 'Active'): ?>
+                                            <option value="<?= htmlspecialchars($v->vehicle_number) ?>"><?= htmlspecialchars($v->vehicle_number) ?></option>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Driver Name *</label>
+                                <select id="settleDaDriver" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;" required>
+                                    <option value="">-- Select Driver --</option>
+                                    <?php foreach($data['drivers'] as $d): ?>
+                                        <option value="<?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?>"><?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Partner / Helper</label>
+                                <select id="settleDaPartner" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+                                    <option value="">-- None --</option>
+                                    <?php foreach($data['employees'] as $e): ?>
+                                        <?php if($e->status === 'Active'): ?>
+                                            <option value="<?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?>"><?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?> (<?= htmlspecialchars($e->job_title) ?>)</option>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -1012,13 +1014,7 @@
 
     function submitLogisticsArrange() {
         const date = document.getElementById('formDaDate').value;
-        const vehicle = document.getElementById('formDaVehicle').value;
-        const driver = document.getElementById('formDaDriver').value;
-        const partner = document.getElementById('formDaPartner').value;
         const secondary = document.getElementById('formDaSecondaryRoute').value;
-
-        if (!vehicle) { alert("Please select a vehicle."); return; }
-        if (!driver) { alert("Please select a driver."); return; }
 
         const checkedBills = [];
         document.querySelectorAll('.form-da-bill-checkbox:checked').forEach(cb => {
@@ -1029,9 +1025,9 @@
             rep_route_id: currentRouteId,
             secondary_rep_route_id: secondary ? parseInt(secondary) : null,
             delivery_date: date,
-            vehicle_number: vehicle,
-            driver_name: driver,
-            partner_name: partner,
+            vehicle_number: '',
+            driver_name: '',
+            partner_name: '',
             selected_credit_invoices: checkedBills
         };
 
@@ -1079,9 +1075,9 @@
                 container.innerHTML = `
                     <h4 style="margin:0 0 10px 0; border-bottom:1px solid #ddd; padding-bottom:8px;">🚚 Delivery Arrangement Manifest Details</h4>
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
-                        <div>Vehicle: <strong>${del.vehicle_number}</strong></div>
+                        <div>Vehicle: <strong>${del.vehicle_number || 'Not Assigned Yet'}</strong></div>
                         <div>Delivery Date: <strong>${del.delivery_date}</strong></div>
-                        <div>Driver Name: <strong>${del.driver_name}</strong></div>
+                        <div>Driver Name: <strong>${del.driver_name || 'Not Assigned Yet'}</strong></div>
                         <div>Partner Name: <strong>${del.partner_name || 'None'}</strong></div>
                     </div>
                     <div>Invoices Assigned: <strong>${data.invoices.length}</strong></div>
@@ -1537,6 +1533,13 @@
             .then(res => res.json())
             .then(data => {
                 currentDeliveryDetails = data;
+
+                // Pre-populate logistics fields if set
+                if (data.delivery) {
+                    document.getElementById('settleDaVehicle').value = data.delivery.vehicle_number || '';
+                    document.getElementById('settleDaDriver').value = data.delivery.driver_name || '';
+                    document.getElementById('settleDaPartner').value = data.delivery.partner_name || '';
+                }
                 
                 // Render Stock/returns
                 const stockTbody = document.getElementById('settleStockTableBody');
@@ -1830,6 +1833,13 @@
     }
 
     function submitFinalSettle() {
+        const vehicle = document.getElementById('settleDaVehicle').value;
+        const driver = document.getElementById('settleDaDriver').value;
+        const partner = document.getElementById('settleDaPartner').value;
+
+        if (!vehicle) { alert("Please select a Vehicle Number."); return; }
+        if (!driver) { alert("Please select a Driver Name."); return; }
+
         if (!confirm("Are you sure you want to FINALIZE and SETTLE this delivery route?\n\nThis will post all selected collections to GL and update inventory.")) {
             return;
         }
@@ -1881,7 +1891,10 @@
                 selected_invoice_ids: selectedInvoiceIds,
                 debit_accounts: debitAccounts,
                 credit_accounts: creditAccounts,
-                returned_items: returnedItems
+                returned_items: returnedItems,
+                vehicle_number: vehicle,
+                driver_name: driver,
+                partner_name: partner
             })
         })
         .then(res => res.json())
@@ -2419,6 +2432,30 @@
             });
     }
 
+    function getAccountIdByCode(code) {
+        let acc = globalAllAccounts.find(a => a.account_code === code);
+        if (!acc && code === '1605') {
+            acc = globalAllAccounts.find(a => a.account_code === '1600');
+        }
+        return acc ? parseInt(acc.id) : null;
+    }
+
+    function buildAccountOptions(selectedId, defaultCode) {
+        let optionsHtml = '<option value="">-- Choose Account --</option>';
+        let selectedAccId = selectedId;
+        if (!selectedAccId && defaultCode) {
+            const defaultAcc = globalAllAccounts.find(a => a.account_code === defaultCode);
+            if (defaultAcc) {
+                selectedAccId = parseInt(defaultAcc.id);
+            }
+        }
+        globalAllAccounts.forEach(acc => {
+            const isSel = parseInt(acc.id) === parseInt(selectedAccId) ? 'selected' : '';
+            optionsHtml += `<option value="${acc.id}" ${isSel}>${acc.account_code} - ${acc.account_name}</option>`;
+        });
+        return optionsHtml;
+    }
+
     function renderGLCollectionsVerification() {
         const tbody = document.getElementById('glCollectionsTableBody');
         tbody.innerHTML = '';
@@ -2427,14 +2464,14 @@
         let chequeSum = 0;
 
         if (currentGLCollectionsState.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888; padding: 10px;">No payments collected on this route.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888; padding: 10px;">No payments collected on this route.</td></tr>';
             checkGLVerification();
             return;
         }
 
         currentGLCollectionsState.forEach((col, index) => {
             const isVerified = parseInt(col.is_verified) === 1;
-            const isFlagged = parseInt(col.is_flagged) === 1;
+            const isFinalized = col.status === 'Finalized';
             const amt = parseFloat(col.amount);
             
             if (col.payment_method === 'Cash') {
@@ -2444,11 +2481,9 @@
             }
 
             let statusSelect = `
-                <select onchange="updateGLCollectionStatus(${index}, this.value)" style="padding:4px; border:1px solid #ccc; border-radius:4px; font-size:11px; font-weight:bold; color:${isVerified ? '#16a34a' : (isFlagged ? '#dc2626' : '#475569')};">
-                    <option value="pending" ${(!isVerified && !isFlagged) ? 'selected' : ''} style="color:#475569;">Pending</option>
-                    <option value="approved" ${isVerified ? 'selected' : ''} style="color:#16a34a;">Approved</option>
-                    <option value="flagged" ${isFlagged ? 'selected' : ''} style="color:#dc2626;">Flagged</option>
-                </select>
+                <input type="checkbox" onchange="updateGLCollectionApproval(${index}, this.checked)" 
+                       ${(isVerified || isFinalized) ? 'checked' : ''} ${isFinalized ? 'disabled' : ''} 
+                       style="width:16px; height:16px; cursor:pointer;" />
             `;
 
             const adjustedVal = col.adjusted_amount !== null ? col.adjusted_amount : col.amount;
@@ -2458,6 +2493,7 @@
                     <td style="padding:6px 4px;">
                         <strong>${col.customer_name}</strong><br>
                         <span style="font-size:10px; color:#64748b;">${col.payment_method} ${col.reference ? '(' + col.reference + ')' : ''}</span>
+                        ${isFinalized ? '<br><span style="font-size:10px; color:#2e7d32; font-weight:bold;">Posted to GL</span>' : ''}
                     </td>
                     <td style="padding:6px 4px; text-align:right; font-family:monospace; font-weight:bold;">
                         Rs ${amt.toFixed(2)}
@@ -2465,14 +2501,30 @@
                     <td style="padding:6px 4px; text-align:center;">
                         ${statusSelect}
                     </td>
+                    <td style="padding:6px 4px;">
+                        <select onchange="updateGLCollectionDebitAccount(${index}, this.value)" 
+                                style="width:100%; max-width:180px; padding:4px; font-size:11px; border:1px solid #cbd5e1; border-radius:4px;" 
+                                ${isFinalized ? 'disabled' : ''}>
+                            ${buildAccountOptions(col.debit_account_id, col.payment_method === 'Cash' ? '1000' : (col.payment_method === 'Cheque' ? '1010' : '1605'))}
+                        </select>
+                    </td>
+                    <td style="padding:6px 4px;">
+                        <select onchange="updateGLCollectionCreditAccount(${index}, this.value)" 
+                                style="width:100%; max-width:180px; padding:4px; font-size:11px; border:1px solid #cbd5e1; border-radius:4px;" 
+                                ${isFinalized ? 'disabled' : ''}>
+                            ${buildAccountOptions(col.credit_account_id, '1200')}
+                        </select>
+                    </td>
                     <td style="padding:6px 4px; text-align:center;">
                         <input type="number" step="0.01" min="0" value="${parseFloat(adjustedVal).toFixed(2)}"
                                oninput="updateGLCollectionAdjustedAmount(${index}, this.value)"
+                               ${isFinalized ? 'disabled' : ''}
                                style="width:80px; padding:3px; border:1px solid #cbd5e1; border-radius:4px; text-align:right; font-family:monospace; font-size:11px;" />
                     </td>
                     <td style="padding:6px 4px; text-align:center;">
                         <input type="text" value="${col.verification_notes || ''}" placeholder="Notes"
                                oninput="updateGLCollectionNotes(${index}, this.value)"
+                               ${isFinalized ? 'disabled' : ''}
                                style="width:100px; padding:3px; border:1px solid #cbd5e1; border-radius:4px; font-size:11px;" />
                     </td>
                 </tr>
@@ -2485,21 +2537,27 @@
         checkGLVerification();
     }
 
-    function updateGLCollectionStatus(index, val) {
+    function updateGLCollectionApproval(index, checked) {
         const col = currentGLCollectionsState[index];
         if (col) {
-            if (val === 'approved') {
-                col.is_verified = 1;
-                col.is_flagged = 0;
-            } else if (val === 'flagged') {
-                col.is_verified = 0;
-                col.is_flagged = 1;
-            } else {
-                col.is_verified = 0;
-                col.is_flagged = 0;
-            }
+            col.is_verified = checked ? 1 : 0;
+            col.is_flagged = 0;
         }
-        renderGLCollectionsVerification();
+        checkGLVerification();
+    }
+
+    function updateGLCollectionDebitAccount(index, val) {
+        const col = currentGLCollectionsState[index];
+        if (col) {
+            col.debit_account_id = val !== '' ? parseInt(val) : null;
+        }
+    }
+
+    function updateGLCollectionCreditAccount(index, val) {
+        const col = currentGLCollectionsState[index];
+        if (col) {
+            col.credit_account_id = val !== '' ? parseInt(val) : null;
+        }
     }
 
     function updateGLCollectionAdjustedAmount(index, val) {
@@ -2525,7 +2583,9 @@
             is_verified: col.is_verified,
             is_flagged: col.is_flagged,
             adjusted_amount: col.adjusted_amount !== null ? parseFloat(col.adjusted_amount) : parseFloat(col.amount),
-            verification_notes: col.verification_notes
+            verification_notes: col.verification_notes,
+            debit_account_id: col.debit_account_id || getAccountIdByCode(col.payment_method === 'Cash' ? '1000' : (col.payment_method === 'Cheque' ? '1010' : '1605')),
+            credit_account_id: col.credit_account_id || getAccountIdByCode('1200')
         }));
 
         fetch('<?= APP_URL ?>/RepTracking/api_verify_collections', {

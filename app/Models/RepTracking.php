@@ -6,7 +6,6 @@ class RepTracking {
     public function __construct() {
         $this->db = new Database();
 
-        // Auto-heal schema for pending_collections table
         $columns = [
             'is_verified' => "TINYINT(1) NOT NULL DEFAULT 0",
             'is_flagged' => "TINYINT(1) NOT NULL DEFAULT 0",
@@ -15,7 +14,9 @@ class RepTracking {
             'verified_by' => "INT(11) NULL",
             'verified_at' => "DATETIME NULL",
             'mobile_local_id' => "INT NULL",
-            'mobile_rep_id' => "INT NULL"
+            'mobile_rep_id' => "INT NULL",
+            'debit_account_id' => "INT(11) NULL",
+            'credit_account_id' => "INT(11) NULL"
         ];
 
         foreach ($columns as $col => $definition) {
@@ -321,6 +322,7 @@ class RepTracking {
                    pc.bank_name, pc.cheque_number, pc.cheque_date, pc.created_at, pc.status,
                    c.name as customer_name, pc.finalized_by, pc.notes,
                    pc.is_verified, pc.is_flagged, pc.adjusted_amount, pc.verification_notes,
+                   pc.debit_account_id, pc.credit_account_id,
                    CASE WHEN pc.status = 'Finalized' THEN 999999 ELSE NULL END as journal_entry_id,
                    DATE(pc.created_at) as payment_date,
                    COALESCE(pc.cheque_number, pc.bank_name, '') as reference
@@ -377,12 +379,16 @@ class RepTracking {
             // Custom Debit Account override if specified
             if (isset($customDebitAccounts[$pid]) && !empty($customDebitAccounts[$pid])) {
                 $assetAccId = intval($customDebitAccounts[$pid]);
+            } elseif (!empty($payment->debit_account_id)) {
+                $assetAccId = intval($payment->debit_account_id);
             }
 
             // Custom Credit Account override if specified
             $arAccId = $arAcc;
             if (isset($customCreditAccounts[$pid]) && !empty($customCreditAccounts[$pid])) {
                 $arAccId = intval($customCreditAccounts[$pid]);
+            } elseif (!empty($payment->credit_account_id)) {
+                $arAccId = intval($payment->credit_account_id);
             }
 
             if (!$assetAccId) {

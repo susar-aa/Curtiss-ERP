@@ -335,7 +335,7 @@ class Delivery {
         ];
     }
 
-    public function finalizeDelivery($deliveryId, $adminUserId, $selectedPaymentIds = [], $selectedInvoiceIds = [], $debitAccounts = [], $creditAccounts = [], $returnedItems = []) {
+    public function finalizeDelivery($deliveryId, $adminUserId, $selectedPaymentIds = [], $selectedInvoiceIds = [], $debitAccounts = [], $creditAccounts = [], $returnedItems = [], $vehicleNumber = null, $driverName = null, $partnerName = null) {
         $this->db->beginTransaction();
         try {
             $delivery = $this->getDeliveryById($deliveryId);
@@ -344,6 +344,17 @@ class Delivery {
             }
             if ($delivery->status === 'Finalized') {
                 throw new Exception("Delivery is already finalized");
+            }
+
+            if ($vehicleNumber !== null && $driverName !== null) {
+                $this->db->query("UPDATE deliveries 
+                                  SET vehicle_number = :v, driver_name = :d, partner_name = :p 
+                                  WHERE id = :id");
+                $this->db->bind(':v', $vehicleNumber);
+                $this->db->bind(':d', $driverName);
+                $this->db->bind(':p', $partnerName);
+                $this->db->bind(':id', $deliveryId);
+                $this->db->execute();
             }
 
             // Ensure 1605 account exists in chart of accounts

@@ -390,9 +390,9 @@ class RepTrackingController extends Controller {
             'selected_credit_invoices' => !empty($postData['selected_credit_invoices']) ? json_encode($postData['selected_credit_invoices']) : null
         ];
 
-        if (empty($deliveryData['rep_route_id']) || empty($deliveryData['delivery_date']) || empty($deliveryData['vehicle_number']) || empty($deliveryData['driver_name'])) {
+        if (empty($deliveryData['rep_route_id']) || empty($deliveryData['delivery_date'])) {
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'error', 'message' => 'All mandatory fields (Route, Date, Vehicle, Driver) are required.']);
+            echo json_encode(['status' => 'error', 'message' => 'All mandatory fields (Route, Date) are required.']);
             exit;
         }
 
@@ -448,6 +448,14 @@ class RepTrackingController extends Controller {
             $debitAccounts = $postData['debit_accounts'] ?? [];
             $creditAccounts = $postData['credit_accounts'] ?? [];
             $returnedItems = $postData['returned_items'] ?? [];
+            
+            $vehicleNumber = !empty($postData['vehicle_number']) ? trim($postData['vehicle_number']) : null;
+            $driverName = !empty($postData['driver_name']) ? trim($postData['driver_name']) : null;
+            $partnerName = !empty($postData['partner_name']) ? trim($postData['partner_name']) : null;
+
+            if (empty($vehicleNumber) || empty($driverName)) {
+                throw new Exception("Vehicle number and Driver name are required to finalize dispatch.");
+            }
 
             $this->deliveryModel->finalizeDelivery(
                 $deliveryId, 
@@ -456,7 +464,10 @@ class RepTrackingController extends Controller {
                 $selectedInvoiceIds, 
                 $debitAccounts, 
                 $creditAccounts,
-                $returnedItems
+                $returnedItems,
+                $vehicleNumber,
+                $driverName,
+                $partnerName
             );
 
             // Update route status to Completed
@@ -638,26 +649,39 @@ class RepTrackingController extends Controller {
 
         try {
             $db = new Database();
-            $db->beginTransaction();
             foreach ($updates as $up) {
                 $paymentId = intval($up['id']);
                 $isVerified = isset($up['is_verified']) ? intval($up['is_verified']) : 0;
                 $isFlagged = isset($up['is_flagged']) ? intval($up['is_flagged']) : 0;
                 $adjAmount = isset($up['adjusted_amount']) && $up['adjusted_amount'] !== '' ? floatval($up['adjusted_amount']) : null;
                 $notes = isset($up['verification_notes']) ? trim($up['verification_notes']) : null;
+                $debitAccId = !empty($up['debit_account_id']) ? intval($up['debit_account_id']) : null;
+                $creditAccId = !empty($up['credit_account_id']) ? intval($up['credit_account_id']) : null;
+
+                // Check current status
+                $db->query("SELECT status FROM pending_collections WHERE id = :id");
+                $db->bind(':id', $paymentId);
+                $currentStatusRow = $db->single();
+                $currentStatus = $currentStatusRow ? $currentStatusRow->status : 'Pending';
 
                 $db->query("UPDATE pending_collections 
-                            SET is_verified = :is_v, is_flagged = :is_f, adjusted_amount = :adj, verification_notes = :notes, verified_by = :vby, verified_at = NOW() 
+                            SET is_verified = :is_v, is_flagged = :is_f, adjusted_amount = :adj, verification_notes = :notes, 
+                                verified_by = :vby, verified_at = NOW(), debit_account_id = :da, credit_account_id = :ca
                             WHERE id = :id");
                 $db->bind(':is_v', $isVerified);
                 $db->bind(':is_f', $isFlagged);
                 $db->bind(':adj', $adjAmount);
                 $db->bind(':notes', $notes);
                 $db->bind(':vby', $userId);
+                $db->bind(':da', $debitAccId);
+                $db->bind(':ca', $creditAccId);
                 $db->bind(':id', $paymentId);
                 $db->execute();
+
+                if ($isVerified === 1 && $currentStatus === 'Pending') {
+                    $this->trackingModel->finalizePayments([$paymentId], $userId, [], [$paymentId => $debitAccId], [$paymentId => $creditAccId]);
+                }
             }
-            $db->commit();
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'message' => 'Collections verified successfully!']);
             exit;
