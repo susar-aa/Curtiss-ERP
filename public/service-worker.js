@@ -43,6 +43,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Only intercept requests for static files or items explicitly listed in ASSETS_TO_CACHE.
+  // This prevents tracking prevention from blocking cookie transmission on dynamic page loads and API calls.
+  const urlPath = event.request.url.replace(self.location.origin, '');
+  const isStatic = ASSETS_TO_CACHE.some(asset => urlPath === asset) ||
+                   /\.(js|css|png|jpg|jpeg|gif|svg|ico|json|woff|woff2|ttf)$/i.test(event.request.url);
+
+  if (!isStatic) {
+    return; // Let the browser handle dynamic PHP controllers and API calls natively with full credentials
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -61,3 +71,4 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+
