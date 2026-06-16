@@ -525,6 +525,21 @@ class RepDashboardController extends Controller {
 
                     if ($existingRoute) {
                         $serverId = $existingRoute->id;
+                        $this->db->query("UPDATE rep_daily_routes SET 
+                                          end_meter = :end_meter, 
+                                          end_time = :end_time, 
+                                          end_lat = :end_lat, 
+                                          end_lng = :end_lng, 
+                                          status = :status 
+                                          WHERE id = :id");
+                        $this->db->bind(':end_meter', isset($r['end_meter']) && $r['end_meter'] !== '' ? $r['end_meter'] : null);
+                        $this->db->bind(':end_time', $r['end_time'] ?? null);
+                        $this->db->bind(':end_lat', $r['end_lat'] ?? null);
+                        $this->db->bind(':end_lng', $r['end_lng'] ?? null);
+                        $this->db->bind(':status', $r['status'] ?? 'Active');
+                        $this->db->bind(':id', $serverId);
+                        $this->db->execute();
+                        $this->logActivity('Update Route', 'RepTracking', "Finalized and closed daily representative route via mobile sync: {$r['route_name']}", $serverId);
                     } else {
                         $this->db->query("INSERT INTO rep_daily_routes (user_id, route_name, start_meter, start_time, start_lat, start_lng, end_meter, end_time, end_lat, end_lng, status) 
                                           VALUES (:user_id, :route_name, :start_meter, :start_time, :start_lat, :start_lng, :end_meter, :end_time, :end_lat, :end_lng, :status)");
