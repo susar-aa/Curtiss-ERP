@@ -781,7 +781,7 @@ error_reporting(E_ALL);
         }
 
         // Do not show route route collection finalization system until rep end the route
-        if (status !== 'Completed') {
+        if (status !== 'Completed' && status !== 'Finalized') {
             document.getElementById('tabCollections').style.display = 'none';
             document.getElementById('tabVariances').style.display = 'none';
             switchRouteTab('invoices');
@@ -1057,10 +1057,14 @@ error_reporting(E_ALL);
                 listDiv.innerHTML = '';
                 let totalShort = 0;
                 let totalOver = 0;
+                let totalItemsCount = 0;
+                let totalVerifiedCount = 0;
 
                 data.deliveries.forEach(del => {
                     totalShort += del.shortages;
                     totalOver += del.overages;
+                    totalItemsCount += del.total_items;
+                    totalVerifiedCount += del.verified_items;
 
                     let itemsHtml = '';
                     if (del.items.length === 0) {
@@ -1131,6 +1135,13 @@ error_reporting(E_ALL);
                 });
 
                 // Render Overview panel stats
+                let statusText = 'Pending Audit';
+                let statusColor = '#ef6c00';
+                if (totalItemsCount > 0 && totalVerifiedCount === totalItemsCount) {
+                    statusText = 'Audited';
+                    statusColor = '#2e7d32';
+                }
+
                 overviewDiv.innerHTML = `
                     <div class="stat-box" style="flex:1; min-width:150px;">
                         <span>Total Shortages</span>
@@ -1142,7 +1153,7 @@ error_reporting(E_ALL);
                     </div>
                     <div class="stat-box" style="flex:1; min-width:150px;">
                         <span>Status</span>
-                        <strong style="color:#2e7d32;">Audited</strong>
+                        <strong style="color:${statusColor};">${statusText}</strong>
                     </div>
                 `;
             })

@@ -40,10 +40,12 @@ class PickingController extends Controller {
         return array_unique($rids);
     }
 
-    // Update delivery status based on picking items completion
+    // Update delivery status based on picking items completion and route status
     private function updateDeliveryStatus($deliveryId) {
         $this->db->query("
-            SELECT COUNT(*) as total, SUM(CASE WHEN is_picked = 1 THEN 1 ELSE 0 END) as picked
+            SELECT COUNT(*) as total, 
+                   SUM(CASE WHEN is_picked = 1 THEN 1 ELSE 0 END) as picked,
+                   SUM(CASE WHEN is_verified = 1 THEN 1 ELSE 0 END) as verified
             FROM delivery_picking_items
             WHERE delivery_id = :id
         ");
@@ -51,11 +53,23 @@ class PickingController extends Controller {
         $stats = $this->db->single();
         
         if ($stats && $stats->total > 0) {
-            $newStatus = 'Pending';
-            if ($stats->picked == $stats->total) {
+            // Fetch associated route status
+            $this->db->query("
+                SELECT r.status 
+                FROM rep_daily_routes r
+                JOIN deliveries d ON d.rep_route_id = r.id
+                WHERE d.id = :id
+            ");
+            $this->db->bind(':id', $deliveryId);
+            $routeRow = $this->db->single();
+            $routeStatus = $routeRow ? $routeRow->status : 'Active';
+
+            // By default, the delivery status stays 'Arranged'
+            $newStatus = 'Arranged';
+            
+            // Only transition to Completed (Ended) if the rep route is ended AND all items are verified
+            if ($routeStatus === 'Completed' && $stats->verified == $stats->total) {
                 $newStatus = 'Completed';
-            } else if ($stats->picked > 0) {
-                $newStatus = 'In Progress';
             }
             
             // Do not overwrite 'Finalized' status as it is admin-controlled
@@ -406,6 +420,9 @@ class PickingController extends Controller {
         $this->db->bind(':verified_by', $userId ? $userId : null);
         $this->db->bind(':id', $id);
         $this->db->execute();
+
+        // Recalculate and update the overall delivery status
+        $this->updateDeliveryStatus($item->delivery_id);
 
         echo json_encode(['success' => true]);
         exit;

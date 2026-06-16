@@ -559,6 +559,30 @@ class RepDashboardController extends Controller {
                         $this->logActivity('Create Route', 'RepTracking', "Created daily representative route via mobile sync: {$r['route_name']}", $serverId);
                     }
 
+                    // Check if route has been completed and update associated deliveries status
+                    if (($r['status'] ?? '') === 'Completed') {
+                        $this->db->query("SELECT id FROM deliveries WHERE (rep_route_id = :route_id OR secondary_rep_route_id = :route_id) AND status = 'Arranged'");
+                        $this->db->bind(':route_id', $serverId);
+                        $delRow = $this->db->single();
+                        if ($delRow) {
+                            $delId = $delRow->id;
+                            $this->db->query("
+                                SELECT COUNT(*) as total, 
+                                       SUM(CASE WHEN is_verified = 1 THEN 1 ELSE 0 END) as verified
+                                FROM delivery_picking_items
+                                WHERE delivery_id = :id
+                            ");
+                            $this->db->bind(':id', $delId);
+                            $delStats = $this->db->single();
+                            
+                            if ($delStats && $delStats->total > 0 && $delStats->verified == $delStats->total) {
+                                $this->db->query("UPDATE deliveries SET status = 'Completed' WHERE id = :id AND status != 'Finalized'");
+                                $this->db->bind(':id', $delId);
+                                $this->db->execute();
+                            }
+                        }
+                    }
+
                     $mappings['routes'][] = [
                         'local_id' => $localId,
                         'server_id' => intval($serverId)
