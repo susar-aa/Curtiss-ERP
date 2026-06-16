@@ -412,7 +412,7 @@ class RepTrackingController extends Controller {
                 $db->execute();
             }
 
-            $this->logActivity('Arrange Delivery', 'RepTracking', "Created delivery arrangement ID: {$deliveryId} and moved routes to Pre-Loading status", $deliveryData['rep_route_id']);
+            $this->logRouteActivity('Arrange Delivery', 'RepTracking', "Created delivery arrangement ID: {$deliveryId} and moved routes to Pre-Loading status", $deliveryData['rep_route_id']);
 
             echo json_encode(['status' => 'success', 'message' => 'Delivery arranged successfully!', 'delivery_id' => $deliveryId]);
         } else {
@@ -534,13 +534,13 @@ class RepTrackingController extends Controller {
         $db->bind(':rid', $routeId);
         $db->execute();
 
-        $this->logActivity('Route Status Update', 'RepTracking', "Moved route '{$routeName}' status from '{$oldStatus}' to '{$targetStatus}'", $routeId);
+        $this->logRouteActivity('Route Status Update', 'RepTracking', "Moved route '{$routeName}' status from '{$oldStatus}' to '{$targetStatus}'", $routeId);
 
         echo json_encode(['status' => 'success', 'message' => 'Route status updated successfully to ' . $targetStatus]);
         exit;
     }
 
-    private function logActivity($action, $module, $desc, $refId = null) {
+    private function logRouteActivity($action, $module, $desc, $refId = null) {
         try {
             $db = new Database();
             $db->query("INSERT INTO audit_logs (user_id, action, module, description, reference_id, ip_address) 
