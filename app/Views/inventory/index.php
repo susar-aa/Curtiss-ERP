@@ -1127,9 +1127,20 @@ if ($importResults) unset($_SESSION['import_results']);
                                         $image   = $item->image_path ?? '';
                                         $img_src = empty($image) ? 'https://placehold.co/100x100/f2f2f7/8e8e93?text=' . urlencode(substr($item->name ?? 'P', 0, 1)) : APP_URL . '/uploads/products/' . basename($image);
 
-                                        if ($qty <= 0)     { $badgeCls = 'badge-out';    $badgeTxt = 'Out of stock'; }
-                                        elseif ($qty <= 5) { $badgeCls = 'badge-low';    $badgeTxt = 'Low stock'; }
-                                        else               { $badgeCls = 'badge-active';  $badgeTxt = 'Active'; }
+                                        $itemStatus = $item->status ?? 'active';
+                                        if ($itemStatus === 'inactive') {
+                                            $badgeCls = 'badge-out';
+                                            $badgeTxt = 'Inactive';
+                                        } elseif ($qty <= 0) {
+                                            $badgeCls = 'badge-out';
+                                            $badgeTxt = 'Out of stock';
+                                        } elseif ($qty <= 5) {
+                                            $badgeCls = 'badge-low';
+                                            $badgeTxt = 'Low stock';
+                                        } else {
+                                            $badgeCls = 'badge-active';
+                                            $badgeTxt = 'Active';
+                                        }
 
                                         // Build all images gallery array for quick view slider
                                         $all_imgs = [];
@@ -1196,6 +1207,7 @@ if ($importResults) unset($_SESSION['import_results']);
                                                     data-price="<?= number_format($price, 2) ?>"
                                                     data-b2b="<?= number_format($b2b, 2) ?>"
                                                     data-qty="<?= $qty ?>"
+                                                    data-status="<?= htmlspecialchars($itemStatus) ?>"
                                                     data-img="<?= $img_src ?>"
                                                     data-images='<?= htmlspecialchars($all_imgs_json, ENT_QUOTES, 'UTF-8') ?>'
                                                     data-desc="<?= htmlspecialchars($item->description ?? '') ?>"
@@ -1604,6 +1616,7 @@ function openQuickView(btn) {
     const desc  = btn.dataset.desc;
     const category = btn.dataset.category;
     const brand = btn.dataset.brand;
+    const status = btn.dataset.status || 'active';
 
     try {
         qvImages = JSON.parse(btn.dataset.images || '[]');
@@ -1625,7 +1638,10 @@ function openQuickView(btn) {
     qvQty.textContent = qty;
 
     let badge = '';
-    if (qty <= 0)     { badge = '<span class="sf-badge badge-out"><span class="dot"></span>Out of stock</span>';  qvQty.style.color = 'var(--c-red)'; }
+    if (status === 'inactive') {
+        badge = '<span class="sf-badge badge-out"><span class="dot"></span>Inactive</span>';
+        qvQty.style.color = 'var(--t-secondary)';
+    } else if (qty <= 0)     { badge = '<span class="sf-badge badge-out"><span class="dot"></span>Out of stock</span>';  qvQty.style.color = 'var(--c-red)'; }
     else if (qty <= 5){ badge = '<span class="sf-badge badge-low"><span class="dot"></span>Low stock</span>';    qvQty.style.color = 'var(--c-orange)'; }
     else              { badge = '<span class="sf-badge badge-active"><span class="dot"></span>Active</span>';   qvQty.style.color = 'var(--t-primary)'; }
     document.getElementById('qv-status').innerHTML = badge;

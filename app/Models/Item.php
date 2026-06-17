@@ -323,6 +323,8 @@ class Item {
                     $whereSql = " WHERE i.created_at > :last_sync";
                 }
             }
+        } else {
+            $whereSql = " WHERE (i.status IS NULL OR i.status != 'inactive')";
         }
         
         $this->db->query("SELECT i.*, cat.name AS category_name, i.{$this->priceColumn} AS selling_price, i.{$this->wholesalePriceColumn} AS wholesale_price, i.{$this->itemCodeColumn} AS item_code, i.{$this->qtyColumn} AS qty, i.{$this->descColumn} AS description 
@@ -331,7 +333,7 @@ class Item {
                           $whereSql
                           ORDER BY i.{$this->orderByColumn}");
                           
-        if (!empty($whereSql)) {
+        if (!empty($lastSync)) {
             $this->db->bind(':last_sync', $lastSync);
         }
         return $this->db->resultSet();

@@ -123,7 +123,8 @@ class RepDashboardController extends Controller {
                     'sample_code' => $item->sample_code ?? '',
                     'variations_json' => $item->variations_json ?? '',
                     'brand' => $item->brand ?? '',
-                    'description' => $item->description ?? ''
+                    'description' => $item->description ?? '',
+                    'status' => $item->status ?? 'active'
                 ];
             }
             
