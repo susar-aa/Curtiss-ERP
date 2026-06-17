@@ -5,8 +5,18 @@ define('DB_USER', 'suzxlabs');
 define('DB_PASS', 'Susara@200611003614');    
 define('DB_NAME', 'curtiss_erp'); 
 
-// App Root URL - Updated for Plesk domain
-define('APP_URL', 'https://curtiss.suzxlabs.com');
+// App Root URL - Dynamically determined for local dev (XAMPP) & Plesk production
+if (isset($_SERVER['HTTP_HOST'])) {
+    $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+    $script = $_SERVER['SCRIPT_NAME'];
+    $dir = str_replace('\\', '/', dirname($script));
+    if ($dir === '/') {
+        $dir = '';
+    }
+    define('APP_URL', $protocol . '://' . $_SERVER['HTTP_HOST'] . $dir);
+} else {
+    define('APP_URL', 'https://curtiss.suzxlabs.com');
+}
 
 // Site Name
 define('APP_NAME', 'CURTISS ERP');

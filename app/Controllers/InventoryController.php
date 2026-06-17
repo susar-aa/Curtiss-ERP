@@ -297,9 +297,17 @@ class InventoryController extends Controller {
         error_log('[CSV Import] CSV file size: ' . ($_FILES['csv_file']['size'] ?? 'N/A'));
         
         $this->checkPermission('inventory', 'create_edit');
+        
+        $isAjax = isset($_GET['ajax']) || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+        
         if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_FILES['csv_file']['tmp_name'])) {
             error_log('[CSV Import] ERROR: No file uploaded or invalid request');
             $_SESSION['flash_error'] = "Please select a valid CSV file to upload.";
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'errors' => ["Please select a valid CSV file to upload."]]);
+                exit;
+            }
             header('Location: ' . APP_URL . '/inventory');
             exit;
         }
@@ -310,6 +318,7 @@ class InventoryController extends Controller {
 
         @set_time_limit(0);
         @ini_set('memory_limit', '1024M');
+        @ini_set('auto_detect_line_endings', true);
 
         $errors = [];
         $successLogs = [];
@@ -318,10 +327,24 @@ class InventoryController extends Controller {
 
         if (($handle = fopen($filepath, "r")) !== FALSE) {
             error_log('[CSV Import] File opened successfully');
+            
+            // Auto-detect delimiter
+            $firstLine = fgets($handle);
+            rewind($handle);
+            $commaCount = substr_count($firstLine, ',');
+            $semicolonCount = substr_count($firstLine, ';');
+            $delimiter = ($semicolonCount > $commaCount) ? ';' : ',';
+            error_log('[CSV Import] Auto-detected delimiter: ' . $delimiter);
+
             // Read headers
-            $headers = fgetcsv($handle, 10000, ",");
+            $headers = fgetcsv($handle, 10000, $delimiter);
             if (!$headers) {
                 $_SESSION['flash_error'] = "The uploaded CSV file is empty or has invalid formatting.";
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'errors' => ["The uploaded CSV file is empty or has invalid formatting."]]);
+                    exit;
+                }
                 header('Location: ' . APP_URL . '/inventory');
                 exit;
             }
@@ -368,7 +391,16 @@ class InventoryController extends Controller {
             $variationsIdx = $findHeaderIdx(['variations', 'variations_json', 'variation', 'options']);
 
             if ($skuIdx === FALSE || $nameIdx === FALSE) {
+                error_log('[CSV Import] ERROR: Missing SKU (' . ($skuIdx === FALSE ? 'No' : 'Yes') . ') or Name (' . ($nameIdx === FALSE ? 'No' : 'Yes') . ') headers in: ' . implode(', ', $headers));
                 $_SESSION['flash_error'] = "Invalid CSV structure. Could not find required 'SKU' and 'Name' headers.";
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'success' => false,
+                        'errors' => ["Invalid CSV structure. Could not find required 'SKU' and 'Name' headers. Detected headers: " . implode(', ', $headers)]
+                    ]);
+                    exit;
+                }
                 header('Location: ' . APP_URL . '/inventory');
                 exit;
             }
@@ -414,7 +446,7 @@ class InventoryController extends Controller {
             $this->db->beginTransaction();
 
             try {
-                while (($row = fgetcsv($handle, 10000, ",")) !== FALSE) {
+                while (($row = fgetcsv($handle, 10000, $delimiter)) !== FALSE) {
                     $rowCount++;
 
                     $rawSku = ($skuIdx !== FALSE && isset($row[$skuIdx])) ? trim($row[$skuIdx]) : '';
@@ -736,6 +768,18 @@ class InventoryController extends Controller {
             'errors' => $errors,
             'success_logs' => $successLogs
         ];
+
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => empty($errors),
+                'added' => $addedCount,
+                'updated' => $updatedCount,
+                'errors' => $errors,
+                'success_logs' => $successLogs
+            ]);
+            exit;
+        }
 
         header('Location: ' . APP_URL . '/inventory');
         exit;

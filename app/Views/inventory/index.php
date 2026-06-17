@@ -976,6 +976,54 @@ if ($importResults) unset($_SESSION['import_results']);
         </div>
         <?php endif; ?>
 
+        <?php if ($importResults): ?>
+        <div id="import-results-alert" class="sf-alert" style="border-left-color: var(--c-blue); display: flex; flex-direction: column; gap: 12px; width: 100%;">
+            <div style="display: flex; align-items: flex-start; gap: 12px; width: 100%;">
+                <i class="fa-solid fa-wand-magic-sparkles sf-alert-icon" style="color: var(--c-blue);"></i>
+                <div style="flex: 1;">
+                    <div class="sf-alert-title">CSV Import Completed</div>
+                    <div class="sf-alert-msg">
+                        <ul style="margin: 6px 0 0 16px; padding: 0; display: flex; gap: 20px; list-style-type: disc;">
+                            <li>Added: <strong style="color: var(--c-green); font-family: var(--f-mono);"><?= intval($importResults['added']) ?></strong> new products</li>
+                            <li>Updated: <strong style="color: var(--c-blue); font-family: var(--f-mono);"><?= intval($importResults['updated']) ?></strong> existing products</li>
+                        </ul>
+                    </div>
+                </div>
+                <button type="button" class="sf-alert-close" onclick="document.getElementById('import-results-alert').style.display='none'"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <?php if (!empty($importResults['success_logs'])): ?>
+            <div style="display: flex; flex-direction: column; gap: 4px; background: rgba(0, 122, 255, 0.05); border-radius: var(--r-sm); padding: 10px 14px; max-height: 100px; overflow-y: auto; width: 100%; border: 0.5px solid rgba(0, 122, 255, 0.1);">
+                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--c-blue); margin-bottom: 2px;">Action Log</div>
+                <?php foreach ($importResults['success_logs'] as $log): ?>
+                    <div style="font-size: 11px; color: #0056b3; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-circle-check" style="font-size: 8px;"></i>
+                        <span><?= htmlspecialchars($log) ?></span>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($importResults['errors'])): ?>
+            <div style="display: flex; flex-direction: column; gap: 4px; background: rgba(255, 59, 48, 0.05); border-radius: var(--r-sm); padding: 10px 14px; max-height: 150px; overflow-y: auto; width: 100%; border: 0.5px solid rgba(255, 59, 48, 0.1);">
+                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--c-red); margin-bottom: 2px;">Errors / Warnings</div>
+                <?php foreach ($importResults['errors'] as $err): ?>
+                    <div style="font-size: 11px; color: var(--c-red); display: flex; align-items: flex-start; gap: 6px; line-height: 1.4;">
+                        <i class="fa-solid fa-circle-exclamation" style="font-size: 8px; margin-top: 3px; flex-shrink: 0;"></i>
+                        <span style="font-family: var(--f-mono);">
+                            <?php if (is_array($err)): ?>
+                                Row <?= $err['row'] ?> (SKU: <?= htmlspecialchars($err['sku']) ?>): <?= htmlspecialchars(implode(', ', $err['messages'])) ?>
+                            <?php else: ?>
+                                <?= htmlspecialchars($err) ?>
+                            <?php endif; ?>
+                        </span>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
         <!-- Filters -->
         <div class="filter-shelf">
             <!-- Category -->
@@ -1739,27 +1787,43 @@ function handleCsvImportSubmit(event) {
     console.log('[CSV Import] Sending POST request to:', form.action);
     
     // Submit the form
-    fetch(form.action, {
+    fetch(form.action + '?ajax=1', {
         method: 'POST',
-        body: formData
+        body: formData,
+        headers: {
+            'Accept': 'application/json'
+        }
     })
     .then(response => {
         console.log('[CSV Import] Response status:', response.status);
         console.log('[CSV Import] Response ok:', response.ok);
         
-        if (response.ok) {
-            console.log('[CSV Import] Import successful, redirecting...');
-            window.location.href = '<?= APP_URL ?>/inventory';
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            return response.json().then(data => {
+                console.log('[CSV Import] JSON Response data:', data);
+                if (response.ok) {
+                    console.log('[CSV Import] Import completed successfully, reloading...');
+                    window.location.reload();
+                } else {
+                    const errMsgs = data.errors ? data.errors.join('\n') : 'Unknown error';
+                    throw new Error(errMsgs);
+                }
+            });
         } else {
             return response.text().then(text => {
-                console.error('[CSV Import] Server error:', text);
-                throw new Error('Server returned ' + response.status);
+                console.error('[CSV Import] Non-JSON Server response:', text);
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    throw new Error('Server returned ' + response.status + ': ' + text.substring(0, 200));
+                }
             });
         }
     })
     .catch(error => {
         console.error('[CSV Import] Fetch error:', error);
-        alert('Import failed: ' + error.message + '. Check browser console for details.');
+        alert('Import failed:\n' + error.message);
         importBtn.disabled = false;
         importBtn.innerHTML = 'Import';
     });
