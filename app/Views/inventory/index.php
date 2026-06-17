@@ -1298,12 +1298,15 @@ if ($importResults) unset($_SESSION['import_results']);
             <button type="button" onclick="closeCsvModal()" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="modal-body">
-            <form action="<?= APP_URL ?>/inventory/importERPCSV" method="POST" enctype="multipart/form-data">
+            <form id="csvImportForm" action="<?= APP_URL ?>/inventory/importERPCSV" method="POST" enctype="multipart/form-data" onsubmit="return handleCsvImportSubmit(event)">
                 <div class="drop-zone">
-                    <input type="file" name="csv_file" accept=".csv" required>
+                    <input type="file" name="csv_file" id="csvFileInput" accept=".csv" required onchange="logFileSelection(this)">
                     <div class="drop-zone-icon"><i class="fa-solid fa-file-csv"></i></div>
                     <div class="drop-zone-title">Drop your file here</div>
                     <div class="drop-zone-sub">.csv format · click to browse</div>
+                </div>
+                <div id="importDebugInfo" style="display:none; background: #f5f5f7; border-radius: 8px; padding: 12px; margin-bottom: 12px; font-size: 12px; font-family: monospace; color: #666; max-height: 100px; overflow-y: auto;">
+                    <strong>File Info:</strong> <span id="fileInfoText"></span>
                 </div>
                 <div class="import-hint">
                     <i class="fa-solid fa-wand-magic-sparkles" style="color:var(--c-blue); font-size:16px; flex-shrink:0; margin-top:2px;"></i>
@@ -1314,7 +1317,7 @@ if ($importResults) unset($_SESSION['import_results']);
                 </div>
                 <div style="display:flex; gap:10px; margin-top:20px;">
                     <button type="button" onclick="closeCsvModal()" class="sf-btn neutral">Cancel</button>
-                    <button type="submit" class="sf-btn primary">Import</button>
+                    <button type="submit" id="csvImportBtn" class="sf-btn primary">Import</button>
                 </div>
             </form>
         </div>
@@ -1673,8 +1676,96 @@ function clearAllFilters() {
     selectCategory('', 'All');
 }
 
-function openCsvModal()  { document.getElementById('csvImportModal').classList.remove('hidden'); }
+function openCsvModal()  { 
+    console.log('[CSV Import] Modal opened');
+    document.getElementById('csvImportModal').classList.remove('hidden'); 
+}
 function closeCsvModal() { document.getElementById('csvImportModal').classList.add('hidden'); }
+
+// CSV Import Debug Functions
+function logFileSelection(input) {
+    console.log('[CSV Import] File selected:', input.files[0]);
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const fileInfo = {
+            name: file.name,
+            size: file.size + ' bytes',
+            type: file.type,
+            lastModified: new Date(file.lastModified).toLocaleString()
+        };
+        console.log('[CSV Import] File details:', fileInfo);
+        
+        const debugInfo = document.getElementById('importDebugInfo');
+        const fileInfoText = document.getElementById('fileInfoText');
+        if (debugInfo && fileInfoText) {
+            fileInfoText.textContent = JSON.stringify(fileInfo, null, 2);
+            debugInfo.style.display = 'block';
+        }
+    }
+}
+
+function handleCsvImportSubmit(event) {
+    event.preventDefault();
+    
+    const fileInput = document.getElementById('csvFileInput');
+    const importBtn = document.getElementById('csvImportBtn');
+    
+    console.log('[CSV Import] Form submit triggered');
+    console.log('[CSV Import] File input:', fileInput);
+    console.log('[CSV Import] File selected:', fileInput.files.length > 0 ? fileInput.files[0].name : 'No file');
+    
+    if (!fileInput.files || fileInput.files.length === 0) {
+        console.error('[CSV Import] ERROR: No file selected!');
+        alert('Please select a CSV file first.');
+        return false;
+    }
+    
+    const form = document.getElementById('csvImportForm');
+    const formData = new FormData(form);
+    
+    console.log('[CSV Import] FormData entries:');
+    for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+            console.log('  ' + key + ':', value.name, '(' + value.size + ' bytes)');
+        } else {
+            console.log('  ' + key + ':', value);
+        }
+    }
+    
+    // Disable button and show loading state
+    importBtn.disabled = true;
+    importBtn.innerHTML = '<i class="fa-solid fa-spinner spin"></i> Importing...';
+    
+    console.log('[CSV Import] Sending POST request to:', form.action);
+    
+    // Submit the form
+    fetch(form.action, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        console.log('[CSV Import] Response status:', response.status);
+        console.log('[CSV Import] Response ok:', response.ok);
+        
+        if (response.ok) {
+            console.log('[CSV Import] Import successful, redirecting...');
+            window.location.href = '<?= APP_URL ?>/inventory';
+        } else {
+            return response.text().then(text => {
+                console.error('[CSV Import] Server error:', text);
+                throw new Error('Server returned ' + response.status);
+            });
+        }
+    })
+    .catch(error => {
+        console.error('[CSV Import] Fetch error:', error);
+        alert('Import failed: ' + error.message + '. Check browser console for details.');
+        importBtn.disabled = false;
+        importBtn.innerHTML = 'Import';
+    });
+    
+    return false; // Prevent default form submission
+}
 
 let activeDeleteId = null;
 

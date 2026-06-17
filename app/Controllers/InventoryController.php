@@ -287,14 +287,26 @@ class InventoryController extends Controller {
      * Category, Warehouse, and Vendor names are matched or created automatically on-the-fly.
      */
     public function importERPCSV() {
+        // Debug logging - write to error_log
+        error_log('[CSV Import] === CSV Import Started ===');
+        error_log('[CSV Import] Request Method: ' . $_SERVER['REQUEST_METHOD']);
+        error_log('[CSV Import] Files count: ' . count($_FILES));
+        error_log('[CSV Import] CSV file error: ' . ($_FILES['csv_file']['error'] ?? 'N/A'));
+        error_log('[CSV Import] CSV file tmp_name: ' . ($_FILES['csv_file']['tmp_name'] ?? 'N/A'));
+        error_log('[CSV Import] CSV file name: ' . ($_FILES['csv_file']['name'] ?? 'N/A'));
+        error_log('[CSV Import] CSV file size: ' . ($_FILES['csv_file']['size'] ?? 'N/A'));
+        
         $this->checkPermission('inventory', 'create_edit');
         if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_FILES['csv_file']['tmp_name'])) {
+            error_log('[CSV Import] ERROR: No file uploaded or invalid request');
             $_SESSION['flash_error'] = "Please select a valid CSV file to upload.";
             header('Location: ' . APP_URL . '/inventory');
             exit;
         }
 
         $filepath = $_FILES['csv_file']['tmp_name'];
+        error_log('[CSV Import] File path: ' . $filepath);
+        error_log('[CSV Import] File exists: ' . (file_exists($filepath) ? 'Yes' : 'No'));
 
         @set_time_limit(0);
         @ini_set('memory_limit', '1024M');
@@ -305,6 +317,7 @@ class InventoryController extends Controller {
         $updatedCount = 0;
 
         if (($handle = fopen($filepath, "r")) !== FALSE) {
+            error_log('[CSV Import] File opened successfully');
             // Read headers
             $headers = fgetcsv($handle, 10000, ",");
             if (!$headers) {
