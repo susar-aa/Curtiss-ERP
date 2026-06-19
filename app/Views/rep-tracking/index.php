@@ -1,9 +1,277 @@
 
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-    /* 3-Pane Layout System */
-    .app-workspace { display: flex; height: calc(100vh - 80px); background: #f4f5f7; border-radius: 8px; overflow: hidden; border: 1px solid var(--mac-border); position: relative;}
+    /* ===== TWO-SCREEN ARCHITECTURE ===== */
+    #routeListScreen { display: block; }
+    #routeWorkspaceScreen { display: none; flex-direction: column; height: calc(100vh - 80px); overflow: hidden; }
+
+    /* === SCREEN 1: ROUTE LIST CARDS === */
+    .rls-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+    .rls-filter-bar { display: flex; gap: 8px; background: #fff; border: 1px solid var(--mac-border); border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; overflow-x: auto; align-items: center; scrollbar-width: none; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .rls-filter-bar::-webkit-scrollbar { display: none; }
+    .rls-search-bar { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--mac-border); border-radius: 10px; padding: 10px 16px; margin-bottom: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .rls-search-bar input { flex: 1; border: none; outline: none; font-size: 14px; color: var(--text-dark); background: transparent; }
+    .rls-search-bar input::placeholder { color: #94a3b8; }
+    .rls-count { font-size: 12px; color: #64748b; white-space: nowrap; font-weight: 600; }
+
+    .route-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; padding-bottom: 24px; }
+    .route-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 4px rgba(0,0,0,0.05); position: relative; overflow: hidden; }
+    .route-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: 12px 0 0 12px; background: #e2e8f0; transition: background 0.2s; }
+    .route-card:hover { border-color: #94a3b8; box-shadow: 0 4px 16px rgba(0,0,0,0.1); transform: translateY(-2px); }
+    .route-card[data-route-type="active"]::before { background: #ef6c00; }
+    .route-card[data-route-type="pending_gl"]::before { background: #0369a1; }
+    .route-card[data-route-type="adjustments"]::before { background: #7c3aed; }
+    .route-card[data-route-type="loading"]::before { background: #0891b2; }
+    .route-card[data-route-type="variance"]::before { background: #ca8a04; }
+    .route-card[data-route-type="finalizing"]::before { background: #dc2626; }
+    .route-card[data-route-type="completed"]::before { background: #16a34a; }
+    .rc-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .rc-name { font-size: 15px; font-weight: 700; color: #1e293b; }
+    .rc-id { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    .rc-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; letter-spacing: 0.4px; white-space: nowrap; }
+    .rc-badge-active { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+    .rc-badge-pending_gl { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .rc-badge-adjustments { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
+    .rc-badge-loading { background: #ecfeff; color: #0e7490; border: 1px solid #a5f3fc; }
+    .rc-badge-variance { background: #fefce8; color: #a16207; border: 1px solid #fde68a; }
+    .rc-badge-finalizing { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .rc-badge-completed { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .rc-rep { font-size: 12px; color: #475569; margin-bottom: 12px; display: flex; align-items: center; gap: 5px; }
+    .rc-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .rc-stat { background: #f8fafc; border-radius: 6px; padding: 7px 8px; text-align: center; }
+    .rc-stat-label { display: block; font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 2px; }
+    .rc-stat-val { font-size: 13px; font-weight: 700; color: #1e293b; }
+    .rc-footer { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 10px; }
+    .rc-bound-tag { font-size: 10px; background: #e0f2fe; color: #0369a1; padding: 2px 7px; border-radius: 4px; font-weight: 700; }
+
+    /* === SCREEN 2: WORKSPACE === */
+    .ws-topbar { background: #1e293b; color: #fff; padding: 0 20px; display: flex; align-items: center; gap: 12px; min-height: 60px; flex-shrink: 0; }
+    .ws-back-btn { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+    .ws-back-btn:hover { background: rgba(255,255,255,0.2); }
+    .ws-vdivider { width: 1px; height: 30px; background: rgba(255,255,255,0.15); flex-shrink: 0; }
+    .ws-route-info { flex: 1; min-width: 0; }
+    .ws-route-name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ws-route-meta { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+    .ws-status-pill { font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; background: rgba(255,255,255,0.15); color: #fff; white-space: nowrap; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.2); }
+    .ws-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .ws-action-btn { display: flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: #fff; transition: all 0.2s; white-space: nowrap; }
+    .ws-action-btn:hover { background: rgba(255,255,255,0.18); }
+    .ws-tabs { display: flex; overflow-x: auto; gap: 6px; padding: 10px 20px; background: #f8fafc; border-bottom: 1px solid var(--mac-border); flex-shrink: 0; scrollbar-width: none; }
+    .ws-tabs::-webkit-scrollbar { display: none; }
+    .ws-body { flex: 1; overflow-y: auto; background: #fff; position: relative; }
+    .ws-content { padding: 20px 25px; }
+
+    /* Reused / shared */
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+    .status-Active { background: #ef6c00; box-shadow: 0 0 5px #ef6c00; }
+    .status-Completed { background: #2e7d32; }
+    .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .data-table th, .data-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--mac-border); font-size: 13px; }
+    .data-table th { color: #888; font-weight: 600; font-size: 11px; text-transform: uppercase; background: rgba(0,0,0,0.02); position: sticky; top: 0; }
+    .bill-row { cursor: pointer; transition: 0.1s; user-select: none; }
+    .bill-row:hover { background: rgba(0,102,204,0.05); }
+    .stat-box { background: rgba(0,0,0,0.02); border: 1px solid var(--border); padding: 10px 15px; border-radius: 6px; text-align: center; }
+    .stat-box span { display: block; font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: bold; margin-bottom: 3px; }
+    .stat-box strong { font-size: 16px; color: var(--text-dark); }
+    .modal-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
+    .modal-panel { background: #fff; width: 100%; max-width: 450px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); border: 1px solid #ccc; overflow: hidden; display: flex; flex-direction: column; }
+    .modal-header { padding: 15px 20px; background: #0066cc; color: #fff; font-weight: bold; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+    .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+    .modal-body label { font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block; }
+    .modal-body input { width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
+    .modal-body input:focus { border-color: #0066cc; outline: none; }
+    .modal-footer { padding: 15px 20px; background: #f5f5f5; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 10px; }
+    .workflow-wizard { display: flex; justify-content: space-between; background: var(--surface); border-bottom: 1px solid var(--mac-border); padding: 10px 15px; overflow-x: auto; gap: 5px; flex-shrink: 0; scrollbar-width: none; }
+    .workflow-wizard::-webkit-scrollbar { display: none; }
+    .wizard-step { flex: 1; text-align: center; padding: 8px 6px; font-size: 10px; font-weight: 700; border-radius: 6px; background: rgba(0,0,0,0.03); color: var(--text-muted); white-space: nowrap; border: 1px solid transparent; transition: all 0.2s ease; }
+    .wizard-step.active { background: #0066cc; color: #fff; border-color: #0066cc; box-shadow: 0 2px 5px rgba(0,102,204,0.3); }
+    .wizard-step.completed { background: rgba(46,125,50,0.1); color: #2e7d32; border-color: rgba(46,125,50,0.2); }
+    .map-empty-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.85); color: #666; font-size: 13px; font-weight: 600; text-align: center; padding: 20px; z-index: 500; pointer-events: none; }
+    .path-step-list { max-height: 120px; overflow-y: auto; padding: 12px 20px; font-size: 11px; color: #555; background: var(--surface); border-top: 1px solid var(--mac-border); flex-shrink: 0; }
+    .rb-slot-column { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .rb-slot-box { border: 2px dashed #cbd5e1; border-radius: 6px; padding: 20px; text-align: center; background: #fff; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80px; }
+    .rb-slot-box:hover { border-color: #3f51b5; background: #f5f7ff; }
+    .rb-slot-select { width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; background: #fff; color: #333; margin-top: 5px; }
+    .rb-bill-list { max-height: 180px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; padding: 8px; font-size: 12px; display: none; }
+    .rb-bill-item { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #f1f5f9; align-items: center; }
+    .rb-bound-tag { font-size: 11px; background: #e8eaf6; color: #3f51b5; padding: 2px 6px; border-radius: 4px; display: inline-block; font-weight: bold; }
+    .scroll-tab-btn { flex: 0 0 auto; padding: 6px 14px; border: 1px solid #cbd5e1; border-radius: 20px; font-size: 11px; font-weight: 700; background: #fff; color: #64748b; cursor: pointer; transition: all 0.2s ease; outline: none; }
+    .scroll-tab-btn:hover { background: #f1f5f9; color: #1e293b; }
+    .scroll-tab-btn.active { background: #3f51b5; color: #fff; border-color: #3f51b5; box-shadow: 0 2px 4px rgba(63,81,181,0.2); }
+    .global-filter-btn { padding: 6px 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 20px; color: #475569; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; }
+    .global-filter-btn:hover { background: #f1f5f9; color: #0f172a; border-color: #94a3b8; }
+    .global-filter-btn.active { background: #3f51b5; color: #fff; border-color: #3f51b5; }
+    .pane-right-slider { position: fixed; top: 0; right: 0; bottom: 0; width: 50%; background: var(--surface); border-left: 1px solid var(--mac-border); box-shadow: -10px 0 35px rgba(0,0,0,0.15); transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); z-index: 1500; display: flex; flex-direction: column; }
+    .pane-right-slider.open { transform: translateX(0); }
+    .slider-header { padding: 15px 20px; background: #333; color: #fff; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+    .close-slider { background: transparent; border: none; color: #fff; font-size: 20px; cursor: pointer; padding: 0; }
+    #invoiceIframe { width: 100%; flex: 1; border: none; background: #525659; }
+    .left-tab-btn { flex: 1; padding: 8px 2px; font-size: 11px; font-weight: bold; border-radius: 6px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; white-space: nowrap; transition: 0.2s; }
+    .left-tab-btn.active { background: #0066cc; color: white; }
+    @media (max-width: 768px) {
+        .route-cards-grid { grid-template-columns: 1fr; }
+        .ws-topbar { padding: 0 12px; gap: 8px; min-height: 52px; }
+        .ws-actions { display: none; }
+        .pane-right-slider { width: 100%; }
+        .rc-stats { grid-template-columns: 1fr 1fr; }
+    }
+</style>
+
+
+<!-- ===== SCREEN 1: MASTER ROUTE CONTROL PANEL ===== -->
+<div id="routeListScreen">
+
+    <div class="rls-header">
+        <div>
+            <div style="font-size:22px; font-weight:800; display:flex; align-items:center; gap:10px;">🛡️ Master Route Control Panel</div>
+            <div style="font-size:13px; color:#64748b; margin-top:4px;">Select a route to open its full workspace.</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button onclick="openRouteBindingModal()" style="padding:10px 18px; border:none; background:#3f51b5; color:#fff; border-radius:8px; font-weight:bold; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:8px; box-shadow:0 4px 6px rgba(63,81,181,0.2);">🔗 Route Binding Panel</button>
+        </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="rls-search-bar">
+        <span style="font-size:18px; color:#94a3b8;">🔍</span>
+        <input type="text" id="rlsSearchInput" placeholder="Search by route name or rep name..." oninput="filterRouteCards()" />
+        <span class="rls-count" id="rlsRouteCount"></span>
+    </div>
+
+    <!-- Status Filter Bar -->
+    <div class="rls-filter-bar">
+        <span style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#64748b; margin-right:8px; white-space:nowrap;">⚡ Filter:</span>
+        <button type="button" class="global-filter-btn active" onclick="filterRouteCards('all', this)">All</button>
+        <button type="button" class="global-filter-btn" onclick="filterRouteCards('active', this)">🟢 Active</button>
+        <button type="button" class="global-filter-btn" onclick="filterRouteCards('pending_gl', this)">💰 Collections</button>
+        <button type="button" class="global-filter-btn" onclick="filterRouteCards('adjustments', this)">⚙️ Adjustments</button>
+        <button type="button" class="global-filter-btn" onclick="filterRouteCards('loading', this)">🚛 Loading</button>
+        <button type="button" class="global-filter-btn" onclick="filterRouteCards('variance', this)">⚖️ Variance</button>
+        <button type="button" class="global-filter-btn" onclick="filterRouteCards('finalizing', this)">🔒 Finalizing</button>
+        <button type="button" class="global-filter-btn" onclick="filterRouteCards('completed', this)">🏁 Completed</button>
+    </div>
+
+    <!-- Route Cards Grid -->
+    <div class="route-cards-grid" id="routeCardsGrid">
+        <?php foreach($data['routes'] as $route):
+            $status = $route->status;
+            if ($status === 'Active') { $dataType = 'active'; $badgeClass = 'rc-badge-active'; $badgeLabel = '🟢 Active'; }
+            elseif ($status === 'Pending GL') { $dataType = 'pending_gl'; $badgeClass = 'rc-badge-pending_gl'; $badgeLabel = '💰 Collections'; }
+            elseif ($status === 'Adjustments') { $dataType = 'adjustments'; $badgeClass = 'rc-badge-adjustments'; $badgeLabel = '⚙️ Adjustments'; }
+            elseif ($status === 'Loading') { $dataType = 'loading'; $badgeClass = 'rc-badge-loading'; $badgeLabel = '🚛 Loading'; }
+            elseif ($status === 'Variance Adjustment') { $dataType = 'variance'; $badgeClass = 'rc-badge-variance'; $badgeLabel = '⚖️ Variance'; }
+            elseif ($status === 'Finalizing') { $dataType = 'finalizing'; $badgeClass = 'rc-badge-finalizing'; $badgeLabel = '🔒 Finalizing'; }
+            else { $dataType = 'completed'; $badgeClass = 'rc-badge-completed'; $badgeLabel = '🏁 Completed'; }
+        ?>
+        <div class="route-card"
+             id="route_<?= $route->id ?>"
+             data-route-type="<?= $dataType ?>"
+             data-search="<?= strtolower(htmlspecialchars($route->route_name . ' ' . $route->first_name . ' ' . $route->last_name)) ?>"
+             onclick="loadRouteDetails(<?= $route->id ?>, this)">
+            <div class="rc-head">
+                <div>
+                    <div class="rc-name"><?= htmlspecialchars($route->route_name) ?></div>
+                    <div class="rc-id">#RT-<?= str_pad($route->id, 5, '0', STR_PAD_LEFT) ?> &nbsp;·&nbsp; <?= date('M d, Y', strtotime($route->start_time)) ?></div>
+                </div>
+                <span class="rc-badge <?= $badgeClass ?>"><?= $badgeLabel ?></span>
+            </div>
+            <div class="rc-rep">👤 <?= htmlspecialchars($route->first_name . ' ' . $route->last_name) ?></div>
+            <div class="rc-stats">
+                <div class="rc-stat">
+                    <span class="rc-stat-label">Total Sales</span>
+                    <div class="rc-stat-val" style="color:#16a34a;">Rs <?= number_format($route->total_sales, 0) ?></div>
+                </div>
+                <div class="rc-stat">
+                    <span class="rc-stat-label">Bills</span>
+                    <div class="rc-stat-val"><?= $route->bill_count ?></div>
+                </div>
+                <div class="rc-stat">
+                    <span class="rc-stat-label">Updated</span>
+                    <div class="rc-stat-val" style="font-size:11px; font-weight:600; color:#64748b;"><?= date('M d', strtotime($route->start_time)) ?></div>
+                </div>
+            </div>
+            <div class="rc-footer">
+                <?php if (!empty($route->is_bound_group)): ?>
+                    <span class="rc-bound-tag">🔗 Group: <?= htmlspecialchars($route->constituent_routes_info) ?></span>
+                <?php elseif (!empty($route->binding_name)): ?>
+                    <span class="rc-bound-tag">🔗 <?= htmlspecialchars($route->binding_name) ?></span>
+                <?php else: ?>
+                    <span></span>
+                <?php endif; ?>
+                <span style="display:flex; align-items:center; gap:4px; color:#3f51b5; font-weight:600;">Open Workspace →</span>
+            </div>
+        </div>
+
+        <!-- Hidden data payload (kept for JS compatibility) -->
+        <div id="route_data_<?= $route->id ?>" style="display:none;"
+             data-rep="<?= htmlspecialchars($route->first_name . ' ' . $route->last_name) ?>"
+             data-rname="<?= htmlspecialchars($route->route_name) ?>"
+             data-start="<?= $route->start_meter ?>"
+             data-end="<?= $route->end_meter ?: 'Active' ?>"
+             data-sales="<?= number_format($route->total_sales, 2) ?>"
+             data-bills="<?= $route->bill_count ?>"
+             data-status="<?= $route->status ?>"
+             data-unfinalized="<?= $route->unfinalized_count ?>"
+             data-bound="<?= !empty($route->is_bound_group) ? '1' : '0' ?>"
+             data-binding-id="<?= $route->route_binding_id ?: '' ?>"
+             data-delivery-id="<?= $route->delivery_id ?: '' ?>"
+             data-delivery-status="<?= $route->delivery_status ?: '' ?>"
+             data-merged="<?= $route->is_merged_route ? '1' : '0' ?>"
+             data-route-type="<?= $dataType ?>">
+        </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+<!-- ===== SCREEN 2: ROUTE WORKSPACE ===== -->
+<div id="routeWorkspaceScreen">
+
+    <!-- Top Bar -->
+    <div class="ws-topbar">
+        <button class="ws-back-btn" onclick="backToRouteList()">← Back to Routes</button>
+        <div class="ws-vdivider"></div>
+        <div class="ws-route-info">
+            <div class="ws-route-name" id="wsRouteName">Route Name</div>
+            <div class="ws-route-meta">Rep: <span id="wsRepName"></span> &nbsp;·&nbsp; Sales: Rs <span id="wsSales"></span> &nbsp;·&nbsp; Bills: <span id="wsBills"></span></div>
+        </div>
+        <span class="ws-status-pill" id="wsStatusPill">Active</span>
+        <div class="ws-actions">
+            <button class="ws-action-btn" id="wsViewMapBtn" onclick="openMapModal()" style="display:none;">📍 Map</button>
+            <button class="ws-action-btn" id="wsUnbindBtn" onclick="unbindActiveRoute()" style="display:none;">🔗 Undo Bind</button>
+            <button class="ws-action-btn" onclick="openRouteSwitcherModal()">⇄ Switch Route</button>
+        </div>
+    </div>
+
+    <!-- Workflow Progress -->
+    <div class="workflow-wizard" id="workflowWizard" style="display:none;">
+        <div class="wizard-step" id="wstep-Active">① Active</div>
+        <div class="wizard-step" id="wstep-PendingGL">② GL</div>
+        <div class="wizard-step" id="wstep-Adjustments">③ Adjust</div>
+        <div class="wizard-step" id="wstep-Loading">④ Loading</div>
+        <div class="wizard-step" id="wstep-VarianceAdjustment">⑤ Variance</div>
+        <div class="wizard-step" id="wstep-Finalizing">⑥ Finalizing</div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="ws-tabs" id="routeWorkspaceTabs">
+        <button class="scroll-tab-btn active" onclick="switchRouteTab(1, this)">📋 1. Details</button>
+        <button class="scroll-tab-btn" onclick="switchRouteTab(2, this)">💰 2. Collections</button>
+        <button class="scroll-tab-btn" onclick="switchRouteTab(3, this)">⚙️ 3. Adjustments</button>
+        <button class="scroll-tab-btn" onclick="switchRouteTab(4, this)">🚛 4. Loading</button>
+        <button class="scroll-tab-btn" onclick="switchRouteTab(5, this)">⚖️ 5. Variance</button>
+        <button class="scroll-tab-btn" onclick="switchRouteTab(6, this)">📍 6. Dispatch</button>
+        <button class="scroll-tab-btn" onclick="switchRouteTab(7, this)">🚚 7. Delivery</button>
+        <button class="scroll-tab-btn" onclick="switchRouteTab(8, this)">💵 8. Reconciliation</button>
+        <button class="scroll-tab-btn" onclick="switchRouteTab(9, this)">📦 9. Return Stock</button>
+        <button class="scroll-tab-btn" onclick="switchRouteTab(10, this)">💼 10. Accounting</button>
+    </div>
+
+    <!-- Workspace Body -->
+    <div class="ws-body" id="workspaceBody">
+        <div class="ws-content" id="stageContentWrapper">
+
     @media (prefers-color-scheme: dark) { .app-workspace { background: #121212; } }
 
     /* Left Pane: Route List */
