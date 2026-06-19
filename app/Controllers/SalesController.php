@@ -706,10 +706,17 @@ class SalesController extends Controller {
             die('Invoice not found.');
         }
 
+        // Calculate amount paid for this invoice
+        $db = new Database();
+        $db->query("SELECT COALESCE(SUM(amount), 0) as paid FROM customer_payments WHERE invoice_id = :id");
+        $db->bind(':id', $id);
+        $invoicePaid = $db->single()->paid ?? 0;
+
         $data = [
             'invoice' => $invoice,
             'items' => $invoiceModel->getInvoiceItems($id),
             'company' => $companyModel->getSettings(),
+            'invoice_paid' => $invoicePaid,
         ];
         $this->view('sales/invoice_view', $data);
     }

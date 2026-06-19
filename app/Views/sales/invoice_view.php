@@ -571,10 +571,8 @@
                     <td><?= htmlspecialchars($data['invoice']->status) ?></td>
                 </tr>
                 <?php 
-                // Calculate amount paid for this invoice
-                $db->query("SELECT COALESCE(SUM(amount), 0) as paid FROM customer_payments WHERE invoice_id = :id");
-                $db->bind(':id', $data['invoice']->id);
-                $invoicePaid = $db->single()->paid ?? 0;
+                // Amount paid for this invoice (calculated in controller)
+                $invoicePaid = $data['invoice_paid'] ?? 0;
                 $balanceDue = $thisInvoiceGrandTotal - $invoicePaid;
                 ?>
                 <?php if($invoicePaid > 0): ?>
