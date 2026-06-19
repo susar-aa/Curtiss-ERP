@@ -653,6 +653,10 @@
                     <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                             <h4 style="margin:0; color:var(--primary); font-size:15px; font-weight:bold;">Returned Stock Settle Verification</h4>
+                            <label style="font-weight:bold; font-size:12px; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                <input type="checkbox" id="settleVerifyStock" onchange="checkSettleVerification()" style="width:16px; height:16px;">
+                                I have physically verified all returned inventory and confirm quantities are correct.
+                            </label>
                         </div>
                         <table class="data-table" style="font-size:11px;">
                             <thead>
@@ -961,8 +965,40 @@
         });
     }
 
+    const CSRF_TOKEN = '<?= $_SESSION['csrf_token'] ?? '' ?>';
+    let currentTabIndex = 1;
+    let currentRouteStatus = 'Active';
+
+    // Fetch wrapper to inject CSRF token to headers and bodies
+    function fetchSecure(url, options = {}) {
+        options.headers = options.headers || {};
+        options.headers['X-CSRF-TOKEN'] = CSRF_TOKEN;
+        
+        if (options.body && typeof options.body === 'string') {
+            try {
+                const parsed = JSON.parse(options.body);
+                if (typeof parsed === 'object' && parsed !== null) {
+                    parsed.csrf_token = CSRF_TOKEN;
+                    options.body = JSON.stringify(parsed);
+                }
+            } catch (e) {
+                // Ignore parsing errors
+            }
+        }
+        return fetch(url, options);
+    }
+
+    // Observer trigger to refresh Loading and Variance stages
+    function onRouteDataChanged() {
+        if (!currentRouteId) return;
+        loadLoadingStage(currentRouteId);
+        loadVarianceAdjustmentStage(currentRouteId);
+    }
+
     function updateWizardProgress(status) {
-        document.getElementById('workflowWizard').style.display = 'flex';
+        const wizard = document.getElementById('workflowWizard');
+        if (!wizard) return;
+        wizard.style.display = 'flex';
         const steps = ['Active', 'PendingGL', 'Adjustments', 'Loading', 'VarianceAdjustment', 'Finalizing'];
         
         let statusIndex = steps.indexOf(status.replace(' ', ''));
@@ -996,6 +1032,8 @@
         const bindingId = d.getAttribute('data-binding-id');
         const isBound = d.getAttribute('data-bound') === '1';
 
+        currentRouteStatus = status;
+
         document.getElementById('mhRouteName').innerText = routeName;
         document.getElementById('mhRepName').innerText = repName;
         document.getElementById('mhStart').innerText = d.getAttribute('data-start');
@@ -1009,7 +1047,7 @@
         }
         const isMerged = d.getAttribute('data-merged') === '1';
         if (isMerged) {
-            fetch('<?= APP_URL ?>/RepTracking/api_get_bound_routes_summary/' + routeId)
+            fetchSecure('<?= APP_URL ?>/RepTracking/api_get_bound_routes_summary/' + routeId)
                 .then(res => res.json())
                 .then(resData => {
                     if (resData.status === 'success') {
@@ -1041,121 +1079,407 @@
 
         updateWizardProgress(status);
 
+        document.getElementById('routeWorkspaceTabs').style.display = 'flex';
         document.getElementById('stageContentWrapper').style.display = 'block';
-        document.querySelectorAll('.stage-section-panel').forEach(p => p.style.display = 'none');
+
+        // Toggle completed archive banner
+        const archiveBanner = document.getElementById('completedArchiveBanner');
+        if (archiveBanner) {
+            if (status === 'Completed' || status === 'Finalized') {
+                archiveBanner.style.display = 'flex';
+            } else {
+                archiveBanner.style.display = 'none';
+            }
+        }
 
         // Close slider
         closeInvoiceSlider();
 
-        // Load specific stage data
-        if (status === 'Active') {
-            document.getElementById('ssec-Active').style.display = 'block';
-            loadActiveStageBills(routeId);
-        } else if (status === 'Pending GL') {
-            document.getElementById('ssec-PendingGL').style.display = 'block';
-            loadActiveStageBills(routeId);
-            loadCollectionsVerificationStage2(routeId);
-        } else if (status === 'Adjustments') {
-            document.getElementById('ssec-Adjustments').style.display = 'block';
-            loadAdjustmentsStage(routeId);
-        } else if (status === 'Loading') {
-            document.getElementById('ssec-Loading').style.display = 'block';
-            loadLoadingStage(routeId);
-        } else if (status === 'Variance Adjustment') {
-            document.getElementById('ssec-VarianceAdjustment').style.display = 'block';
-            loadVarianceAdjustmentStage(routeId);
-        } else if (status === 'Finalizing') {
-            document.getElementById('ssec-Finalizing').style.display = 'block';
-            loadFinalizingStage(routeId);
-        } else if (status === 'Completed' || status === 'Finalized') {
-            document.getElementById('ssec-Completed').style.display = 'block';
-            loadCompletedStage(routeId);
+        // Switch to the last selected index, default to 1 (Details)
+        switchRouteTab(currentTabIndex);
+    }
+
+    function switchRouteTab(tabIndex) {
+        currentTabIndex = tabIndex;
+        
+        // Update tab buttons styling
+        document.querySelectorAll('#routeWorkspaceTabs .scroll-tab-btn').forEach((btn, idx) => {
+            if (idx + 1 === tabIndex) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        
+        // Toggle tab panels display
+        document.querySelectorAll('.workspace-tab-panel').forEach(panel => {
+            panel.style.display = 'none';
+        });
+        const activePanel = document.getElementById('tabpanel-' + tabIndex);
+        if (activePanel) {
+            activePanel.style.display = 'block';
+        }
+        
+        if (!currentRouteId) return;
+        
+        // Dynamically load tab data
+        switch (tabIndex) {
+            case 1:
+                loadTab1Details(currentRouteId);
+                break;
+            case 2:
+                loadCollectionsVerificationStage2(currentRouteId);
+                break;
+            case 3:
+                loadAdjustmentsStage(currentRouteId);
+                break;
+            case 4:
+                loadLoadingStage(currentRouteId);
+                break;
+            case 5:
+                loadVarianceAdjustmentStage(currentRouteId);
+                break;
+            case 6:
+                loadDispatchStage(currentRouteId);
+                break;
+            case 7:
+                loadDeliveryLiveStage(currentRouteId);
+                break;
+            case 8:
+                loadTab8Reconciliation(currentRouteId);
+                break;
+            case 9:
+                loadTab9ReturnStock(currentRouteId);
+                break;
+            case 10:
+                loadTab10Accounting(currentRouteId);
+                break;
         }
     }
 
-    function loadActiveStageBills(routeId) {
-        const tbodies = document.querySelectorAll('.render-invoices-tbody');
-        tbodies.forEach(tbody => {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading bills... ⏳</td></tr>';
-        });
+    function loadTab1Details(routeId) {
+        const d = document.getElementById('route_data_' + routeId);
+        if (!d) return;
 
-        fetch('<?= APP_URL ?>/RepTracking/api_get_route_details/' + routeId)
+        document.getElementById('tab1RouteName').innerText = d.getAttribute('data-rname') || '';
+        document.getElementById('tab1RepName').innerText = d.getAttribute('data-rep') || '';
+        document.getElementById('tab1Status').innerText = d.getAttribute('data-status') || '';
+        document.getElementById('tab1StartTime').innerText = d.getAttribute('data-start') || '';
+        document.getElementById('tab1EndTime').innerText = d.getAttribute('data-end') || '';
+        document.getElementById('tab1StartMeter').innerText = d.getAttribute('data-start') || '';
+        document.getElementById('tab1EndMeter').innerText = d.getAttribute('data-end') || '';
+        
+        const start = parseFloat(d.getAttribute('data-start')) || 0;
+        const end = parseFloat(d.getAttribute('data-end')) || 0;
+        document.getElementById('tab1Distance').innerText = (end > start) ? (end - start) + ' km' : 'Active';
+
+        const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+        const notesTextarea = document.getElementById('tab1RouteNotes');
+        const saveNotesBtn = document.getElementById('btnSaveRouteNotes');
+
+        notesTextarea.readOnly = isReadOnly;
+        saveNotesBtn.disabled = isReadOnly;
+        saveNotesBtn.style.opacity = isReadOnly ? '0.5' : '1';
+        saveNotesBtn.style.cursor = isReadOnly ? 'not-allowed' : 'pointer';
+
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_route_details/' + routeId)
             .then(res => res.json())
             .then(data => {
-                activeRouteBills = data.bills || [];
-                tbodies.forEach(tbody => {
-                    tbody.innerHTML = '';
-                    if (activeRouteBills.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#888;">No bills generated on this route.</td></tr>';
-                        return;
-                    }
-                    activeRouteBills.forEach(bill => {
-                        let time = new Date(bill.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                        let statColor = bill.status === 'Paid' ? '#2e7d32' : (bill.status === 'Unpaid' ? '#ef6c00' : '#666');
-                        tbody.innerHTML += `
-                            <tr class="bill-row" onclick="openInvoiceSlider(${bill.id})">
-                                <td style="font-weight:bold; color:var(--primary);">${bill.invoice_number}</td>
-                                <td>${time}</td>
-                                <td><strong>${bill.customer_name}</strong></td>
-                                <td style="text-align:right; font-family:monospace; font-weight:bold;">${parseFloat(bill.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
-                                <td style="text-align:center;"><span style="color:${statColor}; font-weight:bold; text-transform:uppercase;">${bill.status}</span></td>
-                            </tr>
-                        `;
-                    });
-                });
+                notesTextarea.value = data.notes || '';
             });
+    }
+
+    function saveRouteNotes() {
+        if (!currentRouteId) return;
+        const notes = document.getElementById('tab1RouteNotes').value;
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_save_route_notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ route_id: currentRouteId, notes: notes })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert("🎉 Route notes saved successfully!");
+            } else {
+                alert("⚠️ Error: " + data.message);
+            }
+        });
+    }
+
+    let currentGLCollectionsState = [];
+
+    function loadCollectionsVerificationStage2(routeId) {
+        const tbody = document.getElementById('glCollectionsTableBody');
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Loading collections... ⏳</td></tr>';
+        currentGLCollectionsState = [];
+        
+        document.getElementById('glTotalCash').innerText = 'Rs 0.00';
+        document.getElementById('glTotalCheque').innerText = 'Rs 0.00';
+
+        const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+        const saveBtn = document.getElementById('btnSaveCollectionsVerification2');
+        if (saveBtn) {
+            saveBtn.disabled = isReadOnly;
+            saveBtn.style.opacity = isReadOnly ? '0.5' : '1';
+            saveBtn.style.cursor = isReadOnly ? 'not-allowed' : 'pointer';
+        }
+
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_route_collections/' + routeId)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    currentGLCollectionsState = data.collections || [];
+                    renderGLCollectionsVerification();
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red;">Failed to load collections.</td></tr>';
+                }
+            });
+    }
+
+    function renderGLCollectionsVerification() {
+        const tbody = document.getElementById('glCollectionsTableBody');
+        tbody.innerHTML = '';
+
+        let cashSum = 0;
+        let chequeSum = 0;
+
+        if (currentGLCollectionsState.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888; padding: 10px;">No payments collected on this route.</td></tr>';
+            checkGLVerification();
+            return;
+        }
+
+        const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+
+        currentGLCollectionsState.forEach((col, index) => {
+            const isVerified = parseInt(col.is_verified) === 1;
+            const isFinalized = col.status === 'Finalized' || isReadOnly;
+            const amt = parseFloat(col.amount);
+            
+            if (col.payment_method === 'Cash') {
+                cashSum += amt;
+            } else {
+                chequeSum += amt;
+            }
+
+            let statusSelect = `
+                <input type="checkbox" onchange="updateGLCollectionApproval(${index}, this.checked)" 
+                       ${(isVerified || isFinalized) ? 'checked' : ''} ${isFinalized ? 'disabled' : ''} 
+                       style="width:16px; height:16px; cursor:${isFinalized ? 'not-allowed' : 'pointer'};" />
+            `;
+
+            const adjustedVal = col.adjusted_amount !== null ? col.adjusted_amount : col.amount;
+
+            tbody.innerHTML += `
+                <tr style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:6px 4px;">
+                        <strong>${col.customer_name}</strong><br>
+                        <span style="font-size:10px; color:#64748b;">${col.payment_method} ${col.reference ? '(' + col.reference + ')' : ''}</span>
+                        ${isFinalized ? '<br><span style="font-size:10px; color:#2e7d32; font-weight:bold;">Posted to GL</span>' : ''}
+                    </td>
+                    <td style="padding:6px 4px; text-align:right; font-family:monospace; font-weight:bold;">
+                        Rs ${amt.toFixed(2)}
+                    </td>
+                    <td style="padding:6px 4px; text-align:center;">
+                        ${statusSelect}
+                    </td>
+                    <td style="padding:6px 4px;">
+                        <select onchange="updateGLCollectionDebitAccount(${index}, this.value)" 
+                                style="width:100%; max-width:180px; padding:4px; font-size:11px; border:1px solid #cbd5e1; border-radius:4px;" 
+                                ${isFinalized ? 'disabled' : ''}>
+                            ${buildAccountOptions(col.debit_account_id, col.payment_method === 'Cash' ? '1000' : (col.payment_method === 'Cheque' ? '1010' : '1605'))}
+                        </select>
+                    </td>
+                    <td style="padding:6px 4px;">
+                        <select onchange="updateGLCollectionCreditAccount(${index}, this.value)" 
+                                style="width:100%; max-width:180px; padding:4px; font-size:11px; border:1px solid #cbd5e1; border-radius:4px;" 
+                                ${isFinalized ? 'disabled' : ''}>
+                            ${buildAccountOptions(col.credit_account_id, '1200')}
+                        </select>
+                    </td>
+                    <td style="padding:6px 4px; text-align:center;">
+                        <input type="number" step="0.01" min="0" value="${parseFloat(adjustedVal).toFixed(2)}"
+                               oninput="updateGLCollectionAdjustedAmount(${index}, this.value)"
+                               ${isFinalized ? 'disabled' : ''}
+                               style="width:80px; padding:3px; border:1px solid #cbd5e1; border-radius:4px; text-align:right; font-family:monospace; font-size:11px;" />
+                    </td>
+                    <td style="padding:6px 4px; text-align:center;">
+                        <input type="text" value="${col.verification_notes || ''}" placeholder="Notes"
+                               oninput="updateGLCollectionNotes(${index}, this.value)"
+                               ${isFinalized ? 'disabled' : ''}
+                               style="width:100px; padding:3px; border:1px solid #cbd5e1; border-radius:4px; font-size:11px;" />
+                    </td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('glTotalCash').innerText = 'Rs ' + cashSum.toLocaleString('en-US', {minimumFractionDigits: 2});
+        document.getElementById('glTotalCheque').innerText = 'Rs ' + chequeSum.toLocaleString('en-US', {minimumFractionDigits: 2});
+
+        checkGLVerification();
+    }
+
+    function updateGLCollectionApproval(index, checked) {
+        const col = currentGLCollectionsState[index];
+        if (col) {
+            col.is_verified = checked ? 1 : 0;
+            col.is_flagged = 0;
+        }
+        checkGLVerification();
+    }
+
+    function updateGLCollectionDebitAccount(index, val) {
+        const col = currentGLCollectionsState[index];
+        if (col) {
+            col.debit_account_id = val !== '' ? parseInt(val) : null;
+        }
+    }
+
+    function updateGLCollectionCreditAccount(index, val) {
+        const col = currentGLCollectionsState[index];
+        if (col) {
+            col.credit_account_id = val !== '' ? parseInt(val) : null;
+        }
+    }
+
+    function updateGLCollectionAdjustedAmount(index, val) {
+        const col = currentGLCollectionsState[index];
+        if (col) {
+            col.adjusted_amount = val !== '' ? parseFloat(val) : null;
+        }
+        checkGLVerification();
+    }
+
+    function updateGLCollectionNotes(index, val) {
+        const col = currentGLCollectionsState[index];
+        if (col) {
+            col.verification_notes = val;
+        }
+    }
+
+    function saveCollectionsVerificationStage2() {
+        if (!currentRouteId) return;
+
+        const updates = currentGLCollectionsState.map(col => ({
+            id: col.id,
+            is_verified: col.is_verified,
+            is_flagged: col.is_flagged,
+            adjusted_amount: col.adjusted_amount !== null ? parseFloat(col.adjusted_amount) : parseFloat(col.amount),
+            verification_notes: col.verification_notes,
+            debit_account_id: col.debit_account_id || getAccountIdByCode(col.payment_method === 'Cash' ? '1000' : (col.payment_method === 'Cheque' ? '1010' : '1605')),
+            credit_account_id: col.credit_account_id || getAccountIdByCode('1200')
+        }));
+
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_verify_collections', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ updates: updates })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                loadCollectionsVerificationStage2(currentRouteId);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('An error occurred while saving verification.');
+        });
+    }
+
+    function checkGLVerification() {
+        const btn = document.getElementById('glApproveSalesBtn');
+        const text = document.getElementById('glVerificationStatusText');
+        if (!btn || !text) return;
+
+        let allCollectionsApproved = true;
+        let pendingOrFlaggedCount = 0;
+        currentGLCollectionsState.forEach(col => {
+            if (parseInt(col.is_verified) !== 1) {
+                allCollectionsApproved = false;
+                pendingOrFlaggedCount++;
+            }
+        });
+
+        if (allCollectionsApproved) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            text.innerHTML = '<span style="color:#2e7d32; font-weight:bold;">Verification Complete!</span> collections approved.';
+        } else {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+            text.innerHTML = `<span style="color:#dc2626; font-weight:bold;">Verification Pending:</span> ${pendingOrFlaggedCount} collections remaining.`;
+        }
     }
 
     function loadAdjustmentsStage(routeId) {
         const tbody = document.getElementById('adjustmentsInvoicesTbody');
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Loading Sales Orders... ⏳</td></tr>';
 
+        const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+
+        // Hide/Show operational buttons header in Tab 3
+        const opsHeader = document.querySelector("#tabpanel-3 button")?.parentElement;
+        if (opsHeader) {
+            opsHeader.style.display = isReadOnly ? 'none' : 'flex';
+        }
+
         // Load secondary routes for logistics binding dropdown
         const secSelect = document.getElementById('adjDaSecondaryRoute');
-        secSelect.innerHTML = '<option value="">-- Choose Route --</option>';
-        document.querySelectorAll('.route-item').forEach(item => {
-            const id = item.id.replace('route_', '');
-            if (parseInt(id) !== parseInt(routeId)) {
-                const rdata = document.getElementById('route_data_' + id);
-                if (rdata && rdata.getAttribute('data-status') === 'Adjustments') {
-                    secSelect.innerHTML += `<option value="${id}">${rdata.getAttribute('data-rname')} (Rep: ${rdata.getAttribute('data-rep')})</option>`;
+        if (secSelect) {
+            secSelect.innerHTML = '<option value="">-- Choose Route --</option>';
+            document.querySelectorAll('.route-item').forEach(item => {
+                const id = item.id.replace('route_', '');
+                if (parseInt(id) !== parseInt(routeId)) {
+                    const rdata = document.getElementById('route_data_' + id);
+                    if (rdata && rdata.getAttribute('data-status') === 'Adjustments') {
+                        secSelect.innerHTML += `<option value="${id}">${rdata.getAttribute('data-rname')} (Rep: ${rdata.getAttribute('data-rep')})</option>`;
+                    }
                 }
-            }
-        });
+            });
+        }
 
         // Load outstanding bills
         const container = document.getElementById('adjDaBillsContainer');
-        container.innerHTML = '<p style="text-align:center; color:#888;">Loading credit bills... ⏳</p>';
-
-        fetch('<?= APP_URL ?>/RepTracking/api_get_outstanding_bills/' + routeId)
-            .then(res => res.json())
-            .then(data => {
-                if (data.status !== 'success' || !data.bills || data.bills.length === 0) {
-                    container.innerHTML = '<p style="text-align:center; color:#888; margin:10px 0;">No outstanding credit bills found in these territories.</p>';
-                } else {
-                    let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
-                    data.bills.forEach(cust => {
-                        cust.bills.forEach(b => {
-                            let amtFormatted = parseFloat(b.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2});
-                            html += `
-                                <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; padding:6px; border-bottom:1px solid #f0f0f0;">
-                                    <input type="checkbox" class="adj-da-bill-checkbox" value="${b.id}" style="width:16px; height:16px;">
-                                    <div style="flex:1;">
-                                        <div style="font-weight:bold;">${b.invoice_number}</div>
-                                        <div style="font-size:11px; color:#666;">Customer: <strong>${cust.customer_name}</strong> | Date: ${b.invoice_date}</div>
-                                    </div>
-                                    <div style="font-weight:bold; font-family:monospace; color:#c62828;">Rs ${amtFormatted}</div>
-                                </label>
-                            `;
+        if (container) {
+            container.innerHTML = '<p style="text-align:center; color:#888;">Loading credit bills... ⏳</p>';
+            fetchSecure('<?= APP_URL ?>/RepTracking/api_get_outstanding_bills/' + routeId)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status !== 'success' || !data.bills || data.bills.length === 0) {
+                        container.innerHTML = '<p style="text-align:center; color:#888; margin:10px 0;">No outstanding credit bills found in these territories.</p>';
+                    } else {
+                        let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+                        data.bills.forEach(cust => {
+                            cust.bills.forEach(b => {
+                                let amtFormatted = parseFloat(b.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2});
+                                html += `
+                                    <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; padding:6px; border-bottom:1px solid #f0f0f0;">
+                                        <input type="checkbox" class="adj-da-bill-checkbox" value="${b.id}" style="width:16px; height:16px;" ${isReadOnly ? 'disabled' : ''}>
+                                        <div style="flex:1;">
+                                            <div style="font-weight:bold;">${b.invoice_number}</div>
+                                            <div style="font-size:11px; color:#666;">Customer: <strong>${cust.customer_name}</strong> | Date: ${b.invoice_date}</div>
+                                        </div>
+                                        <div style="font-weight:bold; font-family:monospace; color:#c62828;">Rs ${amtFormatted}</div>
+                                    </label>
+                                `;
+                            });
                         });
-                    });
-                    html += '</div>';
-                    container.innerHTML = html;
-                }
+                        html += '</div>';
+                        container.innerHTML = html;
+                    }
+                });
+        }
 
-                // Now fetch current route details & delivery status
-                return fetch('<?= APP_URL ?>/RepTracking/api_get_route_details/' + routeId);
-            })
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_route_details/' + routeId)
             .then(res => res.json())
             .then(data => {
                 const bills = data.bills || [];
@@ -1166,6 +1490,9 @@
                     bills.forEach(bill => {
                         let time = new Date(bill.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                         let statColor = bill.status === 'Paid' ? '#2e7d32' : (bill.status === 'Unpaid' ? '#ef6c00' : '#666');
+                        let actionBtn = isReadOnly ? '-' : `
+                            <button onclick="detachInvoice(${bill.id})" style="padding:4px 8px; background:#ef4444; color:#fff; border:none; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold;">❌ Remove</button>
+                        `;
                         tbody.innerHTML += `
                             <tr>
                                 <td style="font-weight:bold; color:var(--primary); cursor:pointer;" onclick="openInvoiceSlider(${bill.id})">${bill.invoice_number}</td>
@@ -1173,52 +1500,17 @@
                                 <td><strong>${bill.customer_name}</strong></td>
                                 <td style="text-align:right; font-family:monospace; font-weight:bold;">${parseFloat(bill.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
                                 <td style="text-align:center;"><span style="color:${statColor}; font-weight:bold; text-transform:uppercase;">${bill.status}</span></td>
-                                <td style="text-align:center;">
-                                    <button onclick="detachInvoice(${bill.id})" style="padding:4px 8px; background:#ef4444; color:#fff; border:none; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold;">❌ Remove</button>
-                                </td>
+                                <td style="text-align:center;">${actionBtn}</td>
                             </tr>
                         `;
                     });
-                }
-
-                // Check delivery details
-                const rdata = document.getElementById('route_data_' + routeId);
-                const delId = rdata.getAttribute('data-delivery-id');
-                if (!delId || delId === '0' || delId === '') {
-                    // Not arranged yet
-                    document.getElementById('adjDeliveryArrangedView').style.display = 'none';
-                    document.getElementById('adjDeliveryFormView').style.display = 'block';
-                } else {
-                    // Already arranged
-                    document.getElementById('adjDeliveryFormView').style.display = 'none';
-                    document.getElementById('adjDeliveryArrangedView').style.display = 'block';
-                    
-                    // Fetch delivery info
-                    fetch('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
-                        .then(res => res.json())
-                        .then(dData => {
-                            const container = document.getElementById('adjArrangedDetailsContainer');
-                            if (dData.delivery) {
-                                container.innerHTML = `
-                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                                        <div><strong>Delivery Date:</strong> ${dData.delivery.delivery_date}</div>
-                                        <div><strong>Secondary Bound Route:</strong> ${dData.delivery.secondary_route_name || 'None'}</div>
-                                    </div>
-                                    <div style="margin-top:10px; font-weight:bold; font-size:12px; color:#1e3a8a;">
-                                        🔗 Bound Manifest successfully generated. Ready for warehouse.
-                                    </div>
-                                `;
-                            } else {
-                                container.innerHTML = 'Error loading delivery details.';
-                            }
-                        });
                 }
             });
     }
 
     function detachInvoice(invoiceId) {
         if (!confirm("Are you sure you want to remove/detach this Sales Order from this route?")) return;
-        fetch('<?= APP_URL ?>/RepTracking/api_detach_invoice', {
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_detach_invoice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ invoice_id: invoiceId })
@@ -1227,6 +1519,7 @@
         .then(data => {
             if (data.status === 'success') {
                 alert("Sales Order successfully detached from route!");
+                onRouteDataChanged();
                 loadAdjustmentsStage(currentRouteId);
             } else {
                 alert("Error: " + data.message);
@@ -1253,7 +1546,7 @@
             selected_credit_invoices: checkedBills
         };
 
-        fetch('<?= APP_URL ?>/RepTracking/arrange', {
+        fetchSecure('<?= APP_URL ?>/RepTracking/arrange', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -1266,7 +1559,8 @@
                 if (rdata) {
                     rdata.setAttribute('data-delivery-id', data.delivery_id);
                 }
-                loadAdjustmentsStage(currentRouteId);
+                onRouteDataChanged();
+                loadDispatchStage(currentRouteId);
             } else {
                 alert("⚠️ Error: " + data.message);
             }
@@ -1275,13 +1569,14 @@
 
     function loadLoadingStage(routeId) {
         const box = document.getElementById('loadingBox');
+        if (!box) return;
         box.innerHTML = 'Loading loading items checklist... ⏳';
 
-        fetch('<?= APP_URL ?>/RepTracking/api_get_route_variances/' + routeId)
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_route_variances/' + routeId)
             .then(res => res.json())
             .then(data => {
                 if (data.status !== 'success' || !data.deliveries || data.deliveries.length === 0) {
-                    box.innerHTML = '<p style="color:red;">No verification records.</p>';
+                    box.innerHTML = '<p style="color:red; text-align:center; padding:10px;">No verification records found.</p>';
                     return;
                 }
                 const del = data.deliveries[0];
@@ -1319,10 +1614,11 @@
 
     function loadVarianceAdjustmentStage(routeId) {
         const box = document.getElementById('varianceAuditBox');
+        if (!box) return;
         box.innerHTML = '<div style="padding:20px; text-align:center;">Loading shortages & overages... ⏳</div>';
         currentVarianceState = {};
 
-        fetch('<?= APP_URL ?>/RepTracking/api_get_route_variances/' + routeId)
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_route_variances/' + routeId)
             .then(res => res.json())
             .then(data => {
                 if (data.status !== 'success' || !data.deliveries || data.deliveries.length === 0) {
@@ -1351,7 +1647,7 @@
                     };
 
                     if (parseFloat(item.variance) !== 0) {
-                        const p = fetch('<?= APP_URL ?>/RepTracking/api_get_product_invoices?route_id=' + routeId + '&item_id=' + itemId)
+                        const p = fetchSecure('<?= APP_URL ?>/RepTracking/api_get_product_invoices?route_id=' + routeId + '&item_id=' + itemId)
                             .then(res => res.json())
                             .then(invData => {
                                 if (invData.status === 'success') {
@@ -1377,6 +1673,7 @@
 
     function renderVarianceReconciliation() {
         const box = document.getElementById('varianceAuditBox');
+        if (!box) return;
         let html = '';
 
         let totalShortages = 0;
@@ -1384,7 +1681,8 @@
         let hasUnbalanced = false;
 
         let tableRows = '';
-        
+        const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+
         Object.values(currentVarianceState).forEach(item => {
             const variance = item.variance;
             if (variance < 0) totalShortages += Math.abs(variance);
@@ -1482,6 +1780,7 @@
                         <div style="text-align:center;">
                             <input type="number" step="1" min="0" value="${inv.quantity}" 
                                    oninput="updateInvoiceAllocation(${item.item_id}, ${inv.invoice_id}, this.value)" 
+                                   ${isReadOnly ? 'disabled' : ''}
                                    style="width:70px; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px; text-align:center; font-weight:bold; font-family:monospace;" />
                         </div>
                         <div style="text-align:right;">
@@ -1500,6 +1799,10 @@
                 ? `<span style="color:#16a34a; font-weight:bold;">✔ Balanced</span>`
                 : `<span style="color:#dc2626; font-weight:bold;">⚠️ Unbalanced (${unbalancedVal > 0 ? '+' : ''}${unbalancedVal.toFixed(1)} pcs)</span>`;
 
+            let autoDistBtn = isReadOnly ? '' : `
+                <button onclick="autoDistributeVariance(${item.item_id})" style="padding:4px 10px; background:#3b82f6; color:#fff; border:none; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; margin-right:10px;">⚡ Auto-Distribute</button>
+            `;
+
             reconciliationPanels += `
                 <div style="border:1px solid #cbd5e1; border-radius:8px; padding:15px; margin-bottom:20px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #e2e8f0; padding-bottom:8px;">
@@ -1508,7 +1811,7 @@
                             <span style="font-size:11px; color:#475569;">Variance: <strong>${item.variance > 0 ? '+' : ''}${item.variance}</strong> | Required: <strong>${item.required_qty}</strong> | Final Loaded: <strong>${item.final_loaded_qty}</strong></span>
                         </div>
                         <div style="text-align:right;">
-                            <button onclick="autoDistributeVariance(${item.item_id})" style="padding:4px 10px; background:#3b82f6; color:#fff; border:none; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; margin-right:10px;">⚡ Auto-Distribute</button>
+                            ${autoDistBtn}
                             ${panelStatus}
                         </div>
                     </div>
@@ -1536,28 +1839,19 @@
             ${reconciliationPanels}
         `;
 
-        box.innerHTML = html;
-
-        const submitBtn = document.querySelector("#ssec-VarianceAdjustment button[onclick*='Finalizing']");
-        if (submitBtn) {
-            if (hasUnbalanced) {
-                submitBtn.disabled = true;
-                submitBtn.style.opacity = '0.5';
-                submitBtn.style.cursor = 'not-allowed';
-                submitBtn.title = "Please balance all product variances across invoices before proceeding.";
-                submitBtn.onclick = function() {
-                    alert('Please balance all product variances across invoices before proceeding.');
-                };
-            } else {
-                submitBtn.disabled = false;
-                submitBtn.style.opacity = '1';
-                submitBtn.style.cursor = 'pointer';
-                submitBtn.title = "";
-                submitBtn.onclick = function() {
-                    submitVarianceAdjustments();
-                };
-            }
+        if (!isReadOnly) {
+            html += `
+                <div style="text-align:right; margin-top:20px;">
+                    <button id="btnSubmitVarianceAdjustments" onclick="submitVarianceAdjustments()" 
+                            ${hasUnbalanced ? 'disabled' : ''}
+                            style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:${hasUnbalanced ? 'not-allowed' : 'pointer'}; opacity:${hasUnbalanced ? 0.5 : 1};">
+                        ⚖️ Approve & Apply Billing Adjustments
+                    </button>
+                </div>
+            `;
         }
+
+        box.innerHTML = html;
     }
 
     function updateInvoiceAllocation(itemId, invoiceId, value) {
@@ -1634,7 +1928,7 @@
             adjustments: adjustments
         };
 
-        fetch('<?= APP_URL ?>/RepTracking/api_adjust_variance_billing', {
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_adjust_variance_billing', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1645,7 +1939,9 @@
         .then(data => {
             if (data.status === 'success') {
                 alert(data.message);
-                window.location.href = window.location.pathname + `?route_id=${currentRouteId}&filter=finalizing`;
+                onRouteDataChanged();
+                // Reload adjustments stage tab
+                switchRouteTab(5);
             } else {
                 alert('Error: ' + data.message);
             }
@@ -1661,207 +1957,519 @@
         window.open('<?= APP_URL ?>/RepTracking/print_loading/' + currentRouteId + '?type=' + type, '_blank');
     }
 
-    let currentCollectionsState = [];
+    function loadDispatchStage(routeId) {
+        const formView = document.getElementById('adjDeliveryFormView');
+        const arrangedView = document.getElementById('adjDeliveryArrangedView');
+        if (!formView || !arrangedView) return;
 
-    function loadFinalizingStage(routeId) {
-        const d = document.getElementById('route_data_' + routeId);
-        const delId = d.getAttribute('data-delivery-id');
+        const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
 
-        document.getElementById('settleVerifyStock').checked = false;
-        document.getElementById('settleStockTableBody').innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading...</td></tr>';
-        
-        document.getElementById('settleSubmitBtn').disabled = true;
-        document.getElementById('settleSubmitBtn').style.opacity = '0.5';
-        document.getElementById('settleSubmitBtn').style.cursor = 'not-allowed';
-        document.getElementById('settleStatusText').innerHTML = 'Please approve all collections and verify Return stock counts to unlock Finalization.';
+        const rdata = document.getElementById('route_data_' + routeId);
+        const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
 
-        // Fetch collections verification
-        loadCollectionsVerification(routeId);
+        if (!delId || delId === '0' || delId === '') {
+            // Not arranged yet
+            arrangedView.style.display = 'none';
+            formView.style.display = isReadOnly ? 'none' : 'block';
+            if (isReadOnly) {
+                arrangedView.style.display = 'block';
+                document.getElementById('adjArrangedDetailsContainer').innerHTML = `<p style="text-align:center; color:#888;">No delivery was arranged for this route.</p>`;
+            }
+        } else {
+            // Already arranged
+            formView.style.display = 'none';
+            arrangedView.style.display = 'block';
 
-        fetch('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
+            const editBtn = document.getElementById('btnEditDeliveryManifest');
+            if (editBtn) {
+                editBtn.style.display = isReadOnly ? 'none' : 'inline-block';
+            }
+            
+            fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
+                .then(res => res.json())
+                .then(dData => {
+                    const container = document.getElementById('adjArrangedDetailsContainer');
+                    if (dData.delivery) {
+                        container.innerHTML = `
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                                <div><strong>Delivery ID:</strong> #${dData.delivery.id}</div>
+                                <div><strong>Delivery Date:</strong> ${dData.delivery.delivery_date}</div>
+                                <div><strong>Secondary Bound Route:</strong> ${dData.delivery.secondary_route_name || 'None'}</div>
+                                <div><strong>Vehicle Number:</strong> ${dData.delivery.vehicle_number || 'Pending'}</div>
+                                <div><strong>Driver Name:</strong> ${dData.delivery.driver_name || 'Pending'}</div>
+                                <div><strong>Helper Name:</strong> ${dData.delivery.partner_name || 'None'}</div>
+                            </div>
+                            <div style="margin-top:10px; font-weight:bold; font-size:12px; color:#1e3a8a;">
+                                🔗 Bound Manifest successfully generated. Ready for warehouse.
+                            </div>
+                        `;
+                    } else {
+                        container.innerHTML = 'Error loading delivery details.';
+                    }
+                });
+        }
+    }
+
+    function loadDeliveryLiveStage(routeId) {
+        const summaryCards = document.getElementById('deliveryTabSummaryCards');
+        const tbody = document.getElementById('deliveryTabInvoicesTbody');
+        if (!summaryCards || !tbody) return;
+
+        summaryCards.innerHTML = '<div style="grid-column: span 4; text-align:center; padding:10px;">Loading performance summary... ⏳</div>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading customer dispatches... ⏳</td></tr>';
+
+        const rdata = document.getElementById('route_data_' + routeId);
+        const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
+
+        if (!delId || delId === '0' || delId === '') {
+            summaryCards.innerHTML = '<div style="grid-column: span 4; text-align:center; padding:10px; color:#888;">Delivery has not been arranged/dispatched yet.</div>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">No dispatch data available.</td></tr>';
+            return;
+        }
+
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
             .then(res => res.json())
             .then(data => {
+                if (data.status !== 'success' || !data.delivery) {
+                    summaryCards.innerHTML = '<div style="grid-column: span 4; text-align:center; color:red;">Error loading delivery.</div>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Failed to load details.</td></tr>';
+                    return;
+                }
+
+                const invoices = data.invoices || [];
+                const totalInvoices = invoices.length;
+                const delivered = invoices.filter(inv => inv.delivery_status === 'Delivered').length;
+                const pending = totalInvoices - delivered;
+                const collections = parseFloat(data.balancing.total_payments || 0);
+
+                summaryCards.innerHTML = `
+                    <div style="background:#f0f9ff; border:1px solid #bae6fd; padding:12px; border-radius:6px; text-align:center;">
+                        <span style="font-size:11px; color:#0369a1; font-weight:bold;">Total Invoices</span><br>
+                        <strong style="font-size:15px; color:#0f172a;">${totalInvoices}</strong>
+                    </div>
+                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:12px; border-radius:6px; text-align:center;">
+                        <span style="font-size:11px; color:#166534; font-weight:bold;">Delivered</span><br>
+                        <strong style="font-size:15px; color:#166534;">${delivered}</strong>
+                    </div>
+                    <div style="background:#fff7ed; border:1px solid #ffedd5; padding:12px; border-radius:6px; text-align:center;">
+                        <span style="font-size:11px; color:#c2410c; font-weight:bold;">Pending Visit</span><br>
+                        <strong style="font-size:15px; color:#c2410c;">${pending}</strong>
+                    </div>
+                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:12px; border-radius:6px; text-align:center;">
+                        <span style="font-size:11px; color:#166534; font-weight:bold;">Collected Amount</span><br>
+                        <strong style="font-size:15px; color:#166534;">Rs ${collections.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>
+                    </div>
+                `;
+
+                tbody.innerHTML = '';
+                if (invoices.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">No invoices dispatched.</td></tr>';
+                    return;
+                }
+
+                invoices.forEach(inv => {
+                    let dColor = inv.delivery_status === 'Delivered' ? '#2e7d32' : '#d05d00';
+                    let pColor = inv.status === 'Paid' ? '#2e7d32' : '#d05d00';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${inv.customer_name}</strong></td>
+                            <td style="font-weight:bold; color:var(--primary);">${inv.invoice_number}</td>
+                            <td style="text-align:right; font-family:monospace; font-weight:bold;">Rs ${parseFloat(inv.true_grand_total).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                            <td style="text-align:center; color:${dColor}; font-weight:bold;">${inv.delivery_status || 'Pending'}</td>
+                            <td style="text-align:center; color:${pColor}; font-weight:bold;">${inv.status}</td>
+                        </tr>
+                    `;
+                });
+            });
+    }
+
+    function loadTab8Reconciliation(routeId) {
+        const rdata = document.getElementById('route_data_' + routeId);
+        const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
+
+        document.getElementById('reconExpectedCash').innerText = 'Rs 0.00';
+        document.getElementById('reconExpectedCollections').innerText = 'Rs 0.00';
+        document.getElementById('reconTotalExpectedCash').innerText = 'Rs 0.00';
+        document.getElementById('reconActualCash').value = '0.00';
+        document.getElementById('reconCashVariance').innerText = 'Rs 0.00';
+        document.getElementById('reconAuditNotes').value = '';
+        document.getElementById('reconChequesTbody').innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading cheques... ⏳</td></tr>';
+
+        if (!delId || delId === '0' || delId === '') {
+            document.getElementById('reconChequesTbody').innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">Delivery has not been arranged.</td></tr>';
+            return;
+        }
+
+        const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+        const saveBtn = document.getElementById('btnSaveReconciliationDraft');
+        if (saveBtn) {
+            saveBtn.disabled = isReadOnly;
+            saveBtn.style.opacity = isReadOnly ? '0.5' : '1';
+            saveBtn.style.cursor = isReadOnly ? 'not-allowed' : 'pointer';
+        }
+        document.getElementById('reconActualCash').disabled = isReadOnly;
+        document.getElementById('reconAuditNotes').disabled = isReadOnly;
+
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status !== 'success') return;
+
+                currentDeliveryDetails = data;
+                const balancing = data.balancing;
+
+                const expectedCashSales = parseFloat(balancing.expected_cash_sales || 0);
+                const expectedCashColls = parseFloat(balancing.expected_cash_collections || 0);
+                const totalExpectedCash = expectedCashSales + expectedCashColls;
+
+                document.getElementById('reconExpectedCash').innerText = 'Rs ' + expectedCashSales.toLocaleString('en-US', {minimumFractionDigits: 2});
+                document.getElementById('reconExpectedCollections').innerText = 'Rs ' + expectedCashColls.toLocaleString('en-US', {minimumFractionDigits: 2});
+                document.getElementById('reconTotalExpectedCash').innerText = 'Rs ' + totalExpectedCash.toLocaleString('en-US', {minimumFractionDigits: 2});
+
+                let actualCash = 0;
+                let remarks = '';
+                if (data.delivery && data.delivery.reconciliation_json) {
+                    try {
+                        const recon = JSON.parse(data.delivery.reconciliation_json);
+                        actualCash = parseFloat(recon.actual_cash || 0);
+                        remarks = recon.audit_remarks || '';
+                    } catch(e) {}
+                }
+
+                document.getElementById('reconActualCash').value = actualCash.toFixed(2);
+                document.getElementById('reconAuditNotes').value = remarks;
+
+                calculateCashVariance();
+
+                // Render cheques
+                const chequesTbody = document.getElementById('reconChequesTbody');
+                chequesTbody.innerHTML = '';
+                const cheques = balancing.payments ? balancing.payments.filter(p => p.payment_method === 'Cheque') : [];
+                if (cheques.length === 0) {
+                    chequesTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888; padding:10px;">No cheques collected.</td></tr>';
+                } else {
+                    cheques.forEach((ch, idx) => {
+                        let isChApproved = parseInt(ch.is_verified) === 1;
+                        let approveBox = `
+                            <input type="checkbox" onchange="toggleReconChequeApproval(${ch.id}, this.checked)" 
+                                   ${isChApproved ? 'checked' : ''} ${isReadOnly ? 'disabled' : ''} 
+                                   style="width:16px; height:16px; cursor:${isReadOnly ? 'not-allowed' : 'pointer'};" />
+                        `;
+                        chequesTbody.innerHTML += `
+                            <tr>
+                                <td><strong>${ch.customer_name}</strong></td>
+                                <td>${ch.reference || 'N/A'}</td>
+                                <td style="text-align:right; font-family:monospace; font-weight:bold;">Rs ${parseFloat(ch.amount).toFixed(2)}</td>
+                                <td style="text-align:center;">${approveBox}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            });
+    }
+
+    function calculateCashVariance() {
+        const expectedStr = document.getElementById('reconTotalExpectedCash').innerText.replace('Rs ', '').replace(/,/g, '');
+        const expected = parseFloat(expectedStr) || 0;
+        const actual = parseFloat(document.getElementById('reconActualCash').value) || 0;
+        const variance = actual - expected;
+
+        const el = document.getElementById('reconCashVariance');
+        el.innerText = 'Rs ' + variance.toLocaleString('en-US', {minimumFractionDigits: 2});
+        if (variance < 0) {
+            el.style.color = '#c62828';
+        } else if (variance > 0) {
+            el.style.color = '#2e7d32';
+        } else {
+            el.style.color = '#000';
+        }
+    }
+
+    function toggleReconChequeApproval(paymentId, checked) {
+        if (!currentDeliveryDetails) return;
+        const payments = currentDeliveryDetails.balancing.payments || [];
+        const ch = payments.find(p => p.id === paymentId);
+        if (ch) {
+            ch.is_verified = checked ? 1 : 0;
+        }
+    }
+
+    function saveReconciliationDraft() {
+        if (!currentRouteId || !currentDeliveryDetails) return;
+        const actualCash = parseFloat(document.getElementById('reconActualCash').value) || 0;
+        const remarks = document.getElementById('reconAuditNotes').value;
+
+        const chequeApprovals = {};
+        const payments = currentDeliveryDetails.balancing.payments || [];
+        payments.forEach(p => {
+            if (p.payment_method === 'Cheque') {
+                chequeApprovals[p.id] = parseInt(p.is_verified) === 1;
+            }
+        });
+
+        const reconData = {
+            actual_cash: actualCash,
+            audit_remarks: remarks,
+            cheque_approvals: chequeApprovals
+        };
+
+        const deliveryId = currentDeliveryDetails.delivery.id;
+
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_save_reconciliation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ delivery_id: deliveryId, reconciliation_data: reconData })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert("🎉 Reconciliation draft saved successfully!");
+                onRouteDataChanged();
+            } else {
+                alert("⚠️ Error: " + data.message);
+            }
+        });
+    }
+
+    function loadTab9ReturnStock(routeId) {
+        const rdata = document.getElementById('route_data_' + routeId);
+        const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
+
+        const tbody = document.getElementById('settleStockTableBody');
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading return stock counts... ⏳</td></tr>';
+
+        const verifyStockCheck = document.getElementById('settleVerifyStock');
+        if (verifyStockCheck) {
+            verifyStockCheck.checked = false;
+        }
+
+        if (!delId || delId === '0' || delId === '') {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">Delivery has not been arranged.</td></tr>';
+            return;
+        }
+
+        const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+        const saveBtn = document.getElementById('btnSaveReturnStockDraft');
+        if (saveBtn) {
+            saveBtn.disabled = isReadOnly;
+            saveBtn.style.opacity = isReadOnly ? '0.5' : '1';
+            saveBtn.style.cursor = isReadOnly ? 'not-allowed' : 'pointer';
+        }
+        if (verifyStockCheck) {
+            verifyStockCheck.disabled = isReadOnly;
+        }
+
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status !== 'success') return;
                 currentDeliveryDetails = data;
 
-                // Pre-populate logistics fields if set
-                if (data.delivery) {
-                    document.getElementById('settleDaVehicle').value = data.delivery.vehicle_number || '';
-                    document.getElementById('settleDaDriver').value = data.delivery.driver_name || '';
-                    document.getElementById('settleDaPartner').value = data.delivery.partner_name || '';
+                let savedReturnStock = null;
+                if (data.delivery && data.delivery.return_stock_json) {
+                    try {
+                        savedReturnStock = JSON.parse(data.delivery.return_stock_json);
+                    } catch(e) {}
                 }
-                
-                // Render Stock/returns
-                const stockTbody = document.getElementById('settleStockTableBody');
-                stockTbody.innerHTML = '';
+
+                tbody.innerHTML = '';
                 if (!data.balancing.stock_items || data.balancing.stock_items.length === 0) {
-                    stockTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">No stock items loaded.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">No stock items loaded.</td></tr>';
                 } else {
                     data.balancing.stock_items.forEach(st => {
-                        stockTbody.innerHTML += `
+                        let expectedReturned = parseInt(st.loaded_qty) - parseInt(st.delivered_qty);
+                        if (expectedReturned < 0) expectedReturned = 0;
+                        
+                        let actualCounted = expectedReturned;
+                        if (savedReturnStock) {
+                            const savedVal = savedReturnStock.find(x => x.item_id === st.item_id && x.variation_option_id === st.variation_option_id);
+                            if (savedVal) {
+                                actualCounted = savedVal.actual_returned_qty;
+                            }
+                        }
+
+                        tbody.innerHTML += `
                             <tr>
                                 <td><strong>${st.item_name}</strong></td>
-                                <td style="text-align:center;">${parseInt(st.loaded_qty)}</td>
-                                <td style="text-align:center; color:#2e7d32;">${parseInt(st.delivered_qty)}</td>
+                                <td style="text-align:center; font-weight:bold;">${parseInt(st.loaded_qty)}</td>
+                                <td style="text-align:center; color:#2e7d32; font-weight:bold;">${parseInt(st.delivered_qty)}</td>
+                                <td style="text-align:center; font-weight:bold; font-family:monospace; background:#fafafa;">${expectedReturned}</td>
                                 <td style="text-align:right;">
                                     <input type="number" class="actual-returned-input" 
                                            data-name="${st.item_name}" data-item-id="${st.item_id}" data-var-id="${st.variation_option_id || 0}"
                                            data-loaded="${st.loaded_qty}" data-delivered="${st.delivered_qty}" 
-                                           value="${parseInt(st.remaining_qty)}" min="0" style="width:60px; text-align:right; padding:3px;">
+                                           value="${actualCounted}" min="0" ${isReadOnly ? 'disabled' : ''}
+                                           style="width:80px; text-align:right; padding:4px; font-family:monospace; font-weight:bold;" />
                                 </td>
                             </tr>
                         `;
                     });
                 }
 
-                // Render double-entries mappings
-                renderSettleDoubleEntries();
-            });
-    }
-
-    function loadCollectionsVerification(routeId) {
-        const tbody = document.getElementById('settleCollectionsTableBody');
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading collections... ⏳</td></tr>';
-        currentCollectionsState = [];
-
-        fetch('<?= APP_URL ?>/RepTracking/api_get_route_collections/' + routeId)
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    currentCollectionsState = data.collections || [];
-                    renderCollectionsVerification();
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Failed to load collections.</td></tr>';
+                if (isReadOnly && verifyStockCheck) {
+                    verifyStockCheck.checked = true;
                 }
+
+                checkSettleVerification();
             });
     }
 
-    function renderCollectionsVerification() {
-        const tbody = document.getElementById('settleCollectionsTableBody');
-        tbody.innerHTML = '';
+    function saveReturnStockDraft() {
+        if (!currentRouteId || !currentDeliveryDetails) return;
 
-        if (currentCollectionsState.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888; padding: 10px;">No payments collected on this route.</td></tr>';
-            checkSettleVerification();
-            return;
-        }
-
-        currentCollectionsState.forEach((col, index) => {
-            const isVerified = parseInt(col.is_verified) === 1;
-            const isFlagged = parseInt(col.is_flagged) === 1;
-            
-            let statusSelect = `
-                <select onchange="updateCollectionStatus(${index}, this.value)" style="padding:4px; border:1px solid #ccc; border-radius:4px; font-size:11px; font-weight:bold; color:${isVerified ? '#16a34a' : (isFlagged ? '#dc2626' : '#475569')};">
-                    <option value="pending" ${(!isVerified && !isFlagged) ? 'selected' : ''} style="color:#475569;">Pending</option>
-                    <option value="approved" ${isVerified ? 'selected' : ''} style="color:#16a34a;">Approved</option>
-                    <option value="flagged" ${isFlagged ? 'selected' : ''} style="color:#dc2626;">Flagged</option>
-                </select>
-            `;
-
-            const adjustedVal = col.adjusted_amount !== null ? col.adjusted_amount : col.amount;
-
-            tbody.innerHTML += `
-                <tr style="border-bottom:1px solid #f1f5f9;">
-                    <td style="padding:6px 4px;">
-                        <strong>${col.customer_name}</strong><br>
-                        <span style="font-size:10px; color:#64748b;">${col.payment_method} ${col.reference ? '(' + col.reference + ')' : ''}</span>
-                    </td>
-                    <td style="padding:6px 4px; text-align:right; font-family:monospace; font-weight:bold;">
-                        Rs ${parseFloat(col.amount).toFixed(2)}
-                    </td>
-                    <td style="padding:6px 4px; text-align:center;">
-                        ${statusSelect}
-                    </td>
-                    <td style="padding:6px 4px; text-align:center;">
-                        <input type="number" step="0.01" min="0" value="${parseFloat(adjustedVal).toFixed(2)}"
-                               oninput="updateCollectionAdjustedAmount(${index}, this.value)"
-                               style="width:80px; padding:3px; border:1px solid #cbd5e1; border-radius:4px; text-align:right; font-family:monospace; font-size:11px;" />
-                    </td>
-                    <td style="padding:6px 4px; text-align:center;">
-                        <input type="text" value="${col.verification_notes || ''}" placeholder="Notes"
-                               oninput="updateCollectionNotes(${index}, this.value)"
-                               style="width:100px; padding:3px; border:1px solid #cbd5e1; border-radius:4px; font-size:11px;" />
-                    </td>
-                </tr>
-            `;
+        const returnedItems = [];
+        document.querySelectorAll('.actual-returned-input').forEach(input => {
+            returnedItems.push({
+                item_name: input.getAttribute('data-name'),
+                item_id: parseInt(input.getAttribute('data-item-id') || 0),
+                variation_option_id: parseInt(input.getAttribute('data-var-id') || 0),
+                loaded_qty: parseFloat(input.getAttribute('data-loaded') || 0),
+                delivered_qty: parseFloat(input.getAttribute('data-delivered') || 0),
+                actual_returned_qty: parseFloat(input.value || 0)
+            });
         });
 
-        checkSettleVerification();
-    }
+        const deliveryId = currentDeliveryDetails.delivery.id;
 
-    function updateCollectionStatus(index, val) {
-        const col = currentCollectionsState[index];
-        if (col) {
-            if (val === 'approved') {
-                col.is_verified = 1;
-                col.is_flagged = 0;
-            } else if (val === 'flagged') {
-                col.is_verified = 0;
-                col.is_flagged = 1;
-            } else {
-                col.is_verified = 0;
-                col.is_flagged = 0;
-            }
-        }
-        renderCollectionsVerification();
-    }
-
-    function updateCollectionAdjustedAmount(index, val) {
-        const col = currentCollectionsState[index];
-        if (col) {
-            col.adjusted_amount = val !== '' ? parseFloat(val) : null;
-        }
-        checkSettleVerification();
-    }
-
-    function updateCollectionNotes(index, val) {
-        const col = currentCollectionsState[index];
-        if (col) {
-            col.verification_notes = val;
-        }
-    }
-
-    function saveCollectionsVerification() {
-        if (!currentRouteId) return;
-
-        const updates = currentCollectionsState.map(col => ({
-            id: col.id,
-            is_verified: col.is_verified,
-            is_flagged: col.is_flagged,
-            adjusted_amount: col.adjusted_amount !== null ? parseFloat(col.adjusted_amount) : parseFloat(col.amount),
-            verification_notes: col.verification_notes
-        }));
-
-        fetch('<?= APP_URL ?>/RepTracking/api_verify_collections', {
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_save_return_stock', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ updates: updates })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ delivery_id: deliveryId, return_stock_data: returnedItems })
         })
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert(data.message);
-                loadCollectionsVerification(currentRouteId);
+                alert("🎉 Return stock draft saved successfully!");
+                onRouteDataChanged();
             } else {
-                alert('Error: ' + data.message);
+                alert("⚠️ Error: " + data.message);
             }
+        });
+    }
+
+    function loadTab10Accounting(routeId) {
+        const rdata = document.getElementById('route_data_' + routeId);
+        const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
+
+        const colContainer = document.getElementById('settleDeCollectionsContainer');
+        const salesContainer = document.getElementById('settleDeSalesContainer');
+        
+        colContainer.innerHTML = '<p style="text-align:center; color:#888;">Loading account mappings... ⏳</p>';
+        salesContainer.innerHTML = '';
+
+        document.getElementById('settleDaVehicle').value = '';
+        document.getElementById('settleDaDriver').value = '';
+        document.getElementById('settleDaPartner').value = '';
+
+        if (!delId || delId === '0' || delId === '') {
+            colContainer.innerHTML = '<p style="text-align:center; color:#888;">Delivery has not been arranged.</p>';
+            return;
+        }
+
+        const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+        const saveBtn = document.getElementById('btnSaveAccountingDraft');
+        if (saveBtn) {
+            saveBtn.disabled = isReadOnly;
+            saveBtn.style.opacity = isReadOnly ? '0.5' : '1';
+            saveBtn.style.cursor = isReadOnly ? 'not-allowed' : 'pointer';
+        }
+        document.getElementById('settleDaVehicle').disabled = isReadOnly;
+        document.getElementById('settleDaDriver').disabled = isReadOnly;
+        document.getElementById('settleDaPartner').disabled = isReadOnly;
+
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status !== 'success') return;
+                currentDeliveryDetails = data;
+
+                if (data.delivery) {
+                    document.getElementById('settleDaVehicle').value = data.delivery.vehicle_number || '';
+                    document.getElementById('settleDaDriver').value = data.delivery.driver_name || '';
+                    document.getElementById('settleDaPartner').value = data.delivery.partner_name || '';
+                }
+
+                renderSettleDoubleEntries();
+
+                if (data.delivery && data.delivery.accounting_entries_json) {
+                    try {
+                        const accEntries = JSON.parse(data.delivery.accounting_entries_json);
+                        document.querySelectorAll('.settle-de-select').forEach(sel => {
+                            const id = sel.getAttribute('data-id');
+                            const type = sel.getAttribute('data-type');
+                            if (accEntries[type] && accEntries[type][id]) {
+                                sel.value = accEntries[type][id];
+                            }
+                        });
+                    } catch(e) {}
+                }
+
+                if (isReadOnly) {
+                    document.querySelectorAll('.settle-de-select, .settle-payment-chk, .settle-invoice-chk').forEach(el => {
+                        el.disabled = true;
+                    });
+                }
+
+                checkSettleVerification();
+            });
+    }
+
+    function saveAccountingDraft() {
+        if (!currentRouteId || !currentDeliveryDetails) return;
+
+        const debitAccounts = {};
+        const creditAccounts = {};
+        document.querySelectorAll('.settle-de-select').forEach(sel => {
+            const id = sel.getAttribute('data-id');
+            const type = sel.getAttribute('data-type');
+            const val = parseInt(sel.value);
+            if (type === 'debit') { debitAccounts[id] = val; } else { creditAccounts[id] = val; }
+        });
+
+        const accountingData = {
+            debit: debitAccounts,
+            credit: creditAccounts
+        };
+
+        const deliveryId = currentDeliveryDetails.delivery.id;
+
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_save_accounting_entries', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ delivery_id: deliveryId, accounting_entries_json: accountingData })
         })
-        .catch(err => {
-            console.error(err);
-            alert('An error occurred while saving verification.');
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert("🎉 Accounting mappings draft saved successfully!");
+                onRouteDataChanged();
+            } else {
+                alert("⚠️ Error: " + data.message);
+            }
         });
     }
 
     function checkSettleVerification() {
-        const verifyStock = document.getElementById('settleVerifyStock').checked;
+        const verifyStockCheck = document.getElementById('settleVerifyStock');
+        const verifyStock = verifyStockCheck ? verifyStockCheck.checked : false;
 
         const btn = document.getElementById('settleSubmitBtn');
         const text = document.getElementById('settleStatusText');
+        if (!btn || !text) return;
+
+        if (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized') {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+            text.innerHTML = '<span style="color:#2e7d32; font-weight:bold;">Route Finalized & Settled</span>';
+            return;
+        }
 
         let allCollectionsApproved = true;
         let pendingOrFlaggedCount = 0;
-        currentCollectionsState.forEach(col => {
+        
+        // Check collections verification from Tab 2
+        currentGLCollectionsState.forEach(col => {
             if (parseInt(col.is_verified) !== 1) {
                 allCollectionsApproved = false;
                 pendingOrFlaggedCount++;
@@ -1880,10 +2488,10 @@
             
             let msg = '';
             if (!allCollectionsApproved) {
-                msg += `Please approve/verify all collections (${pendingOrFlaggedCount} remaining). `;
+                msg += `Please approve/verify all collections under Collection Verification tab (${pendingOrFlaggedCount} remaining). `;
             }
             if (!verifyStock) {
-                msg += 'Please verify Returned Stock count.';
+                msg += 'Please verify Return Stock checkbox under Return Stock tab.';
             }
             text.innerHTML = `<span style="color:#dc2626; font-weight:bold;">Locked:</span> ${msg}`;
         }
@@ -1913,6 +2521,8 @@
         
         colContainer.innerHTML = '';
         salesContainer.innerHTML = '';
+
+        if (!currentDeliveryDetails) return;
 
         const payments = currentDeliveryDetails.balancing.payments || [];
         const invoices = currentDeliveryDetails.invoices || [];
@@ -2031,7 +2641,7 @@
         btn.disabled = true;
         btn.innerText = 'Settling Route... ⏳';
 
-        fetch('<?= APP_URL ?>/RepTracking/finalize', {
+        fetchSecure('<?= APP_URL ?>/RepTracking/finalize', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2060,107 +2670,21 @@
         });
     }
 
-    function loadCompletedStage(routeId) {
-        loadActiveStageBills(routeId);
-        switchCompletedTab('invoices');
-    }
-
-    let completedActiveTab = 'invoices';
-    function switchCompletedTab(tab) {
-        completedActiveTab = tab;
-        document.getElementById('compTabInvoicesBtn').classList.toggle('active', tab === 'invoices');
-        document.getElementById('compTabCollectionsBtn').classList.toggle('active', tab === 'collections');
-        document.getElementById('compTabVariancesBtn').classList.toggle('active', tab === 'variances');
-
-        document.getElementById('completedInvoicesTab').style.display = tab === 'invoices' ? 'block' : 'none';
-        document.getElementById('completedCollectionsTab').style.display = tab === 'collections' ? 'block' : 'none';
-        document.getElementById('completedVariancesTab').style.display = tab === 'variances' ? 'block' : 'none';
-
-        if (tab === 'collections') {
-            const container = document.getElementById('completedCollectionsTab');
-            container.innerHTML = 'Loading settled collections... ⏳';
-            fetch('<?= APP_URL ?>/RepTracking/api_get_route_collections/' + currentRouteId)
-                .then(res => res.json())
-                .then(data => {
-                    container.innerHTML = '';
-                    const colls = data.collections || [];
-                    if (colls.length === 0) {
-                        container.innerHTML = '<p style="color:#888; text-align:center; padding:20px;">No collections found for this route.</p>';
-                        return;
-                    }
-                    colls.forEach(c => {
-                        let isPosted = c.is_posted === '1' || c.status === 'Posted';
-                        let statText = isPosted ? '<span style="color:#2e7d32; font-weight:bold;">Posted</span>' : '<span style="color:#ef6c00; font-weight:bold;">Pending GL</span>';
-                        container.innerHTML += `
-                            <div style="background:#fafafa; border:1px solid #eee; padding:10px; margin-bottom:8px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
-                                <div>
-                                    <strong>${c.customer_name}</strong> (${c.payment_method})<br>
-                                    <span style="font-size:11px; color:#888;">Ref: ${c.reference || '-'} | Date: ${c.payment_date}</span>
-                                </div>
-                                <div style="text-align:right;">
-                                    <strong style="color:#2e7d32;">Rs ${parseFloat(c.amount).toFixed(2)}</strong><br>
-                                    <span style="font-size:11px;">Status: ${statText}</span>
-                                </div>
-                            </div>
-                        `;
-                    });
-                });
-        } else if (tab === 'variances') {
-            const container = document.getElementById('completedVariancesTab');
-            container.innerHTML = 'Loading variances... ⏳';
-            fetch('<?= APP_URL ?>/RepTracking/api_get_route_variances/' + currentRouteId)
-                .then(res => res.json())
-                .then(data => {
-                    container.innerHTML = '';
-                    if (data.status !== 'success' || !data.deliveries || data.deliveries.length === 0) {
-                        container.innerHTML = '<p style="color:#888; text-align:center; padding:20px;">No variance logs found.</p>';
-                        return;
-                    }
-                    const del = data.deliveries[0];
-                    let listHtml = '';
-                    del.items.forEach(item => {
-                        let varColor = '#000';
-                        let varText = '0';
-                        if (item.variance < 0) { varColor = '#c62828'; varText = `${item.variance} (Short)`; }
-                        else if (item.variance > 0) { varColor = '#ef6c00'; varText = `+${item.variance} (Over)`; }
-                        else { varColor = '#2e7d32'; varText = 'Match'; }
-                        listHtml += `
-                            <tr>
-                                <td>${item.item_name}</td>
-                                <td style="text-align:center;">${item.required_qty}</td>
-                                <td style="text-align:center;">${item.pre_loaded_qty}</td>
-                                <td style="text-align:center;">${item.final_loaded_qty || '-'}</td>
-                                <td style="text-align:center; color:${varColor}; font-weight:bold;">${varText}</td>
-                            </tr>
-                        `;
-                    });
-                    container.innerHTML = `
-                        <table class="data-table">
-                            <thead>
-                                <tr><th>Product Name</th><th style="text-align:center;">Required</th><th style="text-align:center;">Pre-Loaded</th><th style="text-align:center;">Final Dispatch</th><th style="text-align:center;">Variance</th></tr>
-                            </thead>
-                            <tbody>${listHtml}</tbody>
-                        </table>
-                    `;
-                });
-        }
-    }
-
     function printBalancingReport() {
         const d = document.getElementById('route_data_' + currentRouteId);
-        const delId = d.getAttribute('data-delivery-id');
+        const delId = d ? d.getAttribute('data-delivery-id') : null;
         if (delId) { window.open('<?= APP_URL ?>/RepTracking/balancing_report/' + delId, '_blank'); }
     }
 
     function printLoadingSheetSpreadsheet() {
         const d = document.getElementById('route_data_' + currentRouteId);
-        const delId = d.getAttribute('data-delivery-id');
+        const delId = d ? d.getAttribute('data-delivery-id') : null;
         if (delId) { window.open('<?= APP_URL ?>/RepTracking/spreadsheet/' + delId, '_blank'); }
     }
 
     function exportCSV() {
         const d = document.getElementById('route_data_' + currentRouteId);
-        const delId = d.getAttribute('data-delivery-id');
+        const delId = d ? d.getAttribute('data-delivery-id') : null;
         if (delId) { window.location.href = '<?= APP_URL ?>/RepTracking/export_csv/' + delId; }
     }
 
@@ -2178,7 +2702,7 @@
         if (!confirm(`Are you sure you want to advance this route to "${targetStatus}" stage?`)) {
             return;
         }
-        fetch('<?= APP_URL ?>/RepTracking/api_update_route_status', {
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_update_route_status', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ route_id: currentRouteId, status: targetStatus })
@@ -2214,14 +2738,13 @@
         document.getElementById('invoiceSlider').classList.remove('open');
         setTimeout(() => { document.getElementById('invoiceIframe').src = 'about:blank'; }, 300);
     }
-
     function deleteSalesOrder() {
         const invoiceId = document.getElementById('btnDeleteInvoice').getAttribute('data-invoice-id');
         if (!invoiceId) return;
         if (!confirm("Are you sure you want to delete this Sales Order? This will release reserved stock back to inventory and cannot be undone.")) {
             return;
         }
-        fetch('<?= APP_URL ?>/RepTracking/api_delete_sales_order/' + invoiceId, {
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_delete_sales_order/' + invoiceId, {
             method: 'POST'
         })
         .then(res => res.json())
@@ -2235,7 +2758,6 @@
             }
         });
     }
-
     // --- GPS Path Map Handlers ---
     function openMapModal() {
         document.getElementById('mapModalBackdrop').style.display = 'flex';

@@ -8,8 +8,26 @@ class RepTrackingController extends Controller {
             header('Location: ' . APP_URL . '/auth/login'); 
             exit; 
         }
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
         $this->trackingModel = $this->model('RepTracking');
         $this->deliveryModel = $this->model('Delivery');
+    }
+
+    private function validateCsrf() {
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? null;
+        if (!$token) {
+            $json = json_decode(file_get_contents('php://input'), true);
+            $token = $json['csrf_token'] ?? null;
+        }
+
+        if (!$token || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
+            header('HTTP/1.1 403 Forbidden');
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'CSRF token validation failed.']);
+            exit;
+        }
     }
 
     public function index() {
@@ -444,6 +462,7 @@ class RepTrackingController extends Controller {
             echo json_encode(['status' => 'error', 'message' => 'Invalid Request Method']);
             exit;
         }
+        $this->validateCsrf();
 
         $rawInput = file_get_contents('php://input');
         $postData = json_decode($rawInput, true);
@@ -487,6 +506,7 @@ class RepTrackingController extends Controller {
             echo json_encode(['status' => 'error', 'message' => 'Invalid Request Method']);
             exit;
         }
+        $this->validateCsrf();
 
         $rawInput = file_get_contents('php://input');
         $postData = json_decode($rawInput, true);
@@ -555,6 +575,7 @@ class RepTrackingController extends Controller {
             echo json_encode(['status' => 'error', 'message' => 'Invalid Request Method']);
             exit;
         }
+        $this->validateCsrf();
 
         $rawInput = file_get_contents('php://input');
         $postData = json_decode($rawInput, true);
@@ -775,6 +796,7 @@ class RepTrackingController extends Controller {
 
     public function api_verify_collections() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $this->validateCsrf();
         $payload = json_decode(file_get_contents('php://input'), true);
         $updates = $payload['updates'] ?? [];
         $userId = $_SESSION['user_id'] ?? 1;
@@ -868,6 +890,7 @@ class RepTrackingController extends Controller {
 
     public function api_adjust_variance_billing() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $this->validateCsrf();
         $payload = json_decode(file_get_contents('php://input'), true);
         $routeId = intval($payload['route_id'] ?? 0);
         $adjustments = $payload['adjustments'] ?? [];
@@ -1064,6 +1087,7 @@ class RepTrackingController extends Controller {
 
     public function api_finalize_collections() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $this->validateCsrf();
         $payload = json_decode(file_get_contents('php://input'), true);
         $paymentIds = $payload['payment_ids'] ?? [];
         $bankAllocations = $payload['bank_allocations'] ?? [];
@@ -1088,6 +1112,7 @@ class RepTrackingController extends Controller {
 
     public function api_delete_sales_order($invoiceId) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $this->validateCsrf();
         try {
             $db = new Database();
             $db->beginTransaction();
@@ -1167,6 +1192,7 @@ class RepTrackingController extends Controller {
 
     public function api_attach_invoices() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $this->validateCsrf();
         $payload = json_decode(file_get_contents('php://input'), true);
         $routeId = intval($payload['route_id'] ?? 0);
         $invoiceIds = $payload['invoice_ids'] ?? [];
@@ -1197,6 +1223,7 @@ class RepTrackingController extends Controller {
 
     public function api_create_binding() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $this->validateCsrf();
         $payload = json_decode(file_get_contents('php://input'), true);
         $bindingName = trim($payload['binding_name'] ?? '');
         $routeIds = $payload['route_ids'] ?? [];
@@ -1347,6 +1374,7 @@ class RepTrackingController extends Controller {
 
     public function api_unbind_route() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $this->validateCsrf();
         $payload = json_decode(file_get_contents('php://input'), true);
         $bindingId = intval($payload['binding_id'] ?? 0);
         $routeId = intval($payload['route_id'] ?? 0);
@@ -1532,6 +1560,7 @@ class RepTrackingController extends Controller {
 
     public function api_save_reconciliation() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $this->validateCsrf();
         $payload = json_decode(file_get_contents('php://input'), true);
         $deliveryId = intval($payload['delivery_id'] ?? 0);
         $reconciliationData = $payload['reconciliation_data'] ?? null;
@@ -1561,6 +1590,7 @@ class RepTrackingController extends Controller {
 
     public function api_save_return_stock() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $this->validateCsrf();
         $payload = json_decode(file_get_contents('php://input'), true);
         $deliveryId = intval($payload['delivery_id'] ?? 0);
         $returnStockData = $payload['return_stock_data'] ?? null;
@@ -1590,9 +1620,10 @@ class RepTrackingController extends Controller {
 
     public function api_save_accounting_entries() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $this->validateCsrf();
         $payload = json_decode(file_get_contents('php://input'), true);
         $deliveryId = intval($payload['delivery_id'] ?? 0);
-        $accountingEntries = $payload['accounting_entries'] ?? null;
+        $accountingEntries = $payload['accounting_entries'] ?? $payload['accounting_entries_json'] ?? null;
         
         if ($deliveryId <= 0) {
             header('Content-Type: application/json');
@@ -1619,6 +1650,7 @@ class RepTrackingController extends Controller {
 
     public function api_save_route_notes() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $this->validateCsrf();
         $payload = json_decode(file_get_contents('php://input'), true);
         $routeId = intval($payload['route_id'] ?? 0);
         $notes = $payload['notes'] ?? '';
@@ -1662,6 +1694,7 @@ class RepTrackingController extends Controller {
 
     public function api_detach_invoice() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $this->validateCsrf();
         $payload = json_decode(file_get_contents('php://input'), true);
         $invoiceId = intval($payload['invoice_id'] ?? 0);
         if ($invoiceId <= 0) {
