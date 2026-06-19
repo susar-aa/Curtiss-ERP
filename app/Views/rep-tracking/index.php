@@ -1914,7 +1914,18 @@
                                 <tr style="background:#f8fafc;">
                                     <th style="padding:10px; text-align:left;">Product Name</th>
                                     <th style="padding:10px; text-align:center; width:120px;">Required Qty</th>
-                                    <th style="padding:10px; text-align:center; width:120px;">Verified Qty</th>    let currentVarianceState = {};
+                                    <th style="padding:10px; text-align:center; width:120px;">Verified Qty</th>
+                                    <th style="padding:10px; text-align:center; width:150px;">Status / Variance</th>
+                                </tr>
+                            </thead>
+                            <tbody>${listHtml}</tbody>
+                        </table>
+                    `;
+                }
+            });
+    }
+
+    let currentVarianceState = {};
     let currentSubstitutions = [];
 
     function loadVarianceAdjustmentStage(routeId) {
