@@ -68,6 +68,16 @@ class Invoice {
         } catch (Exception $e) {
             // Silently catch errors
         }
+
+        try {
+            $this->db->query("SHOW COLUMNS FROM invoices LIKE 'uuid'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE invoices ADD COLUMN uuid VARCHAR(100) UNIQUE NULL AFTER invoice_number");
+                $this->db->execute();
+            }
+        } catch (Exception $e) {
+            // Silently catch errors
+        }
     }
 
     public function getAllInvoices() {
@@ -133,9 +143,11 @@ class Invoice {
             $this->db->execute();
 
             $stockStatus = $invoiceData['stock_status'] ?? 'deducted';
-            $this->db->query("INSERT INTO invoices (invoice_number, customer_id, rep_route_id, invoice_date, due_date, payment_term_id, total_amount, global_discount_val, global_discount_type, notes, journal_entry_id, created_by, status, stock_status) 
-                              VALUES (:invoice_number, :customer_id, :rep_route_id, :invoice_date, :due_date, :payment_term_id, :total_amount, :global_discount_val, :global_discount_type, :notes, :journal_entry_id, :created_by, 'Unpaid', :stock_status)");
+            $uuid = $invoiceData['uuid'] ?? null;
+            $this->db->query("INSERT INTO invoices (invoice_number, uuid, customer_id, rep_route_id, invoice_date, due_date, payment_term_id, total_amount, global_discount_val, global_discount_type, notes, journal_entry_id, created_by, status, stock_status) 
+                              VALUES (:invoice_number, :uuid, :customer_id, :rep_route_id, :invoice_date, :due_date, :payment_term_id, :total_amount, :global_discount_val, :global_discount_type, :notes, :journal_entry_id, :created_by, 'Unpaid', :stock_status)");
             $this->db->bind(':invoice_number', $invoiceData['invoice_number']);
+            $this->db->bind(':uuid', $uuid);
             $this->db->bind(':customer_id', $invoiceData['customer_id']);
             $this->db->bind(':rep_route_id', $invoiceData['rep_route_id'] ?? null);
             $this->db->bind(':invoice_date', $invoiceData['invoice_date']);

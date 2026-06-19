@@ -622,15 +622,24 @@ class RepDashboardController extends Controller {
                     // Generate new invoice number if sequence is used or keep what mobile generated
                     $invNo = $inv['invoice_number'];
                     
-                    // Idempotency: Check if an invoice with the same invoice_number already exists
-                    $this->db->query("SELECT id FROM invoices WHERE invoice_number = :invoice_number LIMIT 1");
-                    $this->db->bind(':invoice_number', $invNo);
-                    $existingInv = $this->db->single();
+                    // Idempotency: Check if an invoice with the same uuid or invoice_number already exists
+                    $existingInv = null;
+                    if (!empty($inv['uuid'])) {
+                        $this->db->query("SELECT id, invoice_number, invoice_date FROM invoices WHERE uuid = :uuid LIMIT 1");
+                        $this->db->bind(':uuid', $inv['uuid']);
+                        $existingInv = $this->db->single();
+                    }
+                    if (!$existingInv) {
+                        $this->db->query("SELECT id, invoice_number, invoice_date FROM invoices WHERE invoice_number = :invoice_number LIMIT 1");
+                        $this->db->bind(':invoice_number', $invNo);
+                        $existingInv = $this->db->single();
+                    }
                     if ($existingInv) {
                         $mappings['invoices'][] = [
                             'local_id' => $localId,
                             'server_id' => intval($existingInv->id),
-                            'invoice_number' => $invNo
+                            'invoice_number' => $existingInv->invoice_number,
+                            'server_timestamp' => $existingInv->invoice_date
                         ];
                         continue;
                     }
@@ -676,6 +685,7 @@ class RepDashboardController extends Controller {
                     $invoiceData = [
                         'customer_id' => $custServerId,
                         'invoice_number' => $invNo,
+                        'uuid' => $inv['uuid'] ?? null,
                         'invoice_date' => $inv['invoice_date'],
                         'due_date' => $inv['due_date'],
                         'payment_term_id' => !empty($inv['payment_term_id']) ? intval($inv['payment_term_id']) : null,
@@ -711,10 +721,16 @@ class RepDashboardController extends Controller {
                             }
                         }
 
+                        $this->db->query("SELECT invoice_date FROM invoices WHERE id = :id");
+                        $this->db->bind(':id', $invoiceId);
+                        $invRow = $this->db->single();
+                        $serverTime = $invRow ? $invRow->invoice_date : date('Y-m-d H:i:s');
+
                         $mappings['invoices'][] = [
                             'local_id' => $localId,
                             'server_id' => intval($invoiceId),
-                            'invoice_number' => $invNo
+                            'invoice_number' => $invNo,
+                            'server_timestamp' => $serverTime
                         ];
                     } else {
                         $err = isset($_SESSION['invoice_error']) ? $_SESSION['invoice_error'] : 'Unknown error during creation';
