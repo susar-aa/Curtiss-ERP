@@ -564,4 +564,129 @@ class PickingController extends Controller {
             $this->db->execute();
         } catch (Exception $e) {}
     }
+
+    public function api_substitute_product() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $deliveryId = intval($input['delivery_id'] ?? 0);
+        $originalItemId = intval($input['original_item_id'] ?? 0);
+        $replacementItemId = intval($input['replacement_item_id'] ?? 0);
+        $replacementQty = floatval($input['replacement_qty'] ?? 0);
+        $userId = intval($input['user_id'] ?? 0);
+
+        if (!$deliveryId || !$originalItemId || !$replacementItemId || $replacementQty <= 0) {
+            echo json_encode(['success' => false, 'error' => 'Missing required fields or invalid quantity']);
+            exit;
+        }
+
+        $this->db->query("SELECT * FROM items WHERE id = :id");
+        $this->db->bind(':id', $originalItemId);
+        $origItem = $this->db->single();
+
+        $this->db->query("SELECT * FROM items WHERE id = :id");
+        $this->db->bind(':id', $replacementItemId);
+        $replItem = $this->db->single();
+
+        if (!$origItem || !$replItem) {
+            echo json_encode(['success' => false, 'error' => 'Original or replacement product not found']);
+            exit;
+        }
+
+        $this->db->query("SELECT rep_route_id FROM deliveries WHERE id = :id");
+        $this->db->bind(':id', $deliveryId);
+        $del = $this->db->single();
+        $routeId = $del ? intval($del->rep_route_id) : 0;
+
+        $this->db->query("SELECT * FROM delivery_picking_items WHERE delivery_id = :did AND item_id = :item_id LIMIT 1");
+        $this->db->bind(':did', $deliveryId);
+        $this->db->bind(':item_id', $originalItemId);
+        $pickingItem = $this->db->single();
+
+        $requiredQty = $pickingItem ? floatval($pickingItem->required_qty) : 0;
+
+        $this->db->beginTransaction();
+        try {
+            $this->db->query("INSERT INTO product_substitutions (delivery_id, route_id, original_item_id, replacement_item_id, required_qty, loaded_qty, user_id, status)
+                              VALUES (:did, :rid, :oid, :rid2, :req_qty, :load_qty, :uid, 'Pending Bill Update')");
+            $this->db->bind(':did', $deliveryId);
+            $this->db->bind(':rid', $routeId);
+            $this->db->bind(':oid', $originalItemId);
+            $this->db->bind(':rid2', $replacementItemId);
+            $this->db->bind(':req_qty', $requiredQty);
+            $this->db->bind(':load_qty', $replacementQty);
+            $this->db->bind(':uid', $userId ? $userId : null);
+            $this->db->execute();
+
+            if ($pickingItem) {
+                $this->db->query("UPDATE delivery_picking_items 
+                                  SET final_loaded_qty = 0, is_verified = 1, variance = -required_qty, verified_at = NOW(), verified_by = :uid
+                                  WHERE id = :id");
+                $this->db->bind(':uid', $userId ? $userId : null);
+                $this->db->bind(':id', $pickingItem->id);
+                $this->db->execute();
+            }
+
+            $this->db->query("SELECT * FROM delivery_picking_items WHERE delivery_id = :did AND item_id = :item_id LIMIT 1");
+            $this->db->bind(':did', $deliveryId);
+            $this->db->bind(':item_id', $replacementItemId);
+            $replPicking = $this->db->single();
+
+            if ($replPicking) {
+                $newFinal = floatval($replPicking->final_loaded_qty) + $replacementQty;
+                $newVariance = $newFinal - floatval($replPicking->required_qty);
+                $this->db->query("UPDATE delivery_picking_items 
+                                  SET final_loaded_qty = :final, is_verified = 1, variance = :var, verified_at = NOW(), verified_by = :uid
+                                  WHERE id = :id");
+                $this->db->bind(':final', $newFinal);
+                $this->db->bind(':var', $newVariance);
+                $this->db->bind(':uid', $userId ? $userId : null);
+                $this->db->bind(':id', $replPicking->id);
+                $this->db->execute();
+            } else {
+                $this->db->query("INSERT INTO delivery_picking_items (delivery_id, item_name, item_id, variation_option_id, required_qty, loaded_qty, final_loaded_qty, variance, is_picked, is_verified, verified_at, verified_by)
+                                  VALUES (:did, :name, :item_id, NULL, 0, :qty, :qty, :qty, 1, 1, NOW(), :uid)");
+                $this->db->bind(':did', $deliveryId);
+                $this->db->bind(':name', $replItem->name);
+                $this->db->bind(':item_id', $replacementItemId);
+                $this->db->bind(':qty', $replacementQty);
+                $this->db->bind(':uid', $userId ? $userId : null);
+                $this->db->execute();
+            }
+
+            $this->updateDeliveryStatus($deliveryId);
+
+            $this->db->commit();
+            echo json_encode(['success' => true, 'message' => 'Product substitution recorded successfully.']);
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    public function api_search_products() {
+        $q = trim($_GET['q'] ?? '');
+        if (empty($q)) {
+            echo json_encode(['success' => true, 'products' => []]);
+            exit;
+        }
+
+        $this->db->query("SELECT id, name, item_code, selling_price FROM items 
+                          WHERE (name LIKE :q OR item_code LIKE :q) AND status != 'Inactive' LIMIT 20");
+        $this->db->bind(':q', "%$q%");
+        $products = $this->db->resultSet() ?: [];
+
+        foreach ($products as $p) {
+            $p->id = intval($p->id);
+            $p->selling_price = floatval($p->selling_price);
+        }
+
+        echo json_encode(['success' => true, 'products' => $products]);
+        exit;
+    }
 }

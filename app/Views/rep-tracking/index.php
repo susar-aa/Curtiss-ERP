@@ -1819,48 +1819,110 @@
         fetchSecure('<?= APP_URL ?>/RepTracking/api_get_route_variances/' + routeId)
             .then(res => res.json())
             .then(data => {
-                if (data.status !== 'success' || !data.deliveries || data.deliveries.length === 0) {
-                    box.innerHTML = '<p style="color:red; text-align:center; padding:10px;">No verification records found.</p>';
+                if (data.status !== 'success') {
+                    box.innerHTML = '<p style="color:red; text-align:center; padding:10px;">Error loading data.</p>';
                     return;
                 }
-                const del = data.deliveries[0];
+
+                const deliveries = data.deliveries || [];
+                const loadingItems = data.loading_items || [];
+
+                // Verification has started if we have at least one delivery AND its verified_items count is > 0.
+                const hasVerificationStarted = (deliveries.length > 0 && deliveries[0].verified_items > 0);
+
                 let listHtml = '';
-                del.items.forEach(item => {
-                    let finalVal = item.final_loaded_qty !== null ? item.final_loaded_qty : '-';
-                    let statusText = item.is_verified ? '<span style="color:#2e7d32; font-weight:bold;">Verified</span>' : '<span style="color:#ef6c00; font-weight:bold;">Pending</span>';
-                    listHtml += `
-                        <tr style="border-bottom:1px solid #eee;">
-                            <td style="padding:8px 0; font-weight:bold;">${item.item_name}</td>
-                            <td style="text-align:center; font-weight:bold;">${item.required_qty}</td>
-                            <td style="text-align:center;">${item.pre_loaded_qty}</td>
-                            <td style="text-align:center; font-weight:bold; color:#0066cc;">${finalVal}</td>
-                            <td style="text-align:center;">${statusText}</td>
-                        </tr>
-                    `;
-                });
-
-                box.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center; background:#f1f5f9; padding:12px; border-radius:6px; margin-bottom:15px;">
-                        <div>Loading Sheet Verification ID: <strong>#${del.delivery_id}</strong></div>
-                        <div>Verification: <strong>${del.verified_items} / ${del.total_items} verified</strong></div>
+                let printButtonsHtml = `
+                    <div style="margin-bottom: 15px; text-align: right;">
+                        <button class="btn btn-secondary" onclick="printLoadingSheet('pre')" style="padding:6px 12px; font-size:12px; font-weight:bold; margin-right:10px;">🖨️ Print Pre-Loading Picking Sheet</button>
+                        <button class="btn btn-primary" onclick="printLoadingSheet('final')" style="padding:6px 12px; font-size:12px; font-weight:bold; margin-right:10px;">🖨️ Print Final Loading Verification Sheet</button>
+                        <button class="btn btn-info" onclick="printLoadingSheet('summary')" style="padding:6px 12px; font-size:12px; font-weight:bold;">🖨️ Print Dispatch Summary</button>
                     </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr><th>Product Name</th><th style="text-align:center;">Required</th><th style="text-align:center;">Pre-Loaded</th><th style="text-align:center;">Final Loaded</th><th style="text-align:center;">Status</th></tr>
-                        </thead>
-                        <tbody>${listHtml}</tbody>
-                    </table>
                 `;
-            });
-    }
 
-    let currentVarianceState = {};
+                if (!hasVerificationStarted) {
+                    if (loadingItems.length === 0) {
+                        listHtml = '<tr><td colspan="2" style="text-align:center; padding:15px; color:#64748b;">No products required for loading on this route.</td></tr>';
+                    } else {
+                        loadingItems.forEach(item => {
+                            listHtml += `
+                                <tr style="border-bottom:1px solid #e2e8f0;">
+                                    <td style="padding:10px; font-weight:600; color:#1e293b;">${item.item_name}</td>
+                                    <td style="padding:10px; text-align:center; font-weight:bold; font-family:monospace; font-size:13px;">${item.total_qty}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+
+                    box.innerHTML = `
+                        ${printButtonsHtml}
+                        <div style="background:#fff7ed; border:1px solid #ffedd5; padding:12px; border-radius:6px; margin-bottom:15px; color:#c2410c; font-size:12px; font-weight:600;">
+                            ℹ️ Verification has not started yet. Showing original required loading quantities.
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr style="background:#f8fafc;">
+                                    <th style="padding:10px; text-align:left;">Product Name</th>
+                                    <th style="padding:10px; text-align:center; width:150px;">Required Qty</th>
+                                </tr>
+                            </thead>
+                            <tbody>${listHtml}</tbody>
+                        </table>
+                    `;
+                } else {
+                    const del = deliveries[0];
+                    if (del.items.length === 0) {
+                        listHtml = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#64748b;">No verification records found.</td></tr>';
+                    } else {
+                        del.items.forEach(item => {
+                            const req = parseFloat(item.required_qty);
+                            const loaded = item.final_loaded_qty !== null ? parseFloat(item.final_loaded_qty) : parseFloat(item.pre_loaded_qty);
+                            const diff = loaded - req;
+
+                            let rowBg = '';
+                            let diffIndicator = '';
+
+                            if (Math.abs(diff) < 0.01) {
+                                rowBg = 'background-color: #d1fae5; color: #065f46;';
+                                diffIndicator = '✔ Match';
+                            } else if (diff < 0) {
+                                rowBg = 'background-color: #fee2e2; color: #991b1b;';
+                                diffIndicator = `Shortage (${diff.toFixed(1)})`;
+                            } else {
+                                rowBg = 'background-color: #fff3e0; color: #e65100;';
+                                diffIndicator = `Overage (+${diff.toFixed(1)})`;
+                            }
+
+                            listHtml += `
+                                <tr style="border-bottom:1px solid #e2e8f0; ${rowBg}">
+                                    <td style="padding:10px; font-weight:600;">${item.item_name}</td>
+                                    <td style="padding:10px; text-align:center; font-weight:bold; font-family:monospace; font-size:13px;">${req}</td>
+                                    <td style="padding:10px; text-align:center; font-weight:bold; font-family:monospace; font-size:13px;">${loaded}</td>
+                                    <td style="padding:10px; text-align:center; font-weight:bold; font-size:12px;">${diffIndicator}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+
+                    box.innerHTML = `
+                        ${printButtonsHtml}
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#f1f5f9; padding:12px; border-radius:6px; margin-bottom:15px; font-size:12px;">
+                            <div>Loading Sheet Verification ID: <strong>#${del.delivery_id}</strong></div>
+                            <div>Verification Status: <strong>${del.verified_items} / ${del.total_items} verified</strong></div>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr style="background:#f8fafc;">
+                                    <th style="padding:10px; text-align:left;">Product Name</th>
+                                    <th style="padding:10px; text-align:center; width:120px;">Required Qty</th>
+                                    <th style="padding:10px; text-align:center; width:120px;">Verified Qty</th>    let currentVarianceState = {};
+    let currentSubstitutions = [];
 
     function loadVarianceAdjustmentStage(routeId) {
         const box = document.getElementById('varianceAuditBox');
         if (!box) return;
         box.innerHTML = '<div style="padding:20px; text-align:center;">Loading shortages & overages... ⏳</div>';
         currentVarianceState = {};
+        currentSubstitutions = [];
 
         fetchSecure('<?= APP_URL ?>/RepTracking/api_get_route_variances/' + routeId)
             .then(res => res.json())
@@ -1871,6 +1933,7 @@
                 }
                 const del = data.deliveries[0];
                 const items = del.items || [];
+                currentSubstitutions = data.substitutions || [];
                 
                 if (items.length === 0) {
                     box.innerHTML = '<p style="color:green; padding:10px; font-weight:bold;">No products picked on this route.</p>';
@@ -1901,7 +1964,8 @@
                                         customer_name: inv.customer_name,
                                         original_qty: parseFloat(inv.quantity),
                                         quantity: parseFloat(inv.quantity),
-                                        unit_price: parseFloat(inv.unit_price)
+                                        unit_price: parseFloat(inv.unit_price),
+                                        remove_completely: 0
                                     }));
                                 }
                             });
@@ -1972,6 +2036,58 @@
             `;
         });
 
+        // Substitutions Panel
+        let substitutionHtml = '';
+        if (currentSubstitutions.length > 0) {
+            let subRows = '';
+            currentSubstitutions.forEach(sub => {
+                let actionPart = '';
+                if (sub.status === 'Pending Bill Update') {
+                    actionPart = `
+                        <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+                            <div>
+                                <label style="font-size:11px; font-weight:bold; color:#475569; margin-right:5px;">Pricing Decision:</label>
+                                <select id="pricing_choice_${sub.id}" style="padding:4px 8px; font-size:11px; border-radius:4px; border:1px solid #cbd5e1; background:#fff;">
+                                    <option value="original">Use Original Product Price</option>
+                                    <option value="replacement" selected>Use Replacement Product Price</option>
+                                </select>
+                            </div>
+                            <button onclick="applyProductSubstitution(${sub.id})" style="padding:6px 12px; background:#673ab7; color:#fff; border:none; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">
+                                Apply Substitution To Bills
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    actionPart = `
+                        <div style="text-align:right; font-size:11px; color:#64748b; line-height:1.4;">
+                            Applied by: <strong>${sub.creator_name || 'System'}</strong><br>
+                            Date: <strong>${sub.applied_at}</strong><br>
+                            Original Bill Value: <strong>Rs. ${parseFloat(sub.original_bill_value).toFixed(2)}</strong><br>
+                            Updated Bill Value: <strong>Rs. ${parseFloat(sub.updated_bill_value).toFixed(2)}</strong>
+                        </div>
+                    `;
+                }
+
+                subRows += `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid #e2e8f0; gap:15px;">
+                        <div style="line-height:1.5; font-size:12px;">
+                            Original Product: <strong style="color:#ef6c00;">${sub.original_item_name}</strong> (Required Qty: <strong>${parseFloat(sub.required_qty)}</strong>)<br>
+                            Replacement Product: <strong style="color:#2e7d32;">${sub.replacement_item_name}</strong> (Loaded Qty: <strong>${parseFloat(sub.loaded_qty)}</strong>)<br>
+                            Status: <span style="font-weight:bold; color:${sub.status === 'Applied' ? '#16a34a' : '#e65100'};">${sub.status}</span>
+                        </div>
+                        ${actionPart}
+                    </div>
+                `;
+            });
+
+            substitutionHtml = `
+                <h5 style="margin:0 0 10px 0; font-size:13px; color:#475569; text-transform:uppercase; font-weight:bold;">🔄 Product Substitutions</h5>
+                <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px; margin-bottom:25px;">
+                    ${subRows}
+                </div>
+            `;
+        }
+
         html += `
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
                 <div style="background:#fee2e2; border:1px solid #fca5a5; border-radius:6px; padding:12px; text-align:center; color:#991b1b;">
@@ -1981,6 +2097,8 @@
                     <span>Overages to Reconcile</span><br><strong style="font-size:16px;">${totalOverages} pcs</strong>
                 </div>
             </div>
+            
+            ${substitutionHtml}
             
             <h5 style="margin:0 0 10px 0; font-size:13px; color:#475569; text-transform:uppercase; font-weight:bold;">📦 Product Loading Variances</h5>
             <table class="data-table" style="margin-bottom:25px; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden;">
@@ -2012,11 +2130,31 @@
 
             item.invoices.forEach((inv, index) => {
                 currentTotal += inv.quantity;
+
+                let actionSelect = '';
+                if (inv.quantity === 0) {
+                    if (inv.remove_completely === undefined) {
+                        inv.remove_completely = 0;
+                    }
+                    actionSelect = `
+                        <div style="margin-top:5px;">
+                            <span style="font-size:10px; font-weight:bold; color:#e65100;">Action for 0 Qty:</span>
+                            <select onchange="updateRemoveCompletelyChoice(${item.item_id}, ${inv.invoice_id}, this.value)" 
+                                    ${isReadOnly ? 'disabled' : ''}
+                                    style="padding:2px 6px; font-size:11px; border-radius:4px; border:1px solid #cbd5e1; background:#fff; font-weight:bold;">
+                                <option value="0" ${inv.remove_completely === 0 ? 'selected' : ''}>Reduce Qty</option>
+                                <option value="1" ${inv.remove_completely === 1 ? 'selected' : ''}>Remove Product Completely</option>
+                            </select>
+                        </div>
+                    `;
+                }
+
                 invoiceRows += `
                     <div style="display:grid; grid-template-columns:1.5fr 1fr 1fr 1.2fr; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;">
                         <div style="font-size:12px; font-weight:500;">
                             📄 <strong>${inv.invoice_number}</strong><br>
                             <span style="font-size:10px; color:#64748b;">${inv.customer_name}</span>
+                            ${actionSelect}
                         </div>
                         <div style="text-align:center; font-family:monospace;">
                             Original: <strong>${inv.original_qty}</strong>
@@ -2098,6 +2236,51 @@
         box.innerHTML = html;
     }
 
+    function updateRemoveCompletelyChoice(itemId, invoiceId, value) {
+        const item = currentVarianceState[itemId];
+        if (item) {
+            const inv = item.invoices.find(i => i.invoice_id === invoiceId);
+            if (inv) {
+                inv.remove_completely = parseInt(value);
+            }
+        }
+        renderVarianceReconciliation();
+    }
+
+    function applyProductSubstitution(subId) {
+        const choiceSelect = document.getElementById('pricing_choice_' + subId);
+        const choice = choiceSelect ? choiceSelect.value : 'replacement';
+
+        if (!confirm('Are you sure you want to apply this product substitution to the bills? This will modify the invoice items list, adjust stock, and update the pricing.')) {
+            return;
+        }
+
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_apply_substitution', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                substitution_id: subId,
+                pricing_choice: choice
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                onRouteDataChanged();
+                switchRouteTab(5);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('An unexpected error occurred.');
+        });
+    }
+
     function updateInvoiceAllocation(itemId, invoiceId, value) {
         let qty = parseFloat(value);
         if (isNaN(qty) || qty < 0) {
@@ -2154,7 +2337,8 @@
             
             const invoiceAdjustments = item.invoices.map(inv => ({
                 invoice_id: inv.invoice_id,
-                new_qty: inv.quantity
+                new_qty: inv.quantity,
+                remove_completely: inv.remove_completely ? 1 : 0
             }));
 
             adjustments.push({
@@ -2184,7 +2368,6 @@
             if (data.status === 'success') {
                 alert(data.message);
                 onRouteDataChanged();
-                // Reload adjustments stage tab
                 switchRouteTab(5);
             } else {
                 alert('Error: ' + data.message);

@@ -31,6 +31,29 @@ class RepTracking {
                 // Failsafe to avoid crashing page initialization
             }
         }
+
+        try {
+            $this->db->query("CREATE TABLE IF NOT EXISTS `product_substitutions` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `delivery_id` INT NOT NULL,
+                `route_id` INT NOT NULL,
+                `original_item_id` INT NOT NULL,
+                `replacement_item_id` INT NOT NULL,
+                `required_qty` DECIMAL(12,2) NOT NULL,
+                `loaded_qty` DECIMAL(12,2) NOT NULL,
+                `user_id` INT NULL,
+                `status` VARCHAR(50) DEFAULT 'Pending Bill Update',
+                `pricing_choice` VARCHAR(50) NULL,
+                `original_bill_value` DECIMAL(12,2) NULL,
+                `updated_bill_value` DECIMAL(12,2) NULL,
+                `applied_by` INT NULL,
+                `applied_at` DATETIME NULL,
+                `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+            )");
+            $this->db->execute();
+        } catch (Exception $e) {
+            // Failsafe
+        }
     }
 
     public function getAllRoutes() {
@@ -162,6 +185,7 @@ class RepTracking {
         $this->db->query("
             SELECT ii.description as item_name,
                    SUM(ii.quantity) as total_qty,
+                   AVG(ii.unit_price) as unit_price,
                    COALESCE(ic.name, 'Uncategorized') as category_name
             FROM invoice_items ii
             JOIN invoices i ON ii.invoice_id = i.id
@@ -181,7 +205,15 @@ class RepTracking {
                    dpi.loaded_qty as pre_loaded_qty,
                    dpi.final_loaded_qty,
                    dpi.variance,
-                   COALESCE(ic.name, 'Uncategorized') as category_name
+                   COALESCE(ic.name, 'Uncategorized') as category_name,
+                   COALESCE(
+                       (SELECT AVG(ii.unit_price) 
+                        FROM invoice_items ii 
+                        JOIN invoices i ON ii.invoice_id = i.id 
+                        WHERE i.rep_route_id = :rid AND ii.item_id = dpi.item_id AND i.status != 'Voided'),
+                       (SELECT selling_price FROM items WHERE id = dpi.item_id),
+                       0
+                   ) as unit_price
             FROM delivery_picking_items dpi
             JOIN deliveries d ON dpi.delivery_id = d.id
             LEFT JOIN items it ON dpi.item_id = it.id
