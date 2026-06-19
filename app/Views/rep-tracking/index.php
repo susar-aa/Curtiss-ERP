@@ -210,6 +210,69 @@
         .global-filter-btn:hover { background: #2d2d3d; color: #f1f5f9; }
         .global-filter-btn.active { background: #3f51b5; color: #fff; border-color: #3f51b5; }
     }
+
+    /* Modern Dashboard Navigation flow toggles */
+    .app-workspace.workspace-active .pane-left {
+        display: none !important;
+    }
+    .app-workspace.workspace-active .pane-middle {
+        display: flex !important;
+        flex: 1;
+        width: 100%;
+    }
+    .app-workspace:not(.workspace-active) .pane-left {
+        width: 100% !important;
+        background: transparent !important;
+        border-right: none !important;
+        flex: 1;
+        display: flex !important;
+    }
+    .app-workspace:not(.workspace-active) #routeListItemsContainer {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+        gap: 20px !important;
+        padding: 20px 0 !important;
+    }
+    .app-workspace:not(.workspace-active) .route-item {
+        background: #fff !important;
+        border: 1px solid var(--mac-border) !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        transition: all 0.2s ease-in-out !important;
+        padding: 18px !important;
+        margin: 0 !important;
+    }
+    .app-workspace:not(.workspace-active) .route-item:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+        border-color: #3f51b5 !important;
+        background: #fff !important;
+    }
+    .app-workspace:not(.workspace-active) .route-item.active {
+        background: #fff !important;
+        color: inherit !important;
+        border-color: #3f51b5 !important;
+        box-shadow: 0 4px 12px rgba(63, 81, 181, 0.1) !important;
+    }
+    .app-workspace:not(.workspace-active) .pane-middle {
+        display: none !important;
+    }
+    body.workspace-showing .header-actions,
+    body.workspace-showing .global-status-filter-bar {
+        display: none !important;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .app-workspace:not(.workspace-active) .route-item {
+            background: #1e1e2d !important;
+            border-color: #3f3f46 !important;
+        }
+        .app-workspace:not(.workspace-active) .route-item:hover {
+            background: #242436 !important;
+        }
+    }
 </style>
 
 <div class="header-actions" style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
@@ -224,23 +287,27 @@
     </div>
 </div>
 
-<!-- TOP GLOBAL STATUS FILTER BAR -->
-<div class="global-status-filter-bar" style="display: flex; gap: 8px; background: #fff; border: 1px solid var(--mac-border); border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; overflow-x: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.05); align-items: center;">
-    <span style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #64748b; margin-right: 10px; white-space: nowrap;">⚡ Status Filter:</span>
-    <button type="button" class="global-filter-btn active" onclick="filterLeftPane('all', this)">All</button>
-    <button type="button" class="global-filter-btn" onclick="filterLeftPane('active', this)">🟢 Active Rep Routes</button>
-    <button type="button" class="global-filter-btn" onclick="filterLeftPane('pending_gl', this)">💰 Credit Collections</button>
-    <button type="button" class="global-filter-btn" onclick="filterLeftPane('adjustments', this)">⚙️ Adjustments</button>
-    <button type="button" class="global-filter-btn" onclick="filterLeftPane('loading', this)">🚛 Loading</button>
-    <button type="button" class="global-filter-btn" onclick="filterLeftPane('variance', this)">⚖️ Variance Audit</button>
-    <button type="button" class="global-filter-btn" onclick="filterLeftPane('finalizing', this)">🔒 Finalizing</button>
-    <button type="button" class="global-filter-btn" onclick="filterLeftPane('completed', this)">🏁 Completed</button>
+<!-- TOP GLOBAL STATUS FILTER BAR AND SEARCH -->
+<div class="global-status-filter-bar" style="display: flex; gap: 12px; background: #fff; border: 1px solid var(--mac-border); border-radius: 8px; padding: 12px 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); align-items: center; justify-content: space-between; flex-wrap: wrap;">
+    <div style="display: flex; gap: 8px; align-items: center; overflow-x: auto; flex: 1; min-width: 300px;">
+        <span style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #64748b; margin-right: 10px; white-space: nowrap;">⚡ Status Filter:</span>
+        <button type="button" class="global-filter-btn active" onclick="filterLeftPane('all', this)">All</button>
+        <button type="button" class="global-filter-btn" onclick="filterLeftPane('active', this)">🟢 Active Rep Routes</button>
+        <button type="button" class="global-filter-btn" onclick="filterLeftPane('pending_gl', this)">💰 Credit Collections</button>
+        <button type="button" class="global-filter-btn" onclick="filterLeftPane('adjustments', this)">⚙️ Adjustments</button>
+        <button type="button" class="global-filter-btn" onclick="filterLeftPane('loading', this)">🚛 Loading</button>
+        <button type="button" class="global-filter-btn" onclick="filterLeftPane('variance', this)">⚖️ Variance Audit</button>
+        <button type="button" class="global-filter-btn" onclick="filterLeftPane('finalizing', this)">🔒 Finalizing</button>
+        <button type="button" class="global-filter-btn" onclick="filterLeftPane('completed', this)">🏁 Completed</button>
+    </div>
+    <div style="min-width: 320px; display: flex; align-items: center; position: relative;">
+        <input type="text" id="routeListSearchInput" placeholder="🔍 Search routes by name, rep, or ID..." style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px;" oninput="searchRouteList()" />
+    </div>
 </div>
 
 <div class="app-workspace">
     <!-- Left Pane: Routes Master List -->
     <div class="pane-left">
-
         <div style="flex: 1; overflow-y: auto;" id="routeListItemsContainer">
             <?php foreach($data['routes'] as $route): ?>
                 <?php 
@@ -261,20 +328,51 @@
                         $dataType = 'completed';
                     }
                 ?>
-                <div class="route-item" id="route_<?= $route->id ?>" data-route-type="<?= $dataType ?>" onclick="loadRouteDetails(<?= $route->id ?>, this)">
-                    <div class="r-title"><span class="status-dot status-<?= $route->status === 'Completed' || $route->status === 'Finalized' ? 'Completed' : 'Active' ?>"></span> <?= htmlspecialchars($route->route_name) ?></div>
-                    <div class="r-sub">Rep: <?= htmlspecialchars($route->first_name . ' ' . $route->last_name) ?></div>
-                    <div class="r-meta">
-                        <span><?= date('M d, Y', strtotime($route->start_time)) ?></span>
-                        <strong style="color: <?= $dataType == 'completed' ? 'inherit' : '#ef6c00' ?>;">Rs: <?= number_format($route->total_sales, 2) ?></strong>
+                <div class="route-item" id="route_<?= $route->id ?>" data-route-type="<?= $dataType ?>" onclick="loadRouteDetails(<?= $route->id ?>, this)" style="cursor: pointer; border: 1px solid var(--mac-border); border-radius: 8px; padding: 15px; margin-bottom: 12px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.02); display: flex; flex-direction: column; justify-content: space-between;">
+                    
+                    <!-- Top row: Route Number and status badge -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-family: monospace; font-weight: bold; background: rgba(0, 102, 204, 0.1); color: #0066cc; padding: 2px 6px; border-radius: 4px; font-size: 11px;">
+                            #RT-<?= str_pad($route->id, 5, '0', STR_PAD_LEFT) ?>
+                        </span>
+                        <span style="font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 12px; background: <?= ($route->status === 'Completed' || $route->status === 'Finalized') ? '#e2f0d9' : '#fff3cd' ?>; color: <?= ($route->status === 'Completed' || $route->status === 'Finalized') ? '#2e7d32' : '#d97706' ?>; border: 1px solid <?= ($route->status === 'Completed' || $route->status === 'Finalized') ? '#2e7d32' : '#d97706' ?>;">
+                            <?= htmlspecialchars($route->status) ?>
+                        </span>
                     </div>
-                    <div style="font-size:11px; margin-top:4px; font-weight:bold; color:#0066cc;">Status: <?= htmlspecialchars($route->status) ?></div>
+
+                    <!-- Route Name -->
+                    <div class="r-title" style="font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 6px; line-height: 1.2;">
+                        <?= htmlspecialchars($route->route_name) ?>
+                    </div>
+
+                    <!-- Rep Name -->
+                    <div class="r-sub" style="font-size: 11px; color: #64748b; margin-bottom: 8px; font-weight: bold; text-transform: uppercase;">
+                        Rep: <?= htmlspecialchars($route->first_name . ' ' . $route->last_name) ?>
+                    </div>
+
+                    <!-- Meta stats -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; padding: 8px 0; margin-bottom: 8px;">
+                        <div>
+                            <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: bold;">Route Total</div>
+                            <div style="font-size: 12px; font-weight: bold; color: #2e7d32; font-family: monospace;">Rs <?= number_format($route->total_sales, 2) ?></div>
+                        </div>
+                        <div>
+                            <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: bold;">Customers</div>
+                            <div style="font-size: 12px; font-weight: bold; color: #1e293b;">👥 <?= intval($route->customer_count ?? 0) ?></div>
+                        </div>
+                    </div>
+
+                    <!-- Footer line: Last Updated -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #94a3b8;">
+                        <span>Updated: <strong><?= date('M d, Y H:i', strtotime($route->created_at ?? $route->start_time)) ?></strong></span>
+                    </div>
+
                     <?php if (!empty($route->is_bound_group)): ?>
-                        <div class="rb-bound-tag" style="background: #e0f2fe; color: #0369a1; display: block; margin-top: 5px;">
+                        <div class="rb-bound-tag" style="background: #e0f2fe; color: #0369a1; display: block; margin-top: 8px; font-size: 10px; border-radius: 4px; padding: 4px 8px;">
                             🔗 Group: <?= htmlspecialchars($route->constituent_routes_info) ?>
                         </div>
                     <?php elseif (!empty($route->binding_name)): ?>
-                        <div class="rb-bound-tag">
+                        <div class="rb-bound-tag" style="display: block; margin-top: 8px; font-size: 10px; border-radius: 4px; padding: 4px 8px;">
                             🔗 Bound: <?= htmlspecialchars($route->binding_name) ?>
                         </div>
                     <?php endif; ?>
@@ -303,34 +401,62 @@
     <!-- Middle Pane: Workspace -->
     <div class="pane-middle">
         <!-- Header -->
-        <div class="mid-header" id="midHeader" style="visibility: hidden; padding: 15px 25px;">
-            <div>
-                <h3 style="margin:0 0 5px 0; color:var(--primary);" id="mhRouteName">Route Name</h3>
-                <div style="font-size: 13px; color: var(--text-muted); font-weight: bold;">Representative: <span id="mhRepName"></span></div>
-                <div style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">
-                    ODO Start: <strong id="mhStart"></strong> &nbsp;|&nbsp; ODO End: <strong id="mhEnd"></strong>
+        <div class="mid-header" id="midHeader" style="visibility: hidden; padding: 15px 25px; display: flex; flex-direction: column; align-items: flex-start; gap: 15px; background: #fff; border-bottom: 1px solid var(--mac-border);">
+            
+            <!-- Top Row: Back button on the left, right actions: Switch Route, View Map, Undo Bind -->
+            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                <button type="button" onclick="goBackToRoutes()" style="background: none; border: none; color: #3f51b5; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 0;">
+                    ← Back to Routes
+                </button>
+                
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button type="button" onclick="openRouteSwitcherModal()" style="padding: 8px 14px; border: 1px solid #3f51b5; background: #fff; color: #3f51b5; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                        🔄 Switch Route
+                    </button>
+                    
+                    <button type="button" id="btnViewMap" onclick="openMapModal()" style="padding: 8px 14px; border: none; background: #ef6c00; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: none; align-items: center; gap: 4px;">📍 View Map</button>
+                    <button type="button" id="btnUnbindRoute" onclick="unbindActiveRoute()" style="padding: 8px 14px; border: none; background: #c62828; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: none; align-items: center; gap: 4px;">🔗 Undo Bind</button>
                 </div>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <div class="stat-box"><span>Total Sales</span><strong style="color:#2e7d32;">Rs <span id="mhSales"></span></strong></div>
-                <div class="stat-box"><span>Bills</span><strong id="mhBills"></strong></div>
+
+            <!-- Route Info Area -->
+            <div style="display: flex; justify-content: space-between; width: 100%; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                        <span id="mhRouteNumber" style="font-family: monospace; font-weight: bold; background: rgba(0, 102, 204, 0.1); color: #0066cc; padding: 3px 8px; border-radius: 4px; font-size: 12px;">Route #RT-00000</span>
+                        <span id="mhRouteStatusBadge" style="font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 12px; background: #fff3cd; color: #d97706; border: 1px solid #d97706;">Active</span>
+                    </div>
+                    <h2 style="margin:0 0 5px 0; color:var(--primary); font-weight: 700;" id="mhRouteName">Route Name</h2>
+                    <div style="font-size: 13px; color: var(--text-muted); font-weight: 500;">
+                        Representative: <strong id="mhRepName" style="color: #1e293b;"></strong> &nbsp;|&nbsp; 
+                        ODO Start: <strong id="mhStart"></strong> &nbsp;|&nbsp; ODO End: <strong id="mhEnd"></strong>
+                    </div>
+                </div>
                 
-                <button id="btnViewMap" onclick="openMapModal()" style="padding: 10px 15px; border: none; background: #ef6c00; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: none; align-items: center; gap: 4px;">📍 View Map</button>
-                <button id="btnUnbindRoute" onclick="unbindActiveRoute()" style="padding: 10px 15px; border: none; background: #c62828; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: none; align-items: center; gap: 4px;">🔗 Undo Bind</button>
+                <div style="display: flex; gap: 15px;">
+                    <div class="stat-box" style="padding: 8px 15px; border: 1px solid var(--mac-border); border-radius: 6px; display: flex; flex-direction: column;">
+                        <span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">Total Sales</span>
+                        <strong style="color:#2e7d32; font-size: 18px;">Rs <span id="mhSales"></span></strong>
+                    </div>
+                    <div class="stat-box" style="padding: 8px 15px; border: 1px solid var(--mac-border); border-radius: 6px; display: flex; flex-direction: column;">
+                        <span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">Bills</span>
+                        <strong id="mhBills" style="font-size: 18px;"></strong>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Route Workspace Tabs -->
         <div class="scroll-tabs" id="routeWorkspaceTabs" style="display: none; border-bottom: 2px solid #cbd5e1; margin-bottom: 0;">
-            <button class="scroll-tab-btn active" onclick="switchRouteTab(1, this)">📋 1. Details</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(2, this)">💰 2. Collections</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(3, this)">⚙️ 3. Adjustments</button>
+            <button class="scroll-tab-btn active" onclick="switchRouteTab(1, this)">📋 1. Route Details</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(2, this)">💰 2. Credit Collections</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(3, this)">⚙️ 3. Bill Adjustments</button>
             <button class="scroll-tab-btn" onclick="switchRouteTab(4, this)">🚛 4. Loading</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(5, this)">⚖️ 5. Variance</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(6, this)">📍 6. Dispatch</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(5, this)">⚖️ 5. Variance Audit</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(6, this)">📍 6. Delivery Arrangement</button>
             <button class="scroll-tab-btn" onclick="switchRouteTab(7, this)">🚚 7. Delivery</button>
             <button class="scroll-tab-btn" onclick="switchRouteTab(8, this)">💵 8. Reconciliation</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(9, this)">📦 9. Return Stock</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(9, this)">📦 9. Return Stock Verification</button>
             <button class="scroll-tab-btn" onclick="switchRouteTab(10, this)">💼 10. Accounting</button>
         </div>
 
@@ -887,6 +1013,31 @@
     </div>
 </div>
 
+<!-- Route Switcher Modal -->
+<div class="modal-backdrop" id="routeSwitcherModalBackdrop">
+    <div class="modal-panel" style="max-width: 550px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+        <div class="modal-header" style="background: #3f51b5; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; color: #fff; font-weight: bold;">
+            <span>🔄 Switch Route</span>
+            <button onclick="closeRouteSwitcherModal()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
+        </div>
+        <div style="padding: 15px; border-bottom: 1px solid #e2e8f0; background: #fff;">
+            <input type="text" id="routeSwitcherSearchInput" placeholder="🔍 Search routes by name, rep..." style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px;" oninput="searchRouteSwitcherList()" />
+        </div>
+        <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #fafafa;" id="routeSwitcherItemsContainer">
+            <?php foreach($data['routes'] as $route): ?>
+                <div class="switcher-route-item" onclick="selectRouteFromSwitcher(<?= $route->id ?>)" style="padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; cursor: pointer; transition: 0.2s;" data-rname="<?= htmlspecialchars($route->route_name) ?>" data-rep="<?= htmlspecialchars($route->first_name . ' ' . $route->last_name) ?>">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <strong style="color: #3f51b5; font-size: 12px; font-family: monospace;">#RT-<?= str_pad($route->id, 5, '0', STR_PAD_LEFT) ?></strong>
+                        <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #e2e8f0; font-weight: bold; color: #555;"><?= htmlspecialchars($route->status) ?></span>
+                    </div>
+                    <div style="font-weight: bold; font-size: 13px; color: #333;"><?= htmlspecialchars($route->route_name) ?></div>
+                    <div style="font-size: 11px; color: #666;">Rep: <?= htmlspecialchars($route->first_name . ' ' . $route->last_name) ?></div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</div>
+
 <script>
     const globalBankAccounts = <?php echo json_encode($data['bank_accounts'] ?? []); ?>;
     const globalAllAccounts = <?php echo json_encode($data['all_accounts'] ?? []); ?>;
@@ -947,22 +1098,96 @@
         });
         if (btn) btn.classList.add('active');
         
+        searchRouteList();
+    }
+
+    function searchRouteList() {
+        const query = document.getElementById('routeListSearchInput').value.toLowerCase().trim();
+        const activeFilterBtn = document.querySelector('.global-filter-btn.active');
+        let filterType = 'all';
+        if (activeFilterBtn) {
+            const onclickAttr = activeFilterBtn.getAttribute('onclick') || '';
+            const match = onclickAttr.match(/'([^']+)'/);
+            if (match) filterType = match[1];
+        }
+
         document.querySelectorAll('.route-item').forEach(item => {
+            const routeName = item.querySelector('.r-title').textContent.toLowerCase();
+            const repName = item.querySelector('.r-sub').textContent.toLowerCase();
+            const routeId = item.id.replace('route_', '').toLowerCase();
+            const routeNo = '#rt-' + routeId.padStart(5, '0');
+            
+            const matchesQuery = routeName.includes(query) || repName.includes(query) || routeId.includes(query) || routeNo.includes(query);
+            
             const rType = item.getAttribute('data-route-type');
-            if (type === 'all') {
-                item.style.display = 'block';
-            } else if (type === 'pending_loading') {
-                if (rType === 'pending_delivery' || rType === 'arrangement') {
-                    item.style.display = 'block';
-                } else {
-                    item.style.display = 'none';
-                }
-            } else if (rType === type) {
+            let matchesFilter = false;
+            
+            if (filterType === 'all') {
+                matchesFilter = true;
+            } else if (filterType === 'pending_loading') {
+                matchesFilter = (rType === 'pending_delivery' || rType === 'arrangement');
+            } else {
+                matchesFilter = (rType === filterType);
+            }
+            
+            if (matchesQuery && matchesFilter) {
                 item.style.display = 'block';
             } else {
                 item.style.display = 'none';
             }
         });
+    }
+
+    function openRouteSwitcherModal() {
+        const modal = document.getElementById('routeSwitcherModalBackdrop');
+        if (modal) {
+            modal.style.display = 'flex';
+            document.getElementById('routeSwitcherSearchInput').value = '';
+            searchRouteSwitcherList();
+            document.getElementById('routeSwitcherSearchInput').focus();
+        }
+    }
+
+    function closeRouteSwitcherModal() {
+        const modal = document.getElementById('routeSwitcherModalBackdrop');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function searchRouteSwitcherList() {
+        const query = document.getElementById('routeSwitcherSearchInput').value.toLowerCase().trim();
+        document.querySelectorAll('.switcher-route-item').forEach(item => {
+            const rname = item.getAttribute('data-rname').toLowerCase();
+            const rep = item.getAttribute('data-rep').toLowerCase();
+            if (rname.includes(query) || rep.includes(query)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    function selectRouteFromSwitcher(routeId) {
+        closeRouteSwitcherModal();
+        const routeEl = document.getElementById('route_' + routeId);
+        loadRouteDetails(routeId, routeEl);
+        
+        // Update URL query param to reflect the new route active without reloading
+        const url = new URL(window.location);
+        url.searchParams.set('route_id', routeId);
+        window.history.replaceState({}, '', url);
+    }
+
+    function goBackToRoutes() {
+        currentRouteId = null;
+        document.body.classList.remove('workspace-showing');
+        document.querySelector('.app-workspace').classList.remove('workspace-active');
+        
+        document.querySelectorAll('.route-item').forEach(i => i.classList.remove('active'));
+        
+        // Clear route_id query parameter from the URL
+        const url = new URL(window.location);
+        url.searchParams.delete('route_id');
+        window.history.replaceState({}, '', url);
     }
 
     const CSRF_TOKEN = '<?= $_SESSION['csrf_token'] ?? '' ?>';
@@ -1024,6 +1249,10 @@
         
         document.querySelectorAll('.route-item').forEach(i => i.classList.remove('active'));
         if (el) el.classList.add('active');
+        else {
+            const sidebarEl = document.getElementById('route_' + routeId);
+            if (sidebarEl) sidebarEl.classList.add('active');
+        }
 
         const d = document.getElementById('route_data_' + routeId);
         const routeName = d.getAttribute('data-rname');
@@ -1040,6 +1269,17 @@
         document.getElementById('mhEnd').innerText = d.getAttribute('data-end');
         document.getElementById('mhSales').innerText = d.getAttribute('data-sales');
         document.getElementById('mhBills').innerText = d.getAttribute('data-bills');
+
+        const formattedRouteNo = '#RT-' + String(routeId).padStart(5, '0');
+        document.getElementById('mhRouteNumber').innerText = 'Route ' + formattedRouteNo;
+        
+        const statusBadge = document.getElementById('mhRouteStatusBadge');
+        if (statusBadge) {
+            statusBadge.innerText = status;
+            statusBadge.style.background = (status === 'Completed' || status === 'Finalized') ? '#e2f0d9' : '#fff3cd';
+            statusBadge.style.color = (status === 'Completed' || status === 'Finalized') ? '#2e7d32' : '#d97706';
+            statusBadge.style.borderColor = (status === 'Completed' || status === 'Finalized') ? '#2e7d32' : '#d97706';
+        }
 
         const boundSummary = document.getElementById('boundRouteSummaryContainer');
         if (boundSummary) {
@@ -1097,6 +1337,10 @@
 
         // Switch to the last selected index, default to 1 (Details)
         switchRouteTab(currentTabIndex);
+
+        // Transition views
+        document.body.classList.add('workspace-showing');
+        document.querySelector('.app-workspace').classList.add('workspace-active');
     }
 
     function switchRouteTab(tabIndex) {
