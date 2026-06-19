@@ -119,12 +119,7 @@ class RepTrackingController extends Controller {
         return $finalRoutes;
     }
 
-    public function api_get_route_details($routeId) {
-        $bills = $this->trackingModel->getRouteBills($routeId);
-        header('Content-Type: application/json');
-        echo json_encode(['status' => 'success', 'bills' => $bills]);
-        exit;
-    }
+
 
     public function api_get_route_path($routeId) {
         $path = $this->trackingModel->getRoutePath($routeId);
@@ -1532,6 +1527,136 @@ class RepTrackingController extends Controller {
             'unique_products' => $uniqueProductsCount,
             'total_products_qty' => $totalProductsQty
         ]);
+        exit;
+    }
+
+    public function api_save_reconciliation() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $deliveryId = intval($payload['delivery_id'] ?? 0);
+        $reconciliationData = $payload['reconciliation_data'] ?? null;
+        
+        if ($deliveryId <= 0) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Invalid delivery ID.']);
+            exit;
+        }
+        
+        try {
+            $db = new Database();
+            $db->query("UPDATE deliveries SET reconciliation_json = :recon WHERE id = :id");
+            $db->bind(':recon', json_encode($reconciliationData));
+            $db->bind(':id', $deliveryId);
+            $db->execute();
+            
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => 'Reconciliation data saved successfully!']);
+            exit;
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    public function api_save_return_stock() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $deliveryId = intval($payload['delivery_id'] ?? 0);
+        $returnStockData = $payload['return_stock_data'] ?? null;
+        
+        if ($deliveryId <= 0) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Invalid delivery ID.']);
+            exit;
+        }
+        
+        try {
+            $db = new Database();
+            $db->query("UPDATE deliveries SET return_stock_json = :ret WHERE id = :id");
+            $db->bind(':ret', json_encode($returnStockData));
+            $db->bind(':id', $deliveryId);
+            $db->execute();
+            
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => 'Return stock verification saved successfully!']);
+            exit;
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    public function api_save_accounting_entries() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $deliveryId = intval($payload['delivery_id'] ?? 0);
+        $accountingEntries = $payload['accounting_entries'] ?? null;
+        
+        if ($deliveryId <= 0) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Invalid delivery ID.']);
+            exit;
+        }
+        
+        try {
+            $db = new Database();
+            $db->query("UPDATE deliveries SET accounting_entries_json = :acc WHERE id = :id");
+            $db->bind(':acc', json_encode($accountingEntries));
+            $db->bind(':id', $deliveryId);
+            $db->execute();
+            
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => 'Suggested double-entries accounting mappings saved successfully!']);
+            exit;
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    public function api_save_route_notes() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $routeId = intval($payload['route_id'] ?? 0);
+        $notes = $payload['notes'] ?? '';
+        
+        if ($routeId <= 0) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Invalid route ID.']);
+            exit;
+        }
+        
+        try {
+            $db = new Database();
+            $db->query("UPDATE rep_daily_routes SET notes = :notes WHERE id = :id");
+            $db->bind(':notes', $notes);
+            $db->bind(':id', $routeId);
+            $db->execute();
+            
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => 'Route notes saved successfully!']);
+            exit;
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    public function api_get_route_details($routeId) {
+        $bills = $this->trackingModel->getRouteBills($routeId);
+        // Fetch notes from rep_daily_routes
+        $db = new Database();
+        $db->query("SELECT notes FROM rep_daily_routes WHERE id = :id LIMIT 1");
+        $db->bind(':id', $routeId);
+        $routeRow = $db->single();
+        $notes = $routeRow ? $routeRow->notes : '';
+
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'success', 'bills' => $bills, 'notes' => $notes]);
         exit;
     }
 

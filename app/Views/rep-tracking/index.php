@@ -320,14 +320,18 @@
             </div>
         </div>
 
-        <!-- Visual 7-Stage Progress Wizard -->
-        <div class="workflow-wizard" id="workflowWizard" style="display: none;">
-            <div class="wizard-step" id="wstep-Active">1. Active Route</div>
-            <div class="wizard-step" id="wstep-PendingGL">2. Credit Collections</div>
-            <div class="wizard-step" id="wstep-Adjustments">3. Adjustments</div>
-            <div class="wizard-step" id="wstep-Loading">4. Loading</div>
-            <div class="wizard-step" id="wstep-VarianceAdjustment">5. Variance Audit</div>
-            <div class="wizard-step" id="wstep-Finalizing">6. Finalizing</div>
+        <!-- Route Workspace Tabs -->
+        <div class="scroll-tabs" id="routeWorkspaceTabs" style="display: none; border-bottom: 2px solid #cbd5e1; margin-bottom: 0;">
+            <button class="scroll-tab-btn active" onclick="switchRouteTab(1, this)">📋 1. Details</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(2, this)">💰 2. Collections</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(3, this)">⚙️ 3. Adjustments</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(4, this)">🚛 4. Loading</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(5, this)">⚖️ 5. Variance</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(6, this)">📍 6. Dispatch</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(7, this)">🚚 7. Delivery</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(8, this)">💵 8. Reconciliation</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(9, this)">📦 9. Return Stock</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(10, this)">💼 10. Accounting</button>
         </div>
 
         <!-- Content Area -->
@@ -339,7 +343,7 @@
 
             <!-- Loading Indicator -->
             <div id="midLoader" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; font-weight:bold; color:var(--primary);">
-                Loading Stage Information... ⏳
+                Loading Workspace Information... ⏳
             </div>
 
             <!-- Dynamic Stage Containers -->
@@ -370,96 +374,105 @@
                     </div>
                 </div>
 
-                <!-- STAGE 1: ACTIVE -->
-                <div class="stage-section-panel" id="ssec-Active" style="display:none;">
-                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">⚡ Live Route Operations Active</h4>
-                        <p style="margin:0; font-size:12px;">The field agent is currently performing active route sales. When they submit their end-day meter, this route is ready for GL Audit.</p>
+                <!-- COMPLETED ARCHIVE OPTIONS (READ ONLY AT THE TOP IF FINALIZED) -->
+                <div id="completedArchiveBanner" style="display:none; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:15px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h4 style="margin:0; font-size:14px; font-weight:bold; color:#2e7d32;">🏁 Route Settle Balancing Finalized</h4>
+                        <p style="margin:5px 0 0 0; font-size:12px; color:#666;">This route is read-only. All transactions, inventories, and GL postings are successfully finalized.</p>
                     </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <h4 style="margin:0;">Created Sales Orders</h4>
-                    </div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Invoice Number</th>
-                                <th>Time</th>
-                                <th>Customer Name</th>
-                                <th style="text-align:right;">Grand Total (Rs)</th>
-                                <th style="text-align:center;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody class="render-invoices-tbody"></tbody>
-                    </table>
-                    <div style="text-align:right; margin-top:25px;">
-                        <button onclick="advanceRouteStatus('Pending GL')" style="padding:10px 20px; background:#ef6c00; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">🔒 Close Route & Move to GL Audit</button>
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="printBalancingReport()" style="padding:8px 12px; background:#0066cc; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Print Balancing Report 🖨</button>
+                        <button onclick="printLoadingSheetSpreadsheet()" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Print Spreadsheet 📊</button>
+                        <button onclick="printLoadingSheet('summary')" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Print Loading Summary 🚚</button>
+                        <button onclick="exportCSV()" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Export CSV 📥</button>
                     </div>
                 </div>
 
-                <!-- STAGE 2: PENDING GL -->
-                <div class="stage-section-panel" id="ssec-PendingGL" style="display:none;">
+                <!-- TAB 1: DETAILS -->
+                <div class="workspace-tab-panel" id="tabpanel-1" style="display:none;">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+                        <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff;">
+                            <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">📋 Route & Representative Info</h4>
+                            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Route Name</td><td style="padding:10px 0; font-weight:bold;" id="tab1RouteName">-</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Representative</td><td style="padding:10px 0; font-weight:bold;" id="tab1RepName">-</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Current Status</td><td style="padding:10px 0;"><span id="tab1Status" style="font-weight:bold; background:#e2e8f0; padding:2px 8px; border-radius:4px; font-size:11px;">-</span></td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Start Time</td><td style="padding:10px 0;" id="tab1StartTime">-</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">End Time</td><td style="padding:10px 0;" id="tab1EndTime">-</td></tr>
+                            </table>
+                        </div>
+                        <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff;">
+                            <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">🚗 Odometer Readings</h4>
+                            <table style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom:15px;">
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Start ODO</td><td style="padding:10px 0; font-weight:bold;" id="tab1StartMeter">-</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">End ODO</td><td style="padding:10px 0; font-weight:bold;" id="tab1EndMeter">-</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Total Distance</td><td style="padding:10px 0; font-weight:bold; color:#0f172a;" id="tab1Distance">-</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
+                        <h4 style="margin:0 0 10px 0; color:var(--primary); font-size:15px; font-weight:bold;">📝 Route General Notes</h4>
+                        <textarea id="tab1RouteNotes" style="width:100%; height:100px; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; resize:vertical;" placeholder="Write any remarks or observations regarding this route..."></textarea>
+                        <div style="text-align:right; margin-top:10px;">
+                            <button id="btnSaveRouteNotes" onclick="saveRouteNotes()" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer;">💾 Save Route Notes</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: CREDIT COLLECTIONS -->
+                <div class="workspace-tab-panel" id="tabpanel-2" style="display:none;">
                     <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:15px; margin-bottom:20px; color:#78350f;">
                         <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">📄 General Ledger Audit & Verification</h4>
-                        <p style="margin:0; font-size:12px;">Please audit all credit collections. Verify debit/credit accounts and approve collections before moving the route to Adjustments stage.</p>
+                        <p style="margin:0; font-size:12px;">Audit all credit collections. Verify debit/credit accounts and approve collections.</p>
                     </div>
-                    <div>
-                        <!-- Collections Verification Table Card -->
-                        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:flex; flex-direction:column; justify-content:space-between; margin-bottom:20px;">
-                            <div>
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                                    <h5 style="margin:0; font-size:13px; font-weight:bold; color:#1e293b;">💵 Credit Collections & Verification</h5>
-                                    <button onclick="saveCollectionsVerificationStage2()" style="padding:5px 12px; background:#2e7d32; color:#fff; border:none; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; transition:0.2s;">💾 Save Verification</button>
+                    <!-- Collections Verification Table Card -->
+                    <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:flex; flex-direction:column; justify-content:space-between; margin-bottom:20px;">
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                <h5 style="margin:0; font-size:13px; font-weight:bold; color:#1e293b;">💵 Credit Collections & Verification</h5>
+                                <button id="btnSaveCollectionsVerification2" onclick="saveCollectionsVerificationStage2()" style="padding:6px 14px; background:#2e7d32; color:#fff; border:none; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; transition:0.2s;">💾 Save Verification</button>
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+                                <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:8px; border-radius:6px; font-size:11px; text-align:center;">
+                                    Cash: <strong id="glTotalCash" style="font-family:monospace; color:#2e7d32;">Rs 0.00</strong>
                                 </div>
-                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
-                                    <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:8px; border-radius:6px; font-size:11px; text-align:center;">
-                                        Cash: <strong id="glTotalCash" style="font-family:monospace; color:#2e7d32;">Rs 0.00</strong>
-                                    </div>
-                                    <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:8px; border-radius:6px; font-size:11px; text-align:center;">
-                                        Cheque: <strong id="glTotalCheque" style="font-family:monospace; color:#0066cc;">Rs 0.00</strong>
-                                    </div>
+                                <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:8px; border-radius:6px; font-size:11px; text-align:center;">
+                                    Cheque: <strong id="glTotalCheque" style="font-family:monospace; color:#0066cc;">Rs 0.00</strong>
                                 </div>
-                                <div style="max-height: 250px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
-                                    <table class="data-table" style="font-size:11px; margin-top:0;">
-                                        <thead style="position: sticky; top: 0; z-index: 10;">
-                                            <tr style="background:#f8fafc;">
-                                                <th style="text-align:left; padding:8px 4px; font-size:10px; width:20%;">Customer / Pay</th>
-                                                <th style="text-align:right; padding:8px 4px; font-size:10px; width:12%;">Collected</th>
-                                                <th style="text-align:center; padding:8px 4px; font-size:10px; width:8%;">Approve</th>
-                                                <th style="text-align:left; padding:8px 4px; font-size:10px; width:20%;">Debit Account</th>
-                                                <th style="text-align:left; padding:8px 4px; font-size:10px; width:20%;">Credit Account</th>
-                                                <th style="text-align:right; padding:8px 4px; font-size:10px; width:10%;">Adjusted</th>
-                                                <th style="text-align:left; padding:8px 4px; font-size:10px; width:10%;">Notes</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="glCollectionsTableBody"></tbody>
-                                    </table>
-                                </div>
+                            </div>
+                            <div style="max-height: 350px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
+                                <table class="data-table" style="font-size:11px; margin-top:0;">
+                                    <thead style="position: sticky; top: 0; z-index: 10;">
+                                        <tr style="background:#f8fafc;">
+                                            <th style="text-align:left; padding:8px 4px; font-size:10px; width:20%;">Customer / Pay</th>
+                                            <th style="text-align:right; padding:8px 4px; font-size:10px; width:12%;">Collected</th>
+                                            <th style="text-align:center; padding:8px 4px; font-size:10px; width:8%;">Approve</th>
+                                            <th style="text-align:left; padding:8px 4px; font-size:10px; width:20%;">Debit Account</th>
+                                            <th style="text-align:left; padding:8px 4px; font-size:10px; width:20%;">Credit Account</th>
+                                            <th style="text-align:right; padding:8px 4px; font-size:10px; width:10%;">Adjusted</th>
+                                            <th style="text-align:left; padding:8px 4px; font-size:10px; width:10%;">Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="glCollectionsTableBody"></tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:25px; border-top:1px solid #eee; padding-top:15px;">
-                        <button onclick="advanceRouteStatus('Active')" style="padding:10px 20px; background:#e2e8f0; color:#333; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">↩ Send back to Active</button>
-                        <div style="display:flex; align-items:center; gap:15px;">
-                            <span id="glVerificationStatusText" style="font-size:12px; font-weight:bold;"></span>
-                            <button id="glApproveSalesBtn" onclick="advanceRouteStatus('Adjustments')" style="padding:10px 20px; background:#0066cc; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; opacity:0.5; cursor:not-allowed;" disabled>✅ Approve Sales & Move to Adjustments</button>
-                        </div>
-                    </div>
                 </div>
-                <!-- STAGE 3: ADJUSTMENTS -->
-                <div class="stage-section-panel" id="ssec-Adjustments" style="display:none;">
-                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">⚙️ Route Adjustments & Delivery Binding</h4>
-                        <p style="margin:0; font-size:12px;">Add, attach or remove Sales Orders, and bind this route to a vehicle/delivery arrangement before physical warehouse loading preparation.</p>
-                    </div>
 
-                    <!-- Invoice & Sales Order Management Section -->
+                <!-- TAB 3: ADJUSTMENTS -->
+                <div class="workspace-tab-panel" id="tabpanel-3" style="display:none;">
+                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">⚙️ Route Adjustments & Sales Orders</h4>
+                        <p style="margin:0; font-size:12px;">Add, attach or remove Sales Orders from this route to update the manifest before delivery.</p>
+                    </div>
                     <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02); margin-bottom:20px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                             <h4 style="margin:0; font-size:14px; font-weight:bold;">Sales Order Operations</h4>
                             <div style="display:flex; gap:10px;">
-                                <button onclick="openRouteBindingModal()" style="padding:6px 12px; background:#3f51b5; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">🔗 Bind Routes</button>
-                                <button onclick="redirectToAddInvoice()" style="padding:6px 12px; background:#0066cc; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">➕ Create Sales Order</button>
-                                <button onclick="openAttachInvoiceModal()" style="padding:6px 12px; background:#5c6bc0; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">🔗 Attach Sales Order</button>
+                                <button id="btnTab3BindRoutes" onclick="openRouteBindingModal()" style="padding:6px 12px; background:#3f51b5; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">🔗 Bind Routes</button>
+                                <button id="btnTab3CreateSO" onclick="redirectToAddInvoice()" style="padding:6px 12px; background:#0066cc; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">➕ Create Sales Order</button>
+                                <button id="btnTab3AttachSO" onclick="openAttachInvoiceModal()" style="padding:6px 12px; background:#5c6bc0; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">🔗 Attach Sales Order</button>
                             </div>
                         </div>
                         <table class="data-table">
@@ -476,128 +489,201 @@
                             <tbody id="adjustmentsInvoicesTbody"></tbody>
                         </table>
                     </div>
-
-                    <!-- Delivery Arrangement Section -->
-                    <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02); margin-bottom:20px;">
-                        <h4 style="margin:0 0 15px 0; font-size:14px; font-weight:bold;">🚚 Delivery / Logistics Binding</h4>
-                        
-                        <!-- 1. Form View -->
-                        <div id="adjDeliveryFormView" style="display:none;">
-                            <form id="adjDeliveryArrangeForm" style="display:flex; flex-direction:column; gap:15px; max-width:650px; background:#fafafa; border:1px solid #e2e8f0; padding:20px; border-radius:8px; margin:0 auto;">
-                                <div>
-                                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Delivery Date</label>
-                                    <input type="date" id="adjDaDate" value="<?= date('Y-m-d') ?>" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
-                                </div>
-
-                                <div>
-                                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Bind Secondary Route (Optional)</label>
-                                    <select id="adjDaSecondaryRoute" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
-                                        <option value="">-- Select Route --</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:6px;">Select Territory Credit Invoices to dispatch with this vehicle</label>
-                                    <div id="adjDaBillsContainer" style="border:1px solid #ccc; border-radius:6px; max-height:160px; overflow-y:auto; background:#fff; padding:8px;">
-                                        <!-- Outstanding credit bills list -->
-                                    </div>
-                                </div>
-
-                                <div style="text-align:right;">
-                                    <button type="button" onclick="submitAdjustmentsLogisticsArrange()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">🚚 Bind Delivery Manifest</button>
-                                </div>
-                            </form>
-                        </div>
-
-                        <!-- 2. Arranged View -->
-                        <div id="adjDeliveryArrangedView" style="display:none;">
-                            <div id="adjArrangedDetailsContainer" style="background:#f8fafc; border:1px solid #e2e8f0; padding:15px; border-radius:8px; font-size:13px; line-height:1.6; margin-bottom:15px;"></div>
-                            <div>
-                                <button onclick="document.getElementById('adjDeliveryFormView').style.display='block'; document.getElementById('adjDeliveryArrangedView').style.display='none';" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">✏️ Edit/Re-arrange Delivery</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:25px; border-top:1px solid #eee; padding-top:15px;">
-                        <button onclick="advanceRouteStatus('Pending GL')" style="padding:10px 20px; background:#e2e8f0; color:#333; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">↩ Back to GL Audit</button>
-                        <button onclick="advanceRouteStatus('Loading')" style="padding:10px 20px; background:#ef6c00; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">⚡ Confirm Adjustments & Move to Loading</button>
-                    </div>
                 </div>
 
-                <!-- STAGE 4: LOADING -->
-                <div class="stage-section-panel" id="ssec-Loading" style="display:none;">
+                <!-- TAB 4: LOADING -->
+                <div class="workspace-tab-panel" id="tabpanel-4" style="display:none;">
                     <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:15px; margin-bottom:20px; color:#78350f;">
                         <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">🔍 Loading Verification Checklist</h4>
-                        <p style="margin:0; font-size:12px;">Perform physical count checks before the vehicle dispatches. Discrepancies will be reported under Variance Audit.</p>
+                        <p style="margin:0; font-size:12px;">Perform physical count checks before the vehicle dispatches.</p>
                     </div>
                     <div id="loadingBox" style="margin-bottom:20px;"></div>
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <button onclick="advanceRouteStatus('Adjustments')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Back to Adjustments</button>
-                            <button onclick="printLoadingSheet('final')" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;">🖨️ Print Loading Sheet</button>
-                            <button onclick="printLoadingSheet('summary')" style="padding:8px 16px; background:#673ab7; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;">🖨️ Print Loading Summary</button>
-                        </div>
-                        <button onclick="advanceRouteStatus('Variance Adjustment')" style="padding:10px 20px; background:#0066cc; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">🔍 Submit for Variance Audit</button>
+                    <div style="text-align:right;">
+                        <button onclick="printLoadingSheet('final')" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">🖨️ Print Loading Sheet</button>
+                        <button onclick="printLoadingSheet('summary')" style="padding:8px 16px; background:#673ab7; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;">🖨️ Print Loading Summary</button>
                     </div>
                 </div>
 
-                <!-- STAGE 5: VARIANCE ADJUSTMENT -->
-                <div class="stage-section-panel" id="ssec-VarianceAdjustment" style="display:none;">
+                <!-- TAB 5: VARIANCE -->
+                <div class="workspace-tab-panel" id="tabpanel-5" style="display:none;">
                     <div style="background:#fee2e2; border:1px solid #fca5a5; border-radius:8px; padding:15px; margin-bottom:20px; color:#991b1b;">
                         <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">🚨 Variance Adjustment Approval</h4>
-                        <p style="margin:0; font-size:12px;">Review shortages and overages identified from final picking. Confirm variances before proceeding to financial finalize settlement.</p>
+                        <p style="margin:0; font-size:12px;">Review shortages and overages identified from final picking. Confirm variances before proceeding.</p>
                     </div>
                     <div id="varianceAuditBox" style="margin-bottom:20px;"></div>
-                    <div style="display:flex; justify-content:space-between;">
-                        <button onclick="advanceRouteStatus('Loading')" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">↩ Back to Loading</button>
-                        <button onclick="advanceRouteStatus('Finalizing')" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">⚖️ Approve Variances & Proceed to Settlements</button>
+
+                </div>
+
+                <!-- TAB 6: DISPATCH -->
+                <div class="workspace-tab-panel" id="tabpanel-6" style="display:none;">
+                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">🚚 Delivery / Logistics Binding & Dispatch</h4>
+                        <p style="margin:0; font-size:12px;">Assign driver, vehicle, helper and select outstanding credit bills to dispatch with this delivery manifest.</p>
+                    </div>
+                    
+                    <!-- Form View -->
+                    <div id="adjDeliveryFormView" style="display:none;">
+                        <form id="adjDeliveryArrangeForm" style="display:flex; flex-direction:column; gap:15px; max-width:650px; background:#fafafa; border:1px solid #e2e8f0; padding:20px; border-radius:8px; margin:0 auto;">
+                            <div>
+                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Delivery Date</label>
+                                <input type="date" id="adjDaDate" value="<?= date('Y-m-d') ?>" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+                            </div>
+
+                            <div>
+                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Bind Secondary Route (Optional)</label>
+                                <select id="adjDaSecondaryRoute" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+                                    <option value="">-- Select Route --</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:6px;">Select Territory Credit Invoices to dispatch with this vehicle</label>
+                                <div id="adjDaBillsContainer" style="border:1px solid #ccc; border-radius:6px; max-height:160px; overflow-y:auto; background:#fff; padding:8px;">
+                                    <!-- Outstanding credit bills list -->
+                                </div>
+                            </div>
+
+                            <div style="text-align:right;">
+                                <button type="button" onclick="submitAdjustmentsLogisticsArrange()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">🚚 Bind Delivery Manifest</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Arranged View -->
+                    <div id="adjDeliveryArrangedView" style="display:none;">
+                        <div id="adjArrangedDetailsContainer" style="background:#f8fafc; border:1px solid #e2e8f0; padding:15px; border-radius:8px; font-size:13px; line-height:1.6; margin-bottom:15px;"></div>
+                        <div>
+                            <button id="btnEditDeliveryManifest" onclick="document.getElementById('adjDeliveryFormView').style.display='block'; document.getElementById('adjDeliveryArrangedView').style.display='none';" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">✏️ Edit/Re-arrange Delivery</button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- STAGE 8: FINALIZING (SETTLEMENTS) -->
-                <div class="stage-section-panel" id="ssec-Finalizing" style="display:none;">
+                <!-- TAB 7: DELIVERY (LIVE MONITORING) -->
+                <div class="workspace-tab-panel" id="tabpanel-7" style="display:none;">
                     <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:15px; margin-bottom:20px; color:#166534;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">⚖️ Final Balancing & Settlement Posting</h4>
-                        <p style="margin:0; font-size:12px;">Verify collections, return items, and assign appropriate Ledger double entries to balance and close the route.</p>
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">🚚 Delivery Live Execution Status</h4>
+                        <p style="margin:0; font-size:12px;">Track live progress of customer dispatches and collections on the route.</p>
                     </div>
+                    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
+                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">📊 Delivery Performance Summary</h4>
+                        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:15px;" id="deliveryTabSummaryCards">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff;">
+                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">📍 Customer Visit & Dispatch Status</h4>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Customer Name</th>
+                                    <th>Invoice Number</th>
+                                    <th style="text-align:right;">Grand Total (Rs)</th>
+                                    <th style="text-align:center;">Delivery Status</th>
+                                    <th style="text-align:center;">Payment Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deliveryTabInvoicesTbody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
-                        <!-- Collections Verification Table Card -->
-                        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; display:flex; flex-direction:column; justify-content:space-between;">
-                            <div>
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                                    <h5 style="margin:0; font-size:13px;">💵 Collected Payment Settle Verification</h5>
-                                    <button onclick="saveCollectionsVerification()" style="padding:4px 10px; background:#2e7d32; color:#fff; border:none; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">💾 Save Verification</button>
-                                </div>
-                                <table class="data-table" style="font-size:11px; margin-top:5px; border: 1px solid #eee;">
+                <!-- TAB 8: RECONCILIATION -->
+                <div class="workspace-tab-panel" id="tabpanel-8" style="display:none;">
+                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">💵 Route Collections & Variance Reconciliation</h4>
+                        <p style="margin:0; font-size:12px;">Count cash, verify cheques and document financial variances. Save draft or submit for final settlement.</p>
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:20px;">
+                        <div>
+                            <!-- Cash Reconciliation Card -->
+                            <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
+                                <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">💵 Cash Collections Counter</h4>
+                                <table style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom:15px;">
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Expected Cash Sales</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right;" id="reconExpectedCash">Rs 0.00</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Expected Cash Collections</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right;" id="reconExpectedCollections">Rs 0.00</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Total Expected Cash</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right; color:#2e7d32;" id="reconTotalExpectedCash">Rs 0.00</td></tr>
+                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Actual Counted Cash</td><td style="padding:10px 0; text-align:right;"><input type="number" step="0.01" min="0" id="reconActualCash" oninput="calculateCashVariance()" style="padding:6px; border:1px solid #ccc; border-radius:4px; width:150px; text-align:right; font-weight:bold; font-family:monospace;" value="0.00"></td></tr>
+                                    <tr><td style="padding:10px 0; color:#64748b; font-weight:bold;">Cash Variance</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right;" id="reconCashVariance">Rs 0.00</td></tr>
+                                </table>
+                            </div>
+
+                            <!-- Cheque Reconciliation Card -->
+                            <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff;">
+                                <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">🏦 Cheques Verification</h4>
+                                <table class="data-table" style="font-size:11px;">
                                     <thead>
-                                        <tr style="background:#f8fafc;">
-                                            <th style="text-align:left; padding:6px 4px;">Customer / Payment</th>
-                                            <th style="text-align:right; padding:6px 4px;">Collected</th>
-                                            <th style="text-align:center; padding:6px 4px;">Status</th>
-                                            <th style="text-align:right; padding:6px 4px;">Adjusted Amt</th>
-                                            <th style="text-align:left; padding:6px 4px;">Notes</th>
+                                        <tr>
+                                            <th>Customer Name</th>
+                                            <th>Cheque Number</th>
+                                            <th style="text-align:right;">Amount (Rs)</th>
+                                            <th style="text-align:center;">Approve</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="settleCollectionsTableBody"></tbody>
+                                    <tbody id="reconChequesTbody">
+                                        <!-- Dynamically populated -->
+                                    </tbody>
                                 </table>
                             </div>
                         </div>
 
-                        <!-- Stock and returns card -->
-                        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff;">
-                            <h5 style="margin:0 0 10px 0; font-size:13px;">📦 Returned Stock Settle Verification</h5>
-                            <div style="margin-bottom:10px;"><label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="settleVerifyStock" onchange="checkSettleVerification()"> Verified Return Items Count</label></div>
-                            <table class="data-table" style="font-size:11px;">
-                                <thead>
-                                    <tr><th>Product Name</th><th>Loaded</th><th>Deliv</th><th style="text-align:right;">Returned</th></tr>
-                                </thead>
-                                <tbody id="settleStockTableBody"></tbody>
-                            </table>
+                        <div>
+                            <!-- Notes & Save Draft Card -->
+                            <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; height:100%; display:flex; flex-direction:column; justify-content:space-between;">
+                                <div>
+                                    <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">📝 Audit Remarks</h4>
+                                    <textarea id="reconAuditNotes" style="width:100%; height:180px; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; resize:none;" placeholder="Write any audit notes regarding cash discrepancy, bank transfer receipts verified, etc..."></textarea>
+                                </div>
+                                <div style="text-align:right; margin-top:20px;">
+                                    <button id="btnSaveReconciliationDraft" onclick="saveReconciliationDraft()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer; width:100%;">💾 Save Reconciliation Draft</button>
+                                </div>
+                            </div>
                         </div>
-                    <!-- Driver, Vehicle, Partner Assignment (Finalize) -->
-                    <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; margin-bottom:20px;">
-                        <h5 style="margin:0 0 10px 0; font-size:13px; font-weight:bold; color:#1e293b;">🚚 Dispatch & Logistics Assignment</h5>
+                    </div>
+                </div>
+
+                <!-- TAB 9: RETURN STOCK VERIFICATION -->
+                <div class="workspace-tab-panel" id="tabpanel-9" style="display:none;">
+                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">📦 Return Stock Verification</h4>
+                        <p style="margin:0; font-size:12px;">Confirm physical return counts. Mark return verification complete to finalize stock updates.</p>
+                    </div>
+                    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h4 style="margin:0; color:var(--primary); font-size:15px; font-weight:bold;">Returned Stock Settle Verification</h4>
+                        </div>
+                        <table class="data-table" style="font-size:11px;">
+                            <thead>
+                                <tr>
+                                    <th>Product Name</th>
+                                    <th style="text-align:center;">Loaded</th>
+                                    <th style="text-align:center;">Delivered</th>
+                                    <th style="text-align:center;">Expected Returned</th>
+                                    <th style="text-align:right; width:150px;">Actual Counted Returns</th>
+                                </tr>
+                            </thead>
+                            <tbody id="settleStockTableBody">
+                                <!-- Dynamically populated -->
+                            </tbody>
+                        </table>
+                        <div style="text-align:right; margin-top:20px;">
+                            <button id="btnSaveReturnStockDraft" onclick="saveReturnStockDraft()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">💾 Save Return Stock Draft</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 10: ACCOUNTING -->
+                <div class="workspace-tab-panel" id="tabpanel-10" style="display:none;">
+                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:15px; margin-bottom:20px; color:#166534;">
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">💼 General Ledger Double Entry Postings</h4>
+                        <p style="margin:0; font-size:12px;">Map the transactions of this route to appropriate general ledger accounts. Make manual overrides if needed and finalize the route.</p>
+                    </div>
+
+                    <!-- Dispatch Assignment Section inside Accounting final tab -->
+                    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
+                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">🚚 Dispatch & Logistics Assignment</h4>
                         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px;">
                             <div>
                                 <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Vehicle Number *</label>
@@ -633,20 +719,24 @@
                         </div>
                     </div>
 
-                    <!-- General Ledger double entries mapping panel -->
-                    <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; margin-bottom:20px;">
-                        <h5 style="margin:0 0 10px 0; font-size:13px;">💼 General Ledger Account Double Entry Mappings</h5>
+                    <!-- General Ledger account double entry mappings card -->
+                    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
+                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">💼 Account Mappings</h4>
                         <div style="display: flex; gap: 10px; border-bottom: 1px solid #eee; margin-bottom: 15px;">
                             <button type="button" class="left-tab-btn active" id="settleDeTabCollectionsBtn" onclick="switchSettleDeTab('collections')">💵 Cash/Cheques Posting</button>
                             <button type="button" class="left-tab-btn" id="settleDeTabSalesBtn" onclick="switchSettleDeTab('sales')">📦 Invoices Sales Posting</button>
                         </div>
                         <div id="settleDeCollectionsContainer"></div>
                         <div id="settleDeSalesContainer" style="display:none;"></div>
+                        <div style="text-align:right; margin-top:20px;">
+                            <button id="btnSaveAccountingDraft" onclick="saveAccountingDraft()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">💾 Save Account Mappings Draft</button>
+                        </div>
                     </div>
 
-                    <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #eee; padding-top:20px;">
+                    <!-- Settle Actions -->
+                    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; display:flex; justify-content:space-between; align-items:center;">
                         <div id="settleStatusText" style="font-size:12px; color:#c62828; font-weight:bold;">
-                            Please verify Cash, Cheques, and Return stock counts above to unlock Finalization.
+                            Please verify Cash, Cheques, and Return stock counts under Reconciliation & Return Stock tabs to unlock Finalization.
                         </div>
                         <button id="settleSubmitBtn" onclick="submitFinalSettle()" style="padding:12px 24px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:14px; opacity:0.5; cursor:not-allowed;" disabled>
                             ⚖️ Settle Balancing & Finalize Route

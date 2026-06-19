@@ -23,6 +23,42 @@ class Delivery {
                 $this->db->execute();
             }
         } catch (Exception $e) {}
+
+        // Auto-heal schema to add reconciliation_json column if not present
+        try {
+            $this->db->query("SHOW COLUMNS FROM deliveries LIKE 'reconciliation_json'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE deliveries ADD COLUMN reconciliation_json TEXT NULL");
+                $this->db->execute();
+            }
+        } catch (Exception $e) {}
+
+        // Auto-heal schema to add return_stock_json column if not present
+        try {
+            $this->db->query("SHOW COLUMNS FROM deliveries LIKE 'return_stock_json'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE deliveries ADD COLUMN return_stock_json TEXT NULL");
+                $this->db->execute();
+            }
+        } catch (Exception $e) {}
+
+        // Auto-heal schema to add accounting_entries_json column if not present
+        try {
+            $this->db->query("SHOW COLUMNS FROM deliveries LIKE 'accounting_entries_json'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE deliveries ADD COLUMN accounting_entries_json TEXT NULL");
+                $this->db->execute();
+            }
+        } catch (Exception $e) {}
+
+        // Auto-heal schema to add notes column to rep_daily_routes if not present
+        try {
+            $this->db->query("SHOW COLUMNS FROM rep_daily_routes LIKE 'notes'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE rep_daily_routes ADD COLUMN notes TEXT NULL");
+                $this->db->execute();
+            }
+        } catch (Exception $e) {}
     }
 
     public function createDelivery($data) {

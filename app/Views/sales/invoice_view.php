@@ -1,29 +1,4 @@
-<?php
-$db = new Database();
-
-// Failsafe: Fetch the customer's true total outstanding balance for the "Previous Balance" calculation
-$db->query("
-    SELECT 
-        COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) as total_billed
-    FROM invoices WHERE customer_id = :id AND status != 'Voided'
-");
-$db->bind(':id', $data['invoice']->customer_id);
-$billed = $db->single()->total_billed ?? 0;
-
-$db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :id");
-$db->bind(':id', $data['invoice']->customer_id);
-$paid = $db->single()->total_paid ?? 0;
-
-$db->query("SELECT COALESCE(SUM(total_amount), 0) as total_credited FROM credit_notes WHERE customer_id = :id");
-$db->bind(':id', $data['invoice']->customer_id);
-$credited = $db->single()->total_credited ?? 0;
-
-$totalOutstanding = $billed - $paid - $credited;
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
+@ -27,15 +27,21 @@ $totalOutstanding = $billed - $paid - $credited;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice <?= htmlspecialchars($data['invoice']->invoice_number) ?> - <?= APP_NAME ?></title>
     <style>
@@ -45,7 +20,7 @@ $totalOutstanding = $billed - $paid - $credited;
         }
         
         .a4-container { 
-            width: 210mm; 
+@ -43,198 +49,487 @@ $totalOutstanding = $billed - $paid - $credited;
             min-height: 297mm; 
             background: #fff; 
             padding: 15mm 20mm; 
@@ -533,28 +508,7 @@ $totalOutstanding = $billed - $paid - $credited;
                 <?php 
                     // Calculate exact correct totals working downwards from the DB subtotal
                     $subTotal = $data['invoice']->total_amount;
-                    $globalDiscountAmount = 0;
-                    
-                    if($data['invoice']->global_discount_val > 0) {
-                        if ($data['invoice']->global_discount_type == '%') {
-                            $globalDiscountAmount = $subTotal * ($data['invoice']->global_discount_val / 100);
-                        } else {
-                            $globalDiscountAmount = $data['invoice']->global_discount_val;
-                        }
-                    }
-                    
-                    $netSubTotal = $subTotal - $globalDiscountAmount;
-                    if ($netSubTotal < 0) $netSubTotal = 0;
-
-                    // This Invoice's specific final total
-                    $thisInvoiceGrandTotal = $netSubTotal + $data['invoice']->tax_amount;
-
-                    // If this invoice is Unpaid/Draft, it's inherently included in the $totalOutstanding
-                    // To show a true 'Previous Balance', we must subtract this invoice from the total outstanding
-                    $previousBalance = $totalOutstanding;
-                    if (in_array($data['invoice']->status, ['Unpaid', 'Draft'])) {
-                        $previousBalance -= $thisInvoiceGrandTotal;
-                    }
+@ -263,51 +558,133 @@ $totalOutstanding = $billed - $paid - $credited;
                     $amountDueNow = $previousBalance + $thisInvoiceGrandTotal;
                 ?>
                 
@@ -688,4 +642,3 @@ $totalOutstanding = $billed - $paid - $credited;
         </div>
     </div>
 </body>
-</html>
