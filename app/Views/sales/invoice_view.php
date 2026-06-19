@@ -1,3 +1,25 @@
+<?php
+$db = new Database();
+
+// Failsafe: Fetch the customer's true total outstanding balance for the "Previous Balance" calculation
+$db->query("
+    SELECT 
+        COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) as total_billed
+    FROM invoices WHERE customer_id = :id AND status != 'Voided'
+");
+$db->bind(':id', $data['invoice']->customer_id);
+$billed = $db->single()->total_billed ?? 0;
+
+$db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :id");
+$db->bind(':id', $data['invoice']->customer_id);
+$paid = $db->single()->total_paid ?? 0;
+
+$db->query("SELECT COALESCE(SUM(total_amount), 0) as total_credited FROM credit_notes WHERE customer_id = :id");
+$db->bind(':id', $data['invoice']->customer_id);
+$credited = $db->single()->total_credited ?? 0;
+
+$totalOutstanding = $billed - $paid - $credited;
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,643 +27,761 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice <?= htmlspecialchars($data['invoice']->invoice_number) ?> - <?= APP_NAME ?></title>
     <style>
-        /* A4 Page Formatting - Professional Black & White Design */
+        /* Base Reset & Typography */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        body { 
-            background-color: #f0f0f0; 
-            font-family: 'Times New Roman', Times, serif;
-            display: flex; 
-            justify-content: center; 
-            padding: 20px; 
-            margin: 0; 
-            color: #000; 
+        body {
+            background-color: #e5e5e5;
+            font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 8.5pt; 
+            color: #000000;
+            line-height: 1.3; 
+            -webkit-font-smoothing: antialiased;
         }
-        
-        .a4-container { 
-            width: 210mm; 
-            min-height: 297mm; 
-            background: #fff; 
-            padding: 15mm 20mm; 
-            box-shadow: 0 0 10px rgba(0,0,0,0.3); 
+
+        /* Screen Wrapper */
+        .page-wrapper {
+            max-width: 210mm;
+            margin: 20px auto;
+            background: #ffffff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 10mm; 
             position: relative;
-            border: 1px solid #000;
-        }
-
-        .controls { 
-            text-align: center; 
-            margin-bottom: 20px; 
-            width: 100%; 
-            position: absolute; 
-            top: -60px; 
-            left: 0;
-        }
-        
-        .btn { 
-            padding: 10px 25px; 
-            background: #000; 
-            color: #fff; 
-            text-decoration: none; 
-            border: 1px solid #000; 
-            font-weight: bold; 
-            cursor: pointer; 
-            margin: 0 5px;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-        }
-        
-        .btn:hover {
-            background: #333;
-        }
-
-        /* Header Section */
-        .header-section {
+            min-height: 297mm;
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 25px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #000;
+            flex-direction: column;
         }
 
-        .company-info {
+        .main-content {
             flex: 1;
         }
 
-        .logo { 
-            max-height: 60px; 
-            max-width: 200px; 
-            object-fit: contain; 
-            margin-bottom: 10px; 
-        }
-
-        .company-name { 
-            font-size: 22px; 
-            font-weight: bold; 
-            margin: 0 0 8px 0; 
-            color: #000; 
-            font-family: Arial, sans-serif;
-        }
-
-        .company-details { 
-            font-size: 11px; 
-            color: #000; 
-            line-height: 1.5;
-        }
-
-        .invoice-info {
+        /* Action Buttons (Screen Only) */
+        .print-controls {
             text-align: right;
-            min-width: 200px;
+            margin-bottom: 15px;
         }
 
-        .invoice-title { 
-            font-size: 32px; 
-            color: #000; 
-            font-weight: bold; 
-            margin: 0 0 15px 0; 
-            letter-spacing: 3px;
-            font-family: Arial, sans-serif;
+        .btn-print {
+            background-color: #000;
+            color: #fff;
+            border: 1px solid #000;
+            padding: 6px 12px;
+            font-size: 9pt;
+            cursor: pointer;
+            border-radius: 4px;
+            font-family: inherit;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.2s;
+        }
+
+        .btn-print:hover {
+            background-color: #333;
+        }
+
+        .btn-excel {
+            background-color: #107c41; /* Microsoft Excel Green */
+            border-color: #107c41;
+            margin-right: 8px;
+        }
+
+        .btn-excel:hover {
+            background-color: #0c5e31;
+        }
+
+        /* Header Section */
+        .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px; 
+            border-bottom: 2px solid #000; 
+            padding-bottom: 10px; 
+        }
+
+        .company-info {
+            width: 55%;
+        }
+
+        .company-logo {
+            max-width: 120px; 
+            max-height: 45px;
+            margin-bottom: 5px;
+            object-fit: contain;
+        }
+
+        .company-name {
+            font-size: 12pt;
+            font-weight: 800; 
+            margin-bottom: 2px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .invoice-meta-table {
+        .company-details {
+            font-size: 8pt;
+            color: #222;
+        }
+
+        .invoice-meta {
+            width: 40%;
+            text-align: right;
+        }
+
+        .document-title {
+            font-size: 18pt; 
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .meta-table {
             width: 100%;
-            font-size: 12px;
             border-collapse: collapse;
         }
 
-        .invoice-meta-table td {
-            padding: 4px 0;
+        .meta-table th, .meta-table td {
+            padding: 2px 0; 
+            font-size: 8.5pt;
             text-align: right;
         }
 
-        .invoice-meta-table td:first-child {
-            font-weight: bold;
+        .meta-table th {
+            font-weight: 700;
             padding-right: 10px;
-            white-space: nowrap;
-        }
-
-        /* Customer Information Section */
-        .customer-section {
-            margin-bottom: 25px;
-            padding: 15px;
-            border: 1px solid #000;
-            background: #fff;
-        }
-
-        .section-title {
-            font-size: 13px;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-bottom: 10px;
             color: #000;
-            font-family: Arial, sans-serif;
-            letter-spacing: 1px;
+            white-space: nowrap;
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+            font-size: 7.5pt;
+        }
+
+        .meta-table td {
+            font-weight: 500;
+            font-variant-numeric: tabular-nums; 
+        }
+
+        /* Customer Section */
+        .customer-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px; 
+        }
+
+        .bill-to {
+            width: 48%;
+        }
+
+        .section-heading {
+            font-size: 8pt;
+            font-weight: 800; 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #000;
+            border-bottom: 1px solid #000;
+            padding-bottom: 3px;
+            margin-bottom: 6px;
+        }
+
+        .customer-name {
+            font-size: 10pt;
+            font-weight: 800;
+            margin-bottom: 2px;
         }
 
         .customer-details {
-            font-size: 12px;
-            line-height: 1.6;
+            font-size: 8.5pt;
         }
 
-        .customer-details strong {
-            font-size: 14px;
-        }
-
-        /* Product Table */
-        .items-table {
+        /* Items Table - Clean Professional List */
+        .table-items {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 25px;
-            font-size: 11px;
+            margin-bottom: 20px; 
         }
 
-        .items-table thead {
+        .table-items th, .table-items td {
+            padding: 6px 4px; 
+            font-size: 8.5pt;
+        }
+
+        .table-items th {
+            border-top: 2px solid #000; 
             border-bottom: 2px solid #000;
-        }
-
-        .items-table th {
-            padding: 10px 8px;
-            text-align: left;
-            font-weight: bold;
-            font-size: 11px;
+            font-weight: 800;
             text-transform: uppercase;
-            font-family: Arial, sans-serif;
-            border-bottom: 1px solid #000;
+            letter-spacing: 0.5px;
+            font-size: 7.5pt;
+            text-align: left;
+            color: #000;
         }
 
-        .items-table th.text-center {
+        .table-items td {
+            border-bottom: 1px solid #eaeaea; 
+        }
+
+        .table-items tr:last-child td {
+            border-bottom: 1px solid #000; 
+        }
+
+        .table-items th.num, .table-items td.num {
+            text-align: right;
+            font-variant-numeric: tabular-nums; 
+        }
+
+        .table-items th.center, .table-items td.center {
             text-align: center;
         }
 
-        .items-table th.text-right {
-            text-align: right;
+        /* Bottom Section: Payment Info & Totals side-by-side */
+        .bottom-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            gap: 20px;
         }
 
-        .items-table td {
-            padding: 8px;
+        /* Payment & Bank Details Block */
+        .payment-info {
+            flex: 1;
+            font-size: 8pt;
+            border: 1px solid #000; 
+            padding: 10px;
+            background-color: #fafafa;
+        }
+
+        .payment-info .section-heading {
             border-bottom: 1px solid #ccc;
-            vertical-align: top;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
         }
 
-        .items-table td.text-center {
-            text-align: center;
+        .terms-text {
+            line-height: 1.5;
         }
 
-        .items-table td.text-right {
-            text-align: right;
-        }
-
-        .items-table tbody tr:last-child td {
-            border-bottom: 2px solid #000;
+        .terms-text strong {
+            color: #000;
+            font-weight: 700;
         }
 
         /* Totals Section */
-        .totals-section {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 25px;
+        .summary-section {
+            width: 300px; 
         }
 
-        .totals-table {
-            width: 280px;
+        .table-totals {
+            width: 100%; 
             border-collapse: collapse;
-            font-size: 12px;
         }
 
-        .totals-table td {
-            padding: 6px 10px;
-            border-bottom: 1px solid #eee;
+        .table-totals th, .table-totals td {
+            padding: 4px 6px; 
+            font-size: 8.5pt;
+            border-bottom: 1px solid #f0f0f0;
         }
 
-        .totals-table td.text-right {
+        .table-totals th {
             text-align: right;
-            font-weight: bold;
+            font-weight: 600;
+            color: #444;
+            width: 60%;
         }
 
-        .totals-table tr.grand-total td {
-            border-top: 2px solid #000;
+        .table-totals td {
+            text-align: right;
+            font-weight: 500;
+            width: 40%;
+            font-variant-numeric: tabular-nums; 
+        }
+
+        .table-totals tr.bold-row th,
+        .table-totals tr.bold-row td {
+            border-top: 2px solid #000; 
             border-bottom: 2px solid #000;
-            font-size: 14px;
-            font-weight: bold;
-            padding: 10px;
-        }
-
-        .totals-table tr.highlight td {
+            font-weight: 800;
+            font-size: 9.5pt;
             color: #000;
-            border-top: 1px dashed #000;
         }
 
-        /* Payment Information Section */
-        .payment-section {
-            margin-bottom: 25px;
-            padding: 15px;
-            border: 1px solid #000;
-            font-size: 12px;
+        .table-totals tr.due-row th,
+        .table-totals tr.due-row td {
+            border-bottom: 2px solid #000;
+            font-weight: 800;
+            font-size: 10pt;
+            color: #000;
         }
 
-        .payment-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .payment-table td {
-            padding: 5px 10px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .payment-table td:first-child {
-            font-weight: bold;
-            white-space: nowrap;
-        }
-
-        /* Notes Section */
-        .notes-section {
-            margin-bottom: 25px;
-            padding: 15px;
-            border: 1px solid #000;
-            font-size: 12px;
-            display: none;
-        }
-
-        .notes-section.has-content {
-            display: block;
-        }
-
-        .notes-content {
-            line-height: 1.6;
-        }
-
-        /* Signature Section */
+        /* Signatures Section */
         .signature-section {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 30px;
-            padding-top: 20px;
+            margin-top: 30px; 
             page-break-inside: avoid;
         }
 
         .signature-box {
-            width: 30%;
+            width: 200px;
             text-align: center;
         }
 
         .signature-line {
-            border-top: 1px solid #000;
-            margin-top: 40px;
-            padding-top: 8px;
-            font-size: 11px;
-            font-weight: bold;
+            border-bottom: 1px solid #000;
+            margin-bottom: 4px;
+            height: 30px; 
+        }
+
+        .signature-label {
+            font-size: 7.5pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #000; 
         }
 
         /* Footer */
-        .footer {
-            position: absolute;
-            bottom: 15mm;
-            left: 20mm;
-            right: 20mm;
-            border-top: 1px solid #000;
-            padding-top: 10px;
-            font-size: 10px;
-            color: #000;
-            text-align: center;
-        }
-
-        .footer-content {
+        .document-footer {
+            margin-top: auto; 
+            border-top: 1px solid #ccc;
+            padding-top: 5px;
+            font-size: 7.5pt;
+            color: #666;
             display: flex;
             justify-content: space-between;
-            align-items: center;
         }
 
-        /* Print Media Query */
-        @media print { 
-            @page { 
-                size: A4; 
-                margin: 0; 
+        /* Print Specific Styles */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 10mm; 
             }
-            body { 
-                background: #fff; 
-                padding: 0; 
-            } 
-            .a4-container { 
-                width: 100%; 
-                min-height: auto; 
-                box-shadow: none; 
-                padding: 15mm 20mm; 
+            
+            body {
+                background: none;
+                margin: 0;
+                padding: 0;
+            }
+
+            .page-wrapper {
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
                 border: none;
-            } 
-            .controls { 
-                display: none !important; 
-            } 
-            .footer {
-                position: fixed;
-                bottom: 0;
-                left: 20mm;
-                right: 20mm;
+                width: 100%;
+                max-width: none;
+                min-height: 0;
+                display: block; 
             }
-            
-            .header-section,
-            .customer-section,
-            .totals-section,
-            .signature-section {
-                page-break-inside: avoid;
+
+            .print-controls {
+                display: none !important;
             }
-            
-            .items-table thead {
+
+            .table-items th {
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
+            }
+
+            .table-items thead {
                 display: table-header-group;
             }
-            
-            .items-table tr {
-                page-break-inside: avoid;
-                page-break-after: auto;
-            }
-        }
 
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
+            .table-items tr {
+                page-break-inside: avoid;
             }
-            .a4-container {
-                width: 100%;
-                min-height: auto;
-                padding: 15px;
-                border: none;
+
+            .bottom-section, .signature-section {
+                page-break-inside: avoid;
             }
-            .controls {
-                position: static;
-                margin-bottom: 15px;
-            }
-            .header-section {
-                flex-direction: column;
-                gap: 15px;
-            }
-            .invoice-info {
-                text-align: left;
-                width: 100%;
-            }
-            .invoice-meta-table td {
-                text-align: left;
-            }
-            .signature-section {
-                flex-direction: column;
-                gap: 20px;
-            }
-            .signature-box {
-                width: 100%;
-            }
-            .footer {
-                position: static;
-                margin-top: 20px;
+            
+            .document-footer {
+                margin-top: 20px; 
             }
         }
     </style>
 </head>
 <body>
-    <div class="a4-container">
-        <div class="controls">
-            <button onclick="window.print()" class="btn">Print Invoice</button>
-            <button onclick="window.print()" class="btn">Download PDF</button>
+    <div class="page-wrapper">
+        
+        <!-- Screen Controls -->
+        <div class="print-controls">
+            <button onclick="exportToExcel()" class="btn-print btn-excel">📊 Export to Excel</button>
+            <button onclick="window.print()" class="btn-print">🖨️ Print Document</button>
         </div>
 
-        <!-- Header Section -->
-        <div class="header-section">
-            <div class="company-info">
-                <?php if(!empty($data['company']->logo_path)): ?>
-                    <img src="<?= APP_URL ?>/uploads/<?= htmlspecialchars($data['company']->logo_path) ?>" class="logo" alt="Logo">
-                <?php else: ?>
-                    <h1 class="company-name"><?= htmlspecialchars($data['company']->company_name) ?></h1>
-                <?php endif; ?>
-                
-                <div class="company-details">
-                    <?php if(!empty($data['company']->address)) echo nl2br(htmlspecialchars($data['company']->address)) . '<br>'; ?>
-                    <?php if(!empty($data['company']->phone)) echo 'Phone: ' . htmlspecialchars($data['company']->phone) . '<br>'; ?>
-                    <?php if(!empty($data['company']->email)) echo 'Email: ' . htmlspecialchars($data['company']->email) . '<br>'; ?>
-                    <?php if(!empty($data['company']->website)) echo 'Website: ' . htmlspecialchars($data['company']->website) . '<br>'; ?>
-                    <?php if(!empty($data['company']->tax_number)) echo 'VAT/Tax No: ' . htmlspecialchars($data['company']->tax_number); ?>
+        <div class="main-content">
+            <!-- Header -->
+            <div class="invoice-header">
+                <div class="company-info">
+                    <?php if(!empty($data['company']->logo_path)): ?>
+                        <img src="<?= APP_URL ?>/uploads/<?= htmlspecialchars($data['company']->logo_path) ?>" class="company-logo" alt="Company Logo">
+                    <?php else: ?>
+                        <div class="company-name"><?= htmlspecialchars($data['company']->company_name) ?></div>
+                    <?php endif; ?>
+                    
+                    <div class="company-details">
+                        <?php if(!empty($data['company']->address)) echo nl2br(htmlspecialchars($data['company']->address)) . '<br>'; ?>
+                        <?php if(!empty($data['company']->phone)) echo 'Tel: ' . htmlspecialchars($data['company']->phone) . '<br>'; ?>
+                        <?php if(!empty($data['company']->email)) echo 'Email: ' . htmlspecialchars($data['company']->email) . '<br>'; ?>
+                        <?php if(!empty($data['company']->tax_number)) echo 'VAT/Tax Reg: ' . htmlspecialchars($data['company']->tax_number); ?>
+                    </div>
+                </div>
+
+                <div class="invoice-meta">
+                    <div class="document-title">Invoice</div>
+                    <table class="meta-table">
+                        <tr>
+                            <th>Invoice No:</th>
+                            <td><?= htmlspecialchars($data['invoice']->invoice_number) ?></td>
+                        </tr>
+                        <tr>
+                            <th>Date:</th>
+                            <td><?= date('d-M-Y', strtotime($data['invoice']->invoice_date)) ?></td>
+                        </tr>
+                        <tr>
+                            <th>Due Date:</th>
+                            <td><?= date('d-M-Y', strtotime($data['invoice']->due_date)) ?></td>
+                        </tr>
+                        <?php if(!empty($data['invoice']->cheque_date)): ?>
+                        <tr>
+                            <th>Cheque Date:</th>
+                            <td><?= date('d-M-Y', strtotime($data['invoice']->cheque_date)) ?></td>
+                        </tr>
+                        <?php endif; ?>
+                        <tr>
+                            <th>Status:</th>
+                            <td><strong><?= strtoupper($data['invoice']->status) ?></strong></td>
+                        </tr>
+                    </table>
                 </div>
             </div>
-            
-            <div class="invoice-info">
-                <h1 class="invoice-title">INVOICE</h1>
-                <table class="invoice-meta-table">
-                    <tr>
-                        <td>Invoice No:</td>
-                        <td><?= htmlspecialchars($data['invoice']->invoice_number) ?></td>
-                    </tr>
-                    <tr>
-                        <td>Date:</td>
-                        <td><?= date('d/m/Y', strtotime($data['invoice']->invoice_date)) ?></td>
-                    </tr>
-                    <tr>
-                        <td>Due Date:</td>
-                        <td><?= date('d/m/Y', strtotime($data['invoice']->due_date)) ?></td>
-                    </tr>
-                    <?php if(!empty($data['invoice']->sales_order_ref)): ?>
-                    <tr>
-                        <td>Sales Order:</td>
-                        <td><?= htmlspecialchars($data['invoice']->sales_order_ref) ?></td>
-                    </tr>
-                    <?php endif; ?>
-                    <?php if(!empty($data['invoice']->route_ref)): ?>
-                    <tr>
-                        <td>Route Ref:</td>
-                        <td><?= htmlspecialchars($data['invoice']->route_ref) ?></td>
-                    </tr>
-                    <?php endif; ?>
-                </table>
-            </div>
-        </div>
 
-        <!-- Customer Information Section -->
-        <div class="customer-section">
-            <div class="section-title">Bill To</div>
-            <div class="customer-details">
-                <strong><?= htmlspecialchars($data['invoice']->customer_name) ?></strong><br>
-                <?php if(!empty($data['invoice']->customer_code)) echo 'Customer Code: ' . htmlspecialchars($data['invoice']->customer_code) . '<br>'; ?>
-                <?php if(!empty($data['invoice']->address)) echo nl2br(htmlspecialchars($data['invoice']->address)) . '<br>'; ?>
-                <?php if(!empty($data['invoice']->phone)) echo 'Phone: ' . htmlspecialchars($data['invoice']->phone) . '<br>'; ?>
-                <?php if(!empty($data['invoice']->tax_number)) echo 'Tax No: ' . htmlspecialchars($data['invoice']->tax_number); ?>
+            <!-- Customer Section -->
+            <div class="customer-section">
+                <div class="bill-to">
+                    <div class="section-heading">Bill To</div>
+                    <div class="customer-name"><?= htmlspecialchars($data['invoice']->customer_name) ?></div>
+                    <div class="customer-details">
+                        <?php if(!empty($data['invoice']->address)) echo nl2br(htmlspecialchars($data['invoice']->address)) . '<br>'; ?>
+                        <?php if(!empty($data['invoice']->phone)) echo 'Tel: ' . htmlspecialchars($data['invoice']->phone); ?>
+                    </div>
+                </div>
             </div>
-        </div>
 
-        <!-- Product Table -->
-        <table class="items-table">
-            <thead>
-                <tr>
-                    <th style="width: 40px;" class="text-center">#</th>
-                    <th>Product</th>
-                    <th style="width: 80px;" class="text-center">SKU</th>
-                    <th style="width: 60px;" class="text-center">Qty</th>
-                    <th style="width: 100px;" class="text-right">Unit Price</th>
-                    <th style="width: 80px;" class="text-right">Discount</th>
-                    <th style="width: 120px;" class="text-right">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php $rowNum = 1; foreach($data['items'] as $item): ?>
-                <tr>
-                    <td class="text-center"><?= $rowNum++ ?></td>
-                    <td><?= htmlspecialchars($item->description) ?></td>
-                    <td class="text-center"><?= !empty($item->sku) ? htmlspecialchars($item->sku) : '-' ?></td>
-                    <td class="text-center"><?= number_format($item->quantity, 0) ?></td>
-                    <td class="text-right"><?= number_format($item->unit_price, 2) ?></td>
-                    <td class="text-right">
-                        <?php if($item->discount_value > 0): ?>
-                            <?= $item->discount_type == '%' ? $item->discount_value . '%' : number_format($item->discount_value, 2) ?>
-                        <?php else: ?>
-                            -
+            <!-- Items Table (Clean Professional List) -->
+            <table class="table-items">
+                <thead>
+                    <tr>
+                        <th class="center" style="width: 5%;">#</th>
+                        <th style="width: 45%;">Description</th>
+                        <th class="num" style="width: 10%;">Qty</th>
+                        <th class="num" style="width: 13%;">Price</th>
+                        <th class="num" style="width: 12%;">Disc.</th>
+                        <th class="num" style="width: 15%;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $rowNum = 1; foreach($data['items'] as $item): ?>
+                    <tr>
+                        <td class="center"><?= $rowNum++ ?></td>
+                        <td><?= htmlspecialchars($item->description) ?></td>
+                        <td class="num"><?= number_format($item->quantity, 0) ?></td>
+                        <td class="num"><?= number_format($item->unit_price, 2) ?></td>
+                        <td class="num">
+                            <?php if($item->discount_value > 0): ?>
+                                <?= $item->discount_type == '%' ? $item->discount_value . '%' : number_format($item->discount_value, 2) ?>
+                            <?php else: ?>
+                                -
+                            <?php endif; ?>
+                        </td>
+                        <td class="num"><?= number_format($item->total, 2) ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+
+            <?php 
+                // Calculations
+                $subTotal = $data['invoice']->total_amount;
+                $globalDiscountAmount = 0;
+                
+                if($data['invoice']->global_discount_val > 0) {
+                    if ($data['invoice']->global_discount_type == '%') {
+                        $globalDiscountAmount = $subTotal * ($data['invoice']->global_discount_val / 100);
+                    } else {
+                        $globalDiscountAmount = $data['invoice']->global_discount_val;
+                    }
+                }
+                
+                $netSubTotal = $subTotal - $globalDiscountAmount;
+                if ($netSubTotal < 0) $netSubTotal = 0;
+
+                $thisInvoiceGrandTotal = $netSubTotal + $data['invoice']->tax_amount;
+
+                $previousBalance = $totalOutstanding;
+                if (in_array($data['invoice']->status, ['Unpaid', 'Draft'])) {
+                    $previousBalance -= $thisInvoiceGrandTotal;
+                }
+                $amountDueNow = $previousBalance + $thisInvoiceGrandTotal;
+                $showUnpaid = in_array($data['invoice']->status, ['Unpaid', 'Draft']) && ($previousBalance > 0.01 || $previousBalance < -0.01);
+            ?>
+
+            <!-- Bottom Section: Payment Info & Totals -->
+            <div class="bottom-section">
+                
+                <!-- Dedicated Bank & Payment Details Block -->
+                <div class="payment-info">
+                    <div class="section-heading">Payment & Terms</div>
+                    <div class="terms-text">
+                        <strong>Cheques:</strong> To be drawn in favour of "Falcon Stationary PVT (LTD)".<br><br>
+                        <strong>Bank Deposits:</strong><br>
+                        • 1122015325 - Commercial Bank<br>
+                        • 101100120033403 - Peoples Bank<br><br>
+                        <strong>Returns:</strong> Market reaturns are allowed within a three months period only.
+                    </div>
+                </div>
+
+                <!-- Summary / Totals -->
+                <div class="summary-section">
+                    <table class="table-totals">
+                        <?php if($data['invoice']->global_discount_val > 0): ?>
+                            <tr>
+                                <th>Subtotal:</th>
+                                <td><?= number_format($subTotal, 2) ?></td>
+                            </tr>
+                            <tr>
+                                <th>Discount (<?= $data['invoice']->global_discount_type == '%' ? number_format($data['invoice']->global_discount_val, 2) . '%' : 'Flat' ?>):</th>
+                                <td>(<?= number_format($globalDiscountAmount, 2) ?>)</td>
+                            </tr>
                         <?php endif; ?>
-                    </td>
-                    <td class="text-right"><?= number_format($item->total, 2) ?></td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
 
-        <!-- Totals Section -->
-        <div class="totals-section">
-            <table class="totals-table">
-                <?php 
-                    $subTotal = $data['invoice']->total_amount;
-                    $globalDiscountVal = floatval($data['invoice']->global_discount_val ?? 0);
-                    $globalDiscountType = $data['invoice']->global_discount_type ?? 'Rs';
-                    $globalDiscountAmount = ($globalDiscountType === '%') ? ($subTotal * $globalDiscountVal / 100) : $globalDiscountVal;
-                    $netSubTotal = $subTotal - $globalDiscountAmount;
-                    $taxAmount = floatval($data['invoice']->tax_amount ?? 0);
-                    $thisInvoiceGrandTotal = $netSubTotal + $taxAmount;
+                        <tr>
+                            <th>Net Subtotal:</th>
+                            <td><?= number_format($netSubTotal, 2) ?></td>
+                        </tr>
+                        
+                        <?php if($data['invoice']->tax_amount > 0): ?>
+                        <tr>
+                            <th>Tax (<?= htmlspecialchars($data['invoice']->tax_name ?? 'Tax') ?> <?= $data['invoice']->rate_percentage ?? '' ?>%):</th>
+                            <td><?= number_format($data['invoice']->tax_amount, 2) ?></td>
+                        </tr>
+                        <?php endif; ?>
 
-                    $previousBalance = 0;
-                    $amountDueNow = $previousBalance + $thisInvoiceGrandTotal;
-                ?>
-                
-                <tr>
-                    <td>Subtotal:</td>
-                    <td class="text-right"><?= number_format($subTotal, 2) ?></td>
-                </tr>
-                
-                <?php if($data['invoice']->global_discount_val > 0): ?>
-                <tr>
-                    <td>Bill Discount (<?= $data['invoice']->global_discount_type == '%' ? number_format($data['invoice']->global_discount_val, 2) . '%' : 'Flat' ?>):</td>
-                    <td class="text-right">-<?= number_format($globalDiscountAmount, 2) ?></td>
-                </tr>
-                <?php endif; ?>
+                        <tr class="bold-row">
+                            <th>Current Invoice Total:</th>
+                            <td><?= number_format($thisInvoiceGrandTotal, 2) ?></td>
+                        </tr>
 
-                <tr>
-                    <td>Net Subtotal:</td>
-                    <td class="text-right"><?= number_format($netSubTotal, 2) ?></td>
-                </tr>
-                
-                <?php if($data['invoice']->tax_amount > 0): ?>
-                <tr>
-                    <td>Tax (<?= htmlspecialchars($data['invoice']->tax_name ?? 'Tax') ?> <?= $data['invoice']->rate_percentage ?? '' ?>%):</td>
-                    <td class="text-right"><?= number_format($data['invoice']->tax_amount, 2) ?></td>
-                </tr>
-                <?php endif; ?>
-
-                <tr class="grand-total">
-                    <td>Grand Total:</td>
-                    <td class="text-right"><?= number_format($thisInvoiceGrandTotal, 2) ?></td>
-                </tr>
-
-                <?php if(in_array($data['invoice']->status, ['Unpaid', 'Draft']) && ($previousBalance > 0.01 || $previousBalance < -0.01)): ?>
-                <tr class="highlight">
-                    <td>Previous Balance:</td>
-                    <td class="text-right"><?= number_format($previousBalance, 2) ?></td>
-                </tr>
-                <tr class="highlight">
-                    <td>Total Amount Due:</td>
-                    <td class="text-right"><?= number_format($amountDueNow, 2) ?></td>
-                </tr>
-                <?php endif; ?>
-            </table>
-        </div>
-
-        <!-- Payment Information Section -->
-        <?php if(!empty($data['invoice']->payment_method) || !empty($data['invoice']->status)): ?>
-        <div class="payment-section">
-            <div class="section-title">Payment Information</div>
-            <table class="payment-table">
-                <?php if(!empty($data['invoice']->payment_method)): ?>
-                <tr>
-                    <td>Payment Method:</td>
-                    <td><?= htmlspecialchars($data['invoice']->payment_method) ?></td>
-                </tr>
-                <?php endif; ?>
-                <tr>
-                    <td>Payment Status:</td>
-                    <td><?= htmlspecialchars($data['invoice']->status) ?></td>
-                </tr>
-                <?php 
-                $invoicePaid = $data['invoice_paid'] ?? 0;
-                $balanceDue = $thisInvoiceGrandTotal - $invoicePaid;
-                ?>
-                <?php if($invoicePaid > 0): ?>
-                <tr>
-                    <td>Amount Paid:</td>
-                    <td><?= number_format($invoicePaid, 2) ?></td>
-                </tr>
-                <?php endif; ?>
-                <?php if($balanceDue > 0.01): ?>
-                <tr>
-                    <td>Balance Due:</td>
-                    <td><?= number_format($balanceDue, 2) ?></td>
-                </tr>
-                <?php endif; ?>
-            </table>
-        </div>
-        <?php endif; ?>
-
-        <!-- Notes Section -->
-        <?php 
-        $hasNotes = false;
-        $notesContent = '';
-        if(!empty($data['invoice']->remarks)) {
-            $hasNotes = true;
-            $notesContent .= '<strong>Remarks:</strong> ' . nl2br(htmlspecialchars($data['invoice']->remarks)) . '<br><br>';
-        }
-        if(!empty($data['invoice']->delivery_instructions)) {
-            $hasNotes = true;
-            $notesContent .= '<strong>Delivery Instructions:</strong> ' . nl2br(htmlspecialchars($data['invoice']->delivery_instructions)) . '<br><br>';
-        }
-        if(!empty($data['invoice']->internal_notes)) {
-            $hasNotes = true;
-            $notesContent .= '<strong>Internal Notes:</strong> ' . nl2br(htmlspecialchars($data['invoice']->internal_notes));
-        }
-        ?>
-        <?php if($hasNotes): ?>
-        <div class="notes-section has-content">
-            <div class="section-title">Notes</div>
-            <div class="notes-content">
-                <?= $notesContent ?>
+                        <?php if($showUnpaid): ?>
+                            <tr>
+                                <th>Previous Balance:</th>
+                                <td><?= number_format($previousBalance, 2) ?></td>
+                            </tr>
+                            <tr class="due-row">
+                                <th>Total Amount Due:</th>
+                                <td><?= number_format($amountDueNow, 2) ?></td>
+                            </tr>
+                        <?php endif; ?>
+                    </table>
+                </div>
             </div>
-        </div>
-        <?php endif; ?>
 
-        <!-- Signature Section -->
-        <div class="signature-section">
-            <div class="signature-box">
-                <div class="signature-line">Prepared By</div>
-            </div>
-            <div class="signature-box">
-                <div class="signature-line">Customer Signature</div>
-            </div>
-            <div class="signature-box">
-                <div class="signature-line">Authorized Signature</div>
+            <!-- Signatures -->
+            <div class="signature-section">
+                <div class="signature-box">
+                    <div class="signature-line"></div>
+                    <div class="signature-label">Customer Signature</div>
+                </div>
+                <div class="signature-box">
+                    <div class="signature-line"></div>
+                    <div class="signature-label">Authorized Signatory</div>
+                </div>
             </div>
         </div>
 
-        <!-- Footer -->
-        <div class="footer">
-            <div class="footer-content">
-                <span>Printed: <?= date('d/m/Y H:i:s') ?></span>
-                <span><?= APP_NAME ?></span>
-                <span>Page 1 of 1</span>
-            </div>
+        <!-- System Footer -->
+        <div class="document-footer">
+            <div>Generated by <?= APP_NAME ?> on <?= date('d-M-Y H:i') ?></div>
+            <div>Page 1 of 1</div>
         </div>
+
     </div>
+
+    <!-- Excel Export Script -->
+    <script>
+        function exportToExcel() {
+            let html = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        table { border-collapse: collapse; width: 100%; font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; }
+                        td, th { vertical-align: top; }
+                        .mso-num { mso-number-format:"\\#\\,\\#\\#0\\.00"; text-align: right; }
+                        .mso-int { mso-number-format:"0"; text-align: right; }
+                    </style>
+                </head>
+                <body>
+                    <table>
+                        <!-- Header -->
+                        <tr>
+                            <td colspan="4" style="font-size: 16pt; font-weight: bold; text-transform: uppercase;">
+                                <?= htmlspecialchars($data['company']->company_name) ?>
+                            </td>
+                            <td colspan="2" style="font-size: 24pt; font-weight: bold; text-align: right; text-transform: uppercase;">
+                                INVOICE
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="4" style="color: #444; border-bottom: 2px solid #000; padding-bottom: 10px;">
+                                <?php if(!empty($data['company']->address)) echo nl2br(htmlspecialchars($data['company']->address)) . '<br>'; ?>
+                                <?php if(!empty($data['company']->phone)) echo 'Tel: ' . htmlspecialchars($data['company']->phone) . '<br>'; ?>
+                                <?php if(!empty($data['company']->email)) echo 'Email: ' . htmlspecialchars($data['company']->email) . '<br>'; ?>
+                                <?php if(!empty($data['company']->tax_number)) echo 'VAT/Tax Reg: ' . htmlspecialchars($data['company']->tax_number); ?>
+                            </td>
+                            <td colspan="2" style="text-align: right; border-bottom: 2px solid #000; padding-bottom: 10px;">
+                                <strong>Invoice No:</strong> <?= htmlspecialchars($data['invoice']->invoice_number) ?><br>
+                                <strong>Date:</strong> <?= date('d-M-Y', strtotime($data['invoice']->invoice_date)) ?><br>
+                                <strong>Due Date:</strong> <?= date('d-M-Y', strtotime($data['invoice']->due_date)) ?><br>
+                                <?php if(!empty($data['invoice']->cheque_date)): ?>
+                                <strong>Cheque Date:</strong> <?= date('d-M-Y', strtotime($data['invoice']->cheque_date)) ?><br>
+                                <?php endif; ?>
+                                <strong>Status:</strong> <?= strtoupper($data['invoice']->status) ?>
+                            </td>
+                        </tr>
+                        <tr><td colspan="6"></td></tr>
+
+                        <!-- Customer -->
+                        <tr>
+                            <td colspan="6" style="font-size: 10pt; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000;">Bill To</td>
+                        </tr>
+                        <tr>
+                            <td colspan="6" style="padding-top: 5px;">
+                                <strong style="font-size: 11pt;"><?= htmlspecialchars($data['invoice']->customer_name) ?></strong><br>
+                                <?php if(!empty($data['invoice']->address)) echo nl2br(htmlspecialchars($data['invoice']->address)) . '<br>'; ?>
+                                <?php if(!empty($data['invoice']->phone)) echo 'Tel: ' . htmlspecialchars($data['invoice']->phone); ?>
+                            </td>
+                        </tr>
+                        <tr><td colspan="6"></td></tr>
+
+                        <!-- Items Header -->
+                        <tr>
+                            <th style="border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 6px; text-transform: uppercase; text-align: center;">#</th>
+                            <th style="border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 6px; text-transform: uppercase; text-align: left;">Description</th>
+                            <th style="border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 6px; text-transform: uppercase; text-align: right;">Qty</th>
+                            <th style="border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 6px; text-transform: uppercase; text-align: right;">Price</th>
+                            <th style="border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 6px; text-transform: uppercase; text-align: right;">Disc.</th>
+                            <th style="border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 6px; text-transform: uppercase; text-align: right;">Total</th>
+                        </tr>
+                        
+                        <!-- Items Data -->
+                        <?php 
+                        $rowNum = 1; 
+                        $totalItems = count($data['items']); 
+                        foreach($data['items'] as $index => $item): 
+                            $isLast = ($index === $totalItems - 1);
+                            $bottomBorder = $isLast ? 'border-bottom: 2px solid #000;' : 'border-bottom: 1px solid #eaeaea;';
+                        ?>
+                        <tr>
+                            <td style="text-align: center; padding: 6px; <?= $bottomBorder ?>"><?= $rowNum++ ?></td>
+                            <td style="padding: 6px; <?= $bottomBorder ?>"><?= htmlspecialchars($item->description) ?></td>
+                            <td class="mso-int" style="padding: 6px; <?= $bottomBorder ?>"><?= $item->quantity ?></td>
+                            <td class="mso-num" style="padding: 6px; <?= $bottomBorder ?>"><?= $item->unit_price ?></td>
+                            <td class="mso-num" style="padding: 6px; <?= $bottomBorder ?>">
+                                <?php if($item->discount_value > 0): ?>
+                                    <?= $item->discount_type == '%' ? $item->discount_value . '%' : $item->discount_value ?>
+                                <?php else: ?>
+                                    0
+                                <?php endif; ?>
+                            </td>
+                            <td class="mso-num" style="padding: 6px; <?= $bottomBorder ?>"><?= $item->total ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                        
+                        <tr><td colspan="6"></td></tr>
+
+                        <?php
+                            // Calculate exactly how many rows the totals section takes up so we can rowspan the terms box perfectly
+                            $totalsRows = 3; 
+                            if($data['invoice']->global_discount_val > 0) $totalsRows++;
+                            if($data['invoice']->tax_amount > 0) $totalsRows++;
+                            if($showUnpaid) $totalsRows++; // Adding 1 for previous balance
+                        ?>
+
+                        <!-- Summary & Payment Box -->
+                        <tr>
+                            <td colspan="4" rowspan="<?= $totalsRows ?>" style="border: 1px solid #000; padding: 10px; background-color: #fafafa;">
+                                <strong style="font-size: 11pt; border-bottom: 1px solid #ccc;">Payment & Terms</strong><br><br>
+                                <strong>Cheques:</strong> To be drawn in favour of "Falcon Stationary PVT (LTD)".<br><br>
+                                <strong>Bank Deposits:</strong><br>
+                                • 1122015325 - Commercial Bank<br>
+                                • 101100120033403 - Peoples Bank<br><br>
+                                <strong>Returns:</strong> Market reaturns are allowed within a three months period only.
+                            </td>
+                            <th style="text-align: right; padding: 4px;">Subtotal:</th>
+                            <td class="mso-num" style="padding: 4px;"><?= $subTotal ?></td>
+                        </tr>
+
+                        <?php if($data['invoice']->global_discount_val > 0): ?>
+                        <tr>
+                            <th style="text-align: right; padding: 4px;">Discount (<?= $data['invoice']->global_discount_type == '%' ? number_format($data['invoice']->global_discount_val, 2) . '%' : 'Flat' ?>):</th>
+                            <td class="mso-num" style="padding: 4px; color: #cc0000;">-<?= $globalDiscountAmount ?></td>
+                        </tr>
+                        <?php endif; ?>
+
+                        <tr>
+                            <th style="text-align: right; padding: 4px;">Net Subtotal:</th>
+                            <td class="mso-num" style="padding: 4px;"><?= $netSubTotal ?></td>
+                        </tr>
+
+                        <?php if($data['invoice']->tax_amount > 0): ?>
+                        <tr>
+                            <th style="text-align: right; padding: 4px;">Tax (<?= htmlspecialchars($data['invoice']->tax_name ?? 'Tax') ?> <?= $data['invoice']->rate_percentage ?? '' ?>%):</th>
+                            <td class="mso-num" style="padding: 4px;"><?= $data['invoice']->tax_amount ?></td>
+                        </tr>
+                        <?php endif; ?>
+
+                        <tr>
+                            <th style="border-top: 2px solid #000; border-bottom: 2px solid #000; text-align: right; padding: 6px;">Current Invoice Total:</th>
+                            <td class="mso-num" style="border-top: 2px solid #000; border-bottom: 2px solid #000; font-weight: bold; padding: 6px;"><?= $thisInvoiceGrandTotal ?></td>
+                        </tr>
+
+                        <?php if($showUnpaid): ?>
+                            <tr>
+                                <th style="text-align: right; padding: 4px;">Previous Balance:</th>
+                                <td class="mso-num" style="padding: 4px;"><?= $previousBalance ?></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4"></td>
+                                <th style="border-bottom: 2px solid #000; text-align: right; padding: 6px;">Total Amount Due:</th>
+                                <td class="mso-num" style="border-bottom: 2px solid #000; font-weight: bold; padding: 6px;"><?= $amountDueNow ?></td>
+                            </tr>
+                        <?php endif; ?>
+
+                    </table>
+                </body>
+                </html>
+            `;
+
+            // Create Blob and Trigger Download
+            let blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+            let link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'Invoice_<?= htmlspecialchars($data['invoice']->invoice_number) ?>.xls';
+            
+            // Append, click, and cleanup
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
 </body>
 </html>

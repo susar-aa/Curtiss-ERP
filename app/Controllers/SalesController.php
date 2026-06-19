@@ -580,6 +580,7 @@ class SalesController extends Controller {
             exit;
         }
 
+        // Try to detect type: check both sales_orders and invoices tables
         $type = $_GET['type'] ?? null;
         if (!$type) {
             $this->db->query("SELECT id FROM sales_orders WHERE id = :id");
@@ -591,6 +592,7 @@ class SalesController extends Controller {
             }
         }
 
+        // Fetch all items for catalog
         $items = $this->itemModel->getAllItems();
 
         // Standardize wholesale pricing for catalog items
@@ -609,16 +611,20 @@ class SalesController extends Controller {
             }
         }
 
+        // If type is sales_order, first try the sales_orders table, then fall back to invoices
+        // Route sales orders are stored in invoices table with stock_status='reserved'
         $inv = null;
         $editingItems = [];
+        $actualType = $type;
 
         if ($type === 'sales_order') {
-            // Fetch Sales Order
+            // Try sales_orders table first
             $this->db->query("SELECT * FROM sales_orders WHERE id = :id");
             $this->db->bind(':id', $id);
             $order = $this->db->single();
+
             if ($order) {
-                // Map Sales Order fields to Invoice fields for the unified view
+                // Found in sales_orders table - map fields
                 $inv = new stdClass();
                 $inv->id = $order->id;
                 $inv->invoice_number = $order->order_number;
@@ -652,6 +658,14 @@ class SalesController extends Controller {
                     $itemObj->total = $oi->total;
                     $editingItems[] = $itemObj;
                 }
+            } else {
+                // Not found in sales_orders - fall back to invoices table (route sales orders)
+                $invoiceModel = $this->model('Invoice');
+                $inv = $invoiceModel->getInvoiceById($id);
+                if ($inv) {
+                    $actualType = 'invoice';
+                    $editingItems = $invoiceModel->getInvoiceItems($id);
+                }
             }
         } else {
             // Fetch Invoice
@@ -663,8 +677,11 @@ class SalesController extends Controller {
         }
 
         if (!$inv) {
-            die("Record not found.");
+            error_log("SalesController::edit - Record not found for ID={$id}, type={$type}, actualType={$actualType}, GET=" . json_encode($_GET));
+            die("Record not found. ID: {$id}, Type: {$type}");
         }
+
+        $type = $actualType;
 
         // Fetch all payment terms
         $termModel = $this->model('PaymentTerm');
