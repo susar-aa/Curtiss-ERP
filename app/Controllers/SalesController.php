@@ -707,10 +707,19 @@ class SalesController extends Controller {
         }
 
         // Calculate amount paid for this invoice
-        $db = new Database();
-        $db->query("SELECT COALESCE(SUM(amount), 0) as paid FROM customer_payments WHERE invoice_id = :id");
-        $db->bind(':id', $id);
-        $invoicePaid = $db->single()->paid ?? 0;
+        $invoicePaid = 0;
+        try {
+            $db = new Database();
+            $db->query("SELECT COALESCE(SUM(amount), 0) as paid FROM customer_payments WHERE invoice_id = :id");
+            $db->bind(':id', $id);
+            $row = $db->single();
+            if ($row) {
+                $invoicePaid = floatval($row->paid);
+            }
+        } catch (Exception $e) {
+            // Table may not exist, default to 0
+            $invoicePaid = 0;
+        }
 
         $data = [
             'invoice' => $invoice,

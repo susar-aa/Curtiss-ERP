@@ -1,4 +1,7 @@
-@ -27,15 +27,21 @@ $totalOutstanding = $billed - $paid - $credited;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice <?= htmlspecialchars($data['invoice']->invoice_number) ?> - <?= APP_NAME ?></title>
     <style>
@@ -20,7 +23,7 @@
         }
         
         .a4-container { 
-@ -43,198 +49,487 @@ $totalOutstanding = $billed - $paid - $credited;
+            width: 210mm; 
             min-height: 297mm; 
             background: #fff; 
             padding: 15mm 20mm; 
@@ -341,7 +344,6 @@
                 right: 20mm;
             }
             
-            /* Prevent page breaks inside important sections */
             .header-section,
             .customer-section,
             .totals-section,
@@ -349,7 +351,6 @@
                 page-break-inside: avoid;
             }
             
-            /* Repeat table header on new page */
             .items-table thead {
                 display: table-header-group;
             }
@@ -360,7 +361,6 @@
             }
         }
 
-        /* Screen Responsive */
         @media (max-width: 768px) {
             body {
                 padding: 10px;
@@ -506,9 +506,15 @@
         <div class="totals-section">
             <table class="totals-table">
                 <?php 
-                    // Calculate exact correct totals working downwards from the DB subtotal
                     $subTotal = $data['invoice']->total_amount;
-@ -263,51 +558,133 @@ $totalOutstanding = $billed - $paid - $credited;
+                    $globalDiscountVal = floatval($data['invoice']->global_discount_val ?? 0);
+                    $globalDiscountType = $data['invoice']->global_discount_type ?? 'Rs';
+                    $globalDiscountAmount = ($globalDiscountType === '%') ? ($subTotal * $globalDiscountVal / 100) : $globalDiscountVal;
+                    $netSubTotal = $subTotal - $globalDiscountAmount;
+                    $taxAmount = floatval($data['invoice']->tax_amount ?? 0);
+                    $thisInvoiceGrandTotal = $netSubTotal + $taxAmount;
+
+                    $previousBalance = 0;
                     $amountDueNow = $previousBalance + $thisInvoiceGrandTotal;
                 ?>
                 
@@ -541,7 +547,6 @@
                     <td class="text-right"><?= number_format($thisInvoiceGrandTotal, 2) ?></td>
                 </tr>
 
-                <!-- Outstanding Balance for Unpaid Invoices -->
                 <?php if(in_array($data['invoice']->status, ['Unpaid', 'Draft']) && ($previousBalance > 0.01 || $previousBalance < -0.01)): ?>
                 <tr class="highlight">
                     <td>Previous Balance:</td>
@@ -571,7 +576,6 @@
                     <td><?= htmlspecialchars($data['invoice']->status) ?></td>
                 </tr>
                 <?php 
-                // Amount paid for this invoice (calculated in controller)
                 $invoicePaid = $data['invoice_paid'] ?? 0;
                 $balanceDue = $thisInvoiceGrandTotal - $invoicePaid;
                 ?>
@@ -640,3 +644,4 @@
         </div>
     </div>
 </body>
+</html>
