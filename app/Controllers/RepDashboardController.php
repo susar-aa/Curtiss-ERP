@@ -445,15 +445,24 @@ class RepDashboardController extends Controller {
                             'territory' => $territory,
                             'credit_limit' => isset($c['credit_limit']) ? floatval($c['credit_limit']) : 0.00,
                             'customer_type' => $c['customer_type'] ?? 'Standard',
-                            'notes' => $c['notes'] ?? null
+                            'notes' => $c['notes'] ?? null,
+                            'uuid' => $c['uuid'] ?? null
                         ]);
                         $this->logActivity('Update Customer', 'Customer', "Updated customer profile via mobile sync: {$c['name']}", $serverId);
                     } else {
-                        // Check if customer with same name and phone already exists to prevent duplicate
-                        $this->db->query("SELECT id FROM customers WHERE name = :name AND phone = :phone LIMIT 1");
-                        $this->db->bind(':name', $c['name']);
-                        $this->db->bind(':phone', $c['phone'] ?? null);
-                        $existingCust = $this->db->single();
+                        // Check if customer with same UUID or same name and phone already exists
+                        $existingCust = null;
+                        if (!empty($c['uuid'])) {
+                            $this->db->query("SELECT id FROM customers WHERE uuid = :uuid LIMIT 1");
+                            $this->db->bind(':uuid', $c['uuid']);
+                            $existingCust = $this->db->single();
+                        }
+                        if (!$existingCust) {
+                            $this->db->query("SELECT id FROM customers WHERE name = :name AND phone = :phone LIMIT 1");
+                            $this->db->bind(':name', $c['name']);
+                            $this->db->bind(':phone', $c['phone'] ?? null);
+                            $existingCust = $this->db->single();
+                        }
 
                         if ($existingCust) {
                             $serverId = $existingCust->id;
@@ -482,7 +491,8 @@ class RepDashboardController extends Controller {
                                 'territory' => $territory,
                                 'credit_limit' => isset($c['credit_limit']) ? floatval($c['credit_limit']) : 0.00,
                                 'customer_type' => $c['customer_type'] ?? 'Standard',
-                                'notes' => $c['notes'] ?? null
+                                'notes' => $c['notes'] ?? null,
+                                'uuid' => $c['uuid'] ?? null
                             ]);
                             $this->logActivity('Update Customer', 'Customer', "Updated customer profile via mobile sync: {$c['name']}", $serverId);
                         } else {
@@ -498,7 +508,8 @@ class RepDashboardController extends Controller {
                                 'territory' => $c['territory'] ?? null,
                                 'credit_limit' => isset($c['credit_limit']) ? floatval($c['credit_limit']) : 0.00,
                                 'customer_type' => $c['customer_type'] ?? 'Standard',
-                                'notes' => $c['notes'] ?? null
+                                'notes' => $c['notes'] ?? null,
+                                'uuid' => $c['uuid'] ?? null
                             ]);
                             $serverId = $this->customerModel->getLastInsertId();
                             $this->logActivity('Add Customer', 'Customer', "Registered new customer profile via mobile sync: {$c['name']}", $serverId);
@@ -517,12 +528,20 @@ class RepDashboardController extends Controller {
                 foreach ($payload['routes'] as $r) {
                     $localId = intval($r['local_id']);
                     
-                    // Check if a route with the same user_id, route_name and start_time already exists to prevent duplicate
-                    $this->db->query("SELECT id FROM rep_daily_routes WHERE user_id = :user_id AND route_name = :route_name AND start_time = :start_time LIMIT 1");
-                    $this->db->bind(':user_id', $userId);
-                    $this->db->bind(':route_name', $r['route_name']);
-                    $this->db->bind(':start_time', $r['start_time']);
-                    $existingRoute = $this->db->single();
+                    // Check if a route with the same UUID or user_id, route_name and start_time already exists to prevent duplicate
+                    $existingRoute = null;
+                    if (!empty($r['uuid'])) {
+                        $this->db->query("SELECT id FROM rep_daily_routes WHERE uuid = :uuid LIMIT 1");
+                        $this->db->bind(':uuid', $r['uuid']);
+                        $existingRoute = $this->db->single();
+                    }
+                    if (!$existingRoute) {
+                        $this->db->query("SELECT id FROM rep_daily_routes WHERE user_id = :user_id AND route_name = :route_name AND start_time = :start_time LIMIT 1");
+                        $this->db->bind(':user_id', $userId);
+                        $this->db->bind(':route_name', $r['route_name']);
+                        $this->db->bind(':start_time', $r['start_time']);
+                        $existingRoute = $this->db->single();
+                    }
 
                     if ($existingRoute) {
                         $serverId = $existingRoute->id;
@@ -531,19 +550,21 @@ class RepDashboardController extends Controller {
                                           end_time = :end_time, 
                                           end_lat = :end_lat, 
                                           end_lng = :end_lng, 
-                                          status = :status 
+                                          status = :status,
+                                          uuid = :uuid 
                                           WHERE id = :id");
                         $this->db->bind(':end_meter', isset($r['end_meter']) && $r['end_meter'] !== '' ? $r['end_meter'] : null);
                         $this->db->bind(':end_time', $r['end_time'] ?? null);
                         $this->db->bind(':end_lat', $r['end_lat'] ?? null);
                         $this->db->bind(':end_lng', $r['end_lng'] ?? null);
                         $this->db->bind(':status', ($r['status'] ?? 'Active') === 'Completed' ? 'Pending GL' : ($r['status'] ?? 'Active'));
+                        $this->db->bind(':uuid', $r['uuid'] ?? null);
                         $this->db->bind(':id', $serverId);
                         $this->db->execute();
                         $this->logActivity('Update Route', 'RepTracking', "Finalized and closed daily representative route via mobile sync: {$r['route_name']}", $serverId);
                     } else {
-                        $this->db->query("INSERT INTO rep_daily_routes (user_id, route_name, start_meter, start_time, start_lat, start_lng, end_meter, end_time, end_lat, end_lng, status) 
-                                          VALUES (:user_id, :route_name, :start_meter, :start_time, :start_lat, :start_lng, :end_meter, :end_time, :end_lat, :end_lng, :status)");
+                        $this->db->query("INSERT INTO rep_daily_routes (user_id, route_name, start_meter, start_time, start_lat, start_lng, end_meter, end_time, end_lat, end_lng, status, uuid) 
+                                          VALUES (:user_id, :route_name, :start_meter, :start_time, :start_lat, :start_lng, :end_meter, :end_time, :end_lat, :end_lng, :status, :uuid)");
                         $this->db->bind(':user_id', $userId);
                         $this->db->bind(':route_name', $r['route_name']);
                         $this->db->bind(':start_meter', $r['start_meter']);
@@ -555,6 +576,7 @@ class RepDashboardController extends Controller {
                         $this->db->bind(':end_lat', $r['end_lat'] ?? null);
                         $this->db->bind(':end_lng', $r['end_lng'] ?? null);
                         $this->db->bind(':status', ($r['status'] ?? 'Active') === 'Completed' ? 'Pending GL' : ($r['status'] ?? 'Active'));
+                        $this->db->bind(':uuid', $r['uuid'] ?? null);
                         $this->db->execute();
                         $serverId = $this->db->lastInsertId();
                         $this->logActivity('Create Route', 'RepTracking', "Created daily representative route via mobile sync: {$r['route_name']}", $serverId);
@@ -758,19 +780,25 @@ class RepDashboardController extends Controller {
 
                     $routeServerId = $getRouteServerId(intval($p['server_route_id'] ?? 0));
                     
-                    // Idempotency: Check if this payment was already synced via mobile_local_id and mobile_rep_id
-                    if ($localId > 0) {
+                    // Idempotency: Check if this payment was already synced via UUID or mobile_local_id and mobile_rep_id
+                    $existingPmt = null;
+                    if (!empty($p['uuid'])) {
+                        $this->db->query("SELECT id FROM pending_collections WHERE uuid = :uuid LIMIT 1");
+                        $this->db->bind(':uuid', $p['uuid']);
+                        $existingPmt = $this->db->single();
+                    }
+                    if (!$existingPmt && $localId > 0) {
                         $this->db->query("SELECT id FROM pending_collections WHERE mobile_local_id = :mlid AND mobile_rep_id = :mrepid LIMIT 1");
                         $this->db->bind(':mlid', $localId);
                         $this->db->bind(':mrepid', $userId);
                         $existingPmt = $this->db->single();
-                        if ($existingPmt) {
-                            continue; // Already processed, skip creating duplicate
-                        }
+                    }
+                    if ($existingPmt) {
+                        continue; // Already processed, skip creating duplicate
                     }
 
-                    $this->db->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, status, notes, mobile_local_id, mobile_rep_id) 
-                                      VALUES (:customer_id, :route_id, :payment_method, :amount, :bank_name, :cheque_number, :cheque_date, 'Pending', 'Synced from mobile app', :mobile_local_id, :mobile_rep_id)");
+                    $this->db->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, status, notes, mobile_local_id, mobile_rep_id, uuid) 
+                                      VALUES (:customer_id, :route_id, :payment_method, :amount, :bank_name, :cheque_number, :cheque_date, 'Pending', 'Synced from mobile app', :mobile_local_id, :mobile_rep_id, :uuid)");
                     $this->db->bind(':customer_id', $custServerId);
                     $this->db->bind(':route_id', $routeServerId ?: null);
                     $this->db->bind(':payment_method', $p['payment_method']);
@@ -780,6 +808,7 @@ class RepDashboardController extends Controller {
                     $this->db->bind(':cheque_date', !empty($p['cheque_date']) ? $p['cheque_date'] : null);
                     $this->db->bind(':mobile_local_id', $localId > 0 ? $localId : null);
                     $this->db->bind(':mobile_rep_id', $userId);
+                    $this->db->bind(':uuid', $p['uuid'] ?? null);
                     $this->db->execute();
                     
                     $this->logActivity('Record Collection', 'Billing', "Recorded payment collection Rs: " . number_format(floatval($p['amount']), 2) . " for Customer ID {$custServerId} via mobile sync");
@@ -799,5 +828,79 @@ class RepDashboardController extends Controller {
             ]);
             exit;
         }
+    }
+
+    public function sync_verify() {
+        header('Content-Type: application/json');
+        
+        $json = file_get_contents('php://input');
+        $payload = json_decode($json, true);
+        
+        if (!$payload || !isset($payload['uuids']) || !is_array($payload['uuids'])) {
+            echo json_encode(['success' => false, 'message' => 'Missing UUIDs list.']);
+            exit;
+        }
+
+        $results = [];
+        foreach ($payload['uuids'] as $item) {
+            $uuid = $item['uuid'] ?? '';
+            $type = $item['type'] ?? ''; // 'invoice', 'payment', 'route', 'customer'
+            
+            if (empty($uuid) || empty($type)) continue;
+
+            $exists = false;
+            $serverId = 0;
+
+            try {
+                if ($type === 'invoice') {
+                    $this->db->query("SELECT id FROM invoices WHERE uuid = :uuid LIMIT 1");
+                    $this->db->bind(':uuid', $uuid);
+                    $row = $this->db->single();
+                    if ($row) {
+                        $exists = true;
+                        $serverId = intval($row->id);
+                    }
+                } elseif ($type === 'payment') {
+                    $this->db->query("SELECT id FROM pending_collections WHERE uuid = :uuid LIMIT 1");
+                    $this->db->bind(':uuid', $uuid);
+                    $row = $this->db->single();
+                    if ($row) {
+                        $exists = true;
+                        $serverId = intval($row->id);
+                    }
+                } elseif ($type === 'route') {
+                    $this->db->query("SELECT id FROM rep_daily_routes WHERE uuid = :uuid LIMIT 1");
+                    $this->db->bind(':uuid', $uuid);
+                    $row = $this->db->single();
+                    if ($row) {
+                        $exists = true;
+                        $serverId = intval($row->id);
+                    }
+                } elseif ($type === 'customer') {
+                    $this->db->query("SELECT id FROM customers WHERE uuid = :uuid LIMIT 1");
+                    $this->db->bind(':uuid', $uuid);
+                    $row = $this->db->single();
+                    if ($row) {
+                        $exists = true;
+                        $serverId = intval($row->id);
+                    }
+                }
+            } catch (Exception $e) {
+                // query failed or table column doesn't exist
+            }
+
+            $results[] = [
+                'uuid' => $uuid,
+                'type' => $type,
+                'verified' => $exists,
+                'server_id' => $serverId
+            ];
+        }
+
+        echo json_encode([
+            'success' => true,
+            'results' => $results
+        ]);
+        exit;
     }
 }
