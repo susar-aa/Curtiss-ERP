@@ -192,11 +192,11 @@ class RepDashboardController extends Controller {
                 ];
             }
             
-            // 5. Get representatives - ALWAYS FULL LIST
+            // 5. Get representatives - ALWAYS FULL LIST (Only active ones)
             $this->db->query("SELECT u.id, u.username, u.password_hash, u.employee_id, e.first_name, e.last_name 
                         FROM users u 
                         LEFT JOIN employees e ON u.employee_id = e.id 
-                        WHERE u.role = 'rep'");
+                        WHERE u.role = 'rep' AND (u.status IS NULL OR u.status = 'Active')");
             $reps = $this->db->resultSet() ?: [];
             $repsJson = [];
             foreach ($reps as $rep) {
@@ -384,22 +384,17 @@ class RepDashboardController extends Controller {
             exit;
         }
 
-        // Validate that user exists in database, fallback if not found to prevent FK constraints failure
-        $this->db->query("SELECT id FROM users WHERE id = :id");
+        // Validate that user exists in database and is active
+        $this->db->query("SELECT id, status FROM users WHERE id = :id");
         $this->db->bind(':id', $userId);
         $userRow = $this->db->single();
         if (!$userRow) {
-            // User ID doesn't exist on this server, search for any rep role user first
-            $this->db->query("SELECT id FROM users WHERE role = 'rep' LIMIT 1");
-            $repUser = $this->db->single();
-            if ($repUser) {
-                $userId = intval($repUser->id);
-            } else {
-                // Fall back to first user in database or default to 1
-                $this->db->query("SELECT id FROM users LIMIT 1");
-                $firstUser = $this->db->single();
-                $userId = $firstUser ? intval($firstUser->id) : 1;
-            }
+            echo json_encode(['success' => false, 'message' => 'Unauthorized: User ID does not exist on server.']);
+            exit;
+        }
+        if (isset($userRow->status) && strtolower($userRow->status) !== 'active') {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized: User account is blocked/inactive.']);
+            exit;
         }
 
         // Set session user ID temporarily for audit log tracking

@@ -136,7 +136,8 @@ class UserController extends Controller {
                     'password' => $password,
                     'role' => $role,
                     'signature_path' => $signaturePath,
-                    'employee_id' => $employeeId
+                    'employee_id' => $employeeId,
+                    'status' => $_POST['status'] ?? 'Active'
                 ];
 
                 if ($this->userModel->createUser($userData)) {
@@ -238,7 +239,8 @@ class UserController extends Controller {
                     'email' => $email,
                     'role' => $role,
                     'employee_id' => $employeeId,
-                    'signature_path' => $signaturePath
+                    'signature_path' => $signaturePath,
+                    'status' => $_POST['status'] ?? 'Active'
                 ];
 
                 if ($this->userModel->updateUser($updateData)) {
@@ -301,11 +303,21 @@ class UserController extends Controller {
             exit;
         }
 
-        $username = $this->getUsernameById($id);
-        if ($username) {
+        $db = new Database();
+        $db->query("SELECT role, username FROM users WHERE id = :id");
+        $db->bind(':id', $id);
+        $userRow = $db->single();
+
+        if ($userRow) {
+            if (strtolower($userRow->role) === 'rep') {
+                $_SESSION['flash_error'] = 'Representative accounts cannot be deleted to preserve the route and audit trails. Please block this user by setting their status to Blocked/Inactive instead.';
+                header('Location: ' . APP_URL . '/user');
+                exit;
+            }
+
             if ($this->userModel->deleteUser($id)) {
-                $this->logActivity('User Deleted', 'Security', "User account '{$username}' deleted successfully.", $id);
-                $_SESSION['flash_success'] = "User account '{$username}' deleted successfully.";
+                $this->logActivity('User Deleted', 'Security', "User account '{$userRow->username}' deleted successfully.", $id);
+                $_SESSION['flash_success'] = "User account '{$userRow->username}' deleted successfully.";
             } else {
                 $_SESSION['flash_error'] = 'Failed to delete user account.';
             }

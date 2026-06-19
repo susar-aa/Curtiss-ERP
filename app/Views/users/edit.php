@@ -79,6 +79,14 @@
                 </div>
 
                 <div class="form-group">
+                    <label>Account Status *</label>
+                    <select name="status" class="form-control" required>
+                        <option value="Active" <?= ($data['user']->status ?? 'Active') === 'Active' ? 'selected' : '' ?>>Active</option>
+                        <option value="Blocked" <?= ($data['user']->status ?? 'Active') === 'Blocked' ? 'selected' : '' ?>>Blocked / Inactive</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label>Digital Signature (Optional PNG/JPG)</label>
                     <?php if(!empty($data['user']->signature_path)): ?>
                         <div style="display:flex; align-items:center; gap:15px; margin-bottom:10px; background:rgba(0,0,0,0.02); padding:8px; border-radius:6px; border:1px solid var(--mac-border);">

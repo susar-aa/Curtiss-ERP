@@ -1,482 +1,493 @@
-# Curtiss ERP System - Comprehensive Analysis Report
+# Curtiss ERP Rep App - Sync System Analysis Report
 
 ## Executive Summary
 
-The Curtiss ERP system is a multi-platform business management solution consisting of:
-1. **Main ERP Web Application** (PHP-based MVC framework)
-2. **Sales Representative Mobile App** (Android - Java)
-3. **Driver Mobile App** (Android - Java)
-
-The system provides comprehensive ERP functionality including sales, inventory, accounting, CRM, HRM, and field operations management with offline-first mobile capabilities.
+This report provides a comprehensive analysis of the synchronization system between the Curtiss ERP Rep App (Android) and the Curtiss ERP server (PHP). The system uses a **pull-push-verify** three-phase architecture with periodic background sync. While the system has robust foundations, there are **critical data loss risks, race conditions, architectural flaws, and missing features** that need to be addressed.
 
 ---
 
-## 🚨 CRITICAL SECURITY ISSUES
+## 1. Architecture Overview
 
-### 1. **HARDCODED CREDENTIALS IN CONFIGURATION** (CRITICAL)
-**Location:** `config/database.php`
+### Current Sync Flow
 
-```php
-define('DB_HOST', 'localhost');
-define('DB_USER', 'suzxlabs');
-define('DB_PASS', 'Susara@200611003614');  // EXPOSED PASSWORD
-define('DB_NAME', 'curtiss_erp');
-define('BREVO_API_KEY', 'xkeysib-...');    // EXPOSED API KEY
-define('WC_CONSUMER_KEY', 'ck_...');       // EXPOSED WooCommerce Key
-define('WC_CONSUMER_SECRET', 'cs_...');    // EXPOSED WooCommerce Secret
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        ANDROID APP                               │
+│                                                                  │
+│  SyncWorker (Periodic - 15 min)                                  │
+│    └─ executePull() only (server → mobile)                       │
+│                                                                  │
+│  SyncManager                                                    │
+│    ├─ startPullSync()     → executePull()    (server → mobile)   │
+│    ├─ startManualPushSync()                                      │
+│    │   ├─ Phase 1: executePush()    (mobile → server)            │
+│    │   └─ Phase 2: executeVerification() (verify UUIDs)          │
+│    └─ SyncLock (ReentrantLock)                                   │
+│                                                                  │
+│  DatabaseHelper (SQLite - curtiss_offline.db)                    │
+│    ├─ products, categories, customers, daily_routes              │
+│    ├─ invoices, invoice_items, payments                          │
+│    ├─ server_routes, payment_terms, credit_invoices              │
+│    ├─ discount_rules, discount_rule_tiers                        │
+│    └─ image_download_queue, sync_logs                            │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    SERVER (PHP)                                   │
+│                                                                  │
+│  RepDashboardController                                         │
+│    ├─ sync_pull()   → GET  /rep/RepDashboard/sync_pull          │
+│    ├─ sync_push()   → POST /rep/RepDashboard/sync_push          │
+│    └─ sync_verify() → POST /rep/RepDashboard/sync_verify        │
+│                                                                  │
+│  Database (MySQL)                                                │
+│    ├─ items, item_categories, customers                          │
+│    ├─ invoices, invoice_items                                    │
+│    ├─ rep_daily_routes, pending_collections                      │
+│    ├─ users, employees, mca_areas                                │
+│    ├─ payment_terms, chart_of_accounts                           │
+│    └─ system_audit_trail                                         │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**Risk:** Complete system compromise if repository is public or leaked
-**Impact:** Database access, email service abuse, WooCommerce store compromise
+---
 
-### 2. **DEFAULT ADMIN CREDENTIALS WITH AUTO-RESET** (CRITICAL)
-**Location:** `app/Controllers/AuthController.php` (lines 84-87)
+## 2. CRITICAL BUGS & DATA LOSS RISKS
 
-```php
-if ($data['username'] === 'admin' && $data['password'] === 'admin123') {
-    $this->userModel->updatePassword('admin', 'admin123');
+### 2.1 [CRITICAL] Pull Sync Overwrites Local Unsynced Data
+
+**Location:** `SyncManager.java` - `executePull()` method
+
+**Problem:** The pull sync unconditionally overwrites local data with server data. If a user creates an invoice offline and then a pull sync runs (either manually or via background SyncWorker), the pull will overwrite the local `daily_routes` and `invoices` tables with server data, potentially **deleting unsynced local invoices**.
+
+**Evidence:**
+```java
+// Line ~ in executePull() - active route handling:
+if (localIsSynced == 1) {
+    db.update("daily_routes", rCv, "id = ?", ...);
+}
+// This only protects if local is_synced=1, but the route INSERT/UPDATE
+// happens regardless of local unsynced data
+```
+
+**Impact:** A background SyncWorker running every 15 minutes can silently destroy locally created invoices that haven't been pushed yet.
+
+**Fix:** Pull sync should NEVER overwrite records that have `is_synced = 0` (unsynced local changes). The condition `if (localIsSynced == 1)` is correct but only applied to route updates, not to the initial route creation check.
+
+### 2.2 [CRITICAL] Invoice Items Sync Bug - All Items Applied to All Invoices
+
+**Location:** `SyncManager.java` - `executePull()` method, lines ~350-370
+
+**Problem:** When syncing invoice items for active route invoices, the code does:
+```java
+JSONArray items = response.getJSONArray("active_route_invoice_items");
+db.execSQL("DELETE FROM invoice_items WHERE invoice_id = " + localInvId);
+for (int k = 0; k < items.length(); k++) {
+    JSONObject itemObj = items.getJSONObject(k);
+    if (itemObj.getInt("invoice_id") == serverInvId) {
+        // insert item
+    }
 }
 ```
 
-**Risk:** Permanent backdoor - admin password is reset to known default on every login attempt
-**Impact:** Unauthorized admin access
+This iterates through ALL invoice items from the server for EVERY invoice, but only inserts those matching the current `serverInvId`. However, the `DELETE` happens before the filtered insert. If there are multiple invoices, the first invoice's items will be correctly inserted, but the second invoice will first DELETE all its items (which is fine), then iterate through ALL items again and only insert matching ones. This is **inefficient but functionally correct**.
 
-### 3. **HARDCODED DEFAULT REPRESENTATIVE ACCOUNT IN MOBILE APP** (HIGH)
-**Location:** `../Curtiss ERP Mobile App/app/src/main/java/com/example/curtiss/DatabaseHelper.java` (lines 428-438)
+**However**, the real issue is that `active_route_invoice_items` is a flat array of ALL items for ALL invoices on the route. If the server returns items for invoices that are NOT in `active_route_invoices` array, those items will never be inserted. This is a **data integrity issue** - items can be lost.
+
+### 2.3 [HIGH] No Transaction Rollback on Partial Push Failure
+
+**Location:** `SyncManager.java` - `executePush()` method
+
+**Problem:** The push sync processes customers, routes, invoices, and payments sequentially. If invoice processing fails after customers and routes were already created on the server, the customers and routes remain on the server but the local app marks them as failed. This creates **orphaned server records** and **inconsistent state**.
+
+**Evidence:** The server-side `sync_push()` does NOT use database transactions. Each customer insert/update is committed immediately. If a subsequent invoice fails, the customers are already persisted.
+
+### 2.4 [HIGH] SyncWorker Runs Pull-Only, Can Corrupt Local State
+
+**Location:** `SyncWorker.java`
+
+**Problem:** The background SyncWorker only runs `executePull()`, which downloads server data. If the user has unsynced local changes (invoices, routes, customers), the pull can overwrite or conflict with them. The SyncWorker runs every 15 minutes with no check for pending local uploads.
+
+**Fix:** SyncWorker should check `hasPendingUploads()` before running pull, or skip pull entirely if there are unsynced local items.
+
+### 2.5 [HIGH] SQL Injection Risk in executePull()
+
+**Location:** `SyncManager.java` - multiple locations
+
+**Problem:** String concatenation is used for SQL queries with user/API-controlled data:
 
 ```java
-cv.put("username", "rep");
-cv.put("password_hash", "$2a$10$tM78Fm9nCqS8/DkP7M3U2e4k9F10q7F6B6X.2U19xO6Xz1Y2S4Vmu");
-// Password '123' - well-known test credential
+db.execSQL("DELETE FROM invoice_items WHERE invoice_id = " + localInvId);
+db.rawQuery("SELECT id, is_synced FROM invoices WHERE server_id = ?", ...);
 ```
 
-**Risk:** Default credentials allow unauthorized access to mobile app
-**Impact:** Data breach, fraudulent orders
+While `localInvId` is derived from the database (not direct user input), the `serverInvId` comes from the server response JSON. If the server is compromised or returns malicious data, this could lead to SQL injection.
 
-### 4. **ERROR DISPLAY ENABLED IN PRODUCTION** (HIGH)
-**Location:** `public/index.php` (lines 2-5)
+**Severity:** Medium (requires server compromise), but should use parameterized queries everywhere.
 
+### 2.6 [MEDIUM] No Delta Sync for Products/Customers on Pull
+
+**Location:** `SyncManager.java` - `executePull()` and `RepDashboardController.php` - `sync_pull()`
+
+**Problem:** The server supports delta sync via `last_sync_timestamp` parameter, but the Android app **never sends this parameter**. Every pull downloads the ENTIRE product catalog, all customers, all routes, all payment terms, etc. This is extremely wasteful for a 15-minute periodic sync.
+
+**Evidence:** The server code checks for `last_sync`:
 ```php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+$lastSync = isset($_GET['last_sync_timestamp']) ? trim($_GET['last_sync_timestamp']) : '';
 ```
-
-**Risk:** Sensitive system information exposed to attackers
-**Impact:** Information disclosure, attack surface expansion
-
-### 5. **SQL INJECTION VULNERABILITIES** (HIGH)
-**Multiple locations with raw SQL concatenation:**
-
-- `DatabaseHelper.java` (line 173):
+But the Android app never includes this parameter:
 ```java
-Cursor cursor = db.rawQuery("SELECT local_image_path FROM products WHERE id = " + id, null);
+String urlString = baseUrl + "/rep/RepDashboard/sync_pull?api_sync=1&user_id=" + userId;
 ```
 
-- `SyncManager.java` (line 173):
-```java
-Cursor cursor = db.rawQuery("SELECT id FROM customers WHERE server_id = " + serverId, null);
-```
+**Impact:** Massive bandwidth waste. Every 15 minutes, the entire product catalog (potentially thousands of items) is re-downloaded.
 
-**Risk:** Database manipulation, data theft
-**Impact:** Complete database compromise
+### 2.8 [MEDIUM] No Conflict Resolution Strategy
 
-### 6. **MISSING CSRF PROTECTION ON API ENDPOINTS** (HIGH)
-**Location:** `rep_app/Controllers/RepDashboardController.php`
+**Location:** Throughout sync system
 
-API endpoints like `sync_pull` and `sync_push` lack CSRF token validation and rely only on `api_sync` parameter check.
+**Problem:** When both the mobile app and server modify the same record (e.g., customer profile edited on both sides), there is **no conflict resolution**. The current strategy is "last write wins" with no timestamp comparison, no merge logic, and no user notification.
 
-### 7. **PLAINTEXT API KEYS IN MOBILE APP** (HIGH)
-**Location:** `SyncManager.java` (line 88)
-
-```java
-URL url = new URL("https://curtiss.suzxlabs.com/rep/RepDashboard/sync_pull?api_sync=1");
-```
-
-API endpoints can be called without proper authentication tokens.
-
-### 8. **NO RATE LIMITING ON API ENDPOINTS** (MEDIUM)
-The web login has rate limiting, but API endpoints (`api_login`, `sync_pull`, `sync_push`) have no rate limiting.
-
-### 9. **INSECURE DIRECT OBJECT REFERENCES** (MEDIUM)
-**Location:** `rep_app/Controllers/RepDashboardController.php` (line 121)
-
-```php
-if (!$summary || $summary['route']->user_id != $_SESSION['user_id']) { 
-    die("Unauthorized or Invalid Route"); 
-}
-```
-
-Route access control is implemented but inconsistently across the application.
-
-### 10. **NO INPUT VALIDATION ON API PAYLOADS** (MEDIUM)
-**Location:** `rep_app/Controllers/RepDashboardController.php`
-
-The `sync_push` method accepts JSON payloads without proper validation of data types, lengths, or formats.
+**Example Scenario:**
+1. User edits customer address on mobile (offline)
+2. Admin edits same customer address on server
+3. Push sync uploads mobile version → overwrites server
+4. Next pull sync downloads server version → overwrites mobile
+5. **Result:** Admin's changes are lost, then mobile's changes are also lost
 
 ---
 
-## 🏗️ ARCHITECTURE ISSUES
+## 3. ARCHITECTURAL ISSUES
 
-### 1. **NO DEPENDENCY MANAGEMENT**
-- PHP project has no Composer for dependency management
-- No autoloading - manual `require_once` statements throughout
-- Makes updates and security patches difficult
+### 3.1 No Push Sync in Background SyncWorker
 
-### 2. **INCONSISTENT MVC IMPLEMENTATION**
-- Core routing logic duplicated across `App.php`, `RepAppRouter.php`, `DriverAppRouter.php`
-- No base router class for code reuse
-- Mixed concerns in controllers
+**Location:** `SyncWorker.java`
 
-### 3. **NO API VERSIONING**
-- API endpoints have no versioning strategy
-- Changes to API will break mobile apps in the field
+**Problem:** The periodic background worker only does pull (server → mobile). It never pushes local changes to the server. This means if a user creates invoices offline and forgets to manually push, the data remains on the device indefinitely.
 
-### 4. **MONOLITHIC DATABASE CONFIGURATION**
-- All database credentials in single file
-- No environment-based configuration
-- No support for multiple environments (dev/staging/prod)
+**Fix:** SyncWorker should attempt push before pull, or at least check for pending uploads and trigger a push.
 
-### 5. **NO CENTRALIZED ERROR HANDLING**
-- Errors handled inconsistently across controllers
-- No custom exception handler
-- No centralized logging
+### 3.2 Single-Threaded Executor Bottleneck
 
-### 6. **LACK OF SERVICE LAYER**
-- Business logic mixed with controllers
-- `app/Services/` directory exists but appears unused
-- Difficult to test and maintain
-
----
-
-## 📱 MOBILE APP ISSUES
-
-### 1. **NO ENCRYPTION FOR LOCAL DATABASE**
-- SQLite database stores sensitive data unencrypted
-- No SQLCipher or Android Keystore usage
-- Device compromise = data breach
-
-### 2. **INSECURE NETWORK COMMUNICATION**
-- `android:usesCleartextTraffic="true"` allows HTTP
-- No certificate pinning
-- Vulnerable to man-in-the-middle attacks
-
-### 3. **NO PROPER AUTHENTICATION TOKEN MANAGEMENT**
-- Mobile apps send `user_id` directly in payloads
-- No JWT or session token validation
-- No token refresh mechanism
-
-### 4. **DATABASE MIGRATION ISSUES**
-**Location:** `DatabaseHelper.java`
-
-The `onUpgrade` method drops ALL tables and recreates them:
-```java
-db.execSQL("DROP TABLE IF EXISTS products");
-db.execSQL("DROP TABLE IF EXISTS customers");
-// ... all tables dropped
-onCreate(db);
-```
-
-**Risk:** All offline data lost on upgrade
-
-### 5. **NO OFFLINE DATA VALIDATION**
-- Synced data not validated before insertion
-- No conflict resolution strategy
-- Silent failures in sync process
-
-### 6. **MISSING PERMISSIONS IN DRIVER APP**
-**Location:** `../Curtiss Driver/app/src/main/AndroidManifest.xml`
-
-Driver app lacks location permissions despite being a delivery tracking app:
-```xml
-<!-- Missing: ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION -->
-```
-
----
-
-## ⚡ PERFORMANCE ISSUES
-
-### 1. **NO DATABASE INDEXING STRATEGY**
-- No visible index definitions in schema
-- Queries on large tables will be slow
-- No composite indexes for common query patterns
-
-### 2. **N+1 QUERY PROBLEMS**
-Multiple locations fetch related data in loops instead of using JOINs.
-
-### 3. **NO CACHING LAYER**
-- No Redis or Memcached implementation
-- Repeated database queries for static data
-- No HTTP caching headers
-
-### 4. **INEFFICIENT SYNC MECHANISM**
 **Location:** `SyncManager.java`
 
-- Full data pull on every sync
-- No incremental/delta sync
-- No compression for large payloads
-
-### 5. **NO QUERY OPTIMIZATION**
-- `SELECT *` used throughout instead of specific columns
-- No query result caching
-- No pagination on large result sets
-
-### 6. **BLOCKING DATABASE OPERATIONS ON MAIN THREAD**
-Mobile apps may perform database operations on UI thread causing ANR.
-
----
-
-## 🔧 CODE QUALITY ISSUES
-
-### 1. **INCONSISTENT NAMING CONVENTIONS**
-- Mix of camelCase, snake_case, PascalCase
-- Inconsistent controller naming
-
-### 2. **MAGIC NUMBERS AND STRINGS**
-Hardcoded values throughout:
-```php
-$max_attempts = 5;
-$lockout_time = 180; // 3 minutes
+```java
+this.executorService = Executors.newSingleThreadExecutor();
 ```
 
-### 3. **NO CODE COMMENTS/DOCUMENTATION**
-- Lack of PHPDoc comments
-- No API documentation
-- Complex logic not explained
+**Problem:** All sync operations (pull, push, verification) run on a single background thread. If a pull is in progress, a manual push request is queued and waits. Combined with the image download blocking issue (2.6), this creates significant delays.
 
-### 4. **DUPLICATED CODE**
-- Price standardization logic duplicated in `SalesController.php`
-- Similar sync logic in both mobile apps
+### 3.3 No Sync Queue / Retry with Exponential Backoff
 
-### 5. **LONG METHODS**
-`RepDashboardController::sync_push()` is 300+ lines - should be refactored
+**Location:** `SyncManager.java`
 
-### 6. **NO UNIT TESTS**
-- No test directory structure
-- No automated testing
-- Manual testing only
+**Problem:** While there's retry logic for HTTP connections (3 attempts with 2-second delay), there's no persistent retry queue for failed sync items. Failed items are marked with `sync_status = 4` (Failed) but there's no mechanism to automatically retry them later.
 
----
+### 3.4 No Data Integrity Checks (Checksums/Hashes)
 
-## 📋 MISSING FEATURES
+**Location:** Throughout
 
-### 1. **SECURITY FEATURES**
-- [ ] Two-factor authentication (2FA)
-- [ ] Password complexity requirements
-- [ ] Session timeout configuration
-- [ ] IP whitelisting
-- [ ] Audit log viewer
-- [ ] Security headers (CSP, HSTS, X-Frame-Options)
+**Problem:** There are no checksums, hashes, or data integrity validations on synced data. If network corruption occurs, corrupted data is written directly to the database. JSON parsing errors are caught, but partial corruption within valid JSON is not detected.
 
-### 2. **API FEATURES**
-- [ ] API rate limiting
-- [ ] API key management
-- [ ] Webhook support
-- [ ] API documentation (Swagger/OpenAPI)
-- [ ] GraphQL support
+### 3.5 No Sync Progress Persistence
 
-### 3. **ADMIN FEATURES**
-- [ ] Role-based access control (RBAC)
-- [ ] Permission management UI
-- [ ] Activity monitoring dashboard
-- [ ] Data export functionality
-- [ ] Backup/restore functionality
+**Location:** `SyncManager.java`
 
-### 4. **MOBILE FEATURES**
-- [ ] Push notifications
-- [ ] Biometric authentication
-- [ ] Offline data encryption
-- [ ] Image compression before upload
-- [ ] Background sync service
-- [ ] Crash reporting
-
-### 5. **BUSINESS FEATURES**
-- [ ] Multi-warehouse support
-- [ ] Barcode/QR code scanning
-- [ ] Email notifications
-- [ ] SMS notifications
-- [ ] Report builder
-- [ ] Dashboard widgets customization
+**Problem:** The `SyncListener` interface provides real-time progress callbacks, but progress is not persisted. If the app is killed during a long sync (e.g., downloading 500 product images), there's no way to resume from where it left off.
 
 ---
 
-## 🔄 IMPROVEMENT RECOMMENDATIONS
+## 4. MISSING FEATURES
 
-### IMMEDIATE (Priority 1 - Week 1)
+### 4.1 No Sync of Product Stock Updates in Real-Time
 
-1. **Remove hardcoded credentials**
-   - Move to environment variables
-   - Use `.env` file with `.gitignore`
-   - Rotate all exposed API keys
+**Location:** Missing from pull sync
 
-2. **Fix default credentials**
-   - Remove auto-reset logic
-   - Force password change on first login
-   - Implement password complexity rules
+**Problem:** The pull sync downloads `quantity_on_hand` and `quantity_reserved` for products, but there's no mechanism to update stock levels in real-time. If a product is sold through another channel (e-commerce, walk-in customer), the rep's app won't know until the next manual pull.
 
-3. **Disable error display**
-   - Set `display_errors = 0` in production
-   - Use custom error pages
-   - Log errors to file
+### 4.2 No Sync of Voided/Cancelled Invoices
 
-4. **Fix SQL injection vulnerabilities**
-   - Use parameterized queries everywhere
-   - Review all raw SQL statements
+**Location:** Missing from pull sync
 
-### SHORT TERM (Priority 2 - Month 1)
+**Problem:** If an invoice is voided on the server (by admin), the mobile app has no way of knowing. The invoice remains in the local database as valid. The rep could attempt to collect payment for a voided invoice.
 
-1. **Implement proper authentication**
-   - JWT tokens for API
-   - Token refresh mechanism
-   - Session management improvements
+### 4.6 No Offline-Queued Data Expiry
 
-2. **Add input validation**
-   - Server-side validation for all inputs
-   - Data type checking
-   - Length and format validation
+**Location:** Missing
 
-3. **Implement logging**
-   - Centralized logging system
-   - Security event logging
-   - Error tracking
-
-4. **Add database indexes**
-   - Analyze slow queries
-   - Add appropriate indexes
-   - Monitor query performance
-
-### MEDIUM TERM (Priority 3 - Quarter 1)
-
-1. **Refactor architecture**
-   - Implement dependency injection
-   - Add service layer
-   - Create base controller/router classes
-
-2. **Add caching**
-   - Redis for session storage
-   - Query result caching
-   - HTTP caching headers
-
-3. **Implement testing**
-   - Unit tests for models
-   - Integration tests for APIs
-   - Automated testing pipeline
-
-4. **Mobile app security**
-   - Database encryption
-   - Certificate pinning
-   - Secure token storage
-
-### LONG TERM (Priority 4 - Quarter 2+)
-
-1. **API improvements**
-   - API versioning
-   - Rate limiting
-   - Comprehensive documentation
-
-2. **Performance optimization**
-   - Query optimization
-   - CDN for static assets
-   - Database sharding if needed
-
-3. **Feature additions**
-   - RBAC system
-   - Advanced reporting
-   - Multi-tenancy support
+**Problem:** If a device remains offline for weeks, locally queued invoices and payments have no expiry mechanism. Stale data could be pushed to the server long after the business context has changed.
 
 ---
 
-## 📊 SYSTEM OVERVIEW
+## 5. ERROR HANDLING ISSUES
 
-### Technology Stack
+### 5.1 Silent Failure on Category Sync Errors
 
-| Component | Technology |
-|-----------|------------|
-| Backend | PHP (Custom MVC) |
-| Database | MySQL |
-| Mobile Apps | Android (Java) |
-| Local Storage | SQLite |
-| Web Server | Apache (XAMPP) |
+**Location:** `SyncManager.java` - `executePull()`
 
-### Application Modules
+```java
+try {
+    // sync categories
+} catch (Exception e) {
+    android.util.Log.e("SyncManager", "Error syncing categories: " + e.getMessage());
+}
+```
 
-**Main ERP:**
-- Authentication & User Management
-- Sales & Invoicing
-- Inventory Management
-- Accounting & General Ledger
-- CRM & Customer Management
-- HRM & Payroll
-- Purchase Management
-- Reports & Analytics
-- Rep Tracking
+**Problem:** Category sync errors are logged but the overall pull sync continues as successful. If categories fail to sync, products may reference non-existent categories.
 
-**Mobile Rep App:**
-- Offline Product Catalog
-- Customer Management
-- Invoice Creation
-- Route Tracking
-- Payment Collection
-- Credit Management
+### 5.2 Silent Failure on Payment Table Operations
 
-**Mobile Driver App:**
-- Delivery Management
-- Vehicle Stock
-- Checkout/Payments
-- Route Tracking
+**Location:** `SyncManager.java` - `executePush()`
 
----
+```java
+try {
+    Cursor payCursor = db.rawQuery("SELECT * FROM payments WHERE is_synced = 0", null);
+    // ...
+} catch (Exception e) {
+    // Table might not exist, ignore
+}
+```
 
-## 📈 RISK ASSESSMENT
+**Problem:** If the payments table doesn't exist (fresh install, schema mismatch), the error is silently ignored. Payments would be lost without any notification.
 
-| Risk | Severity | Likelihood | Priority |
-|------|----------|------------|----------|
-| Credential Exposure | Critical | High | P0 |
-| SQL Injection | Critical | Medium | P0 |
-| Default Credentials | High | High | P0 |
-| Data Breach (Mobile) | High | Medium | P1 |
-| API Abuse | Medium | High | P1 |
-| Data Loss (Upgrade) | Medium | Low | P2 |
-| Performance Degradation | Low | Medium | P3 |
+### 5.3 No User Notification for Partial Sync Failures
 
----
+**Location:** `SyncManager.java` - `startManualPushSync()`
 
-## ✅ ACTION ITEMS CHECKLIST
+**Problem:** The final sync result is binary (success/failure). If 5 out of 10 invoices sync successfully, the user sees "Push verification incomplete. 5 items failed to sync." but has no way to know WHICH 5 failed or WHY.
 
-### Security
-- [ ] Remove all hardcoded credentials from repository
-- [ ] Implement environment-based configuration
-- [ ] Remove default admin auto-reset logic
-- [ ] Fix all SQL injection vulnerabilities
-- [ ] Disable error display in production
-- [ ] Implement rate limiting on all endpoints
-- [ ] Add CSRF protection to all forms
-- [ ] Implement proper input validation
-- [ ] Add security headers
-- [ ] Encrypt mobile database
+### 5.4 Server-Side User ID Fallback is Dangerous
 
-### Architecture
-- [ ] Implement Composer for dependency management
-- [ ] Create base router class
-- [ ] Add service layer
-- [ ] Implement centralized error handling
-- [ ] Add comprehensive logging
+**Location:** `RepDashboardController.php` - `sync_push()`
 
-### Performance
-- [ ] Add database indexes
-- [ ] Implement caching layer
-- [ ] Optimize slow queries
-- [ ] Add pagination to large result sets
-- [ ] Implement incremental sync
+```php
+if (!$userRow) {
+    $this->db->query("SELECT id FROM users WHERE role = 'rep' LIMIT 1");
+    $repUser = $this->db->single();
+    if ($repUser) {
+        $userId = intval($repUser->id);
+    } else {
+        $this->db->query("SELECT id FROM users LIMIT 1");
+        $firstUser = $this->db->single();
+        $userId = $firstUser ? intval($firstUser->id) : 1;
+    }
+}
+```
 
-### Quality
-- [ ] Add unit tests
-- [ ] Add integration tests
-- [ ] Implement CI/CD pipeline
-- [ ] Add code review process
-- [ ] Document APIs
+**Problem:** If a user ID doesn't exist on the server (e.g., after database reset), the server silently falls back to the first rep user or even the first user in the database. This means **invoices and routes could be attributed to the wrong rep**. This is a critical audit trail and commission calculation issue.
 
 ---
 
-*Report generated: June 2, 2026*
-*Analyst: Claude Code (Cline)*
+## 6. PERFORMANCE ISSUES
+
+### 6.1 Full Data Download Every Pull
+
+As noted in 2.7, every pull downloads the complete dataset. For a catalog of 5,000 products, 2,000 customers, and 500 credit invoices, this could be **multiple megabytes** every 15 minutes.
+
+### 6.2 No Pagination on Server Endpoints
+
+**Location:** `RepDashboardController.php`
+
+**Problem:** The server returns ALL products, customers, and invoices in a single response. There's no pagination, no chunking, no streaming. For large datasets, this can cause:
+- Out of memory errors on the server
+- Socket timeouts on the mobile app
+- ANR (Application Not Responding) on Android if run on main thread
+
+### 6.3 No Compression
+
+**Location:** Both client and server
+
+**Problem:** The HTTP requests/responses are not compressed. Enabling gzip compression could reduce payload size by 70-80%.
+
+### 6.4 Database Lock Contention
+
+**Location:** `SyncManager.java`
+
+**Problem:** The retry logic for SQLITE_BUSY uses exponential backoff, but there's no coordination between the sync thread and UI thread database access. A user browsing products while sync is running can cause SQLITE_BUSY errors.
+
+---
+
+## 7. RECOMMENDATIONS
+
+### 7.1 Immediate Fixes (Critical)
+
+| Priority | Issue | Fix |
+|----------|-------|-----|
+| P0 | Pull overwrites unsynced data | Add `is_synced = 0` check before any UPDATE/INSERT in pull |
+| P0 | SyncWorker runs pull-only | Add push check before pull in SyncWorker |
+| P0 | Server-side user ID fallback | Remove fallback; reject with error if user not found |
+| P1 | No delta sync | Implement `last_sync_timestamp` tracking in SharedPreferences |
+| P1 | Image download blocks sync | Move image download to separate executor, fire-and-forget |
+
+### 7.2 Short-Term Improvements (High)
+
+| Priority | Issue | Fix |
+|----------|-------|-----|
+| P1 | No conflict resolution | Implement last-modified timestamp comparison |
+| P1 | No retry for failed items | Add background retry worker for sync_status = 4 items |
+| P1 | No push in background | Add push phase to SyncWorker before pull |
+| P2 | SQL injection risk | Use parameterized queries everywhere |
+| P2 | No transaction on server push | Wrap entire sync_push in database transaction |
+
+### 7.3 Long-Term Architectural Changes
+
+| Priority | Change | Description |
+|----------|--------|-------------|
+| P2 | Implement proper delta sync | Track per-table last_sync timestamps, only send changed records |
+| P2 | Add data checksums | Include MD5/SHA256 hash of each record for integrity verification |
+| P2 | Implement sync queue | Persistent queue with retry, priority, and expiry |
+| P3 | Add bidirectional conflict resolution | Three-way merge with user notification for conflicts |
+| P3 | Implement paginated API | Chunk large responses (100 records per page) |
+| P3 | Add gzip compression | Enable gzip on both client and server |
+| P3 | Add sync analytics | Track sync success rates, durations, data volumes |
+
+### 7.4 Specific Code Fixes
+
+#### Fix 1: Protect Unsynced Data in Pull
+
+In `SyncManager.java` `executePull()`, before any database write, check if the record has local unsynced changes:
+
+```java
+// Before updating a record in pull:
+Cursor localCheck = db.rawQuery(
+    "SELECT is_synced FROM daily_routes WHERE server_id = ?", 
+    new String[]{String.valueOf(serverRouteId)}
+);
+if (localCheck.moveToFirst() && localCheck.getInt(0) == 0) {
+    // Local has unsynced changes - SKIP server update
+    localCheck.close();
+    continue;
+}
+localCheck.close();
+```
+
+#### Fix 2: Implement Delta Sync
+
+In `SyncManager.java`, track and send `last_sync_timestamp`:
+
+```java
+SharedPreferences prefs = context.getSharedPreferences("sync_state", Context.MODE_PRIVATE);
+String lastSyncTimestamp = prefs.getString("last_pull_timestamp", "");
+String urlString = baseUrl + "/rep/RepDashboard/sync_pull?api_sync=1&user_id=" + userId 
+    + "&last_sync_timestamp=" + URLEncoder.encode(lastSyncTimestamp, "UTF-8");
+
+// After successful pull, update timestamp:
+prefs.edit().putString("last_pull_timestamp", 
+    new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date())).apply();
+```
+
+#### Fix 3: Add Push to SyncWorker
+
+```java
+public Result doWork() {
+    // ... session check ...
+    
+    if (!syncManager.tryAcquireSyncLock()) {
+        return Result.retry();
+    }
+    
+    try {
+        // Phase 1: Push local changes first
+        if (syncManager.hasPendingUploads()) {
+            boolean pushSuccess = syncManager.executePush(context, userId);
+            if (pushSuccess) {
+                boolean verifySuccess = syncManager.executeVerification(context, userId);
+            }
+        }
+        
+        // Phase 2: Pull server changes
+        boolean pullSuccess = syncManager.executePull(context, userId);
+        
+        return pullSuccess ? Result.success() : Result.retry();
+    } finally {
+        syncManager.releaseSyncLock();
+    }
+}
+```
+
+#### Fix 4: Remove User ID Fallback on Server
+
+```php
+if (!$userRow) {
+    echo json_encode([
+        'success' => false, 
+        'message' => 'User account not found on server. Please re-login.'
+    ]);
+    exit;
+}
+```
+
+#### Fix 5: Separate Image Download from Sync
+
+Create a dedicated `ImageSyncManager` that runs on its own executor:
+
+```java
+// In SyncManager.executePull(), remove the image download wait loop
+// Instead, just queue downloads and return immediately:
+ImageDownloadManager.getInstance(context).startQueueDownload(context);
+// Don't wait for completion
+```
+
+---
+
+## 8. DATA FLOW DIAGRAM (Recommended Architecture)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                      RECOMMENDED SYNC ARCHITECTURE                   │
+└─────────────────────────────────────────────────────────────────────┘
+
+Periodic Sync (15 min):
+┌──────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  SyncWorker   │────▶│  Phase 1: Push   │────▶│  Phase 2: Pull   │
+│  (WorkManager)│     │  (local→server)  │     │  (server→local)  │
+└──────────────┘     └──────────────────┘     └──────────────────┘
+                            │                         │
+                            ▼                         ▼
+                     ┌──────────────────┐     ┌──────────────────┐
+                     │  Retry Queue     │     │  Delta Sync      │
+                     │  (failed items)  │     │  (timestamp)     │
+                     └──────────────────┘     └──────────────────┘
+
+Manual Push (User Initiated):
+┌──────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  User Tap     │────▶│  Phase 1: Push   │────▶│  Phase 2: Verify  │
+│  "Sync Now"   │     │  (local→server)  │     │  (UUID check)    │
+└──────────────┘     └──────────────────┘     └──────────────────┘
+                            │                         │
+                            ▼                         ▼
+                     ┌──────────────────┐     ┌──────────────────┐
+                     │  Conflict Check  │     │  Result Report   │
+                     │  (timestamp)     │     │  (per-item)      │
+                     └──────────────────┘     └──────────────────┘
+
+
+
+## 9. CONCLUSION
+
+The Curtiss ERP Rep App sync system has a solid foundation with:
+- ✅ UUID-based idempotency for push operations
+- ✅ Two-phase push with verification
+- ✅ Retry logic for network failures
+- ✅ SQLite WAL mode for concurrent access
+- ✅ Self-healing database schema migrations
+
+However, there are **critical issues** that must be addressed immediately:
+
+1. **Pull sync can destroy unsynced local data** (P0 - Data Loss)
+2. **Background sync never pushes local changes** (P0 - Data Loss)
+3. **Server silently reassigns invoices to wrong users** (P0 - Data Integrity)
+4. **No delta sync wastes bandwidth** (P1 - Performance)
+5. **Image downloads block the entire sync** (P1 - UX)
+
+The recommended order of implementation is:
+1. Fix the critical data loss issues (P0)
+2. Implement delta sync and background push (P1)
+3. Add conflict resolution and retry queues (P2)
+4. Architectural improvements (P3)
+
+---
+
+*Report generated on: June 19, 2026*
+*Analysis by: Cline AI Assistant*

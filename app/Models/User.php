@@ -7,7 +7,7 @@ class User {
     }
 
     public function getAllUsers() {
-        $this->db->query("SELECT u.id, u.username, u.email, u.role, u.signature_path, u.created_at, u.employee_id, e.first_name, e.last_name 
+        $this->db->query("SELECT u.id, u.username, u.email, u.role, u.signature_path, u.created_at, u.employee_id, u.status, e.first_name, e.last_name 
                           FROM users u 
                           LEFT JOIN employees e ON u.employee_id = e.id 
                           ORDER BY u.created_at DESC");
@@ -24,6 +24,9 @@ class User {
     public function login($username, $password) {
         $row = $this->findUserByUsername($username);
         if ($row) {
+            if (isset($row->status) && strtolower($row->status) !== 'active') {
+                return false;
+            }
             $hashed_password = $row->password_hash;
             if (password_verify($password, $hashed_password)) {
                 return $row;
@@ -33,14 +36,15 @@ class User {
     }
 
     public function createUser($data) {
-        $this->db->query("INSERT INTO users (username, email, password_hash, role, signature_path, employee_id) 
-                          VALUES (:username, :email, :password, :role, :sig, :employee_id)");
+        $this->db->query("INSERT INTO users (username, email, password_hash, role, signature_path, employee_id, status) 
+                          VALUES (:username, :email, :password, :role, :sig, :employee_id, :status)");
         $this->db->bind(':username', $data['username']);
         $this->db->bind(':email', $data['email']);
         $this->db->bind(':password', password_hash($data['password'], PASSWORD_DEFAULT));
         $this->db->bind(':role', $data['role']);
         $this->db->bind(':sig', $data['signature_path']);
         $this->db->bind(':employee_id', $data['employee_id']);
+        $this->db->bind(':status', $data['status'] ?? 'Active');
         return $this->db->execute();
     }
 
@@ -96,12 +100,13 @@ class User {
     }
 
     public function updateUser($data) {
-        $this->db->query("UPDATE users SET username = :username, email = :email, role = :role, employee_id = :employee_id, signature_path = :sig WHERE id = :id");
+        $this->db->query("UPDATE users SET username = :username, email = :email, role = :role, employee_id = :employee_id, signature_path = :sig, status = :status WHERE id = :id");
         $this->db->bind(':username', $data['username']);
         $this->db->bind(':email', $data['email']);
         $this->db->bind(':role', $data['role']);
         $this->db->bind(':employee_id', $data['employee_id']);
         $this->db->bind(':sig', $data['signature_path']);
+        $this->db->bind(':status', $data['status'] ?? 'Active');
         $this->db->bind(':id', $data['id']);
         return $this->db->execute();
     }

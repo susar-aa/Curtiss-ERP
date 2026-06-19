@@ -81,6 +81,14 @@
                 </div>
 
                 <div class="form-group">
+                    <label>Account Status *</label>
+                    <select name="status" class="form-control" required>
+                        <option value="Active" selected>Active</option>
+                        <option value="Blocked">Blocked / Inactive</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label>Digital Signature (Optional PNG/JPG)</label>
                     <input type="file" name="signature" class="form-control" accept=".png, .jpg, .jpeg" style="padding: 6px;">
                 </div>

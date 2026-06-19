@@ -56,6 +56,7 @@
                 <th>System Role</th>
                 <th style="text-align: center;">Signature</th>
                 <th>Permissions Status</th>
+                <th>Status</th>
                 <th style="width: 140px; text-align: right;">Actions</th>
             </tr>
         </thead>
@@ -86,6 +87,13 @@
                         <span style="color: #0066cc; font-size: 12px; font-weight: bold;">
                             <i class="ph-bold ph-key"></i> <?= count($u->permissions) ?> Module(s) Custom
                         </span>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <?php if (strtolower($u->status ?? 'active') === 'active'): ?>
+                        <span style="color: #2e7d32; font-size: 12px; font-weight: bold;"><i class="ph-bold ph-check-circle"></i> Active</span>
+                    <?php else: ?>
+                        <span style="color: #ff3b30; font-size: 12px; font-weight: bold;"><i class="ph-bold ph-x-circle"></i> Blocked</span>
                     <?php endif; ?>
                 </td>
                 <td style="text-align: right;">
