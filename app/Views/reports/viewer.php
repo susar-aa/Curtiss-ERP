@@ -7,8 +7,15 @@ $products = $data['products'];
 $warehouses = $data['warehouses'];
 $routes = $data['routes'];
 $categories = $data['categories'];
-$savedViews = $data['savedViews'];
-$scheduled = $data['scheduled'];
+$brands = $data['brands'] ?? [];
+$groups = $data['groups'] ?? [];
+$vehicles = $data['vehicles'] ?? [];
+$drivers = $data['drivers'] ?? [];
+$partners = $data['partners'] ?? [];
+$territories = $data['territories'] ?? [];
+$reps = $data['reps'] ?? [];
+$payment_methods = $data['payment_methods'] ?? [];
+$statuses = $data['statuses'] ?? [];
 ?>
 
 <style>
@@ -412,39 +419,6 @@ $scheduled = $data['scheduled'];
         100% { transform: translate(-50%, -50%) rotate(360deg); }
     }
 
-    /* Collapsible cards view list */
-    .collapsible-list {
-        margin-top: 10px;
-        max-height: 150px;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .collapsible-item {
-        font-size: 12.5px;
-        padding: 6px 10px;
-        background: #f8fafc;
-        border: 1px solid #cbd5e1;
-        border-radius: 4px;
-        cursor: pointer;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        transition: background 0.2s;
-    }
-
-    .collapsible-item:hover {
-        background: #f1f5f9;
-        color: #0066cc;
-    }
-
-    .collapsible-item span.date {
-        font-size: 11px;
-        color: #94a3b8;
-    }
-
     /* Print Stylesheet integration */
     @media print {
         header, footer, .filter-sidebar, .preview-header, .table-toolbar, .pagination-footer, .no-print {
@@ -524,14 +498,6 @@ $scheduled = $data['scheduled'];
             color: #ffffff;
             border-top-color: #3e3e3e;
             border-bottom-color: #3e3e3e;
-        }
-        .collapsible-item {
-            background-color: #252525;
-            border-color: #3e3e3e;
-            color: #cbd5e1;
-        }
-        .collapsible-item:hover {
-            background-color: #2d2d2d;
         }
     }
 </style>
@@ -629,6 +595,114 @@ $scheduled = $data['scheduled'];
                     </div>
                 <?php endif; ?>
 
+                <?php if (in_array('rep', $metadata['filters'] ?? [])): ?>
+                    <div class="form-group">
+                        <label>Sales Rep</label>
+                        <select class="form-control" name="rep" id="filter_rep">
+                            <option value="">-- All Reps --</option>
+                            <?php foreach ($reps as $r): ?>
+                                <option value="<?= $r->id ?>"><?= htmlspecialchars($r->name) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (in_array('payment_method', $metadata['filters'] ?? [])): ?>
+                    <div class="form-group">
+                        <label>Payment Method</label>
+                        <select class="form-control" name="payment_method" id="filter_payment_method">
+                            <option value="">-- All Methods --</option>
+                            <?php foreach ($payment_methods as $pm): ?>
+                                <option value="<?= $pm->id ?>"><?= htmlspecialchars($pm->name) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (in_array('status', $metadata['filters'] ?? [])): ?>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select class="form-control" name="status" id="filter_status">
+                            <option value="">-- All Statuses --</option>
+                            <?php foreach ($statuses as $st): ?>
+                                <option value="<?= $st->id ?>"><?= htmlspecialchars($st->name) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (in_array('brand', $metadata['filters'] ?? [])): ?>
+                    <div class="form-group">
+                        <label>Brand</label>
+                        <select class="form-control" name="brand" id="filter_brand">
+                            <option value="">-- All Brands --</option>
+                            <?php foreach ($brands as $b): ?>
+                                <option value="<?= htmlspecialchars($b->brand) ?>"><?= htmlspecialchars($b->brand) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (in_array('group', $metadata['filters'] ?? [])): ?>
+                    <div class="form-group">
+                        <label>Customer Group</label>
+                        <select class="form-control" name="group" id="filter_group">
+                            <option value="">-- All Groups --</option>
+                            <?php foreach ($groups as $g): ?>
+                                <option value="<?= htmlspecialchars($g->name) ?>"><?= htmlspecialchars($g->name) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (in_array('vehicle', $metadata['filters'] ?? [])): ?>
+                    <div class="form-group">
+                        <label>Vehicle</label>
+                        <select class="form-control" name="vehicle" id="filter_vehicle">
+                            <option value="">-- All Vehicles --</option>
+                            <?php foreach ($vehicles as $v): ?>
+                                <option value="<?= htmlspecialchars($v->vehicle_number) ?>"><?= htmlspecialchars($v->vehicle_number) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (in_array('driver', $metadata['filters'] ?? [])): ?>
+                    <div class="form-group">
+                        <label>Driver</label>
+                        <select class="form-control" name="driver" id="filter_driver">
+                            <option value="">-- All Drivers --</option>
+                            <?php foreach ($drivers as $d): ?>
+                                <option value="<?= htmlspecialchars($d->name) ?>"><?= htmlspecialchars($d->name) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (in_array('partner', $metadata['filters'] ?? [])): ?>
+                    <div class="form-group">
+                        <label>Partner / Helper</label>
+                        <select class="form-control" name="partner" id="filter_partner">
+                            <option value="">-- All Partners --</option>
+                            <?php foreach ($partners as $p): ?>
+                                <option value="<?= htmlspecialchars($p->name) ?>"><?= htmlspecialchars($p->name) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (in_array('territory', $metadata['filters'] ?? [])): ?>
+                    <div class="form-group">
+                        <label>Territory</label>
+                        <select class="form-control" name="territory" id="filter_territory">
+                            <option value="">-- All Territories --</option>
+                            <?php foreach ($territories as $t): ?>
+                                <option value="<?= htmlspecialchars($t->territory) ?>"><?= htmlspecialchars($t->territory) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
+
                 <button type="button" class="btn btn-primary" onclick="loadReportData(1)" style="margin-top: 15px;">
                     <i class="ph ph-arrow-clockwise"></i> Generate Report
                 </button>
@@ -636,67 +710,6 @@ $scheduled = $data['scheduled'];
                     Reset Filters
                 </button>
             </form>
-        </div>
-
-        <!-- Saved Views / Saved Filter Sets -->
-        <div class="card">
-            <div class="card-title">
-                <i class="ph ph-bookmark-simple"></i>
-                <span>Saved Layout Views</span>
-            </div>
-            <div class="form-group">
-                <input type="text" class="form-control" id="new_view_name" placeholder="View name (e.g. Q2 Sales)">
-                <button class="btn btn-secondary" onclick="saveActiveView()" style="margin-top: 8px;">
-                    <i class="ph ph-floppy-disk"></i> Save Current Filters
-                </button>
-            </div>
-            <div class="collapsible-list" id="savedViewsList">
-                <?php if (empty($savedViews)): ?>
-                    <p style="font-size:12px; color:#888; margin:5px 0;">No saved views for this report yet.</p>
-                <?php else: ?>
-                    <?php foreach ($savedViews as $sv): ?>
-                        <div class="collapsible-item" onclick='loadSavedView(<?= htmlspecialchars($sv->filters) ?>)'>
-                            <span><?= htmlspecialchars($sv->view_name) ?></span>
-                            <span class="date"><?= date('M d', strtotime($sv->created_at)) ?></span>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <!-- Scheduled Emails Setup -->
-        <div class="card">
-            <div class="card-title">
-                <i class="ph ph-clock"></i>
-                <span>Automated Email Delivery</span>
-            </div>
-            <div class="form-group">
-                <label>Frequency</label>
-                <select class="form-control" id="sched_frequency">
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Email Recipient</label>
-                <input type="email" class="form-control" id="sched_email" placeholder="manager@company.com">
-            </div>
-            <button class="btn btn-secondary" onclick="saveReportSchedule()">
-                <i class="ph ph-bell"></i> Schedule Report
-            </button>
-            <div class="collapsible-list" id="schedulesList" style="margin-top: 10px;">
-                <?php if (empty($scheduled)): ?>
-                    <p style="font-size:12px; color:#888; margin:5px 0;">No automated schedules configured.</p>
-                <?php else: ?>
-                    <?php foreach ($scheduled as $s): ?>
-                        <div class="collapsible-item" style="cursor:default;">
-                            <span><?= htmlspecialchars($s->email_recipient) ?></span>
-                            <span class="badge-completed"><?= ucfirst($s->frequency) ?></span>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
         </div>
     </div>
 
@@ -716,6 +729,7 @@ $scheduled = $data['scheduled'];
                     <div class="dropdown-menu" id="shareMenu">
                         <a href="javascript:void(0)" onclick="copyShareLink()"><i class="ph ph-link"></i> Copy Link</a>
                         <a href="javascript:void(0)" onclick="emailShare()"><i class="ph ph-envelope"></i> Email link</a>
+                        <a href="javascript:void(0)" onclick="whatsappShare()"><i class="ph ph-whatsapp-logo"></i> WhatsApp Share</a>
                     </div>
                 </div>
 
@@ -948,6 +962,14 @@ $scheduled = $data['scheduled'];
                         drillUrl = `<?= APP_URL ?>/sales/show/${r.id || ''}`;
                     } else if (def.drilldown === 'product') {
                         drillUrl = `<?= APP_URL ?>/inventory`;
+                    } else if (def.drilldown === 'customer') {
+                        drillUrl = `<?= APP_URL ?>/customer/edit/${r.customer_id || r.id || ''}`;
+                    } else if (def.drilldown === 'supplier') {
+                        drillUrl = `<?= APP_URL ?>/supplier/edit/${r.vendor_id || r.id || ''}`;
+                    } else if (def.drilldown === 'po') {
+                        drillUrl = `<?= APP_URL ?>/purchase/show/${r.id || ''}`;
+                    } else if (def.drilldown === 'grn') {
+                        drillUrl = `<?= APP_URL ?>/grn/show/${r.id || ''}`;
                     }
                     td.innerHTML = `<a href="${drillUrl}" class="drilldown-link">${val}</a>`;
                 } else {
@@ -1085,109 +1107,6 @@ $scheduled = $data['scheduled'];
         controls.appendChild(next);
     }
 
-    // --- Saved Views handlers ---
-    function saveActiveView() {
-        const nameInput = document.getElementById('new_view_name');
-        const viewName = nameInput.value.trim();
-        if (!viewName) {
-            alert('Please enter a view name.');
-            return;
-        }
-
-        // Get active form filters
-        const form = document.getElementById('filterForm');
-        const formData = new FormData(form);
-        const filters = {};
-        for (const [key, value] of formData.entries()) {
-            if (value) filters[key] = value;
-        }
-
-        const data = new URLSearchParams();
-        data.append('report_key', reportKey);
-        data.append('view_name', viewName);
-        for (const [k, v] of Object.entries(filters)) {
-            data.append(`filters[${k}]`, v);
-        }
-
-        fetch('<?= APP_URL ?>/report/save_view', {
-            method: 'POST',
-            body: data,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': '<?= $_SESSION['csrf_token'] ?? '' ?>'
-            }
-        })
-        .then(res => res.json())
-        .then(res => {
-            if (res.success) {
-                nameInput.value = '';
-                // Reload list
-                location.reload();
-            } else {
-                alert(res.message || 'Failed to save layout view.');
-            }
-        });
-    }
-
-    function loadSavedView(filters) {
-        // Reset form
-        const form = document.getElementById('filterForm');
-        form.reset();
-        
-        // Fill form fields
-        for (const [key, val] of Object.entries(filters)) {
-            const field = document.getElementById(`filter_${key}`);
-            if (field) field.value = val;
-        }
-        loadReportData(1);
-    }
-
-    // --- Automated Schedules handlers ---
-    function saveReportSchedule() {
-        const emailInput = document.getElementById('sched_email');
-        const email = emailInput.value.trim();
-        const freq = document.getElementById('sched_frequency').value;
-
-        if (!email) {
-            alert('Please enter a valid recipient email address.');
-            return;
-        }
-
-        // Active filters
-        const form = document.getElementById('filterForm');
-        const formData = new FormData(form);
-        const filters = {};
-        for (const [key, value] of formData.entries()) {
-            if (value) filters[key] = value;
-        }
-
-        const data = new URLSearchParams();
-        data.append('report_key', reportKey);
-        data.append('frequency', freq);
-        data.append('email_recipient', email);
-        for (const [k, v] of Object.entries(filters)) {
-            data.append(`filters[${k}]`, v);
-        }
-
-        fetch('<?= APP_URL ?>/report/save_schedule', {
-            method: 'POST',
-            body: data,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': '<?= $_SESSION['csrf_token'] ?? '' ?>'
-            }
-        })
-        .then(res => res.json())
-        .then(res => {
-            if (res.success) {
-                emailInput.value = '';
-                location.reload();
-            } else {
-                alert(res.message || 'Failed to create report email schedule.');
-            }
-        });
-    }
-
     // --- Share features ---
     function copyShareLink() {
         const url = window.location.href;
@@ -1200,6 +1119,12 @@ $scheduled = $data['scheduled'];
         const url = encodeURIComponent(window.location.href);
         const subject = encodeURIComponent('Curtiss ERP Live Report View');
         window.location.href = `mailto:?subject=${subject}&body=Check out this live Curtiss ERP Report:%0D%0A${url}`;
+    }
+
+    function whatsappShare() {
+        const url = encodeURIComponent(window.location.href);
+        const text = encodeURIComponent('Check out this live Curtiss ERP Report: ') + url;
+        window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
     }
 
     // --- Export trigger ---

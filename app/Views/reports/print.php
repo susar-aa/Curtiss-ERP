@@ -216,46 +216,54 @@ $filterLabels = $data['filterLabels'];
         <tr>
             <td class="meta-label">BU</td>
             <td class="meta-separator">:</td>
-            <td class="meta-value">_</td>
+            <td class="meta-value">Primary BU</td>
             <td class="meta-label">From Date</td>
             <td class="meta-separator">:</td>
-            <td class="meta-value"><?= htmlspecialchars($filterLabels['From Date']) ?></td>
+            <td class="meta-value"><?= htmlspecialchars($filterLabels['From Date'] ?? '') ?></td>
         </tr>
         <tr>
             <td class="meta-label">Account / Context</td>
             <td class="meta-separator">:</td>
             <td class="meta-value">
                 <?php
-                if (!empty($filterLabels['Customer'])) {
-                    echo 'Customer: ' . htmlspecialchars($filterLabels['Customer']);
-                } elseif (!empty($filterLabels['Supplier'])) {
-                    echo 'Supplier: ' . htmlspecialchars($filterLabels['Supplier']);
-                } elseif (!empty($filterLabels['Product'])) {
-                    echo 'Product: ' . htmlspecialchars($filterLabels['Product']);
-                } else {
-                    echo 'All Accounts / Entities';
-                }
+                $contexts = [];
+                if (!empty($filterLabels['Customer'])) $contexts[] = 'Cust: ' . $filterLabels['Customer'];
+                if (!empty($filterLabels['Supplier'])) $contexts[] = 'Vend: ' . $filterLabels['Supplier'];
+                if (!empty($filterLabels['Product'])) $contexts[] = 'Prod: ' . $filterLabels['Product'];
+                if (!empty($filterLabels['Warehouse'])) $contexts[] = 'WH: ' . $filterLabels['Warehouse'];
+                if (!empty($filterLabels['Customer/Supplier Group'])) $contexts[] = 'Grp: ' . $filterLabels['Customer/Supplier Group'];
+                if (!empty($filterLabels['Territory'])) $contexts[] = 'Terr: ' . $filterLabels['Territory'];
+                echo !empty($contexts) ? htmlspecialchars(implode(', ', $contexts)) : 'All Accounts / Entities';
                 ?>
             </td>
             <td class="meta-label">To Date</td>
             <td class="meta-separator">:</td>
-            <td class="meta-value"><?= htmlspecialchars($filterLabels['To Date']) ?></td>
+            <td class="meta-value"><?= htmlspecialchars($filterLabels['To Date'] ?? '') ?></td>
         </tr>
         <tr>
-            <td class="meta-label">Project</td>
+            <td class="meta-label">Route & Logistics</td>
             <td class="meta-separator">:</td>
-            <td class="meta-value">_</td>
+            <td class="meta-value">
+                <?php
+                $logistics = [];
+                if (!empty($filterLabels['Route'])) $logistics[] = 'Rt: ' . $filterLabels['Route'];
+                if (!empty($filterLabels['Sales Rep'])) $logistics[] = 'Rep: ' . $filterLabels['Sales Rep'];
+                if (!empty($filterLabels['Vehicle'])) $logistics[] = 'Veh: ' . $filterLabels['Vehicle'];
+                if (!empty($filterLabels['Driver'])) $logistics[] = 'Dr: ' . $filterLabels['Driver'];
+                if (!empty($filterLabels['Partner'])) $logistics[] = 'Prt: ' . $filterLabels['Partner'];
+                echo !empty($logistics) ? htmlspecialchars(implode(', ', $logistics)) : '_';
+                ?>
+            </td>
             <td class="meta-label">Acc Typ / Cat</td>
             <td class="meta-separator">:</td>
             <td class="meta-value">
                 <?php
-                if (!empty($filterLabels['Category'])) {
-                    echo htmlspecialchars($filterLabels['Category']);
-                } elseif (!empty($filterLabels['Route'])) {
-                    echo 'Route: ' . htmlspecialchars($filterLabels['Route']);
-                } else {
-                    echo '_';
-                }
+                $types = [];
+                if (!empty($filterLabels['Category'])) $types[] = $filterLabels['Category'];
+                if (!empty($filterLabels['Brand'])) $types[] = 'Brand: ' . $filterLabels['Brand'];
+                if (!empty($filterLabels['Status'])) $types[] = 'Status: ' . $filterLabels['Status'];
+                if (!empty($filterLabels['Payment Method'])) $types[] = 'PM: ' . $filterLabels['Payment Method'];
+                echo !empty($types) ? htmlspecialchars(implode(', ', $types)) : '_';
                 ?>
             </td>
         </tr>

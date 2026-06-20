@@ -80,10 +80,43 @@ class ReportController extends Controller {
         $db->query("SELECT id, name FROM item_categories ORDER BY name ASC");
         $categories = $db->resultSet() ?: [];
 
-        // Load saved views and scheduled reports for this user
-        $userId = $_SESSION['user_id'];
-        $savedViews = $this->engine->getSavedViews($userId, $reportKey);
-        $scheduled = $this->engine->getScheduledReports($userId, $reportKey);
+        // Additional global filters:
+        $db->query("SELECT DISTINCT brand FROM items WHERE brand IS NOT NULL AND brand != '' ORDER BY brand ASC");
+        $brands = $db->resultSet() ?: [];
+
+        $db->query("SELECT DISTINCT customer_type as name FROM customers WHERE customer_type IS NOT NULL AND customer_type != '' ORDER BY customer_type ASC");
+        $groups = $db->resultSet() ?: [];
+
+        $db->query("SELECT id, vehicle_number FROM vehicles WHERE status = 'Active' ORDER BY vehicle_number ASC");
+        $vehicles = $db->resultSet() ?: [];
+
+        $db->query("SELECT id, CONCAT(first_name, ' ', last_name) as name FROM employees WHERE job_title = 'Driver' AND status = 'Active' ORDER BY first_name ASC");
+        $drivers = $db->resultSet() ?: [];
+
+        $db->query("SELECT DISTINCT partner_name as name FROM deliveries WHERE partner_name IS NOT NULL AND partner_name != '' ORDER BY partner_name ASC");
+        $partners = $db->resultSet() ?: [];
+
+        $db->query("SELECT DISTINCT territory FROM customers WHERE territory IS NOT NULL AND territory != '' ORDER BY territory ASC");
+        $territories = $db->resultSet() ?: [];
+
+        $db->query("SELECT id, username as name FROM users WHERE role = 'rep' ORDER BY username ASC");
+        $reps = $db->resultSet() ?: [];
+
+        $payment_methods = [
+            (object)['id' => 'Cash', 'name' => 'Cash'],
+            (object)['id' => 'Bank Transfer', 'name' => 'Bank Transfer'],
+            (object)['id' => 'Cheque', 'name' => 'Cheque']
+        ];
+
+        $statuses = [
+            (object)['id' => 'Active', 'name' => 'Active'],
+            (object)['id' => 'Paid', 'name' => 'Paid'],
+            (object)['id' => 'Unpaid', 'name' => 'Unpaid'],
+            (object)['id' => 'Pending', 'name' => 'Pending'],
+            (object)['id' => 'Cleared', 'name' => 'Cleared'],
+            (object)['id' => 'Bounced', 'name' => 'Bounced'],
+            (object)['id' => 'Voided', 'name' => 'Voided']
+        ];
 
         $data = [
             'title' => $reportMetadata['title'] . ' - Viewer',
@@ -96,8 +129,15 @@ class ReportController extends Controller {
             'warehouses' => $warehouses,
             'routes' => $routes,
             'categories' => $categories,
-            'savedViews' => $savedViews,
-            'scheduled' => $scheduled
+            'brands' => $brands,
+            'groups' => $groups,
+            'vehicles' => $vehicles,
+            'drivers' => $drivers,
+            'partners' => $partners,
+            'territories' => $territories,
+            'reps' => $reps,
+            'payment_methods' => $payment_methods,
+            'statuses' => $statuses
         ];
 
         $this->view('layouts/main', $data);
@@ -125,6 +165,15 @@ class ReportController extends Controller {
             'warehouse' => $_GET['warehouse'] ?? null,
             'route' => $_GET['route'] ?? null,
             'category' => $_GET['category'] ?? null,
+            'rep' => $_GET['rep'] ?? null,
+            'payment_method' => $_GET['payment_method'] ?? null,
+            'status' => $_GET['status'] ?? null,
+            'brand' => $_GET['brand'] ?? null,
+            'group' => $_GET['group'] ?? null,
+            'vehicle' => $_GET['vehicle'] ?? null,
+            'driver' => $_GET['driver'] ?? null,
+            'partner' => $_GET['partner'] ?? null,
+            'territory' => $_GET['territory'] ?? null,
         ];
 
         try {
@@ -143,54 +192,6 @@ class ReportController extends Controller {
             echo json_encode(['success' => false, 'message' => 'CSRF token validation failed.']);
             exit;
         }
-    }
-
-    /**
-     * Save report view filters
-     */
-    public function save_view() {
-        header('Content-Type: application/json');
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            echo json_encode(['success' => false, 'message' => 'Invalid Request Method']);
-            exit;
-        }
-        $this->validateCsrf();
-
-        $userId = $_SESSION['user_id'];
-        $reportKey = $_POST['report_key'] ?? '';
-        $viewName = $_POST['view_name'] ?? '';
-        $filters = $_POST['filters'] ?? [];
-
-        $success = $this->engine->saveView($userId, $reportKey, $viewName, $filters);
-        echo json_encode(['success' => $success]);
-        exit;
-    }
-
-    /**
-     * Save automated scheduled report
-     */
-    public function save_schedule() {
-        header('Content-Type: application/json');
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            echo json_encode(['success' => false, 'message' => 'Invalid Request Method']);
-            exit;
-        }
-        $this->validateCsrf();
-
-        $userId = $_SESSION['user_id'];
-        $reportKey = $_POST['report_key'] ?? '';
-        $frequency = $_POST['frequency'] ?? '';
-        $email = $_POST['email_recipient'] ?? '';
-        $filters = $_POST['filters'] ?? [];
-
-        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            echo json_encode(['success' => false, 'message' => 'Invalid email address recipient.']);
-            exit;
-        }
-
-        $success = $this->engine->saveSchedule($userId, $reportKey, $frequency, $email, $filters);
-        echo json_encode(['success' => $success]);
-        exit;
     }
 
     /**
@@ -219,6 +220,15 @@ class ReportController extends Controller {
             'warehouse' => $_GET['warehouse'] ?? null,
             'route' => $_GET['route'] ?? null,
             'category' => $_GET['category'] ?? null,
+            'rep' => $_GET['rep'] ?? null,
+            'payment_method' => $_GET['payment_method'] ?? null,
+            'status' => $_GET['status'] ?? null,
+            'brand' => $_GET['brand'] ?? null,
+            'group' => $_GET['group'] ?? null,
+            'vehicle' => $_GET['vehicle'] ?? null,
+            'driver' => $_GET['driver'] ?? null,
+            'partner' => $_GET['partner'] ?? null,
+            'territory' => $_GET['territory'] ?? null,
         ];
 
         // Fetch all matching data (large limit for exports)
@@ -246,7 +256,7 @@ class ReportController extends Controller {
                     foreach ($metadata['columns'] as $colKey => $c) {
                         $val = $r->$colKey ?? '';
                         if ($c['type'] === 'currency') {
-                            $val = '$' . number_format((float)$val, 2);
+                            $val = 'Rs. ' . number_format((float)$val, 2);
                         }
                         echo '<td>' . htmlspecialchars($val) . '</td>';
                     }
@@ -329,16 +339,6 @@ class ReportController extends Controller {
     }
 
     /**
-     * Cron endpoint to process automated email report distribution
-     */
-    public function run_cron() {
-        header('Content-Type: application/json');
-        $processed = $this->engine->runScheduledReports();
-        echo json_encode(['success' => true, 'processed_schedules_count' => $processed]);
-        exit;
-    }
-
-    /**
      * Dedicated accounting-grade high-fidelity print output
      */
     public function print_report($reportKey = null) {
@@ -363,6 +363,15 @@ class ReportController extends Controller {
             'warehouse' => $_GET['warehouse'] ?? null,
             'route' => $_GET['route'] ?? null,
             'category' => $_GET['category'] ?? null,
+            'rep' => $_GET['rep'] ?? null,
+            'payment_method' => $_GET['payment_method'] ?? null,
+            'status' => $_GET['status'] ?? null,
+            'brand' => $_GET['brand'] ?? null,
+            'group' => $_GET['group'] ?? null,
+            'vehicle' => $_GET['vehicle'] ?? null,
+            'driver' => $_GET['driver'] ?? null,
+            'partner' => $_GET['partner'] ?? null,
+            'territory' => $_GET['territory'] ?? null,
         ];
 
         // Fetch data
@@ -434,6 +443,48 @@ class ReportController extends Controller {
             if ($row) $filterLabels['Route'] = $row->route_name;
         }
 
+        if (!empty($filters['rep'])) {
+            $db->query("SELECT username FROM users WHERE id = :id");
+            $db->bind(':id', $filters['rep']);
+            $row = $db->single();
+            if ($row) $filterLabels['Sales Rep'] = $row->username;
+        }
+
+        if (!empty($filters['payment_method'])) {
+            $filterLabels['Payment Method'] = $filters['payment_method'];
+        }
+
+        if (!empty($filters['status'])) {
+            $filterLabels['Status'] = $filters['status'];
+        }
+
+        if (!empty($filters['brand'])) {
+            $filterLabels['Brand'] = $filters['brand'];
+        }
+
+        if (!empty($filters['group'])) {
+            $filterLabels['Customer/Supplier Group'] = $filters['group'];
+        }
+
+        if (!empty($filters['vehicle'])) {
+            $filterLabels['Vehicle'] = $filters['vehicle'];
+        }
+
+        if (!empty($filters['driver'])) {
+            $db->query("SELECT CONCAT(first_name, ' ', last_name) as name FROM employees WHERE id = :id");
+            $db->bind(':id', $filters['driver']);
+            $row = $db->single();
+            if ($row) $filterLabels['Driver'] = $row->name;
+        }
+
+        if (!empty($filters['partner'])) {
+            $filterLabels['Partner'] = $filters['partner'];
+        }
+
+        if (!empty($filters['territory'])) {
+            $filterLabels['Territory'] = $filters['territory'];
+        }
+
         $data = [
             'reportKey' => $reportKey,
             'metadata' => $metadata,
@@ -448,4 +499,3 @@ class ReportController extends Controller {
         $this->view('reports/print', $data);
     }
 }
-
