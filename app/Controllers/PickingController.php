@@ -79,6 +79,47 @@ class PickingController extends Controller {
         }
     }
 
+    // Helper to validate PWA user session
+    private function checkAuth() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['user_id'])) {
+            http_response_code(401);
+            echo json_encode([
+                'success' => false,
+                'unauthorized' => true,
+                'error' => 'Session expired. Please log in again.'
+            ]);
+            exit;
+        }
+
+        // Validate user is active in DB
+        $userId = intval($_SESSION['user_id']);
+        $this->db->query("SELECT id, status FROM users WHERE id = :id");
+        $this->db->bind(':id', $userId);
+        $userRow = $this->db->single();
+        if (!$userRow) {
+            http_response_code(401);
+            echo json_encode([
+                'success' => false,
+                'unauthorized' => true,
+                'error' => 'User not found.'
+            ]);
+            exit;
+        }
+        if (isset($userRow->status) && strtolower($userRow->status) !== 'active') {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'unauthorized' => true,
+                'error' => 'Account is inactive.'
+            ]);
+            exit;
+        }
+    }
+
     // API: Verify login credentials
     public function api_login() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -100,6 +141,13 @@ class PickingController extends Controller {
         $user = $userModel->login($username, $password);
 
         if ($user) {
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            $_SESSION['user_id'] = $user->id;
+            $_SESSION['username'] = $user->username;
+            $_SESSION['user_role'] = $user->role;
+
             echo json_encode([
                 'success' => true,
                 'user' => [
@@ -116,6 +164,7 @@ class PickingController extends Controller {
 
     // API: Fetch all loading sheets (deliveries) in Loading stage
     public function api_get_sheets() {
+        $this->checkAuth();
         // Auto-create deliveries for any routes in 'Loading' status that don't have one
         $this->db->query("
             SELECT r.id, r.route_name, r.route_binding_id, 
@@ -196,6 +245,7 @@ class PickingController extends Controller {
 
     // API: Fetch single loading sheet detail with items list
     public function api_get_sheet_details($deliveryId) {
+        $this->checkAuth();
         $deliveryId = intval($deliveryId);
         
         $this->db->query("
@@ -300,6 +350,7 @@ class PickingController extends Controller {
 
     // API: Update single item details (loaded_qty, is_picked)
     public function api_update_item() {
+        $this->checkAuth();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             echo json_encode(['success' => false, 'error' => 'Method not allowed']);
@@ -348,6 +399,7 @@ class PickingController extends Controller {
 
     // API: Update single item details for final loading (final_loaded_qty, is_verified, variance)
     public function api_update_final_item() {
+        $this->checkAuth();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             echo json_encode(['success' => false, 'error' => 'Method not allowed']);
@@ -403,6 +455,7 @@ class PickingController extends Controller {
 
     // API: Bulk Sync updates from offline PWA
     public function api_sync() {
+        $this->checkAuth();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             echo json_encode(['success' => false, 'error' => 'Method not allowed']);
@@ -486,6 +539,7 @@ class PickingController extends Controller {
 
     // API: Complete the loading process and transition the route to 'Variance Adjustment'
     public function api_complete_loading() {
+        $this->checkAuth();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             echo json_encode(['success' => false, 'error' => 'Method not allowed']);
@@ -566,6 +620,7 @@ class PickingController extends Controller {
     }
 
     public function api_substitute_product() {
+        $this->checkAuth();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             echo json_encode(['success' => false, 'error' => 'Method not allowed']);
@@ -670,6 +725,7 @@ class PickingController extends Controller {
     }
 
     public function api_search_products() {
+        $this->checkAuth();
         $q = trim($_GET['q'] ?? '');
         if (empty($q)) {
             echo json_encode(['success' => true, 'products' => []]);
