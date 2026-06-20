@@ -287,7 +287,7 @@ $filterLabels = $data['filterLabels'];
                                 <?php
                                 $val = $r->$colKey ?? '';
                                 if ($c['type'] === 'currency') {
-                                    $numericVal = floatval($val || 0);
+                                    $numericVal = floatval($val ?: 0);
                                     // Add Dr/Cr indicators if the report key matches general_ledger or customer_statement
                                     $suffix = '';
                                     if ($reportKey === 'general_ledger' || $reportKey === 'customer_statement' || $reportKey === 'trial_balance') {
