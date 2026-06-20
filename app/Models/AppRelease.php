@@ -12,7 +12,7 @@ class AppRelease {
     }
 
     public function getLatestRelease() {
-        $this->db->query("SELECT * FROM app_releases WHERE is_latest = 1 LIMIT 1");
+        $this->db->query("SELECT * FROM app_releases WHERE is_latest = 1 ORDER BY major DESC, minor DESC, patch DESC, id DESC LIMIT 1");
         $latest = $this->db->single();
         if (!$latest) {
             // Fallback to the highest version
