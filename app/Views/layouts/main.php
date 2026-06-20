@@ -1011,6 +1011,100 @@ if (!function_exists('hasPermission')) {
     </div>
 
     <script>
+        // --- Session Expiration and Inactivity Monitoring ---
+        let sessionExpiredHandled = false;
+        function handleSessionExpiration() {
+            if (sessionExpiredHandled) return;
+            sessionExpiredHandled = true;
+
+            // Save the current location (path + query parameters)
+            const currentUrl = window.location.pathname + window.location.search;
+            sessionStorage.setItem('redirect_url', currentUrl);
+
+            // Clear local session variables
+            sessionStorage.removeItem('curtiss_history');
+            sessionStorage.removeItem('report_breadcrumbs');
+
+            alert('Session Expired\n\nPlease login again.');
+            window.location.href = '<?= APP_URL ?>/auth/login';
+        }
+
+        // Global AJAX / API Interceptors
+        // 1. Intercept Fetch API
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            return originalFetch.apply(this, args).then(response => {
+                if (response.status === 401 || response.status === 419 || response.status === 403) {
+                    handleSessionExpiration();
+                }
+                return response;
+            });
+        };
+
+        // 2. Intercept XMLHttpRequest (AJAX)
+        const originalOpen = XMLHttpRequest.prototype.open;
+        const originalSend = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.open = function(method, url, ...args) {
+            this._url = url;
+            return originalOpen.apply(this, [method, url, ...args]);
+        };
+        XMLHttpRequest.prototype.send = function(...args) {
+            const onreadystatechange = this.onreadystatechange;
+            this.onreadystatechange = function() {
+                if (this.readyState === 4) {
+                    if (this.status === 401 || this.status === 419 || this.status === 403) {
+                        handleSessionExpiration();
+                    }
+                }
+                if (onreadystatechange) {
+                    return onreadystatechange.apply(this, arguments);
+                }
+            };
+            return originalSend.apply(this, args);
+        };
+
+        // 3. Inactivity Timeout (15 Minutes)
+        let inactivityTimeout;
+        const TIMEOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+        function resetInactivityTimer() {
+            if (sessionExpiredHandled) return;
+            clearTimeout(inactivityTimeout);
+            inactivityTimeout = setTimeout(handleInactivityTimeout, TIMEOUT_DURATION);
+        }
+        function handleInactivityTimeout() {
+            originalFetch('<?= APP_URL ?>/auth/timeout_logout')
+                .finally(() => {
+                    handleSessionExpiration();
+                });
+        }
+        window.addEventListener('load', resetInactivityTimer);
+        document.addEventListener('mousemove', resetInactivityTimer);
+        document.addEventListener('keypress', resetInactivityTimer);
+        document.addEventListener('click', resetInactivityTimer);
+        document.addEventListener('scroll', resetInactivityTimer);
+        document.addEventListener('touchstart', resetInactivityTimer);
+
+        // 4. Browser Multi-Tab Check (Poller runs every 10 seconds)
+        setInterval(() => {
+            if (sessionExpiredHandled) return;
+            originalFetch('<?= APP_URL ?>/auth/check_session')
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.logged_in) {
+                        handleSessionExpiration();
+                    }
+                })
+                .catch(err => {
+                    // Ignore transient network errors
+                });
+        }, 10000);
+
+        // Clear redirect_url if we are currently on the page that was successfully loaded
+        const loadCheckUrl = window.location.pathname + window.location.search;
+        if (sessionStorage.getItem('redirect_url') === loadCheckUrl) {
+            sessionStorage.removeItem('redirect_url');
+        }
+
         // Clock Logic
         function updateClock() {
             const now = new Date();

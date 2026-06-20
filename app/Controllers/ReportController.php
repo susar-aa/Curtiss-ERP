@@ -185,6 +185,527 @@ class ReportController extends Controller {
         exit;
     }
 
+    /**
+     * AJAX Endpoint for Side Panel Quick View
+     */
+    public function quick_view() {
+        header('Content-Type: application/json');
+        
+        $type = $_GET['type'] ?? '';
+        $id = $_GET['id'] ?? '';
+        $number = $_GET['number'] ?? '';
+
+        if (empty($type)) {
+            echo json_encode(['success' => false, 'message' => 'Type is required.']);
+            exit;
+        }
+
+        $db = new Database();
+
+        try {
+            switch ($type) {
+                case 'customer':
+                    if ($id) {
+                        $db->query("SELECT * FROM customers WHERE id = :id");
+                        $db->bind(':id', $id);
+                    } else {
+                        $db->query("SELECT * FROM customers WHERE name = :name LIMIT 1");
+                        $db->bind(':name', $number);
+                    }
+                    $customer = $db->single();
+                    if (!$customer) {
+                        echo json_encode(['success' => false, 'message' => 'Customer not found.']);
+                        exit;
+                    }
+
+                    // Outstanding balance formula
+                    $db->query("
+                        SELECT 
+                            (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = :cid1 AND status != 'Voided') - 
+                            (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE customer_id = :cid2 AND status = 'Active') - 
+                            (SELECT COALESCE(SUM(total_amount), 0) FROM credit_notes WHERE customer_id = :cid3)
+                            AS outstanding_balance
+                    ");
+                    $db->bind(':cid1', $customer->id);
+                    $db->bind(':cid2', $customer->id);
+                    $db->bind(':cid3', $customer->id);
+                    $balanceRow = $db->single();
+                    $outstanding = $balanceRow ? floatval($balanceRow->outstanding_balance) : 0.00;
+
+                    // Recent Invoices (limit 5)
+                    $db->query("
+                        SELECT id, invoice_number, invoice_date, status, 
+                               (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_amount 
+                        FROM invoices 
+                        WHERE customer_id = :cid 
+                        ORDER BY invoice_date DESC, id DESC LIMIT 5
+                    ");
+                    $db->bind(':cid', $customer->id);
+                    $invoices = $db->resultSet() ?: [];
+
+                    // Recent Payments (limit 5)
+                    $db->query("
+                        SELECT id, payment_date, payment_method, reference, amount, status 
+                        FROM customer_payments 
+                        WHERE customer_id = :cid AND status = 'Active'
+                        ORDER BY payment_date DESC, id DESC LIMIT 5
+                    ");
+                    $db->bind(':cid', $customer->id);
+                    $payments = $db->resultSet() ?: [];
+
+                    echo json_encode([
+                        'success' => true,
+                        'entity' => [
+                            'id' => $customer->id,
+                            'name' => $customer->name,
+                            'phone' => $customer->phone,
+                            'email' => $customer->email,
+                            'address' => $customer->address,
+                            'territory' => $customer->territory,
+                            'customer_type' => $customer->customer_type ?? 'Standard',
+                            'outstanding_balance' => $outstanding
+                        ],
+                        'invoices' => $invoices,
+                        'payments' => $payments
+                    ]);
+                    break;
+
+                case 'product':
+                    if ($id) {
+                        $db->query("SELECT * FROM items WHERE id = :id");
+                        $db->bind(':id', $id);
+                    } else {
+                        $db->query("SELECT * FROM items WHERE name = :name OR item_code = :code LIMIT 1");
+                        $db->bind(':name', $number);
+                        $db->bind(':code', $number);
+                    }
+                    $product = $db->single();
+                    if (!$product) {
+                        echo json_encode(['success' => false, 'message' => 'Product not found.']);
+                        exit;
+                    }
+
+                    // Warehouse stock
+                    $db->query("
+                        SELECT w.name as warehouse_name, COALESCE(SUM(sl.quantity_in - sl.quantity_out), 0) as quantity 
+                        FROM stock_ledger sl 
+                        JOIN warehouses w ON sl.warehouse_id = w.id 
+                        WHERE sl.item_id = :id 
+                        GROUP BY w.id, w.name
+                    ");
+                    $db->bind(':id', $product->id);
+                    $warehouseStock = $db->resultSet() ?: [];
+
+                    // Recent Sales movement (limit 5)
+                    $db->query("
+                        SELECT sl.transaction_date as date, sl.reference_number as ref, sl.quantity_out as qty, sl.unit_cost, sl.total_value 
+                        FROM stock_ledger sl 
+                        WHERE sl.item_id = :id AND sl.quantity_out > 0 
+                        ORDER BY sl.transaction_date DESC, sl.id DESC LIMIT 5
+                    ");
+                    $db->bind(':id', $product->id);
+                    $recentSales = $db->resultSet() ?: [];
+
+                    echo json_encode([
+                        'success' => true,
+                        'entity' => [
+                            'id' => $product->id,
+                            'name' => $product->name,
+                            'item_code' => $product->item_code,
+                            'brand' => $product->brand ?? 'N/A',
+                            'price' => $product->selling_price ?? $product->price ?? 0.00,
+                            'cost' => $product->cost ?? $product->cost_price ?? 0.00,
+                            'qty_on_hand' => $product->quantity_on_hand
+                        ],
+                        'stock' => $warehouseStock,
+                        'sales' => $recentSales
+                    ]);
+                    break;
+
+                case 'invoice':
+                    if ($id) {
+                        $db->query("SELECT i.*, c.name as customer_name FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.id = :id");
+                        $db->bind(':id', $id);
+                    } else {
+                        $db->query("SELECT i.*, c.name as customer_name FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.invoice_number = :num LIMIT 1");
+                        $db->bind(':num', $number);
+                    }
+                    $invoice = $db->single();
+                    if (!$invoice) {
+                        echo json_encode(['success' => false, 'message' => 'Invoice not found.']);
+                        exit;
+                    }
+
+                    // Get line items
+                    $db->query("
+                        SELECT ii.*, item.name as item_name, item.item_code 
+                        FROM invoice_items ii 
+                        JOIN items item ON ii.item_id = item.id 
+                        WHERE ii.invoice_id = :id
+                    ");
+                    $db->bind(':id', $invoice->id);
+                    $items = $db->resultSet() ?: [];
+
+                    // Get payment allocations
+                    $db->query("
+                        SELECT pa.amount, cp.payment_date, cp.payment_method, cp.reference 
+                        FROM customer_payment_allocations pa 
+                        JOIN customer_payments cp ON pa.customer_payment_id = cp.id 
+                        WHERE pa.invoice_id = :id AND pa.is_reversed = 0
+                    ");
+                    $db->bind(':id', $invoice->id);
+                    $allocations = $db->resultSet() ?: [];
+
+                    echo json_encode([
+                        'success' => true,
+                        'entity' => [
+                            'id' => $invoice->id,
+                            'invoice_number' => $invoice->invoice_number,
+                            'invoice_date' => $invoice->invoice_date,
+                            'due_date' => $invoice->due_date,
+                            'customer_name' => $invoice->customer_name,
+                            'status' => $invoice->status,
+                            'total' => $invoice->total_amount,
+                            'discount' => $invoice->global_discount_val,
+                            'tax' => $invoice->tax_amount,
+                            'net_total' => ($invoice->total_amount - ($invoice->global_discount_type === '%' ? ($invoice->total_amount * $invoice->global_discount_val / 100) : $invoice->global_discount_val) + $invoice->tax_amount)
+                        ],
+                        'items' => $items,
+                        'allocations' => $allocations
+                    ]);
+                    break;
+
+                case 'route':
+                    if ($id) {
+                        $db->query("SELECT * FROM rep_daily_routes WHERE id = :id");
+                        $db->bind(':id', $id);
+                    } else {
+                        $db->query("SELECT * FROM rep_daily_routes WHERE route_name = :name LIMIT 1");
+                        $db->bind(':name', $number);
+                    }
+                    $route = $db->single();
+                    if (!$route) {
+                        echo json_encode(['success' => false, 'message' => 'Route not found.']);
+                        exit;
+                    }
+
+                    // Route statistics
+                    $db->query("SELECT COUNT(*) as cust_count FROM customers WHERE route_id = :rid OR territory = :route_name");
+                    $db->bind(':rid', $route->id);
+                    $db->bind(':route_name', $route->route_name);
+                    $custCountRow = $db->single();
+                    $custCount = $custCountRow ? intval($custCountRow->cust_count) : 0;
+
+                    $db->query("
+                        SELECT COUNT(*) as inv_count, COALESCE(SUM(total_amount),0) as total_sales 
+                        FROM invoices i 
+                        JOIN customers c ON i.customer_id = c.id 
+                        WHERE c.route_id = :rid OR c.territory = :route_name
+                    ");
+                    $db->bind(':rid', $route->id);
+                    $db->bind(':route_name', $route->route_name);
+                    $invStats = $db->single();
+                    $invCount = $invStats ? intval($invStats->inv_count) : 0;
+                    $totalSales = $invStats ? floatval($invStats->total_sales) : 0.00;
+
+                    $db->query("
+                        SELECT COALESCE(SUM(cp.amount),0) as total_collections 
+                        FROM customer_payments cp 
+                        JOIN customers c ON cp.customer_id = c.id 
+                        WHERE (c.route_id = :rid OR c.territory = :route_name) AND cp.status = 'Active'
+                    ");
+                    $db->bind(':rid', $route->id);
+                    $db->bind(':route_name', $route->route_name);
+                    $collRow = $db->single();
+                    $totalCollections = $collRow ? floatval($collRow->total_collections) : 0.00;
+
+                    echo json_encode([
+                        'success' => true,
+                        'entity' => [
+                            'id' => $route->id,
+                            'route_name' => $route->route_name,
+                            'description' => $route->description ?? 'N/A',
+                            'cust_count' => $custCount,
+                            'inv_count' => $invCount,
+                            'total_sales' => $totalSales,
+                            'total_collections' => $totalCollections,
+                            'outstanding' => $totalSales - $totalCollections
+                        ]
+                    ]);
+                    break;
+
+                case 'supplier':
+                    if ($id) {
+                        $db->query("SELECT * FROM vendors WHERE id = :id");
+                        $db->bind(':id', $id);
+                    } else {
+                        $db->query("SELECT * FROM vendors WHERE name = :name LIMIT 1");
+                        $db->bind(':name', $number);
+                    }
+                    $supplier = $db->single();
+                    if (!$supplier) {
+                        echo json_encode(['success' => false, 'message' => 'Supplier not found.']);
+                        exit;
+                    }
+
+                    // Outstanding balance formula
+                    $db->query("
+                        SELECT 
+                            (SELECT COALESCE(SUM(gri.total), 0) FROM grn_items gri JOIN goods_receipt_notes grn ON gri.grn_id = grn.id WHERE grn.vendor_id = :vid1 AND grn.is_approved = 1) - 
+                            (SELECT COALESCE(SUM(amount), 0) FROM supplier_payments WHERE vendor_id = :vid2 AND status = 'Active') - 
+                            (SELECT COALESCE(SUM(total_amount), 0) FROM supplier_returns WHERE vendor_id = :vid3) 
+                            AS outstanding_balance
+                    ");
+                    $db->bind(':vid1', $supplier->id);
+                    $db->bind(':vid2', $supplier->id);
+                    $db->bind(':vid3', $supplier->id);
+                    $balanceRow = $db->single();
+                    $outstanding = $balanceRow ? floatval($balanceRow->outstanding_balance) : 0.00;
+
+                    // Recent GRNs
+                    $db->query("
+                        SELECT grn.id, grn.grn_number, grn.grn_date, COALESCE(SUM(gri.total), 0) as total 
+                        FROM goods_receipt_notes grn 
+                        LEFT JOIN grn_items gri ON gri.grn_id = grn.id 
+                        WHERE grn.vendor_id = :vid AND grn.is_approved = 1 
+                        GROUP BY grn.id, grn.grn_number, grn.grn_date 
+                        ORDER BY grn.grn_date DESC LIMIT 5
+                    ");
+                    $db->bind(':vid', $supplier->id);
+                    $grns = $db->resultSet() ?: [];
+
+                    echo json_encode([
+                        'success' => true,
+                        'entity' => [
+                            'id' => $supplier->id,
+                            'name' => $supplier->name,
+                            'phone' => $supplier->phone,
+                            'email' => $supplier->email,
+                            'address' => $supplier->address,
+                            'outstanding_balance' => $outstanding
+                        ],
+                        'grns' => $grns
+                    ]);
+                    break;
+
+                case 'po':
+                    if ($id) {
+                        $db->query("SELECT p.*, v.name as supplier_name FROM purchase_orders p JOIN vendors v ON p.vendor_id = v.id WHERE p.id = :id");
+                        $db->bind(':id', $id);
+                    } else {
+                        $db->query("SELECT p.*, v.name as supplier_name FROM purchase_orders p JOIN vendors v ON p.vendor_id = v.id WHERE p.po_number = :num LIMIT 1");
+                        $db->bind(':num', $number);
+                    }
+                    $po = $db->single();
+                    if (!$po) {
+                        echo json_encode(['success' => false, 'message' => 'PO not found.']);
+                        exit;
+                    }
+                    echo json_encode([
+                        'success' => true,
+                        'entity' => [
+                            'id' => $po->id,
+                            'po_number' => $po->po_number,
+                            'po_date' => $po->po_date ?? $po->created_at,
+                            'supplier_name' => $po->supplier_name,
+                            'status' => $po->status ?? 'Pending',
+                            'total' => $po->total_amount ?? 0.00
+                        ]
+                    ]);
+                    break;
+
+                case 'grn':
+                    if ($id) {
+                        $db->query("SELECT g.*, v.name as supplier_name FROM goods_receipt_notes g JOIN vendors v ON g.vendor_id = v.id WHERE g.id = :id");
+                        $db->bind(':id', $id);
+                    } else {
+                        $db->query("SELECT g.*, v.name as supplier_name FROM goods_receipt_notes g JOIN vendors v ON g.vendor_id = v.id WHERE g.grn_number = :num LIMIT 1");
+                        $db->bind(':num', $number);
+                    }
+                    $grn = $db->single();
+                    if (!$grn) {
+                        echo json_encode(['success' => false, 'message' => 'GRN not found.']);
+                        exit;
+                    }
+                    $db->query("SELECT COALESCE(SUM(total), 0) as total FROM grn_items WHERE grn_id = :id");
+                    $db->bind(':id', $grn->id);
+                    $totRow = $db->single();
+                    $total = $totRow ? floatval($totRow->total) : 0.00;
+
+                    echo json_encode([
+                        'success' => true,
+                        'entity' => [
+                            'id' => $grn->id,
+                            'grn_number' => $grn->grn_number,
+                            'grn_date' => $grn->grn_date,
+                            'supplier_name' => $grn->supplier_name,
+                            'is_approved' => $grn->is_approved,
+                            'total' => $total
+                        ]
+                    ]);
+                    break;
+
+                case 'payment':
+                    if ($id) {
+                        $db->query("SELECT p.*, c.name as customer_name FROM customer_payments p JOIN customers c ON p.customer_id = c.id WHERE p.id = :id");
+                        $db->bind(':id', $id);
+                    } else {
+                        $db->query("SELECT p.*, c.name as customer_name FROM customer_payments p JOIN customers c ON p.customer_id = c.id WHERE p.reference = :ref LIMIT 1");
+                        $db->bind(':ref', $number);
+                    }
+                    $payment = $db->single();
+                    if (!$payment) {
+                        echo json_encode(['success' => false, 'message' => 'Payment not found.']);
+                        exit;
+                    }
+                    echo json_encode([
+                        'success' => true,
+                        'entity' => [
+                            'id' => $payment->id,
+                            'reference' => $payment->reference,
+                            'payment_date' => $payment->payment_date,
+                            'payment_method' => $payment->payment_method,
+                            'amount' => $payment->amount,
+                            'customer_name' => $payment->customer_name,
+                            'status' => $payment->status
+                        ]
+                    ]);
+                    break;
+
+                case 'cheque':
+                    if ($id) {
+                        $db->query("SELECT ch.*, c.name as customer_name FROM cheques ch LEFT JOIN customers c ON ch.customer_id = c.id WHERE ch.id = :id");
+                        $db->bind(':id', $id);
+                    } else {
+                        $db->query("SELECT ch.*, c.name as customer_name FROM cheques ch LEFT JOIN customers c ON ch.customer_id = c.id WHERE ch.cheque_number = :num LIMIT 1");
+                        $db->bind(':num', $number);
+                    }
+                    $cheque = $db->single();
+                    if (!$cheque) {
+                        echo json_encode(['success' => false, 'message' => 'Cheque not found.']);
+                        exit;
+                    }
+                    echo json_encode([
+                        'success' => true,
+                        'entity' => [
+                            'id' => $cheque->id,
+                            'cheque_number' => $cheque->cheque_number,
+                            'bank_name' => $cheque->bank_name,
+                            'amount' => $cheque->amount,
+                            'banking_date' => $cheque->banking_date,
+                            'customer_name' => $cheque->customer_name ?? 'N/A',
+                            'status' => $cheque->status
+                        ]
+                    ]);
+                    break;
+
+                case 'driver':
+                    if ($id) {
+                        $db->query("SELECT id, CONCAT(first_name, ' ', last_name) as name, email, phone FROM employees WHERE id = :id");
+                        $db->bind(':id', $id);
+                    } else {
+                        $db->query("SELECT id, CONCAT(first_name, ' ', last_name) as name, email, phone FROM employees WHERE CONCAT(first_name, ' ', last_name) = :name LIMIT 1");
+                        $db->bind(':name', $number);
+                    }
+                    $driver = $db->single();
+                    if (!$driver) {
+                        echo json_encode(['success' => false, 'message' => 'Driver not found.']);
+                        exit;
+                    }
+                    echo json_encode([
+                        'success' => true,
+                        'entity' => [
+                            'id' => $driver->id,
+                            'name' => $driver->name,
+                            'email' => $driver->email ?? 'N/A',
+                            'phone' => $driver->phone ?? 'N/A',
+                            'role' => 'Driver'
+                        ]
+                    ]);
+                    break;
+
+                case 'vehicle':
+                    if ($id) {
+                        $db->query("SELECT * FROM vehicles WHERE id = :id");
+                        $db->bind(':id', $id);
+                    } else {
+                        $db->query("SELECT * FROM vehicles WHERE vehicle_number = :num LIMIT 1");
+                        $db->bind(':num', $number);
+                    }
+                    $vehicle = $db->single();
+                    if (!$vehicle) {
+                        echo json_encode(['success' => false, 'message' => 'Vehicle not found.']);
+                        exit;
+                    }
+                    echo json_encode([
+                        'success' => true,
+                        'entity' => [
+                            'id' => $vehicle->id,
+                            'vehicle_number' => $vehicle->vehicle_number,
+                            'vehicle_type' => $vehicle->vehicle_type ?? 'N/A',
+                            'status' => $vehicle->status
+                        ]
+                    ]);
+                    break;
+
+                case 'rep':
+                    if ($id) {
+                        $db->query("SELECT id, username, email FROM users WHERE id = :id");
+                        $db->bind(':id', $id);
+                    } else {
+                        $db->query("SELECT id, username, email FROM users WHERE username = :name LIMIT 1");
+                        $db->bind(':name', $number);
+                    }
+                    $rep = $db->single();
+                    if (!$rep) {
+                        echo json_encode(['success' => false, 'message' => 'Sales Rep not found.']);
+                        exit;
+                    }
+                    echo json_encode([
+                        'success' => true,
+                        'entity' => [
+                            'id' => $rep->id,
+                            'name' => $rep->username,
+                            'email' => $rep->email ?? 'N/A',
+                            'role' => 'Sales Representative'
+                        ]
+                    ]);
+                    break;
+
+                case 'warehouse':
+                    if ($id) {
+                        $db->query("SELECT * FROM warehouses WHERE id = :id");
+                        $db->bind(':id', $id);
+                    } else {
+                        $db->query("SELECT * FROM warehouses WHERE name = :name LIMIT 1");
+                        $db->bind(':name', $number);
+                    }
+                    $warehouse = $db->single();
+                    if (!$warehouse) {
+                        echo json_encode(['success' => false, 'message' => 'Warehouse not found.']);
+                        exit;
+                    }
+                    echo json_encode([
+                        'success' => true,
+                        'entity' => [
+                            'id' => $warehouse->id,
+                            'name' => $warehouse->name,
+                            'code' => $warehouse->code ?? 'N/A',
+                            'address' => $warehouse->address ?? 'N/A'
+                        ]
+                    ]);
+                    break;
+
+                default:
+                    echo json_encode(['success' => false, 'message' => 'Invalid quick view type.']);
+                    exit;
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
     private function validateCsrf() {
         $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? null;
         if (!$token || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {

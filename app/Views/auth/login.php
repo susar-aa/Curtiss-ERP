@@ -164,5 +164,23 @@
     </script>
     <?php endif; ?>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const redirectUrl = sessionStorage.getItem('redirect_url');
+            if (redirectUrl) {
+                const form = document.querySelector('form');
+                if (form) {
+                    let input = form.querySelector('input[name="redirect_url"]');
+                    if (!input) {
+                        input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'redirect_url';
+                        form.appendChild(input);
+                    }
+                    input.value = redirectUrl;
+                }
+            }
+        });
+    </script>
 </body>
 </html>

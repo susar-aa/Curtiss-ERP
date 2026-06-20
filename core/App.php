@@ -25,6 +25,26 @@ class App {
 
         // Check if user is logged in. If not, force routing to AuthController (unless it is auth controller, an API sync request, or a public invoice view)
         if (!isset($_SESSION['user_id']) && !$isApiSync && !$isPublicInvoice && (isset($url[0]) ? strtolower($url[0]) !== 'auth' : true)) {
+            $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
+                      (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
+                      (strpos($_SERVER['REQUEST_URI'], '/fetch_data') !== false) ||
+                      (strpos($_SERVER['REQUEST_URI'], '/quick_view') !== false);
+
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                http_response_code(401);
+                echo json_encode([
+                    'success' => false,
+                    'session_expired' => true,
+                    'message' => 'Session Expired. Please login again.'
+                ]);
+                exit;
+            }
+
+            if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+                $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
+            }
+
             $this->controller = 'AuthController';
             $this->method = 'login';
         } else {

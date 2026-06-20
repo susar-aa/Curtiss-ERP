@@ -42,6 +42,23 @@ class Controller {
         
         // If not logged in, redirect to login
         if (!isset($_SESSION['user_id'])) {
+            $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
+                      (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                http_response_code(401);
+                echo json_encode([
+                    'success' => false,
+                    'session_expired' => true,
+                    'message' => 'Session Expired. Please login again.'
+                ]);
+                exit;
+            }
+
+            if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+                $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
+            }
+
             header('Location: ' . APP_URL . '/auth/login');
             exit;
         }

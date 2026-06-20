@@ -93,6 +93,11 @@ class AuthController extends Controller {
                         session_regenerate_id(true);
 
                         $this->logActivity('Login', 'Auth', "User '{$loggedInUser->username}' successfully logged in.", $loggedInUser->id);
+                        
+                        if (isset($_POST['redirect_url']) && !empty($_POST['redirect_url'])) {
+                            $_SESSION['redirect_url'] = $_POST['redirect_url'];
+                        }
+                        
                         $this->createUserSession($loggedInUser);
                     } else {
                         $this->handleFailedAttempt();
@@ -159,6 +164,13 @@ class AuthController extends Controller {
         }
         $_SESSION['permissions'] = $sessionPerms;
         
+        if (isset($_SESSION['redirect_url']) && !empty($_SESSION['redirect_url'])) {
+            $redirectUrl = $_SESSION['redirect_url'];
+            unset($_SESSION['redirect_url']);
+            header('Location: ' . $redirectUrl);
+            exit;
+        }
+        
         $role = strtolower($user->role);
         if ($role === 'driver') {
             header('Location: ' . APP_URL . '/driver');
@@ -190,6 +202,27 @@ class AuthController extends Controller {
         }
 
         header('Location: ' . APP_URL . '/auth/login');
+        exit;
+    }
+
+    public function check_session() {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'logged_in' => isset($_SESSION['user_id'])
+        ]);
+        exit;
+    }
+
+    public function timeout_logout() {
+        if (isset($_SESSION['username'])) {
+            $this->logActivity('Logout (Inactivity)', 'Auth', "User '{$_SESSION['username']}' logged out due to inactivity.", $_SESSION['user_id'] ?? null);
+        }
+        unset($_SESSION['user_id']);
+        unset($_SESSION['username']);
+        unset($_SESSION['role']);
+        session_destroy();
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true]);
         exit;
     }
 }

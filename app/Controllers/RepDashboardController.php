@@ -72,6 +72,19 @@ class RepDashboardController extends Controller {
                 exit;
             }
 
+            // Validate that user exists and is active
+            $this->db->query("SELECT id, status FROM users WHERE id = :id");
+            $this->db->bind(':id', $userId);
+            $userRow = $this->db->single();
+            if (!$userRow) {
+                echo json_encode(['success' => false, 'unauthorized' => true, 'message' => 'Unauthorized: User ID does not exist on server.']);
+                exit;
+            }
+            if (isset($userRow->status) && strtolower($userRow->status) !== 'active') {
+                echo json_encode(['success' => false, 'unauthorized' => true, 'message' => 'Unauthorized: User account is blocked/inactive.']);
+                exit;
+            }
+
             $lastSync = isset($_GET['last_sync_timestamp']) ? trim($_GET['last_sync_timestamp']) : '';
 
             $columnExists = function($table, $column) {
@@ -389,11 +402,11 @@ class RepDashboardController extends Controller {
         $this->db->bind(':id', $userId);
         $userRow = $this->db->single();
         if (!$userRow) {
-            echo json_encode(['success' => false, 'message' => 'Unauthorized: User ID does not exist on server.']);
+            echo json_encode(['success' => false, 'unauthorized' => true, 'message' => 'Unauthorized: User ID does not exist on server.']);
             exit;
         }
         if (isset($userRow->status) && strtolower($userRow->status) !== 'active') {
-            echo json_encode(['success' => false, 'message' => 'Unauthorized: User account is blocked/inactive.']);
+            echo json_encode(['success' => false, 'unauthorized' => true, 'message' => 'Unauthorized: User account is blocked/inactive.']);
             exit;
         }
 
