@@ -1,180 +1,250 @@
 <?php
-$ds = $data['default_start'] ?? date('Y-m-d', strtotime('-30 days'));
-$de = $data['default_end'] ?? date('Y-m-d');
+$categories = $data['categories'];
+$groupedReports = $data['grouped_reports'];
 
-function reportLink($slug, $dated = true) {
-    global $ds, $de;
-    $url = APP_URL . '/report/' . $slug;
-    if ($dated) {
-        $url .= '?start_date=' . urlencode($ds) . '&end_date=' . urlencode($de);
-    }
-    return $url;
-}
+// Icons helper mapped to categories for rich visual look
+$categoryIcons = [
+    'inventory' => 'ph-package',
+    'sales' => 'ph-shopping-cart',
+    'procurement' => 'ph-truck',
+    'customer' => 'ph-users',
+    'supplier' => 'ph-storefront',
+    'finance' => 'ph-bank',
+    'collection' => 'ph-hand-coins',
+    'route' => 'ph-map-trifold',
+    'management' => 'ph-presentation-chart'
+];
 ?>
+
 <style>
-    .hub-header { margin-bottom: 20px; }
-    .hub-header p { color: #666; margin: 4px 0 0; }
-    .period-bar { background: #e8f0fe; border: 1px solid #c5d9f7; border-radius: 8px; padding: 16px 20px; margin-bottom: 28px; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
-    .period-bar label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #555; display: block; margin-bottom: 4px; }
-    .period-bar input { padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; }
-    .period-bar small { color: #666; font-size: 12px; align-self: center; }
-    .report-section { margin-bottom: 32px; }
-    .report-section h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: #0066cc; margin: 0 0 14px; padding-bottom: 8px; border-bottom: 2px solid #e0e0e0; }
-    .report-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-    .report-card { background: #fff; padding: 22px; border-radius: 8px; border: 1px solid var(--mac-border); display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; }
-    @media (prefers-color-scheme: dark) { .report-card { background: rgba(255,255,255,0.03); } }
-    .report-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
-    .report-icon { font-size: 32px; margin-bottom: 10px; }
-    .report-title { font-size: 16px; font-weight: bold; margin-bottom: 8px; }
-    .report-desc { color: #666; font-size: 12px; line-height: 1.45; margin-bottom: 16px; flex-grow: 1; }
-    .report-card .btn { padding: 9px 16px; background: #0066cc; color: #fff; text-decoration: none; border-radius: 4px; font-weight: 600; font-size: 12px; text-align: center; }
-    .report-card .btn:hover { background: #0055aa; }
-    .tag-dated { display: inline-block; font-size: 10px; background: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 3px; margin-left: 6px; font-weight: 600; }
+    .reports-hub-wrapper {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .hub-header {
+        margin-bottom: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .hub-title h1 {
+        font-size: 26px;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0 0 5px 0;
+    }
+
+    .hub-title p {
+        color: #666;
+        margin: 0;
+        font-size: 14px;
+    }
+
+    .search-box-wrapper {
+        position: relative;
+        width: 320px;
+    }
+
+    .search-box-wrapper i {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #888;
+        font-size: 16px;
+    }
+
+    .search-box-wrapper input {
+        width: 100%;
+        padding: 10px 10px 10px 38px;
+        border: 1px solid #ddd;
+        border-radius: 20px;
+        font-size: 14px;
+        background: #fff;
+        transition: all 0.3s;
+    }
+
+    .search-box-wrapper input:focus {
+        border-color: #0066cc;
+        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+        outline: none;
+    }
+
+    /* Categories grid layout */
+    .categories-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 25px;
+    }
+
+    .category-section {
+        background: #fff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .category-section:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+    }
+
+    .category-header {
+        background: #f8fafc;
+        padding: 16px 20px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .category-header i {
+        font-size: 22px;
+        color: #0066cc;
+    }
+
+    .category-header h3 {
+        font-size: 16px;
+        font-weight: 650;
+        margin: 0;
+        color: #1e293b;
+    }
+
+    .reports-list {
+        padding: 10px 0;
+    }
+
+    .report-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 20px;
+        color: #475569;
+        text-decoration: none;
+        transition: background 0.2s, color 0.2s;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .report-item:last-child {
+        border-bottom: none;
+    }
+
+    .report-item:hover {
+        background: #f0f7ff;
+        color: #0066cc;
+    }
+
+    .report-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .report-name {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .report-item i.launch-icon {
+        font-size: 16px;
+        opacity: 0;
+        transition: opacity 0.2s, transform 0.2s;
+    }
+
+    .report-item:hover i.launch-icon {
+        opacity: 1;
+        transform: translateX(3px);
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .category-section {
+            background: #1e1e1e;
+            border-color: #2e2e2e;
+        }
+        .category-header {
+            background: #252525;
+            border-color: #2e2e2e;
+        }
+        .category-header h3 {
+            color: #e2e8f0;
+        }
+        .report-item {
+            color: #cbd5e1;
+            border-color: #2e2e2e;
+        }
+        .report-item:hover {
+            background: rgba(0, 102, 204, 0.15);
+        }
+        .hub-title h1 {
+            color: #ffffff;
+        }
+    }
 </style>
 
-<div class="hub-header">
-    <h2>Financial Reports Hub</h2>
-    <p>Real-time statements from your ledger, sales, purchases, and collections.</p>
-</div>
-
-<form class="period-bar" id="periodForm" onsubmit="return false;">
-    <div>
-        <label>Default period — From</label>
-        <input type="date" id="hubStart" value="<?= htmlspecialchars($ds) ?>">
-    </div>
-    <div>
-        <label>To</label>
-        <input type="date" id="hubEnd" value="<?= htmlspecialchars($de) ?>">
-    </div>
-    <small>Date-filtered reports open with this range. Change dates on each report to refine.</small>
-</form>
-
-<div class="report-section">
-    <h3>Financial statements</h3>
-    <div class="report-grid">
-        <div class="report-card">
-            <div class="report-icon">📊</div>
-            <div class="report-title">Profit & Loss <span class="tag-dated">Ledger</span></div>
-            <div class="report-desc">Current ledger balances for all revenue and expense accounts.</div>
-            <a href="<?= APP_URL ?>/report/profit_loss" class="btn" target="_blank">View Report</a>
+<div class="reports-hub-wrapper">
+    <div class="hub-header">
+        <div class="hub-title">
+            <h1>Centralized Reporting Hub</h1>
+            <p>Unified enterprise reporting engine for real-time operations, analytics, and accounting views.</p>
         </div>
-        <div class="report-card">
-            <div class="report-icon">📅</div>
-            <div class="report-title">P&amp;L by Period</div>
-            <div class="report-desc">Income and expenses posted in the selected date range (journal-based).</div>
-            <a href="<?= reportLink('profit_loss_period') ?>" class="btn" target="_blank" data-dated="1">View Report</a>
-        </div>
-        <div class="report-card">
-            <div class="report-icon">⚖️</div>
-            <div class="report-title">Balance Sheet</div>
-            <div class="report-desc">Assets, liabilities, and equity including current-year net income.</div>
-            <a href="<?= APP_URL ?>/report/balance_sheet" class="btn" target="_blank">View Report</a>
-        </div>
-        <div class="report-card">
-            <div class="report-icon">💵</div>
-            <div class="report-title">Cash Flow</div>
-            <div class="report-desc">Operating, investing, and financing cash movement summary.</div>
-            <a href="<?= APP_URL ?>/report/cash_flow" class="btn" target="_blank">View Report</a>
-        </div>
-        <div class="report-card">
-            <div class="report-icon">📝</div>
-            <div class="report-title">Trial Balance</div>
-            <div class="report-desc">All accounts with debit and credit totals — must balance.</div>
-            <a href="<?= APP_URL ?>/report/trial_balance" class="btn" target="_blank">View Report</a>
-        </div>
-        <div class="report-card">
-            <div class="report-icon">📒</div>
-            <div class="report-title">General Ledger</div>
-            <div class="report-desc">Every journal line by date, account, debit, and credit.</div>
-            <a href="<?= reportLink('general_ledger') ?>" class="btn" target="_blank" data-dated="1">View Report</a>
+        <div class="search-box-wrapper">
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="text" id="reportSearch" placeholder="Search reports..." onkeyup="filterReports()">
         </div>
     </div>
-</div>
 
-<div class="report-section">
-    <h3>Sales &amp; receivables</h3>
-    <div class="report-grid">
-        <div class="report-card">
-            <div class="report-icon">🛒</div>
-            <div class="report-title">Sales Summary</div>
-            <div class="report-desc">Invoice counts, gross sales, tax, paid vs outstanding — daily breakdown.</div>
-            <a href="<?= reportLink('sales_summary') ?>" class="btn" target="_blank" data-dated="1">View Report</a>
-        </div>
-        <div class="report-card">
-            <div class="report-icon">👥</div>
-            <div class="report-title">Sales by Customer</div>
-            <div class="report-desc">Per-customer sales, payments, and outstanding balances.</div>
-            <a href="<?= reportLink('sales_by_customer') ?>" class="btn" target="_blank" data-dated="1">View Report</a>
-        </div>
-        <div class="report-card">
-            <div class="report-icon">📦</div>
-            <div class="report-title">Sales by Product</div>
-            <div class="report-desc">Quantity, revenue, cost, profit, and margin by item.</div>
-            <a href="<?= reportLink('sales_by_product') ?>" class="btn" target="_blank" data-dated="1">View Report</a>
-        </div>
-        <div class="report-card">
-            <div class="report-icon">🚗</div>
-            <div class="report-title">Sales by Rep Route</div>
-            <div class="report-desc">Territory route performance and invoice totals per rep day.</div>
-            <a href="<?= reportLink('sales_by_rep') ?>" class="btn" target="_blank" data-dated="1">View Report</a>
-        </div>
-        <div class="report-card">
-            <div class="report-icon">⏳</div>
-            <div class="report-title">A/R Aging</div>
-            <div class="report-desc">Unpaid invoices by customer and aging bucket with invoice detail.</div>
-            <a href="<?= APP_URL ?>/report/ar_aging" class="btn" target="_blank">View Report</a>
-        </div>
-        <div class="report-card">
-            <div class="report-icon">💳</div>
-            <div class="report-title">Collections</div>
-            <div class="report-desc">Customer payments by method with full transaction detail.</div>
-            <a href="<?= reportLink('collections') ?>" class="btn" target="_blank" data-dated="1">View Report</a>
-        </div>
-        <div class="report-card">
-            <div class="report-icon">🧾</div>
-            <div class="report-title">Tax Summary</div>
-            <div class="report-desc">Daily subtotal, discounts, tax, and grand totals from invoices.</div>
-            <a href="<?= reportLink('tax_summary') ?>" class="btn" target="_blank" data-dated="1">View Report</a>
-        </div>
-    </div>
-</div>
-
-<div class="report-section">
-    <h3>Purchases &amp; inventory</h3>
-    <div class="report-grid">
-        <div class="report-card">
-            <div class="report-icon">🛍️</div>
-            <div class="report-title">Purchases &amp; GRN</div>
-            <div class="report-desc">PO and goods-received values by vendor for the period.</div>
-            <a href="<?= reportLink('purchases') ?>" class="btn" target="_blank" data-dated="1">View Report</a>
-        </div>
-        <div class="report-card">
-            <div class="report-icon">🗄️</div>
-            <div class="report-title">Inventory Valuation</div>
-            <div class="report-desc">Stock on hand valued at cost and at retail selling price.</div>
-            <a href="<?= APP_URL ?>/report/inventory_valuation" class="btn" target="_blank">View Report</a>
-        </div>
-        <div class="report-card">
-            <div class="report-icon">📈</div>
-            <div class="report-title">FIFO Profit &amp; Margin</div>
-            <div class="report-desc">Line-level sales profit using cost at time of sale.</div>
-            <a href="<?= reportLink('fifo_profit') ?>" class="btn" target="_blank" data-dated="1">View Report</a>
-        </div>
+    <div class="categories-grid">
+        <?php foreach ($categories as $catKey => $catTitle): ?>
+            <?php if (!empty($groupedReports[$catKey])): ?>
+                <div class="category-section" data-category="<?= $catKey ?>">
+                    <div class="category-header">
+                        <i class="ph <?= $categoryIcons[$catKey] ?? 'ph-file-text' ?>"></i>
+                        <h3><?= htmlspecialchars($catTitle) ?></h3>
+                    </div>
+                    <div class="reports-list">
+                        <?php foreach ($groupedReports[$catKey] as $key => $rep): ?>
+                            <a href="<?= APP_URL ?>/report/viewer/<?= $key ?>" class="report-item" data-name="<?= strtolower($rep['title']) ?>">
+                                <div class="report-info">
+                                    <span class="report-name"><?= htmlspecialchars($rep['title']) ?></span>
+                                </div>
+                                <i class="ph ph-arrow-square-out launch-icon"></i>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+        <?php endforeach; ?>
     </div>
 </div>
 
 <script>
-(function() {
-    const start = document.getElementById('hubStart');
-    const end = document.getElementById('hubEnd');
-    function refreshLinks() {
-        const s = start.value, e = end.value;
-        document.querySelectorAll('a[data-dated="1"]').forEach(a => {
-            const base = a.href.split('?')[0];
-            a.href = base + '?start_date=' + encodeURIComponent(s) + '&end_date=' + encodeURIComponent(e);
+    function filterReports() {
+        const query = document.getElementById('reportSearch').value.toLowerCase();
+        const cards = document.querySelectorAll('.category-section');
+        
+        cards.forEach(card => {
+            const items = card.querySelectorAll('.report-item');
+            let hasVisibleItem = false;
+            
+            items.forEach(item => {
+                const name = item.getAttribute('data-name');
+                if (name.includes(query)) {
+                    item.style.display = 'flex';
+                    hasVisibleItem = true;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            if (hasVisibleItem) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
         });
     }
-    start.addEventListener('change', refreshLinks);
-    end.addEventListener('change', refreshLinks);
-})();
 </script>
