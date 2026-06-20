@@ -70,6 +70,7 @@ class ReportEngine {
                 'title' => 'Stock Movement Report',
                 'category' => 'inventory',
                 'filters' => ['date_range', 'product'],
+                'date_column' => 'sl.created_at',
                 'columns' => [
                     'created_at' => ['label' => 'Date', 'type' => 'date', 'sortable' => true],
                     'product_name' => ['label' => 'Product Name', 'type' => 'text'],
@@ -88,6 +89,7 @@ class ReportEngine {
                 'title' => 'Stock Ledger',
                 'category' => 'inventory',
                 'filters' => ['date_range', 'product'],
+                'date_column' => 'sl.created_at',
                 'columns' => [
                     'created_at' => ['label' => 'Date & Time', 'type' => 'date', 'sortable' => true],
                     'item_code' => ['label' => 'SKU', 'type' => 'text'],
@@ -173,6 +175,7 @@ class ReportEngine {
                 'title' => 'Damaged Stock Report',
                 'category' => 'inventory',
                 'filters' => ['date_range', 'product'],
+                'date_column' => 'note_date',
                 'columns' => [
                     'note_date' => ['label' => 'Date', 'type' => 'date'],
                     'product_name' => ['label' => 'Product Name', 'type' => 'text'],
@@ -246,6 +249,7 @@ class ReportEngine {
                 'title' => 'Stock Transfer Report',
                 'category' => 'inventory',
                 'filters' => ['date_range'],
+                'date_column' => 'transfer_date',
                 'columns' => [
                     'transfer_date' => ['label' => 'Date', 'type' => 'date'],
                     'transfer_no' => ['label' => 'Transfer Ref', 'type' => 'text'],
@@ -261,6 +265,7 @@ class ReportEngine {
                 'title' => 'Sales Report',
                 'category' => 'sales',
                 'filters' => ['date_range', 'customer', 'rep'],
+                'date_column' => 'i.invoice_date',
                 'columns' => [
                     'invoice_date' => ['label' => 'Date', 'type' => 'date', 'sortable' => true],
                     'invoice_number' => ['label' => 'Invoice Ref', 'type' => 'text', 'drilldown' => 'invoice', 'sortable' => true],
@@ -282,6 +287,7 @@ class ReportEngine {
                 'title' => 'Sales Summary',
                 'category' => 'sales',
                 'filters' => ['date_range'],
+                'date_column' => 'i.invoice_date',
                 'columns' => [
                     'period_date' => ['label' => 'Date', 'type' => 'date', 'sortable' => true],
                     'invoice_count' => ['label' => 'Invoice Count', 'type' => 'number', 'align' => 'right', 'total' => 'sum'],
@@ -297,6 +303,7 @@ class ReportEngine {
                 'title' => 'Sales by Customer',
                 'category' => 'sales',
                 'filters' => ['date_range', 'customer'],
+                'date_column' => 'i.invoice_date',
                 'columns' => [
                     'customer_name' => ['label' => 'Customer Name', 'type' => 'text', 'sortable' => true],
                     'phone' => ['label' => 'Phone', 'type' => 'text'],
@@ -318,6 +325,7 @@ class ReportEngine {
                 'title' => 'Sales by Item',
                 'category' => 'sales',
                 'filters' => ['date_range', 'product'],
+                'date_column' => 'i.invoice_date',
                 'columns' => [
                     'item_name' => ['label' => 'Item Name', 'type' => 'text', 'sortable' => true],
                     'total_qty' => ['label' => 'Quantity Sold', 'type' => 'number', 'align' => 'right', 'total' => 'sum'],
@@ -340,6 +348,7 @@ class ReportEngine {
                 'title' => 'Purchase Order Report',
                 'category' => 'procurement',
                 'filters' => ['date_range', 'supplier'],
+                'date_column' => 'p.po_date',
                 'columns' => [
                     'po_date' => ['label' => 'Date', 'type' => 'date'],
                     'po_number' => ['label' => 'PO Number', 'type' => 'text'],
@@ -356,6 +365,7 @@ class ReportEngine {
                 'title' => 'GRN Report',
                 'category' => 'procurement',
                 'filters' => ['date_range', 'supplier'],
+                'date_column' => 'g.grn_date',
                 'columns' => [
                     'grn_date' => ['label' => 'Date', 'type' => 'date'],
                     'grn_number' => ['label' => 'GRN Ref', 'type' => 'text'],
@@ -390,6 +400,7 @@ class ReportEngine {
                 'title' => 'Customer Statement',
                 'category' => 'customer',
                 'filters' => ['date_range', 'customer'],
+                'date_column' => 'date',
                 'columns' => [
                     'date' => ['label' => 'Date', 'type' => 'date'],
                     'type' => ['label' => 'Type', 'type' => 'text'],
@@ -431,6 +442,7 @@ class ReportEngine {
                 'title' => 'Profit & Loss Statement',
                 'category' => 'finance',
                 'filters' => ['date_range'],
+                'date_column' => 'date',
                 'columns' => [
                     'account_name' => ['label' => 'Account', 'type' => 'text'],
                     'account_type' => ['label' => 'Category', 'type' => 'text'],
@@ -441,6 +453,7 @@ class ReportEngine {
                 'title' => 'General Ledger',
                 'category' => 'finance',
                 'filters' => ['date_range'],
+                'date_column' => 'je.entry_date',
                 'columns' => [
                     'entry_date' => ['label' => 'Date', 'type' => 'date'],
                     'reference' => ['label' => 'Reference', 'type' => 'text'],
@@ -461,6 +474,7 @@ class ReportEngine {
                 'title' => 'Credit Collection Report',
                 'category' => 'collection',
                 'filters' => ['date_range', 'customer', 'rep'],
+                'date_column' => 'cp.payment_date',
                 'columns' => [
                     'payment_date' => ['label' => 'Collection Date', 'type' => 'date'],
                     'customer_name' => ['label' => 'Customer', 'type' => 'text'],
@@ -479,6 +493,7 @@ class ReportEngine {
                 'title' => 'Route Performance Report',
                 'category' => 'route',
                 'filters' => ['date_range', 'route'],
+                'date_column' => 'i.invoice_date',
                 'columns' => [
                     'route_name' => ['label' => 'Route', 'type' => 'text'],
                     'rep_name' => ['label' => 'Representative', 'type' => 'text'],
@@ -518,14 +533,17 @@ class ReportEngine {
             $baseSql = $metadata['sql'];
             $params = [];
 
-            // Apply universal dynamic filters
-            if (isset($filters['start_date']) && !empty($filters['start_date']) && strpos($baseSql, 'invoice_date') !== false) {
-                $baseSql .= " AND i.invoice_date >= :start_date";
-                $params[':start_date'] = $filters['start_date'];
-            }
-            if (isset($filters['end_date']) && !empty($filters['end_date']) && strpos($baseSql, 'invoice_date') !== false) {
-                $baseSql .= " AND i.invoice_date <= :end_date";
-                $params[':end_date'] = $filters['end_date'];
+            // Apply universal dynamic filters based on metadata config
+            $dateColumn = $metadata['date_column'] ?? null;
+            if ($dateColumn) {
+                if (isset($filters['start_date']) && !empty($filters['start_date'])) {
+                    $baseSql .= " AND " . $dateColumn . " >= :start_date";
+                    $params[':start_date'] = $filters['start_date'];
+                }
+                if (isset($filters['end_date']) && !empty($filters['end_date'])) {
+                    $baseSql .= " AND " . $dateColumn . " <= :end_date";
+                    $params[':end_date'] = $filters['end_date'];
+                }
             }
             if (isset($filters['customer']) && !empty($filters['customer']) && strpos($baseSql, 'customer_id') !== false) {
                 $baseSql .= " AND i.customer_id = :customer_id";
@@ -547,8 +565,38 @@ class ReportEngine {
                 $countRow = $this->db->single();
                 $totalRows = $countRow ? (int)$countRow->cnt : 0;
 
+                // Calculate Grand Totals dynamically on the full filtered dataset (not paginated)
+                $grandTotals = [];
+                $totalSelects = [];
+                foreach ($metadata['columns'] as $colKey => $colDef) {
+                    if (isset($colDef['total']) && $colDef['total'] === 'sum') {
+                        if (preg_match('/^[a-zA-Z0-9_]+$/', $colKey)) {
+                            $totalSelects[] = "SUM(" . $colKey . ") as sum_" . $colKey;
+                        }
+                    }
+                }
+                if (!empty($totalSelects)) {
+                    $totalsSql = "SELECT " . implode(', ', $totalSelects) . " FROM (" . $baseSql . ") as totals_table";
+                    try {
+                        $this->db->query($totalsSql);
+                        foreach ($params as $k => $v) {
+                            $this->db->bind($k, $v);
+                        }
+                        $totalsRow = $this->db->single();
+                        if ($totalsRow) {
+                            foreach ($metadata['columns'] as $colKey => $colDef) {
+                                if (isset($colDef['total']) && $colDef['total'] === 'sum') {
+                                    $grandTotals[$colKey] = floatval($totalsRow->{"sum_" . $colKey} ?? 0);
+                                }
+                            }
+                        }
+                    } catch (PDOException $totalEx) {
+                        error_log("ReportEngine failed to calculate full grand totals: " . $totalEx->getMessage());
+                    }
+                }
+
                 // Apply Sorting & Pagination
-                if (!empty($sortCol) && isset($metadata['columns'][$sortCol])) {
+                if (!empty($sortCol) && isset($metadata['columns'][$sortCol]) && preg_match('/^[a-zA-Z0-9_\.]+$/', $sortCol)) {
                     $baseSql .= " ORDER BY " . $sortCol . " " . ($sortDir === 'DESC' ? 'DESC' : 'ASC');
                 }
                 $baseSql .= " LIMIT :limit OFFSET :offset";
@@ -561,30 +609,26 @@ class ReportEngine {
                 $this->db->bind(':offset', $offset, PDO::PARAM_INT);
                 $rows = $this->db->resultSet() ?: [];
 
-                // Calculate Grand Totals dynamically
-                $grandTotals = [];
-                foreach ($metadata['columns'] as $colKey => $colDef) {
-                    if (isset($colDef['total']) && $colDef['total'] === 'sum') {
-                        $sum = 0;
-                        foreach ($rows as $r) {
-                            $sum += floatval($r->$colKey ?? 0);
-                        }
-                        $grandTotals[$colKey] = $sum;
-                    }
-                }
-
                 return [
                     'rows' => $rows,
                     'total_rows' => $totalRows,
-                    'grand_totals' => $grandTotals
+                    'grand_totals' => $grandTotals,
+                    'simulation' => false
                 ];
             } catch (PDOException $ex) {
-                // Self-healing fallback: Database table/column does not exist yet. Run simulation mode.
-                return $this->generateSimulationData($reportKey, $metadata, $filters, $page, $limit, $sortCol, $sortDir);
+                // Log actual database error for debugging
+                error_log("ReportEngine Live Query Error: " . $ex->getMessage());
+                
+                $simData = $this->generateSimulationData($reportKey, $metadata, $filters, $page, $limit, $sortCol, $sortDir);
+                $simData['simulation'] = true;
+                $simData['db_error'] = $ex->getMessage();
+                return $simData;
             }
         } else {
             // No custom SQL registered: Directly output simulated/predefined enterprise data structures
-            return $this->generateSimulationData($reportKey, $metadata, $filters, $page, $limit, $sortCol, $sortDir);
+            $simData = $this->generateSimulationData($reportKey, $metadata, $filters, $page, $limit, $sortCol, $sortDir);
+            $simData['simulation'] = true;
+            return $simData;
         }
     }
 
@@ -730,11 +774,11 @@ class ReportEngine {
             $lastRun = $s->last_run_at ? strtotime($s->last_run_at) : 0;
             $shouldRun = false;
 
-            if ($s->frequency === 'daily' && ($now - $lastRun) >= 86000) {
+            if ($s->frequency === 'daily' && ($now - $lastRun) >= 86400) {
                 $shouldRun = true;
-            } elseif ($s->frequency === 'weekly' && ($now - $lastRun) >= 600000) {
+            } elseif ($s->frequency === 'weekly' && ($now - $lastRun) >= 604800) {
                 $shouldRun = true;
-            } elseif ($s->frequency === 'monthly' && ($now - $lastRun) >= 2500000) {
+            } elseif ($s->frequency === 'monthly' && ($now - $lastRun) >= 2592000) {
                 $shouldRun = true;
             }
 

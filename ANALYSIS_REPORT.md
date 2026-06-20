@@ -1,493 +1,519 @@
-# Curtiss ERP Rep App - Sync System Analysis Report
+# Curtiss ERP Reporting Engine — Comprehensive Analysis Report
 
-## Executive Summary
-
-This report provides a comprehensive analysis of the synchronization system between the Curtiss ERP Rep App (Android) and the Curtiss ERP server (PHP). The system uses a **pull-push-verify** three-phase architecture with periodic background sync. While the system has robust foundations, there are **critical data loss risks, race conditions, architectural flaws, and missing features** that need to be addressed.
-
----
-
-## 1. Architecture Overview
-
-### Current Sync Flow
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        ANDROID APP                               │
-│                                                                  │
-│  SyncWorker (Periodic - 15 min)                                  │
-│    └─ executePull() only (server → mobile)                       │
-│                                                                  │
-│  SyncManager                                                    │
-│    ├─ startPullSync()     → executePull()    (server → mobile)   │
-│    ├─ startManualPushSync()                                      │
-│    │   ├─ Phase 1: executePush()    (mobile → server)            │
-│    │   └─ Phase 2: executeVerification() (verify UUIDs)          │
-│    └─ SyncLock (ReentrantLock)                                   │
-│                                                                  │
-│  DatabaseHelper (SQLite - curtiss_offline.db)                    │
-│    ├─ products, categories, customers, daily_routes              │
-│    ├─ invoices, invoice_items, payments                          │
-│    ├─ server_routes, payment_terms, credit_invoices              │
-│    ├─ discount_rules, discount_rule_tiers                        │
-│    └─ image_download_queue, sync_logs                            │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    SERVER (PHP)                                   │
-│                                                                  │
-│  RepDashboardController                                         │
-│    ├─ sync_pull()   → GET  /rep/RepDashboard/sync_pull          │
-│    ├─ sync_push()   → POST /rep/RepDashboard/sync_push          │
-│    └─ sync_verify() → POST /rep/RepDashboard/sync_verify        │
-│                                                                  │
-│  Database (MySQL)                                                │
-│    ├─ items, item_categories, customers                          │
-│    ├─ invoices, invoice_items                                    │
-│    ├─ rep_daily_routes, pending_collections                      │
-│    ├─ users, employees, mca_areas                                │
-│    ├─ payment_terms, chart_of_accounts                           │
-│    └─ system_audit_trail                                         │
-└─────────────────────────────────────────────────────────────────┘
-```
+**Date:** 2026-06-20  
+**Scope:** `app/Views/reports/` (21 files), `app/Controllers/ReportController.php`, `app/Services/ReportEngine.php`  
+**Total Files Analyzed:** 23 files (21 views + 1 controller + 1 service)
 
 ---
 
-## 2. CRITICAL BUGS & DATA LOSS RISKS
+## Table of Contents
+1. [Critical Bugs & Errors](#1-critical-bugs--errors)
+2. [Security Vulnerabilities](#2-security-vulnerabilities)
+3. [Code Quality Issues](#3-code-quality-issues)
+4. [Performance Issues](#4-performance-issues)
+5. [UX/UI Issues](#5-uxui-issues)
+6. [Architecture & Design Issues](#6-architecture--design-issues)
+7. [Productivity Improvements](#7-productivity-improvements)
+8. [Summary & Priority Matrix](#8-summary--priority-matrix)
 
-### 2.1 [CRITICAL] Pull Sync Overwrites Local Unsynced Data
+---
 
-**Location:** `SyncManager.java` - `executePull()` method
+## 1. Critical Bugs & Errors
 
-**Problem:** The pull sync unconditionally overwrites local data with server data. If a user creates an invoice offline and then a pull sync runs (either manually or via background SyncWorker), the pull will overwrite the local `daily_routes` and `invoices` tables with server data, potentially **deleting unsynced local invoices**.
-
-**Evidence:**
-```java
-// Line ~ in executePull() - active route handling:
-if (localIsSynced == 1) {
-    db.update("daily_routes", rCv, "id = ?", ...);
-}
-// This only protects if local is_synced=1, but the route INSERT/UPDATE
-// happens regardless of local unsynced data
-```
-
-**Impact:** A background SyncWorker running every 15 minutes can silently destroy locally created invoices that haven't been pushed yet.
-
-**Fix:** Pull sync should NEVER overwrite records that have `is_synced = 0` (unsynced local changes). The condition `if (localIsSynced == 1)` is correct but only applied to route updates, not to the initial route creation check.
-
-### 2.2 [CRITICAL] Invoice Items Sync Bug - All Items Applied to All Invoices
-
-**Location:** `SyncManager.java` - `executePull()` method, lines ~350-370
-
-**Problem:** When syncing invoice items for active route invoices, the code does:
-```java
-JSONArray items = response.getJSONArray("active_route_invoice_items");
-db.execSQL("DELETE FROM invoice_items WHERE invoice_id = " + localInvId);
-for (int k = 0; k < items.length(); k++) {
-    JSONObject itemObj = items.getJSONObject(k);
-    if (itemObj.getInt("invoice_id") == serverInvId) {
-        // insert item
-    }
-}
-```
-
-This iterates through ALL invoice items from the server for EVERY invoice, but only inserts those matching the current `serverInvId`. However, the `DELETE` happens before the filtered insert. If there are multiple invoices, the first invoice's items will be correctly inserted, but the second invoice will first DELETE all its items (which is fine), then iterate through ALL items again and only insert matching ones. This is **inefficient but functionally correct**.
-
-**However**, the real issue is that `active_route_invoice_items` is a flat array of ALL items for ALL invoices on the route. If the server returns items for invoices that are NOT in `active_route_invoices` array, those items will never be inserted. This is a **data integrity issue** - items can be lost.
-
-### 2.3 [HIGH] No Transaction Rollback on Partial Push Failure
-
-**Location:** `SyncManager.java` - `executePush()` method
-
-**Problem:** The push sync processes customers, routes, invoices, and payments sequentially. If invoice processing fails after customers and routes were already created on the server, the customers and routes remain on the server but the local app marks them as failed. This creates **orphaned server records** and **inconsistent state**.
-
-**Evidence:** The server-side `sync_push()` does NOT use database transactions. Each customer insert/update is committed immediately. If a subsequent invoice fails, the customers are already persisted.
-
-### 2.4 [HIGH] SyncWorker Runs Pull-Only, Can Corrupt Local State
-
-**Location:** `SyncWorker.java`
-
-**Problem:** The background SyncWorker only runs `executePull()`, which downloads server data. If the user has unsynced local changes (invoices, routes, customers), the pull can overwrite or conflict with them. The SyncWorker runs every 15 minutes with no check for pending local uploads.
-
-**Fix:** SyncWorker should check `hasPendingUploads()` before running pull, or skip pull entirely if there are unsynced local items.
-
-### 2.5 [HIGH] SQL Injection Risk in executePull()
-
-**Location:** `SyncManager.java` - multiple locations
-
-**Problem:** String concatenation is used for SQL queries with user/API-controlled data:
-
-```java
-db.execSQL("DELETE FROM invoice_items WHERE invoice_id = " + localInvId);
-db.rawQuery("SELECT id, is_synced FROM invoices WHERE server_id = ?", ...);
-```
-
-While `localInvId` is derived from the database (not direct user input), the `serverInvId` comes from the server response JSON. If the server is compromised or returns malicious data, this could lead to SQL injection.
-
-**Severity:** Medium (requires server compromise), but should use parameterized queries everywhere.
-
-### 2.6 [MEDIUM] No Delta Sync for Products/Customers on Pull
-
-**Location:** `SyncManager.java` - `executePull()` and `RepDashboardController.php` - `sync_pull()`
-
-**Problem:** The server supports delta sync via `last_sync_timestamp` parameter, but the Android app **never sends this parameter**. Every pull downloads the ENTIRE product catalog, all customers, all routes, all payment terms, etc. This is extremely wasteful for a 15-minute periodic sync.
-
-**Evidence:** The server code checks for `last_sync`:
+### 1.1 `print.php` — Hardcoded Mock Data in Production Template
+**File:** `app/Views/reports/print.php` (lines ~280-310)  
+**Severity:** 🔴 CRITICAL  
+**Issue:** The print template contains hardcoded mock/placeholder data that is ALWAYS rendered regardless of actual database data:
 ```php
-$lastSync = isset($_GET['last_sync_timestamp']) ? trim($_GET['last_sync_timestamp']) : '';
+// This block runs for EVERY row when reportKey is 'general_ledger' or 'stock_ledger'
+if (($reportKey === 'general_ledger' || $reportKey === 'stock_ledger') && $index % 3 === 0):
 ```
-But the Android app never includes this parameter:
-```java
-String urlString = baseUrl + "/rep/RepDashboard/sync_pull?api_sync=1&user_id=" + userId;
-```
+This injects fake "Contra AccCd", "NATIONAL TRADING CO - BRANCH", "VAT Payable (15%)" entries into real financial reports. This will produce **incorrect financial statements** that mix real data with fake data.
 
-**Impact:** Massive bandwidth waste. Every 15 minutes, the entire product catalog (potentially thousands of items) is re-downloaded.
+**Fix:** Remove this entire mock data injection block. If sub-ledger nesting is needed, implement it from actual database relations.
 
-### 2.8 [MEDIUM] No Conflict Resolution Strategy
-
-**Location:** Throughout sync system
-
-**Problem:** When both the mobile app and server modify the same record (e.g., customer profile edited on both sides), there is **no conflict resolution**. The current strategy is "last write wins" with no timestamp comparison, no merge logic, and no user notification.
-
-**Example Scenario:**
-1. User edits customer address on mobile (offline)
-2. Admin edits same customer address on server
-3. Push sync uploads mobile version → overwrites server
-4. Next pull sync downloads server version → overwrites mobile
-5. **Result:** Admin's changes are lost, then mobile's changes are also lost
-
----
-
-## 3. ARCHITECTURAL ISSUES
-
-### 3.1 No Push Sync in Background SyncWorker
-
-**Location:** `SyncWorker.java`
-
-**Problem:** The periodic background worker only does pull (server → mobile). It never pushes local changes to the server. This means if a user creates invoices offline and forgets to manually push, the data remains on the device indefinitely.
-
-**Fix:** SyncWorker should attempt push before pull, or at least check for pending uploads and trigger a push.
-
-### 3.2 Single-Threaded Executor Bottleneck
-
-**Location:** `SyncManager.java`
-
-```java
-this.executorService = Executors.newSingleThreadExecutor();
-```
-
-**Problem:** All sync operations (pull, push, verification) run on a single background thread. If a pull is in progress, a manual push request is queued and waits. Combined with the image download blocking issue (2.6), this creates significant delays.
-
-### 3.3 No Sync Queue / Retry with Exponential Backoff
-
-**Location:** `SyncManager.java`
-
-**Problem:** While there's retry logic for HTTP connections (3 attempts with 2-second delay), there's no persistent retry queue for failed sync items. Failed items are marked with `sync_status = 4` (Failed) but there's no mechanism to automatically retry them later.
-
-### 3.4 No Data Integrity Checks (Checksums/Hashes)
-
-**Location:** Throughout
-
-**Problem:** There are no checksums, hashes, or data integrity validations on synced data. If network corruption occurs, corrupted data is written directly to the database. JSON parsing errors are caught, but partial corruption within valid JSON is not detected.
-
-### 3.5 No Sync Progress Persistence
-
-**Location:** `SyncManager.java`
-
-**Problem:** The `SyncListener` interface provides real-time progress callbacks, but progress is not persisted. If the app is killed during a long sync (e.g., downloading 500 product images), there's no way to resume from where it left off.
-
----
-
-## 4. MISSING FEATURES
-
-### 4.1 No Sync of Product Stock Updates in Real-Time
-
-**Location:** Missing from pull sync
-
-**Problem:** The pull sync downloads `quantity_on_hand` and `quantity_reserved` for products, but there's no mechanism to update stock levels in real-time. If a product is sold through another channel (e-commerce, walk-in customer), the rep's app won't know until the next manual pull.
-
-### 4.2 No Sync of Voided/Cancelled Invoices
-
-**Location:** Missing from pull sync
-
-**Problem:** If an invoice is voided on the server (by admin), the mobile app has no way of knowing. The invoice remains in the local database as valid. The rep could attempt to collect payment for a voided invoice.
-
-### 4.6 No Offline-Queued Data Expiry
-
-**Location:** Missing
-
-**Problem:** If a device remains offline for weeks, locally queued invoices and payments have no expiry mechanism. Stale data could be pushed to the server long after the business context has changed.
-
----
-
-## 5. ERROR HANDLING ISSUES
-
-### 5.1 Silent Failure on Category Sync Errors
-
-**Location:** `SyncManager.java` - `executePull()`
-
-```java
-try {
-    // sync categories
-} catch (Exception e) {
-    android.util.Log.e("SyncManager", "Error syncing categories: " + e.getMessage());
-}
-```
-
-**Problem:** Category sync errors are logged but the overall pull sync continues as successful. If categories fail to sync, products may reference non-existent categories.
-
-### 5.2 Silent Failure on Payment Table Operations
-
-**Location:** `SyncManager.java` - `executePush()`
-
-```java
-try {
-    Cursor payCursor = db.rawQuery("SELECT * FROM payments WHERE is_synced = 0", null);
-    // ...
-} catch (Exception e) {
-    // Table might not exist, ignore
-}
-```
-
-**Problem:** If the payments table doesn't exist (fresh install, schema mismatch), the error is silently ignored. Payments would be lost without any notification.
-
-### 5.3 No User Notification for Partial Sync Failures
-
-**Location:** `SyncManager.java` - `startManualPushSync()`
-
-**Problem:** The final sync result is binary (success/failure). If 5 out of 10 invoices sync successfully, the user sees "Push verification incomplete. 5 items failed to sync." but has no way to know WHICH 5 failed or WHY.
-
-### 5.4 Server-Side User ID Fallback is Dangerous
-
-**Location:** `RepDashboardController.php` - `sync_push()`
-
+### 1.2 `ReportEngine.php` — Grand Totals Calculated on Paginated Data Only
+**File:** `app/Services/ReportEngine.php` (lines 564-574)  
+**Severity:** 🔴 CRITICAL  
+**Issue:** Grand totals are calculated from only the current page's rows, not the entire dataset:
 ```php
-if (!$userRow) {
-    $this->db->query("SELECT id FROM users WHERE role = 'rep' LIMIT 1");
-    $repUser = $this->db->single();
-    if ($repUser) {
-        $userId = intval($repUser->id);
-    } else {
-        $this->db->query("SELECT id FROM users LIMIT 1");
-        $firstUser = $this->db->single();
-        $userId = $firstUser ? intval($firstUser->id) : 1;
-    }
+foreach ($rows as $r) {  // $rows is only the current page (e.g., 50 rows)
+    $sum += floatval($r->$colKey ?? 0);
 }
 ```
+This means if a report has 10,000 records and the user is on page 2, the "Grand Total" shown is only the sum of 50 rows, not the full 10,000. This is **financially misleading**.
 
-**Problem:** If a user ID doesn't exist on the server (e.g., after database reset), the server silently falls back to the first rep user or even the first user in the database. This means **invoices and routes could be attributed to the wrong rep**. This is a critical audit trail and commission calculation issue.
+**Fix:** Calculate grand totals from a separate aggregate SQL query on the full filtered dataset, not from the paginated subset.
 
----
+### 1.3 `ReportEngine.php` — Simulation Mode Silently Returns Fake Data
+**File:** `app/Services/ReportEngine.php` (lines 581-588, 595-671)  
+**Severity:** 🔴 CRITICAL  
+**Issue:** When a SQL query fails (table doesn't exist, column mismatch, etc.), the engine silently falls back to `generateSimulationData()` which returns completely fabricated data. The `simulation` flag is returned in the JSON but the viewer only shows it as a yellow warning banner. Users could easily mistake simulated data for real data and make business decisions based on it.
 
-## 6. PERFORMANCE ISSUES
+**Fix:** 
+- Log the actual database error for debugging
+- Show a prominent RED error banner that clearly states "NO REAL DATA AVAILABLE"
+- Optionally disable simulation mode in production via a config flag
+- Never silently fall back to fake data
 
-### 6.1 Full Data Download Every Pull
-
-As noted in 2.7, every pull downloads the complete dataset. For a catalog of 5,000 products, 2,000 customers, and 500 credit invoices, this could be **multiple megabytes** every 15 minutes.
-
-### 6.2 No Pagination on Server Endpoints
-
-**Location:** `RepDashboardController.php`
-
-**Problem:** The server returns ALL products, customers, and invoices in a single response. There's no pagination, no chunking, no streaming. For large datasets, this can cause:
-- Out of memory errors on the server
-- Socket timeouts on the mobile app
-- ANR (Application Not Responding) on Android if run on main thread
-
-### 6.3 No Compression
-
-**Location:** Both client and server
-
-**Problem:** The HTTP requests/responses are not compressed. Enabling gzip compression could reduce payload size by 70-80%.
-
-### 6.4 Database Lock Contention
-
-**Location:** `SyncManager.java`
-
-**Problem:** The retry logic for SQLITE_BUSY uses exponential backoff, but there's no coordination between the sync thread and UI thread database access. A user browsing products while sync is running can cause SQLITE_BUSY errors.
-
----
-
-## 7. RECOMMENDATIONS
-
-### 7.1 Immediate Fixes (Critical)
-
-| Priority | Issue | Fix |
-|----------|-------|-----|
-| P0 | Pull overwrites unsynced data | Add `is_synced = 0` check before any UPDATE/INSERT in pull |
-| P0 | SyncWorker runs pull-only | Add push check before pull in SyncWorker |
-| P0 | Server-side user ID fallback | Remove fallback; reject with error if user not found |
-| P1 | No delta sync | Implement `last_sync_timestamp` tracking in SharedPreferences |
-| P1 | Image download blocks sync | Move image download to separate executor, fire-and-forget |
-
-### 7.2 Short-Term Improvements (High)
-
-| Priority | Issue | Fix |
-|----------|-------|-----|
-| P1 | No conflict resolution | Implement last-modified timestamp comparison |
-| P1 | No retry for failed items | Add background retry worker for sync_status = 4 items |
-| P1 | No push in background | Add push phase to SyncWorker before pull |
-| P2 | SQL injection risk | Use parameterized queries everywhere |
-| P2 | No transaction on server push | Wrap entire sync_push in database transaction |
-
-### 7.3 Long-Term Architectural Changes
-
-| Priority | Change | Description |
-|----------|--------|-------------|
-| P2 | Implement proper delta sync | Track per-table last_sync timestamps, only send changed records |
-| P2 | Add data checksums | Include MD5/SHA256 hash of each record for integrity verification |
-| P2 | Implement sync queue | Persistent queue with retry, priority, and expiry |
-| P3 | Add bidirectional conflict resolution | Three-way merge with user notification for conflicts |
-| P3 | Implement paginated API | Chunk large responses (100 records per page) |
-| P3 | Add gzip compression | Enable gzip on both client and server |
-| P3 | Add sync analytics | Track sync success rates, durations, data volumes |
-
-### 7.4 Specific Code Fixes
-
-#### Fix 1: Protect Unsynced Data in Pull
-
-In `SyncManager.java` `executePull()`, before any database write, check if the record has local unsynced changes:
-
-```java
-// Before updating a record in pull:
-Cursor localCheck = db.rawQuery(
-    "SELECT is_synced FROM daily_routes WHERE server_id = ?", 
-    new String[]{String.valueOf(serverRouteId)}
-);
-if (localCheck.moveToFirst() && localCheck.getInt(0) == 0) {
-    // Local has unsynced changes - SKIP server update
-    localCheck.close();
-    continue;
-}
-localCheck.close();
-```
-
-#### Fix 2: Implement Delta Sync
-
-In `SyncManager.java`, track and send `last_sync_timestamp`:
-
-```java
-SharedPreferences prefs = context.getSharedPreferences("sync_state", Context.MODE_PRIVATE);
-String lastSyncTimestamp = prefs.getString("last_pull_timestamp", "");
-String urlString = baseUrl + "/rep/RepDashboard/sync_pull?api_sync=1&user_id=" + userId 
-    + "&last_sync_timestamp=" + URLEncoder.encode(lastSyncTimestamp, "UTF-8");
-
-// After successful pull, update timestamp:
-prefs.edit().putString("last_pull_timestamp", 
-    new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date())).apply();
-```
-
-#### Fix 3: Add Push to SyncWorker
-
-```java
-public Result doWork() {
-    // ... session check ...
-    
-    if (!syncManager.tryAcquireSyncLock()) {
-        return Result.retry();
-    }
-    
-    try {
-        // Phase 1: Push local changes first
-        if (syncManager.hasPendingUploads()) {
-            boolean pushSuccess = syncManager.executePush(context, userId);
-            if (pushSuccess) {
-                boolean verifySuccess = syncManager.executeVerification(context, userId);
-            }
-        }
-        
-        // Phase 2: Pull server changes
-        boolean pullSuccess = syncManager.executePull(context, userId);
-        
-        return pullSuccess ? Result.success() : Result.retry();
-    } finally {
-        syncManager.releaseSyncLock();
-    }
-}
-```
-
-#### Fix 4: Remove User ID Fallback on Server
-
+### 1.4 `ReportEngine.php` — SQL Injection via Dynamic Sort Column
+**File:** `app/Services/ReportEngine.php` (lines 551-553)  
+**Severity:** 🔴 CRITICAL  
+**Issue:** The sort column is directly interpolated into SQL without sanitization:
 ```php
-if (!$userRow) {
-    echo json_encode([
-        'success' => false, 
-        'message' => 'User account not found on server. Please re-login.'
-    ]);
-    exit;
+$baseSql .= " ORDER BY " . $sortCol . " " . ($sortDir === 'DESC' ? 'DESC' : 'ASC');
+```
+While `$sortCol` is checked against `$metadata['columns']`, if a column key contains special characters or if the metadata is ever compromised, this is an SQL injection vector.
+
+**Fix:** Use a whitelist approach — map column keys to actual safe column names/aliases, or validate against a strict regex pattern.
+
+### 1.5 `ReportEngine.php` — Date Filter Applies Only to `invoice_date`
+**File:** `app/Services/ReportEngine.php` (lines 522-528)  
+**Severity:** 🟠 HIGH  
+**Issue:** Date range filters are hardcoded to only apply when `invoice_date` exists in the SQL:
+```php
+if (isset($filters['start_date']) && !empty($filters['start_date']) && strpos($baseSql, 'invoice_date') !== false) {
+```
+This means reports like `general_ledger` (which uses `entry_date`), `stock_movement` (which uses `created_at`), and `grn_report` (which uses `grn_date`) will **ignore date filters entirely** because their SQL doesn't contain the string `invoice_date`.
+
+**Fix:** Make date filtering configurable per report in the metadata (e.g., `'date_column' => 'entry_date'`).
+
+### 1.6 `viewer.php` — CSS Animation Keyframe Syntax Error
+**File:** `app/Views/reports/viewer.php` (line ~280)  
+**Severity:** 🟠 HIGH  
+**Issue:** The spinner keyframe has a typo that will cause the CSS animation to fail:
+```css
+@keyframes spin {
+    0% { transform: translate(-50%, -50__) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
 ```
+`-50__` should be `-50%`. The spinner will not display correctly.
 
-#### Fix 5: Separate Image Download from Sync
+### 1.7 `collections.php` — Missing HTML Document Structure
+**File:** `app/Views/reports/collections.php`  
+**Severity:** 🟠 HIGH  
+**Issue:** This file includes `_header.php` and `_footer.php` but the `_header.php` opens `<html>`, `<head>`, and `<body>` tags. However, `collections.php` itself has no wrapping structure — it's just raw HTML fragments. If `_header.php` or `_footer.php` ever change, this file could break or produce invalid HTML.
 
-Create a dedicated `ImageSyncManager` that runs on its own executor:
+**Fix:** Ensure consistent structure. The file should work as a standalone view fragment, but currently depends entirely on the header/footer contract.
 
-```java
-// In SyncManager.executePull(), remove the image download wait loop
-// Instead, just queue downloads and return immediately:
-ImageDownloadManager.getInstance(context).startQueueDownload(context);
-// Don't wait for completion
+### 1.8 `print.php` — Auto-Print on Load Destroys UX
+**File:** `app/Views/reports/print.php` (lines ~370-374)  
+**Severity:** 🟠 HIGH  
+**Issue:** The print template automatically triggers `window.print()` on load:
+```javascript
+window.onload = function() {
+    window.print();
+};
 ```
+This means the print dialog opens immediately when the page loads, before the user has a chance to see the report on screen. If the user wants to preview before printing, they cannot.
+
+**Fix:** Add a "Print" button instead of auto-triggering, or add a brief delay with a "Preparing print..." message.
+
+### 1.9 `fifo_profit.php` — Hardcoded "↑ 100%" Trend Indicator
+**File:** `app/Views/reports/fifo_profit.php` (line ~200)  
+**Severity:** 🟡 MEDIUM  
+**Issue:** The trend indicator is hardcoded:
+```html
+<span class="trend-up">↑ 100%</span> true inventory margins
+```
+This always shows "↑ 100%" regardless of actual performance. This is misleading.
+
+**Fix:** Calculate actual trend percentage from data or remove the static indicator.
+
+### 1.10 `ReportEngine.php` — Cron Frequency Thresholds Are Incorrect
+**File:** `app/Services/ReportEngine.php` (lines 733-738)  
+**Severity:** 🟡 MEDIUM  
+**Issue:** The time thresholds for scheduled reports are incorrect:
+- Daily: 86,000 seconds = ~23.9 hours (should be 86,400)
+- Weekly: 600,000 seconds = ~6.9 days (should be 604,800)
+- Monthly: 2,500,000 seconds = ~28.9 days (should be ~2,592,000 for 30 days)
+
+These will cause reports to run slightly early, potentially missing data.
+
+**Fix:** Use exact constants: `86400`, `604800`, `2592000`.
 
 ---
 
-## 8. DATA FLOW DIAGRAM (Recommended Architecture)
+## 2. Security Vulnerabilities
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      RECOMMENDED SYNC ARCHITECTURE                   │
-└─────────────────────────────────────────────────────────────────────┘
+### 2.1 No CSRF Protection on AJAX Endpoints
+**Files:** `ReportController.php` — `save_view()`, `save_schedule()`  
+**Severity:** 🟠 HIGH  
+**Issue:** The POST endpoints for saving views and schedules have no CSRF token validation. An attacker could trick an authenticated user into saving malicious filter configurations or scheduling unwanted email reports.
 
-Periodic Sync (15 min):
-┌──────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│  SyncWorker   │────▶│  Phase 1: Push   │────▶│  Phase 2: Pull   │
-│  (WorkManager)│     │  (local→server)  │     │  (server→local)  │
-└──────────────┘     └──────────────────┘     └──────────────────┘
-                            │                         │
-                            ▼                         ▼
-                     ┌──────────────────┐     ┌──────────────────┐
-                     │  Retry Queue     │     │  Delta Sync      │
-                     │  (failed items)  │     │  (timestamp)     │
-                     └──────────────────┘     └──────────────────┘
+**Fix:** Implement CSRF token validation on all state-changing POST endpoints.
 
-Manual Push (User Initiated):
-┌──────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│  User Tap     │────▶│  Phase 1: Push   │────▶│  Phase 2: Verify  │
-│  "Sync Now"   │     │  (local→server)  │     │  (UUID check)    │
-└──────────────┘     └──────────────────┘     └──────────────────┘
-                            │                         │
-                            ▼                         ▼
-                     ┌──────────────────┐     ┌──────────────────┐
-                     │  Conflict Check  │     │  Result Report   │
-                     │  (timestamp)     │     │  (per-item)      │
-                     └──────────────────┘     └──────────────────┘
+### 2.2 No Rate Limiting on Export Endpoints
+**File:** `ReportController.php` — `export()` method  
+**Severity:** 🟡 MEDIUM  
+**Issue:** The export endpoint can be called repeatedly to generate large datasets (up to 10,000 rows per call) with no rate limiting. This could be abused for data scraping or DoS attacks.
 
+**Fix:** Add rate limiting per user/session on export endpoints.
 
+### 2.3 No Input Validation on Email Recipient
+**File:** `ReportController.php` — `save_schedule()` (line 169)  
+**Severity:** 🟡 MEDIUM  
+**Issue:** The email recipient is not validated before being stored and used for sending reports. Malformed or malicious email addresses could be stored.
 
-## 9. CONCLUSION
+**Fix:** Validate email format before saving.
 
-The Curtiss ERP Rep App sync system has a solid foundation with:
-- ✅ UUID-based idempotency for push operations
-- ✅ Two-phase push with verification
-- ✅ Retry logic for network failures
-- ✅ SQLite WAL mode for concurrent access
-- ✅ Self-healing database schema migrations
+### 2.4 XSS in Print Template Filter Labels
+**File:** `app/Views/reports/print.php` (multiple locations)  
+**Severity:** 🟡 MEDIUM  
+**Issue:** While most output uses `htmlspecialchars()`, some filter label values are output directly. If a malicious filter value is passed via URL, it could execute XSS.
 
-However, there are **critical issues** that must be addressed immediately:
-
-1. **Pull sync can destroy unsynced local data** (P0 - Data Loss)
-2. **Background sync never pushes local changes** (P0 - Data Loss)
-3. **Server silently reassigns invoices to wrong users** (P0 - Data Integrity)
-4. **No delta sync wastes bandwidth** (P1 - Performance)
-5. **Image downloads block the entire sync** (P1 - UX)
-
-The recommended order of implementation is:
-1. Fix the critical data loss issues (P0)
-2. Implement delta sync and background push (P1)
-3. Add conflict resolution and retry queues (P2)
-4. Architectural improvements (P3)
+**Fix:** Ensure ALL user-influenced output uses `htmlspecialchars()` consistently.
 
 ---
 
-*Report generated on: June 19, 2026*
-*Analysis by: Cline AI Assistant*
+## 3. Code Quality Issues
+
+### 3.1 Massive Inconsistency: Two Rendering Systems
+**Severity:** 🟠 HIGH  
+**Issue:** There are TWO completely different rendering systems:
+1. **Legacy standalone views** (`ar_aging.php`, `balance_sheet.php`, `cash_flow.php`, `profit_loss.php`, `trial_balance.php`) — Each is a complete HTML document with inline CSS, no shared layout.
+2. **New viewer system** (`viewer.php`, `print.php`, `_header.php`, `_footer.php`) — Uses a metadata-driven dynamic table with shared components.
+
+The legacy views duplicate massive amounts of code (CSS, HTML structure, print buttons, etc.) and are NOT accessible through the viewer system. They have their own separate data-fetching logic.
+
+**Fix:** Migrate all legacy views to use the metadata-driven viewer system, or remove them if the viewer covers their functionality.
+
+### 3.2 Massive CSS Duplication
+**Severity:** 🟠 HIGH  
+**Issue:** Every standalone view has its own copy of nearly identical CSS:
+- `ar_aging.php` — 30+ lines of inline CSS
+- `balance_sheet.php` — 25+ lines of inline CSS
+- `cash_flow.php` — 25+ lines of inline CSS
+- `profit_loss.php` — 25+ lines of inline CSS
+- `trial_balance.php` — 25+ lines of inline CSS
+- `fifo_profit.php` — 200+ lines of inline CSS
+- `_header.php` — 50+ lines of inline CSS
+- `viewer.php` — 200+ lines of inline CSS
+- `print.php` — 100+ lines of inline CSS
+
+**Total:** ~700+ lines of duplicated CSS across 9+ files.
+
+**Fix:** Extract shared CSS into a dedicated stylesheet file (`public/css/reports.css`).
+
+### 3.3 `_header.php` and `_footer.php` — Tight Coupling
+**Severity:** 🟡 MEDIUM  
+**Issue:** The header opens `<html>`, `<head>`, `<body>`, and `<div class="report-wrap">` but the footer closes them. Any view that includes both must not have its own HTML structure. This creates a fragile contract:
+- `collections.php` — includes both, no own structure ✓
+- `general_ledger.php` — includes both, no own structure ✓
+- `inventory_valuation.php` — includes both, no own structure ✓
+- `profit_loss_period.php` — includes both, no own structure ✓
+- `purchases.php` — includes both, no own structure ✓
+- `sales_by_customer.php` — includes both, no own structure ✓
+- `sales_by_product.php` — includes both, no own structure ✓
+- `sales_by_rep.php` — includes both, no own structure ✓
+- `sales_summary.php` — includes both, no own structure ✓
+- `tax_summary.php` — includes both, no own structure ✓
+
+But the legacy standalone views (`ar_aging.php`, `balance_sheet.php`, etc.) do NOT use the header/footer and have their own complete HTML. This inconsistency is confusing.
+
+**Fix:** Either make ALL views use the header/footer system, or eliminate it entirely in favor of a proper layout system.
+
+### 3.4 `print.php` — Overly Complex with Mock Data Generation
+**Severity:** 🟡 MEDIUM  
+**Issue:** The print template is 370+ lines and contains:
+- Mock data generation logic (lines 280-310)
+- Complex conditional formatting
+- Duplicate of the viewer's table rendering logic
+
+This should be a simple template that just renders data, not generates fake data.
+
+**Fix:** Remove all mock data generation. The print template should only render what's passed to it.
+
+### 3.5 `fifo_profit.php` — Extremely Large Single File
+**Severity:** 🟡 MEDIUM  
+**Issue:** This file is ~400 lines with 200+ lines of CSS, complex HTML structure, and inline JavaScript. It's a standalone report that doesn't use the viewer system, the header/footer, or any shared components.
+
+**Fix:** Refactor to use the viewer system or at minimum extract CSS and JS to separate files.
+
+### 3.6 Magic Numbers and Hardcoded Values
+**Severity:** 🟢 LOW  
+**Issue:** Multiple hardcoded values throughout:
+- `ReportEngine.php` line 597: `$totalRows = 45;` — hardcoded simulation size
+- `ReportEngine.php` line 600: `for ($i = 1; $i <= 15; $i++)` — hardcoded rows per page
+- `ReportEngine.php` line 661: `$grandTotals[$colKey] = $sum * 3;` — arbitrary multiplier
+- `ReportController.php` line 206: `$this->engine->fetchData($reportKey, $filters, 1, 10000);` — hardcoded limit
+
+**Fix:** Define these as constants or configuration values.
+
+### 3.7 No Error Handling in Views
+**Severity:** 🟢 LOW  
+**Issue:** Most views assume `$data` contains all required keys and access them without null checks:
+```php
+<?= htmlspecialchars($data['company']->company_name) ?>
+```
+If `$data['company']` is null or missing, this will throw an error.
+
+**Fix:** Add null coalescing operators: `$data['company']->company_name ?? ''`
+
+---
+
+## 4. Performance Issues
+
+### 4.1 No Query Caching
+**Severity:** 🟠 HIGH  
+**Issue:** Every report request hits the database with a fresh query. There is no caching layer for:
+- Frequently accessed reports (e.g., dashboard KPIs)
+- Filter dropdown data (customers, suppliers, products)
+- Report metadata (registry is rebuilt on every request)
+
+**Fix:** Implement query result caching using:
+- File-based cache for filter dropdowns (cache for 5-10 minutes)
+- Database query cache for report data
+- OPcache for the registry metadata
+
+### 4.2 N+1 Query Pattern in Filter Label Resolution
+**File:** `ReportController.php` (lines 376-416)  
+**Severity:** 🟡 MEDIUM  
+**Issue:** Each filter label is resolved with a separate database query:
+```php
+$db->query("SELECT name FROM customers WHERE id = :id");
+$db->query("SELECT name FROM vendors WHERE id = :id");
+// ... up to 7 separate queries
+```
+If a report has all filters active, this adds 7 extra queries per request.
+
+**Fix:** Batch resolve all filter labels in a single query, or pass the label data from the viewer page.
+
+### 4.3 No Database Indexing Strategy
+**Severity:** 🟡 MEDIUM  
+**Issue:** The SQL queries in `ReportEngine.php` use `WHERE 1=1` as a base pattern and add filters dynamically. Without proper database indexes on columns like `invoice_date`, `customer_id`, `vendor_id`, `status`, these queries will perform full table scans on large datasets.
+
+**Fix:** Ensure database indexes exist on all filtered and sorted columns.
+
+### 4.4 Large Export Limit
+**File:** `ReportController.php` (line 206)  
+**Severity:** 🟡 MEDIUM  
+**Issue:** Exports fetch up to 10,000 rows in a single query without chunking. For large datasets, this could cause memory exhaustion.
+
+**Fix:** Implement chunked/streamed exports using database cursors or paginated fetching.
+
+### 4.5 No Lazy Loading for Filter Dropdowns
+**Severity:** 🟢 LOW  
+**Issue:** All filter dropdowns (customers, suppliers, products, etc.) are loaded on every viewer page load, even if the report doesn't use them. For large customer databases (10,000+), this adds significant overhead.
+
+**Fix:** Only load filter options that are relevant to the current report, and use AJAX lazy-loading for large dropdowns.
+
+---
+
+## 5. UX/UI Issues
+
+### 5.1 Inconsistent Visual Design
+**Severity:** 🟡 MEDIUM  
+**Issue:** The reporting system has THREE distinct visual styles:
+1. **Legacy style** (`ar_aging.php`, `balance_sheet.php`, etc.) — Light gray background, white card, simple tables
+2. **Header/footer style** (`_header.php` + view files) — Similar to legacy but with KPI cards and filter bars
+3. **Dark modern style** (`fifo_profit.php`) — Dark theme with gradients, glow effects, modern cards
+4. **Viewer style** (`viewer.php`) — Clean white cards with blue accents
+
+Users switching between reports will experience visual whiplash.
+
+**Fix:** Unify all reports under a single design system.
+
+### 5.2 No Loading States for AJAX Operations
+**File:** `viewer.php`  
+**Severity:** 🟡 MEDIUM  
+**Issue:** While there is a spinner for initial data load, there are no loading indicators for:
+- Saving views
+- Scheduling reports
+- Exporting data
+- Changing pages (the spinner exists but the overlay opacity change is barely noticeable)
+
+**Fix:** Add loading states for all async operations.
+
+### 5.3 No Error Feedback for Failed Operations
+**File:** `viewer.php`  
+**Severity:** 🟡 MEDIUM  
+**Issue:** When save operations fail, the only feedback is a generic `alert()`:
+```javascript
+alert('Failed to save layout view.');
+```
+There's no user-friendly error message, no retry option, and no indication of what went wrong.
+
+**Fix:** Implement toast notifications with meaningful error messages.
+
+### 5.4 Print Button in Legacy Views Has No Print Styles
+**Severity:** 🟢 LOW  
+**Issue:** The legacy standalone views have print buttons but the print CSS is minimal. The `@media print` blocks only hide backgrounds and shadows but don't optimize for paper (e.g., no page breaks, no headers on each page).
+
+**Fix:** Enhance print stylesheets with proper page break rules, repeating table headers, and footer information.
+
+### 5.5 No Mobile Responsiveness
+**Severity:** 🟢 LOW  
+**Issue:** Most report views have no responsive design. Tables will overflow on mobile screens. The viewer has `overflow-x: auto` on the table container, but the filter sidebar takes 320px which is too wide for mobile.
+
+**Fix:** Implement responsive breakpoints and collapsible sidebar for mobile.
+
+---
+
+## 6. Architecture & Design Issues
+
+### 6.1 Mixed Concerns in ReportEngine
+**Severity:** 🟠 HIGH  
+**Issue:** `ReportEngine.php` handles:
+- Report metadata registry (static)
+- Data fetching and SQL generation
+- Simulation/mock data generation
+- Saved views CRUD
+- Scheduled reports CRUD
+- Email sending via cron
+
+This violates the Single Responsibility Principle. The class has 787 lines and 6 distinct responsibilities.
+
+**Fix:** Split into:
+- `ReportRegistry.php` — metadata definitions
+- `ReportDataFetcher.php` — SQL generation and data fetching
+- `ReportSimulator.php` — simulation data generation
+- `SavedViewManager.php` — saved views CRUD
+- `ScheduledReportManager.php` — scheduling and email dispatch
+
+### 6.2 No Repository/Data Layer Abstraction
+**Severity:** 🟡 MEDIUM  
+**Issue:** SQL queries are embedded directly in the registry metadata as strings. There's no separation between data access and business logic. Changing a table schema requires updating SQL in the registry.
+
+**Fix:** Implement a repository pattern where each report type has a dedicated data access class.
+
+### 6.3 No Unit Test Coverage
+**Severity:** 🟡 MEDIUM  
+**Issue:** There are no unit tests for:
+- Report data fetching logic
+- Filter application
+- Grand total calculations
+- Simulation mode
+- Export formatting
+
+**Fix:** Add PHPUnit tests for the ReportEngine, especially for the financial calculation methods.
+
+### 6.4 No API Versioning
+**Severity:** 🟢 LOW  
+**Issue:** The AJAX endpoints (`fetch_data`, `save_view`, `save_schedule`, `export`) have no versioning. Future changes could break existing integrations.
+
+**Fix:** Add URL prefix versioning (e.g., `/api/v1/report/fetch_data`).
+
+### 6.5 No Event Logging/Audit Trail
+**Severity:** 🟢 LOW  
+**Issue:** There's no logging for:
+- Report views
+- Data exports
+- Scheduled report dispatches
+- Simulation mode activations (when real data fails)
+
+**Fix:** Implement an audit log for all report-related actions.
+
+---
+
+## 7. Productivity Improvements
+
+### 7.1 Implement Report Caching
+**Priority:** HIGH  
+**Description:** Add a caching layer for frequently accessed reports. Cache invalidation should trigger when underlying data changes (new invoice, payment, etc.).
+
+**Implementation:**
+```php
+// Cache key based on report + filters + page
+$cacheKey = md5($reportKey . json_encode($filters) . $page . $limit);
+$cached = apcu_fetch($cacheKey);
+if ($cached) return $cached;
+// ... fetch from DB ...
+apcu_store($cacheKey, $result, 300); // 5 minute cache
+```
+
+### 7.2 Add Report Comparison Feature
+**Priority:** MEDIUM  
+**Description:** Allow users to compare two periods side-by-side (e.g., current month vs previous month, or year-over-year). This is especially valuable for P&L, sales, and inventory reports.
+
+**Implementation:** Add a "Compare with" date range selector that runs the same report twice and displays results in adjacent columns.
+
+### 7.3 Add Chart/Visualization Integration
+**Priority:** MEDIUM  
+**Description:** Integrate a charting library (Chart.js, ApexCharts) to visualize report data. Key reports that would benefit:
+- Sales Summary → Bar chart of daily sales
+- Sales by Product → Pie chart of revenue by product
+- Inventory Valuation → Bar chart of stock value by category
+- Cash Flow → Waterfall chart
+
+**Implementation:** Add a "Chart" toggle button in the viewer toolbar that renders a chart alongside the table.
+
+### 7.4 Add Drill-Down Navigation
+**Priority:** MEDIUM  
+**Description:** The viewer already has `drilldown` column metadata but it's only partially implemented. Full drill-down would allow:
+- Clicking an invoice number → opens invoice detail
+- Clicking a customer name → opens customer profile
+- Clicking a product → opens product detail
+- Clicking a total → opens the underlying transactions
+
+**Implementation:** Complete the drilldown links and add a "back to report" navigation.
+
+### 7.5 Add Report Scheduling UI Improvements
+**Priority:** MEDIUM  
+**Description:** The current scheduling UI is basic. Improvements:
+- Add a calendar picker for specific dates
+- Allow multiple email recipients
+- Add email preview before saving
+- Add "Send test email" button
+- Show schedule history (last sent, next send)
+
+### 7.6 Add Export Format Improvements
+**Priority:** MEDIUM  
+**Description:** Current exports are basic. Improvements:
+- **Excel:** Use PhpSpreadsheet instead of HTML table hack for proper .xlsx files with formatting
+- **PDF:** Use DomPDF or TCPDF for proper PDF generation instead of browser print
+- **CSV:** Handle encoding properly (UTF-8 BOM for Excel compatibility)
+- **All formats:** Include report metadata (title, date range, filters) in the export
+
+### 7.7 Add Report Favorites/Pinning
+**Priority:** LOW  
+**Description:** Allow users to pin frequently used reports to a "Favorites" section at the top of the reports hub.
+
+### 7.8 Add Bulk Export / Report Batch
+**Priority:** LOW  
+**Description:** Allow users to select multiple reports and export them all at once as a batch (e.g., "End of Month Package" that exports P&L, Balance Sheet, and Sales Summary together).
+
+### 7.9 Add Report Annotations
+**Priority:** LOW  
+**Description:** Allow users to add notes/annotations to report data (e.g., "This spike in sales was due to the promotional campaign"). Annotations should persist and be visible when the report is re-run.
+
+### 7.10 Add Data Refresh Indicator
+**Priority:** LOW  
+**Description:** Show when the report data was last refreshed from the database. For cached reports, show the cache age and a "Refresh" button.
+
+---
+
+## 8. Summary & Priority Matrix
+
+| Priority | Count | Key Items |
+|----------|-------|-----------|
+| 🔴 CRITICAL | 4 | Mock data in print.php, paginated grand totals, silent simulation mode, SQL injection via sort |
+| 🟠 HIGH | 10 | Date filter bug, CSS animation typo, missing HTML structure, auto-print, two rendering systems, CSS duplication, no query caching, mixed concerns, no CSRF, inconsistent date thresholds |
+| 🟡 MEDIUM | 15 | Hardcoded trend, export rate limiting, email validation, XSS, tight coupling, complex print.php, large fifo_profit.php, N+1 queries, no indexes, large exports, inconsistent design, no loading states, no error feedback, no repository layer, no tests |
+| 🟢 LOW | 6 | Magic numbers, no null checks, print styles, mobile responsiveness, API versioning, audit trail |
+
+### Recommended Immediate Actions (Next Sprint):
+1. **Fix print.php** — Remove mock data injection (Critical)
+2. **Fix grand totals** — Calculate from full dataset, not current page (Critical)
+3. **Fix simulation mode** — Add prominent warning, disable in production (Critical)
+4. **Fix SQL injection** — Whitelist sort columns (Critical)
+5. **Fix date filters** — Make date column configurable per report (High)
+6. **Fix CSS animation** — Correct the typo (High)
+7. **Add query caching** — Start with filter dropdowns (High)
+
+### Recommended Short-Term Improvements (Next 2 Sprints):
+1. Consolidate the two rendering systems into one
+2. Extract shared CSS into a single stylesheet
+3. Refactor ReportEngine into smaller, focused classes
+4. Add CSRF protection to POST endpoints
+5. Add proper error handling and user feedback
+6. Implement chart visualizations for key reports
+
+### Recommended Long-Term Improvements (Next Quarter):
+1. Add comprehensive unit test coverage
+2. Implement proper PDF export with DomPDF
+3. Add report comparison feature
+4. Implement full drill-down navigation
+5. Add audit logging for all report actions
+6. Implement report annotations

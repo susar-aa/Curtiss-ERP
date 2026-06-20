@@ -12,6 +12,9 @@ class ReportController extends Controller {
             header('Location: ' . APP_URL . '/auth/login');
             exit;
         }
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
         $this->engine = new ReportEngine();
     }
 
@@ -133,6 +136,15 @@ class ReportController extends Controller {
         exit;
     }
 
+    private function validateCsrf() {
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? null;
+        if (!$token || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'CSRF token validation failed.']);
+            exit;
+        }
+    }
+
     /**
      * Save report view filters
      */
@@ -142,6 +154,7 @@ class ReportController extends Controller {
             echo json_encode(['success' => false, 'message' => 'Invalid Request Method']);
             exit;
         }
+        $this->validateCsrf();
 
         $userId = $_SESSION['user_id'];
         $reportKey = $_POST['report_key'] ?? '';
@@ -162,12 +175,18 @@ class ReportController extends Controller {
             echo json_encode(['success' => false, 'message' => 'Invalid Request Method']);
             exit;
         }
+        $this->validateCsrf();
 
         $userId = $_SESSION['user_id'];
         $reportKey = $_POST['report_key'] ?? '';
         $frequency = $_POST['frequency'] ?? '';
         $email = $_POST['email_recipient'] ?? '';
         $filters = $_POST['filters'] ?? [];
+
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid email address recipient.']);
+            exit;
+        }
 
         $success = $this->engine->saveSchedule($userId, $reportKey, $frequency, $email, $filters);
         echo json_encode(['success' => $success]);

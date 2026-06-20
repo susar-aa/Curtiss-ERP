@@ -304,47 +304,6 @@ $filterLabels = $data['filterLabels'];
                         <?php endforeach; ?>
                     </tr>
 
-                    <!-- Accounting Hierarchy nesting if this is a sub-account contra or allocation record -->
-                    <?php if (($reportKey === 'general_ledger' || $reportKey === 'stock_ledger') && $index % 3 === 0): ?>
-                        <!-- Generate high-fidelity ledger sub-entries mimicking contra-matching -->
-                        <tr>
-                            <td colspan="<?= count($metadata['columns']) ?>" style="padding-top: 0; padding-bottom: 8px;">
-                                <div class="nested-row-container">
-                                    <table class="nested-item-table">
-                                        <tr style="font-weight: bold; color: #555;">
-                                            <td style="width: 25%;">Contra AccCd</td>
-                                            <td style="width: 45%;">Contra AccNm</td>
-                                            <td style="width: 15%; text-align: right;">Contra Amt</td>
-                                            <td style="width: 15%; text-align: right;">Amt</td>
-                                        </tr>
-                                        <tr>
-                                            <td>CUS/K7/0<?= $index + 31 ?></td>
-                                            <td>NATIONAL TRADING CO - BRANCH <?= $index + 1 ?></td>
-                                            <td style="text-align: right;">
-                                                <?php 
-                                                $valAmt = 154465.00 - ($index * 1200);
-                                                echo number_format($valAmt, 2) . " Dr"; 
-                                                ?>
-                                            </td>
-                                            <td></td>
-                                        </tr>
-                                        <tr>
-                                            <td>14-00001</td>
-                                            <td>VAT Payable (15%)</td>
-                                            <td style="text-align: right;">0.00 Cr</td>
-                                            <td></td>
-                                        </tr>
-                                        <tr class="nested-totals">
-                                            <td colspan="2">Sub-total Allocations</td>
-                                            <td style="text-align: right;"><?= number_format($valAmt, 2) ?></td>
-                                            <td style="text-align: right;"><?= number_format($valAmt, 2) ?></td>
-                                        </tr>
-                                    </table>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endif; ?>
-
                 <?php endforeach; ?>
             <?php endif; ?>
 

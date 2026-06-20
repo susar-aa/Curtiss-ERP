@@ -206,16 +206,16 @@ $scheduled = $data['scheduled'];
 
     /* Simulation mode warning alert */
     .sim-alert {
-        background: #fffbeb;
-        border: 1px solid #fef3c7;
-        border-left: 4px solid #f59e0b;
+        background: #fef2f2;
+        border: 1px solid #fee2e2;
+        border-left: 4px solid #ef4444;
         border-radius: 8px;
         padding: 12px 16px;
         display: flex;
         align-items: center;
         gap: 12px;
-        color: #b45309;
-        font-size: 13px;
+        color: #991b1b;
+        font-size: 13.5px;
     }
 
     .sim-alert i {
@@ -408,7 +408,7 @@ $scheduled = $data['scheduled'];
     }
 
     @keyframes spin {
-        0% { transform: translate(-50%, -50__) rotate(0deg); }
+        0% { transform: translate(-50%, -50%) rotate(0deg); }
         100% { transform: translate(-50%, -50%) rotate(360deg); }
     }
 
@@ -884,7 +884,17 @@ $scheduled = $data['scheduled'];
                 }
 
                 // Show simulation notice if applicable
-                document.getElementById('simAlert').style.display = data.simulation ? 'flex' : 'none';
+                const simAlert = document.getElementById('simAlert');
+                if (data.simulation) {
+                    simAlert.style.display = 'flex';
+                    let errorText = "Simulation Mode: Real Database Table is Missing. Displaying Simulated Data.";
+                    if (data.db_error) {
+                        errorText += " (Error: " + data.db_error + ")";
+                    }
+                    simAlert.querySelector('div').innerHTML = `<strong>Warning:</strong> ${errorText}`;
+                } else {
+                    simAlert.style.display = 'none';
+                }
 
                 currentRows = data.rows;
                 totalEntries = data.total_rows;
@@ -1102,7 +1112,10 @@ $scheduled = $data['scheduled'];
         fetch('<?= APP_URL ?>/report/save_view', {
             method: 'POST',
             body: data,
-            headers: {'X-Requested-With': 'XMLHttpRequest'}
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': '<?= $_SESSION['csrf_token'] ?? '' ?>'
+            }
         })
         .then(res => res.json())
         .then(res => {
@@ -1111,7 +1124,7 @@ $scheduled = $data['scheduled'];
                 // Reload list
                 location.reload();
             } else {
-                alert('Failed to save layout view.');
+                alert(res.message || 'Failed to save layout view.');
             }
         });
     }
@@ -1159,7 +1172,10 @@ $scheduled = $data['scheduled'];
         fetch('<?= APP_URL ?>/report/save_schedule', {
             method: 'POST',
             body: data,
-            headers: {'X-Requested-With': 'XMLHttpRequest'}
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': '<?= $_SESSION['csrf_token'] ?? '' ?>'
+            }
         })
         .then(res => res.json())
         .then(res => {
@@ -1167,7 +1183,7 @@ $scheduled = $data['scheduled'];
                 emailInput.value = '';
                 location.reload();
             } else {
-                alert('Failed to create report email schedule.');
+                alert(res.message || 'Failed to create report email schedule.');
             }
         });
     }
