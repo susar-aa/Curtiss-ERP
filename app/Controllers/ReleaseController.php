@@ -100,7 +100,7 @@ class ReleaseController extends Controller {
         $version = trim($_POST['version'] ?? '');
         $releaseNotes = trim($_POST['release_notes'] ?? '');
         $forceUpdate = isset($_POST['force_update']) ? 1 : 0;
-        $isLatest = 1; // Force new uploads to be active/latest release automatically
+        $isLatest = isset($_POST['is_latest']) ? 1 : 0;
 
         // 1. Validate version format (Semantic Versioning: X.Y.Z)
         if (!preg_match('/^\d+\.\d+\.\d+$/', $version)) {
@@ -322,9 +322,6 @@ class ReleaseController extends Controller {
     // Version API for Mobile App (Bypasses Session Login checks)
     public function api_latest_version() {
         header('Content-Type: application/json');
-        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-        header('Cache-Control: post-check=0, pre-check=0', false);
-        header('Pragma: no-cache');
         
         $latest = $this->releaseModel->getLatestRelease();
         if ($latest) {
@@ -346,12 +343,9 @@ class ReleaseController extends Controller {
             if (file_exists($versionedApkPath)) {
                 $apkMd5 = md5_file($versionedApkPath);
             } else {
-                error_log("APK file does not exist at versioned path: " . $versionedApkPath);
                 $latestApkPath = '../public/releases/latest.apk';
                 if (file_exists($latestApkPath)) {
                     $apkMd5 = md5_file($latestApkPath);
-                } else {
-                    error_log("Fallback APK file does not exist at latest path: " . $latestApkPath);
                 }
             }
 
@@ -368,9 +362,7 @@ class ReleaseController extends Controller {
                 'apkUrl' => APP_URL . '/releases/latest.apk?v=' . $latest->version . '&t=' . time(),
                 'forceUpdate' => (bool)$latest->force_update,
                 'releaseNotes' => $notes,
-                'apkMd5' => $apkMd5,
-                'release_id' => $latest->id,
-                'release_date' => $latest->created_at
+                'apkMd5' => $apkMd5
             ]);
         } else {
             // Suggest default if no releases uploaded yet
@@ -381,9 +373,7 @@ class ReleaseController extends Controller {
                 'apkUrl' => APP_URL . '/releases/latest.apk',
                 'forceUpdate' => false,
                 'releaseNotes' => ['Initial release'],
-                'apkMd5' => '',
-                'release_id' => 0,
-                'release_date' => date('Y-m-d H:i:s')
+                'apkMd5' => ''
             ]);
         }
         exit;
@@ -426,7 +416,7 @@ class ReleaseController extends Controller {
         $version = trim($_POST['version'] ?? '');
         $releaseNotes = trim($_POST['release_notes'] ?? '');
         $forceUpdate = (isset($_POST['force_update']) && $_POST['force_update'] === '1') ? 1 : 0;
-        $isLatest = 1; // Force new uploads to be active/latest release automatically
+        $isLatest = (isset($_POST['is_latest']) && $_POST['is_latest'] === '1') ? 1 : 0;
         $totalChunks = intval($_POST['total_chunks'] ?? 0);
 
         if (!preg_match('/^\d+\.\d+\.\d+$/', $version)) {
