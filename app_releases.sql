@@ -1,6 +1,10 @@
 CREATE TABLE IF NOT EXISTS `app_releases` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `version` VARCHAR(50) NOT NULL UNIQUE,
+  `build_version` INT NULL,
+  `version_name` VARCHAR(50) NULL,
+  `package_name` VARCHAR(255) NULL,
+  `app_name` VARCHAR(255) NULL,
   `major` INT NOT NULL,
   `minor` INT NOT NULL,
   `patch` INT NOT NULL,

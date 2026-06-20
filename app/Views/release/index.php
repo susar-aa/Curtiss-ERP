@@ -415,17 +415,11 @@
         
         <form action="<?= APP_URL ?>/release/upload" method="POST" enctype="multipart/form-data" id="uploadReleaseForm">
             <div class="form-group">
-                <label for="version">Version Number (Semantic)</label>
-                <input type="text" name="version" id="version" class="form-control" placeholder="e.g. 1.0.1" value="<?= htmlspecialchars($data['suggested_version']) ?>" required>
-                <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block;">Format: MAJOR.MINOR.PATCH (e.g. 1.0.0, 1.0.1)</small>
-            </div>
-
-            <div class="form-group">
                 <label for="apk">APK Binary File</label>
                 <input type="file" name="apk" id="apk" class="form-control" accept=".apk" required style="padding: 8px;">
                 <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block;">Upload the compiled Android app binary package.</small>
-                <small style="color: #d32f2f; font-weight: 600; font-size: 12px; margin-top: 6px; display: block; line-height: 1.4; background: rgba(211, 47, 47, 0.05); padding: 8px; border-left: 3px solid #d32f2f; border-radius: 4px;">
-                    ⚠️ IMPORTANT: Before building and compiling your release APK, you must update the <code>versionName</code> (and optionally <code>versionCode</code>) in your Android project's <code>app/build.gradle.kts</code> file (e.g. from "1.0" to "1.0.1") to match the version you enter here! If the uploaded APK contains the old version number, the app will get stuck in an infinite update loop after installation.
+                <small style="color: #2e7d32; font-weight: 600; font-size: 12px; margin-top: 6px; display: block; line-height: 1.4; background: rgba(46, 125, 50, 0.05); padding: 8px; border-left: 3px solid #2e7d32; border-radius: 4px;">
+                    ℹ️ APK metadata (Package Name, Version Name, and Version Code) will be extracted automatically from the uploaded APK. Ensure you have bumped <code>versionCode</code> and <code>versionName</code> in your Android build configuration before building.
                 </small>
             </div>
 
@@ -479,7 +473,7 @@
                 <table class="release-table">
                     <thead>
                         <tr>
-                            <th>Version</th>
+                            <th>Version & Package</th>
                             <th>Status</th>
                             <th>Release Notes</th>
                             <th>Upload Date</th>
@@ -492,6 +486,12 @@
                             <tr>
                                 <td style="font-weight: 700; font-size: 15px; color: var(--text-main);">
                                     v<?= htmlspecialchars($r->version) ?>
+                                    <?php if (!empty($r->build_version)): ?>
+                                        <span style="font-weight: normal; color: var(--text-muted); font-size: 12px;">(Build <?= $r->build_version ?>)</span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($r->package_name)): ?>
+                                        <div style="font-size: 10px; color: var(--text-muted); font-weight: normal; margin-top: 2px;"><?= htmlspecialchars($r->package_name) ?></div>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
@@ -562,7 +562,7 @@
                         <div class="timeline-marker"></div>
                         <div class="timeline-content">
                             <div class="timeline-header">
-                                <span class="timeline-version">v<?= htmlspecialchars($r->version) ?></span>
+                                <span class="timeline-version">v<?= htmlspecialchars($r->version) ?> <?= !empty($r->build_version) ? '(Build ' . $r->build_version . ')' : '' ?></span>
                                 <span class="timeline-date"><?= date('M d, Y', strtotime($r->created_at)) ?></span>
                             </div>
                             <div class="timeline-notes"><?= htmlspecialchars($r->release_notes ?: 'Initial system release/upload.') ?></div>
@@ -583,7 +583,6 @@ document.addEventListener("DOMContentLoaded", function() {
             e.preventDefault();
             
             const fileInput = document.getElementById("apk");
-            const versionInput = document.getElementById("version");
             const releaseNotesInput = document.getElementById("release_notes");
             const forceUpdateInput = uploadForm.querySelector('input[name="force_update"]');
             const isLatestInput = uploadForm.querySelector('input[name="is_latest"]');
@@ -594,13 +593,15 @@ document.addEventListener("DOMContentLoaded", function() {
             }
 
             const file = fileInput.files[0];
-            const version = versionInput.value;
             const releaseNotes = releaseNotesInput.value;
             const forceUpdate = forceUpdateInput.checked ? "1" : "0";
             const isLatest = isLatestInput.checked ? "1" : "0";
 
+            // Generate unique temporary token for this upload session
+            const tempToken = "temp_" + Math.random().toString(36).substring(2, 15) + "_" + Date.now();
+
             console.log("--- Chunked APK Upload Initiated ---");
-            console.log("Version: " + version);
+            console.log("Temp Token: " + tempToken);
             console.log("File Name: " + file.name);
             console.log("File Size: " + (file.size / (1024 * 1024)).toFixed(2) + " MB");
 
@@ -624,7 +625,7 @@ document.addEventListener("DOMContentLoaded", function() {
             percentText.innerText = '0%';
             submitBtn.disabled = true;
 
-            const CHUNK_SIZE = 1024 * 1024; // 1MB chunk size (well below the 2MB server limit)
+            const CHUNK_SIZE = 1024 * 1024; // 1MB chunk size
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
             let chunkIndex = 0;
 
@@ -636,7 +637,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 const chunk = file.slice(start, end);
 
                 const chunkData = new FormData();
-                chunkData.append("version", version);
+                chunkData.append("temp_token", tempToken);
                 chunkData.append("chunk_index", chunkIndex);
                 chunkData.append("chunk", chunk);
 
@@ -646,12 +647,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 xhr.upload.addEventListener("progress", function(evt) {
                     if (evt.lengthComputable) {
-                        // Calculate total overall percentage
                         const overallLoaded = (chunkIndex * CHUNK_SIZE) + evt.loaded;
                         const overallPercent = Math.round((overallLoaded / file.size) * 100);
                         progressBar.style.width = overallPercent + '%';
                         percentText.innerText = overallPercent + '%';
-                        console.log("Upload progress: " + overallPercent + "% (" + (overallLoaded / (1024*1024)).toFixed(2) + " / " + (file.size / (1024*1024)).toFixed(2) + " MB)");
                     }
                 });
 
@@ -666,7 +665,6 @@ document.addEventListener("DOMContentLoaded", function() {
                                     if (chunkIndex < totalChunks) {
                                         uploadNextChunk();
                                     } else {
-                                        // Trigger assembly
                                         assembleUploadedChunks();
                                     }
                                 } else {
@@ -686,11 +684,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
             function assembleUploadedChunks() {
                 console.log("All chunks uploaded. Assembling file on server...");
-                percentText.innerText = "Assembling...";
+                percentText.innerText = "Assembling & Parsing metadata...";
                 progressBar.style.width = '100%';
 
                 const assembleData = new FormData();
-                assembleData.append("version", version);
+                assembleData.append("temp_token", tempToken);
                 assembleData.append("release_notes", releaseNotes);
                 assembleData.append("force_update", forceUpdate);
                 assembleData.append("is_latest", isLatest);
@@ -704,9 +702,6 @@ document.addEventListener("DOMContentLoaded", function() {
                     if (xhr.readyState === XMLHttpRequest.DONE) {
                         submitBtn.disabled = false;
                         progressContainer.style.display = 'none';
-
-                        console.log("Assemble response code: " + xhr.status);
-                        console.log("Assemble response body: " + xhr.responseText);
 
                         if (xhr.status === 200) {
                             try {

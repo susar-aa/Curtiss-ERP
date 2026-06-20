@@ -29,9 +29,13 @@ class AppRelease {
     }
 
     public function addRelease($data) {
-        $this->db->query("INSERT INTO app_releases (version, major, minor, patch, release_notes, apk_path, force_update, is_latest) 
-                          VALUES (:version, :major, :minor, :patch, :release_notes, :apk_path, :force_update, :is_latest)");
+        $this->db->query("INSERT INTO app_releases (version, build_version, version_name, package_name, app_name, major, minor, patch, release_notes, apk_path, force_update, is_latest) 
+                          VALUES (:version, :build_version, :version_name, :package_name, :app_name, :major, :minor, :patch, :release_notes, :apk_path, :force_update, :is_latest)");
         $this->db->bind(':version', $data['version']);
+        $this->db->bind(':build_version', $data['build_version']);
+        $this->db->bind(':version_name', $data['version_name']);
+        $this->db->bind(':package_name', $data['package_name']);
+        $this->db->bind(':app_name', $data['app_name']);
         $this->db->bind(':major', $data['major']);
         $this->db->bind(':minor', $data['minor']);
         $this->db->bind(':patch', $data['patch']);
@@ -65,5 +69,17 @@ class AppRelease {
         $this->db->query("DELETE FROM app_releases WHERE id = :id");
         $this->db->bind(':id', $id);
         return $this->db->execute();
+    }
+
+    public function getReleaseByBuildVersion($buildVersion) {
+        $this->db->query("SELECT * FROM app_releases WHERE build_version = :build_version LIMIT 1");
+        $this->db->bind(':build_version', $buildVersion);
+        return $this->db->single();
+    }
+
+    public function getReleaseByVersionName($versionName) {
+        $this->db->query("SELECT * FROM app_releases WHERE version = :version LIMIT 1");
+        $this->db->bind(':version', $versionName);
+        return $this->db->single();
     }
 }

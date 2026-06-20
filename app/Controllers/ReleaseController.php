@@ -1,4 +1,6 @@
 <?php
+require_once '../app/Core/ApkParser.php';
+
 class ReleaseController extends Controller {
     private $releaseModel;
 
@@ -97,32 +99,11 @@ class ReleaseController extends Controller {
             exit;
         }
 
-        $version = trim($_POST['version'] ?? '');
         $releaseNotes = trim($_POST['release_notes'] ?? '');
         $forceUpdate = isset($_POST['force_update']) ? 1 : 0;
         $isLatest = isset($_POST['is_latest']) ? 1 : 0;
 
-        // 1. Validate version format (Semantic Versioning: X.Y.Z)
-        if (!preg_match('/^\d+\.\d+\.\d+$/', $version)) {
-            $err = "Invalid version format. Must follow MAJOR.MINOR.PATCH format (e.g. 1.0.1).";
-            error_log($err);
-            if ($isAjax) {
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'error' => $err]);
-                exit;
-            } else {
-                $_SESSION['release_error'] = $err;
-                header('Location: ' . APP_URL . '/release');
-                exit;
-            }
-        }
-
-        $parts = explode('.', $version);
-        $major = intval($parts[0]);
-        $minor = intval($parts[1]);
-        $patch = intval($parts[2]);
-
-        // 2. Validate file upload
+        // Validate file upload
         if (!isset($_FILES['apk']) || $_FILES['apk']['error'] !== UPLOAD_ERR_OK) {
             $errorCode = $_FILES['apk']['error'] ?? UPLOAD_ERR_NO_FILE;
             $errMapping = [
@@ -172,14 +153,65 @@ class ReleaseController extends Controller {
             mkdir($uploadDir, 0777, true);
         }
 
-        $newFileName = 'app-v' . $version . '.apk';
+        // Extract APK metadata
+        try {
+            $parser = new ApkParser($fileTmpPath);
+            $apkMeta = $parser->parse();
+            if (empty($apkMeta['versionName']) || empty($apkMeta['versionCode'])) {
+                throw new Exception("Unable to extract Version Name or Build Version (Version Code) from APK metadata.");
+            }
+        } catch (Exception $e) {
+            $err = "APK Metadata Extraction Failed: " . $e->getMessage();
+            error_log($err);
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => $err]);
+                exit;
+            } else {
+                $_SESSION['release_error'] = $err;
+                header('Location: ' . APP_URL . '/release');
+                exit;
+            }
+        }
+
+        $versionName = $apkMeta['versionName'];
+        $versionCode = intval($apkMeta['versionCode']);
+        $packageName = $apkMeta['packageName'];
+        $appName = $apkMeta['appName'];
+
+        // Validate if build version already exists
+        $existing = $this->releaseModel->getReleaseByBuildVersion($versionCode);
+        if ($existing) {
+            $err = "Upload Rejected: A release with build version {$versionCode} (version name {$existing->version_name}) already exists.";
+            error_log($err);
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => $err]);
+                exit;
+            } else {
+                $_SESSION['release_error'] = $err;
+                header('Location: ' . APP_URL . '/release');
+                exit;
+            }
+        }
+
+        $parts = explode('.', $versionName);
+        $major = isset($parts[0]) ? intval($parts[0]) : 1;
+        $minor = isset($parts[1]) ? intval($parts[1]) : 0;
+        $patch = isset($parts[2]) ? intval($parts[2]) : 0;
+
+        $newFileName = 'app-v' . $versionName . '.apk';
         $destPath = $uploadDir . '/' . $newFileName;
 
         if (move_uploaded_file($fileTmpPath, $destPath)) {
             $apkRelativePath = 'public/releases/' . $newFileName;
 
             $releaseData = [
-                'version' => $version,
+                'version' => $versionName,
+                'build_version' => $versionCode,
+                'version_name' => $versionName,
+                'package_name' => $packageName,
+                'app_name' => $appName,
                 'major' => $major,
                 'minor' => $minor,
                 'patch' => $patch,
@@ -192,7 +224,7 @@ class ReleaseController extends Controller {
             try {
                 $id = $this->releaseModel->addRelease($releaseData);
                 if ($id) {
-                    $msg = "New release v{$version} uploaded and registered successfully.";
+                    $msg = "New release v{$versionName} (Build {$versionCode}) uploaded and registered successfully.";
                     error_log($msg);
                     
                     if ($isLatest) {
@@ -209,7 +241,7 @@ class ReleaseController extends Controller {
                         $_SESSION['release_success'] = $msg;
                     }
                 } else {
-                    $err = "Failed to save release to database. Version might already exist.";
+                    $err = "Failed to save release to database.";
                     error_log($err);
                     unlink($destPath); // Remove the file
                     
@@ -352,17 +384,18 @@ class ReleaseController extends Controller {
             $major = intval($latest->major);
             $minor = intval($latest->minor);
             $patch = intval($latest->patch);
-            $latestVersionCode = $major * 100 + $minor * 10 + $patch;
-            $latestVersionCodeNormalized = $major * 10000 + $minor * 100 + $patch;
+            $latestVersionCode = intval($latest->build_version ?: ($major * 100 + $minor * 10 + $patch));
+            $latestVersionCodeNormalized = intval($latest->build_version ?: ($major * 10000 + $minor * 100 + $patch));
 
             echo json_encode([
-                'latestVersion' => $latest->version,
+                'latestVersion' => $latest->version_name ?: $latest->version,
                 'latestVersionCode' => $latestVersionCode,
                 'latestVersionCodeNormalized' => $latestVersionCodeNormalized,
-                'apkUrl' => APP_URL . '/releases/latest.apk?v=' . $latest->version . '&t=' . time(),
+                'apkUrl' => APP_URL . '/releases/latest.apk?v=' . ($latest->version_name ?: $latest->version) . '&t=' . time(),
                 'forceUpdate' => (bool)$latest->force_update,
                 'releaseNotes' => $notes,
-                'apkMd5' => $apkMd5
+                'apkMd5' => $apkMd5,
+                'packageName' => $latest->package_name ?: 'com.example.curtiss'
             ]);
         } else {
             // Suggest default if no releases uploaded yet
@@ -373,7 +406,8 @@ class ReleaseController extends Controller {
                 'apkUrl' => APP_URL . '/releases/latest.apk',
                 'forceUpdate' => false,
                 'releaseNotes' => ['Initial release'],
-                'apkMd5' => ''
+                'apkMd5' => '',
+                'packageName' => 'com.example.curtiss'
             ]);
         }
         exit;
@@ -383,11 +417,11 @@ class ReleaseController extends Controller {
     public function upload_chunk() {
         header('Content-Type: application/json');
         
-        $version = trim($_POST['version'] ?? '');
+        $tempToken = trim($_POST['temp_token'] ?? '');
         $chunkIndex = intval($_POST['chunk_index'] ?? 0);
         
-        if (!preg_match('/^\d+\.\d+\.\d+$/', $version)) {
-            echo json_encode(['success' => false, 'error' => 'Invalid version format.']);
+        if (empty($tempToken)) {
+            echo json_encode(['success' => false, 'error' => 'Missing temporary upload token.']);
             exit;
         }
 
@@ -401,7 +435,7 @@ class ReleaseController extends Controller {
             mkdir($uploadDir, 0777, true);
         }
 
-        $tempChunkPath = $uploadDir . "/temp_{$version}_{$chunkIndex}";
+        $tempChunkPath = $uploadDir . "/temp_{$tempToken}_{$chunkIndex}";
         if (move_uploaded_file($_FILES['chunk']['tmp_name'], $tempChunkPath)) {
             echo json_encode(['success' => true]);
         } else {
@@ -413,29 +447,32 @@ class ReleaseController extends Controller {
     public function assemble_chunks() {
         header('Content-Type: application/json');
         
-        $version = trim($_POST['version'] ?? '');
+        $tempToken = trim($_POST['temp_token'] ?? '');
         $releaseNotes = trim($_POST['release_notes'] ?? '');
         $forceUpdate = (isset($_POST['force_update']) && $_POST['force_update'] === '1') ? 1 : 0;
         $isLatest = (isset($_POST['is_latest']) && $_POST['is_latest'] === '1') ? 1 : 0;
         $totalChunks = intval($_POST['total_chunks'] ?? 0);
 
-        if (!preg_match('/^\d+\.\d+\.\d+$/', $version)) {
-            echo json_encode(['success' => false, 'error' => 'Invalid version format.']);
+        if (empty($tempToken)) {
+            echo json_encode(['success' => false, 'error' => 'Missing temporary upload token.']);
             exit;
         }
 
-        $parts = explode('.', $version);
-        $major = intval($parts[0]);
-        $minor = intval($parts[1]);
-        $patch = intval($parts[2]);
-
         $uploadDir = '../public/releases';
         $tempDir = $uploadDir . '/temp';
-        $finalFileName = 'app-v' . $version . '.apk';
-        $finalPath = $uploadDir . '/' . $finalFileName;
+        
+        $assembledFileName = 'assembled_' . $tempToken . '.apk';
+        $assembledPath = $tempDir . '/' . $assembledFileName;
+
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0777, true);
+        }
 
         // Open final file for writing in binary append mode
-        $finalFile = fopen($finalPath, 'wb');
+        $finalFile = fopen($assembledPath, 'wb');
         if (!$finalFile) {
             echo json_encode(['success' => false, 'error' => 'Failed to write final assembled file on server. Check folder permissions.']);
             exit;
@@ -443,11 +480,11 @@ class ReleaseController extends Controller {
 
         // Stitch chunk files together in order
         for ($i = 0; $i < $totalChunks; $i++) {
-            $chunkPath = $tempDir . "/temp_{$version}_{$i}";
+            $chunkPath = $tempDir . "/temp_{$tempToken}_{$i}";
             if (!file_exists($chunkPath)) {
                 fclose($finalFile);
-                if (file_exists($finalPath)) {
-                    unlink($finalPath);
+                if (file_exists($assembledPath)) {
+                    unlink($assembledPath);
                 }
                 echo json_encode(['success' => false, 'error' => "Missing temporary chunk index {$i} on server."]);
                 exit;
@@ -460,10 +497,61 @@ class ReleaseController extends Controller {
 
         fclose($finalFile);
 
+        // Parse APK metadata
+        try {
+            $parser = new ApkParser($assembledPath);
+            $apkMeta = $parser->parse();
+            if (empty($apkMeta['versionName']) || empty($apkMeta['versionCode'])) {
+                throw new Exception("Unable to extract Version Name or Build Version (Version Code) from APK metadata.");
+            }
+        } catch (Exception $e) {
+            if (file_exists($assembledPath)) {
+                unlink($assembledPath);
+            }
+            echo json_encode(['success' => false, 'error' => 'APK Metadata Extraction Failed: ' . $e->getMessage()]);
+            exit;
+        }
+
+        $versionName = $apkMeta['versionName'];
+        $versionCode = intval($apkMeta['versionCode']);
+        $packageName = $apkMeta['packageName'];
+        $appName = $apkMeta['appName'];
+
+        // Validate if build version already exists
+        $existing = $this->releaseModel->getReleaseByBuildVersion($versionCode);
+        if ($existing) {
+            if (file_exists($assembledPath)) {
+                unlink($assembledPath);
+            }
+            echo json_encode(['success' => false, 'error' => "Upload Rejected: A release with build version {$versionCode} (version name {$existing->version_name}) already exists."]);
+            exit;
+        }
+
+        $parts = explode('.', $versionName);
+        $major = isset($parts[0]) ? intval($parts[0]) : 1;
+        $minor = isset($parts[1]) ? intval($parts[1]) : 0;
+        $patch = isset($parts[2]) ? intval($parts[2]) : 0;
+
+        $finalFileName = 'app-v' . $versionName . '.apk';
+        $finalPath = $uploadDir . '/' . $finalFileName;
+
+        // Move to final path
+        if (!rename($assembledPath, $finalPath)) {
+            if (file_exists($assembledPath)) {
+                unlink($assembledPath);
+            }
+            echo json_encode(['success' => false, 'error' => 'Failed to move assembled APK to final path. Check folder permissions.']);
+            exit;
+        }
+
         // Save metadata to database
         $apkRelativePath = 'public/releases/' . $finalFileName;
         $releaseData = [
-            'version' => $version,
+            'version' => $versionName,
+            'build_version' => $versionCode,
+            'version_name' => $versionName,
+            'package_name' => $packageName,
+            'app_name' => $appName,
             'major' => $major,
             'minor' => $minor,
             'patch' => $patch,
@@ -480,12 +568,12 @@ class ReleaseController extends Controller {
                     $latestPath = $uploadDir . '/latest.apk';
                     copy($finalPath, $latestPath);
                 }
-                echo json_encode(['success' => true, 'message' => "New release v{$version} uploaded and assembled successfully."]);
+                echo json_encode(['success' => true, 'message' => "New release v{$versionName} (Build {$versionCode}) uploaded and assembled successfully."]);
             } else {
                 if (file_exists($finalPath)) {
                     unlink($finalPath);
                 }
-                echo json_encode(['success' => false, 'error' => 'Failed to register release in database. Version may already exist.']);
+                echo json_encode(['success' => false, 'error' => 'Failed to register release in database.']);
             }
         } catch (Exception $e) {
             if (file_exists($finalPath)) {
