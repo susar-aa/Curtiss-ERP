@@ -585,14 +585,14 @@ class RepDashboardController extends Controller {
             }
 
             // Helpers to find mapped customer/route server IDs
-            $getCustomerServerId = function($localCustId) use ($mappings) {
+            $getCustomerServerId = function($localCustId) use (&$mappings) {
                 foreach ($mappings['customers'] as $map) {
                     if ($map['local_id'] == $localCustId) return $map['server_id'];
                 }
                 return $localCustId;
             };
 
-            $getRouteServerId = function($localRouteId) use ($mappings) {
+            $getRouteServerId = function($localRouteId) use (&$mappings) {
                 foreach ($mappings['routes'] as $map) {
                     if ($map['local_id'] == $localRouteId) return $map['server_id'];
                 }
