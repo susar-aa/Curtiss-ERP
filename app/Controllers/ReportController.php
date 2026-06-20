@@ -318,4 +318,115 @@ class ReportController extends Controller {
         echo json_encode(['success' => true, 'processed_schedules_count' => $processed]);
         exit;
     }
+
+    /**
+     * Dedicated accounting-grade high-fidelity print output
+     */
+    public function print_report($reportKey = null) {
+        if (!$reportKey) {
+            die("Report key is required.");
+        }
+
+        $registry = ReportEngine::getReportsRegistry();
+        if (!isset($registry[$reportKey])) {
+            die("Report not registered.");
+        }
+
+        $metadata = $registry[$reportKey];
+
+        // Extract filters
+        $filters = [
+            'start_date' => $_GET['start_date'] ?? null,
+            'end_date' => $_GET['end_date'] ?? null,
+            'customer' => $_GET['customer'] ?? null,
+            'supplier' => $_GET['supplier'] ?? null,
+            'product' => $_GET['product'] ?? null,
+            'warehouse' => $_GET['warehouse'] ?? null,
+            'route' => $_GET['route'] ?? null,
+            'category' => $_GET['category'] ?? null,
+        ];
+
+        // Fetch data
+        $dataResult = $this->engine->fetchData($reportKey, $filters, 1, 10000);
+        $rows = $dataResult['rows'];
+        $grandTotals = $dataResult['grand_totals'];
+
+        // Get company settings
+        $db = new Database();
+        $db->query("SELECT * FROM company_settings LIMIT 1");
+        $company = $db->single() ?: (object)[
+            'company_name' => 'Falcon Stationary (Pvt) Ltd',
+            'phone' => '', 'email' => '', 'address' => ''
+        ];
+
+        // Resolve active filter values to descriptive labels
+        $filterLabels = [];
+        if (!empty($filters['start_date'])) {
+            $filterLabels['From Date'] = date('d/m/Y', strtotime($filters['start_date']));
+        } else {
+            $filterLabels['From Date'] = date('01/m/Y');
+        }
+
+        if (!empty($filters['end_date'])) {
+            $filterLabels['To Date'] = date('d/m/Y', strtotime($filters['end_date']));
+        } else {
+            $filterLabels['To Date'] = date('d/m/Y');
+        }
+
+        if (!empty($filters['customer'])) {
+            $db->query("SELECT name FROM customers WHERE id = :id");
+            $db->bind(':id', $filters['customer']);
+            $row = $db->single();
+            if ($row) $filterLabels['Customer'] = $row->name;
+        }
+
+        if (!empty($filters['supplier'])) {
+            $db->query("SELECT name FROM vendors WHERE id = :id");
+            $db->bind(':id', $filters['supplier']);
+            $row = $db->single();
+            if ($row) $filterLabels['Supplier'] = $row->name;
+        }
+
+        if (!empty($filters['product'])) {
+            $db->query("SELECT name, item_code FROM items WHERE id = :id");
+            $db->bind(':id', $filters['product']);
+            $row = $db->single();
+            if ($row) $filterLabels['Product'] = $row->item_code . ' - ' . $row->name;
+        }
+
+        if (!empty($filters['warehouse'])) {
+            $db->query("SELECT name FROM warehouses WHERE id = :id");
+            $db->bind(':id', $filters['warehouse']);
+            $row = $db->single();
+            if ($row) $filterLabels['Warehouse'] = $row->name;
+        }
+
+        if (!empty($filters['category'])) {
+            $db->query("SELECT name FROM item_categories WHERE id = :id");
+            $db->bind(':id', $filters['category']);
+            $row = $db->single();
+            if ($row) $filterLabels['Category'] = $row->name;
+        }
+
+        if (!empty($filters['route'])) {
+            $db->query("SELECT route_name FROM rep_daily_routes WHERE id = :id");
+            $db->bind(':id', $filters['route']);
+            $row = $db->single();
+            if ($row) $filterLabels['Route'] = $row->route_name;
+        }
+
+        $data = [
+            'reportKey' => $reportKey,
+            'metadata' => $metadata,
+            'rows' => $rows,
+            'grandTotals' => $grandTotals,
+            'company' => $company,
+            'filters' => $filters,
+            'filterLabels' => $filterLabels
+        ];
+
+        // Load the dedicated printing template
+        $this->view('reports/print', $data);
+    }
 }
+

@@ -720,7 +720,7 @@ $scheduled = $data['scheduled'];
                 </div>
 
                 <!-- Print Button -->
-                <button class="action-btn" onclick="window.print()">
+                <button class="action-btn" onclick="openPrintLayout()">
                     <i class="ph ph-printer"></i> Print
                 </button>
 
@@ -1198,5 +1198,16 @@ $scheduled = $data['scheduled'];
         }
 
         window.location.href = `<?= APP_URL ?>/report/export/${reportKey}?` + params.toString();
+    }
+
+    // --- Dedicated high-fidelity print window layout ---
+    function openPrintLayout() {
+        const form = document.getElementById('filterForm');
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+        for (const [key, value] of formData.entries()) {
+            if (value) params.append(key, value);
+        }
+        window.open('<?= APP_URL ?>/report/print_report/' + reportKey + '?' + params.toString(), '_blank');
     }
 </script>
