@@ -761,7 +761,7 @@ class PickingController extends Controller {
             exit;
         }
 
-        $this->db->query("SELECT id, name, item_code, selling_price FROM items 
+        $this->db->query("SELECT id, name, item_code, price AS selling_price FROM items 
                           WHERE (name LIKE :q OR item_code LIKE :q) AND status != 'Inactive' LIMIT 20");
         $this->db->bind(':q', "%$q%");
         $products = $this->db->resultSet() ?: [];
