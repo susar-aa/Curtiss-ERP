@@ -646,9 +646,21 @@ class RepDashboardController extends Controller {
                     
                     $localRouteId = intval($inv['local_route_id'] ?? 0);
                     $serverRouteIdFromApp = intval($inv['server_route_id'] ?? 0);
+                    $routeUuid = $inv['route_uuid'] ?? '';
+                    $routeServerId = 0;
+
                     if ($serverRouteIdFromApp > 0) {
                         $routeServerId = $serverRouteIdFromApp;
-                    } else {
+                    }
+                    if ($routeServerId <= 0 && !empty($routeUuid)) {
+                        $this->db->query("SELECT id FROM rep_daily_routes WHERE uuid = :uuid LIMIT 1");
+                        $this->db->bind(':uuid', $routeUuid);
+                        $rRow = $this->db->single();
+                        if ($rRow) {
+                            $routeServerId = intval($rRow->id);
+                        }
+                    }
+                    if ($routeServerId <= 0) {
                         $routeServerId = $getRouteServerId($localRouteId);
                     }
                     
@@ -789,7 +801,25 @@ class RepDashboardController extends Controller {
                         $custServerId = $firstCust ? intval($firstCust->id) : 1;
                     }
 
-                    $routeServerId = $getRouteServerId(intval($p['server_route_id'] ?? 0));
+                    $localRouteId = intval($p['local_route_id'] ?? 0);
+                    $serverRouteIdFromApp = intval($p['server_route_id'] ?? 0);
+                    $routeUuid = $p['route_uuid'] ?? '';
+                    $routeServerId = 0;
+
+                    if ($serverRouteIdFromApp > 0) {
+                        $routeServerId = $serverRouteIdFromApp;
+                    }
+                    if ($routeServerId <= 0 && !empty($routeUuid)) {
+                        $this->db->query("SELECT id FROM rep_daily_routes WHERE uuid = :uuid LIMIT 1");
+                        $this->db->bind(':uuid', $routeUuid);
+                        $rRow = $this->db->single();
+                        if ($rRow) {
+                            $routeServerId = intval($rRow->id);
+                        }
+                    }
+                    if ($routeServerId <= 0) {
+                        $routeServerId = $getRouteServerId($localRouteId);
+                    }
                     
                     // Idempotency: Check if this payment was already synced via UUID or mobile_local_id and mobile_rep_id
                     $existingPmt = null;
