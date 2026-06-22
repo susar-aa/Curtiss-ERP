@@ -89,7 +89,7 @@ class WarehouseTransfer {
             // 3. Deduct stock from the source item
             $this->db->query("
                 UPDATE items 
-                SET qty = qty - :qty 
+                SET qty = qty - :qty, quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty)
                 WHERE id = :item_id
             ");
             $this->db->bind(':qty', $data['qty']);
@@ -110,7 +110,7 @@ class WarehouseTransfer {
                 // SKU exists in destination, update stock
                 $this->db->query("
                     UPDATE items 
-                    SET qty = qty + :qty 
+                    SET qty = qty + :qty, quantity_on_hand = quantity_on_hand + :qty
                     WHERE id = :dest_id
                 ");
                 $this->db->bind(':qty', $data['qty']);
@@ -120,10 +120,10 @@ class WarehouseTransfer {
                 // SKU does not exist in destination, clone item record
                 $this->db->query("
                     INSERT INTO items (
-                        item_code, name, price, wholesale_price, qty, description,
+                        item_code, name, price, wholesale_price, qty, quantity_on_hand, description,
                         barcode, category_id, brand, warehouse_id, vendor_id, cost_price, alert_qty, unit, status, weight, sync_woo, variations_json, image_path
                     ) VALUES (
-                        :item_code, :name, :price, :wholesale_price, :qty, :description,
+                        :item_code, :name, :price, :wholesale_price, :qty, :qty, :description,
                         :barcode, :category_id, :brand, :warehouse_id, :vendor_id, :cost_price, :alert_qty, :unit, :status, :weight, :sync_woo, :variations_json, :image_path
                     )
                 ");
