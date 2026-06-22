@@ -677,7 +677,10 @@ class PickingController extends Controller {
         $replItem = $this->db->single();
 
         if (!$origItem || !$replItem) {
-            echo json_encode(['success' => false, 'error' => 'Original or replacement product not found']);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Original or replacement product not found. Original ID: ' . $originalItemId . ' (' . ($origItem ? 'Found' : 'Not Found') . '), Replacement ID: ' . $replacementItemId . ' (' . ($replItem ? 'Found' : 'Not Found') . ')'
+            ]);
             exit;
         }
 
