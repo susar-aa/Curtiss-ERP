@@ -404,11 +404,11 @@ class RepTrackingController extends Controller {
             // Fetch substitutions for this delivery
             $db->query("
                 SELECT ps.*, 
-                       oi.name as original_item_name, 
-                       ri.name as replacement_item_name
+                       COALESCE(oi.name, 'Deleted Product') as original_item_name, 
+                       COALESCE(ri.name, 'Deleted Product') as replacement_item_name
                 FROM product_substitutions ps
-                JOIN items oi ON ps.original_item_id = oi.id
-                JOIN items ri ON ps.replacement_item_id = ri.id
+                LEFT JOIN items oi ON ps.original_item_id = oi.id
+                LEFT JOIN items ri ON ps.replacement_item_id = ri.id
                 WHERE ps.delivery_id = :delivery_id
             ");
             $db->bind(':delivery_id', $del->id);
@@ -462,12 +462,12 @@ class RepTrackingController extends Controller {
         // Fetch substitutions
         $db->query("
             SELECT ps.*, 
-                   oi.name as original_item_name, 
-                   ri.name as replacement_item_name,
+                   COALESCE(oi.name, 'Deleted Product') as original_item_name, 
+                   COALESCE(ri.name, 'Deleted Product') as replacement_item_name,
                    u.username as creator_name
             FROM product_substitutions ps
-            JOIN items oi ON ps.original_item_id = oi.id
-            JOIN items ri ON ps.replacement_item_id = ri.id
+            LEFT JOIN items oi ON ps.original_item_id = oi.id
+            LEFT JOIN items ri ON ps.replacement_item_id = ri.id
             LEFT JOIN users u ON ps.user_id = u.id
             WHERE ps.route_id = :rid
             ORDER BY ps.created_at DESC
@@ -926,15 +926,42 @@ class RepTrackingController extends Controller {
             $routeIds = array_unique($routeIds);
             $routeIdsStr = implode(',', $routeIds);
 
-            $db->query("
-                SELECT i.id as invoice_id, i.invoice_number, c.name as customer_name, ii.quantity, ii.unit_price, ii.total as line_total
-                FROM invoices i
-                JOIN customers c ON i.customer_id = c.id
-                JOIN invoice_items ii ON ii.invoice_id = i.id
-                WHERE i.rep_route_id IN ($routeIdsStr) AND ii.item_id = :item_id AND i.status != 'Voided'
-            ");
+            // Check if this item is a replacement in a product substitution on this route
+            $db->query("SELECT original_item_id FROM product_substitutions WHERE route_id IN ($routeIdsStr) AND replacement_item_id = :item_id LIMIT 1");
             $db->bind(':item_id', $itemId);
-            $invoices = $db->resultSet() ?: [];
+            $subRow = $db->single();
+
+            if ($subRow) {
+                // Fetch replacement price
+                $db->query("SELECT price FROM items WHERE id = :id");
+                $db->bind(':id', $itemId);
+                $replProductRow = $db->single();
+                $replPrice = $replProductRow ? floatval($replProductRow->price) : 0.00;
+
+                // Find invoices containing the original item
+                $db->query("
+                    SELECT i.id as invoice_id, i.invoice_number, c.name as customer_name, 
+                           0.00 as quantity, :price as unit_price, 0.00 as line_total,
+                           ii.quantity as original_qty
+                    FROM invoices i
+                    JOIN customers c ON i.customer_id = c.id
+                    JOIN invoice_items ii ON ii.invoice_id = i.id
+                    WHERE i.rep_route_id IN ($routeIdsStr) AND ii.item_id = :orig_item_id AND i.status != 'Voided'
+                ");
+                $db->bind(':price', $replPrice);
+                $db->bind(':orig_item_id', $subRow->original_item_id);
+                $invoices = $db->resultSet() ?: [];
+            } else {
+                $db->query("
+                    SELECT i.id as invoice_id, i.invoice_number, c.name as customer_name, ii.quantity, ii.unit_price, ii.total as line_total
+                    FROM invoices i
+                    JOIN customers c ON i.customer_id = c.id
+                    JOIN invoice_items ii ON ii.invoice_id = i.id
+                    WHERE i.rep_route_id IN ($routeIdsStr) AND ii.item_id = :item_id AND i.status != 'Voided'
+                ");
+                $db->bind(':item_id', $itemId);
+                $invoices = $db->resultSet() ?: [];
+            }
 
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'invoices' => $invoices]);
@@ -1081,6 +1108,57 @@ class RepTrackingController extends Controller {
                         if (!in_array($invoiceId, $modifiedInvoices)) {
                             $modifiedInvoices[] = $invoiceId;
                         }
+                    } else if ($newQty > 0.0) {
+                        $db->query("SELECT name, price, cost, cost_price, warehouse_id FROM items WHERE id = :id");
+                        $db->bind(':id', $itemId);
+                        $itemRow = $db->single();
+                        if ($itemRow) {
+                            $itemName = $itemRow->name;
+                            $unitPrice = floatval($itemRow->price);
+                            $discVal = 0.0;
+                            $discType = '%';
+                            $lineTotal = $newQty * $unitPrice;
+
+                            $db->query("INSERT INTO invoice_items (invoice_id, item_id, description, quantity, unit_price, discount_value, discount_type, total)
+                                        VALUES (:iid, :item_id, :desc, :qty, :unit_price, :disc_val, :disc_type, :total)");
+                            $db->bind(':iid', $invoiceId);
+                            $db->bind(':item_id', $itemId);
+                            $db->bind(':desc', $itemName);
+                            $db->bind(':qty', $newQty);
+                            $db->bind(':unit_price', $unitPrice);
+                            $db->bind(':disc_val', $discVal);
+                            $db->bind(':disc_type', $discType);
+                            $db->bind(':total', $lineTotal);
+                            $db->execute();
+
+                            $db->query("SELECT invoice_number, stock_status FROM invoices WHERE id = :iid");
+                            $db->bind(':iid', $invoiceId);
+                            $invMeta = $db->single();
+                            $invNum = $invMeta ? $invMeta->invoice_number : '';
+                            $stockStatus = $invMeta ? $invMeta->stock_status : 'picked';
+
+                            if ($stockStatus === 'reserved') {
+                                $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) + :qty) WHERE id = :item_id");
+                                $db->bind(':qty', $newQty);
+                                $db->bind(':item_id', $itemId);
+                                $db->execute();
+                            } else {
+                                $db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :item_id");
+                                $db->bind(':qty', $newQty);
+                                $db->bind(':item_id', $itemId);
+                                $db->execute();
+
+                                require_once '../app/Models/StockLedger.php';
+                                $ledger = new StockLedger();
+                                $whId = $itemRow->warehouse_id;
+                                $itemCost = floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00));
+                                $ledger->logMovement($itemId, null, 0, $newQty, 'Sales Invoice Variance Increase', $invNum, $whId, $userId, 'Variance Audit Adjust', $itemCost);
+                            }
+
+                            if (!in_array($invoiceId, $modifiedInvoices)) {
+                                $modifiedInvoices[] = $invoiceId;
+                            }
+                        }
                     }
                 }
             }
@@ -1192,12 +1270,12 @@ class RepTrackingController extends Controller {
         $db = new Database();
         $db->query("
             SELECT ps.*, 
-                   oi.name as original_item_name, 
-                   ri.name as replacement_item_name,
+                   COALESCE(oi.name, 'Deleted Product') as original_item_name, 
+                   COALESCE(ri.name, 'Deleted Product') as replacement_item_name,
                    u.username as creator_name
             FROM product_substitutions ps
-            JOIN items oi ON ps.original_item_id = oi.id
-            JOIN items ri ON ps.replacement_item_id = ri.id
+            LEFT JOIN items oi ON ps.original_item_id = oi.id
+            LEFT JOIN items ri ON ps.replacement_item_id = ri.id
             LEFT JOIN users u ON ps.user_id = u.id
             WHERE ps.route_id = :rid
             ORDER BY ps.created_at DESC

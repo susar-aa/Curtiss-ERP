@@ -1980,7 +1980,7 @@
                                         invoice_id: parseInt(inv.invoice_id),
                                         invoice_number: inv.invoice_number,
                                         customer_name: inv.customer_name,
-                                        original_qty: parseFloat(inv.quantity),
+                                        original_qty: parseFloat(inv.original_qty !== undefined ? inv.original_qty : inv.quantity),
                                         quantity: parseFloat(inv.quantity),
                                         unit_price: parseFloat(inv.unit_price),
                                         remove_completely: 0
