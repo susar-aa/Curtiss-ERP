@@ -1270,11 +1270,11 @@ class RepTrackingController extends Controller {
             }
 
             // Fetch original and replacement items
-            $db->query("SELECT name, selling_price FROM items WHERE id = :id");
+            $db->query("SELECT name, price AS selling_price FROM items WHERE id = :id");
             $db->bind(':id', $sub->original_item_id);
             $origProduct = $db->single();
 
-            $db->query("SELECT name, selling_price FROM items WHERE id = :id");
+            $db->query("SELECT name, price AS selling_price FROM items WHERE id = :id");
             $db->bind(':id', $sub->replacement_item_id);
             $replProduct = $db->single();
 
