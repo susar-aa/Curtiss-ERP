@@ -2143,6 +2143,16 @@
             if (item.variance === 0) return;
             hasAnyVariance = true;
 
+            let subBadge = '';
+            const subInfo = currentSubstitutions.find(s => parseInt(s.replacement_item_id) === parseInt(item.item_id) || parseInt(s.original_item_id) === parseInt(item.item_id));
+            if (subInfo) {
+                if (parseInt(subInfo.replacement_item_id) === parseInt(item.item_id)) {
+                    subBadge = `<span style="display:inline-block; margin-top:4px; padding:2px 6px; background:#eff6ff; color:#1d4ed8; border-radius:4px; font-size:10px; font-weight:bold; margin-bottom:5px;">🔄 Replaced "${subInfo.original_item_name}"</span>`;
+                } else {
+                    subBadge = `<span style="display:inline-block; margin-top:4px; padding:2px 6px; background:#fef2f2; color:#b91c1c; border-radius:4px; font-size:10px; font-weight:bold; margin-bottom:5px;">🔄 Replaced by "${subInfo.replacement_item_name}"</span>`;
+                }
+            }
+
             let invoiceRows = '';
             let currentTotal = 0;
 
@@ -2199,6 +2209,7 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #e2e8f0; padding-bottom:8px;">
                         <div>
                             <strong style="font-size:13px; color:#0f172a;">🛠️ Reconcile: ${item.item_name}</strong><br>
+                            ${subBadge ? subBadge + '<br>' : ''}
                             <span style="font-size:11px; color:#475569;">Variance: <strong>${item.variance > 0 ? '+' : ''}${item.variance}</strong> | Required: <strong>${item.required_qty}</strong> | Final Loaded: <strong>${item.final_loaded_qty}</strong></span>
                         </div>
                         <div style="text-align:right;">

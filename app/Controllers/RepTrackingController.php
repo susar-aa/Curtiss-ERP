@@ -927,7 +927,7 @@ class RepTrackingController extends Controller {
             $routeIdsStr = implode(',', $routeIds);
 
             // Check if this item is a replacement in a product substitution on this route
-            $db->query("SELECT original_item_id FROM product_substitutions WHERE route_id IN ($routeIdsStr) AND replacement_item_id = :item_id LIMIT 1");
+            $db->query("SELECT original_item_id, status FROM product_substitutions WHERE route_id IN ($routeIdsStr) AND replacement_item_id = :item_id LIMIT 1");
             $db->bind(':item_id', $itemId);
             $subRow = $db->single();
 
@@ -938,19 +938,34 @@ class RepTrackingController extends Controller {
                 $replProductRow = $db->single();
                 $replPrice = $replProductRow ? floatval($replProductRow->price) : 0.00;
 
-                // Find invoices containing the original item
-                $db->query("
-                    SELECT i.id as invoice_id, i.invoice_number, c.name as customer_name, 
-                           0.00 as quantity, :price as unit_price, 0.00 as line_total,
-                           ii.quantity as original_qty
-                    FROM invoices i
-                    JOIN customers c ON i.customer_id = c.id
-                    JOIN invoice_items ii ON ii.invoice_id = i.id
-                    WHERE i.rep_route_id IN ($routeIdsStr) AND ii.item_id = :orig_item_id AND i.status != 'Voided'
-                ");
-                $db->bind(':price', $replPrice);
-                $db->bind(':orig_item_id', $subRow->original_item_id);
-                $invoices = $db->resultSet() ?: [];
+                if ($subRow->status === 'Applied') {
+                    // Substitution is already applied. Find invoices containing the replacement item itself.
+                    $db->query("
+                        SELECT i.id as invoice_id, i.invoice_number, c.name as customer_name, 
+                               ii.quantity, ii.unit_price, ii.total as line_total,
+                               ii.quantity as original_qty
+                        FROM invoices i
+                        JOIN customers c ON i.customer_id = c.id
+                        JOIN invoice_items ii ON ii.invoice_id = i.id
+                        WHERE i.rep_route_id IN ($routeIdsStr) AND ii.item_id = :item_id AND i.status != 'Voided'
+                    ");
+                    $db->bind(':item_id', $itemId);
+                    $invoices = $db->resultSet() ?: [];
+                } else {
+                    // Substitution is not applied yet. Find invoices containing the original item.
+                    $db->query("
+                        SELECT i.id as invoice_id, i.invoice_number, c.name as customer_name, 
+                               0.00 as quantity, :price as unit_price, 0.00 as line_total,
+                               ii.quantity as original_qty
+                        FROM invoices i
+                        JOIN customers c ON i.customer_id = c.id
+                        JOIN invoice_items ii ON ii.invoice_id = i.id
+                        WHERE i.rep_route_id IN ($routeIdsStr) AND ii.item_id = :orig_item_id AND i.status != 'Voided'
+                    ");
+                    $db->bind(':price', $replPrice);
+                    $db->bind(':orig_item_id', $subRow->original_item_id);
+                    $invoices = $db->resultSet() ?: [];
+                }
             } else {
                 $db->query("
                     SELECT i.id as invoice_id, i.invoice_number, c.name as customer_name, ii.quantity, ii.unit_price, ii.total as line_total
