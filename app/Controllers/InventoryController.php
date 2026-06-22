@@ -1744,6 +1744,9 @@ class InventoryController extends Controller {
             $params[':category_id'] = $catId;
         }
 
+        $priceCol = $this->itemModel->getPriceColumn();
+        $wholesalePriceCol = $this->itemModel->getWholesalePriceColumn();
+
         // 2. Selling Price
         if (isset($_POST['update_selling_price']) && $_POST['update_selling_price'] === '1') {
             $type = $_POST['selling_price_type'] ?? 'flat';
@@ -1754,13 +1757,13 @@ class InventoryController extends Controller {
             }
 
             if ($type === 'flat') {
-                $updates[] = "selling_price = :selling_price";
+                $updates[] = "{$priceCol} = :selling_price";
                 $params[':selling_price'] = $val;
             } elseif ($type === 'pct_inc') {
-                $updates[] = "selling_price = selling_price * (1 + (:selling_price_pct / 100))";
+                $updates[] = "{$priceCol} = {$priceCol} * (1 + (:selling_price_pct / 100))";
                 $params[':selling_price_pct'] = $val;
             } elseif ($type === 'pct_dec') {
-                $updates[] = "selling_price = selling_price * (1 - (:selling_price_pct / 100))";
+                $updates[] = "{$priceCol} = {$priceCol} * (1 - (:selling_price_pct / 100))";
                 $params[':selling_price_pct'] = $val;
             }
         }
@@ -1775,13 +1778,13 @@ class InventoryController extends Controller {
             }
 
             if ($type === 'flat') {
-                $updates[] = "wholesale_price = :wholesale_price";
+                $updates[] = "{$wholesalePriceCol} = :wholesale_price";
                 $params[':wholesale_price'] = $val;
             } elseif ($type === 'pct_inc') {
-                $updates[] = "wholesale_price = wholesale_price * (1 + (:wholesale_price_pct / 100))";
+                $updates[] = "{$wholesalePriceCol} = {$wholesalePriceCol} * (1 + (:wholesale_price_pct / 100))";
                 $params[':wholesale_price_pct'] = $val;
             } elseif ($type === 'pct_dec') {
-                $updates[] = "wholesale_price = wholesale_price * (1 - (:wholesale_price_pct / 100))";
+                $updates[] = "{$wholesalePriceCol} = {$wholesalePriceCol} * (1 - (:wholesale_price_pct / 100))";
                 $params[':wholesale_price_pct'] = $val;
             }
         }

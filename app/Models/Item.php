@@ -95,11 +95,16 @@ class Item {
 
                 // 5. Detect Qty / Stock
                 $foundQty = false;
-                foreach ($fields as $f) {
-                    if ($f === 'qty' || $f === 'quantity' || $f === 'stock' || $f === 'stock_quantity' || $f === 'stock_qty') {
-                        $this->qtyColumn = $f;
-                        $foundQty = true;
-                        break;
+                if (in_array('quantity_on_hand', $fields)) {
+                    $this->qtyColumn = 'quantity_on_hand';
+                    $foundQty = true;
+                } else {
+                    foreach ($fields as $f) {
+                        if ($f === 'qty' || $f === 'quantity' || $f === 'stock' || $f === 'stock_quantity' || $f === 'stock_qty') {
+                            $this->qtyColumn = $f;
+                            $foundQty = true;
+                            break;
+                        }
                     }
                 }
                 if (!$foundQty) {
@@ -564,5 +569,13 @@ class Item {
             $this->db->rollBack();
             return false;
         }
+    }
+
+    public function getPriceColumn() {
+        return $this->priceColumn;
+    }
+
+    public function getWholesalePriceColumn() {
+        return $this->wholesalePriceColumn;
     }
 }

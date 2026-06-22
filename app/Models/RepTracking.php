@@ -200,7 +200,8 @@ class RepTracking {
 
     public function getRouteFinalLoadingItems($routeId) {
         $this->db->query("
-            SELECT dpi.item_name,
+            SELECT dpi.item_id,
+                   dpi.item_name,
                    dpi.required_qty,
                    dpi.loaded_qty as pre_loaded_qty,
                    dpi.final_loaded_qty,
@@ -211,7 +212,7 @@ class RepTracking {
                         FROM invoice_items ii 
                         JOIN invoices i ON ii.invoice_id = i.id 
                         WHERE i.rep_route_id = :rid AND ii.item_id = dpi.item_id AND i.status != 'Voided'),
-                       (SELECT selling_price FROM items WHERE id = dpi.item_id),
+                       (SELECT price FROM items WHERE id = dpi.item_id),
                        0
                    ) as unit_price
             FROM delivery_picking_items dpi

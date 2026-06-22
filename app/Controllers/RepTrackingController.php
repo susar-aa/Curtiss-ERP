@@ -1114,7 +1114,7 @@ class RepTrackingController extends Controller {
                         }
                     }
 
-                    $grandTotal = ($subtotal - $disc) + $taxVal;
+                    $grandTotal = max(0.0, ($subtotal - $disc) + $taxVal);
 
                     $db->query("UPDATE invoices SET total_amount = :sub, tax_amount = :tax WHERE id = :id");
                     $db->bind(':sub', $subtotal);
@@ -1369,14 +1369,14 @@ class RepTrackingController extends Controller {
                 $origItemRow = $db->single();
                 $origWh = $origItemRow ? $origItemRow->warehouse_id : null;
                 $origCost = $origItemRow ? floatval($origItemRow->cost > 0 ? $origItemRow->cost : ($origItemRow->cost_price > 0 ? $origItemRow->cost_price : 0.00)) : 0.00;
-                $ledger->logMovement($sub->original_item_id, null, 0, $qty, 'Sales Invoice Substitution Return', $inv->invoice_number, $origWh, $userId, 'Substitution Apply', $origCost);
+                $ledger->logMovement($sub->original_item_id, null, $qty, 0, 'Sales Invoice Substitution Return', $inv->invoice_number, $origWh, $userId, 'Substitution Apply', $origCost);
 
                 $db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
                 $db->bind(':id', $sub->replacement_item_id);
                 $replItemRow = $db->single();
                 $replWh = $replItemRow ? $replItemRow->warehouse_id : null;
                 $replCost = $replItemRow ? floatval($replItemRow->cost > 0 ? $replItemRow->cost : ($replItemRow->cost_price > 0 ? $replItemRow->cost_price : 0.00)) : 0.00;
-                $ledger->logMovement($sub->replacement_item_id, null, $qty, 0, 'Sales Invoice Substitution Supply', $inv->invoice_number, $replWh, $userId, 'Substitution Apply', $replCost);
+                $ledger->logMovement($sub->replacement_item_id, null, 0, $qty, 'Sales Invoice Substitution Supply', $inv->invoice_number, $replWh, $userId, 'Substitution Apply', $replCost);
 
                 $modifiedInvoices[] = $inv->id;
             }
@@ -1411,7 +1411,7 @@ class RepTrackingController extends Controller {
                         }
                     }
 
-                    $grandTotal = ($subtotal - $disc) + $taxVal;
+                    $grandTotal = max(0.0, ($subtotal - $disc) + $taxVal);
 
                     $db->query("UPDATE invoices SET total_amount = :sub, tax_amount = :tax WHERE id = :id");
                     $db->bind(':sub', $subtotal);
