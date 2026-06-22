@@ -393,11 +393,11 @@ class Item {
 
     public function addItem($data) {
         $this->db->query("INSERT INTO items (
-            {$this->itemCodeColumn}, name, {$this->priceColumn}, {$this->wholesalePriceColumn}, {$this->qtyColumn}, {$this->descColumn},
+            {$this->itemCodeColumn}, name, {$this->priceColumn}, {$this->wholesalePriceColumn}, {$this->qtyColumn}, quantity_on_hand, {$this->descColumn},
             barcode, category_id, brand, warehouse, alert_qty, unit, status, weight, sync_woo, variations_json, image_path,
             additional_images, cost_price, warehouse_id, vendor_id, sample_code, retail_margin, wholesale_margin
         ) VALUES (
-            :item_code, :name, :price, :wholesale_price, :qty, :description,
+            :item_code, :name, :price, :wholesale_price, :qty, :qty, :description,
             :barcode, :category_id, :brand, :warehouse, :alert_qty, :unit, :status, :weight, :sync_woo, :variations_json, :image_path,
             :additional_images, :cost_price, :warehouse_id, :vendor_id, :sample_code, :retail_margin, :wholesale_margin
         )");
@@ -437,6 +437,7 @@ class Item {
             {$this->priceColumn} = :price,
             {$this->wholesalePriceColumn} = :wholesale_price,
             {$this->qtyColumn} = :qty,
+            quantity_on_hand = :qty,
             {$this->descColumn} = :description,
             barcode = :barcode,
             category_id = :category_id,
@@ -491,7 +492,7 @@ class Item {
         if (is_numeric($this->qtyColumn)) {
             return true;
         }
-        $this->db->query("UPDATE items SET {$this->qtyColumn} = :qty WHERE id = :id");
+        $this->db->query("UPDATE items SET {$this->qtyColumn} = :qty, quantity_on_hand = :qty WHERE id = :id");
         $this->db->bind(':id', $id);
         $this->db->bind(':qty', $newQty);
         return $this->db->execute();

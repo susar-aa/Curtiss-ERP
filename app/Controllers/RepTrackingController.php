@@ -1101,7 +1101,7 @@ class RepTrackingController extends Controller {
                             $db->bind(':item_id', $itemId);
                             $db->execute();
                         } else {
-                            $db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :diff) WHERE id = :item_id");
+                            $db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :diff), qty = GREATEST(0, CAST(qty AS SIGNED) - :diff) WHERE id = :item_id");
                             $db->bind(':diff', $diff);
                             $db->bind(':item_id', $itemId);
                             $db->execute();
@@ -1158,7 +1158,7 @@ class RepTrackingController extends Controller {
                                 $db->bind(':item_id', $itemId);
                                 $db->execute();
                             } else {
-                                $db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :item_id");
+                                $db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty), qty = GREATEST(0, CAST(qty AS SIGNED) - :qty) WHERE id = :item_id");
                                 $db->bind(':qty', $newQty);
                                 $db->bind(':item_id', $itemId);
                                 $db->execute();
@@ -1455,12 +1455,12 @@ class RepTrackingController extends Controller {
                 $db->execute();
 
                 // Inventory Update
-                $db->query("UPDATE items SET quantity_on_hand = quantity_on_hand + :qty WHERE id = :id");
+                $db->query("UPDATE items SET quantity_on_hand = quantity_on_hand + :qty, qty = qty + :qty WHERE id = :id");
                 $db->bind(':qty', $qty);
                 $db->bind(':id', $sub->original_item_id);
                 $db->execute();
 
-                $db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
+                $db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty), qty = GREATEST(0, CAST(qty AS SIGNED) - :qty) WHERE id = :id");
                 $db->bind(':qty', $qty);
                 $db->bind(':id', $sub->replacement_item_id);
                 $db->execute();
