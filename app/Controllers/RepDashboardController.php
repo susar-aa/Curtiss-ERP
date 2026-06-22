@@ -359,7 +359,7 @@ class RepDashboardController extends Controller {
             
             $schemaDebug = [];
             try {
-                $tables = ['invoices', 'customer_payments', 'credit_notes', 'customers'];
+                $tables = ['invoices', 'customer_payments', 'credit_notes', 'customers', 'item_categories', 'mca_areas'];
                 foreach ($tables as $tbl) {
                     $this->db->query("DESCRIBE `$tbl`");
                     $rows = $this->db->resultSet() ?: [];
