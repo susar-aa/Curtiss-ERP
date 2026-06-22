@@ -142,13 +142,14 @@ class RepDashboardController extends Controller {
             }
             
             // 2. Get categories
-            $this->db->query("SELECT id, name FROM item_categories ORDER BY name ASC");
+            $this->db->query("SELECT id, name, status FROM item_categories ORDER BY name ASC");
             $cats = $this->db->resultSet() ?: [];
             $categoriesJson = [];
             foreach ($cats as $cat) {
                 $categoriesJson[] = [
                     'id' => intval($cat->id),
-                    'name' => $cat->name
+                    'name' => $cat->name,
+                    'status' => $cat->status ?? 'active'
                 ];
             }
             
@@ -156,7 +157,7 @@ class RepDashboardController extends Controller {
             $deltaCust = $getDeltaFilter('customers', $lastSync, true, 'c');
             $this->db->query("
                 SELECT c.id, c.name, c.phone, c.whatsapp, c.address, c.territory, c.latitude, c.longitude, c.mca_id, m.name as mca_name,
-                       c.email, c.credit_limit, c.customer_type, c.notes,
+                       c.email, c.credit_limit, c.customer_type, c.notes, c.status,
                        ((SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = c.id AND status != 'Voided') 
                        - 
                        (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE customer_id = c.id AND status = 'Active') 
@@ -189,19 +190,21 @@ class RepDashboardController extends Controller {
                     'email' => $c->email ?? '',
                     'credit_limit' => floatval($c->credit_limit ?? 0.00),
                     'customer_type' => $c->customer_type ?? 'Standard',
-                    'notes' => $c->notes ?? ''
+                    'notes' => $c->notes ?? '',
+                    'status' => $c->status ?? 'active'
                 ];
             }
             
             // 4. Get server routes (territories) - ALWAYS FULL LIST
-            $this->db->query("SELECT id, name, main_area_id FROM mca_areas ORDER BY name ASC");
+            $this->db->query("SELECT id, name, main_area_id, status FROM mca_areas ORDER BY name ASC");
             $routes = $this->db->resultSet() ?: [];
             $routesJson = [];
             foreach ($routes as $r) {
                 $routesJson[] = [
                     'id' => intval($r->id),
                     'name' => $r->name,
-                    'main_area_id' => intval($r->main_area_id ?? 0)
+                    'main_area_id' => intval($r->main_area_id ?? 0),
+                    'status' => $r->status ?? 'active'
                 ];
             }
             
