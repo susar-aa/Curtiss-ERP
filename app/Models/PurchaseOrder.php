@@ -207,12 +207,12 @@ class PurchaseOrder {
 
                 // Instantly update Stock in Inventory
                 if ($itemId) {
-                    $this->db->query("UPDATE items SET quantity_on_hand = quantity_on_hand + :qty WHERE id = :iid");
+                    $this->db->query("UPDATE items SET quantity_on_hand = quantity_on_hand + :qty, qty = qty + :qty WHERE id = :iid");
                     $this->db->bind(':qty', $qty);
                     $this->db->bind(':iid', $itemId);
                     $this->db->execute();
                 } else {
-                    $this->db->query("UPDATE items SET quantity_on_hand = quantity_on_hand + :qty WHERE name = :desc");
+                    $this->db->query("UPDATE items SET quantity_on_hand = quantity_on_hand + :qty, qty = qty + :qty WHERE name = :desc");
                     $this->db->bind(':qty', $qty);
                     $this->db->bind(':desc', $desc);
                     $this->db->execute();

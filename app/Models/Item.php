@@ -95,12 +95,15 @@ class Item {
 
                 // 5. Detect Qty / Stock
                 $foundQty = false;
-                if (in_array('quantity_on_hand', $fields)) {
+                if (in_array('qty', $fields)) {
+                    $this->qtyColumn = 'qty';
+                    $foundQty = true;
+                } elseif (in_array('quantity_on_hand', $fields)) {
                     $this->qtyColumn = 'quantity_on_hand';
                     $foundQty = true;
                 } else {
                     foreach ($fields as $f) {
-                        if ($f === 'qty' || $f === 'quantity' || $f === 'stock' || $f === 'stock_quantity' || $f === 'stock_qty') {
+                        if ($f === 'quantity' || $f === 'stock' || $f === 'stock_quantity' || $f === 'stock_qty') {
                             $this->qtyColumn = $f;
                             $foundQty = true;
                             break;
