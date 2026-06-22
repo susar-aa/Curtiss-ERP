@@ -1274,6 +1274,18 @@ class RepTrackingController extends Controller {
             $db->bind(':id', $sub->original_item_id);
             $origProduct = $db->single();
 
+            if (!$origProduct) {
+                $db->query("SELECT description as name FROM invoice_items WHERE item_id = :oid LIMIT 1");
+                $db->bind(':oid', $sub->original_item_id);
+                $iiRow = $db->single();
+                
+                $origName = $iiRow ? $iiRow->name : 'Deleted Product';
+                $origProduct = (object)[
+                    'name' => $origName,
+                    'selling_price' => 0.00
+                ];
+            }
+
             $db->query("SELECT name, price AS selling_price FROM items WHERE id = :id");
             $db->bind(':id', $sub->replacement_item_id);
             $replProduct = $db->single();

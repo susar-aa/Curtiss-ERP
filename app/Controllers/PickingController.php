@@ -672,6 +672,20 @@ class PickingController extends Controller {
         $this->db->bind(':id', $originalItemId);
         $origItem = $this->db->single();
 
+        if (!$origItem) {
+            $this->db->query("SELECT item_name as name FROM delivery_picking_items WHERE delivery_id = :did AND item_id = :item_id LIMIT 1");
+            $this->db->bind(':did', $deliveryId);
+            $this->db->bind(':item_id', $originalItemId);
+            $dpiItem = $this->db->single();
+            if ($dpiItem) {
+                $origItem = (object)[
+                    'id' => $originalItemId,
+                    'name' => $dpiItem->name,
+                    'item_code' => 'DELETED'
+                ];
+            }
+        }
+
         $this->db->query("SELECT * FROM items WHERE id = :id");
         $this->db->bind(':id', $replacementItemId);
         $replItem = $this->db->single();
