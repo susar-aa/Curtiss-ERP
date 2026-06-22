@@ -170,14 +170,14 @@ class PickingController extends Controller {
     // API: Fetch all loading sheets (deliveries) in Loading stage
     public function api_get_sheets() {
         $this->checkAuth();
-        // Auto-create deliveries for any routes in 'Loading' status that don't have one
+        // Auto-create deliveries for any routes in non-completed status that don't have one
         $this->db->query("
             SELECT r.id, r.route_name, r.route_binding_id, 
                    COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name
             FROM rep_daily_routes r
             LEFT JOIN users u ON r.user_id = u.id
             LEFT JOIN employees e ON u.employee_id = e.id
-            WHERE r.status = 'Loading' 
+            WHERE r.status NOT IN ('Completed', 'Finalized') 
               AND r.id NOT IN (SELECT rep_route_id FROM deliveries WHERE rep_route_id IS NOT NULL)
               AND r.id NOT IN (SELECT secondary_rep_route_id FROM deliveries WHERE secondary_rep_route_id IS NOT NULL)
         ");
@@ -202,7 +202,7 @@ class PickingController extends Controller {
                    (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_picked = 1) as picked_items
             FROM deliveries d
             JOIN rep_daily_routes r ON d.rep_route_id = r.id
-            WHERE r.status = 'Loading'
+            WHERE r.status NOT IN ('Completed', 'Finalized')
             ORDER BY d.delivery_date DESC, d.id DESC
         ");
         $sheets = $this->db->resultSet() ?: [];
@@ -230,17 +230,13 @@ class PickingController extends Controller {
                 $sheet->customer_info = 'No Customer Invoices';
             }
 
-            // Determine picking status
-            if ($sheet->route_status === 'Loading') {
-                $sheet->status = 'Loading';
+            // Determine picking status based on actual items picking progress
+            if ($sheet->picked_items > 0 && $sheet->picked_items < $sheet->total_items) {
+                $sheet->status = 'In Progress';
+            } else if ($sheet->total_items > 0 && $sheet->picked_items == $sheet->total_items) {
+                $sheet->status = 'Ready for Final';
             } else {
-                if ($sheet->picked_items > 0 && $sheet->picked_items < $sheet->total_items) {
-                    $sheet->status = 'In Progress';
-                } else if ($sheet->total_items > 0 && $sheet->picked_items == $sheet->total_items) {
-                    $sheet->status = 'Ready for Final';
-                } else {
-                    $sheet->status = 'Pending';
-                }
+                $sheet->status = 'Pending';
             }
         }
 
