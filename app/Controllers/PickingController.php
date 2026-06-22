@@ -324,7 +324,20 @@ class PickingController extends Controller {
             WHERE dpi.delivery_id = :delivery_id
         ");
         $this->db->bind(':delivery_id', $deliveryId);
-        $items = $this->db->resultSet();
+        $items = $this->db->resultSet() ?: [];
+
+        // Fetch substitutions for this delivery
+        $this->db->query("
+            SELECT ps.*, 
+                   oi.name as original_item_name, 
+                   ri.name as replacement_item_name
+            FROM product_substitutions ps
+            JOIN items oi ON ps.original_item_id = oi.id
+            JOIN items ri ON ps.replacement_item_id = ri.id
+            WHERE ps.delivery_id = :delivery_id
+        ");
+        $this->db->bind(':delivery_id', $deliveryId);
+        $substitutions = $this->db->resultSet() ?: [];
 
         // Convert types appropriately for JSON
         foreach ($items as $item) {
@@ -339,6 +352,21 @@ class PickingController extends Controller {
             $item->is_verified = intval($item->is_verified);
             $item->variance = floatval($item->variance);
             $item->verified_by = $item->verified_by ? intval($item->verified_by) : null;
+
+            // Attach substitution info
+            $item->replaced_by_name = null;
+            $item->replacement_qty = null;
+            $item->replaces_name = null;
+
+            foreach ($substitutions as $sub) {
+                if (intval($sub->original_item_id) === $item->item_id) {
+                    $item->replaced_by_name = $sub->replacement_item_name;
+                    $item->replacement_qty = floatval($sub->loaded_qty);
+                }
+                if (intval($sub->replacement_item_id) === $item->item_id && floatval($item->required_qty) === 0.0) {
+                    $item->replaces_name = $sub->original_item_name;
+                }
+            }
         }
 
         echo json_encode([

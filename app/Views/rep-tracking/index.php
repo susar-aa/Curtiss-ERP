@@ -1892,9 +1892,16 @@
                                 diffIndicator = `Overage (+${diff.toFixed(1)})`;
                             }
 
+                            let nameHtml = `<div style="font-weight:600;">${item.item_name}</div>`;
+                            if (item.replaced_by_name) {
+                                nameHtml += `<div style="font-size:11px; color:#673ab7; font-weight:bold; margin-top:2px;">→ Replaced By ${item.replaced_by_name} (Qty: ${item.replacement_qty})</div>`;
+                            } else if (item.replaces_name) {
+                                nameHtml += `<div style="font-size:11px; color:#16a34a; font-weight:bold; margin-top:2px;">★ Replacement for ${item.replaces_name}</div>`;
+                            }
+
                             listHtml += `
                                 <tr style="border-bottom:1px solid #e2e8f0; ${rowBg}">
-                                    <td style="padding:10px; font-weight:600;">${item.item_name}</td>
+                                    <td style="padding:10px;">${nameHtml}</td>
                                     <td style="padding:10px; text-align:center; font-weight:bold; font-family:monospace; font-size:13px;">${req}</td>
                                     <td style="padding:10px; text-align:center; font-weight:bold; font-family:monospace; font-size:13px;">${loaded}</td>
                                     <td style="padding:10px; text-align:center; font-weight:bold; font-size:12px;">${diffIndicator}</td>
@@ -2142,23 +2149,14 @@
             item.invoices.forEach((inv, index) => {
                 currentTotal += inv.quantity;
 
-                let actionSelect = '';
-                if (inv.quantity === 0) {
-                    if (inv.remove_completely === undefined) {
-                        inv.remove_completely = 0;
-                    }
-                    actionSelect = `
-                        <div style="margin-top:5px;">
-                            <span style="font-size:10px; font-weight:bold; color:#e65100;">Action for 0 Qty:</span>
-                            <select onchange="updateRemoveCompletelyChoice(${item.item_id}, ${inv.invoice_id}, this.value)" 
-                                    ${isReadOnly ? 'disabled' : ''}
-                                    style="padding:2px 6px; font-size:11px; border-radius:4px; border:1px solid #cbd5e1; background:#fff; font-weight:bold;">
-                                <option value="0" ${inv.remove_completely === 0 ? 'selected' : ''}>Reduce Qty</option>
-                                <option value="1" ${inv.remove_completely === 1 ? 'selected' : ''}>Remove Product Completely</option>
-                            </select>
-                        </div>
-                    `;
-                }
+                 let actionSelect = '';
+                 if (inv.quantity === 0) {
+                     actionSelect = `
+                         <div style="margin-top:5px; color:#dc2626; font-size:11px; font-weight:bold;">
+                             ⚠️ Product will be removed from invoice
+                         </div>
+                     `;
+                 }
 
                 invoiceRows += `
                     <div style="display:grid; grid-template-columns:1.5fr 1fr 1fr 1.2fr; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;">
@@ -2303,6 +2301,7 @@
             const inv = item.invoices.find(i => i.invoice_id === invoiceId);
             if (inv) {
                 inv.quantity = qty;
+                inv.remove_completely = (qty === 0 ? 1 : 0);
             }
         }
         renderVarianceReconciliation();
@@ -2319,11 +2318,15 @@
         if (diff === 0) {
             item.invoices.forEach(inv => {
                 inv.quantity = inv.original_qty;
+                inv.remove_completely = (inv.quantity === 0 ? 1 : 0);
             });
         } else if (diff < 0) {
             let shortageToDeduct = Math.abs(diff);
             item.invoices.forEach(inv => {
-                if (shortageToDeduct <= 0) return;
+                if (shortageToDeduct <= 0) {
+                    inv.remove_completely = (inv.quantity === 0 ? 1 : 0);
+                    return;
+                }
                 if (inv.quantity >= shortageToDeduct) {
                     inv.quantity -= shortageToDeduct;
                     shortageToDeduct = 0;
@@ -2331,9 +2334,15 @@
                     shortageToDeduct -= inv.quantity;
                     inv.quantity = 0;
                 }
+                inv.remove_completely = (inv.quantity === 0 ? 1 : 0);
             });
         } else {
             item.invoices[0].quantity += diff;
+            item.invoices[0].remove_completely = (item.invoices[0].quantity === 0 ? 1 : 0);
+            // Ensure other invoices also have correct remove_completely
+            for (let i = 1; i < item.invoices.length; i++) {
+                item.invoices[i].remove_completely = (item.invoices[i].quantity === 0 ? 1 : 0);
+            }
         }
 
         renderVarianceReconciliation();

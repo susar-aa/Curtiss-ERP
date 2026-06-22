@@ -401,6 +401,19 @@ class RepTrackingController extends Controller {
             $totalItems = count($items);
             $verifiedItems = 0;
             
+            // Fetch substitutions for this delivery
+            $db->query("
+                SELECT ps.*, 
+                       oi.name as original_item_name, 
+                       ri.name as replacement_item_name
+                FROM product_substitutions ps
+                JOIN items oi ON ps.original_item_id = oi.id
+                JOIN items ri ON ps.replacement_item_id = ri.id
+                WHERE ps.delivery_id = :delivery_id
+            ");
+            $db->bind(':delivery_id', $del->id);
+            $deliverySubs = $db->resultSet() ?: [];
+
             foreach ($items as $item) {
                 $item->required_qty = floatval($item->required_qty);
                 $item->pre_loaded_qty = floatval($item->pre_loaded_qty);
@@ -415,6 +428,21 @@ class RepTrackingController extends Controller {
                     $shortages += abs($item->variance);
                 } elseif ($item->variance > 0) {
                     $overages += $item->variance;
+                }
+
+                // Attach substitution details
+                $item->replaced_by_name = null;
+                $item->replacement_qty = null;
+                $item->replaces_name = null;
+
+                foreach ($deliverySubs as $ds) {
+                    if (intval($ds->original_item_id) === intval($item->item_id)) {
+                        $item->replaced_by_name = $ds->replacement_item_name;
+                        $item->replacement_qty = floatval($ds->loaded_qty);
+                    }
+                    if (intval($ds->replacement_item_id) === intval($item->item_id) && floatval($item->required_qty) === 0.0) {
+                        $item->replaces_name = $ds->original_item_name;
+                    }
                 }
             }
             
@@ -939,19 +967,8 @@ class RepTrackingController extends Controller {
                 exit;
             }
 
-            // 2. Validate that zero quantity removals are resolved (every 0 qty adjustment must specify remove_completely)
-            foreach ($adjustments as $adj) {
-                $invoiceAdjs = $adj['invoice_adjustments'] ?? [];
-                foreach ($invoiceAdjs as $ia) {
-                    $newQty = floatval($ia['new_qty']);
-                    if ($newQty === 0.0 && !isset($ia['remove_completely'])) {
-                        header('Content-Type: application/json');
-                        echo json_encode(['status' => 'error', 'message' => 'Cannot complete Variance Audit. Some zero-quantity removals remain unresolved (missing action selection).']);
-                        exit;
-                    }
-                }
-            }
-
+            // 2. No action selection check needed since zero-quantity items are always completely removed.
+            
             // 3. Validate that adjusted bills match the final loaded stock
             $routeFinalItems = $this->trackingModel->getRouteFinalLoadingItems($routeId);
             $adjMap = [];
@@ -1008,7 +1025,7 @@ class RepTrackingController extends Controller {
 
                     if ($line) {
                         $oldQty = floatval($line->old_qty);
-                        if ($oldQty === $newQty && !$removeCompletely) {
+                        if ($oldQty === $newQty && $newQty !== 0.0) {
                             continue;
                         }
 
@@ -1023,7 +1040,7 @@ class RepTrackingController extends Controller {
                             $lineTotal -= ($discVal * $newQty);
                         }
 
-                        if ($removeCompletely && $newQty === 0.0) {
+                        if ($newQty === 0.0) {
                             $db->query("DELETE FROM invoice_items WHERE id = :id");
                             $db->bind(':id', $line->id);
                             $db->execute();
