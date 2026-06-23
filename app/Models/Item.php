@@ -499,7 +499,8 @@ class Item {
     }
 
     /**
-     * Automatically regenerate sample codes for all products in the database.
+     * Automatically generate sample codes ONLY for products that don't have one yet.
+     * Existing sample codes are preserved and never overwritten.
      * Orders categories alphabetically (name ASC) and then orders products within each
      * category by creation (id ASC). The first category starts at 100, second at 200, etc.
      */
@@ -514,8 +515,8 @@ class Item {
                 // Determine base code (100, 200, 300, etc.)
                 $baseCode = ($categoryIndex + 1) * 100;
                 
-                // Fetch all products in this category ordered by id ASC
-                $this->db->query("SELECT id FROM items WHERE category_id = :category_id ORDER BY id ASC");
+                // Fetch all products in this category that DON'T have a sample_code yet, ordered by id ASC
+                $this->db->query("SELECT id FROM items WHERE category_id = :category_id AND (sample_code IS NULL OR sample_code = '') ORDER BY id ASC");
                 $this->db->bind(':category_id', $cat->id);
                 $items = $this->db->resultSet() ?: [];
                 
@@ -535,8 +536,8 @@ class Item {
                 $categoryIndex++;
             }
 
-            // Reset sample codes for products without any valid category to NULL
-            $this->db->query("UPDATE items SET sample_code = NULL WHERE category_id IS NULL OR category_id = 0");
+            // Products without any valid category still get NULL sample_code
+            $this->db->query("UPDATE items SET sample_code = NULL WHERE (category_id IS NULL OR category_id = 0) AND (sample_code IS NOT NULL AND sample_code != '')");
             $this->db->execute();
             
         } catch (Exception $e) {
