@@ -428,19 +428,6 @@ class InventoryController extends Controller {
 
             $seenSKUs = [];
             $seenNames = [];
-            $dbSKUs = [];
-            $dbNames = [];
-
-            // Fetch current lookup maps from DB for duplicate checks
-            $this->db->query("SELECT item_code, name FROM items");
-            foreach ($this->db->resultSet() as $r) {
-                if (!empty($r->item_code)) {
-                    $dbSKUs[strtolower(trim($r->item_code))] = true;
-                }
-                if (!empty($r->name)) {
-                    $dbNames[strtolower(trim($r->name))] = true;
-                }
-            }
 
             $rowCount = 0;
             $this->db->beginTransaction();
@@ -485,9 +472,6 @@ class InventoryController extends Controller {
                             $rowWarnings[] = "Duplicate Product Name '{$rawName}' in the import file (previously defined on row " . $seenNames[$nameKey] . ").";
                         } else {
                             $seenNames[$nameKey] = $rowCount;
-                        }
-                        if (isset($dbNames[$nameKey])) {
-                            $rowWarnings[] = "A product with the name '{$rawName}' already exists in the database.";
                         }
                     }
 
