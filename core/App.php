@@ -7,6 +7,12 @@ class App {
     public function __construct() {
         $url = $this->parseUrl();
 
+        // Return 204 No Content for favicon.ico requests to prevent routing errors
+        if (isset($url[0]) && strtolower($url[0]) === 'favicon.ico') {
+            http_response_code(204);
+            return;
+        }
+
         // Strip the mobile 'rep' or 'driver' prefix if present
         $isMobileApi = false;
         if (isset($url[0]) && (strtolower($url[0]) === 'rep' || strtolower($url[0]) === 'driver')) {
