@@ -33,41 +33,56 @@
 
 /* ── TOPBAR ── */
 .db-topbar {
-    display: flex; align-items: center; gap: 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 42px;
     flex-shrink: 0;
 }
-.db-search {
-    display: flex; align-items: center; gap: 10px;
-    flex: 1; max-width: 480px; height: 38px;
+.db-heading {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    letter-spacing: -0.5px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.db-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.db-search-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: transparent;
+    color: rgba(255,255,255,0.75);
+    text-decoration: none;
+    font-size: 12.5px;
+    font-weight: 500;
+    transition: all 0.18s;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+.db-search-link:hover {
+    color: #fff;
     background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 19px; padding: 0 16px;
-    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-    cursor: text; transition: all .2s;
+    border-color: rgba(255,255,255,0.05);
 }
-.db-search:hover, .db-search:focus-within {
-    background: rgba(255,255,255,0.14);
-    border-color: rgba(79,70,229,0.4);
-    box-shadow: 0 4px 24px rgba(79,70,229,.2);
+.db-search-link i {
+    font-size: 15px;
 }
-.db-search i { color: rgba(255,255,255,.5); font-size: 15px; }
-.db-search input {
-    border: none; background: transparent; outline: none;
-    font-size: 13px; color: #fff; width: 100%; font-family: inherit;
-}
-.db-search input::placeholder { color: rgba(255,255,255,.45); }
 
 .db-kbd-hint {
-    font-size: 10px; color: rgba(255,255,255,.3);
-    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1);
-    border-radius: 5px; padding: 2px 6px; font-family: monospace; flex-shrink: 0;
+    font-size: 9px; color: rgba(255,255,255,.45);
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 4px; padding: 1px 4px; font-family: monospace; flex-shrink: 0;
 }
-.db-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .db-icon-btn {
-    width: 38px; height: 38px; border-radius: 50%;
+    width: 34px; height: 34px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    color: rgba(255,255,255,.82); font-size: 17px; text-decoration: none;
+    color: rgba(255,255,255,.82); font-size: 16px; text-decoration: none;
     background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
     backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
     box-shadow: 0 4px 12px rgba(0,0,0,.1);
@@ -439,23 +454,37 @@
 
     <!-- Top Bar -->
     <div class="db-topbar">
-        <div class="db-search" onclick="this.querySelector('input').focus()">
-            <i class="ph ph-magnifying-glass"></i>
-            <input type="text" id="dashSearch" placeholder="Search anything... (Ctrl+K)" autocomplete="off" readonly onfocus="this.blur();openCmdPalette()">
-        </div>
-        <span class="db-kbd-hint">Ctrl+K</span>
+        <h2 class="db-heading">Workflow Dashboard</h2>
+        
         <div class="db-actions">
+            <!-- Search Text & Icon next to visit store button -->
+            <a href="javascript:void(0)" class="db-search-link" onclick="openCmdPalette()">
+                <i class="ph ph-magnifying-glass"></i>
+                <span>Search...</span>
+                <span class="db-kbd-hint">Ctrl+K</span>
+            </a>
+
+            <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.12); margin: 0 4px; flex-shrink: 0;"></div>
+
             <?php if (!empty($storeUrl)): ?>
             <a href="<?= htmlspecialchars($storeUrl) ?>" target="_blank" class="db-icon-btn" title="Store">
                 <i class="ph ph-storefront"></i>
             </a>
             <?php endif; ?>
+            
             <a href="<?= APP_URL ?>/notification" class="db-icon-btn" title="Notifications">
                 <i class="ph ph-bell"></i>
                 <?php if ($notifCount > 0): ?>
                     <span class="db-nbadge"><?= $notifCount ?></span>
                 <?php endif; ?>
             </a>
+
+            <!-- Settings icon only for admin role -->
+            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+            <a href="<?= APP_URL ?>/settings" class="db-icon-btn" title="Settings">
+                <i class="ph ph-gear"></i>
+            </a>
+            <?php endif; ?>
         </div>
     </div>
 
