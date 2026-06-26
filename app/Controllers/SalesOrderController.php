@@ -125,7 +125,7 @@ class SalesOrderController extends Controller {
                 i.status, 
                 i.invoice_date as document_date, 
                 i.due_date, 
-                (SELECT CONCAT(first_name, ' ', last_name) FROM employees WHERE id = (SELECT rep_employee_id FROM rep_routes WHERE id = i.rep_route_id LIMIT 1)) as rep_name,
+                (SELECT CONCAT(e.first_name, ' ', e.last_name) FROM employees e JOIN rep_daily_routes r ON r.user_id = e.user_id WHERE r.id = i.rep_route_id LIMIT 1) as rep_name,
                 (SELECT name FROM mca_areas WHERE id = c.mca_id LIMIT 1) as mca,
                 i.notes,
                 'route' as source_type
