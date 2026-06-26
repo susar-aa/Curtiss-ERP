@@ -634,4 +634,114 @@ class DashboardController extends Controller {
         echo json_encode($results);
         exit;
     }
+
+    public function getTodos() {
+        header('Content-Type: application/json');
+        $db = new Database();
+        
+        // Ensure table exists (self-healing migration as per sync framework principles)
+        try {
+            $db->query("SELECT 1 FROM todo_items LIMIT 1");
+            $db->execute();
+        } catch (Exception $e) {
+            // Table doesn't exist, create it
+            $db->query("CREATE TABLE IF NOT EXISTS todo_items (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                task VARCHAR(255) NOT NULL,
+                is_completed TINYINT(1) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+            $db->execute();
+        }
+
+        $db->query("SELECT * FROM todo_items WHERE user_id = :uid ORDER BY created_at DESC");
+        $db->bind(':uid', $_SESSION['user_id']);
+        $todos = $db->resultSet() ?: [];
+        echo json_encode($todos);
+        exit;
+    }
+
+    public function addTodo() {
+        header('Content-Type: application/json');
+        $task = trim($_POST['task'] ?? '');
+        if (empty($task)) {
+            echo json_encode(['success' => false, 'error' => 'Task cannot be empty']);
+            exit;
+        }
+        $db = new Database();
+        
+        // Ensure table exists
+        try {
+            $db->query("SELECT 1 FROM todo_items LIMIT 1");
+            $db->execute();
+        } catch (Exception $e) {
+            $db->query("CREATE TABLE IF NOT EXISTS todo_items (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                task VARCHAR(255) NOT NULL,
+                is_completed TINYINT(1) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+            $db->execute();
+        }
+
+        $db->query("INSERT INTO todo_items (user_id, task, is_completed) VALUES (:uid, :task, 0)");
+        $db->bind(':uid', $_SESSION['user_id']);
+        $db->bind(':task', $task);
+        if ($db->execute()) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Failed to save task']);
+        }
+        exit;
+    }
+
+    public function toggleTodo() {
+        header('Content-Type: application/json');
+        $id = intval($_POST['id'] ?? 0);
+        if (!$id) {
+            echo json_encode(['success' => false, 'error' => 'Invalid ID']);
+            exit;
+        }
+        $db = new Database();
+        $db->query("SELECT is_completed FROM todo_items WHERE id = :id AND user_id = :uid");
+        $db->bind(':id', $id);
+        $db->bind(':uid', $_SESSION['user_id']);
+        $row = $db->single();
+        if (!$row) {
+            echo json_encode(['success' => false, 'error' => 'Task not found']);
+            exit;
+        }
+        $newVal = $row->is_completed ? 0 : 1;
+        $db->query("UPDATE todo_items SET is_completed = :val WHERE id = :id AND user_id = :uid");
+        $db->bind(':val', $newVal);
+        $db->bind(':id', $id);
+        $db->bind(':uid', $_SESSION['user_id']);
+        if ($db->execute()) {
+            echo json_encode(['success' => true, 'is_completed' => $newVal]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Failed to update task']);
+        }
+        exit;
+    }
+
+    public function deleteTodo() {
+        header('Content-Type: application/json');
+        $id = intval($_POST['id'] ?? 0);
+        if (!$id) {
+            echo json_encode(['success' => false, 'error' => 'Invalid ID']);
+            exit;
+        }
+        $db = new Database();
+        $db->query("DELETE FROM todo_items WHERE id = :id AND user_id = :uid");
+        $db->bind(':id', $id);
+        $db->bind(':uid', $_SESSION['user_id']);
+        if ($db->execute()) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Failed to delete task']);
+        }
+        exit;
+    }
 }

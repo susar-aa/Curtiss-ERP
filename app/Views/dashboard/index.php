@@ -1,200 +1,316 @@
-<?php /* Premium Dashboard – compact no-scroll */ ?>
+<?php /* Premium Modernized Dashboard */ ?>
 <style>
 /* ── BACKGROUND ── */
-#dashBg{position:fixed;inset:0;z-index:-2;background:#0f0f1a;background-size:cover;background-position:center;transition:opacity 1.2s ease;opacity:0}
-#dashBg::after{content:'';position:absolute;inset:0;background:linear-gradient(150deg,rgba(8,8,22,.62) 0%,rgba(8,8,22,.32) 55%,rgba(8,8,22,.52) 100%)}
-#dashBg.ready{opacity:1}
+#dashBg {
+    position: fixed; inset: 0; z-index: -2;
+    background: #0f0f1a;
+    background-size: cover; background-position: center;
+    transition: opacity 1.2s ease; opacity: 0;
+}
+#dashBg::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(150deg, rgba(8,8,22,.65) 0%, rgba(8,8,22,.35) 55%, rgba(8,8,22,.55) 100%);
+}
+#dashBg.ready { opacity: 1; }
 
 /* ── FILL viewport without scroll ── */
-.dash-root{
-    display:flex;flex-direction:column;
-    height:calc(100vh - 82px - 56px - 16px); /* viewport minus nav, recent-bar, padding */
-    overflow:hidden;
-    gap:10px;
+.dash-root {
+    display: flex; flex-direction: column;
+    height: calc(100vh - 82px - 56px - 16px); /* Viewport minus layout offsets */
+    overflow: hidden;
+    gap: 12px;
 }
 
 /* ── TOPBAR ── */
-.db-topbar{
-    display:flex;align-items:center;gap:10px;
-    flex-shrink:0;
+.db-topbar {
+    display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0;
 }
-.db-search{
-    display:flex;align-items:center;gap:8px;
-    flex:1;max-width:460px;height:38px;
-    background:rgba(255,255,255,0.10);
-    border:1px solid rgba(255,255,255,0.16);
-    border-radius:19px;padding:0 14px;
-    backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-    box-shadow:0 4px 16px rgba(0,0,0,0.12);
-    cursor:text;transition:background .2s,box-shadow .2s,border-color .2s;
+.db-search {
+    display: flex; align-items: center; gap: 10px;
+    flex: 1; max-width: 480px; height: 38px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 19px; padding: 0 16px;
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    cursor: text; transition: all .2s;
 }
-.db-search:hover,.db-search:focus-within{
-    background:rgba(255,255,255,0.16);
-    border-color:rgba(79,70,229,0.4);
-    box-shadow:0 4px 24px rgba(79,70,229,.2);
+.db-search:hover, .db-search:focus-within {
+    background: rgba(255,255,255,0.14);
+    border-color: rgba(79,70,229,0.4);
+    box-shadow: 0 4px 24px rgba(79,70,229,.2);
 }
-.db-search i{color:rgba(255,255,255,.55);font-size:15px;flex-shrink:0}
-.db-search input{border:none;background:transparent;outline:none;font-size:13px;color:#fff;width:100%;font-family:inherit}
-.db-search input::placeholder{color:rgba(255,255,255,.4)}
-.db-kbd-hint{
-    font-size:10px;color:rgba(255,255,255,.3);
-    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
-    border-radius:5px;padding:2px 5px;font-family:monospace;flex-shrink:0;
+.db-search i { color: rgba(255,255,255,.5); font-size: 15px; }
+.db-search input {
+    border: none; background: transparent; outline: none;
+    font-size: 13px; color: #fff; width: 100%; font-family: inherit;
 }
-.db-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
-.db-icon-btn{
-    width:38px;height:38px;border-radius:50%;
-    display:flex;align-items:center;justify-content:center;
-    color:rgba(255,255,255,.82);font-size:17px;text-decoration:none;
-    background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.15);
-    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-    box-shadow:0 4px 12px rgba(0,0,0,.12);
-    transition:all .18s;position:relative;cursor:pointer;
+.db-search input::placeholder { color: rgba(255,255,255,.45); }
+
+.db-kbd-hint {
+    font-size: 10px; color: rgba(255,255,255,.3);
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1);
+    border-radius: 5px; padding: 2px 6px; font-family: monospace; flex-shrink: 0;
 }
-.db-icon-btn:hover{background:rgba(79,70,229,.2);border-color:rgba(79,70,229,.35);color:#fff}
-.db-nbadge{
-    background:#ef4444;color:#fff;border-radius:9px;
-    padding:1px 4px;font-size:8px;font-weight:700;
-    position:absolute;top:1px;right:1px;
-    border:2px solid rgba(10,10,20,.4);
+.db-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.db-icon-btn {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,.82); font-size: 17px; text-decoration: none;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 4px 12px rgba(0,0,0,.1);
+    transition: all .18s; position: relative; cursor: pointer;
+}
+.db-icon-btn:hover { background: rgba(79,70,229,.2); border-color: rgba(79,70,229,.35); color: #fff; }
+.db-nbadge {
+    background: #ef4444; color: #fff; border-radius: 9px;
+    padding: 1px 4px; font-size: 8px; font-weight: 700;
+    position: absolute; top: 1px; right: 1px;
+    border: 2px solid rgba(10,10,20,.4);
 }
 
-/* ── MAIN GRID ── */
-.db-grid{
-    display:grid;
-    grid-template-columns:1fr 300px;
-    gap:12px;
-    flex:1;
-    min-height:0; /* crucial: allow grid to shrink */
+/* ── 3-COLUMN GRID SYSTEM ── */
+.db-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 1.1fr 1fr;
+    gap: 14px;
+    flex: 1;
+    min-height: 0;
+}
+@media (max-width: 1024px) {
+    .db-grid { grid-template-columns: 1fr 1fr; }
+    .db-col-right { grid-column: 1 / 3; }
+}
+@media (max-width: 768px) {
+    .db-grid { grid-template-columns: 1fr; }
+    .db-col-right { grid-column: auto; }
 }
 
-/* ── CARD BASE – glassmorphism ── */
-.d-card{
-    background:rgba(255,255,255,0.08);
-    backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
-    border:1px solid rgba(255,255,255,0.13);
-    border-radius:18px;
-    box-shadow:0 8px 32px rgba(0,0,0,0.22);
-    overflow:hidden;
-    transition:transform .22s,box-shadow .22s,border-color .22s;
+/* ── CARD BASE ── */
+.d-card {
+    background: rgba(255,255,255,0.07);
+    backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    overflow: hidden;
+    transition: transform .22s, box-shadow .22s, border-color .22s;
 }
-.d-card:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,0.3);border-color:rgba(255,255,255,.20)}
+.d-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 36px rgba(0,0,0,0.26);
+    border-color: rgba(255,255,255,.18);
+}
 
-/* ── LEFT: Quick Access ── */
-.db-col-left{display:flex;flex-direction:column;min-height:0}
-.d-quick{padding:16px 18px;display:flex;flex-direction:column;height:100%}
-.d-quick-header{
-    font-size:10px;font-weight:700;color:rgba(255,255,255,.5);
-    letter-spacing:1.2px;text-transform:uppercase;
-    margin-bottom:12px;flex-shrink:0;
+/* ── COLUMN SIZING ── */
+.db-col {
+    display: flex; flex-direction: column; gap: 14px; min-height: 0;
 }
-.d-quick-grid{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:8px;
-    flex:1;
-    align-content:start;
-}
-.d-qbtn{
-    display:flex;flex-direction:row;align-items:center;gap:10px;
-    padding:10px 12px;border-radius:12px;
-    text-decoration:none;color:rgba(255,255,255,.85);
-    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);
-    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    transition:all .18s ease;
-    min-height:0;
-}
-.d-qbtn:hover{
-    background:rgba(79,70,229,.18);border-color:rgba(79,70,229,.35);
-    color:#fff;transform:translateY(-1px);
-    box-shadow:0 4px 16px rgba(79,70,229,0.15);
-}
-.d-qbtn-icon{
-    width:32px;height:32px;border-radius:9px;
-    background:rgba(255,255,255,.08);
-    display:flex;align-items:center;justify-content:center;
-    flex-shrink:0;font-size:17px;
-    transition:transform .18s;
-}
-.d-qbtn:hover .d-qbtn-icon{transform:scale(1.08)}
-.d-qbtn span{font-size:12px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* ── RIGHT COLUMN ── */
-.db-col-right{display:flex;flex-direction:column;gap:10px;min-height:0}
+/* ── QUICK ACCESS (SQUARE BUTTONS) ── */
+.d-quick { padding: 18px; height: 100%; display: flex; flex-direction: column; }
+.d-quick-header {
+    font-size: 11px; font-weight: 700; color: rgba(255,255,255,.5);
+    letter-spacing: 1.2px; text-transform: uppercase;
+    margin-bottom: 12px; flex-shrink: 0;
+}
+.d-quick-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    flex: 1;
+}
+.d-qbtn {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    aspect-ratio: 1 / 1; border-radius: 14px;
+    text-decoration: none; color: rgba(255,255,255,.85);
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
+    transition: all .2s ease;
+    text-align: center;
+}
+.d-qbtn:hover {
+    background: rgba(79,70,229,.18); border-color: rgba(79,70,229,.35);
+    color: #fff; transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(79,70,229,0.15);
+}
+.d-qbtn-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: rgba(255,255,255,.08);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; transition: transform .18s;
+}
+.d-qbtn:hover .d-qbtn-icon { transform: scale(1.08); }
+.d-qbtn span { font-size: 11px; font-weight: 600; line-height: 1.2; }
+
+/* ── TODO LIST ── */
+.d-todo { padding: 18px; height: 100%; display: flex; flex-direction: column; }
+.d-todo-header {
+    font-size: 11px; font-weight: 700; color: rgba(255,255,255,.5);
+    letter-spacing: 1.2px; text-transform: uppercase;
+    margin-bottom: 12px; flex-shrink: 0;
+}
+.d-todo-list {
+    flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;
+}
+.d-todo-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    transition: all 0.2s ease;
+}
+.d-todo-row:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+.d-todo-icon-box {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-accent); font-size: 16px; flex-shrink: 0;
+    cursor: pointer; transition: all 0.2s ease;
+}
+.d-todo-row.completed .d-todo-icon-box {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+.d-todo-text {
+    font-size: 13px; color: var(--text-main); flex: 1;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.d-todo-row.completed .d-todo-text {
+    text-decoration: line-through; opacity: 0.5;
+}
+.d-todo-delete {
+    color: var(--text-muted); opacity: 0.6; cursor: pointer; transition: all 0.15s ease;
+    background: transparent; border: none; font-size: 14px;
+}
+.d-todo-delete:hover {
+    color: #ef4444; opacity: 1;
+}
+.d-todo-add {
+    display: flex; gap: 8px; flex-shrink: 0;
+}
+.d-todo-input {
+    flex: 1; height: 36px; border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff; padding: 0 12px; font-size: 12.5px; outline: none;
+}
+.d-todo-input:focus {
+    border-color: var(--text-accent); background: rgba(255, 255, 255, 0.12);
+}
+.d-todo-btn {
+    height: 36px; padding: 0 14px; border-radius: 10px;
+    background: var(--text-accent); color: #fff; border: none;
+    font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.18s;
+}
+.d-todo-btn:hover {
+    background: var(--text-accent-light);
+}
 
 /* ── PROFILE CARD ── */
-.d-profile{
-    padding:16px 18px;
-    display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;
-    flex-shrink:0;
+.d-profile {
+    padding: 18px;
+    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;
+    flex-shrink: 0;
 }
-.d-profile-avatar{
-    width:58px;height:58px;border-radius:50%;
-    background:linear-gradient(135deg,#667eea,#764ba2);
-    display:flex;align-items:center;justify-content:center;
-    color:#fff;font-size:22px;font-weight:700;
-    box-shadow:0 4px 18px rgba(102,126,234,.4);
+.d-profile-avatar {
+    width: 60px; height: 60px; border-radius: 50%;
+    background: linear-gradient(135deg,#667eea,#764ba2);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 22px; font-weight: 700;
+    box-shadow: 0 4px 18px rgba(102,126,234,.4);
 }
-.d-profile-name{font-size:15px;font-weight:700;color:#fff;margin-top:2px}
-.d-profile-role{
-    font-size:10px;color:rgba(139,92,246,.9);font-weight:700;
-    background:rgba(139,92,246,0.15);border-radius:20px;
-    padding:3px 12px;text-transform:uppercase;letter-spacing:.5px;
+.d-profile-name { font-size: 15px; font-weight: 700; color: #fff; }
+.d-profile-role {
+    font-size: 10px; color: var(--text-accent); font-weight: 700;
+    background: rgba(79,70,229,0.12); border-radius: 20px;
+    padding: 3px 12px; text-transform: uppercase; letter-spacing: 0.5px;
 }
-.d-profile-greeting{font-size:12px;color:rgba(255,255,255,.55)}
-.d-profile-divider{width:100%;height:1px;background:rgba(255,255,255,.1);margin:4px 0}
-.d-profile-row{
-    display:flex;justify-content:space-between;align-items:center;width:100%;
-    font-size:11px;color:rgba(255,255,255,.5);
+.d-profile-greeting { font-size: 12px; color: rgba(255,255,255,.5); }
+.d-profile-divider { width: 100%; height: 1px; background: rgba(255,255,255,.1); margin: 4px 0; }
+.d-profile-row {
+    display: flex; justify-content: space-between; align-items: center; width: 100%;
+    font-size: 11px; color: rgba(255,255,255,.5);
 }
-.d-profile-row strong{color:rgba(255,255,255,.85);font-weight:600}
-.d-profile-logout{
-    display:flex;align-items:center;justify-content:center;gap:7px;
-    width:100%;margin-top:6px;padding:8px;border-radius:10px;
-    background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.22);
-    color:rgba(239,68,68,.88);text-decoration:none;
-    font-size:12px;font-weight:600;transition:all .18s;
+.d-profile-row strong { color: rgba(255,255,255,.85); font-weight: 600; }
+.d-profile-logout {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; margin-top: 6px; padding: 8px; border-radius: 10px;
+    background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.22);
+    color: rgba(239,68,68,.9); text-decoration: none;
+    font-size: 12px; font-weight: 600; transition: all .18s;
 }
-.d-profile-logout:hover{background:rgba(239,68,68,.2);box-shadow:0 4px 12px rgba(239,68,68,.15)}
+.d-profile-logout:hover {
+    background: rgba(239,68,68,.2);
+    box-shadow: 0 4px 12px rgba(239,68,68,0.15);
+}
 
-/* ── CLOCK CARD ── */
-.d-datetime{
-    padding:14px 18px;
-    display:flex;flex-direction:column;justify-content:center;gap:2px;
-    flex-shrink:0;
+/* ── DATE / TIME CARD ── */
+.d-datetime {
+    padding: 12px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
 }
-.d-day{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;font-weight:600}
-.d-time{font-size:32px;font-weight:300;color:#fff;letter-spacing:-1px;line-height:1}
-.d-time span{font-size:14px;font-weight:400;opacity:.6}
-.d-date{font-size:13px;color:rgba(255,255,255,.65);font-weight:500;margin-top:3px}
+.d-time { font-size: 22px; font-weight: 300; color: #fff; letter-spacing: -0.5px; }
+.d-time span { font-size: 12px; font-weight: 400; opacity: .6; margin-left: 2px; }
+.d-date-info { display: flex; flex-direction: column; text-align: right; }
+.d-date { font-size: 12px; color: rgba(255,255,255,.75); font-weight: 500; }
+.d-day  { font-size: 9px; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .8px; font-weight: 600; }
 
 /* ── NOTIFICATIONS CARD ── */
-.d-notif{padding:14px 18px;display:flex;flex-direction:column;flex:1;min-height:0}
-.d-notif-header{
-    display:flex;align-items:center;justify-content:space-between;
-    margin-bottom:10px;flex-shrink:0;
+.d-notif { padding: 18px; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.d-notif-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px; flex-shrink: 0;
 }
-.d-notif-title{font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px}
-.d-notif-count{background:#ef4444;color:#fff;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:700}
-.d-notif-item{
-    display:flex;align-items:center;gap:8px;
-    padding:8px 0;border-bottom:1px solid rgba(255,255,255,.07);
+.d-notif-title { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: 1px; }
+.d-notif-count { background: #ef4444; color: #fff; border-radius: 10px; padding: 2px 7px; font-size: 10px; font-weight: 700; }
+
+.d-notif-list {
+    flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
 }
-.d-notif-item:last-child{border-bottom:none}
-.d-notif-dot{width:7px;height:7px;border-radius:50%;background:#667eea;flex-shrink:0}
-.d-notif-text{font-size:12px;color:rgba(255,255,255,.65);line-height:1.4}
-.d-notif-empty{
-    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    color:rgba(255,255,255,.3);font-size:12px;gap:6px;
+.d-notif-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    transition: all 0.2s ease;
 }
-.d-notif-empty i{font-size:24px;opacity:.5}
-.d-notif-link{
-    display:block;text-align:center;margin-top:auto;padding-top:10px;
-    font-size:11px;color:rgba(102,126,234,.9);text-decoration:none;
-    padding:7px;border-radius:8px;background:rgba(79,70,229,.1);font-weight:600;
-    transition:background .18s;flex-shrink:0;margin-top:10px;
+.d-notif-row:hover {
+    background: rgba(255, 255, 255, 0.08);
 }
-.d-notif-link:hover{background:rgba(79,70,229,.18)}
+.d-notif-icon-box {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-accent); font-size: 16px; flex-shrink: 0;
+}
+.d-notif-content-box {
+    display: flex; flex-direction: column; gap: 2px; flex: 1; overflow: hidden;
+}
+.d-notif-text {
+    font-size: 12.5px; font-weight: 600; color: var(--text-main);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.d-notif-sub {
+    font-size: 10.5px; color: var(--text-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.d-notif-empty {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: rgba(255,255,255,.3); font-size: 12px; gap: 6px;
+}
+.d-notif-empty i { font-size: 24px; opacity: .5; }
+.d-notif-link {
+    display: block; text-align: center; padding-top: 10px;
+    font-size: 11px; color: rgba(102,126,234,.9); text-decoration: none;
+    padding: 7px; border-radius: 8px; background: rgba(79,70,229,.1); font-weight: 600;
+    transition: background .18s; flex-shrink: 0; margin-top: 10px;
+}
+.d-notif-link:hover { background: rgba(79,70,229,.18); }
 </style>
 
 <!-- Background -->
@@ -224,11 +340,11 @@
         </div>
     </div>
 
-    <!-- Grid -->
+    <!-- 3-Column Grid Layout -->
     <div class="db-grid">
 
-        <!-- LEFT: Quick Access -->
-        <div class="db-col-left">
+        <!-- COLUMN 1: Quick Access (Square buttons) -->
+        <div class="db-col">
             <div class="d-card d-quick">
                 <div class="d-quick-header">Quick Access</div>
                 <div class="d-quick-grid">
@@ -272,10 +388,27 @@
             </div>
         </div>
 
-        <!-- RIGHT: Profile + Clock + Notifications -->
-        <div class="db-col-right">
+        <!-- COLUMN 2: To-Do List (Horizontal rows like uploaded image) -->
+        <div class="db-col">
+            <div class="d-card d-todo">
+                <div class="d-todo-header">To-Do List</div>
+                <div class="d-todo-list" id="todoListContainer">
+                    <!-- Loaded dynamically via AJAX -->
+                    <div class="cmd-empty-state" style="padding: 20px 0;">
+                        <i class="ph ph-spinner" style="animation: spin 1s linear infinite;"></i>
+                        <span>Loading tasks...</span>
+                    </div>
+                </div>
+                <form class="d-todo-add" id="todoAddForm" onsubmit="event.preventDefault(); addNewTodo();">
+                    <input type="text" class="d-todo-input" id="todoInput" placeholder="Add a new task..." required autocomplete="off">
+                    <button type="submit" class="d-todo-btn">Add</button>
+                </form>
+            </div>
+        </div>
 
-            <!-- Profile -->
+        <!-- COLUMN 3: Profile + Date/Time + Notifications -->
+        <div class="db-col db-col-right">
+            <!-- Profile Card -->
             <div class="d-card d-profile">
                 <div class="d-profile-avatar"><?= strtoupper(substr($_SESSION['username'] ?? 'U', 0, 2)) ?></div>
                 <div class="d-profile-name"><?= htmlspecialchars($_SESSION['username'] ?? 'User') ?></div>
@@ -293,14 +426,16 @@
                 </a>
             </div>
 
-            <!-- Clock -->
+            <!-- Date / Time Card -->
             <div class="d-card d-datetime">
-                <div class="d-day" id="dashDay"></div>
                 <div class="d-time" id="dashTime">--:-- <span>--</span></div>
-                <div class="d-date" id="dashDate"></div>
+                <div class="d-date-info">
+                    <div class="d-day" id="dashDay"></div>
+                    <div class="d-date" id="dashDate"></div>
+                </div>
             </div>
 
-            <!-- Notifications -->
+            <!-- Notifications Card (Horizontal list matching uploaded image style) -->
             <div class="d-card d-notif">
                 <div class="d-notif-header">
                     <span class="d-notif-title">Notifications</span>
@@ -308,25 +443,33 @@
                         <span class="d-notif-count"><?= $notifCount ?></span>
                     <?php endif; ?>
                 </div>
-                <?php if ($notifCount === 0): ?>
-                    <div class="d-notif-empty">
-                        <i class="ph ph-bell-slash"></i>
-                        <span>All caught up!</span>
-                    </div>
-                <?php else: ?>
-                    <div class="d-notif-item">
-                        <span class="d-notif-dot"></span>
-                        <span class="d-notif-text"><?= $notifCount ?> unread notification<?= $notifCount > 1 ? 's' : '' ?></span>
-                    </div>
-                <?php endif; ?>
-                <a href="<?= APP_URL ?>/notification" class="d-notif-link">View All →</a>
+                <div class="d-notif-list">
+                    <?php if ($notifCount === 0): ?>
+                        <div class="d-notif-empty">
+                            <i class="ph ph-bell-slash"></i>
+                            <span>All caught up!</span>
+                        </div>
+                    <?php else: ?>
+                        <div class="d-notif-row">
+                            <div class="d-notif-icon-box" style="color: #6366f1;">
+                                <i class="ph ph-bell"></i>
+                            </div>
+                            <div class="d-notif-content-box">
+                                <span class="d-notif-text">Pending Alerts</span>
+                                <span class="d-notif-sub">You have <?= $notifCount ?> unread notification<?= $notifCount > 1 ? 's' : '' ?></span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <a href="<?= APP_URL ?>/notification" class="d-notif-link">View All Notifications</a>
             </div>
-
         </div>
+
     </div>
 </div>
 
 <script>
+/* ── Clock ── */
 function updateClock() {
     const now = new Date();
     const hh = now.getHours(), mm = now.getMinutes();
@@ -344,6 +487,7 @@ function updateClock() {
 }
 updateClock(); setInterval(updateClock, 1000);
 
+/* ── Unsplash Wallpaper ── */
 (async function loadWallpaper() {
     const KEY = 'curtiss_wp', TIME_KEY = 'curtiss_wp_ts', ONE_HOUR = 3600000;
     const bg = document.getElementById('dashBg');
@@ -366,4 +510,111 @@ updateClock(); setInterval(updateClock, 1000);
         img.src = url;
     }
 })();
+
+/* ── AJAX To-Do List unique to separate users ── */
+async function loadTodos() {
+    const container = document.getElementById('todoListContainer');
+    try {
+        const res = await fetch('<?= APP_URL ?>/dashboard/getTodos');
+        const data = await res.json();
+        if (data.length === 0) {
+            container.innerHTML = `
+                <div class="d-notif-empty" style="padding: 20px 0;">
+                    <i class="ph ph-check-square"></i>
+                    <span>No tasks yet! Add one below.</span>
+                </div>
+            `;
+            return;
+        }
+        let html = '';
+        data.forEach(todo => {
+            const completedClass = todo.is_completed == 1 ? 'completed' : '';
+            const checkIcon = todo.is_completed == 1 ? 'ph-check-circle' : 'ph-circle';
+            html += `
+                <div class="d-todo-row ${completedClass}">
+                    <div class="d-todo-icon-box" onclick="toggleTodo(${todo.id})">
+                        <i class="ph ${checkIcon}"></i>
+                    </div>
+                    <span class="d-todo-text">${escapeHtml(todo.task)}</span>
+                    <button class="d-todo-delete" onclick="deleteTodo(${todo.id})">
+                        <i class="ph ph-trash"></i>
+                    </button>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    } catch (e) {
+        container.innerHTML = `
+            <div class="d-notif-empty">
+                <i class="ph ph-x-circle" style="color: #ef4444;"></i>
+                <span>Failed to load tasks.</span>
+            </div>
+        `;
+    }
+}
+
+async function addNewTodo() {
+    const input = document.getElementById('todoInput');
+    const task = input.value.trim();
+    if (!task) return;
+    try {
+        const formData = new FormData();
+        formData.append('task', task);
+        const res = await fetch('<?= APP_URL ?>/dashboard/addTodo', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await res.json();
+        if (result.success) {
+            input.value = '';
+            loadTodos();
+        } else {
+            alert(result.error || 'Failed to add task');
+        }
+    } catch(e) {
+        alert('Failed to connect to the server');
+    }
+}
+
+async function toggleTodo(id) {
+    try {
+        const formData = new FormData();
+        formData.append('id', id);
+        const res = await fetch('<?= APP_URL ?>/dashboard/toggleTodo', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await res.json();
+        if (result.success) {
+            loadTodos();
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+async function deleteTodo(id) {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    try {
+        const formData = new FormData();
+        formData.append('id', id);
+        const res = await fetch('<?= APP_URL ?>/dashboard/deleteTodo', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await res.json();
+        if (result.success) {
+            loadTodos();
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+document.addEventListener('DOMContentLoaded', loadTodos);
 </script>
