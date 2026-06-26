@@ -97,6 +97,19 @@
                 </select>
             </div>
 
+            <!-- Sales Rep Filter -->
+            <div>
+                <label style="display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 6px;">Sales Rep</label>
+                <select name="rep_name" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 13px; background-color: #fff;">
+                    <option value="">-- All Reps --</option>
+                    <?php foreach ($data['sales_reps'] as $rep): ?>
+                        <option value="<?= htmlspecialchars($rep->name) ?>" <?= (isset($data['rep_name']) && $data['rep_name'] === $rep->name) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($rep->name) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
             <!-- Action Buttons -->
             <div style="display: flex; gap: 8px;">
                 <button type="submit" class="btn" style="flex: 1; justify-content: center; height: 35px; font-size: 13px; background: #0066cc; color:#fff; border:none; border-radius:6px; cursor:pointer;">
@@ -136,11 +149,11 @@
                         <tr style="border-bottom: 1px solid #f0f0f2; transition: background 0.15s;" onmouseover="this.style.background='#fbfbfd'" onmouseout="this.style.background='transparent'">
                             <td style="padding: 14px 18px; font-size: 13px; font-weight: 600; color: #0066cc; font-family: monospace;">
                                 <?php if ($so->source_type === 'standard'): ?>
-                                    <a href="<?= APP_URL ?>/salesorder/show/<?= $so->id ?>" style="text-decoration: none; color: inherit;">
+                                    <a href="<?= APP_URL ?>/salesorder/show/<?= $so->id ?>" target="_blank" style="text-decoration: none; color: inherit;">
                                         <?= htmlspecialchars($so->document_number) ?>
                                     </a>
                                 <?php else: ?>
-                                    <a href="<?= APP_URL ?>/sales/show/<?= $so->id ?>" style="text-decoration: none; color: inherit;">
+                                    <a href="<?= APP_URL ?>/sales/show/<?= $so->id ?>" target="_blank" style="text-decoration: none; color: inherit;">
                                         <?= htmlspecialchars($so->document_number) ?>
                                     </a>
                                 <?php endif; ?>
@@ -150,6 +163,11 @@
                             </td>
                             <td style="padding: 14px 18px; font-size: 13px; color: #333; font-weight: 500;">
                                 <?= htmlspecialchars($so->customer_name) ?>
+                                <?php if (!empty($so->rep_name)): ?>
+                                    <div style="font-size: 11px; color: #777; margin-top: 3px; font-weight: 400;">
+                                        <i class="ph ph-user-circle" style="vertical-align: middle;"></i> Rep: <?= htmlspecialchars($so->rep_name) ?>
+                                    </div>
+                                <?php endif; ?>
                             </td>
                             <td style="padding: 14px 18px; font-size: 13px;">
                                 <?php if ($so->source_type === 'standard'): ?>
@@ -158,7 +176,7 @@
                                     </span>
                                 <?php else: ?>
                                     <span style="background: #f3e5f5; color: #4a148c; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                                        🚚 Route Rep
+                                        🚚 Route Rep <?= !empty($so->route_name) ? '(' . htmlspecialchars($so->route_name) . ')' : '' ?>
                                     </span>
                                 <?php endif; ?>
                             </td>
@@ -182,17 +200,17 @@
                                     
                                     <!-- Print -->
                                     <?php if ($so->source_type === 'standard'): ?>
-                                        <a href="<?= APP_URL ?>/salesorder/show/<?= $so->id ?>" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                                        <a href="<?= APP_URL ?>/salesorder/show/<?= $so->id ?>" target="_blank" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
                                             <i class="ph ph-printer"></i> Print
                                         </a>
                                     <?php else: ?>
-                                        <a href="<?= APP_URL ?>/sales/show/<?= $so->id ?>" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                                        <a href="<?= APP_URL ?>/sales/show/<?= $so->id ?>" target="_blank" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
                                             <i class="ph ph-printer"></i> Print
                                         </a>
                                     <?php endif; ?>
 
                                     <!-- Edit -->
-                                    <a href="<?= APP_URL ?>/sales/edit/<?= $so->id ?>?type=sales_order" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; border-color: #0066cc; color: #0066cc;">
+                                    <a href="<?= APP_URL ?>/sales/edit/<?= $so->id ?>?type=sales_order" target="_blank" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; border-color: #0066cc; color: #0066cc;">
                                         <i class="ph ph-pencil"></i> Edit
                                     </a>
 
@@ -230,13 +248,13 @@
             </div>
             <div style="display: flex; gap: 8px;">
                 <?php if ($data['page'] > 1): ?>
-                    <a href="?page=<?= $data['page'] - 1 ?>&search=<?= urlencode($data['search']) ?>&customer_id=<?= $data['customer_id'] ?>&start_date=<?= urlencode($data['start_date']) ?>&end_date=<?= urlencode($data['end_date']) ?>&status=<?= urlencode($data['status']) ?>&source_type=<?= urlencode($data['source_type'] ?? '') ?>" class="btn btn-outline" style="padding: 5px 12px; text-decoration: none; font-size: 12px;">&laquo; Previous</a>
+                    <a href="?page=<?= $data['page'] - 1 ?>&search=<?= urlencode($data['search']) ?>&customer_id=<?= $data['customer_id'] ?>&start_date=<?= urlencode($data['start_date']) ?>&end_date=<?= urlencode($data['end_date']) ?>&status=<?= urlencode($data['status']) ?>&source_type=<?= urlencode($data['source_type'] ?? '') ?>&rep_name=<?= urlencode($data['rep_name'] ?? '') ?>" class="btn btn-outline" style="padding: 5px 12px; text-decoration: none; font-size: 12px;">&laquo; Previous</a>
                 <?php else: ?>
                     <span class="btn btn-outline" style="padding: 5px 12px; opacity: 0.5; cursor: not-allowed; font-size: 12px;">&laquo; Previous</span>
                 <?php endif; ?>
 
                 <?php if ($data['page'] < $data['total_pages']): ?>
-                    <a href="?page=<?= $data['page'] + 1 ?>&search=<?= urlencode($data['search']) ?>&customer_id=<?= $data['customer_id'] ?>&start_date=<?= urlencode($data['start_date']) ?>&end_date=<?= urlencode($data['end_date']) ?>&status=<?= urlencode($data['status']) ?>&source_type=<?= urlencode($data['source_type'] ?? '') ?>" class="btn btn-outline" style="padding: 5px 12px; text-decoration: none; font-size: 12px;">Next &raquo;</a>
+                    <a href="?page=<?= $data['page'] + 1 ?>&search=<?= urlencode($data['search']) ?>&customer_id=<?= $data['customer_id'] ?>&start_date=<?= urlencode($data['start_date']) ?>&end_date=<?= urlencode($data['end_date']) ?>&status=<?= urlencode($data['status']) ?>&source_type=<?= urlencode($data['source_type'] ?? '') ?>&rep_name=<?= urlencode($data['rep_name'] ?? '') ?>" class="btn btn-outline" style="padding: 5px 12px; text-decoration: none; font-size: 12px;">Next &raquo;</a>
                 <?php else: ?>
                     <span class="btn btn-outline" style="padding: 5px 12px; opacity: 0.5; cursor: not-allowed; font-size: 12px;">Next &raquo;</span>
                 <?php endif; ?>

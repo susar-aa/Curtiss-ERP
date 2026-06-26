@@ -104,6 +104,7 @@ class SalesOrderController extends Controller {
         $customerId = isset($_GET['customer_id']) ? intval($_GET['customer_id']) : 0;
         $status = isset($_GET['status']) ? trim($_GET['status']) : '';
         $sourceType = isset($_GET['source_type']) ? trim($_GET['source_type']) : '';
+        $repName = isset($_GET['rep_name']) ? trim($_GET['rep_name']) : '';
 
         // Build the combined union query
         $queryStr = "SELECT * FROM (
@@ -122,7 +123,8 @@ class SalesOrderController extends Controller {
                 so.rep_name, 
                 so.mca, 
                 so.notes,
-                'standard' as source_type
+                'standard' as source_type,
+                NULL as route_name
             FROM sales_orders so
 
             UNION ALL
@@ -142,7 +144,8 @@ class SalesOrderController extends Controller {
                 (SELECT CONCAT(e.first_name, ' ', e.last_name) FROM employees e JOIN users u ON u.employee_id = e.id JOIN rep_daily_routes r ON r.user_id = u.id WHERE r.id = i.rep_route_id LIMIT 1) as rep_name,
                 (SELECT name FROM mca_areas WHERE id = c.mca_id LIMIT 1) as mca,
                 i.notes,
-                'route' as source_type
+                'route' as source_type,
+                (SELECT route_name FROM rep_daily_routes WHERE id = i.rep_route_id LIMIT 1) as route_name
             FROM invoices i
             JOIN customers c ON i.customer_id = c.id
             WHERE i.stock_status = 'reserved'
@@ -180,6 +183,11 @@ class SalesOrderController extends Controller {
             $params[':source_type'] = $sourceType;
         }
 
+        if (!empty($repName)) {
+            $queryStr .= " AND rep_name = :rep_name";
+            $params[':rep_name'] = $repName;
+        }
+
         // Count total records
         $countQuery = "SELECT COUNT(*) as total FROM (" . $queryStr . ") as count_table";
         $this->db->query($countQuery);
@@ -206,16 +214,22 @@ class SalesOrderController extends Controller {
         $this->db->query("SELECT id, name FROM customers ORDER BY name ASC");
         $customers = $this->db->resultSet() ?: [];
 
+        // Fetch active sales reps for filter dropdown
+        $this->db->query("SELECT CONCAT(first_name, ' ', last_name) as name FROM employees WHERE status = 'Active' ORDER BY first_name ASC, last_name ASC");
+        $salesReps = $this->db->resultSet() ?: [];
+
         $data = [
             'title' => 'Sales Order Center',
             'orders' => $orders,
             'customers' => $customers,
+            'sales_reps' => $salesReps,
             'search' => $search,
             'start_date' => $startDate,
             'end_date' => $endDate,
             'customer_id' => $customerId,
             'status' => $status,
             'source_type' => $sourceType,
+            'rep_name' => $repName,
             'page' => $page,
             'total_pages' => $totalPages,
             'total_records' => $totalRecords,

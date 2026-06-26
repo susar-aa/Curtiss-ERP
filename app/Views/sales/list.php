@@ -125,7 +125,7 @@
                     <?php foreach ($data['invoices'] as $inv): ?>
                         <tr style="border-bottom: 1px solid #f0f0f2; transition: background 0.15s;" onmouseover="this.style.background='#fbfbfd'" onmouseout="this.style.background='transparent'">
                             <td style="padding: 14px 18px; font-size: 13px; font-weight: 600; color: #0066cc; font-family: monospace;">
-                                <a href="<?= APP_URL ?>/sales/show/<?= $inv->id ?>" style="text-decoration: none; color: inherit;">
+                                <a href="<?= APP_URL ?>/sales/show/<?= $inv->id ?>" target="_blank" style="text-decoration: none; color: inherit;">
                                     <?= htmlspecialchars($inv->invoice_number) ?>
                                 </a>
                             </td>
@@ -153,10 +153,10 @@
                             </td>
                             <td style="padding: 14px 18px; text-align: right;">
                                 <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
-                                    <a href="<?= APP_URL ?>/sales/show/<?= $inv->id ?>" class="btn btn-outline" style="padding: 5px 9px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                                    <a href="<?= APP_URL ?>/sales/show/<?= $inv->id ?>" target="_blank" class="btn btn-outline" style="padding: 5px 9px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
                                         <i class="ph ph-printer"></i> Print
                                     </a>
-                                    <a href="<?= APP_URL ?>/sales/edit/<?= $inv->id ?>" class="btn btn-outline" style="padding: 5px 9px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; border-color: #0066cc; color: #0066cc;">
+                                    <a href="<?= APP_URL ?>/sales/edit/<?= $inv->id ?>" target="_blank" class="btn btn-outline" style="padding: 5px 9px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; border-color: #0066cc; color: #0066cc;">
                                         <i class="ph ph-pencil"></i> Edit
                                     </a>
                                     <button type="button" class="btn" style="padding: 5px 9px; font-size: 12px; background: #ef4444; color: #fff; border:none; border-radius:4px; cursor:pointer; display: inline-flex; align-items: center; gap: 4px;" onclick="openDeleteModal(<?= $inv->id ?>, '<?= $inv->invoice_number ?>', 'invoice')">
