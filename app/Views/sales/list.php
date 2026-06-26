@@ -231,7 +231,13 @@ function openDeleteModal(id, number, type = 'invoice') {
     const recordNumSpan = document.getElementById('deleteRecordNum');
     
     recordNumSpan.textContent = `${type === 'invoice' ? 'Invoice' : 'Sales Order'} ${number}`;
-    form.action = (type === 'invoice') ? `<?= APP_URL ?>/sales/delete/${id}` : `<?= APP_URL ?>/salesorder/delete/${id}`;
+    
+    // Capture current search/filter parameters
+    const queryParams = window.location.search || '';
+    
+    form.action = (type === 'invoice') ? 
+        `<?= APP_URL ?>/sales/delete/${id}${queryParams}` : 
+        `<?= APP_URL ?>/salesorder/delete/${id}${queryParams}`;
     
     form.reset();
     modal.style.display = 'flex';

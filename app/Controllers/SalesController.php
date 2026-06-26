@@ -978,6 +978,18 @@ class SalesController extends Controller {
         $isRouteSalesOrder = (isset($inv->stock_status) && $inv->stock_status === 'reserved');
         $recordType = $isRouteSalesOrder ? 'Sales Order' : 'Invoice';
 
+        // Calculate true grand total for invoices (since grand_total is not a stored column in invoices table)
+        $invoiceTotal = floatval($inv->total_amount);
+        $discount = 0.00;
+        if (floatval($inv->global_discount_val) > 0) {
+            if ($inv->global_discount_type === '%') {
+                $discount = ($invoiceTotal * floatval($inv->global_discount_val) / 100);
+            } else {
+                $discount = floatval($inv->global_discount_val);
+            }
+        }
+        $grandTotal = $invoiceTotal - $discount + floatval($inv->tax_amount ?? 0);
+
         // Keep track of old values for general activity log
         $oldValues = [
             'invoice' => $inv,
@@ -993,21 +1005,29 @@ class SalesController extends Controller {
                               VALUES (:inv_num, :cust_name, :total, :deleted_user, :reason, :rec_type)");
             $this->db->bind(':inv_num', $inv->invoice_number);
             $this->db->bind(':cust_name', $inv->customer_name);
-            $this->db->bind(':total', $inv->grand_total);
+            $this->db->bind(':total', $grandTotal);
             $this->db->bind(':deleted_user', $_SESSION['username'] ?? 'System');
             $this->db->bind(':reason', $reason);
             $this->db->bind(':rec_type', $recordType);
             $this->db->execute();
 
             // Log general system activity
-            $this->logActivity('Delete ' . $recordType, 'Billing', "Deleted {$recordType} {$inv->invoice_number} for customer {$inv->customer_name} totaling Rs: " . number_format($inv->grand_total, 2) . ". Reason: {$reason}", $id, $oldValues, null);
+            $this->logActivity('Delete ' . $recordType, 'Billing', "Deleted {$recordType} {$inv->invoice_number} for customer {$inv->customer_name} totaling Rs: " . number_format($grandTotal, 2) . ". Reason: {$reason}", $id, $oldValues, null);
 
             $_SESSION['flash_success'] = "{$recordType} {$inv->invoice_number} deleted and stock/ledger balances reversed successfully!";
         } else {
             $_SESSION['flash_error'] = "Failed to delete. " . ($_SESSION['invoice_error'] ?? '');
         }
 
-        header('Location: ' . ($isRouteSalesOrder ? APP_URL . '/salesorder' : APP_URL . '/sales'));
+        $getParams = $_GET;
+        unset($getParams['url']);
+        $queryString = http_build_query($getParams);
+        $targetList = $isRouteSalesOrder ? '/salesorder' : '/sales';
+        $redirectUrl = APP_URL . $targetList;
+        if (!empty($queryString)) {
+            $redirectUrl .= '?' . $queryString;
+        }
+        header('Location: ' . $redirectUrl);
         exit;
     }
 

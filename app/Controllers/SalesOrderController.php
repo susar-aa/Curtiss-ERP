@@ -556,7 +556,14 @@ class SalesOrderController extends Controller {
             $_SESSION['flash_error'] = "Failed to delete sales order: " . $e->getMessage();
         }
 
-        header('Location: ' . APP_URL . '/salesorder');
+        $getParams = $_GET;
+        unset($getParams['url']);
+        $queryString = http_build_query($getParams);
+        $redirectUrl = APP_URL . '/salesorder';
+        if (!empty($queryString)) {
+            $redirectUrl .= '?' . $queryString;
+        }
+        header('Location: ' . $redirectUrl);
         exit;
     }
 }

@@ -283,11 +283,14 @@ function openDeleteModal(id, number, sourceType) {
     
     recordNumSpan.textContent = `Sales Order ${number}`;
     
+    // Capture current search/filter parameters
+    const queryParams = window.location.search || '';
+    
     // Set form action based on the source table
     if (sourceType === 'standard') {
-        form.action = `<?= APP_URL ?>/salesorder/delete/${id}`;
+        form.action = `<?= APP_URL ?>/salesorder/delete/${id}${queryParams}`;
     } else {
-        form.action = `<?= APP_URL ?>/sales/delete/${id}`;
+        form.action = `<?= APP_URL ?>/sales/delete/${id}${queryParams}`;
     }
     
     form.reset();
