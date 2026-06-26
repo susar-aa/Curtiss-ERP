@@ -1842,6 +1842,23 @@ if (!function_exists('hasPermission')) {
         setTimeout(() => { o.classList.remove('open'); document.body.style.overflow = ''; }, 300);
     }
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFsMenu(); });
+    
+    // Force top menu bar, navigation menu, and quick access buttons to open in a new tab
+    document.addEventListener("DOMContentLoaded", function() {
+        const selectors = [
+            '.glass-nav-left a',
+            '.fs-overlay a',
+            '.d-quick-grid a'
+        ];
+        selectors.forEach(sel => {
+            document.querySelectorAll(sel).forEach(a => {
+                const href = a.getAttribute('href');
+                if (href && !href.startsWith('javascript:') && !href.includes('logout')) {
+                    a.setAttribute('target', '_blank');
+                }
+            });
+        });
+    });
     </script>
 
     <div class="app-container">

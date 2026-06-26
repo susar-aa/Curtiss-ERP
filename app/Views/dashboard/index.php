@@ -463,7 +463,7 @@
             $greeting = 'Good Evening';
         }
         ?>
-        <h2 class="db-heading" id="dbGreeting"><?= $greeting ?> 👋</h2>
+        <h2 class="db-heading" id="dbGreeting"><?= $greeting ?></h2>
         
         <div class="db-actions">
             <!-- Circular Search Button same as other buttons -->
@@ -502,39 +502,39 @@
                 <div class="d-quick-header">Quick Access</div>
                 <div class="d-quick-grid-container">
                     <div class="d-quick-grid">
-                        <a href="<?= APP_URL ?>/sales/create" class="d-qbtn">
+                        <a href="<?= APP_URL ?>/sales/create" class="d-qbtn" target="_blank">
                             <div class="d-qbtn-icon" style="color:#3b82f6"><i class="ph ph-file-plus"></i></div>
                             <span>Create Invoice</span>
                         </a>
-                        <a href="<?= APP_URL ?>/salesorder/create" class="d-qbtn">
+                        <a href="<?= APP_URL ?>/salesorder/create" class="d-qbtn" target="_blank">
                             <div class="d-qbtn-icon" style="color:#10b981"><i class="ph ph-file-text"></i></div>
                             <span>Sales Order</span>
                         </a>
-                        <a href="<?= APP_URL ?>/customer" class="d-qbtn">
+                        <a href="<?= APP_URL ?>/customer" class="d-qbtn" target="_blank">
                             <div class="d-qbtn-icon" style="color:#6366f1"><i class="ph ph-users"></i></div>
                             <span>Customers</span>
                         </a>
-                        <a href="<?= APP_URL ?>/supplier" class="d-qbtn">
+                        <a href="<?= APP_URL ?>/supplier" class="d-qbtn" target="_blank">
                             <div class="d-qbtn-icon" style="color:#f59e0b"><i class="ph ph-factory"></i></div>
                             <span>Suppliers</span>
                         </a>
-                        <a href="<?= APP_URL ?>/inventory" class="d-qbtn">
+                        <a href="<?= APP_URL ?>/inventory" class="d-qbtn" target="_blank">
                             <div class="d-qbtn-icon" style="color:#ec4899"><i class="ph ph-package"></i></div>
                             <span>Inventory</span>
                         </a>
-                        <a href="<?= APP_URL ?>/reptracking" class="d-qbtn">
+                        <a href="<?= APP_URL ?>/reptracking" class="d-qbtn" target="_blank">
                             <div class="d-qbtn-icon" style="color:#06b6d4"><i class="ph ph-map-pin"></i></div>
                             <span>Route Control</span>
                         </a>
-                        <a href="<?= APP_URL ?>/customerpayment" class="d-qbtn">
+                        <a href="<?= APP_URL ?>/customerpayment" class="d-qbtn" target="_blank">
                             <div class="d-qbtn-icon" style="color:#14b8a6"><i class="ph ph-hand-coins"></i></div>
                             <span>Payments</span>
                         </a>
-                        <a href="<?= APP_URL ?>/grn" class="d-qbtn">
+                        <a href="<?= APP_URL ?>/grn" class="d-qbtn" target="_blank">
                             <div class="d-qbtn-icon" style="color:#8b5cf6"><i class="ph ph-tray-arrow-down"></i></div>
                             <span>GRN</span>
                         </a>
-                        <a href="<?= APP_URL ?>/purchase" class="d-qbtn">
+                        <a href="<?= APP_URL ?>/purchase" class="d-qbtn" target="_blank">
                             <div class="d-qbtn-icon" style="color:#ef4444"><i class="ph ph-shopping-cart"></i></div>
                             <span>Purchase Orders</span>
                         </a>
@@ -659,7 +659,7 @@ function updateClock() {
         let g = "Good Evening";
         if (hh < 12) g = "Good Morning";
         else if (hh < 17) g = "Good Afternoon";
-        greetingEl.textContent = g + " 👋";
+        greetingEl.textContent = g;
     }
 }
 updateClock(); setInterval(updateClock, 1000);
