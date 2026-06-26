@@ -882,6 +882,185 @@ if (!function_exists('hasPermission')) {
             position: absolute; top: 3px; right: 3px;
             border: 2px solid rgba(255,255,255,0.9); line-height: 1.2; min-width: 16px; text-align: center;
         }
+
+        /* ── COMMAND PALETTE ── */
+        .cmd-palette-overlay {
+            position: fixed; inset: 0; z-index: 10000;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            display: none; align-items: flex-start; justify-content: center;
+            padding: 80px 20px 20px;
+            opacity: 0; transition: opacity 0.25s ease;
+        }
+        .cmd-palette-overlay.open { display: flex; }
+        .cmd-palette-overlay.visible { opacity: 1; }
+        .cmd-palette-container {
+            width: 100%; max-width: 760px;
+            background: rgba(30, 41, 59, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            display: flex; flex-direction: column;
+            transform: translateY(-20px); transition: transform 0.25s ease;
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        }
+        @media (prefers-color-scheme: light) {
+            .cmd-palette-container {
+                background: rgba(255, 255, 255, 0.9);
+                border-color: rgba(0, 0, 0, 0.08);
+                box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            }
+        }
+        .cmd-palette-overlay.visible .cmd-palette-container {
+            transform: translateY(0);
+        }
+        .cmd-palette-header {
+            display: flex; align-items: center; gap: 14px;
+            padding: 18px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        @media (prefers-color-scheme: light) {
+            .cmd-palette-header { border-bottom-color: rgba(0, 0, 0, 0.06); }
+        }
+        .cmd-palette-header i { font-size: 20px; color: var(--text-muted); }
+        .cmd-palette-input {
+            border: none; background: transparent; outline: none;
+            font-size: 16px; color: var(--text-main); width: 100%;
+            font-family: inherit;
+        }
+        .cmd-palette-input::placeholder { color: var(--text-muted); }
+        .cmd-palette-content {
+            display: grid; grid-template-columns: 1fr 260px;
+            min-height: 280px; max-height: 440px;
+        }
+        @media (max-width: 600px) {
+            .cmd-palette-content { grid-template-columns: 1fr; }
+            .cmd-palette-sidebar { display: none; }
+        }
+        .cmd-palette-results {
+            padding: 16px; overflow-y: auto;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        @media (prefers-color-scheme: light) {
+            .cmd-palette-results { border-right-color: rgba(0, 0, 0, 0.06); }
+        }
+        .cmd-palette-sidebar {
+            padding: 20px; overflow-y: auto;
+            background: rgba(0, 0, 0, 0.12);
+        }
+        @media (prefers-color-scheme: light) {
+            .cmd-palette-sidebar { background: rgba(0, 0, 0, 0.02); }
+        }
+        .cmd-palette-sidebar-title {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1px; color: var(--text-muted); margin-bottom: 12px;
+        }
+        .cmd-palette-tags {
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .cmd-tag-item {
+            display: flex; align-items: center; justify-content: space-between;
+            font-size: 12px; color: var(--text-main); text-decoration: none;
+            padding: 6px 10px; border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            cursor: pointer; transition: all 0.15s ease;
+        }
+        @media (prefers-color-scheme: light) {
+            .cmd-tag-item {
+                background: rgba(0, 0, 0, 0.03); border-color: rgba(0, 0, 0, 0.04);
+            }
+        }
+        .cmd-tag-item:hover {
+            background: var(--text-accent); color: #fff;
+            border-color: var(--text-accent);
+        }
+        .cmd-tag-item-code {
+            font-family: monospace; font-size: 11px; font-weight: 600;
+            background: rgba(255, 255, 255, 0.15); padding: 1px 5px; border-radius: 4px;
+        }
+        .cmd-tag-item:hover .cmd-tag-item-code {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        .cmd-result-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px; border-radius: 12px;
+            color: var(--text-main); text-decoration: none;
+            cursor: pointer; transition: background 0.15s ease;
+            margin-bottom: 6px;
+        }
+        .cmd-result-item:last-child { margin-bottom: 0; }
+        .cmd-result-item:hover, .cmd-result-item.selected {
+            background: rgba(79, 70, 229, 0.15);
+        }
+        .cmd-result-icon {
+            width: 36px; height: 36px; border-radius: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-accent); font-size: 18px; flex-shrink: 0;
+        }
+        @media (prefers-color-scheme: light) {
+            .cmd-result-icon { background: rgba(0, 0, 0, 0.04); }
+        }
+        .cmd-result-item:hover .cmd-result-icon, .cmd-result-item.selected .cmd-result-icon {
+            background: var(--text-accent); color: #fff;
+        }
+        .cmd-result-details {
+            display: flex; flex-direction: column; gap: 2px;
+            overflow: hidden;
+        }
+        .cmd-result-title {
+            font-size: 14px; font-weight: 600;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .cmd-result-subtitle {
+            font-size: 11px; color: var(--text-muted);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .cmd-result-item:hover .cmd-result-subtitle, .cmd-result-item.selected .cmd-result-subtitle {
+            color: var(--text-main); opacity: 0.8;
+        }
+        .cmd-result-tag {
+            margin-left: auto; font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            padding: 2px 6px; border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1); color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .cmd-result-item:hover .cmd-result-tag, .cmd-result-item.selected .cmd-result-tag {
+            background: rgba(255, 255, 255, 0.2); color: #fff;
+        }
+        .cmd-empty-state {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 40px 20px; color: var(--text-muted); text-align: center;
+            gap: 10px;
+        }
+        .cmd-empty-state i { font-size: 32px; opacity: 0.6; }
+        .cmd-empty-state span { font-size: 13px; }
+        .cmd-palette-footer {
+            padding: 10px 24px;
+            background: rgba(0, 0, 0, 0.15);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 11px; color: var(--text-muted);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        @media (prefers-color-scheme: light) {
+            .cmd-palette-footer {
+                background: rgba(0, 0, 0, 0.02); border-top-color: rgba(0, 0, 0, 0.05);
+            }
+        }
+        .cmd-kbd-guide { display: flex; align-items: center; gap: 4px; }
+        .cmd-kbd {
+            font-family: monospace; font-size: 9px; font-weight: 700;
+            background: rgba(255, 255, 255, 0.12); padding: 2px 4px; border-radius: 3px;
+            color: var(--text-main); border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        @media (prefers-color-scheme: light) {
+            .cmd-kbd {
+                background: rgba(0, 0, 0, 0.05); border-color: rgba(0, 0, 0, 0.08);
+            }
+        }
     </style>
 </head>
 <body>
@@ -1771,6 +1950,304 @@ if (!function_exists('hasPermission')) {
             localStorage.setItem('curtiss_recent_collapsed', collapsedNow);
             icon.innerHTML = collapsedNow ? '<i class="ph ph-clock"></i>' : '<i class="ph ph-clock-counter-clockwise"></i>';
         }
+    </script>
+
+    <!-- COMMAND PALETTE MODAL -->
+    <div id="cmdPaletteModal" class="cmd-palette-overlay">
+        <div class="cmd-palette-container">
+            <div class="cmd-palette-header">
+                <i class="ph ph-magnifying-glass"></i>
+                <input type="text" id="cmdPaletteInput" class="cmd-palette-input" placeholder="Search customers, invoices, products or modules (e.g. @customer, @invoice)..." autocomplete="off">
+            </div>
+            <div class="cmd-palette-content">
+                <div class="cmd-palette-results" id="cmdPaletteResults">
+                    <div class="cmd-empty-state">
+                        <i class="ph ph-magnifying-glass"></i>
+                        <span>Type something to search Curtiss ERP</span>
+                    </div>
+                </div>
+                <div class="cmd-palette-sidebar">
+                    <div class="cmd-palette-sidebar-title">Search Tags</div>
+                    <div class="cmd-palette-tags">
+                        <div class="cmd-tag-item" onclick="insertCmdTag('@customer')">
+                            <span>Customers</span>
+                            <span class="cmd-tag-item-code">@customer</span>
+                        </div>
+                        <div class="cmd-tag-item" onclick="insertCmdTag('@supplier')">
+                            <span>Suppliers</span>
+                            <span class="cmd-tag-item-code">@supplier</span>
+                        </div>
+                        <div class="cmd-tag-item" onclick="insertCmdTag('@product')">
+                            <span>Products</span>
+                            <span class="cmd-tag-item-code">@product</span>
+                        </div>
+                        <div class="cmd-tag-item" onclick="insertCmdTag('@invoice')">
+                            <span>Invoices</span>
+                            <span class="cmd-tag-item-code">@invoice</span>
+                        </div>
+                        <div class="cmd-tag-item" onclick="insertCmdTag('@sales-order')">
+                            <span>Sales Orders</span>
+                            <span class="cmd-tag-item-code">@sales-order</span>
+                        </div>
+                        <div class="cmd-tag-item" onclick="insertCmdTag('@estimate')">
+                            <span>Estimates</span>
+                            <span class="cmd-tag-item-code">@estimate</span>
+                        </div>
+                        <div class="cmd-tag-item" onclick="insertCmdTag('@payment')">
+                            <span>Payments</span>
+                            <span class="cmd-tag-item-code">@payment</span>
+                        </div>
+                        <div class="cmd-tag-item" onclick="insertCmdTag('@grn')">
+                            <span>GRN</span>
+                            <span class="cmd-tag-item-code">@grn</span>
+                        </div>
+                        <div class="cmd-tag-item" onclick="insertCmdTag('@po')">
+                            <span>Purchase Orders</span>
+                            <span class="cmd-tag-item-code">@po</span>
+                        </div>
+                        <div class="cmd-tag-item" onclick="insertCmdTag('@route')">
+                            <span>Routes</span>
+                            <span class="cmd-tag-item-code">@route</span>
+                        </div>
+                        <div class="cmd-tag-item" onclick="insertCmdTag('@report')">
+                            <span>Reports</span>
+                            <span class="cmd-tag-item-code">@report</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="cmd-palette-footer">
+                <div class="cmd-kbd-guide">
+                    <span class="cmd-kbd">↑↓</span> navigate &nbsp;
+                    <span class="cmd-kbd">Enter</span> open &nbsp;
+                    <span class="cmd-kbd">Esc</span> close
+                </div>
+                <div>Press <span class="cmd-kbd">/</span> or <span class="cmd-kbd">Ctrl+K</span> to search from anywhere</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Command Palette Engine ---
+        const cmdModal = document.getElementById('cmdPaletteModal');
+        const cmdInput = document.getElementById('cmdPaletteInput');
+        const cmdResults = document.getElementById('cmdPaletteResults');
+        let cmdSelectedIdx = -1;
+        let cmdSearchTimeout = null;
+
+        function openCmdPalette(initialVal = '') {
+            if (!cmdModal) return;
+            cmdModal.classList.add('open');
+            // Force redraw/reflow for CSS transition
+            cmdModal.offsetHeight;
+            cmdModal.classList.add('visible');
+            document.body.style.overflow = 'hidden';
+            cmdInput.value = initialVal;
+            cmdInput.focus();
+            if (initialVal) {
+                performCmdSearch(initialVal);
+            } else {
+                renderCmdDefaultState();
+            }
+        }
+
+        function closeCmdPalette() {
+            if (!cmdModal) return;
+            cmdModal.classList.remove('visible');
+            document.body.style.overflow = '';
+            setTimeout(() => {
+                cmdModal.classList.remove('open');
+            }, 250);
+        }
+
+        function insertCmdTag(tag) {
+            cmdInput.value = tag + ' ';
+            cmdInput.focus();
+            performCmdSearch(cmdInput.value);
+        }
+
+        function renderCmdDefaultState() {
+            cmdResults.innerHTML = `
+                <div class="cmd-empty-state">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <span>Type something to search Curtiss ERP</span>
+                </div>
+            `;
+            cmdSelectedIdx = -1;
+        }
+
+        function performCmdSearch(query) {
+            query = query.trim();
+            if (!query) {
+                renderCmdDefaultState();
+                return;
+            }
+            cmdResults.innerHTML = `
+                <div class="cmd-empty-state">
+                    <i class="ph ph-spinner" style="animation: spin 1s linear infinite;"></i>
+                    <span>Searching...</span>
+                </div>
+            `;
+            
+            // Add spin animation dynamically if not present in style
+            if (!document.getElementById('cmdSpinAnim')) {
+                const s = document.createElement('style');
+                s.id = 'cmdSpinAnim';
+                s.innerHTML = '@keyframes spin { 100% { transform: rotate(360deg); } }';
+                document.head.appendChild(s);
+            }
+
+            clearTimeout(cmdSearchTimeout);
+            cmdSearchTimeout = setTimeout(() => {
+                fetch('<?= APP_URL ?>/dashboard/search?q=' + encodeURIComponent(query))
+                    .then(res => res.json())
+                    .then(data => {
+                        if (!data || data.length === 0) {
+                            cmdResults.innerHTML = `
+                                <div class="cmd-empty-state">
+                                    <i class="ph ph-warning-circle"></i>
+                                    <span>No results found for "${escapeHtml(query)}"</span>
+                                </div>
+                            `;
+                            cmdSelectedIdx = -1;
+                            return;
+                        }
+                        
+                        let html = '';
+                        data.forEach((item, index) => {
+                            let icon = 'ph-file-text';
+                            if (item.tag === 'customer') icon = 'ph-users';
+                            else if (item.tag === 'supplier') icon = 'ph-factory';
+                            else if (item.tag === 'product' || item.tag === 'stock') icon = 'ph-package';
+                            else if (item.tag === 'invoice') icon = 'ph-credit-card';
+                            else if (item.tag === 'sales-order') icon = 'ph-list-bullets';
+                            else if (item.tag === 'estimate' || item.tag === 'quotation') icon = 'ph-file-text';
+                            else if (item.tag === 'payment' || item.tag === 'collection') icon = 'ph-hand-coins';
+                            else if (item.tag === 'grn') icon = 'ph-tray-arrow-down';
+                            else if (item.tag === 'po') icon = 'ph-shopping-cart';
+                            else if (item.tag === 'route') icon = 'ph-map-pin';
+                            else if (item.tag === 'report') icon = 'ph-chart-line-up';
+                            else if (item.tag === 'module') icon = 'ph-squares-four';
+                            
+                            html += `
+                                <div class="cmd-result-item" data-index="${index}" onclick="handleCmdResultClick('${escapeUrl(item.url)}')">
+                                    <div class="cmd-result-icon">
+                                        <i class="ph ${icon}"></i>
+                                    </div>
+                                    <div class="cmd-result-details">
+                                        <div class="cmd-result-title">${escapeHtml(item.title)}</div>
+                                        <div class="cmd-result-subtitle">${escapeHtml(item.subtitle)}</div>
+                                    </div>
+                                    <div class="cmd-result-tag">${escapeHtml(item.tag)}</div>
+                                </div>
+                            `;
+                        });
+                        cmdResults.innerHTML = html;
+                        cmdSelectedIdx = 0;
+                        updateCmdHighlight();
+                    })
+                    .catch(err => {
+                        cmdResults.innerHTML = `
+                            <div class="cmd-empty-state">
+                                <i class="ph ph-x-circle" style="color:var(--text-danger);"></i>
+                                <span>Failed to fetch results.</span>
+                            </div>
+                        `;
+                        cmdSelectedIdx = -1;
+                    });
+            }, 200);
+        }
+
+        function updateCmdHighlight() {
+            const items = cmdResults.querySelectorAll('.cmd-result-item');
+            items.forEach((item, idx) => {
+                if (idx === cmdSelectedIdx) {
+                    item.classList.add('selected');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        function handleCmdResultClick(url) {
+            closeCmdPalette();
+            window.location.href = url;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+        
+        function escapeUrl(str) {
+            if (!str) return '#';
+            return str.replace(/"/g, '&quot;');
+        }
+
+        // Global Keydown Listeners for Command Palette
+        document.addEventListener('keydown', e => {
+            // Ctrl+K or / to open (when not inside inputs)
+            const activeEl = document.activeElement;
+            const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.contentEditable === 'true');
+            
+            if ((e.ctrlKey && e.key.toLowerCase() === 'k') || (e.key === '/' && !isInput)) {
+                e.preventDefault();
+                openCmdPalette();
+            }
+            
+            if (cmdModal && cmdModal.classList.contains('visible')) {
+                if (e.key === 'Escape') {
+                    closeCmdPalette();
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const items = cmdResults.querySelectorAll('.cmd-result-item');
+                    if (items.length > 0) {
+                        cmdSelectedIdx = (cmdSelectedIdx + 1) % items.length;
+                        updateCmdHighlight();
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const items = cmdResults.querySelectorAll('.cmd-result-item');
+                    if (items.length > 0) {
+                        cmdSelectedIdx = (cmdSelectedIdx - 1 + items.length) % items.length;
+                        updateCmdHighlight();
+                    }
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const selected = cmdResults.querySelector('.cmd-result-item.selected');
+                    if (selected) {
+                        selected.click();
+                    }
+                }
+            }
+        });
+
+        if (cmdInput) {
+            cmdInput.addEventListener('input', e => {
+                performCmdSearch(e.target.value);
+            });
+        }
+
+        if (cmdModal) {
+            cmdModal.addEventListener('click', e => {
+                if (e.target === cmdModal) {
+                    closeCmdPalette();
+                }
+            });
+        }
+        
+        // Connect Dashboard Search if we are on Dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            const dashSearch = document.getElementById('dashSearch');
+            if (dashSearch) {
+                // Intercept input on dashboard search to open command palette
+                dashSearch.addEventListener('focus', e => {
+                    dashSearch.blur();
+                    openCmdPalette();
+                });
+            }
+        });
     </script>
     
     <?php include '../app/Views/layouts/resilient_loader.php'; ?>

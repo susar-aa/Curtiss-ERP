@@ -1,4 +1,4 @@
-<?php /* Premium Dashboard */ ?>
+<?php /* Premium Modernized Dashboard */ ?>
 <style>
 /* ── BACKGROUND ── */
 #dashBg {
@@ -9,208 +9,246 @@
 }
 #dashBg::after {
     content: ''; position: absolute; inset: 0;
-    background: linear-gradient(150deg, rgba(8,8,22,.52) 0%, rgba(8,8,22,.28) 55%, rgba(8,8,22,.48) 100%);
+    background: linear-gradient(150deg, rgba(8,8,22,.6) 0%, rgba(8,8,22,.35) 55%, rgba(8,8,22,.55) 100%);
 }
 #dashBg.ready { opacity: 1; }
 
 /* ── CARD BASE ── */
 .d-card {
-    background: rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.08);
     backdrop-filter: blur(28px);
     -webkit-backdrop-filter: blur(28px);
-    border: 1px solid rgba(255,255,255,0.16);
-    border-radius: 22px;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.22);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
     overflow: hidden;
-    transition: transform .25s, box-shadow .25s;
+    transition: transform .25s, box-shadow .25s, border-color .25s;
 }
-.d-card:hover { transform: translateY(-3px); box-shadow: 0 16px 56px rgba(0,0,0,0.3); }
+.d-card:hover { 
+    transform: translateY(-2px); 
+    box-shadow: 0 12px 40px rgba(0,0,0,0.28); 
+    border-color: rgba(255,255,255,0.18);
+}
+@media (prefers-color-scheme: light) {
+    .d-card {
+        background: rgba(255,255,255,0.7);
+        border-color: rgba(0,0,0,0.08);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+    }
+    .d-card:hover {
+        border-color: rgba(79,70,229,0.2);
+        box-shadow: 0 12px 40px rgba(79,70,229,0.08);
+    }
+}
 
-/* ── TOP BAR ── */
+/* ── TOP BAR (Search Area) ── */
 .db-topbar {
     display: flex; align-items: center; gap: 12px;
-    margin-bottom: 22px; flex-wrap: wrap;
+    margin-bottom: 24px; flex-wrap: wrap;
 }
 .db-search {
     display: flex; align-items: center; gap: 10px;
-    flex: 1; min-width: 200px; max-width: 440px; height: 46px;
-    background: rgba(255,255,255,0.13);
-    border: 1px solid rgba(255,255,255,0.2);
+    flex: 1; min-width: 280px; max-width: 520px; height: 46px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
     border-radius: 23px; padding: 0 18px;
     backdrop-filter: blur(20px);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.14);
-    cursor: text; transition: background .2s, box-shadow .2s;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    cursor: text; transition: background .2s, box-shadow .2s, border-color .2s;
+}
+@media (prefers-color-scheme: light) {
+    .db-search {
+        background: rgba(255,255,255,0.8);
+        border-color: rgba(0,0,0,0.1);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    }
 }
 .db-search:hover, .db-search:focus-within {
-    background: rgba(255,255,255,0.2);
-    box-shadow: 0 6px 30px rgba(79,70,229,.25);
+    background: rgba(255,255,255,0.15);
+    border-color: rgba(79,70,229,0.4);
+    box-shadow: 0 6px 30px rgba(79,70,229,.2);
 }
-.db-search i { color: rgba(255,255,255,.65); font-size: 16px; }
+@media (prefers-color-scheme: light) {
+    .db-search:hover, .db-search:focus-within {
+        background: #fff;
+        border-color: rgba(79,70,229,0.4);
+    }
+}
+.db-search i { color: var(--text-muted); font-size: 16px; }
 .db-search input {
     border: none; background: transparent; outline: none;
-    font-size: 14px; color: #fff; width: 100%; font-family: inherit;
+    font-size: 14px; color: var(--text-main); width: 100%; font-family: inherit;
 }
-.db-search input::placeholder { color: rgba(255,255,255,.45); }
+.db-search input::placeholder { color: var(--text-muted); }
+
 .db-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .db-icon-btn {
-    width: 46px; height: 46px; border-radius: 50%;
+    width: 44px; height: 44px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    color: rgba(255,255,255,.82); font-size: 19px; text-decoration: none;
-    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18);
+    color: var(--text-main); opacity: 0.85; font-size: 18px; text-decoration: none;
+    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
     backdrop-filter: blur(16px);
-    box-shadow: 0 4px 16px rgba(0,0,0,.14);
-    transition: background .18s, color .18s; position: relative; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0,0,0,.1);
+    transition: all .18s; position: relative; cursor: pointer;
 }
-.db-icon-btn:hover { background: rgba(255,255,255,.22); color: #fff; }
-.db-icon-btn.red { color: rgba(255,130,130,.9); }
-.db-icon-btn.red:hover { background: rgba(239,68,68,.22); }
+@media (prefers-color-scheme: light) {
+    .db-icon-btn {
+        background: rgba(255,255,255,0.8);
+        border-color: rgba(0,0,0,0.08);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+    }
+}
+.db-icon-btn:hover { background: rgba(79,70,229,0.15); border-color: rgba(79,70,229,0.3); opacity: 1; color: var(--text-accent); }
 .db-nbadge {
     background: #ef4444; color: #fff; border-radius: 10px;
     padding: 1px 5px; font-size: 9px; font-weight: 700;
     position: absolute; top: 2px; right: 2px;
     border: 2px solid rgba(0,0,0,.15);
 }
-.db-user-pill {
-    display: flex; align-items: center; gap: 10px;
-    padding: 6px 16px 6px 6px;
-    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18);
-    border-radius: 24px; backdrop-filter: blur(16px);
-    box-shadow: 0 4px 16px rgba(0,0,0,.14); cursor: default;
-}
-.db-avatar {
-    width: 34px; height: 34px; border-radius: 50%;
-    background: linear-gradient(135deg,#667eea,#764ba2);
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 13px; font-weight: 700;
-}
-.db-uname { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.92); }
-.db-urole { font-size: 11px; color: rgba(255,255,255,.50); }
 
-/* ── GRID ── */
+/* ── GRID SYSTEM ── */
 .db-grid {
     display: grid;
-    grid-template-columns: 260px 1fr 280px;
-    grid-template-rows: auto auto;
-    gap: 16px;
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
 }
-.db-col-left  { display: flex; flex-direction: column; gap: 16px; grid-column: 1; }
-.db-col-mid   { display: flex; flex-direction: column; gap: 16px; grid-column: 2; }
-.db-col-right { display: flex; flex-direction: column; gap: 16px; grid-column: 3; }
+@media (max-width: 1024px) {
+    .db-grid { grid-template-columns: 1fr; }
+}
 
-/* ── PROFILE CARD ── */
+/* ── LEFT COLUMN ── */
+.db-col-left {
+    display: flex; flex-direction: column; gap: 24px;
+}
+
+/* ── QUICK ACCESS GRID ── */
+.d-quick { padding: 24px; }
+.d-quick-header { 
+    font-size: 14px; font-weight: 700; color: var(--text-main); 
+    margin-bottom: 20px; letter-spacing: .5px; text-transform: uppercase;
+    opacity: 0.8;
+}
+.d-quick-grid { 
+    display: grid; 
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 16px; 
+}
+@media (max-width: 600px) {
+    .d-quick-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.d-qbtn {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    padding: 24px 16px; border-radius: 16px;
+    text-decoration: none; color: var(--text-main);
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
+    transition: all .2s ease;
+    text-align: center;
+}
+@media (prefers-color-scheme: light) {
+    .d-qbtn {
+        background: rgba(0,0,0,0.02);
+        border-color: rgba(0,0,0,0.05);
+    }
+}
+.d-qbtn:hover {
+    background: rgba(79,70,229,.15); border-color: rgba(79,70,229,.3);
+    color: var(--text-accent); transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(79,70,229,0.12);
+}
+.d-qbtn i { font-size: 28px; transition: transform 0.2s ease; }
+.d-qbtn:hover i { transform: scale(1.1); }
+.d-qbtn span { font-size: 13px; font-weight: 600; line-height: 1.3; }
+
+/* ── RIGHT COLUMN ── */
+.db-col-right {
+    display: flex; flex-direction: column; gap: 24px;
+}
+
+/* ── REDESIGNED PROFILE CARD ── */
 .d-profile {
-    padding: 28px 22px 24px;
-    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px;
+    padding: 30px 24px 24px;
+    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;
 }
 .d-profile-avatar {
-    width: 72px; height: 72px; border-radius: 50%;
+    width: 80px; height: 80px; border-radius: 50%;
     background: linear-gradient(135deg,#667eea,#764ba2);
     display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 26px; font-weight: 700;
-    box-shadow: 0 6px 24px rgba(102,126,234,.45);
+    color: #fff; font-size: 30px; font-weight: 700;
+    box-shadow: 0 6px 20px rgba(102,126,234,.4);
     margin-bottom: 4px;
 }
-.d-profile-name { font-size: 18px; font-weight: 700; color: #fff; }
+.d-profile-name { font-size: 18px; font-weight: 700; color: var(--text-main); }
 .d-profile-role {
-    font-size: 12px; color: rgba(255,255,255,.55);
-    background: rgba(255,255,255,.1); border-radius: 20px;
-    padding: 3px 12px; display: inline-block;
+    font-size: 11px; color: var(--text-accent); font-weight: 700;
+    background: rgba(79,70,229,0.12); border-radius: 20px;
+    padding: 4px 14px; display: inline-block;
+    text-transform: uppercase; letter-spacing: 0.5px;
 }
-.d-profile-greeting { font-size: 13px; color: rgba(255,255,255,.7); margin-top: 4px; }
-.d-profile-divider { width: 100%; height: 1px; background: rgba(255,255,255,.1); margin: 4px 0; }
+.d-profile-greeting { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+.d-profile-divider { width: 100%; height: 1px; background: rgba(255,255,255,.1); margin: 6px 0; }
+@media (prefers-color-scheme: light) {
+    .d-profile-divider { background: rgba(0,0,0,0.06); }
+}
 .d-profile-stat {
     display: flex; justify-content: space-between; width: 100%;
-    font-size: 12px; color: rgba(255,255,255,.6);
+    font-size: 12px; color: var(--text-muted);
 }
-.d-profile-stat strong { color: rgba(255,255,255,.9); font-weight: 600; }
+.d-profile-stat strong { color: var(--text-main); font-weight: 600; }
+.d-profile-logout-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; margin-top: 14px; padding: 10px; border-radius: 12px;
+    background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.25);
+    color: rgba(239,68,68,.9); text-decoration: none;
+    font-size: 13px; font-weight: 600; transition: all .18s;
+}
+.d-profile-logout-btn:hover {
+    background: rgba(239,68,68,.22);
+    box-shadow: 0 4px 12px rgba(239,68,68,0.15);
+}
 
 /* ── DATE / TIME CARD ── */
 .d-datetime {
-    padding: 24px 22px;
+    padding: 24px;
     display: flex; flex-direction: column; justify-content: center; gap: 4px;
 }
-.d-time { font-size: 44px; font-weight: 300; color: #fff; letter-spacing: -2px; line-height: 1; }
-.d-time span { font-size: 18px; font-weight: 400; opacity: .6; }
-.d-date { font-size: 15px; color: rgba(255,255,255,.65); font-weight: 500; margin-top: 8px; }
-.d-day  { font-size: 12px; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .8px; }
+.d-time { font-size: 40px; font-weight: 300; color: var(--text-main); letter-spacing: -1.5px; line-height: 1; }
+.d-time span { font-size: 16px; font-weight: 400; opacity: .6; }
+.d-date { font-size: 15px; color: var(--text-main); font-weight: 500; margin-top: 6px; }
+.d-day  { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .8px; font-weight: 600; }
 
 /* ── NOTIFICATION CARD ── */
-.d-notif { padding: 22px; }
+.d-notif { padding: 24px; }
 .d-notif-header {
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 16px;
 }
-.d-notif-title { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.9); }
+.d-notif-title { font-size: 13px; font-weight: 700; color: var(--text-main); text-transform: uppercase; opacity: 0.8; }
 .d-notif-count {
     background: #ef4444; color: #fff; border-radius: 12px;
-    padding: 2px 8px; font-size: 11px; font-weight: 700;
+    padding: 2px 8px; font-size: 10px; font-weight: 700;
 }
 .d-notif-item {
     display: flex; align-items: center; gap: 10px;
     padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.07);
 }
+@media (prefers-color-scheme: light) {
+    .d-notif-item { border-bottom-color: rgba(0,0,0,0.05); }
+}
 .d-notif-item:last-child { border-bottom: none; }
 .d-notif-dot { width: 8px; height: 8px; border-radius: 50%; background: #667eea; flex-shrink: 0; }
-.d-notif-dot.orange { background: #f59e0b; }
-.d-notif-dot.green  { background: #10b981; }
-.d-notif-text { font-size: 12px; color: rgba(255,255,255,.7); line-height: 1.4; }
+.d-notif-text { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
 .d-notif-empty {
-    text-align: center; padding: 28px 0;
-    color: rgba(255,255,255,.35); font-size: 13px;
+    text-align: center; padding: 24px 0;
+    color: var(--text-muted); font-size: 13px;
 }
-.d-notif-empty i { font-size: 32px; display: block; margin-bottom: 8px; }
+.d-notif-empty i { font-size: 28px; display: block; margin-bottom: 8px; opacity: 0.6; }
 .d-notif-link {
     display: block; text-align: center; margin-top: 14px;
-    font-size: 12px; color: rgba(102,126,234,.9); text-decoration: none;
+    font-size: 12px; color: var(--text-accent); text-decoration: none;
     padding: 8px; border-radius: 10px;
-    background: rgba(102,126,234,.1); transition: background .18s;
+    background: rgba(79,70,229,.1); font-weight: 600; transition: background .18s;
 }
-.d-notif-link:hover { background: rgba(102,126,234,.2); }
-
-/* ── QUICK ACCESS CARD ── */
-.d-quick { padding: 22px; }
-.d-quick-header { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.7); margin-bottom: 16px; letter-spacing: .3px; }
-.d-quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.d-qbtn {
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
-    padding: 14px 8px; border-radius: 14px;
-    text-decoration: none; color: rgba(255,255,255,.82);
-    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.09);
-    transition: background .18s, transform .18s, border-color .18s;
-    text-align: center;
-}
-.d-qbtn:hover {
-    background: rgba(79,70,229,.22); border-color: rgba(79,70,229,.35);
-    color: #fff; transform: translateY(-2px);
-}
-.d-qbtn i { font-size: 22px; }
-.d-qbtn span { font-size: 11px; font-weight: 500; line-height: 1.3; }
-
-/* ── STATUS CARD ── */
-.d-status { padding: 22px; }
-.d-status-title { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.7); margin-bottom: 14px; }
-.d-status-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.07);
-    font-size: 13px;
-}
-.d-status-row:last-child { border-bottom: none; }
-.d-status-label { color: rgba(255,255,255,.65); display: flex; align-items: center; gap: 8px; }
-.d-status-label i { font-size: 15px; }
-.d-status-val { font-weight: 600; color: rgba(255,255,255,.9); }
-.d-badge { border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
-.d-badge.green { background: rgba(16,185,129,.2); color: #6ee7b7; }
-.d-badge.orange { background: rgba(245,158,11,.2); color: #fcd34d; }
-
-@media (max-width: 1100px) {
-    .db-grid { grid-template-columns: 1fr 1fr; }
-    .db-col-mid { grid-column: 1 / 3; order: -1; }
-}
-@media (max-width: 700px) {
-    .db-grid { grid-template-columns: 1fr; }
-    .db-col-left, .db-col-mid, .db-col-right { grid-column: 1; }
-    .d-quick-grid { grid-template-columns: repeat(3,1fr); }
-}
+.d-notif-link:hover { background: rgba(79,70,229,.18); }
 </style>
 
 <!-- Background Layer -->
@@ -218,9 +256,9 @@
 
 <!-- Top Bar -->
 <div class="db-topbar">
-    <div class="db-search" onclick="this.querySelector('input').focus()">
+    <div class="db-search">
         <i class="ph ph-magnifying-glass"></i>
-        <input type="text" id="dashSearch" placeholder="Search customers, invoices, products..." autocomplete="off">
+        <input type="text" id="dashSearch" placeholder="Search customers, invoices, products or modules..." autocomplete="off">
     </div>
     <div class="db-actions">
         <?php if (!empty($storeUrl)): ?>
@@ -234,25 +272,60 @@
                 <span class="db-nbadge"><?= $notifCount ?></span>
             <?php endif; ?>
         </a>
-        <div class="db-user-pill">
-            <div class="db-avatar"><?= strtoupper(substr($_SESSION['username'] ?? 'U', 0, 2)) ?></div>
-            <div>
-                <div class="db-uname"><?= htmlspecialchars($_SESSION['username'] ?? 'User') ?></div>
-                <div class="db-urole"><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'Staff')) ?></div>
-            </div>
-        </div>
-        <a href="<?= APP_URL ?>/auth/logout" class="db-icon-btn red" title="Logout">
-            <i class="ph ph-sign-out"></i>
-        </a>
     </div>
 </div>
 
-<!-- Cards Grid -->
+<!-- Main Grid Layout -->
 <div class="db-grid">
 
-    <!-- LEFT COLUMN -->
+    <!-- LEFT COLUMN: Quick Access -->
     <div class="db-col-left">
+        <div class="d-card d-quick">
+            <div class="d-quick-header">Quick Access</div>
+            <div class="d-quick-grid">
+                <a href="<?= APP_URL ?>/sales/create" class="d-qbtn">
+                    <i class="ph ph-file-plus" style="color: #3b82f6;"></i>
+                    <span>Create Invoice</span>
+                </a>
+                <a href="<?= APP_URL ?>/salesorder/create" class="d-qbtn">
+                    <i class="ph ph-file-text" style="color: #10b981;"></i>
+                    <span>Create Sales Order</span>
+                </a>
+                <a href="<?= APP_URL ?>/customer" class="d-qbtn">
+                    <i class="ph ph-users" style="color: #6366f1;"></i>
+                    <span>Customers</span>
+                </a>
+                <a href="<?= APP_URL ?>/supplier" class="d-qbtn">
+                    <i class="ph ph-factory" style="color: #f59e0b;"></i>
+                    <span>Suppliers</span>
+                </a>
+                <a href="<?= APP_URL ?>/inventory" class="d-qbtn">
+                    <i class="ph ph-package" style="color: #ec4899;"></i>
+                    <span>Inventory</span>
+                </a>
+                <a href="<?= APP_URL ?>/reptracking" class="d-qbtn">
+                    <i class="ph ph-map-pin" style="color: #06b6d4;"></i>
+                    <span>Route Control</span>
+                </a>
+                <a href="<?= APP_URL ?>/customerpayment" class="d-qbtn">
+                    <i class="ph ph-hand-coins" style="color: #14b8a6;"></i>
+                    <span>Payments</span>
+                </a>
+                <a href="<?= APP_URL ?>/grn" class="d-qbtn">
+                    <i class="ph ph-tray-arrow-down" style="color: #8b5cf6;"></i>
+                    <span>GRN</span>
+                </a>
+                <a href="<?= APP_URL ?>/purchase" class="d-qbtn">
+                    <i class="ph ph-shopping-cart" style="color: #ef4444;"></i>
+                    <span>Purchase Orders</span>
+                </a>
+            </div>
+        </div>
+    </div>
 
+    <!-- RIGHT COLUMN: Profile, Time & Notifications -->
+    <div class="db-col-right">
+        
         <!-- Profile Card -->
         <div class="d-card d-profile">
             <div class="d-profile-avatar"><?= strtoupper(substr($_SESSION['username'] ?? 'U', 0, 2)) ?></div>
@@ -270,6 +343,10 @@
                 <span>Today</span>
                 <strong><?= date('d M Y') ?></strong>
             </div>
+            <a href="<?= APP_URL ?>/auth/logout" class="d-profile-logout-btn">
+                <i class="ph ph-sign-out"></i>
+                <span>Sign Out</span>
+            </a>
         </div>
 
         <!-- Date / Time Card -->
@@ -279,68 +356,10 @@
             <div class="d-date" id="dashDate"></div>
         </div>
 
-        <!-- System Status Card -->
-        <div class="d-card d-status">
-            <div class="d-status-title">System Status</div>
-            <div class="d-status-row">
-                <span class="d-status-label"><i class="ph ph-database"></i> Database</span>
-                <span class="d-badge green">Online</span>
-            </div>
-            <div class="d-status-row">
-                <span class="d-status-label"><i class="ph ph-cloud-arrow-up"></i> Sync</span>
-                <span class="d-badge green">Active</span>
-            </div>
-            <div class="d-status-row">
-                <span class="d-status-label"><i class="ph ph-shield-check"></i> Security</span>
-                <span class="d-badge green">Secured</span>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- MIDDLE COLUMN -->
-    <div class="db-col-mid">
-
-        <!-- Quick Access Card -->
-        <div class="d-card d-quick">
-            <div class="d-quick-header">Quick Access</div>
-            <div class="d-quick-grid">
-                <a href="<?= APP_URL ?>/sales" class="d-qbtn"><i class="ph ph-credit-card"></i><span>Invoices</span></a>
-                <a href="<?= APP_URL ?>/salesorder" class="d-qbtn"><i class="ph ph-clipboard-text"></i><span>Sales Orders</span></a>
-                <a href="<?= APP_URL ?>/customer" class="d-qbtn"><i class="ph ph-users"></i><span>Customers</span></a>
-                <a href="<?= APP_URL ?>/inventory" class="d-qbtn"><i class="ph ph-package"></i><span>Inventory</span></a>
-                <a href="<?= APP_URL ?>/purchase" class="d-qbtn"><i class="ph ph-shopping-cart"></i><span>Purchase Orders</span></a>
-                <a href="<?= APP_URL ?>/expenses" class="d-qbtn"><i class="ph ph-receipt"></i><span>Enter Bills</span></a>
-                <a href="<?= APP_URL ?>/banking" class="d-qbtn"><i class="ph ph-bank"></i><span>Banking</span></a>
-                <a href="<?= APP_URL ?>/hrm" class="d-qbtn"><i class="ph ph-user-circle-gear"></i><span>Employees</span></a>
-                <a href="<?= APP_URL ?>/report" class="d-qbtn"><i class="ph ph-chart-line-up"></i><span>Reports</span></a>
-                <a href="<?= APP_URL ?>/crm" class="d-qbtn"><i class="ph ph-briefcase"></i><span>CRM</span></a>
-                <a href="<?= APP_URL ?>/accounting/coa" class="d-qbtn"><i class="ph ph-notebook"></i><span>Chart of Accts</span></a>
-                <a href="<?= APP_URL ?>/settings" class="d-qbtn"><i class="ph ph-gear"></i><span>Settings</span></a>
-            </div>
-        </div>
-
-        <!-- More Quick Access Row 2 -->
-        <div class="d-card d-quick" style="padding: 18px 22px;">
-            <div class="d-quick-header" style="margin-bottom:12px;">Operations</div>
-            <div class="d-quick-grid" style="grid-template-columns: repeat(5,1fr);">
-                <a href="<?= APP_URL ?>/estimate" class="d-qbtn"><i class="ph ph-file-text"></i><span>Estimates</span></a>
-                <a href="<?= APP_URL ?>/creditnote" class="d-qbtn"><i class="ph ph-arrow-counter-clockwise"></i><span>Refunds</span></a>
-                <a href="<?= APP_URL ?>/delivery" class="d-qbtn"><i class="ph ph-truck"></i><span>Deliveries</span></a>
-                <a href="<?= APP_URL ?>/cheque" class="d-qbtn"><i class="ph ph-signature"></i><span>Cheques</span></a>
-                <a href="<?= APP_URL ?>/reptracking" class="d-qbtn"><i class="ph ph-map-pin"></i><span>Rep Tracking</span></a>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- RIGHT COLUMN -->
-    <div class="db-col-right">
-
         <!-- Notifications Card -->
         <div class="d-card d-notif">
             <div class="d-notif-header">
-                <span class="d-notif-title"><i class="ph ph-bell" style="margin-right:6px;"></i>Notifications</span>
+                <span class="d-notif-title">Notifications</span>
                 <?php if ($notifCount > 0): ?>
                     <span class="d-notif-count"><?= $notifCount ?></span>
                 <?php endif; ?>
@@ -356,36 +375,7 @@
                     <span class="d-notif-text">You have <?= $notifCount ?> unread notification<?= $notifCount > 1 ? 's' : '' ?></span>
                 </div>
             <?php endif; ?>
-            <a href="<?= APP_URL ?>/notification" class="d-notif-link">View All Notifications →</a>
-        </div>
-
-        <!-- Store Link Card -->
-        <?php if (!empty($storeUrl)): ?>
-        <div class="d-card" style="padding:22px;">
-            <div class="d-status-title" style="margin-bottom:14px;"><i class="ph ph-storefront" style="margin-right:6px;"></i>E-Commerce Store</div>
-            <p style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:14px;">Access your online store and manage online orders.</p>
-            <a href="<?= htmlspecialchars($storeUrl) ?>" target="_blank"
-               style="display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-radius:12px;background:rgba(79,70,229,.18);border:1px solid rgba(79,70,229,.3);color:#a5b4fc;text-decoration:none;font-size:13px;font-weight:600;transition:background .18s;">
-                <i class="ph ph-arrow-square-out"></i> Open Store
-            </a>
-        </div>
-        <?php endif; ?>
-
-        <!-- Logout Card -->
-        <div class="d-card" style="padding:22px;">
-            <div class="d-status-title" style="margin-bottom:14px;"><i class="ph ph-user" style="margin-right:6px;"></i>Account</div>
-            <div class="d-status-row">
-                <span class="d-status-label"><i class="ph ph-user-circle"></i> User</span>
-                <strong style="color:rgba(255,255,255,.85);font-size:13px;"><?= htmlspecialchars($_SESSION['username'] ?? '') ?></strong>
-            </div>
-            <div class="d-status-row">
-                <span class="d-status-label"><i class="ph ph-lock-key"></i> Role</span>
-                <span class="d-badge orange"><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'Staff')) ?></span>
-            </div>
-            <a href="<?= APP_URL ?>/auth/logout"
-               style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;padding:10px;border-radius:12px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:rgba(255,130,130,.9);text-decoration:none;font-size:13px;font-weight:600;transition:background .18s;">
-                <i class="ph ph-sign-out"></i> Sign Out
-            </a>
+            <a href="<?= APP_URL ?>/notification" class="d-notif-link">View All Notifications</a>
         </div>
 
     </div>
@@ -396,7 +386,7 @@
 /* ── Live Clock ── */
 function updateClock() {
     const now = new Date();
-    const hh = now.getHours(), mm = now.getMinutes(), ss = now.getSeconds();
+    const hh = now.getHours(), mm = now.getMinutes();
     const ampm = hh >= 12 ? 'PM' : 'AM';
     const h12 = hh % 12 || 12;
     const pad = n => String(n).padStart(2,'0');
