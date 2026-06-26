@@ -225,4 +225,47 @@ class AuthController extends Controller {
         echo json_encode(['success' => true]);
         exit;
     }
+
+    public function api_login() {
+        header('Content-Type: application/json');
+        
+        $json = file_get_contents('php://input');
+        $data = json_decode($json, true);
+        
+        if (!$data || !isset($data['username']) || !isset($data['password'])) {
+            echo json_encode(['success' => false, 'message' => 'Missing username or password.']);
+            exit;
+        }
+        
+        $username = trim($data['username']);
+        $password = trim($data['password']);
+        
+        $user = $this->userModel->login($username, $password);
+        if ($user) {
+            if (strtolower($user->role) !== 'driver') {
+                echo json_encode(['success' => false, 'message' => 'Access denied: not a driver account.']);
+                exit;
+            }
+            
+            // Set session variables (similar to main login)
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            $_SESSION['user_id'] = $user->id;
+            $_SESSION['username'] = $user->username;
+            $_SESSION['role'] = $user->role;
+            
+            $this->logActivity('API Login', 'Auth', "Driver '{$user->username}' successfully logged in via API.", $user->id);
+
+            echo json_encode([
+                'success' => true,
+                'user_id' => intval($user->id),
+                'username' => $user->username
+            ]);
+            exit;
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Invalid username or password.']);
+            exit;
+        }
+    }
 }
