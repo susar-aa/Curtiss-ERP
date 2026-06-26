@@ -310,6 +310,7 @@ $editingItems = $data['editing_items'] ?? [];
         <form action="<?= APP_URL ?>/sales/store" method="POST" id="invoiceForm">
             <input type="hidden" name="type" value="<?= htmlspecialchars((string)($data['type'] ?? 'invoice')) ?>">
             <input type="hidden" name="rep_route_id" value="<?= htmlspecialchars((string)$rep_route_id) ?>">
+            <input type="hidden" name="from_sales_order_id" value="<?= htmlspecialchars((string)($data['from_sales_order_id'] ?? '0')) ?>">
             <?php if ($inv): ?>
                 <input type="hidden" name="editing_invoice_id" value="<?= isset($inv->id) ? $inv->id : '' ?>">
             <?php endif; ?>

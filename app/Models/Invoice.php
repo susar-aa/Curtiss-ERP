@@ -445,4 +445,127 @@ class Invoice {
             return false;
         }
     }
+
+    public function deleteInvoiceWithAccounting($invoiceId, $userId) {
+        try {
+            $this->db->beginTransaction();
+
+            $oldInvoice = $this->getInvoiceById($invoiceId);
+            if (!$oldInvoice) throw new Exception("Invoice not found.");
+
+            $oldSub = floatval($oldInvoice->total_amount ?? 0);
+            $oldDiscVal = floatval($oldInvoice->global_discount_val ?? 0);
+            $oldDiscType = $oldInvoice->global_discount_type ?? 'Rs';
+            $oldDisc = ($oldDiscType === '%') ? ($oldSub * $oldDiscVal / 100) : $oldDiscVal;
+            $oldGrandTotal = ($oldSub - $oldDisc) + floatval($oldInvoice->tax_amount ?? 0);
+
+            $oldStockStatus = isset($oldInvoice->stock_status) ? $oldInvoice->stock_status : 'deducted';
+
+            // 1. REVERT STOCK ALLOCATIONS
+            $this->db->query("SELECT * FROM invoice_items WHERE invoice_id = :id");
+            $this->db->bind(':id', $invoiceId);
+            $oldItems = $this->db->resultSet() ?: [];
+
+            require_once '../app/Models/FIFO.php';
+            $fifo = new FIFO();
+
+            foreach ($oldItems as $oldItem) {
+                $itemId = $oldItem->item_id;
+                $varId = $oldItem->variation_option_id ?? null;
+
+                if ($oldStockStatus === 'reserved') {
+                    if ($itemId) {
+                        $this->db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
+                        $this->db->bind(':qty', $oldItem->quantity);
+                        $this->db->bind(':id', $itemId);
+                        $this->db->execute();
+                    }
+                    if ($varId) {
+                        $this->db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
+                        $this->db->bind(':qty', $oldItem->quantity);
+                        $this->db->bind(':id', $varId);
+                        $this->db->execute();
+                    }
+                } else {
+                    if ($itemId) {
+                        $this->db->query("UPDATE items SET quantity_on_hand = quantity_on_hand + :qty, qty = qty + :qty WHERE id = :id");
+                        $this->db->bind(':qty', $oldItem->quantity);
+                        $this->db->bind(':id', $itemId);
+                        $this->db->execute();
+                    }
+                    if ($varId) {
+                        $this->db->query("UPDATE item_variation_options SET quantity_on_hand = quantity_on_hand + :qty WHERE id = :id");
+                        $this->db->bind(':qty', $oldItem->quantity);
+                        $this->db->bind(':id', $varId);
+                        $this->db->execute();
+                    }
+
+                    $fifo->revertDepletion($oldItem->id, null);
+
+                    require_once '../app/Models/StockLedger.php';
+                    $ledger = new StockLedger();
+                    $this->db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                    $this->db->bind(':id', $itemId);
+                    $itemRow = $this->db->single();
+                    $whId = $itemRow ? $itemRow->warehouse_id : null;
+                    $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
+                    $ledger->logMovement($itemId, $varId, $oldItem->quantity, 0, 'Sales Invoice Deletion', $oldInvoice->invoice_number, $whId, $userId, 'Invoice Deleted - Stock Reverted', $itemCost);
+                }
+            }
+
+            // 2. ADJUST LEDGER ACCOUNTS BALANCE
+            $arAccountId = null;
+            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' AND (account_name LIKE '%Receivable%' OR account_code LIKE '1100%') LIMIT 1");
+            $arRow = $this->db->single();
+            $arAccountId = $arRow ? $arRow->id : null;
+
+            $revenueAccountId = null;
+            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' AND (account_name LIKE '%Sales%' OR account_name LIKE '%Revenue%' OR account_code LIKE '4000%') LIMIT 1");
+            $revRow = $this->db->single();
+            $revenueAccountId = $revRow ? $revRow->id : null;
+
+            if ($arAccountId) {
+                $this->db->query("UPDATE chart_of_accounts SET balance = balance - :amount WHERE id = :id");
+                $this->db->bind(':amount', $oldGrandTotal);
+                $this->db->bind(':id', $arAccountId);
+                $this->db->execute();
+            }
+
+            if ($revenueAccountId) {
+                $this->db->query("UPDATE chart_of_accounts SET balance = balance - :amount WHERE id = :id");
+                $this->db->bind(':amount', $oldGrandTotal);
+                $this->db->bind(':id', $revenueAccountId);
+                $this->db->execute();
+            }
+
+            // 3. REMOVE JOURNAL ENTRIES & TRANSACTIONS
+            $jid = $oldInvoice->journal_entry_id;
+            if ($jid) {
+                $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
+                $this->db->bind(':jid', $jid);
+                $this->db->execute();
+
+                $this->db->query("DELETE FROM journal_entries WHERE id = :jid");
+                $this->db->bind(':jid', $jid);
+                $this->db->execute();
+            }
+
+            // 4. DELETE ITEMS AND INVOICE
+            $this->db->query("DELETE FROM invoice_items WHERE invoice_id = :id");
+            $this->db->bind(':id', $invoiceId);
+            $this->db->execute();
+
+            $this->db->query("DELETE FROM invoices WHERE id = :id");
+            $this->db->bind(':id', $invoiceId);
+            $this->db->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            error_log("Invoice Deletion Saving Error: " . $e->getMessage());
+            $_SESSION['invoice_error'] = "SQL Deletion Exception: " . $e->getMessage();
+            return false;
+        }
+    }
 }

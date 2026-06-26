@@ -666,11 +666,18 @@ if (!function_exists('hasPermission')) {
                         </a>
                         <?php endif; ?>
                         <?php if (hasPermission('sales')): ?>
-                        <a href="<?= APP_URL ?>/sales/create?type=sales_order" class="mega-list-item">
+                        <a href="<?= APP_URL ?>/sales/create" class="mega-list-item text-primary">
                             <div class="icon-wrapper text-primary"><i class="ph ph-pencil-simple"></i></div>
                             <div class="mega-list-item-content">
-                                <div class="title text-primary">Create Sales Order</div>
-                                <div class="desc">Reserve stock without debit</div>
+                                <div class="title text-primary">Billing Creator</div>
+                                <div class="desc">Create new Invoices or Sales Orders</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/salesorder" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-list-bullets"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Sales Order Center</div>
+                                <div class="desc">Manage standard and route orders</div>
                             </div>
                         </a>
                         <a href="<?= APP_URL ?>/sales" class="mega-list-item">

@@ -1,15 +1,9 @@
 <?php
-require 'config/database.php';
-require 'core/Database.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../core/Database.php';
 
-try {
-    $db = new Database();
-    $db->query("SHOW TABLES");
-    $tables = $db->resultSet();
-    foreach ($tables as $t) {
-        $arr = (array)$t;
-        echo current($arr) . "\n";
-    }
-} catch (Exception $e) {
-    echo "ERROR: " . $e->getMessage() . "\n";
+$db = new Database();
+$db->query("SHOW TABLES");
+foreach ($db->resultSet() as $row) {
+    echo array_values((array)$row)[0] . "\n";
 }

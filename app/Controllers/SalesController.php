@@ -54,17 +54,113 @@ class SalesController extends Controller {
                 FOREIGN KEY (invoice_id) REFERENCES sales_invoices(id) ON DELETE CASCADE
             )");
             $this->db->execute();
+
+            $this->db->query("CREATE TABLE IF NOT EXISTS deleted_invoices (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                invoice_number VARCHAR(50) NOT NULL,
+                customer_name VARCHAR(150) NOT NULL,
+                total_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                deleted_user_name VARCHAR(100) NOT NULL,
+                deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                delete_reason TEXT NOT NULL,
+                record_type VARCHAR(20) NOT NULL DEFAULT 'Invoice'
+            )");
+            $this->db->execute();
         } catch (Exception $e) {
             // Fallback silently
         }
     }
 
     /**
-     * Display all sales invoices
+     * Display all sales invoices with search, filtering, and pagination
      */
     public function index() {
-        header('Location: ' . APP_URL . '/sales/create');
-        exit;
+        $limit = 10;
+        $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+        if ($page < 1) $page = 1;
+        $offset = ($page - 1) * $limit;
+
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        $startDate = isset($_GET['start_date']) ? trim($_GET['start_date']) : '';
+        $endDate = isset($_GET['end_date']) ? trim($_GET['end_date']) : '';
+        $customerId = isset($_GET['customer_id']) ? intval($_GET['customer_id']) : 0;
+        $status = isset($_GET['status']) ? trim($_GET['status']) : '';
+
+        // Build base query
+        $queryStr = "SELECT i.*, c.name as customer_name 
+                     FROM invoices i 
+                     JOIN customers c ON i.customer_id = c.id 
+                     WHERE (i.stock_status IS NULL OR i.stock_status = 'deducted')";
+        
+        $params = [];
+
+        if (!empty($search)) {
+            $queryStr .= " AND (i.invoice_number LIKE :search OR c.name LIKE :search OR i.notes LIKE :search)";
+            $params[':search'] = '%' . $search . '%';
+        }
+
+        if (!empty($startDate)) {
+            $queryStr .= " AND i.invoice_date >= :start_date";
+            $params[':start_date'] = $startDate;
+        }
+
+        if (!empty($endDate)) {
+            $queryStr .= " AND i.invoice_date <= :end_date";
+            $params[':end_date'] = $endDate;
+        }
+
+        if ($customerId > 0) {
+            $queryStr .= " AND i.customer_id = :customer_id";
+            $params[':customer_id'] = $customerId;
+        }
+
+        if (!empty($status)) {
+            $queryStr .= " AND i.status = :status";
+            $params[':status'] = $status;
+        }
+
+        // Count total records for pagination
+        $countQuery = str_replace("SELECT i.*, c.name as customer_name", "SELECT COUNT(*) as total", $queryStr);
+        $this->db->query($countQuery);
+        foreach ($params as $key => $val) {
+            $this->db->bind($key, $val);
+        }
+        $countRow = $this->db->single();
+        $totalRecords = $countRow ? intval($countRow->total) : 0;
+        $totalPages = ceil($totalRecords / $limit);
+        if ($totalPages < 1) $totalPages = 1;
+        if ($page > $totalPages) $page = $totalPages;
+
+        // Fetch paginated results
+        $queryStr .= " ORDER BY i.invoice_date DESC, i.id DESC LIMIT :limit OFFSET :offset";
+        $this->db->query($queryStr);
+        foreach ($params as $key => $val) {
+            $this->db->bind($key, $val);
+        }
+        $this->db->bind(':limit', $limit, PDO::PARAM_INT);
+        $this->db->bind(':offset', $offset, PDO::PARAM_INT);
+        $invoices = $this->db->resultSet() ?: [];
+
+        // Fetch customers for filter dropdown
+        $this->db->query("SELECT id, name FROM customers ORDER BY name ASC");
+        $customers = $this->db->resultSet() ?: [];
+
+        $data = [
+            'title' => 'Invoices & Accounts Receivable',
+            'invoices' => $invoices,
+            'customers' => $customers,
+            'search' => $search,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'customer_id' => $customerId,
+            'status' => $status,
+            'page' => $page,
+            'total_pages' => $totalPages,
+            'total_records' => $totalRecords,
+            'content_view' => 'sales/list'
+        ];
+
+        $this->view('layouts/main', $data);
     }
 
     /**
@@ -155,6 +251,63 @@ class SalesController extends Controller {
         $discountModel = $this->model('DiscountRule');
         $activeDiscountRules = $discountModel->getActiveRules();
 
+        // Convert From Sales Order Check
+        $editingInvoice = null;
+        $editingItems = [];
+        $fromSalesOrderId = null;
+        $fromSoRouteId = null;
+
+        if (isset($_GET['from_so'])) {
+            $fromSalesOrderId = intval($_GET['from_so']);
+            $this->db->query("SELECT * FROM sales_orders WHERE id = :id");
+            $this->db->bind(':id', $fromSalesOrderId);
+            $order = $this->db->single();
+            if ($order) {
+                $editingInvoice = new stdClass();
+                $editingInvoice->customer_id = $order->customer_id;
+                $editingInvoice->customer_name = $order->customer_name;
+                $editingInvoice->customer_phone = $order->customer_phone;
+                $editingInvoice->invoice_date = date('Y-m-d');
+                $editingInvoice->due_date = date('Y-m-d');
+                $editingInvoice->payment_term_id = $order->payment_term_id;
+                $editingInvoice->total_amount = $order->subtotal;
+                $editingInvoice->global_discount_val = $order->discount;
+                $editingInvoice->global_discount_type = 'Rs';
+                $editingInvoice->notes = $order->notes;
+                $editingInvoice->rep_name = $order->rep_name;
+                $editingInvoice->mca = $order->mca;
+                $editingInvoice->rep_tp = $order->rep_tp;
+                $editingInvoice->po_number = $order->po_number;
+                $editingInvoice->grand_total = $order->grand_total;
+
+                $this->db->query("SELECT * FROM sales_order_items WHERE sales_order_id = :id");
+                $this->db->bind(':id', $fromSalesOrderId);
+                $soItems = $this->db->resultSet() ?: [];
+                foreach ($soItems as $oi) {
+                    $itemObj = new stdClass();
+                    $itemObj->item_id = $oi->item_id;
+                    $itemObj->variation_option_id = $oi->variation_option_id;
+                    $itemObj->description = $oi->name;
+                    $itemObj->quantity = $oi->qty;
+                    $itemObj->unit_price = $oi->billing_price;
+                    $itemObj->discount_value = $oi->discount_value;
+                    $itemObj->discount_type = $oi->discount_type;
+                    $itemObj->total = $oi->total;
+                    $editingItems[] = $itemObj;
+                }
+            }
+        } elseif (isset($_GET['from_so_route'])) {
+            $fromSoRouteId = intval($_GET['from_so_route']);
+            $invoiceModel = $this->model('Invoice');
+            $order = $invoiceModel->getInvoiceById($fromSoRouteId);
+            if ($order && isset($order->stock_status) && $order->stock_status === 'reserved') {
+                $editingInvoice = $order;
+                $editingInvoice->invoice_date = date('Y-m-d');
+                $editingInvoice->due_date = date('Y-m-d');
+                $editingItems = $invoiceModel->getInvoiceItems($fromSoRouteId);
+            }
+        }
+
         $data = [
             'title' => $type === 'sales_order' ? 'Create Sales Order' : 'Create Bill & Invoice',
             'items' => $items,
@@ -162,7 +315,11 @@ class SalesController extends Controller {
             'payment_terms' => $paymentTerms,
             'invoice_number' => $invoiceNumber,
             'type' => $type,
-            'active_discount_rules' => $activeDiscountRules
+            'active_discount_rules' => $activeDiscountRules,
+            'editing_invoice' => $editingInvoice,
+            'editing_items' => $editingItems,
+            'from_sales_order_id' => $fromSalesOrderId,
+            'from_so_route_id' => $fromSoRouteId
         ];
         $this->view('sales/index', $data);
     }
@@ -531,6 +688,13 @@ class SalesController extends Controller {
                             ];
                             $this->logActivity('Create Invoice', 'Billing', "Created and posted Invoice {$invoiceNumber} for Customer ID {$customerId} totaling Rs: " . number_format($grandTotal, 2), $invoiceId, null, $newValues);
                             
+                            $fromSalesOrderId = intval($_POST['from_sales_order_id'] ?? 0);
+                            if ($fromSalesOrderId > 0) {
+                                $this->db->query("UPDATE sales_orders SET status = 'Transferred' WHERE id = :id");
+                                $this->db->bind(':id', $fromSalesOrderId);
+                                $this->db->execute();
+                            }
+
                             $saveAction = $_POST['save_action'] ?? 'close';
                             
                             $this->db->query("SELECT phone, name FROM customers WHERE id = :id");
@@ -582,6 +746,9 @@ class SalesController extends Controller {
 
         // Try to detect type: check both sales_orders and invoices tables
         $type = $_GET['type'] ?? null;
+        if (isset($_GET['convert']) && $_GET['convert'] == 1) {
+            $type = 'invoice';
+        }
         if (!$type) {
             $this->db->query("SELECT id FROM sales_orders WHERE id = :id");
             $this->db->bind(':id', $id);
@@ -752,5 +919,110 @@ class SalesController extends Controller {
      */
     public function invoice($id) {
         $this->show($id);
+    }
+
+    /**
+     * Delete an Invoice or Route Sales Order with administrative authentication
+     */
+    public function delete($id = null) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . APP_URL . '/sales');
+            exit;
+        }
+
+        if (!$id) {
+            $_SESSION['flash_error'] = "Record ID is missing!";
+            header('Location: ' . APP_URL . '/sales');
+            exit;
+        }
+
+        $password = $_POST['password'] ?? '';
+        $reason = trim($_POST['delete_reason'] ?? '');
+
+        if (empty($reason)) {
+            $_SESSION['flash_error'] = "Deletion reason is required!";
+            header('Location: ' . APP_URL . '/sales');
+            exit;
+        }
+
+        // Authenticate password
+        $userModel = $this->model('User');
+        $username = $_SESSION['username'] ?? '';
+        $user = $userModel->login($username, $password);
+
+        if (!$user) {
+            $_SESSION['flash_error'] = "Authentication failed: Incorrect password!";
+            header('Location: ' . APP_URL . '/sales');
+            exit;
+        }
+
+        // Verify Delete Permission
+        if (isset($_SESSION['role']) && strtolower($_SESSION['role']) !== 'admin') {
+            $perms = $_SESSION['permissions'] ?? [];
+            if (!($perms['sales']['can_delete'] ?? false)) {
+                $_SESSION['flash_error'] = "Access denied: You do not have permission to delete invoices.";
+                header('Location: ' . APP_URL . '/sales');
+                exit;
+            }
+        }
+
+        $invoiceModel = $this->model('Invoice');
+        $inv = $invoiceModel->getInvoiceById($id);
+
+        if (!$inv) {
+            $_SESSION['flash_error'] = "Invoice not found!";
+            header('Location: ' . APP_URL . '/sales');
+            exit;
+        }
+
+        $isRouteSalesOrder = (isset($inv->stock_status) && $inv->stock_status === 'reserved');
+        $recordType = $isRouteSalesOrder ? 'Sales Order' : 'Invoice';
+
+        // Keep track of old values for general activity log
+        $oldValues = [
+            'invoice' => $inv,
+            'items' => $invoiceModel->getInvoiceItems($id)
+        ];
+
+        // Perform deletion
+        $success = $invoiceModel->deleteInvoiceWithAccounting($id, $_SESSION['user_id']);
+
+        if ($success) {
+            // Write to deleted_invoices audit table
+            $this->db->query("INSERT INTO deleted_invoices (invoice_number, customer_name, total_amount, deleted_user_name, delete_reason, record_type) 
+                              VALUES (:inv_num, :cust_name, :total, :deleted_user, :reason, :rec_type)");
+            $this->db->bind(':inv_num', $inv->invoice_number);
+            $this->db->bind(':cust_name', $inv->customer_name);
+            $this->db->bind(':total', $inv->grand_total);
+            $this->db->bind(':deleted_user', $_SESSION['username'] ?? 'System');
+            $this->db->bind(':reason', $reason);
+            $this->db->bind(':rec_type', $recordType);
+            $this->db->execute();
+
+            // Log general system activity
+            $this->logActivity('Delete ' . $recordType, 'Billing', "Deleted {$recordType} {$inv->invoice_number} for customer {$inv->customer_name} totaling Rs: " . number_format($inv->grand_total, 2) . ". Reason: {$reason}", $id, $oldValues, null);
+
+            $_SESSION['flash_success'] = "{$recordType} {$inv->invoice_number} deleted and stock/ledger balances reversed successfully!";
+        } else {
+            $_SESSION['flash_error'] = "Failed to delete. " . ($_SESSION['invoice_error'] ?? '');
+        }
+
+        header('Location: ' . ($isRouteSalesOrder ? APP_URL . '/salesorder' : APP_URL . '/sales'));
+        exit;
+    }
+
+    /**
+     * Render the deleted invoices and sales orders audit log
+     */
+    public function deleted_list() {
+        $this->db->query("SELECT * FROM deleted_invoices ORDER BY deleted_at DESC");
+        $deletedList = $this->db->resultSet() ?: [];
+
+        $data = [
+            'title' => 'Deleted Invoices Audit Log',
+            'invoices' => $deletedList,
+            'content_view' => 'sales/deleted_list'
+        ];
+        $this->view('layouts/main', $data);
     }
 }

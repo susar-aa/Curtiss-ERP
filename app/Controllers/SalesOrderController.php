@@ -75,9 +75,140 @@ class SalesOrderController extends Controller {
         }
     }
 
+    /**
+     * Display all sales orders (Standard & Route) with search, filtering, and pagination
+     */
     public function index() {
-        header('Location: ' . APP_URL . '/salesorder/create');
-        exit;
+        $limit = 10;
+        $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+        if ($page < 1) $page = 1;
+        $offset = ($page - 1) * $limit;
+
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        $startDate = isset($_GET['start_date']) ? trim($_GET['start_date']) : '';
+        $endDate = isset($_GET['end_date']) ? trim($_GET['end_date']) : '';
+        $customerId = isset($_GET['customer_id']) ? intval($_GET['customer_id']) : 0;
+        $status = isset($_GET['status']) ? trim($_GET['status']) : '';
+        $sourceType = isset($_GET['source_type']) ? trim($_GET['source_type']) : '';
+
+        // Build the combined union query
+        $queryStr = "SELECT * FROM (
+            SELECT 
+                so.id, 
+                so.order_number as document_number, 
+                so.customer_id, 
+                so.customer_name, 
+                so.customer_phone, 
+                so.subtotal, 
+                so.discount, 
+                so.grand_total, 
+                so.status, 
+                so.order_date as document_date, 
+                so.due_date, 
+                so.rep_name, 
+                so.mca, 
+                so.notes,
+                'standard' as source_type
+            FROM sales_orders so
+
+            UNION ALL
+
+            SELECT 
+                i.id, 
+                i.invoice_number as document_number, 
+                i.customer_id, 
+                c.name as customer_name, 
+                c.phone as customer_phone, 
+                i.total_amount as subtotal, 
+                COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) as discount,
+                (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as grand_total,
+                i.status, 
+                i.invoice_date as document_date, 
+                i.due_date, 
+                (SELECT CONCAT(first_name, ' ', last_name) FROM employees WHERE id = (SELECT rep_employee_id FROM rep_routes WHERE id = i.rep_route_id LIMIT 1)) as rep_name,
+                (SELECT name FROM mca_areas WHERE id = c.mca_id LIMIT 1) as mca,
+                i.notes,
+                'route' as source_type
+            FROM invoices i
+            JOIN customers c ON i.customer_id = c.id
+            WHERE i.stock_status = 'reserved'
+        ) as combined WHERE 1=1";
+
+        $params = [];
+
+        if (!empty($search)) {
+            $queryStr .= " AND (document_number LIKE :search OR customer_name LIKE :search OR notes LIKE :search)";
+            $params[':search'] = '%' . $search . '%';
+        }
+
+        if (!empty($startDate)) {
+            $queryStr .= " AND document_date >= :start_date";
+            $params[':start_date'] = $startDate;
+        }
+
+        if (!empty($endDate)) {
+            $queryStr .= " AND document_date <= :end_date";
+            $params[':end_date'] = $endDate;
+        }
+
+        if ($customerId > 0) {
+            $queryStr .= " AND customer_id = :customer_id";
+            $params[':customer_id'] = $customerId;
+        }
+
+        if (!empty($status)) {
+            $queryStr .= " AND status = :status";
+            $params[':status'] = $status;
+        }
+
+        if (!empty($sourceType)) {
+            $queryStr .= " AND source_type = :source_type";
+            $params[':source_type'] = $sourceType;
+        }
+
+        // Count total records
+        $countQuery = "SELECT COUNT(*) as total FROM (" . $queryStr . ") as count_table";
+        $this->db->query($countQuery);
+        foreach ($params as $key => $val) {
+            $this->db->bind($key, $val);
+        }
+        $countRow = $this->db->single();
+        $totalRecords = $countRow ? intval($countRow->total) : 0;
+        $totalPages = ceil($totalRecords / $limit);
+        if ($totalPages < 1) $totalPages = 1;
+        if ($page > $totalPages) $page = $totalPages;
+
+        // Fetch paginated results
+        $queryStr .= " ORDER BY document_date DESC, id DESC LIMIT :limit OFFSET :offset";
+        $this->db->query($queryStr);
+        foreach ($params as $key => $val) {
+            $this->db->bind($key, $val);
+        }
+        $this->db->bind(':limit', $limit, PDO::PARAM_INT);
+        $this->db->bind(':offset', $offset, PDO::PARAM_INT);
+        $orders = $this->db->resultSet() ?: [];
+
+        // Fetch customers for filter dropdown
+        $this->db->query("SELECT id, name FROM customers ORDER BY name ASC");
+        $customers = $this->db->resultSet() ?: [];
+
+        $data = [
+            'title' => 'Sales Order Center',
+            'orders' => $orders,
+            'customers' => $customers,
+            'search' => $search,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'customer_id' => $customerId,
+            'status' => $status,
+            'source_type' => $sourceType,
+            'page' => $page,
+            'total_pages' => $totalPages,
+            'total_records' => $totalRecords,
+            'content_view' => 'sales_orders/list'
+        ];
+
+        $this->view('layouts/main', $data);
     }
 
     /**
@@ -310,5 +441,108 @@ class SalesOrderController extends Controller {
         ];
 
         $this->view('sales_orders/show', $data);
+    }
+
+    /**
+     * Delete a Standard Sales Order with administrative re-authentication
+     */
+    public function delete($id = null) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . APP_URL . '/salesorder');
+            exit;
+        }
+
+        if (!$id) {
+            $_SESSION['flash_error'] = "Record ID is missing!";
+            header('Location: ' . APP_URL . '/salesorder');
+            exit;
+        }
+
+        $password = $_POST['password'] ?? '';
+        $reason = trim($_POST['delete_reason'] ?? '');
+
+        if (empty($reason)) {
+            $_SESSION['flash_error'] = "Deletion reason is required!";
+            header('Location: ' . APP_URL . '/salesorder');
+            exit;
+        }
+
+        // Authenticate password
+        $userModel = $this->model('User');
+        $username = $_SESSION['username'] ?? '';
+        $user = $userModel->login($username, $password);
+
+        if (!$user) {
+            $_SESSION['flash_error'] = "Authentication failed: Incorrect password!";
+            header('Location: ' . APP_URL . '/salesorder');
+            exit;
+        }
+
+        // Verify Delete Permission
+        if (isset($_SESSION['role']) && strtolower($_SESSION['role']) !== 'admin') {
+            $perms = $_SESSION['permissions'] ?? [];
+            if (!($perms['sales']['can_delete'] ?? false)) {
+                $_SESSION['flash_error'] = "Access denied: You do not have permission to delete sales orders.";
+                header('Location: ' . APP_URL . '/salesorder');
+                exit;
+            }
+        }
+
+        // Fetch Sales Order details
+        $this->db->query("SELECT * FROM sales_orders WHERE id = :id");
+        $this->db->bind(':id', $id);
+        $so = $this->db->single();
+
+        if (!$so) {
+            $_SESSION['flash_error'] = "Sales Order not found!";
+            header('Location: ' . APP_URL . '/salesorder');
+            exit;
+        }
+
+        $this->db->query("SELECT * FROM sales_order_items WHERE sales_order_id = :id");
+        $this->db->bind(':id', $id);
+        $soItems = $this->db->resultSet() ?: [];
+
+        $oldValues = [
+            'sales_order' => $so,
+            'items' => $soItems
+        ];
+
+        // Start transaction
+        $this->db->beginTransaction();
+        try {
+            // Write to deleted_invoices audit table
+            $this->db->query("INSERT INTO deleted_invoices (invoice_number, customer_name, total_amount, deleted_user_name, delete_reason, record_type) 
+                              VALUES (:inv_num, :cust_name, :total, :deleted_user, :reason, 'Sales Order')");
+            $this->db->bind(':inv_num', $so->order_number);
+            $this->db->bind(':cust_name', $so->customer_name);
+            $this->db->bind(':total', $so->grand_total);
+            $this->db->bind(':deleted_user', $_SESSION['username'] ?? 'System');
+            $this->db->bind(':reason', $reason);
+            $this->db->execute();
+
+            // Delete items
+            $this->db->query("DELETE FROM sales_order_items WHERE sales_order_id = :id");
+            $this->db->bind(':id', $id);
+            $this->db->execute();
+
+            // Delete sales order
+            $this->db->query("DELETE FROM sales_orders WHERE id = :id");
+            $this->db->bind(':id', $id);
+            $this->db->execute();
+
+            $this->db->commit();
+
+            // Log general system activity
+            $this->logActivity('Delete Sales Order', 'Sales Order', "Deleted Sales Order {$so->order_number} for customer {$so->customer_name} totaling Rs: " . number_format($so->grand_total, 2) . ". Reason: {$reason}", $id, $oldValues, null);
+
+            $_SESSION['flash_success'] = "Sales Order {$so->order_number} deleted and logged to audit trail successfully!";
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            $_SESSION['flash_error'] = "Failed to delete sales order: " . $e->getMessage();
+        }
+
+        header('Location: ' . APP_URL . '/salesorder');
+        exit;
     }
 }

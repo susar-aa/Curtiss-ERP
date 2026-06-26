@@ -20,18 +20,19 @@
         <table class="po-table" style="width: 100%; border-collapse: collapse; text-align: left;">
             <thead>
                 <tr style="background: #f5f5f7; border-bottom: 1px solid var(--mac-border);">
-                    <th style="padding: 12px 15px; font-size: 12px; font-weight: 600; color: #555; width: 12%;">Invoice No</th>
-                    <th style="padding: 12px 15px; font-size: 12px; font-weight: 600; color: #555; width: 20%;">Customer Name</th>
-                    <th style="padding: 12px 15px; font-size: 12px; font-weight: 600; color: #555; width: 15%; text-align: right;">Grand Total</th>
-                    <th style="padding: 12px 15px; font-size: 12px; font-weight: 600; color: #555; width: 15%;">Deleted By</th>
-                    <th style="padding: 12px 15px; font-size: 12px; font-weight: 600; color: #555; width: 18%;">Deleted At</th>
+                    <th style="padding: 12px 15px; font-size: 12px; font-weight: 600; color: #555; width: 12%;">Document No</th>
+                    <th style="padding: 12px 15px; font-size: 12px; font-weight: 600; color: #555; width: 10%;">Type</th>
+                    <th style="padding: 12px 15px; font-size: 12px; font-weight: 600; color: #555; width: 18%;">Customer Name</th>
+                    <th style="padding: 12px 15px; font-size: 12px; font-weight: 600; color: #555; width: 12%; text-align: right;">Grand Total</th>
+                    <th style="padding: 12px 15px; font-size: 12px; font-weight: 600; color: #555; width: 13%;">Deleted By</th>
+                    <th style="padding: 12px 15px; font-size: 12px; font-weight: 600; color: #555; width: 15%;">Deleted At</th>
                     <th style="padding: 12px 15px; font-size: 12px; font-weight: 600; color: #555; width: 20%;">Reason for Deletion</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if(empty($data['invoices'])): ?>
                     <tr>
-                        <td colspan="6" style="padding: 30px; text-align: center; color: #888; font-size: 14px;">
+                        <td colspan="7" style="padding: 30px; text-align: center; color: #888; font-size: 14px;">
                             No deleted invoices found in the audit trail.
                         </td>
                     </tr>
@@ -40,6 +41,11 @@
                         <tr style="border-bottom: 1px solid #f0f0f2;">
                             <td style="padding: 12px 15px; font-size: 13px; font-weight: 600; color: #333; font-family: monospace;">
                                 <?= htmlspecialchars($invoice->invoice_number) ?>
+                            </td>
+                            <td style="padding: 12px 15px; font-size: 12px;">
+                                <span style="padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; <?= (isset($invoice->record_type) && $invoice->record_type === 'Sales Order') ? 'background: #e3f2fd; color: #0d47a1;' : 'background: #ede7f6; color: #4a148c;' ?>">
+                                    <?= htmlspecialchars($invoice->record_type ?? 'Invoice') ?>
+                                </span>
                             </td>
                             <td style="padding: 12px 15px; font-size: 13px; color: #444;">
                                 <?= htmlspecialchars($invoice->customer_name) ?>
