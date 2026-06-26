@@ -15,6 +15,7 @@ class SalesOrderController extends Controller {
         $this->customerModel = $this->model('Customer');
         $this->itemModel = $this->model('Item');
         $this->companyModel = $this->model('Company');
+        $this->model('Invoice'); // Trigger self-healing DDL migrations for invoices table
         $this->db = new Database();
         
         $this->ensureSalesOrderTablesExist();
@@ -70,6 +71,19 @@ class SalesOrderController extends Controller {
                 $this->db->query("ALTER TABLE sales_orders ADD COLUMN payment_term_id INT NULL DEFAULT NULL AFTER due_date");
                 $this->db->execute();
             }
+
+            // Ensure deleted_invoices table exists
+            $this->db->query("CREATE TABLE IF NOT EXISTS deleted_invoices (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                invoice_number VARCHAR(50) NOT NULL,
+                customer_name VARCHAR(150) NOT NULL,
+                total_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                deleted_user_name VARCHAR(100) NOT NULL,
+                deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                delete_reason TEXT NOT NULL,
+                record_type VARCHAR(20) NOT NULL DEFAULT 'Invoice'
+            )");
+            $this->db->execute();
         } catch (Exception $e) {
             // Fallback silently
         }
@@ -125,7 +139,7 @@ class SalesOrderController extends Controller {
                 i.status, 
                 i.invoice_date as document_date, 
                 i.due_date, 
-                (SELECT CONCAT(e.first_name, ' ', e.last_name) FROM employees e JOIN rep_daily_routes r ON r.user_id = e.user_id WHERE r.id = i.rep_route_id LIMIT 1) as rep_name,
+                (SELECT CONCAT(e.first_name, ' ', e.last_name) FROM employees e JOIN users u ON u.employee_id = e.id JOIN rep_daily_routes r ON r.user_id = u.id WHERE r.id = i.rep_route_id LIMIT 1) as rep_name,
                 (SELECT name FROM mca_areas WHERE id = c.mca_id LIMIT 1) as mca,
                 i.notes,
                 'route' as source_type
