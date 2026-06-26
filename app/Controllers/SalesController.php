@@ -1053,6 +1053,26 @@ class SalesController extends Controller {
         // Cache the invoice items before deletion
         $items = $invoiceModel->getInvoiceItems($id);
 
+        // Fetch rep name if rep_route_id exists
+        $repName = '';
+        if (!empty($inv->rep_route_id)) {
+            $this->db->query("SELECT CONCAT(e.first_name, ' ', e.last_name) as rep_name 
+                              FROM employees e 
+                              JOIN users u ON u.employee_id = e.id 
+                              JOIN rep_daily_routes r ON r.user_id = u.id 
+                              WHERE r.id = :route_id LIMIT 1");
+            $this->db->bind(':route_id', $inv->rep_route_id);
+            $repRow = $this->db->single();
+            $repName = $repRow ? $repRow->rep_name : '';
+        }
+
+        // Fetch MCA
+        $mca = '';
+        $this->db->query("SELECT name FROM mca_areas WHERE id = (SELECT mca_id FROM customers WHERE id = :cust_id LIMIT 1) LIMIT 1");
+        $this->db->bind(':cust_id', $inv->customer_id);
+        $mcaRow = $this->db->single();
+        $mca = $mcaRow ? $mcaRow->name : '';
+
         // Generate next sales order number
         $this->db->query("SELECT id FROM sales_orders ORDER BY id DESC LIMIT 1");
         $lastRow = $this->db->single();
@@ -1093,29 +1113,8 @@ class SalesController extends Controller {
             $this->db->bind(':disc', $discount);
             $this->db->bind(':grand', $grandTotal);
             $this->db->bind(':notes', ($inv->notes ?? '') . " (Converted from Invoice {$inv->invoice_number})");
-            
-            // Find rep name or route details if any
-            $repName = '';
-            if (!empty($inv->rep_route_id)) {
-                $this->db->query("SELECT CONCAT(e.first_name, ' ', e.last_name) as rep_name 
-                                  FROM employees e 
-                                  JOIN users u ON u.employee_id = e.id 
-                                  JOIN rep_daily_routes r ON r.user_id = u.id 
-                                  WHERE r.id = :route_id LIMIT 1");
-                $this->db->bind(':route_id', $inv->rep_route_id);
-                $repRow = $this->db->single();
-                $repName = $repRow ? $repRow->rep_name : '';
-            }
             $this->db->bind(':rep', $repName);
-            
-            // MCA
-            $mca = '';
-            $this->db->query("SELECT name FROM mca_areas WHERE id = (SELECT mca_id FROM customers WHERE id = :cust_id LIMIT 1) LIMIT 1");
-            $this->db->bind(':cust_id', $inv->customer_id);
-            $mcaRow = $this->db->single();
-            $mca = $mcaRow ? $mcaRow->name : '';
             $this->db->bind(':mca', $mca);
-            
             $this->db->bind(':rep_tp', '');
             $this->db->bind(':po', '');
             $this->db->bind(':o_date', date('Y-m-d'));
