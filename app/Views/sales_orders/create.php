@@ -380,15 +380,16 @@ $reps = $db->resultSet();
             $hasVars = !empty($item->variations);
             $stockQty = isset($item->qty) ? $item->qty : ($item->quantity_on_hand ?? 0);
             $baseAvailable = $stockQty - ($item->quantity_reserved ?? 0);
+            $sampleCode = htmlspecialchars(addslashes((string)($item->sample_code ?? '')));
             ?>
             <?php if($hasVars): ?>
-                { id: "<?= $item->id ?>|MIX|1", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($baseAvailable) ?>, code: "<?= htmlspecialchars((string)($item->item_code ?? '')) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?> (MIX)", price: <?= floatval($item->price ?? 0) ?> },
+                { id: "<?= $item->id ?>|MIX|1", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($baseAvailable) ?>, code: "<?= htmlspecialchars((string)($item->item_code ?? '')) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?> (MIX)", price: <?= floatval($item->price ?? 0) ?>, sample_code: "<?= $sampleCode ?>" },
                 <?php foreach($item->variations as $var): ?>
                 <?php $varAvailable = ($var->quantity_on_hand ?? 0) - ($var->quantity_reserved ?? 0); ?>
-                { id: "<?= $item->id ?>|<?= $var->id ?>|0", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($varAvailable) ?>, code: "<?= htmlspecialchars(addslashes((string)($var->sku ?? $item->item_code ?? ''))) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?> - <?= htmlspecialchars(addslashes((string)($var->variation_name ?? ''))) ?>: <?= htmlspecialchars(addslashes((string)($var->value_name ?? ''))) ?>", price: <?= floatval(isset($var->price) && $var->price > 0 ? $var->price : ($item->price ?? 0)) ?> },
+                { id: "<?= $item->id ?>|<?= $var->id ?>|0", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($varAvailable) ?>, code: "<?= htmlspecialchars(addslashes((string)($var->sku ?? $item->item_code ?? ''))) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?> - <?= htmlspecialchars(addslashes((string)($var->variation_name ?? ''))) ?>: <?= htmlspecialchars(addslashes((string)($var->value_name ?? ''))) ?>", price: <?= floatval(isset($var->price) && $var->price > 0 ? $var->price : ($item->price ?? 0)) ?>, sample_code: "<?= $sampleCode ?>" },
                 <?php endforeach; ?>
             <?php else: ?>
-                { id: "<?= $item->id ?>|0|0", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($baseAvailable) ?>, code: "<?= htmlspecialchars((string)($item->item_code ?? '')) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?>", price: <?= floatval($item->price ?? 0) ?> },
+                { id: "<?= $item->id ?>|0|0", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($baseAvailable) ?>, code: "<?= htmlspecialchars((string)($item->item_code ?? '')) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?>", price: <?= floatval($item->price ?? 0) ?>, sample_code: "<?= $sampleCode ?>" },
             <?php endif; ?>
         <?php endforeach; ?>
     ];
@@ -498,14 +499,18 @@ $reps = $db->resultSet();
         resList.innerHTML = '';
         if(!val) { resList.style.display = 'none'; return; }
 
-        const filtered = catalog.filter(i => i.name.toLowerCase().includes(val) || i.code.toLowerCase().includes(val)).slice(0, 15);
+        const filtered = catalog.filter(i => 
+            i.name.toLowerCase().includes(val) || 
+            i.code.toLowerCase().includes(val) ||
+            (i.sample_code && i.sample_code.toLowerCase().includes(val))
+        ).slice(0, 15);
         if(filtered.length === 0) { resList.style.display = 'none'; return; }
 
         filtered.forEach(item => {
             const li = document.createElement('li');
             let stockBadge = item.type === 'Service' ? 'Service' : `Stock: ${item.stock}`;
             li.innerHTML = `
-                <div><strong>${item.name}</strong><br><span style="font-size: 11px; color: #888;">SKU: ${item.code || 'N/A'} | ${stockBadge}</span></div>
+                <div><strong>${item.name}</strong><br><span style="font-size: 11px; color: #888;">SKU: ${item.code || 'N/A'}${item.sample_code ? ' | Sample: ' + item.sample_code : ''} | ${stockBadge}</span></div>
                 <div style="color: #0066cc; font-family: monospace; font-weight: bold; font-size: 14px;">Rs: ${item.price.toFixed(2)}</div>
             `;
             li.onclick = () => { 

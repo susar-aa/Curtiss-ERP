@@ -758,7 +758,7 @@ $editingItems = $data['editing_items'] ?? [];
                 }
 
                 li.innerHTML = `
-                    <div><strong>${item.name}</strong><br><span style="font-size: 11px; color: #888;">SKU: ${item.code || 'N/A'} | ${stockBadge}</span></div>
+                    <div><strong>${item.name}</strong><br><span style="font-size: 11px; color: #888;">SKU: ${item.code || 'N/A'}${item.sample_code ? ' | Sample: ' + item.sample_code : ''} | ${stockBadge}</span></div>
                     <div style="color: #0066cc; font-family: monospace; font-weight: bold; font-size: 14px;">Rs: ${item.price.toFixed(2)}</div>
                 `;
                 
