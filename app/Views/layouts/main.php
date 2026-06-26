@@ -133,132 +133,264 @@ if (!function_exists('hasPermission')) {
             overflow: hidden;
         }
 
-        /* --- GLASSMORPHISM FLOATING NAV BAR --- */
+        /* --- GLASSMORPHISM FLOATING NAV BAR (Redesigned) --- */
         .glass-nav {
             position: fixed;
-            top: 16px;
+            top: 12px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 2000;
             display: flex;
             align-items: center;
-            height: 48px;
-            padding: 0 8px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(var(--glass-blur));
-            -webkit-backdrop-filter: blur(var(--glass-blur));
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            box-shadow: var(--glass-shadow);
-            min-width: 200px;
-            max-width: calc(100% - 32px);
-            width: auto;
-            transition: box-shadow 0.3s ease, background 0.3s ease;
+            height: 54px;
+            padding: 0 12px;
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 28px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0,0,0,0.04);
+            width: calc(100% - 40px);
+            max-width: 1400px;
+            transition: box-shadow 0.3s ease;
+            gap: 8px;
         }
-        
+        @media (prefers-color-scheme: dark) {
+            .glass-nav {
+                background: rgba(22, 22, 38, 0.88);
+                border-color: rgba(255,255,255,0.10);
+                box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+            }
+        }
         .glass-nav:hover {
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+            box-shadow: 0 8px 36px rgba(0, 0, 0, 0.13);
         }
-        
+
+        /* Brand section */
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            flex-shrink: 0;
+            padding: 0 6px;
+        }
+        .nav-brand-logo {
+            width: 30px;
+            height: 30px;
+            background: var(--text-main);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            flex-shrink: 0;
+        }
+        @media (prefers-color-scheme: dark) {
+            .nav-brand-logo { background: #e8e8f0; color: #1a1a2e; }
+        }
+        .nav-brand-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.3px;
+        }
+
+        /* Vertical divider */
+        .glass-nav-divider {
+            width: 1px;
+            height: 24px;
+            background: rgba(0,0,0,0.08);
+            flex-shrink: 0;
+            margin: 0 4px;
+        }
+        @media (prefers-color-scheme: dark) {
+            .glass-nav-divider { background: rgba(255,255,255,0.08); }
+        }
+
+        /* Nav menu items (left area) */
         .glass-nav-left {
             display: flex;
             align-items: center;
             height: 100%;
-            gap: 2px;
+            gap: 1px;
             flex-shrink: 0;
         }
-        
-        .glass-nav-right {
-            display: flex;
-            align-items: center;
-            height: 100%;
-            gap: 2px;
-            margin-left: auto;
-            flex-shrink: 0;
-        }
-        
-        .glass-nav-divider {
-            width: 1px;
-            height: 24px;
-            background: var(--mega-divider);
-            margin: 0 6px;
-            flex-shrink: 0;
-        }
-
         .glass-nav-item {
             cursor: pointer;
-            padding: 0 12px;
+            padding: 0 11px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
             height: 36px;
-            color: var(--text-main);
+            color: var(--text-muted);
             text-decoration: none;
-            font-size: 13px;
+            font-size: 12.5px;
             font-weight: 500;
-            border-radius: 10px;
-            transition: background 0.2s ease, color 0.2s ease;
+            border-radius: 20px;
+            transition: background 0.18s ease, color 0.18s ease;
             white-space: nowrap;
             position: relative;
         }
-        
         .glass-nav-item:hover {
             background: rgba(79, 70, 229, 0.08);
             color: var(--text-accent);
         }
-        
-        .glass-nav-item.brand {
-            font-weight: 700;
-            font-size: 14px;
-            padding: 0 14px;
-            color: var(--text-accent);
-            gap: 8px;
-        }
-        
-        .glass-nav-item.brand:hover {
-            background: rgba(79, 70, 229, 0.12);
-        }
 
-        /* --- CURRENT PAGE INDICATOR CHIP --- */
-        .page-indicator {
+        /* Center search bar */
+        .nav-search-wrap {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            justify-content: center;
+            padding: 0 8px;
+        }
+        .nav-search {
             display: flex;
             align-items: center;
-            gap: 6px;
-            background: rgba(79, 70, 229, 0.1);
-            color: var(--text-accent);
-            border-radius: 10px;
-            padding: 0 14px;
-            height: 30px;
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.3px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 180px;
+            gap: 8px;
+            width: 100%;
+            max-width: 480px;
+            height: 36px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 20px;
+            padding: 0 14px 0 14px;
+            transition: background 0.2s, box-shadow 0.2s;
+            cursor: text;
         }
-        
-        .page-indicator .dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--text-accent);
+        @media (prefers-color-scheme: dark) {
+            .nav-search { background: rgba(255,255,255,0.07); }
+        }
+        .nav-search:hover, .nav-search:focus-within {
+            background: rgba(0,0,0,0.08);
+            box-shadow: 0 0 0 2px rgba(79,70,229,0.18);
+        }
+        @media (prefers-color-scheme: dark) {
+            .nav-search:hover, .nav-search:focus-within { background: rgba(255,255,255,0.11); }
+        }
+        .nav-search i {
+            color: var(--text-muted);
+            font-size: 15px;
             flex-shrink: 0;
-            animation: pulse-dot 2s ease-in-out infinite;
         }
-        
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
+        .nav-search input {
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 13px;
+            color: var(--text-main);
+            width: 100%;
+            font-family: inherit;
+        }
+        .nav-search input::placeholder { color: var(--text-muted); }
+        .nav-search-shortcut {
+            width: 26px;
+            height: 18px;
+            background: rgba(0,0,0,0.07);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 0;
+            flex-shrink: 0;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        @media (prefers-color-scheme: dark) {
+            .nav-search-shortcut { background: rgba(255,255,255,0.1); }
         }
 
-        /* --- MEGA MENU (Glassmorphism Redesign) --- */
+        /* Right action cluster */
+        .glass-nav-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .nav-icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 17px;
+            text-decoration: none;
+            transition: background 0.18s, color 0.18s;
+            position: relative;
+            cursor: pointer;
+        }
+        .nav-icon-btn:hover {
+            background: rgba(79, 70, 229, 0.08);
+            color: var(--text-accent);
+        }
+        .nav-icon-btn.active-red { color: #ef4444; }
+        .nav-icon-btn.active-red:hover { background: rgba(239,68,68,0.08); color: #ef4444; }
+
+        /* User pill */
+        .nav-user-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 3px 10px 3px 12px;
+            border-radius: 20px;
+            cursor: default;
+            transition: background 0.18s;
+        }
+        .nav-user-pill:hover {
+            background: rgba(79,70,229,0.06);
+        }
+        .nav-user-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+            white-space: nowrap;
+        }
+        .nav-user-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+            letter-spacing: 0;
+        }
+
+        /* Badge */
+        .badge-alert {
+            background: #ef4444;
+            color: #fff;
+            border-radius: 10px;
+            padding: 2px 5px;
+            font-size: 9px;
+            font-weight: 700;
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            border: 2px solid rgba(255,255,255,0.9);
+            line-height: 1.2;
+            min-width: 16px;
+            text-align: center;
+        }
+
+        /* --- MEGA MENU (Glassmorphism) --- */
         .glass-menu-container {
             height: 100%;
             display: flex;
             position: relative;
         }
-        
         .glass-menu-container .mega-menu {
             display: none;
             position: absolute;
@@ -272,45 +404,29 @@ if (!function_exists('hasPermission')) {
             border-radius: 16px;
             box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
             padding: 8px 0;
-            z-index: 2000;
+            z-index: 3000;
             flex-direction: row;
             cursor: default;
             min-width: 200px;
             animation: megaFadeIn 0.2s ease;
         }
-        
         @keyframes megaFadeIn {
             from { opacity: 0; transform: translateY(-6px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
-        .glass-menu-container:hover .mega-menu {
-            display: flex;
-        }
-        
-        /* Right-align menus to avoid bleeding off screen */
-        .align-right .mega-menu {
-            left: auto;
-            right: 0;
-        }
-        
-        /* Prevent hover styles from leaking into mega menu items */
+        .glass-menu-container:hover .mega-menu { display: flex; }
+        .align-right .mega-menu { left: auto; right: 0; }
         .glass-menu-container:hover .mega-menu .glass-nav-item {
             background: transparent;
             color: var(--text-main);
         }
-        
-        /* Columns */
         .mega-menu-col {
             padding: 12px 20px;
             display: flex;
             flex-direction: column;
             min-width: 220px;
         }
-        .mega-menu-col:not(:first-child) {
-            border-left: 1px solid var(--mega-divider);
-        }
-        
+        .mega-menu-col:not(:first-child) { border-left: 1px solid var(--mega-divider); }
         .mega-menu-header {
             font-size: 10px;
             text-transform: uppercase;
@@ -320,12 +436,7 @@ if (!function_exists('hasPermission')) {
             font-weight: 600;
             padding: 0 6px;
         }
-        
-        /* Card Grid */
-        .mega-cards-grid {
-            display: flex;
-            gap: 10px;
-        }
+        .mega-cards-grid { display: flex; gap: 10px; }
         .mega-card {
             background: var(--mega-card-bg);
             border-radius: 12px;
@@ -345,10 +456,7 @@ if (!function_exists('hasPermission')) {
             transform: translateY(-2px);
             border-color: var(--glass-border);
         }
-        .mega-card .icon {
-            font-size: 22px;
-            color: var(--text-main);
-        }
+        .mega-card .icon { font-size: 22px; color: var(--text-main); }
         .mega-card-text {
             display: flex;
             flex-direction: column;
@@ -437,7 +545,7 @@ if (!function_exists('hasPermission')) {
             flex: 1;
             overflow: hidden;
             position: relative;
-            margin-top: 76px; /* Space for floating nav bar (16px top + 48px height + 12px gap) */
+            margin-top: 82px; /* Space for floating nav bar (12px top + 54px height + 16px gap) */
         }
         
         .main-content {
@@ -605,23 +713,19 @@ if (!function_exists('hasPermission')) {
         }
     ?>
 
-    <!-- GLASSMORPHISM FLOATING NAV BAR -->
+    <!-- FLOATING NAV BAR (Redesigned) -->
     <nav class="glass-nav">
+
+        <!-- Brand -->
+        <a href="<?= APP_URL ?>/dashboard" class="nav-brand">
+            <div class="nav-brand-logo"><?= strtoupper(substr(APP_NAME, 0, 2)) ?></div>
+            <span class="nav-brand-name"><?= APP_NAME ?></span>
+        </a>
+
+        <div class="glass-nav-divider"></div>
+
+        <!-- Left Nav Items (Mega Menus) -->
         <div class="glass-nav-left">
-            <a href="<?= APP_URL ?>/dashboard" class="glass-nav-item brand">
-                <i class="ph-fill ph-apple-logo" style="font-size: 15px;"></i> 
-                <?= APP_NAME ?>
-            </a>
-            
-            <div class="glass-nav-divider"></div>
-            
-            <!-- Page Indicator Chip -->
-            <div class="page-indicator" title="<?= htmlspecialchars($currentPageTitle) ?>">
-                <span class="dot"></span>
-                <span><?= $currentPageName ?></span>
-            </div>
-            
-            <div class="glass-nav-divider"></div>
             
             <!-- 1. Sales & CRM -->
             <?php 
@@ -1161,29 +1265,45 @@ if (!function_exists('hasPermission')) {
                 </div>
             </div>
             <?php endif; ?>
+        </div><!-- /.glass-nav-left -->
+
+        <!-- Center Search Bar -->
+        <div class="nav-search-wrap">
+            <div class="nav-search" onclick="this.querySelector('input').focus()">
+                <i class="ph ph-magnifying-glass"></i>
+                <input type="text" id="navGlobalSearch" placeholder="Search products, customers, invoices..." autocomplete="off">
+                <span class="nav-search-shortcut" title="Press / to search">/</span>
+            </div>
         </div>
-        
+
+        <!-- Right Actions -->
         <div class="glass-nav-right">
             <?php if (!empty($storeUrl)): ?>
-                <a href="<?= htmlspecialchars($storeUrl) ?>" target="_blank" class="glass-nav-item" style="color: var(--text-accent); font-weight: 600;">
-                    <i class="ph ph-arrow-square-out" style="font-size: 15px;"></i> Store
-                </a>
+            <a href="<?= htmlspecialchars($storeUrl) ?>" target="_blank" class="nav-icon-btn" title="Open Store">
+                <i class="ph ph-storefront"></i>
+            </a>
             <?php endif; ?>
-            <a href="<?= APP_URL ?>/notification" class="glass-nav-item" style="position: relative;">
-                <i class="ph ph-bell" style="font-size: 16px;"></i>
+
+            <a href="<?= APP_URL ?>/notification" class="nav-icon-btn" title="Notifications">
+                <i class="ph ph-bell"></i>
                 <?php if($notifCount > 0): ?>
                     <span class="badge-alert"><?= $notifCount ?></span>
                 <?php endif; ?>
             </a>
-            <span class="glass-nav-item" style="cursor:default;">
-                <i class="ph ph-user" style="font-size: 15px;"></i>
-                <?= htmlspecialchars($_SESSION['username'] ?? 'User') ?>
-            </span>
-            
-            <a href="<?= APP_URL ?>/auth/logout" class="glass-nav-item" style="color:#ef4444; font-weight:600;">
-                <i class="ph ph-sign-out" style="font-size: 15px;"></i>
+
+            <div class="glass-nav-divider"></div>
+
+            <!-- User Pill -->
+            <div class="nav-user-pill">
+                <span class="nav-user-name"><?= htmlspecialchars($_SESSION['username'] ?? 'User') ?></span>
+                <div class="nav-user-avatar"><?= strtoupper(substr($_SESSION['username'] ?? 'U', 0, 2)) ?></div>
+            </div>
+
+            <a href="<?= APP_URL ?>/auth/logout" class="nav-icon-btn active-red" title="Sign out" style="margin-left: 2px;">
+                <i class="ph ph-sign-out"></i>
             </a>
         </div>
+
     </nav>
 
     <div class="app-container">
