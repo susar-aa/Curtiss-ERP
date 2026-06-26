@@ -53,6 +53,18 @@ class RepTrackingController extends Controller {
         $db->query("SELECT id, account_code, account_name FROM chart_of_accounts ORDER BY account_code ASC");
         $allAccounts = $db->resultSet() ?: [];
 
+        // Fetch active reps (users with role = 'rep')
+        $db->query("SELECT u.id, u.username, e.first_name, e.last_name 
+                    FROM users u 
+                    LEFT JOIN employees e ON u.employee_id = e.id 
+                    WHERE u.role = 'rep' AND (u.status IS NULL OR u.status = 'Active') 
+                    ORDER BY e.first_name ASC, u.username ASC");
+        $repsList = $db->resultSet() ?: [];
+
+        // Fetch active MCA areas (territories)
+        $db->query("SELECT id, name FROM mca_areas WHERE status = 'active' OR status IS NULL ORDER BY name ASC");
+        $mcaAreas = $db->resultSet() ?: [];
+
         $data = [
             'title' => 'Master Route Control Panel',
             'content_view' => 'rep-tracking/index',
@@ -61,7 +73,9 @@ class RepTrackingController extends Controller {
             'drivers' => $drivers,
             'employees' => $allEmployees,
             'bank_accounts' => $bankAccounts,
-            'all_accounts' => $allAccounts
+            'all_accounts' => $allAccounts,
+            'reps' => $repsList,
+            'mca_areas' => $mcaAreas
         ];
         
         $this->view('layouts/main', $data);
@@ -2231,5 +2245,51 @@ class RepTrackingController extends Controller {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
             exit;
         }
+    }
+
+    public function create_route_manual() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . APP_URL . '/RepTracking');
+            exit;
+        }
+
+        $this->validateCsrf();
+
+        $userId = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+        $routeName = isset($_POST['route_name']) ? trim($_POST['route_name']) : '';
+        $startMeter = isset($_POST['start_meter']) ? floatval($_POST['start_meter']) : 0.0;
+        $startTime = isset($_POST['start_time']) ? trim($_POST['start_time']) : '';
+
+        if ($userId <= 0 || empty($routeName) || empty($startTime)) {
+            $_SESSION['flash_error'] = 'Invalid route input. Please fill in all fields.';
+            header('Location: ' . APP_URL . '/RepTracking');
+            exit;
+        }
+
+        // Generate unique UUID
+        $uuid = bin2hex(random_bytes(16));
+        $uuid = substr($uuid, 0, 8) . '-' . substr($uuid, 8, 4) . '-' . substr($uuid, 12, 4) . '-' . substr($uuid, 16, 4) . '-' . substr($uuid, 20, 12);
+
+        $db = new Database();
+        try {
+            $db->query("INSERT INTO rep_daily_routes (user_id, route_name, start_meter, start_time, start_lat, start_lng, status, uuid) 
+                        VALUES (:user_id, :route_name, :start_meter, :start_time, 0.0, 0.0, 'Active', :uuid)");
+            $db->bind(':user_id', $userId);
+            $db->bind(':route_name', $routeName);
+            $db->bind(':start_meter', $startMeter);
+            $db->bind(':start_time', $startTime);
+            $db->bind(':uuid', $uuid);
+            
+            if ($db->execute()) {
+                $_SESSION['flash_success'] = "Route '{$routeName}' created successfully.";
+            } else {
+                $_SESSION['flash_error'] = 'Failed to create route.';
+            }
+        } catch (Exception $e) {
+            $_SESSION['flash_error'] = 'Database Error: ' . $e->getMessage();
+        }
+
+        header('Location: ' . APP_URL . '/RepTracking');
+        exit;
     }
 }

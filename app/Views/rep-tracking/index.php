@@ -275,12 +275,29 @@
     }
 </style>
 
+<?php if (isset($_SESSION['flash_success'])): ?>
+    <div style="background: #e2f0d9; border: 1px solid #2e7d32; color: #2e7d32; padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; font-size: 13px;">
+        <?= htmlspecialchars($_SESSION['flash_success']) ?>
+    </div>
+    <?php unset($_SESSION['flash_success']); ?>
+<?php endif; ?>
+
+<?php if (isset($_SESSION['flash_error'])): ?>
+    <div style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; font-size: 13px;">
+        <?= htmlspecialchars($_SESSION['flash_error']) ?>
+    </div>
+    <?php unset($_SESSION['flash_error']); ?>
+<?php endif; ?>
+
 <div class="header-actions" style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
     <div>
         <h2 style="margin: 0; font-weight: 700;">🛡️ Master Route Control Panel</h2>
         <p style="margin: 5px 0 0 0; color: #666; font-size: 13px;">Manage route status updates, arrange dispatches, verify picking, and settle General Ledger postings.</p>
     </div>
     <div style="display: flex; gap: 10px;">
+        <button onclick="openCreateRouteModal()" style="padding: 10px 18px; border: none; background: #2e7d32; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(46, 125, 50, 0.2); transition: all 0.2s ease;">
+            ➕ Create Route Manually
+        </button>
         <button id="btnOpenRouteBinding" onclick="openRouteBindingModal()" style="padding: 10px 18px; border: none; background: #3f51b5; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(63, 81, 181, 0.2); transition: all 0.2s ease;">
             🔗 Route Binding Panel
         </button>
@@ -948,6 +965,51 @@
     </div>
 </div>
 
+<!-- Create Manual Route Modal -->
+<div class="modal-backdrop" id="createManualRouteModal">
+    <div class="modal-panel" style="max-width: 480px; width: 95%;">
+        <div class="modal-header" style="background: #2e7d32;">
+            <span>➕ Create Route Manually</span>
+            <button onclick="closeCreateRouteModal()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
+        </div>
+        <form action="<?= APP_URL ?>/RepTracking/create_route_manual" method="POST">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+            <div class="modal-body">
+                <div>
+                    <label for="mrRep">Select Representative *</label>
+                    <select name="user_id" id="mrRep" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: white;" required>
+                        <option value="">-- Select Rep --</option>
+                        <?php foreach($data['reps'] as $rep): ?>
+                            <option value="<?= $rep->id ?>"><?= htmlspecialchars(($rep->first_name ? $rep->first_name . ' ' . $rep->last_name : $rep->username)) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label for="mrRouteName">Route Name (Territory/Area) *</label>
+                    <input list="mca_areas_list" name="route_name" id="mrRouteName" placeholder="Select or type route name..." style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: white;" required autocomplete="off">
+                    <datalist id="mca_areas_list">
+                        <?php foreach($data['mca_areas'] as $area): ?>
+                            <option value="<?= htmlspecialchars($area->name) ?>"></option>
+                        <?php endforeach; ?>
+                    </datalist>
+                </div>
+                <div>
+                    <label for="mrStartMeter">Starting Odometer / Meter *</label>
+                    <input type="number" step="0.1" name="start_meter" id="mrStartMeter" value="0.0" min="0" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: white;" required>
+                </div>
+                <div>
+                    <label for="mrStartTime">Start Date & Time *</label>
+                    <input type="datetime-local" name="start_time" id="mrStartTime" value="<?= date('Y-m-d\TH:i') ?>" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: white;" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="qb-btn" onclick="closeCreateRouteModal()" style="border:1px solid #ccc; padding:8px 18px; border-radius:4px; font-size:12px; cursor:pointer;">Cancel</button>
+                <button type="submit" class="qb-btn" style="background:#2e7d32; color:#fff; border:none; padding:8px 18px; border-radius:4px; font-size:12px; cursor:pointer; font-weight: bold;">⚡ Create Route</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Route Multi-Binding Modal -->
 <div class="modal-backdrop" id="routeBindingModal">
     <div class="modal-panel" style="max-width: 900px; width: 95%; max-height: 90vh;">
@@ -1150,6 +1212,23 @@
 
     function closeRouteSwitcherModal() {
         const modal = document.getElementById('routeSwitcherModalBackdrop');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function openCreateRouteModal() {
+        const modal = document.getElementById('createManualRouteModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            // Set current date/time to now
+            const now = new Date();
+            const offset = now.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(now - offset)).toISOString().slice(0, 16);
+            document.getElementById('mrStartTime').value = localISOTime;
+        }
+    }
+
+    function closeCreateRouteModal() {
+        const modal = document.getElementById('createManualRouteModal');
         if (modal) modal.style.display = 'none';
     }
 

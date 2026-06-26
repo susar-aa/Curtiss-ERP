@@ -1608,10 +1608,12 @@ if (!function_exists('hasPermission')) {
 
     <script>
         // --- Session Expiration and Inactivity Monitoring ---
-        let sessionExpiredHandled = false;
+        if (typeof window.sessionExpiredHandled === 'undefined') {
+            window.sessionExpiredHandled = false;
+        }
         function handleSessionExpiration() {
-            if (sessionExpiredHandled) return;
-            sessionExpiredHandled = true;
+            if (window.sessionExpiredHandled) return;
+            window.sessionExpiredHandled = true;
 
             // Save the current location (path + query parameters)
             const currentUrl = window.location.pathname + window.location.search;
@@ -1663,7 +1665,7 @@ if (!function_exists('hasPermission')) {
         let inactivityTimeout;
         const TIMEOUT_DURATION = 15 * 60 * 1000; // 15 minutes
         function resetInactivityTimer() {
-            if (sessionExpiredHandled) return;
+            if (window.sessionExpiredHandled) return;
             clearTimeout(inactivityTimeout);
             inactivityTimeout = setTimeout(handleInactivityTimeout, TIMEOUT_DURATION);
         }
@@ -1682,7 +1684,7 @@ if (!function_exists('hasPermission')) {
 
         // 4. Browser Multi-Tab Check (Poller runs every 10 seconds)
         setInterval(() => {
-            if (sessionExpiredHandled) return;
+            if (window.sessionExpiredHandled) return;
             originalFetch('<?= APP_URL ?>/auth/check_session')
                 .then(res => res.json())
                 .then(data => {
