@@ -74,7 +74,7 @@ if (!function_exists('hasPermission')) {
             --text-accent-light: #818cf8;
             
             /* Mega Menu Variables */
-            --mega-bg: rgba(255, 255, 255, 0.88);
+            --mega-bg: #ffffff;
             --mega-card-bg: rgba(249, 250, 251, 0.8);
             --mega-card-hover: rgba(238, 242, 255, 0.9);
             --mega-icon-border: rgba(229, 231, 235, 0.6);
@@ -100,7 +100,7 @@ if (!function_exists('hasPermission')) {
                 --text-accent: #818cf8;
                 --text-accent-light: #a5b4fc;
                 
-                --mega-bg: rgba(25, 25, 42, 0.92);
+                --mega-bg: #141426;
                 --mega-card-bg: rgba(35, 35, 55, 0.8);
                 --mega-card-hover: rgba(55, 55, 80, 0.9);
                 --mega-icon-border: rgba(55, 55, 80, 0.6);
@@ -412,8 +412,6 @@ if (!function_exists('hasPermission')) {
             left: 0;
             margin-top: 8px;
             background: var(--mega-bg);
-            backdrop-filter: blur(28px);
-            -webkit-backdrop-filter: blur(28px);
             border: 1px solid var(--glass-border);
             border-radius: 16px;
             box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
@@ -1687,72 +1685,146 @@ if (!function_exists('hasPermission')) {
     <div class="fs-overlay" id="fsOverlay">
         <button class="fs-close" onclick="closeFsMenu()"><i class="ph ph-x"></i></button>
         <div class="fs-inner">
-            <div class="fs-title">Navigation</div>
+            <div class="fs-title">Navigation Menu</div>
             <div class="fs-sections">
 
+                <!-- 1. Sales & CRM -->
+                <?php 
+                $fsSalesCRM = hasPermission('crm') || hasPermission('customer') || hasPermission('estimate') || hasPermission('sales') || hasPermission('creditnote') || hasPermission('dunning') || hasPermission('discount') || hasPermission('reptracking') || hasPermission('delivery') || hasPermission('territory');
+                if ($fsSalesCRM): 
+                ?>
                 <div class="fs-section">
-                    <div class="fs-section-label">Vendors</div>
+                    <div class="fs-section-label">Sales &amp; CRM</div>
                     <div class="fs-row">
-                        <a href="<?= APP_URL ?>/purchase" class="fs-link"><i class="ph ph-shopping-cart"></i> Purchase Orders</a>
-                        <span class="fs-arrow">→</span>
-                        <a href="<?= APP_URL ?>/expenses" class="fs-link"><i class="ph ph-receipt"></i> Enter Bills</a>
+                        <?php if (hasPermission('crm')): ?><a href="<?= APP_URL ?>/crm" class="fs-link"><i class="ph ph-briefcase"></i> Leads &amp; CRM</a><?php endif; ?>
+                        <?php if (hasPermission('customer')): ?><a href="<?= APP_URL ?>/customer" class="fs-link"><i class="ph ph-users"></i> Customers</a><?php endif; ?>
+                        <?php if (hasPermission('estimate')): ?><a href="<?= APP_URL ?>/estimate" class="fs-link"><i class="ph ph-file-text"></i> Estimates</a><?php endif; ?>
+                        <?php if (hasPermission('sales')): ?>
+                            <a href="<?= APP_URL ?>/sales/create" class="fs-link"><i class="ph ph-pencil-simple"></i> Billing Creator</a>
+                            <a href="<?= APP_URL ?>/salesorder" class="fs-link"><i class="ph ph-list-bullets"></i> Sales Orders</a>
+                            <a href="<?= APP_URL ?>/sales" class="fs-link"><i class="ph ph-credit-card"></i> Invoices &amp; AR</a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('creditnote')): ?><a href="<?= APP_URL ?>/creditnote" class="fs-link"><i class="ph ph-money"></i> Refunds</a><?php endif; ?>
+                        <?php if (hasPermission('dunning')): ?><a href="<?= APP_URL ?>/dunning" class="fs-link"><i class="ph ph-clock"></i> Dunning</a><?php endif; ?>
+                        <?php if (hasPermission('discount')): ?><a href="<?= APP_URL ?>/discount" class="fs-link"><i class="ph ph-tag"></i> Discounts</a><?php endif; ?>
+                        <?php if (hasPermission('reptracking')): ?><a href="<?= APP_URL ?>/RepTracking/index" class="fs-link"><i class="ph ph-map-pin"></i> Route Control</a><?php endif; ?>
+                        <?php if (hasPermission('territory')): ?><a href="<?= APP_URL ?>/territory" class="fs-link"><i class="ph ph-map-trifold"></i> Territory</a><?php endif; ?>
+                        <?php if (hasPermission('sales')): ?><a href="<?= APP_URL ?>/sales/deleted_list" class="fs-link text-danger"><i class="ph ph-trash"></i> Deleted Invoices</a><?php endif; ?>
                     </div>
                 </div>
+                <?php endif; ?>
 
+                <!-- 2. Supply Chain -->
+                <?php 
+                $fsSupplyChain = hasPermission('inventory') || hasPermission('supplier') || hasPermission('category') || hasPermission('variation') || hasPermission('warehouse') || hasPermission('purchase') || hasPermission('grn') || hasPermission('supplier_return') || hasPermission('expenses');
+                if ($fsSupplyChain):
+                ?>
                 <div class="fs-section">
-                    <div class="fs-section-label">Customers</div>
+                    <div class="fs-section-label">Supply Chain</div>
                     <div class="fs-row">
-                        <a href="<?= APP_URL ?>/crm" class="fs-link"><i class="ph ph-briefcase"></i> Leads &amp; CRM</a>
-                        <span class="fs-arrow">→</span>
-                        <a href="<?= APP_URL ?>/estimate" class="fs-link"><i class="ph ph-file-text"></i> Estimates</a>
-                        <span class="fs-arrow">→</span>
-                        <a href="<?= APP_URL ?>/sales" class="fs-link"><i class="ph ph-credit-card"></i> Invoices</a>
-                        <span class="fs-arrow">→</span>
-                        <a href="<?= APP_URL ?>/banking" class="fs-link"><i class="ph ph-hand-coins"></i> Payments</a>
-                    </div>
-                    <div class="fs-row" style="margin-top:6px">
-                        <a href="<?= APP_URL ?>/territory" class="fs-link"><i class="ph ph-map-trifold"></i> Territory</a>
-                        <a href="<?= APP_URL ?>/creditnote" class="fs-link"><i class="ph ph-arrow-counter-clockwise"></i> Refunds</a>
-                    </div>
-                </div>
-
-                <div class="fs-section">
-                    <div class="fs-section-label">Employees</div>
-                    <div class="fs-row">
-                        <a href="<?= APP_URL ?>/hrm" class="fs-link"><i class="ph ph-user-circle-gear"></i> Directory</a>
-                        <span class="fs-arrow">→</span>
-                        <a href="<?= APP_URL ?>/hrm/payroll" class="fs-link"><i class="ph ph-bank"></i> Payroll</a>
-                    </div>
-                </div>
-
-                <div class="fs-section">
-                    <div class="fs-section-label">Company</div>
-                    <div class="fs-row">
-                        <a href="<?= APP_URL ?>/accounting/coa" class="fs-link"><i class="ph ph-notebook"></i> Chart of Accts</a>
-                        <a href="<?= APP_URL ?>/inventory" class="fs-link"><i class="ph ph-package"></i> Inventory</a>
-                        <a href="<?= APP_URL ?>/settings" class="fs-link"><i class="ph ph-gear"></i> Settings</a>
-                        <a href="<?= APP_URL ?>/report" class="fs-link"><i class="ph ph-chart-line-up"></i> Reports</a>
+                        <?php if (hasPermission('inventory')): ?><a href="<?= APP_URL ?>/inventory" class="fs-link"><i class="ph ph-package"></i> Products</a><?php endif; ?>
+                        <?php if (hasPermission('supplier')): ?><a href="<?= APP_URL ?>/supplier" class="fs-link"><i class="ph ph-factory"></i> Suppliers</a><?php endif; ?>
+                        <?php if (hasPermission('category')): ?><a href="<?= APP_URL ?>/category" class="fs-link"><i class="ph ph-tag"></i> Categories</a><?php endif; ?>
+                        <?php if (hasPermission('variation')): ?><a href="<?= APP_URL ?>/variation" class="fs-link"><i class="ph ph-sparkle"></i> Variations</a><?php endif; ?>
+                        <?php if (hasPermission('warehouse')): ?>
+                            <a href="<?= APP_URL ?>/warehouse" class="fs-link"><i class="ph ph-buildings"></i> Warehouses</a>
+                            <a href="<?= APP_URL ?>/warehouse/transfer" class="fs-link"><i class="ph ph-arrows-left-right"></i> Stock Transfer</a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('inventory')): ?>
+                            <a href="<?= APP_URL ?>/inventory/reserved" class="fs-link"><i class="ph ph-shield-check"></i> Reserved Stock</a>
+                            <a href="<?= APP_URL ?>/inventory/history" class="fs-link"><i class="ph ph-chart-bar"></i> Pricing History</a>
+                            <a href="<?= APP_URL ?>/stockledger" class="fs-link"><i class="ph ph-receipt"></i> Stock Ledger</a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('purchase')): ?><a href="<?= APP_URL ?>/purchase" class="fs-link"><i class="ph ph-shopping-cart"></i> Purchase Orders</a><?php endif; ?>
+                        <?php if (hasPermission('grn')): ?><a href="<?= APP_URL ?>/grn" class="fs-link"><i class="ph ph-tray-arrow-down"></i> GRN</a><?php endif; ?>
+                        <?php if (hasPermission('supplier_return')): ?><a href="<?= APP_URL ?>/supplier-return" class="fs-link"><i class="ph ph-arrow-counter-clockwise"></i> Returns</a><?php endif; ?>
+                        <?php if (hasPermission('expenses')): ?><a href="<?= APP_URL ?>/expenses" class="fs-link"><i class="ph ph-receipt"></i> Expenses &amp; AP</a><?php endif; ?>
                     </div>
                 </div>
+                <?php endif; ?>
 
+                <!-- 3. Operations -->
+                <?php 
+                $fsOperations = hasPermission('hrm') || hasPermission('project') || hasPermission('vehicle') || hasPermission('cheque');
+                if ($fsOperations):
+                ?>
                 <div class="fs-section">
-                    <div class="fs-section-label">Banking</div>
+                    <div class="fs-section-label">Operations</div>
                     <div class="fs-row">
-                        <a href="<?= APP_URL ?>/banking" class="fs-link"><i class="ph ph-bank"></i> Deposits</a>
-                        <a href="<?= APP_URL ?>/accounting/journal" class="fs-link"><i class="ph ph-pen-nib"></i> Journal</a>
-                        <a href="<?= APP_URL ?>/banking" class="fs-link"><i class="ph ph-check-circle"></i> Reconcile</a>
-                        <a href="<?= APP_URL ?>/cheque" class="fs-link"><i class="ph ph-signature"></i> Cheques</a>
+                        <?php if (hasPermission('hrm')): ?>
+                            <a href="<?= APP_URL ?>/hrm" class="fs-link"><i class="ph ph-user-circle-gear"></i> HRM &amp; Employees</a>
+                            <a href="<?= APP_URL ?>/hrm/payroll" class="fs-link"><i class="ph ph-bank"></i> Run Payroll</a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('project')): ?><a href="<?= APP_URL ?>/project" class="fs-link"><i class="ph ph-clipboard-text"></i> Projects</a><?php endif; ?>
+                        <?php if (hasPermission('vehicle')): ?><a href="<?= APP_URL ?>/vehicle" class="fs-link"><i class="ph ph-car-profile"></i> Vehicles</a><?php endif; ?>
+                        <?php if (hasPermission('cheque')): ?><a href="<?= APP_URL ?>/cheque" class="fs-link"><i class="ph ph-signature"></i> Cheques</a><?php endif; ?>
                     </div>
                 </div>
+                <?php endif; ?>
 
+                <!-- 4. Accounting -->
+                <?php 
+                $fsAccounting = hasPermission('accounting') || hasPermission('customerpayment') || hasPermission('supplierpayment') || hasPermission('asset');
+                if ($fsAccounting):
+                ?>
                 <div class="fs-section">
-                    <div class="fs-section-label">Admin</div>
+                    <div class="fs-section-label">Accounting</div>
                     <div class="fs-row">
-                        <a href="<?= APP_URL ?>/user" class="fs-link"><i class="ph ph-lock-key"></i> Users</a>
-                        <a href="<?= APP_URL ?>/audit" class="fs-link"><i class="ph ph-shield-check"></i> Audit Trail</a>
+                        <?php if (hasPermission('accounting')): ?>
+                            <a href="<?= APP_URL ?>/accounting/coa" class="fs-link"><i class="ph ph-notebook"></i> Chart of Accts</a>
+                            <a href="<?= APP_URL ?>/accounting/journal" class="fs-link"><i class="ph ph-pen-nib"></i> Journal Entries</a>
+                            <a href="<?= APP_URL ?>/banking" class="fs-link"><i class="ph ph-bank"></i> Banking</a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('customerpayment')): ?><a href="<?= APP_URL ?>/customerpayment" class="fs-link"><i class="ph ph-hand-coins"></i> Customer Payments</a><?php endif; ?>
+                        <?php if (hasPermission('supplierpayment')): ?><a href="<?= APP_URL ?>/supplierpayment" class="fs-link"><i class="ph ph-hand-deposit"></i> Supplier Payments</a><?php endif; ?>
+                        <?php if (hasPermission('asset')): ?><a href="<?= APP_URL ?>/asset" class="fs-link"><i class="ph ph-buildings"></i> Fixed Assets</a><?php endif; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- 5. Analytics -->
+                <?php if (hasPermission('report')): ?>
+                <div class="fs-section">
+                    <div class="fs-section-label">Analytics</div>
+                    <div class="fs-row">
+                        <a href="<?= APP_URL ?>/report" class="fs-link"><i class="ph ph-chart-line-up"></i> Reports Hub</a>
+                        <a href="<?= APP_URL ?>/budget" class="fs-link"><i class="ph ph-target"></i> Budgets</a>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- 6. E-Commerce -->
+                <?php if (hasPermission('ecommerce')): ?>
+                <div class="fs-section">
+                    <div class="fs-section-label">E-Commerce</div>
+                    <div class="fs-row">
+                        <a href="<?= APP_URL ?>/ecommerce/requests" class="fs-link"><i class="ph ph-handshake"></i> Wholesaler Requests</a>
+                        <a href="<?= APP_URL ?>/ecommerce/retail" class="fs-link"><i class="ph ph-users"></i> Retail Customers</a>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- 7. Admin -->
+                <?php 
+                $fsAdmin = hasPermission('settings') || hasPermission('user') || hasPermission('tax') || hasPermission('paymentterm') || hasPermission('audit');
+                if ($fsAdmin):
+                ?>
+                <div class="fs-section">
+                    <div class="fs-section-label">Admin &amp; Settings</div>
+                    <div class="fs-row">
+                        <?php if (hasPermission('settings')): ?>
+                            <a href="<?= APP_URL ?>/settings" class="fs-link"><i class="ph ph-gear"></i> Settings</a>
+                            <a href="<?= APP_URL ?>/settings/releases" class="fs-link"><i class="ph ph-cloud-arrow-down"></i> Releases</a>
+                        <?php endif; ?>
+                        <?php if (hasPermission('user')): ?><a href="<?= APP_URL ?>/user" class="fs-link"><i class="ph ph-lock-key"></i> Users &amp; Roles</a><?php endif; ?>
+                        <?php if (hasPermission('tax')): ?><a href="<?= APP_URL ?>/tax" class="fs-link"><i class="ph ph-scales"></i> Tax Rates</a><?php endif; ?>
+                        <?php if (hasPermission('paymentterm')): ?><a href="<?= APP_URL ?>/paymentterm" class="fs-link"><i class="ph ph-handshake"></i> Payment Terms</a><?php endif; ?>
+                        <?php if (hasPermission('accounting')): ?><a href="<?= APP_URL ?>/accounting/close_year" class="fs-link text-danger"><i class="ph ph-lock"></i> Close Year</a><?php endif; ?>
+                        <?php if (hasPermission('audit')): ?><a href="<?= APP_URL ?>/audit" class="fs-link"><i class="ph ph-shield-check"></i> Audit Trail</a><?php endif; ?>
                         <a href="<?= APP_URL ?>/auth/logout" class="fs-link" style="color:rgba(255,120,120,0.85);"><i class="ph ph-sign-out"></i> Logout</a>
                     </div>
                 </div>
+                <?php endif; ?>
 
             </div>
         </div>

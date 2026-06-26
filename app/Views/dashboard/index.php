@@ -141,7 +141,6 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
     box-sizing: border-box;
 }
 .d-quick-header {
@@ -152,23 +151,24 @@
 .d-quick-grid-container {
     flex: 1;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: stretch;
+    justify-content: stretch;
+    min-height: 0;
 }
 .d-quick-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    grid-template-rows: repeat(3, 1fr);
+    gap: 10px;
     width: 100%;
-    max-width: 380px;
+    height: 100%;
 }
 .d-qbtn {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    aspect-ratio: 1 / 1;
+    gap: 6px;
     border-radius: 14px;
     text-decoration: none;
     color: rgba(255,255,255,.9);
@@ -176,8 +176,10 @@
     border: 1px solid rgba(255,255,255,.08);
     transition: all .2s ease;
     text-align: center;
-    padding: 10px;
+    padding: 8px;
     box-sizing: border-box;
+    width: 100%;
+    height: 100%;
 }
 .d-qbtn:hover {
     background: rgba(79,70,229,.18); border-color: rgba(79,70,229,.35);
@@ -185,10 +187,10 @@
     box-shadow: 0 4px 16px rgba(79,70,229,0.15);
 }
 .d-qbtn-icon {
-    width: 36px; height: 36px; border-radius: 10px;
+    width: 32px; height: 32px; border-radius: 10px;
     background: rgba(255,255,255,.08);
     display: flex; align-items: center; justify-content: center;
-    font-size: 18px; transition: transform .18s;
+    font-size: 16px; transition: transform .18s;
 }
 .d-qbtn:hover .d-qbtn-icon { transform: scale(1.08); }
 .d-qbtn span {
@@ -365,22 +367,17 @@
 .d-prof-bottom {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding-top: 8px;
+    justify-content: center;
+    padding-top: 10px;
     border-top: 1px solid rgba(255,255,255,.1);
-}
-.d-profile-greeting {
-    font-size: 12px;
-    color: rgba(255,255,255,.6);
 }
 .d-profile-logout-btn {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 6px 12px;
-    border-radius: 8px;
+    padding: 8px;
+    border-radius: 10px;
     background: rgba(239,68,68,.12);
     border: 1px solid rgba(239,68,68,.25);
     color: rgba(239,68,68,.9);
@@ -388,9 +385,11 @@
     font-size: 11px;
     font-weight: 600;
     transition: all .18s;
+    width: 100%;
 }
 .d-profile-logout-btn:hover {
     background: rgba(239,68,68,.22);
+    border-color: rgba(239,68,68,.4);
     box-shadow: 0 4px 12px rgba(239,68,68,0.15);
 }
 
@@ -454,17 +453,23 @@
 
     <!-- Top Bar -->
     <div class="db-topbar">
-        <h2 class="db-heading">Workflow Dashboard</h2>
+        <?php
+        $hour = date('H');
+        if ($hour < 12) {
+            $greeting = 'Good Morning';
+        } elseif ($hour < 17) {
+            $greeting = 'Good Afternoon';
+        } else {
+            $greeting = 'Good Evening';
+        }
+        ?>
+        <h2 class="db-heading" id="dbGreeting"><?= $greeting ?> 👋</h2>
         
         <div class="db-actions">
-            <!-- Search Text & Icon next to visit store button -->
-            <a href="javascript:void(0)" class="db-search-link" onclick="openCmdPalette()">
+            <!-- Circular Search Button same as other buttons -->
+            <a href="javascript:void(0)" class="db-icon-btn" onclick="openCmdPalette()" title="Search">
                 <i class="ph ph-magnifying-glass"></i>
-                <span>Search...</span>
-                <span class="db-kbd-hint">Ctrl+K</span>
             </a>
-
-            <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.12); margin: 0 4px; flex-shrink: 0;"></div>
 
             <?php if (!empty($storeUrl)): ?>
             <a href="<?= htmlspecialchars($storeUrl) ?>" target="_blank" class="db-icon-btn" title="Store">
@@ -577,7 +582,6 @@
                     </div>
                 </div>
                 <div class="d-prof-bottom">
-                    <span class="d-profile-greeting">Good <?= date('H') < 12 ? 'Morning' : (date('H') < 17 ? 'Afternoon' : 'Evening') ?> 👋</span>
                     <a href="<?= APP_URL ?>/auth/logout" class="d-profile-logout-btn">
                         <i class="ph ph-sign-out"></i> Sign Out
                     </a>
@@ -648,6 +652,15 @@ function updateClock() {
     if (de) de.textContent = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
     const dy = document.getElementById('dashDay');
     if (dy) dy.textContent = days[now.getDay()];
+    
+    // Realtime greeting updates
+    const greetingEl = document.getElementById('dbGreeting');
+    if (greetingEl) {
+        let g = "Good Evening";
+        if (hh < 12) g = "Good Morning";
+        else if (hh < 17) g = "Good Afternoon";
+        greetingEl.textContent = g + " 👋";
+    }
 }
 updateClock(); setInterval(updateClock, 1000);
 
