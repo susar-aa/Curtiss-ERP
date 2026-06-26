@@ -1,4 +1,4 @@
-<?php /* Premium Modernized Dashboard */ ?>
+<?php /* Premium Modernized Dashboard – Precise Alignment & Perfect Fit */ ?>
 <style>
 /* ── BACKGROUND ── */
 #dashBg {
@@ -13,12 +13,22 @@
 }
 #dashBg.ready { opacity: 1; }
 
-/* ── FILL viewport without scroll ── */
+/* ── FORCE MAIN CONTENT OVERRIDE TO ELIMINATE SCROLLING ── */
+.main-content:has(#dashBg) {
+    padding: 16px 24px !important;
+    padding-bottom: 60px !important;
+    overflow: hidden !important;
+    height: calc(100vh - 82px) !important;
+    box-sizing: border-box !important;
+}
+
+/* ── ROOT CONTAINER ── */
 .dash-root {
     display: flex; flex-direction: column;
-    height: calc(100vh - 82px - 56px - 16px); /* Viewport minus layout offsets */
+    height: 100%;
     overflow: hidden;
     gap: 12px;
+    box-sizing: border-box;
 }
 
 /* ── TOPBAR ── */
@@ -74,7 +84,7 @@
 /* ── 3-COLUMN GRID SYSTEM ── */
 .db-grid {
     display: grid;
-    grid-template-columns: 1.1fr 1.1fr 1fr;
+    grid-template-columns: 1.15fr 1.15fr 1fr;
     gap: 14px;
     flex: 1;
     min-height: 0;
@@ -97,6 +107,7 @@
     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
     overflow: hidden;
     transition: transform .22s, box-shadow .22s, border-color .22s;
+    box-sizing: border-box;
 }
 .d-card:hover {
     transform: translateY(-1px);
@@ -110,25 +121,48 @@
 }
 
 /* ── QUICK ACCESS (SQUARE BUTTONS) ── */
-.d-quick { padding: 18px; height: 100%; display: flex; flex-direction: column; }
+.d-quick {
+    padding: 18px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-sizing: border-box;
+}
 .d-quick-header {
     font-size: 11px; font-weight: 700; color: rgba(255,255,255,.5);
     letter-spacing: 1.2px; text-transform: uppercase;
     margin-bottom: 12px; flex-shrink: 0;
 }
+.d-quick-grid-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 .d-quick-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    flex: 1;
+    gap: 12px;
+    width: 100%;
+    max-width: 380px;
 }
 .d-qbtn {
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-    aspect-ratio: 1 / 1; border-radius: 14px;
-    text-decoration: none; color: rgba(255,255,255,.85);
-    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    aspect-ratio: 1 / 1;
+    border-radius: 14px;
+    text-decoration: none;
+    color: rgba(255,255,255,.9);
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08);
     transition: all .2s ease;
     text-align: center;
+    padding: 10px;
+    box-sizing: border-box;
 }
 .d-qbtn:hover {
     background: rgba(79,70,229,.18); border-color: rgba(79,70,229,.35);
@@ -142,10 +176,21 @@
     font-size: 18px; transition: transform .18s;
 }
 .d-qbtn:hover .d-qbtn-icon { transform: scale(1.08); }
-.d-qbtn span { font-size: 11px; font-weight: 600; line-height: 1.2; }
+.d-qbtn span {
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+    color: rgba(255,255,255,0.9);
+}
 
 /* ── TODO LIST ── */
-.d-todo { padding: 18px; height: 100%; display: flex; flex-direction: column; }
+.d-todo { padding: 18px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; }
 .d-todo-header {
     font-size: 11px; font-weight: 700; color: rgba(255,255,255,.5);
     letter-spacing: 1.2px; text-transform: uppercase;
@@ -157,13 +202,14 @@
 .d-todo-row {
     display: flex; align-items: center; gap: 12px;
     padding: 10px 14px; border-radius: 12px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     transition: all 0.2s ease;
 }
 .d-todo-row:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.18);
 }
 .d-todo-icon-box {
     width: 36px; height: 36px; border-radius: 8px;
@@ -177,14 +223,15 @@
     color: #10b981;
 }
 .d-todo-text {
-    font-size: 13px; color: var(--text-main); flex: 1;
+    font-size: 13px; color: #ffffff !important; font-weight: 600; flex: 1;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 .d-todo-row.completed .d-todo-text {
     text-decoration: line-through; opacity: 0.5;
 }
 .d-todo-delete {
-    color: var(--text-muted); opacity: 0.6; cursor: pointer; transition: all 0.15s ease;
+    color: rgba(255,255,255,0.4); opacity: 0.8; cursor: pointer; transition: all 0.15s ease;
     background: transparent; border: none; font-size: 14px;
 }
 .d-todo-delete:hover {
@@ -195,7 +242,7 @@
 }
 .d-todo-input {
     flex: 1; height: 36px; border-radius: 10px;
-    background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12);
     color: #fff; padding: 0 12px; font-size: 12.5px; outline: none;
 }
 .d-todo-input:focus {
@@ -210,58 +257,130 @@
     background: var(--text-accent-light);
 }
 
-/* ── PROFILE CARD ── */
-.d-profile {
-    padding: 18px;
-    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;
+/* ── COMBINED PROFILE & DATE/TIME CARD ── */
+.d-profile-combined {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     flex-shrink: 0;
+    box-sizing: border-box;
+}
+.d-prof-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+.d-prof-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 .d-profile-avatar {
-    width: 60px; height: 60px; border-radius: 50%;
+    width: 46px; height: 46px; border-radius: 50%;
     background: linear-gradient(135deg,#667eea,#764ba2);
     display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 22px; font-weight: 700;
-    box-shadow: 0 4px 18px rgba(102,126,234,.4);
+    color: #fff; font-size: 18px; font-weight: 700;
+    box-shadow: 0 4px 14px rgba(102,126,234,.4);
+    flex-shrink: 0;
 }
-.d-profile-name { font-size: 15px; font-weight: 700; color: #fff; }
+.d-profile-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.d-profile-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 110px;
+}
 .d-profile-role {
-    font-size: 10px; color: var(--text-accent); font-weight: 700;
-    background: rgba(79,70,229,0.12); border-radius: 20px;
-    padding: 3px 12px; text-transform: uppercase; letter-spacing: 0.5px;
+    font-size: 8px;
+    color: var(--text-accent);
+    font-weight: 700;
+    background: rgba(79,70,229,0.15);
+    border-radius: 12px;
+    padding: 2px 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    align-self: flex-start;
 }
-.d-profile-greeting { font-size: 12px; color: rgba(255,255,255,.5); }
-.d-profile-divider { width: 100%; height: 1px; background: rgba(255,255,255,.1); margin: 4px 0; }
-.d-profile-row {
-    display: flex; justify-content: space-between; align-items: center; width: 100%;
-    font-size: 11px; color: rgba(255,255,255,.5);
+.d-prof-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+    gap: 2px;
 }
-.d-profile-row strong { color: rgba(255,255,255,.85); font-weight: 600; }
-.d-profile-logout {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    width: 100%; margin-top: 6px; padding: 8px; border-radius: 10px;
-    background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.22);
-    color: rgba(239,68,68,.9); text-decoration: none;
-    font-size: 12px; font-weight: 600; transition: all .18s;
+.d-time {
+    font-size: 20px;
+    font-weight: 300;
+    color: #fff;
+    letter-spacing: -0.5px;
+    line-height: 1;
 }
-.d-profile-logout:hover {
-    background: rgba(239,68,68,.2);
+.d-time span {
+    font-size: 11px;
+    font-weight: 400;
+    opacity: .6;
+    margin-left: 2px;
+}
+.d-date-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+.d-day {
+    font-size: 9px;
+    color: rgba(255,255,255,.45);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    font-weight: 600;
+}
+.d-date {
+    font-size: 11.5px;
+    color: rgba(255,255,255,.75);
+    font-weight: 500;
+}
+.d-prof-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,.1);
+}
+.d-profile-greeting {
+    font-size: 12px;
+    color: rgba(255,255,255,.6);
+}
+.d-profile-logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: rgba(239,68,68,.12);
+    border: 1px solid rgba(239,68,68,.25);
+    color: rgba(239,68,68,.9);
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 600;
+    transition: all .18s;
+}
+.d-profile-logout-btn:hover {
+    background: rgba(239,68,68,.22);
     box-shadow: 0 4px 12px rgba(239,68,68,0.15);
 }
 
-/* ── DATE / TIME CARD ── */
-.d-datetime {
-    padding: 12px 18px;
-    display: flex; align-items: center; justify-content: space-between;
-    flex-shrink: 0;
-}
-.d-time { font-size: 22px; font-weight: 300; color: #fff; letter-spacing: -0.5px; }
-.d-time span { font-size: 12px; font-weight: 400; opacity: .6; margin-left: 2px; }
-.d-date-info { display: flex; flex-direction: column; text-align: right; }
-.d-date { font-size: 12px; color: rgba(255,255,255,.75); font-weight: 500; }
-.d-day  { font-size: 9px; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .8px; font-weight: 600; }
-
 /* ── NOTIFICATIONS CARD ── */
-.d-notif { padding: 18px; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.d-notif { padding: 18px; display: flex; flex-direction: column; flex: 1; min-height: 0; box-sizing: border-box; }
 .d-notif-header {
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 12px; flex-shrink: 0;
@@ -347,43 +466,45 @@
         <div class="db-col">
             <div class="d-card d-quick">
                 <div class="d-quick-header">Quick Access</div>
-                <div class="d-quick-grid">
-                    <a href="<?= APP_URL ?>/sales/create" class="d-qbtn">
-                        <div class="d-qbtn-icon" style="color:#3b82f6"><i class="ph ph-file-plus"></i></div>
-                        <span>Create Invoice</span>
-                    </a>
-                    <a href="<?= APP_URL ?>/salesorder/create" class="d-qbtn">
-                        <div class="d-qbtn-icon" style="color:#10b981"><i class="ph ph-file-text"></i></div>
-                        <span>Sales Order</span>
-                    </a>
-                    <a href="<?= APP_URL ?>/customer" class="d-qbtn">
-                        <div class="d-qbtn-icon" style="color:#6366f1"><i class="ph ph-users"></i></div>
-                        <span>Customers</span>
-                    </a>
-                    <a href="<?= APP_URL ?>/supplier" class="d-qbtn">
-                        <div class="d-qbtn-icon" style="color:#f59e0b"><i class="ph ph-factory"></i></div>
-                        <span>Suppliers</span>
-                    </a>
-                    <a href="<?= APP_URL ?>/inventory" class="d-qbtn">
-                        <div class="d-qbtn-icon" style="color:#ec4899"><i class="ph ph-package"></i></div>
-                        <span>Inventory</span>
-                    </a>
-                    <a href="<?= APP_URL ?>/reptracking" class="d-qbtn">
-                        <div class="d-qbtn-icon" style="color:#06b6d4"><i class="ph ph-map-pin"></i></div>
-                        <span>Route Control</span>
-                    </a>
-                    <a href="<?= APP_URL ?>/customerpayment" class="d-qbtn">
-                        <div class="d-qbtn-icon" style="color:#14b8a6"><i class="ph ph-hand-coins"></i></div>
-                        <span>Payments</span>
-                    </a>
-                    <a href="<?= APP_URL ?>/grn" class="d-qbtn">
-                        <div class="d-qbtn-icon" style="color:#8b5cf6"><i class="ph ph-tray-arrow-down"></i></div>
-                        <span>GRN</span>
-                    </a>
-                    <a href="<?= APP_URL ?>/purchase" class="d-qbtn">
-                        <div class="d-qbtn-icon" style="color:#ef4444"><i class="ph ph-shopping-cart"></i></div>
-                        <span>Purchase Orders</span>
-                    </a>
+                <div class="d-quick-grid-container">
+                    <div class="d-quick-grid">
+                        <a href="<?= APP_URL ?>/sales/create" class="d-qbtn">
+                            <div class="d-qbtn-icon" style="color:#3b82f6"><i class="ph ph-file-plus"></i></div>
+                            <span>Create Invoice</span>
+                        </a>
+                        <a href="<?= APP_URL ?>/salesorder/create" class="d-qbtn">
+                            <div class="d-qbtn-icon" style="color:#10b981"><i class="ph ph-file-text"></i></div>
+                            <span>Sales Order</span>
+                        </a>
+                        <a href="<?= APP_URL ?>/customer" class="d-qbtn">
+                            <div class="d-qbtn-icon" style="color:#6366f1"><i class="ph ph-users"></i></div>
+                            <span>Customers</span>
+                        </a>
+                        <a href="<?= APP_URL ?>/supplier" class="d-qbtn">
+                            <div class="d-qbtn-icon" style="color:#f59e0b"><i class="ph ph-factory"></i></div>
+                            <span>Suppliers</span>
+                        </a>
+                        <a href="<?= APP_URL ?>/inventory" class="d-qbtn">
+                            <div class="d-qbtn-icon" style="color:#ec4899"><i class="ph ph-package"></i></div>
+                            <span>Inventory</span>
+                        </a>
+                        <a href="<?= APP_URL ?>/reptracking" class="d-qbtn">
+                            <div class="d-qbtn-icon" style="color:#06b6d4"><i class="ph ph-map-pin"></i></div>
+                            <span>Route Control</span>
+                        </a>
+                        <a href="<?= APP_URL ?>/customerpayment" class="d-qbtn">
+                            <div class="d-qbtn-icon" style="color:#14b8a6"><i class="ph ph-hand-coins"></i></div>
+                            <span>Payments</span>
+                        </a>
+                        <a href="<?= APP_URL ?>/grn" class="d-qbtn">
+                            <div class="d-qbtn-icon" style="color:#8b5cf6"><i class="ph ph-tray-arrow-down"></i></div>
+                            <span>GRN</span>
+                        </a>
+                        <a href="<?= APP_URL ?>/purchase" class="d-qbtn">
+                            <div class="d-qbtn-icon" style="color:#ef4444"><i class="ph ph-shopping-cart"></i></div>
+                            <span>Purchase Orders</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -406,36 +527,35 @@
             </div>
         </div>
 
-        <!-- COLUMN 3: Profile + Date/Time + Notifications -->
+        <!-- COLUMN 3: Profile & Date/Time (Combined) + Notifications -->
         <div class="db-col db-col-right">
-            <!-- Profile Card -->
-            <div class="d-card d-profile">
-                <div class="d-profile-avatar"><?= strtoupper(substr($_SESSION['username'] ?? 'U', 0, 2)) ?></div>
-                <div class="d-profile-name"><?= htmlspecialchars($_SESSION['username'] ?? 'User') ?></div>
-                <span class="d-profile-role"><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'Staff')) ?></span>
-                <p class="d-profile-greeting">Good <?= date('H') < 12 ? 'Morning' : (date('H') < 17 ? 'Afternoon' : 'Evening') ?> 👋</p>
-                <div class="d-profile-divider"></div>
-                <div class="d-profile-row">
-                    <span>Session</span><strong><?= date('g:i A') ?></strong>
+            <!-- Combined Profile & Clock Card -->
+            <div class="d-card d-profile-combined">
+                <div class="d-prof-top">
+                    <div class="d-prof-left">
+                        <div class="d-profile-avatar"><?= strtoupper(substr($_SESSION['username'] ?? 'U', 0, 2)) ?></div>
+                        <div class="d-profile-info">
+                            <div class="d-profile-name" title="<?= htmlspecialchars($_SESSION['username'] ?? 'User') ?>"><?= htmlspecialchars($_SESSION['username'] ?? 'User') ?></div>
+                            <span class="d-profile-role"><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'Staff')) ?></span>
+                        </div>
+                    </div>
+                    <div class="d-prof-right">
+                        <div class="d-time" id="dashTime">--:-- <span>--</span></div>
+                        <div class="d-date-info">
+                            <div class="d-day" id="dashDay">--</div>
+                            <div class="d-date" id="dashDate">--</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="d-profile-row">
-                    <span>Today</span><strong><?= date('d M Y') ?></strong>
+                <div class="d-prof-bottom">
+                    <span class="d-profile-greeting">Good <?= date('H') < 12 ? 'Morning' : (date('H') < 17 ? 'Afternoon' : 'Evening') ?> 👋</span>
+                    <a href="<?= APP_URL ?>/auth/logout" class="d-profile-logout-btn">
+                        <i class="ph ph-sign-out"></i> Sign Out
+                    </a>
                 </div>
-                <a href="<?= APP_URL ?>/auth/logout" class="d-profile-logout">
-                    <i class="ph ph-sign-out"></i> Sign Out
-                </a>
             </div>
 
-            <!-- Date / Time Card -->
-            <div class="d-card d-datetime">
-                <div class="d-time" id="dashTime">--:-- <span>--</span></div>
-                <div class="d-date-info">
-                    <div class="d-day" id="dashDay"></div>
-                    <div class="d-date" id="dashDate"></div>
-                </div>
-            </div>
-
-            <!-- Notifications Card (Horizontal list matching uploaded image style) -->
+            <!-- Notifications Card -->
             <div class="d-card d-notif">
                 <div class="d-notif-header">
                     <span class="d-notif-title">Notifications</span>
@@ -469,6 +589,21 @@
 </div>
 
 <script>
+/* ── Force padding and dimensions fallback ── */
+function fixMainContentPadding() {
+    const mc = document.querySelector(".main-content");
+    if (mc) {
+        mc.style.padding = "16px 24px";
+        mc.style.paddingBottom = "60px";
+        mc.style.overflow = "hidden";
+        mc.style.height = "calc(100vh - 82px)";
+        mc.style.boxSizing = "border-box";
+    }
+}
+document.addEventListener("DOMContentLoaded", fixMainContentPadding);
+window.addEventListener("resize", fixMainContentPadding);
+fixMainContentPadding();
+
 /* ── Clock ── */
 function updateClock() {
     const now = new Date();
@@ -511,7 +646,7 @@ updateClock(); setInterval(updateClock, 1000);
     }
 })();
 
-/* ── AJAX To-Do List unique to separate users ── */
+/* ── AJAX To-Do List ── */
 async function loadTodos() {
     const container = document.getElementById('todoListContainer');
     try {
