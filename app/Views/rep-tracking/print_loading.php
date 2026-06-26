@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Route Loading Report - <?= htmlspecialchars($data['route']->route_name) ?></title>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
         @page {
             size: A4 portrait;
@@ -125,7 +126,7 @@
 <body onload="window.print()">
     <div class="report-container">
         <div class="no-print">
-            <button class="btn-print" onclick="window.print()">🖨️ Print Document</button>
+            <button class="btn-print" onclick="window.print()"><i class="ph ph-printer"></i> Print Document</button>
             <button class="btn-close" onclick="window.close()">Close Window</button>
         </div>
 

@@ -231,7 +231,14 @@
         display: grid !important;
         grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
         gap: 20px !important;
-        padding: 20px 0 !important;
+        padding: 20px !important;
+        align-content: start !important;
+    }
+    .global-filter-scroll {
+        scrollbar-width: none; /* Firefox */
+    }
+    .global-filter-scroll::-webkit-scrollbar {
+        display: none; /* Safari and Chrome */
     }
     .app-workspace:not(.workspace-active) .route-item {
         background: #fff !important;
@@ -291,34 +298,53 @@
 
 <div class="header-actions" style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
     <div>
-        <h2 style="margin: 0; font-weight: 700;">🛡️ Master Route Control Panel</h2>
+        <h2 style="margin: 0; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+            <i class="ph-fill ph-map-trifold" style="color: #0066cc;"></i> Master Route Control Panel
+        </h2>
         <p style="margin: 5px 0 0 0; color: #666; font-size: 13px;">Manage route status updates, arrange dispatches, verify picking, and settle General Ledger postings.</p>
     </div>
     <div style="display: flex; gap: 10px;">
         <button onclick="openCreateRouteModal()" style="padding: 10px 18px; border: none; background: #2e7d32; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(46, 125, 50, 0.2); transition: all 0.2s ease;">
-            ➕ Create Route Manually
+            <i class="ph-bold ph-plus-circle"></i> Create Route Manually
         </button>
         <button id="btnOpenRouteBinding" onclick="openRouteBindingModal()" style="padding: 10px 18px; border: none; background: #3f51b5; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(63, 81, 181, 0.2); transition: all 0.2s ease;">
-            🔗 Route Binding Panel
+            <i class="ph-bold ph-link"></i> Route Binding Panel
         </button>
     </div>
 </div>
 
 <!-- TOP GLOBAL STATUS FILTER BAR AND SEARCH -->
 <div class="global-status-filter-bar" style="display: flex; gap: 12px; background: #fff; border: 1px solid var(--mac-border); border-radius: 8px; padding: 12px 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); align-items: center; justify-content: space-between; flex-wrap: wrap;">
-    <div style="display: flex; gap: 8px; align-items: center; overflow-x: auto; flex: 1; min-width: 300px;">
-        <span style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #64748b; margin-right: 10px; white-space: nowrap;">⚡ Status Filter:</span>
+    <div class="global-filter-scroll" style="display: flex; gap: 8px; align-items: center; overflow-x: auto; flex: 1; min-width: 300px;">
+        <span style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #64748b; margin-right: 10px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+            <i class="ph-bold ph-funnel" style="color: #0066cc;"></i> Status Filter:
+        </span>
         <button type="button" class="global-filter-btn active" onclick="filterLeftPane('all', this)">All</button>
-        <button type="button" class="global-filter-btn" onclick="filterLeftPane('active', this)">🟢 Active Rep Routes</button>
-        <button type="button" class="global-filter-btn" onclick="filterLeftPane('pending_gl', this)">💰 Credit Collections</button>
-        <button type="button" class="global-filter-btn" onclick="filterLeftPane('adjustments', this)">⚙️ Adjustments</button>
-        <button type="button" class="global-filter-btn" onclick="filterLeftPane('loading', this)">🚛 Loading</button>
-        <button type="button" class="global-filter-btn" onclick="filterLeftPane('variance', this)">⚖️ Variance Audit</button>
-        <button type="button" class="global-filter-btn" onclick="filterLeftPane('finalizing', this)">🔒 Finalizing</button>
-        <button type="button" class="global-filter-btn" onclick="filterLeftPane('completed', this)">🏁 Completed</button>
+        <button type="button" class="global-filter-btn" onclick="filterLeftPane('active', this)" style="display: inline-flex; align-items: center; gap: 6px;">
+            <i class="ph-fill ph-circle" style="color: #22c55e; font-size: 10px;"></i> Active Rep Routes
+        </button>
+        <button type="button" class="global-filter-btn" onclick="filterLeftPane('pending_gl', this)" style="display: inline-flex; align-items: center; gap: 6px;">
+            <i class="ph-bold ph-coins" style="color: #eab308; font-size: 12px;"></i> Credit Collections
+        </button>
+        <button type="button" class="global-filter-btn" onclick="filterLeftPane('adjustments', this)" style="display: inline-flex; align-items: center; gap: 6px;">
+            <i class="ph-bold ph-gear" style="color: #64748b; font-size: 12px;"></i> Adjustments
+        </button>
+        <button type="button" class="global-filter-btn" onclick="filterLeftPane('loading', this)" style="display: inline-flex; align-items: center; gap: 6px;">
+            <i class="ph-bold ph-truck" style="color: #06b6d4; font-size: 12px;"></i> Loading
+        </button>
+        <button type="button" class="global-filter-btn" onclick="filterLeftPane('variance', this)" style="display: inline-flex; align-items: center; gap: 6px;">
+            <i class="ph-bold ph-scales" style="color: #ef4444; font-size: 12px;"></i> Variance Audit
+        </button>
+        <button type="button" class="global-filter-btn" onclick="filterLeftPane('finalizing', this)" style="display: inline-flex; align-items: center; gap: 6px;">
+            <i class="ph-bold ph-lock" style="color: #a855f7; font-size: 12px;"></i> Finalizing
+        </button>
+        <button type="button" class="global-filter-btn" onclick="filterLeftPane('completed', this)" style="display: inline-flex; align-items: center; gap: 6px;">
+            <i class="ph-bold ph-flag-checkered" style="color: #10b981; font-size: 12px;"></i> Completed
+        </button>
     </div>
     <div style="min-width: 320px; display: flex; align-items: center; position: relative;">
-        <input type="text" id="routeListSearchInput" placeholder="🔍 Search routes by name, rep, or ID..." style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px;" oninput="searchRouteList()" />
+        <i class="ph ph-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #888; font-size: 16px; z-index: 1;"></i>
+        <input type="text" id="routeListSearchInput" placeholder="Search routes by name, rep, or ID..." style="width: 100%; padding: 8px 12px 8px 32px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px;" oninput="searchRouteList()" />
     </div>
 </div>
 
@@ -375,7 +401,9 @@
                         </div>
                         <div>
                             <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: bold;">Customers</div>
-                            <div style="font-size: 12px; font-weight: bold; color: #1e293b;">👥 <?= intval($route->customer_count ?? 0) ?></div>
+                            <div style="font-size: 12px; font-weight: bold; color: #1e293b; display: inline-flex; align-items: center; gap: 4px;">
+                                <i class="ph ph-users" style="color: #64748b; font-size: 14px;"></i> <?= intval($route->customer_count ?? 0) ?>
+                            </div>
                         </div>
                     </div>
 
@@ -385,12 +413,12 @@
                     </div>
 
                     <?php if (!empty($route->is_bound_group)): ?>
-                        <div class="rb-bound-tag" style="background: #e0f2fe; color: #0369a1; display: block; margin-top: 8px; font-size: 10px; border-radius: 4px; padding: 4px 8px;">
-                            🔗 Group: <?= htmlspecialchars($route->constituent_routes_info) ?>
+                        <div class="rb-bound-tag" style="background: #e0f2fe; color: #0369a1; display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 10px; border-radius: 4px; padding: 4px 8px;">
+                            <i class="ph ph-link"></i> Group: <?= htmlspecialchars($route->constituent_routes_info) ?>
                         </div>
                     <?php elseif (!empty($route->binding_name)): ?>
-                        <div class="rb-bound-tag" style="display: block; margin-top: 8px; font-size: 10px; border-radius: 4px; padding: 4px 8px;">
-                            🔗 Bound: <?= htmlspecialchars($route->binding_name) ?>
+                        <div class="rb-bound-tag" style="display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 10px; border-radius: 4px; padding: 4px 8px;">
+                            <i class="ph ph-link"></i> Bound: <?= htmlspecialchars($route->binding_name) ?>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -423,16 +451,16 @@
             <!-- Top Row: Back button on the left, right actions: Switch Route, View Map, Undo Bind -->
             <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
                 <button type="button" onclick="goBackToRoutes()" style="background: none; border: none; color: #3f51b5; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 0;">
-                    ← Back to Routes
+                    <i class="ph-bold ph-arrow-left"></i> Back to Routes
                 </button>
                 
                 <div style="display: flex; gap: 10px; align-items: center;">
                     <button type="button" onclick="openRouteSwitcherModal()" style="padding: 8px 14px; border: 1px solid #3f51b5; background: #fff; color: #3f51b5; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-                        🔄 Switch Route
+                        <i class="ph ph-swap"></i> Switch Route
                     </button>
                     
-                    <button type="button" id="btnViewMap" onclick="openMapModal()" style="padding: 8px 14px; border: none; background: #ef6c00; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: none; align-items: center; gap: 4px;">📍 View Map</button>
-                    <button type="button" id="btnUnbindRoute" onclick="unbindActiveRoute()" style="padding: 8px 14px; border: none; background: #c62828; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: none; align-items: center; gap: 4px;">🔗 Undo Bind</button>
+                    <button type="button" id="btnViewMap" onclick="openMapModal()" style="padding: 8px 14px; border: none; background: #ef6c00; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: none; align-items: center; gap: 4px;"><i class="ph ph-map-pin"></i> View Map</button>
+                    <button type="button" id="btnUnbindRoute" onclick="unbindActiveRoute()" style="padding: 8px 14px; border: none; background: #c62828; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: none; align-items: center; gap: 4px;"><i class="ph ph-link-break"></i> Undo Bind</button>
                 </div>
             </div>
 
@@ -465,28 +493,28 @@
 
         <!-- Route Workspace Tabs -->
         <div class="scroll-tabs" id="routeWorkspaceTabs" style="display: none; border-bottom: 2px solid #cbd5e1; margin-bottom: 0;">
-            <button class="scroll-tab-btn active" onclick="switchRouteTab(1, this)">📋 1. Route Details</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(2, this)">💰 2. Credit Collections</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(3, this)">⚙️ 3. Bill Adjustments</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(4, this)">🚛 4. Loading</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(5, this)">⚖️ 5. Variance Audit</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(6, this)">📍 6. Delivery Arrangement</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(7, this)">🚚 7. Delivery</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(8, this)">💵 8. Reconciliation</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(9, this)">📦 9. Return Stock Verification</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(10, this)">💼 10. Accounting</button>
+            <button class="scroll-tab-btn active" onclick="switchRouteTab(1, this)"><i class="ph ph-clipboard-text"></i> 1. Route Details</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(2, this)"><i class="ph ph-coins"></i> 2. Credit Collections</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(3, this)"><i class="ph ph-gear"></i> 3. Bill Adjustments</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(4, this)"><i class="ph ph-truck"></i> 4. Loading</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(5, this)"><i class="ph ph-scales"></i> 5. Variance Audit</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(6, this)"><i class="ph ph-map-trifold"></i> 6. Delivery Arrangement</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(7, this)"><i class="ph ph-steering-wheel"></i> 7. Delivery</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(8, this)"><i class="ph ph-currency-dollar"></i> 8. Reconciliation</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(9, this)"><i class="ph ph-package"></i> 9. Return Stock Verification</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(10, this)"><i class="ph ph-briefcase"></i> 10. Accounting</button>
         </div>
 
         <!-- Content Area -->
         <div style="flex:1; overflow-y:auto; position:relative; background:#fff;" id="workspaceBody">
             <div class="empty-state" id="midEmptyState">
-                <span>📍</span>
+                <span><i class="ph ph-map-pin"></i></span>
                 Please select a route from the left to view details.
             </div>
 
             <!-- Loading Indicator -->
             <div id="midLoader" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; font-weight:bold; color:var(--primary);">
-                Loading Workspace Information... ⏳
+                Loading Workspace Information... <i class="ph-bold ph-spinner ph-spin"></i>
             </div>
 
             <!-- Dynamic Stage Containers -->
@@ -497,21 +525,21 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                         <div style="flex: 1; min-width: 280px;">
                             <h4 style="margin:0 0 8px 0; font-size:14px; font-weight:bold; display:flex; align-items:center; gap:6px; color: #0284c7;">
-                                🔗 Bound Route Consolidation
+                                <i class="ph ph-link"></i> Bound Route Consolidation
                             </h4>
                             <div style="font-size:12px; margin-bottom:8px; line-height: 1.4;">
                                 <strong>Constituent Routes:</strong> <span id="brsConstituentsList" style="background:#e0f2fe; padding:2px 6px; border-radius:4px; font-weight:bold;">Route A, Route B</span>
                             </div>
                             <div style="font-size:12px; display:flex; gap:15px; flex-wrap:wrap; font-weight:500;">
-                                <span>👥 Total Customers: <strong id="brsTotalCustomers" style="color:#0f172a;">0</strong></span>
-                                <span>📄 Total Invoices: <strong id="brsTotalInvoices" style="color:#0f172a;">0</strong></span>
-                                <span>💰 Total Route Value: <strong id="brsTotalValue" style="color:#16a34a;">Rs 0.00</strong></span>
-                                <span>📦 Total Products: <strong id="brsTotalProducts" style="color:#0f172a;">0 (Qty: 0)</strong></span>
+                                <span><i class="ph ph-users"></i> Total Customers: <strong id="brsTotalCustomers" style="color:#0f172a;">0</strong></span>
+                                <span><i class="ph ph-file-text"></i> Total Invoices: <strong id="brsTotalInvoices" style="color:#0f172a;">0</strong></span>
+                                <span><i class="ph ph-currency-dollar"></i> Total Route Value: <strong id="brsTotalValue" style="color:#16a34a;">Rs 0.00</strong></span>
+                                <span><i class="ph ph-package"></i> Total Products: <strong id="brsTotalProducts" style="color:#0f172a;">0 (Qty: 0)</strong></span>
                             </div>
                         </div>
                         <div>
                             <button onclick="unbindCombinedRoute()" style="padding:8px 16px; background:#ef4444; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(239,68,68,0.2); transition: all 0.2s;">
-                                ↩️ Undo Route Binding
+                                <i class="ph ph-link-break"></i> Undo Route Binding
                             </button>
                         </div>
                     </div>
@@ -520,14 +548,14 @@
                 <!-- COMPLETED ARCHIVE OPTIONS (READ ONLY AT THE TOP IF FINALIZED) -->
                 <div id="completedArchiveBanner" style="display:none; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:15px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
                     <div>
-                        <h4 style="margin:0; font-size:14px; font-weight:bold; color:#2e7d32;">🏁 Route Settle Balancing Finalized</h4>
+                        <h4 style="margin:0; font-size:14px; font-weight:bold; color:#2e7d32;"><i class="ph ph-flag-checkered"></i> Route Settle Balancing Finalized</h4>
                         <p style="margin:5px 0 0 0; font-size:12px; color:#666;">This route is read-only. All transactions, inventories, and GL postings are successfully finalized.</p>
                     </div>
                     <div style="display:flex; gap:10px;">
-                        <button onclick="printBalancingReport()" style="padding:8px 12px; background:#0066cc; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Print Balancing Report 🖨</button>
-                        <button onclick="printLoadingSheetSpreadsheet()" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Print Spreadsheet 📊</button>
-                        <button onclick="printLoadingSheet('summary')" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Print Loading Summary 🚚</button>
-                        <button onclick="exportCSV()" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Export CSV 📥</button>
+                        <button onclick="printBalancingReport()" style="padding:8px 12px; background:#0066cc; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;"><i class="ph ph-printer"></i> Print Balancing Report</button>
+                        <button onclick="printLoadingSheetSpreadsheet()" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;"><i class="ph ph-chart-bar"></i> Print Spreadsheet</button>
+                        <button onclick="printLoadingSheet('summary')" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;"><i class="ph ph-truck"></i> Print Loading Summary</button>
+                        <button onclick="exportCSV()" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;"><i class="ph ph-download"></i> Export CSV</button>
                     </div>
                 </div>
 
@@ -565,15 +593,15 @@
                 <!-- TAB 2: CREDIT COLLECTIONS -->
                 <div class="workspace-tab-panel" id="tabpanel-2" style="display:none;">
                     <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:15px; margin-bottom:20px; color:#78350f;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">📄 General Ledger Audit & Verification</h4>
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-file-text"></i> General Ledger Audit & Verification</h4>
                         <p style="margin:0; font-size:12px;">Audit all credit collections. Verify debit/credit accounts and approve collections.</p>
                     </div>
                     <!-- Collections Verification Table Card -->
                     <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:flex; flex-direction:column; justify-content:space-between; margin-bottom:20px;">
                         <div>
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                                <h5 style="margin:0; font-size:13px; font-weight:bold; color:#1e293b;">💵 Credit Collections & Verification</h5>
-                                <button id="btnSaveCollectionsVerification2" onclick="saveCollectionsVerificationStage2()" style="padding:6px 14px; background:#2e7d32; color:#fff; border:none; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; transition:0.2s;">💾 Save Verification</button>
+                                <h5 style="margin:0; font-size:13px; font-weight:bold; color:#1e293b;"><i class="ph ph-coins"></i> Credit Collections & Verification</h5>
+                                <button id="btnSaveCollectionsVerification2" onclick="saveCollectionsVerificationStage2()" style="padding:6px 14px; background:#2e7d32; color:#fff; border:none; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; transition:0.2s;"><i class="ph ph-floppy-disk"></i> Save Verification</button>
                             </div>
                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
                                 <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:8px; border-radius:6px; font-size:11px; text-align:center;">
@@ -606,16 +634,16 @@
                 <!-- TAB 3: ADJUSTMENTS -->
                 <div class="workspace-tab-panel" id="tabpanel-3" style="display:none;">
                     <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">⚙️ Route Adjustments & Sales Orders</h4>
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-gear"></i> Route Adjustments & Sales Orders</h4>
                         <p style="margin:0; font-size:12px;">Add, attach or remove Sales Orders from this route to update the manifest before delivery.</p>
                     </div>
                     <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02); margin-bottom:20px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                             <h4 style="margin:0; font-size:14px; font-weight:bold;">Sales Order Operations</h4>
                             <div style="display:flex; gap:10px;">
-                                <button id="btnTab3BindRoutes" onclick="openRouteBindingModal()" style="padding:6px 12px; background:#3f51b5; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">🔗 Bind Routes</button>
-                                <button id="btnTab3CreateSO" onclick="redirectToAddInvoice()" style="padding:6px 12px; background:#0066cc; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">➕ Create Sales Order</button>
-                                <button id="btnTab3AttachSO" onclick="openAttachInvoiceModal()" style="padding:6px 12px; background:#5c6bc0; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">🔗 Attach Sales Order</button>
+                                <button id="btnTab3BindRoutes" onclick="openRouteBindingModal()" style="padding:6px 12px; background:#3f51b5; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;"><i class="ph ph-link"></i> Bind Routes</button>
+                                <button id="btnTab3CreateSO" onclick="redirectToAddInvoice()" style="padding:6px 12px; background:#0066cc; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;"><i class="ph ph-plus-circle"></i> Create Sales Order</button>
+                                <button id="btnTab3AttachSO" onclick="openAttachInvoiceModal()" style="padding:6px 12px; background:#5c6bc0; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;"><i class="ph ph-link"></i> Attach Sales Order</button>
                             </div>
                         </div>
                         <table class="data-table">
@@ -637,20 +665,20 @@
                 <!-- TAB 4: LOADING -->
                 <div class="workspace-tab-panel" id="tabpanel-4" style="display:none;">
                     <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:15px; margin-bottom:20px; color:#78350f;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">🔍 Loading Verification Checklist</h4>
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-truck"></i> Loading Verification Checklist</h4>
                         <p style="margin:0; font-size:12px;">Perform physical count checks before the vehicle dispatches.</p>
                     </div>
                     <div id="loadingBox" style="margin-bottom:20px;"></div>
                     <div style="text-align:right;">
-                        <button onclick="printLoadingSheet('final')" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">🖨️ Print Loading Sheet</button>
-                        <button onclick="printLoadingSheet('summary')" style="padding:8px 16px; background:#673ab7; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;">🖨️ Print Loading Summary</button>
+                        <button onclick="printLoadingSheet('final')" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;"><i class="ph ph-printer"></i> Print Loading Sheet</button>
+                        <button onclick="printLoadingSheet('summary')" style="padding:8px 16px; background:#673ab7; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;"><i class="ph ph-printer"></i> Print Loading Summary</button>
                     </div>
                 </div>
 
                 <!-- TAB 5: VARIANCE -->
                 <div class="workspace-tab-panel" id="tabpanel-5" style="display:none;">
                     <div style="background:#fee2e2; border:1px solid #fca5a5; border-radius:8px; padding:15px; margin-bottom:20px; color:#991b1b;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">🚨 Variance Adjustment Approval</h4>
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-warning-octagon" style="color: #ef4444;"></i> Variance Adjustment Approval</h4>
                         <p style="margin:0; font-size:12px;">Review shortages and overages identified from final picking. Confirm variances before proceeding.</p>
                     </div>
                     <div id="varianceAuditBox" style="margin-bottom:20px;"></div>
@@ -660,7 +688,7 @@
                 <!-- TAB 6: DISPATCH -->
                 <div class="workspace-tab-panel" id="tabpanel-6" style="display:none;">
                     <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">🚚 Delivery / Logistics Binding & Dispatch</h4>
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-truck"></i> Delivery / Logistics Binding & Dispatch</h4>
                         <p style="margin:0; font-size:12px;">Assign driver, vehicle, helper and select outstanding credit bills to dispatch with this delivery manifest.</p>
                     </div>
                     
@@ -672,10 +700,38 @@
                                 <input type="date" id="adjDaDate" value="<?= date('Y-m-d') ?>" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
                             </div>
 
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Vehicle Number *</label>
+                                    <select id="adjDaVehicle" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;" required>
+                                        <option value="">-- Select Vehicle --</option>
+                                        <?php foreach($data['vehicles'] as $v): ?>
+                                            <?php if($v->status === 'Active'): ?>
+                                                <option value="<?= htmlspecialchars($v->vehicle_number) ?>"><?= htmlspecialchars($v->vehicle_number) ?></option>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Driver Name *</label>
+                                    <select id="adjDaDriver" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;" required>
+                                        <option value="">-- Select Driver --</option>
+                                        <?php foreach($data['drivers'] as $d): ?>
+                                            <option value="<?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?>"><?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+
                             <div>
-                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Bind Secondary Route (Optional)</label>
-                                <select id="adjDaSecondaryRoute" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
-                                    <option value="">-- Select Route --</option>
+                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Partner / Helper</label>
+                                <select id="adjDaPartner" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+                                    <option value="">-- None --</option>
+                                    <?php foreach($data['employees'] as $e): ?>
+                                        <?php if($e->status === 'Active'): ?>
+                                            <option value="<?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?>"><?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?> (<?= htmlspecialchars($e->job_title) ?>)</option>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
                                 </select>
                             </div>
 
@@ -687,7 +743,7 @@
                             </div>
 
                             <div style="text-align:right;">
-                                <button type="button" onclick="submitAdjustmentsLogisticsArrange()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">🚚 Bind Delivery Manifest</button>
+                                <button type="button" onclick="submitAdjustmentsLogisticsArrange()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;"><i class="ph ph-truck"></i> Save Delivery Arrangement</button>
                             </div>
                         </form>
                     </div>
@@ -696,7 +752,7 @@
                     <div id="adjDeliveryArrangedView" style="display:none;">
                         <div id="adjArrangedDetailsContainer" style="background:#f8fafc; border:1px solid #e2e8f0; padding:15px; border-radius:8px; font-size:13px; line-height:1.6; margin-bottom:15px;"></div>
                         <div>
-                            <button id="btnEditDeliveryManifest" onclick="document.getElementById('adjDeliveryFormView').style.display='block'; document.getElementById('adjDeliveryArrangedView').style.display='none';" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;">✏️ Edit/Re-arrange Delivery</button>
+                            <button id="btnEditDeliveryManifest" onclick="document.getElementById('adjDeliveryFormView').style.display='block'; document.getElementById('adjDeliveryArrangedView').style.display='none';" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;"><i class="ph ph-pencil"></i> Edit/Re-arrange Delivery</button>
                         </div>
                     </div>
                 </div>
@@ -704,17 +760,17 @@
                 <!-- TAB 7: DELIVERY (LIVE MONITORING) -->
                 <div class="workspace-tab-panel" id="tabpanel-7" style="display:none;">
                     <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:15px; margin-bottom:20px; color:#166534;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">🚚 Delivery Live Execution Status</h4>
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-steering-wheel"></i> Delivery Live Execution Status</h4>
                         <p style="margin:0; font-size:12px;">Track live progress of customer dispatches and collections on the route.</p>
                     </div>
                     <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
-                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">📊 Delivery Performance Summary</h4>
+                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-chart-bar"></i> Delivery Performance Summary</h4>
                         <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:15px;" id="deliveryTabSummaryCards">
                             <!-- Populated dynamically -->
                         </div>
                     </div>
                     <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff;">
-                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">📍 Customer Visit & Dispatch Status</h4>
+                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-map-pin"></i> Customer Visit & Dispatch Status</h4>
                         <table class="data-table">
                             <thead>
                                 <tr>
@@ -735,7 +791,7 @@
                 <!-- TAB 8: RECONCILIATION -->
                 <div class="workspace-tab-panel" id="tabpanel-8" style="display:none;">
                     <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">💵 Route Collections & Variance Reconciliation</h4>
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-currency-dollar"></i> Route Collections & Variance Reconciliation</h4>
                         <p style="margin:0; font-size:12px;">Count cash, verify cheques and document financial variances. Save draft or submit for final settlement.</p>
                     </div>
                     
@@ -743,7 +799,7 @@
                         <div>
                             <!-- Cash Reconciliation Card -->
                             <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
-                                <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">💵 Cash Collections Counter</h4>
+                                <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-coins"></i> Cash Collections Counter</h4>
                                 <table style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom:15px;">
                                     <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Expected Cash Sales</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right;" id="reconExpectedCash">Rs 0.00</td></tr>
                                     <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Expected Cash Collections</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right;" id="reconExpectedCollections">Rs 0.00</td></tr>
@@ -755,7 +811,7 @@
 
                             <!-- Cheque Reconciliation Card -->
                             <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff;">
-                                <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">🏦 Cheques Verification</h4>
+                                <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-bank"></i> Cheques Verification</h4>
                                 <table class="data-table" style="font-size:11px;">
                                     <thead>
                                         <tr>
@@ -776,11 +832,11 @@
                             <!-- Notes & Save Draft Card -->
                             <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; height:100%; display:flex; flex-direction:column; justify-content:space-between;">
                                 <div>
-                                    <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">📝 Audit Remarks</h4>
+                                    <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-note"></i> Audit Remarks</h4>
                                     <textarea id="reconAuditNotes" style="width:100%; height:180px; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; resize:none;" placeholder="Write any audit notes regarding cash discrepancy, bank transfer receipts verified, etc..."></textarea>
                                 </div>
                                 <div style="text-align:right; margin-top:20px;">
-                                    <button id="btnSaveReconciliationDraft" onclick="saveReconciliationDraft()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer; width:100%;">💾 Save Reconciliation Draft</button>
+                                    <button id="btnSaveReconciliationDraft" onclick="saveReconciliationDraft()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer; width:100%;"><i class="ph ph-floppy-disk"></i> Save Reconciliation Draft</button>
                                 </div>
                             </div>
                         </div>
@@ -790,7 +846,7 @@
                 <!-- TAB 9: RETURN STOCK VERIFICATION -->
                 <div class="workspace-tab-panel" id="tabpanel-9" style="display:none;">
                     <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">📦 Return Stock Verification</h4>
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-package"></i> Return Stock Verification</h4>
                         <p style="margin:0; font-size:12px;">Confirm physical return counts. Mark return verification complete to finalize stock updates.</p>
                     </div>
                     <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
@@ -824,13 +880,13 @@
                 <!-- TAB 10: ACCOUNTING -->
                 <div class="workspace-tab-panel" id="tabpanel-10" style="display:none;">
                     <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:15px; margin-bottom:20px; color:#166534;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;">💼 General Ledger Double Entry Postings</h4>
+                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-briefcase"></i> General Ledger Double Entry Postings</h4>
                         <p style="margin:0; font-size:12px;">Map the transactions of this route to appropriate general ledger accounts. Make manual overrides if needed and finalize the route.</p>
                     </div>
 
                     <!-- Dispatch Assignment Section inside Accounting final tab -->
                     <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
-                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">🚚 Dispatch & Logistics Assignment</h4>
+                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-truck"></i> Dispatch & Logistics Assignment</h4>
                         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px;">
                             <div>
                                 <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Vehicle Number *</label>
@@ -868,15 +924,15 @@
 
                     <!-- General Ledger account double entry mappings card -->
                     <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
-                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">💼 Account Mappings</h4>
+                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-briefcase"></i> Account Mappings</h4>
                         <div style="display: flex; gap: 10px; border-bottom: 1px solid #eee; margin-bottom: 15px;">
-                            <button type="button" class="left-tab-btn active" id="settleDeTabCollectionsBtn" onclick="switchSettleDeTab('collections')">💵 Cash/Cheques Posting</button>
-                            <button type="button" class="left-tab-btn" id="settleDeTabSalesBtn" onclick="switchSettleDeTab('sales')">📦 Invoices Sales Posting</button>
+                            <button type="button" class="left-tab-btn active" id="settleDeTabCollectionsBtn" onclick="switchSettleDeTab('collections')"><i class="ph ph-coins"></i> Cash/Cheques Posting</button>
+                            <button type="button" class="left-tab-btn" id="settleDeTabSalesBtn" onclick="switchSettleDeTab('sales')"><i class="ph ph-file-text"></i> Invoices Sales Posting</button>
                         </div>
                         <div id="settleDeCollectionsContainer"></div>
                         <div id="settleDeSalesContainer" style="display:none;"></div>
                         <div style="text-align:right; margin-top:20px;">
-                            <button id="btnSaveAccountingDraft" onclick="saveAccountingDraft()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">💾 Save Account Mappings Draft</button>
+                            <button id="btnSaveAccountingDraft" onclick="saveAccountingDraft()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;"><i class="ph ph-floppy-disk"></i> Save Account Mappings Draft</button>
                         </div>
                     </div>
 
@@ -886,7 +942,7 @@
                             Please verify Cash, Cheques, and Return stock counts under Reconciliation & Return Stock tabs to unlock Finalization.
                         </div>
                         <button id="settleSubmitBtn" onclick="submitFinalSettle()" style="padding:12px 24px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:14px; opacity:0.5; cursor:not-allowed;" disabled>
-                            ⚖️ Settle Balancing & Finalize Route
+                            <i class="ph ph-scales"></i> Settle Balancing & Finalize Route
                         </button>
                     </div>
                 </div>
@@ -895,21 +951,21 @@
                 <div class="stage-section-panel" id="ssec-Completed" style="display:none;">
                     <div style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:15px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
                         <div>
-                            <h4 style="margin:0; font-size:14px; font-weight:bold; color:#2e7d32;">🏁 Route Settle Balancing Finalized</h4>
+                            <h4 style="margin:0; font-size:14px; font-weight:bold; color:#2e7d32;"><i class="ph ph-flag-checkered"></i> Route Settle Balancing Finalized</h4>
                             <p style="margin:5px 0 0 0; font-size:12px; color:#666;">This route is read-only. All transactions, inventories, and GL postings are successfully finalized.</p>
                         </div>
                         <div style="display:flex; gap:10px;">
-                            <button onclick="printBalancingReport()" style="padding:8px 12px; background:#0066cc; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Print Balancing Report 🖨</button>
-                            <button onclick="printLoadingSheetSpreadsheet()" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Print Spreadsheet 📊</button>
-                            <button onclick="printLoadingSheet('summary')" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Print Loading Summary 🚚</button>
-                            <button onclick="exportCSV()" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">Export CSV 📥</button>
+                            <button onclick="printBalancingReport()" style="padding:8px 12px; background:#0066cc; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;"><i class="ph ph-printer"></i> Print Balancing Report</button>
+                            <button onclick="printLoadingSheetSpreadsheet()" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;"><i class="ph ph-chart-bar"></i> Print Spreadsheet</button>
+                            <button onclick="printLoadingSheet('summary')" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;"><i class="ph ph-truck"></i> Print Loading Summary</button>
+                            <button onclick="exportCSV()" style="padding:8px 12px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;"><i class="ph ph-download"></i> Export CSV</button>
                         </div>
                     </div>
                     
                     <div style="display:flex; gap:10px; border-bottom:1px solid #eee; margin-bottom:15px;">
-                        <button class="left-tab-btn active" id="compTabInvoicesBtn" onclick="switchCompletedTab('invoices')">📄 Invoices</button>
-                        <button class="left-tab-btn" id="compTabCollectionsBtn" onclick="switchCompletedTab('collections')">💰 Settled Collections</button>
-                        <button class="left-tab-btn" id="compTabVariancesBtn" onclick="switchCompletedTab('variances')">🚚 Variances</button>
+                        <button class="left-tab-btn active" id="compTabInvoicesBtn" onclick="switchCompletedTab('invoices')"><i class="ph ph-file-text"></i> Invoices</button>
+                        <button class="left-tab-btn" id="compTabCollectionsBtn" onclick="switchCompletedTab('collections')"><i class="ph ph-coins"></i> Settled Collections</button>
+                        <button class="left-tab-btn" id="compTabVariancesBtn" onclick="switchCompletedTab('variances')"><i class="ph ph-scales"></i> Variances</button>
                     </div>
 
                     <div id="completedInvoicesTab">
@@ -933,8 +989,8 @@
         <div class="slider-header">
             <span>Sales Order Mini-Viewer</span>
             <div>
-                <a id="btnEditInvoice" href="#" style="background: rgba(255,255,255,0.2); color: #fff; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; margin-right: 15px; border: 1px solid rgba(255,255,255,0.4);">✏️ Edit</a>
-                <button id="btnDeleteInvoice" onclick="deleteSalesOrder()" style="background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; margin-right: 15px; cursor: pointer; font-weight: bold;">🗑️ Delete</button>
+                <a id="btnEditInvoice" href="#" style="background: rgba(255,255,255,0.2); color: #fff; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; margin-right: 15px; border: 1px solid rgba(255,255,255,0.4);"><i class="ph ph-pencil"></i> Edit</a>
+                <button id="btnDeleteInvoice" onclick="deleteSalesOrder()" style="background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; margin-right: 15px; cursor: pointer; font-weight: bold;"><i class="ph ph-trash"></i> Delete</button>
                 <button class="close-slider" onclick="closeInvoiceSlider()">✕</button>
             </div>
         </div>
@@ -947,7 +1003,7 @@
     <div class="modal-panel" style="max-width: 950px; width: 90%; height: 80vh; display: flex; flex-direction: column;">
         <div style="background: #3f51b5; color: #fff; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-                <span>📍 GPS Route Path Tracking</span>
+                <span><i class="ph ph-map-pin"></i> GPS Route Path Tracking</span>
                 <span id="modalRouteName" style="background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; font-size: 11px;"></span>
                 <span id="pathPointCount" style="font-weight: normal; font-size: 11px;"></span>
             </div>
@@ -969,7 +1025,7 @@
 <div class="modal-backdrop" id="createManualRouteModal">
     <div class="modal-panel" style="max-width: 480px; width: 95%;">
         <div class="modal-header" style="background: #2e7d32;">
-            <span>➕ Create Route Manually</span>
+            <span><i class="ph ph-plus-circle"></i> Create Route Manually</span>
             <button onclick="closeCreateRouteModal()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
         </div>
         <form action="<?= APP_URL ?>/RepTracking/create_route_manual" method="POST">
@@ -995,7 +1051,7 @@
                 </div>
                 <div>
                     <label for="mrStartMeter">Starting Odometer / Meter *</label>
-                    <input type="number" step="0.1" name="start_meter" id="mrStartMeter" value="0.0" min="0" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: white;" required>
+                    <input type="number" step="0.1" name="start_meter" id="mrStartMeter" value="0.0" min="0" max="999999" oninput="if(this.value.length > 6) this.value = this.value.slice(0,6);" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: white;" required>
                 </div>
                 <div>
                     <label for="mrStartTime">Start Date & Time *</label>
@@ -1004,7 +1060,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="qb-btn" onclick="closeCreateRouteModal()" style="border:1px solid #ccc; padding:8px 18px; border-radius:4px; font-size:12px; cursor:pointer;">Cancel</button>
-                <button type="submit" class="qb-btn" style="background:#2e7d32; color:#fff; border:none; padding:8px 18px; border-radius:4px; font-size:12px; cursor:pointer; font-weight: bold;">⚡ Create Route</button>
+                <button type="submit" class="qb-btn" style="background:#2e7d32; color:#fff; border:none; padding:8px 18px; border-radius:4px; font-size:12px; cursor:pointer; font-weight: bold;"><i class="ph ph-lightning"></i> Create Route</button>
             </div>
         </form>
     </div>
@@ -1014,7 +1070,7 @@
 <div class="modal-backdrop" id="routeBindingModal">
     <div class="modal-panel" style="max-width: 900px; width: 95%; max-height: 90vh;">
         <div class="modal-header" style="background: #3f51b5;">
-            <span>🔗 Rep Route Multi-Binding Panel</span>
+            <span><i class="ph ph-link"></i> Rep Route Multi-Binding Panel</span>
             <button onclick="closeRouteBindingModal()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
         </div>
         <div class="modal-body" style="overflow-y:auto; flex:1;">
@@ -1024,11 +1080,11 @@
             </div>
             <label>Route Slots</label>
             <div id="rbSlotsContainer" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px,1fr)); gap:15px; margin-bottom:15px;"></div>
-            <button type="button" onclick="addBindingSlot()" style="background: #eef2ff; color: #3f51b5; border: 1px dashed #3f51b5; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: block; width: 100%;">➕ Add Route Slot</button>
+            <button type="button" onclick="addBindingSlot()" style="background: #eef2ff; color: #3f51b5; border: 1px dashed #3f51b5; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: block; width: 100%;"><i class="ph ph-plus-circle"></i> Add Route Slot</button>
         </div>
         <div class="modal-footer">
             <button class="qb-btn" onclick="closeRouteBindingModal()" style="border:1px solid #ccc; padding:8px 18px; border-radius:4px; font-size:12px; cursor:pointer;">Cancel</button>
-            <button class="qb-btn" onclick="submitRouteBinding()" style="background:#2e7d32; color:#fff; border:none; padding:8px 18px; border-radius:4px; font-size:12px; cursor:pointer; font-weight: bold;">⚡ Confirm & Create Route Binding</button>
+            <button class="qb-btn" onclick="submitRouteBinding()" style="background:#2e7d32; color:#fff; border:none; padding:8px 18px; border-radius:4px; font-size:12px; cursor:pointer; font-weight: bold;"><i class="ph ph-lightning"></i> Confirm & Create Route Binding</button>
         </div>
     </div>
 </div>
@@ -1037,7 +1093,7 @@
 <div class="modal-backdrop" id="attachInvoiceModal">
     <div class="modal-panel" style="max-width: 580px; width: 90%;">
         <div class="modal-header" style="background: #5c6bc0;">
-            <span>🔗 Attach Sales Orders to Route</span>
+            <span><i class="ph ph-link"></i> Attach Sales Orders to Route</span>
             <button onclick="closeAttachInvoiceModal()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
         </div>
         <div class="modal-body">
@@ -1079,11 +1135,11 @@
 <div class="modal-backdrop" id="routeSwitcherModalBackdrop">
     <div class="modal-panel" style="max-width: 550px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
         <div class="modal-header" style="background: #3f51b5; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; color: #fff; font-weight: bold;">
-            <span>🔄 Switch Route</span>
+            <span><i class="ph ph-swap"></i> Switch Route</span>
             <button onclick="closeRouteSwitcherModal()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
         </div>
         <div style="padding: 15px; border-bottom: 1px solid #e2e8f0; background: #fff;">
-            <input type="text" id="routeSwitcherSearchInput" placeholder="🔍 Search routes by name, rep..." style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px;" oninput="searchRouteSwitcherList()" />
+            <input type="text" id="routeSwitcherSearchInput" placeholder="Search routes by name, rep..." style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px;" oninput="searchRouteSwitcherList()" />
         </div>
         <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: #fafafa;" id="routeSwitcherItemsContainer">
             <?php foreach($data['routes'] as $route): ?>
@@ -1148,6 +1204,9 @@
         if (routeId) {
             const routeEl = document.getElementById('route_' + routeId);
             if (routeEl) {
+                if (filterType === 'adjustments') {
+                    currentTabIndex = 3;
+                }
                 loadRouteDetails(routeId, routeEl);
                 routeEl.scrollIntoView({ block: 'nearest' });
             }
@@ -1755,51 +1814,59 @@
             opsHeader.style.display = isReadOnly ? 'none' : 'flex';
         }
 
-        // Load secondary routes for logistics binding dropdown
-        const secSelect = document.getElementById('adjDaSecondaryRoute');
-        if (secSelect) {
-            secSelect.innerHTML = '<option value="">-- Choose Route --</option>';
-            document.querySelectorAll('.route-item').forEach(item => {
-                const id = item.id.replace('route_', '');
-                if (parseInt(id) !== parseInt(routeId)) {
-                    const rdata = document.getElementById('route_data_' + id);
-                    if (rdata && rdata.getAttribute('data-status') === 'Adjustments') {
-                        secSelect.innerHTML += `<option value="${id}">${rdata.getAttribute('data-rname')} (Rep: ${rdata.getAttribute('data-rep')})</option>`;
-                    }
-                }
-            });
-        }
-
-        // Load outstanding bills
+        // Load outstanding bills and pre-check already selected ones if delivery is already arranged
         const container = document.getElementById('adjDaBillsContainer');
         if (container) {
             container.innerHTML = '<p style="text-align:center; color:#888;">Loading credit bills... ⏳</p>';
-            fetchSecure('<?= APP_URL ?>/RepTracking/api_get_outstanding_bills/' + routeId)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status !== 'success' || !data.bills || data.bills.length === 0) {
-                        container.innerHTML = '<p style="text-align:center; color:#888; margin:10px 0;">No outstanding credit bills found in these territories.</p>';
-                    } else {
-                        let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
-                        data.bills.forEach(cust => {
-                            cust.bills.forEach(b => {
-                                let amtFormatted = parseFloat(b.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2});
-                                html += `
-                                    <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; padding:6px; border-bottom:1px solid #f0f0f0;">
-                                        <input type="checkbox" class="adj-da-bill-checkbox" value="${b.id}" style="width:16px; height:16px;" ${isReadOnly ? 'disabled' : ''}>
-                                        <div style="flex:1;">
-                                            <div style="font-weight:bold;">${b.invoice_number}</div>
-                                            <div style="font-size:11px; color:#666;">Customer: <strong>${cust.customer_name}</strong> | Date: ${b.invoice_date}</div>
-                                        </div>
-                                        <div style="font-weight:bold; font-family:monospace; color:#c62828;">Rs ${amtFormatted}</div>
-                                    </label>
-                                `;
+            
+            const rdata = document.getElementById('route_data_' + routeId);
+            const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
+            let selectedInvoices = [];
+
+            const renderBills = (selectedIds) => {
+                fetchSecure('<?= APP_URL ?>/RepTracking/api_get_outstanding_bills/' + routeId)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status !== 'success' || !data.bills || data.bills.length === 0) {
+                            container.innerHTML = '<p style="text-align:center; color:#888; margin:10px 0;">No outstanding credit bills found in these territories.</p>';
+                        } else {
+                            let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+                            data.bills.forEach(cust => {
+                                cust.bills.forEach(b => {
+                                    let amtFormatted = parseFloat(b.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2});
+                                    const isChecked = selectedIds.includes(parseInt(b.id)) ? 'checked' : '';
+                                    html += `
+                                        <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; padding:6px; border-bottom:1px solid #f0f0f0;">
+                                            <input type="checkbox" class="adj-da-bill-checkbox" value="${b.id}" style="width:16px; height:16px;" ${isReadOnly ? 'disabled' : ''} ${isChecked}>
+                                            <div style="flex:1;">
+                                                <div style="font-weight:bold;">${b.invoice_number}</div>
+                                                <div style="font-size:11px; color:#666;">Customer: <strong>${cust.customer_name}</strong> | Date: ${b.invoice_date}</div>
+                                            </div>
+                                            <div style="font-weight:bold; font-family:monospace; color:#c62828;">Rs ${amtFormatted}</div>
+                                        </label>
+                                    `;
+                                });
                             });
-                        });
-                        html += '</div>';
-                        container.innerHTML = html;
-                    }
-                });
+                            html += '</div>';
+                            container.innerHTML = html;
+                        }
+                    });
+            };
+
+            if (delId && delId !== '0' && delId !== '') {
+                fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
+                    .then(res => res.json())
+                    .then(dData => {
+                        if (dData.delivery && dData.delivery.selected_credit_invoices) {
+                            try {
+                                selectedInvoices = JSON.parse(dData.delivery.selected_credit_invoices).map(id => parseInt(id));
+                            } catch (e) {}
+                        }
+                        renderBills(selectedInvoices);
+                    });
+            } else {
+                renderBills([]);
+            }
         }
 
         fetchSecure('<?= APP_URL ?>/RepTracking/api_get_route_details/' + routeId)
@@ -1852,7 +1919,12 @@
 
     function submitAdjustmentsLogisticsArrange() {
         const date = document.getElementById('adjDaDate').value;
-        const secondary = document.getElementById('adjDaSecondaryRoute').value;
+        const vehicle = document.getElementById('adjDaVehicle').value;
+        const driver = document.getElementById('adjDaDriver').value;
+        const partner = document.getElementById('adjDaPartner').value;
+
+        if (!vehicle) { alert("Please select a Vehicle Number."); return; }
+        if (!driver) { alert("Please select a Driver Name."); return; }
 
         const checkedBills = [];
         document.querySelectorAll('.adj-da-bill-checkbox:checked').forEach(cb => {
@@ -1861,11 +1933,11 @@
 
         const payload = {
             rep_route_id: currentRouteId,
-            secondary_rep_route_id: secondary ? parseInt(secondary) : null,
+            secondary_rep_route_id: null,
             delivery_date: date,
-            vehicle_number: '',
-            driver_name: '',
-            partner_name: '',
+            vehicle_number: vehicle,
+            driver_name: driver,
+            partner_name: partner,
             selected_credit_invoices: checkedBills
         };
 
@@ -1877,7 +1949,7 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert("🎉 Delivery bound successfully!");
+                alert("🎉 Delivery arranged successfully!");
                 const rdata = document.getElementById('route_data_' + currentRouteId);
                 if (rdata) {
                     rdata.setAttribute('data-delivery-id', data.delivery_id);
@@ -2527,17 +2599,21 @@
                 .then(dData => {
                     const container = document.getElementById('adjArrangedDetailsContainer');
                     if (dData.delivery) {
+                        if (document.getElementById('adjDaDate')) document.getElementById('adjDaDate').value = dData.delivery.delivery_date || '';
+                        if (document.getElementById('adjDaVehicle')) document.getElementById('adjDaVehicle').value = dData.delivery.vehicle_number || '';
+                        if (document.getElementById('adjDaDriver')) document.getElementById('adjDaDriver').value = dData.delivery.driver_name || '';
+                        if (document.getElementById('adjDaPartner')) document.getElementById('adjDaPartner').value = dData.delivery.partner_name || '';
+
                         container.innerHTML = `
                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                                 <div><strong>Delivery ID:</strong> #${dData.delivery.id}</div>
                                 <div><strong>Delivery Date:</strong> ${dData.delivery.delivery_date}</div>
-                                <div><strong>Secondary Bound Route:</strong> ${dData.delivery.secondary_route_name || 'None'}</div>
                                 <div><strong>Vehicle Number:</strong> ${dData.delivery.vehicle_number || 'Pending'}</div>
                                 <div><strong>Driver Name:</strong> ${dData.delivery.driver_name || 'Pending'}</div>
                                 <div><strong>Helper Name:</strong> ${dData.delivery.partner_name || 'None'}</div>
                             </div>
                             <div style="margin-top:10px; font-weight:bold; font-size:12px; color:#1e3a8a;">
-                                🔗 Bound Manifest successfully generated. Ready for warehouse.
+                                🔗 Delivery Manifest successfully generated. Ready for warehouse.
                             </div>
                         `;
                     } else {
