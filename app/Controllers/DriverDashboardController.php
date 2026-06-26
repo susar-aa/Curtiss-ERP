@@ -292,7 +292,7 @@ class DriverDashboardController extends Controller {
         try {
             require_once __DIR__ . '/../Models/RepCatalog.php';
             $catalogModel = new RepCatalog();
-            $products = $catalogModel->getVisualCatalog();
+            $products = $catalogModel->getVisualCatalog(false);
             
             $db->query("SELECT id, name FROM item_categories ORDER BY name ASC");
             $categories = $db->resultSet() ?: [];
@@ -328,7 +328,7 @@ class DriverDashboardController extends Controller {
                 'all_active_deliveries_in_db' => $allActive,
                 'all_users_in_db' => $allUsers
             ]
-        ]);
+        ], JSON_INVALID_UTF8_SUBSTITUTE);
         exit;
     }
 

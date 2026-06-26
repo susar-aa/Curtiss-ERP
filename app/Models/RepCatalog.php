@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 class RepCatalog {
     private $db;
 
@@ -11,7 +11,7 @@ class RepCatalog {
         return $this->db->resultSet();
     }
 
-    public function getVisualCatalog() {
+    public function getVisualCatalog($includeVariations = true) {
         // Fetch base items and their primary display image
         $this->db->query("
             SELECT i.*, c.name as category_name,
@@ -24,16 +24,20 @@ class RepCatalog {
         
         // Embed variations inside each item for the modal selection screen
         foreach($items as $item) {
-            $this->db->query("
-                SELECT ivo.*, v.name as variation_name, vv.value_name,
-                       (SELECT image_path FROM item_images WHERE item_id = :id AND variation_value_id = vv.id ORDER BY is_primary DESC, id ASC LIMIT 1) as var_image
-                FROM item_variation_options ivo
-                JOIN variations v ON ivo.variation_id = v.id
-                JOIN variation_values vv ON ivo.variation_value_id = vv.id
-                WHERE ivo.item_id = :id
-            ");
-            $this->db->bind(':id', $item->id);
-            $item->variations = $this->db->resultSet() ?: [];
+            if ($includeVariations) {
+                $this->db->query("
+                    SELECT ivo.*, v.name as variation_name, vv.value_name,
+                           (SELECT image_path FROM item_images WHERE item_id = :id AND variation_value_id = vv.id ORDER BY is_primary DESC, id ASC LIMIT 1) as var_image
+                    FROM item_variation_options ivo
+                    JOIN variations v ON ivo.variation_id = v.id
+                    JOIN variation_values vv ON ivo.variation_value_id = vv.id
+                    WHERE ivo.item_id = :id
+                ");
+                $this->db->bind(':id', $item->id);
+                $item->variations = $this->db->resultSet() ?: [];
+            } else {
+                $item->variations = [];
+            }
             
             // Map main item price to Wholesale price
             $billingPrice = 0.00;
@@ -51,44 +55,47 @@ class RepCatalog {
             $item->wholesale_price = $billingPrice;
 
             // If variations are empty from database, check variations_json
-            if (empty($item->variations) && !empty($item->variations_json)) {
-                $decoded = json_decode($item->variations_json);
-                if (is_array($decoded)) {
-                    $item->variations = [];
-                    foreach ($decoded as $v) {
-                        $vObj = new stdClass();
-                        $vObj->id = $v->id ?? 0;
-                        $vObj->variation_name = 'Option';
-                        $vObj->value_name = $v->attribute ?? '';
-                        $vObj->sku = $v->sku ?? '';
-                        $vObj->quantity_on_hand = $v->qty ?? $item->quantity_on_hand ?? 0;
-                        $vObj->quantity_reserved = $v->quantity_reserved ?? 0;
-                        
-                        // Enforce wholesale price on variation
-                        $vPrice = 0.00;
-                        if (isset($v->wholesale_price) && floatval($v->wholesale_price) > 0) {
-                            $vPrice = floatval($v->wholesale_price);
-                        } elseif (isset($v->price) && floatval($v->price) > 0) {
-                            $vPrice = floatval($v->price);
-                        } else {
-                            $vPrice = $billingPrice;
+            if ($includeVariations) {
+                if (empty($item->variations) && !empty($item->variations_json)) {
+                    $decoded = json_decode($item->variations_json);
+                    if (is_array($decoded)) {
+                        $item->variations = [];
+                        foreach ($decoded as $v) {
+                            if (!is_object($v)) continue;
+                            $vObj = new stdClass();
+                            $vObj->id = $v->id ?? 0;
+                            $vObj->variation_name = 'Option';
+                            $vObj->value_name = $v->attribute ?? '';
+                            $vObj->sku = $v->sku ?? '';
+                            $vObj->quantity_on_hand = $v->qty ?? $item->quantity_on_hand ?? 0;
+                            $vObj->quantity_reserved = $v->quantity_reserved ?? 0;
+                            
+                            // Enforce wholesale price on variation
+                            $vPrice = 0.00;
+                            if (isset($v->wholesale_price) && floatval($v->wholesale_price) > 0) {
+                                $vPrice = floatval($v->wholesale_price);
+                            } elseif (isset($v->price) && floatval($v->price) > 0) {
+                                $vPrice = floatval($v->price);
+                            } else {
+                                $vPrice = $billingPrice;
+                            }
+                            $vObj->price = $vPrice;
+                            $item->variations[] = $vObj;
                         }
-                        $vObj->price = $vPrice;
-                        $item->variations[] = $vObj;
                     }
-                }
-            } else if (!empty($item->variations)) {
-                // Enforce wholesale price on DB variations
-                foreach ($item->variations as $var) {
-                    $varPrice = 0.00;
-                    if (isset($var->wholesale_price) && floatval($var->wholesale_price) > 0) {
-                        $varPrice = floatval($var->wholesale_price);
-                    } elseif (isset($var->price) && floatval($var->price) > 0) {
-                        $varPrice = floatval($var->price);
-                    } else {
-                        $varPrice = $billingPrice;
+                } else if (!empty($item->variations)) {
+                    // Enforce wholesale price on DB variations
+                    foreach ($item->variations as $var) {
+                        $varPrice = 0.00;
+                        if (isset($var->wholesale_price) && floatval($var->wholesale_price) > 0) {
+                            $varPrice = floatval($var->wholesale_price);
+                        } elseif (isset($var->price) && floatval($var->price) > 0) {
+                            $varPrice = floatval($var->price);
+                        } else {
+                            $varPrice = $billingPrice;
+                        }
+                        $var->price = $varPrice;
                     }
-                    $var->price = $varPrice;
                 }
             }
         }
