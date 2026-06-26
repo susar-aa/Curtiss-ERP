@@ -145,10 +145,15 @@ class SalesController extends Controller {
         $this->db->query("SELECT id, name FROM customers ORDER BY name ASC");
         $customers = $this->db->resultSet() ?: [];
 
+        // Fetch active sales reps for bulk edit dropdown
+        $this->db->query("SELECT CONCAT(first_name, ' ', last_name) as name FROM employees WHERE status = 'Active' ORDER BY first_name ASC, last_name ASC");
+        $salesReps = $this->db->resultSet() ?: [];
+
         $data = [
             'title' => 'Invoices & Accounts Receivable',
             'invoices' => $invoices,
             'customers' => $customers,
+            'sales_reps' => $salesReps,
             'search' => $search,
             'start_date' => $startDate,
             'end_date' => $endDate,
@@ -1175,6 +1180,190 @@ class SalesController extends Controller {
             header('Location: ' . APP_URL . '/sales');
             exit;
         }
+    }
+
+    /**
+     * Process bulk action (edit dates, change reps, or delete) on multiple invoices.
+     */
+    public function bulk_action() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . APP_URL . '/sales');
+            exit;
+        }
+
+        $ids = $_POST['ids'] ?? [];
+        $action = $_POST['bulk_action'] ?? '';
+        $newDate = $_POST['bulk_date'] ?? '';
+        $newRep = $_POST['bulk_rep'] ?? '';
+        $adminPassword = $_POST['admin_password'] ?? '';
+
+        if (empty($ids)) {
+            $_SESSION['flash_error'] = "No records selected.";
+            header('Location: ' . APP_URL . '/sales');
+            exit;
+        }
+
+        // Authenticate admin password if action is delete
+        if ($action === 'delete') {
+            if (empty($adminPassword)) {
+                $_SESSION['flash_error'] = "Admin password is required for bulk deletion.";
+                header('Location: ' . APP_URL . '/sales');
+                exit;
+            }
+            $userModel = $this->model('User');
+            $username = $_SESSION['username'] ?? '';
+            $user = $userModel->login($username, $adminPassword);
+
+            if (!$user) {
+                $_SESSION['flash_error'] = "Authentication failed: Incorrect password!";
+                header('Location: ' . APP_URL . '/sales');
+                exit;
+            }
+
+            // Verify Delete Permission
+            if (isset($_SESSION['role']) && strtolower($_SESSION['role']) !== 'admin') {
+                $perms = $_SESSION['permissions'] ?? [];
+                if (!($perms['sales']['can_delete'] ?? false)) {
+                    $_SESSION['flash_error'] = "Access denied: You do not have permission to delete.";
+                    header('Location: ' . APP_URL . '/sales');
+                    exit;
+                }
+            }
+        }
+
+        $successCount = 0;
+        $failureCount = 0;
+        $invoiceModel = $this->model('Invoice');
+
+        if ($action === 'delete') {
+            foreach ($ids as $compositeId) {
+                $id = intval(str_replace('invoice:', '', $compositeId));
+                $inv = $invoiceModel->getInvoiceById($id);
+                if ($inv) {
+                    $success = $invoiceModel->deleteInvoiceWithAccounting($id, $_SESSION['user_id']);
+                    if ($success) {
+                        $this->db->query("INSERT INTO deleted_invoices (invoice_number, customer_name, total_amount, deleted_user_name, delete_reason, record_type) 
+                                          VALUES (:inv_num, :cust_name, :total, :deleted_user, :reason, 'Invoice')");
+                        $this->db->bind(':inv_num', $inv->invoice_number);
+                        $this->db->bind(':cust_name', $inv->customer_name);
+                        $this->db->bind(':total', $inv->total_amount);
+                        $this->db->bind(':deleted_user', $_SESSION['username'] ?? 'System');
+                        $this->db->bind(':reason', "Bulk deleted by admin");
+                        $this->db->execute();
+
+                        $this->logActivity('Bulk Delete Invoice', 'Billing', "Bulk deleted Invoice {$inv->invoice_number}", $id);
+                        $successCount++;
+                    } else {
+                        $failureCount++;
+                    }
+                } else {
+                    $failureCount++;
+                }
+            }
+            $_SESSION['flash_success'] = "Successfully bulk deleted {$successCount} invoices." . ($failureCount > 0 ? " {$failureCount} failed." : "");
+        } elseif ($action === 'change_date') {
+            if (empty($newDate)) {
+                $_SESSION['flash_error'] = "New date is required.";
+                header('Location: ' . APP_URL . '/sales');
+                exit;
+            }
+            foreach ($ids as $compositeId) {
+                $id = intval(str_replace('invoice:', '', $compositeId));
+                $inv = $invoiceModel->getInvoiceById($id);
+                if ($inv) {
+                    $this->db->query("UPDATE invoices SET invoice_date = :new_date WHERE id = :id");
+                    $this->db->bind(':new_date', $newDate);
+                    $this->db->bind(':id', $id);
+                    $this->db->execute();
+
+                    if ($inv->journal_entry_id) {
+                        $this->db->query("UPDATE journal_entries SET entry_date = :new_date WHERE id = :jid");
+                        $this->db->bind(':new_date', $newDate);
+                        $this->db->bind(':jid', $inv->journal_entry_id);
+                        $this->db->execute();
+                    }
+
+                    $this->logActivity('Bulk Edit Date', 'Billing', "Bulk updated Date to {$newDate} for Invoice {$inv->invoice_number}", $id);
+                    $successCount++;
+                } else {
+                    $failureCount++;
+                }
+            }
+            $_SESSION['flash_success'] = "Successfully updated date for {$successCount} invoices." . ($failureCount > 0 ? " {$failureCount} failed." : "");
+        } elseif ($action === 'change_rep') {
+            if (empty($newRep)) {
+                $_SESSION['flash_error'] = "New representative is required.";
+                header('Location: ' . APP_URL . '/sales');
+                exit;
+            }
+            foreach ($ids as $compositeId) {
+                $id = intval(str_replace('invoice:', '', $compositeId));
+                $inv = $invoiceModel->getInvoiceById($id);
+                if ($inv) {
+                    $routeId = $this->getOrCreateRouteForRep($newRep, $inv->invoice_date);
+                    if ($routeId) {
+                        $this->db->query("UPDATE invoices SET rep_route_id = :route_id WHERE id = :id");
+                        $this->db->bind(':route_id', $routeId);
+                        $this->db->bind(':id', $id);
+                        $this->db->execute();
+
+                        $this->logActivity('Bulk Edit Rep', 'Billing', "Bulk updated Rep to {$newRep} for Invoice {$inv->invoice_number}", $id);
+                        $successCount++;
+                    } else {
+                        $failureCount++;
+                    }
+                } else {
+                    $failureCount++;
+                }
+            }
+            $_SESSION['flash_success'] = "Successfully updated representative for {$successCount} invoices." . ($failureCount > 0 ? " {$failureCount} failed." : "");
+        }
+
+        header('Location: ' . APP_URL . '/sales');
+        exit;
+    }
+
+    /**
+     * Get or create daily route for a representative name and date.
+     */
+    private function getOrCreateRouteForRep($repName, $date) {
+        $this->db->query("SELECT u.id as user_id 
+                          FROM users u 
+                          JOIN employees e ON u.employee_id = e.id 
+                          WHERE CONCAT(e.first_name, ' ', e.last_name) = :rep_name LIMIT 1");
+        $this->db->bind(':rep_name', $repName);
+        $userRow = $this->db->single();
+        if (!$userRow) {
+            $this->db->query("SELECT id as user_id FROM users WHERE username = :rep_name LIMIT 1");
+            $this->db->bind(':rep_name', $repName);
+            $userRow = $this->db->single();
+        }
+        
+        if (!$userRow) {
+            return null;
+        }
+        
+        $userId = $userRow->user_id;
+        $dateStr = date('Y-m-d', strtotime($date));
+        
+        $this->db->query("SELECT id FROM rep_daily_routes WHERE user_id = :user_id AND DATE(start_time) = :date LIMIT 1");
+        $this->db->bind(':user_id', $userId);
+        $this->db->bind(':date', $dateStr);
+        $routeRow = $this->db->single();
+        if ($routeRow) {
+            return $routeRow->id;
+        }
+        
+        $routeName = $repName . " Route - " . $dateStr;
+        $startTime = $dateStr . " 08:00:00";
+        $this->db->query("INSERT INTO rep_daily_routes (user_id, route_name, start_time, status) 
+                          VALUES (:user_id, :route_name, :start_time, 'Active')");
+        $this->db->bind(':user_id', $userId);
+        $this->db->bind(':route_name', $routeName);
+        $this->db->bind(':start_time', $startTime);
+        $this->db->execute();
+        
+        return $this->db->lastInsertId();
     }
 
     /**

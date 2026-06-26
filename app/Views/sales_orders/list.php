@@ -122,123 +122,176 @@
         </form>
     </div>
 
-    <!-- Data Table Container -->
-    <div style="background: #fff; border: 1px solid var(--mac-border, #e0e0e0); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 20px;">
-        <table style="width: 100%; border-collapse: collapse; text-align: left;">
-            <thead>
-                <tr style="background: #f5f5f7; border-bottom: 1px solid var(--mac-border, #e0e0e0);">
-                    <th style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: #555; width: 14%;">Order No</th>
-                    <th style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: #555; width: 11%;">Date</th>
-                    <th style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: #555;">Customer Name</th>
-                    <th style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: #555; width: 12%;">Source / Channel</th>
-                    <th style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: #555; width: 13%; text-align: right;">Total Amount</th>
-                    <th style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: #555; width: 11%; text-align: center;">Status</th>
-                    <th style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: #555; width: 25%; text-align: right;">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (empty($data['orders'])): ?>
-                    <tr>
-                        <td colspan="7" style="padding: 40px; text-align: center; color: #888; font-size: 14px;">
-                            <i class="ph ph-folder-open" style="font-size: 32px; display: block; margin: 0 auto 10px; color: #ccc;"></i>
-                            No sales orders matching the current criteria found.
-                        </td>
+    <form id="bulkForm" method="POST" action="<?= APP_URL ?>/salesorder/bulk_action" onsubmit="return handleBulkSubmit(event);">
+        <!-- Bulk Action Bar -->
+        <div id="bulkActionBar" style="display: none; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(0, 102, 204, 0.2); border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.05); align-items: center; justify-content: space-between; gap: 15px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="background: #0066cc; color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;" id="selectedCountBadge">0 selected</span>
+                <span style="font-size: 13px; font-weight: 500; color: #333;">Bulk Actions:</span>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex-grow: 1; justify-content: flex-end;">
+                <!-- Action Dropdown -->
+                <select name="bulk_action" id="bulkActionSelect" onchange="toggleBulkActionInputs()" style="padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; background-color: #fff; min-width: 180px;" required>
+                    <option value="">-- Select Action --</option>
+                    <option value="change_date">Change Transaction Date</option>
+                    <option value="change_rep">Change Assigned Representative</option>
+                    <option value="delete">Delete Selected</option>
+                </select>
+
+                <!-- Date Input -->
+                <div id="bulkDateInputContainer" style="display: none;">
+                    <input type="date" name="bulk_date" style="padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px;">
+                </div>
+
+                <!-- Rep Dropdown -->
+                <div id="bulkRepInputContainer" style="display: none;">
+                    <select name="bulk_rep" style="padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; background-color: #fff;">
+                        <option value="">-- Select Representative --</option>
+                        <?php if (!empty($data['sales_reps'])): ?>
+                            <?php foreach ($data['sales_reps'] as $rep): ?>
+                                <option value="<?= htmlspecialchars($rep->name) ?>"><?= htmlspecialchars($rep->name) ?></option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+
+                <!-- Password Input (for Delete validation) -->
+                <div id="bulkPasswordInputContainer" style="display: none; align-items: center; gap: 8px;">
+                    <input type="password" name="admin_password" placeholder="Enter Admin Password" style="padding: 8px 10px; border: 1px solid #ef4444; border-radius: 6px; font-size: 13px;" autocomplete="new-password">
+                </div>
+
+                <!-- Apply Button -->
+                <button type="submit" class="btn" style="background: #0066cc; color: #fff; padding: 8px 16px; font-size: 13px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="ph ph-check-square"></i> Apply
+                </button>
+            </div>
+        </div>
+
+        <!-- Data Table Container -->
+        <div style="background: #fff; border: 1px solid var(--mac-border, #e0e0e0); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 20px;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                <thead>
+                    <tr style="background: #f5f5f7; border-bottom: 1px solid var(--mac-border, #e0e0e0);">
+                        <th style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: #555; width: 4%; text-align: center;">
+                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+                        </th>
+                        <th style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: #555; width: 14%;">Order No</th>
+                        <th style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: #555; width: 11%;">Date</th>
+                        <th style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: #555;">Customer Name</th>
+                        <th style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: #555; width: 12%;">Source / Channel</th>
+                        <th style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: #555; width: 13%; text-align: right;">Total Amount</th>
+                        <th style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: #555; width: 11%; text-align: center;">Status</th>
+                        <th style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: #555; width: 25%; text-align: right;">Actions</th>
                     </tr>
-                <?php else: ?>
-                    <?php foreach ($data['orders'] as $so): ?>
-                        <tr style="border-bottom: 1px solid #f0f0f2; transition: background 0.15s;" onmouseover="this.style.background='#fbfbfd'" onmouseout="this.style.background='transparent'">
-                            <td style="padding: 14px 18px; font-size: 13px; font-weight: 600; color: #0066cc; font-family: monospace;">
-                                <?php if ($so->source_type === 'standard'): ?>
-                                    <a href="<?= APP_URL ?>/salesorder/show/<?= $so->id ?>" target="_blank" style="text-decoration: none; color: inherit;">
-                                        <?= htmlspecialchars($so->document_number) ?>
-                                    </a>
-                                <?php else: ?>
-                                    <a href="<?= APP_URL ?>/sales/show/<?= $so->id ?>" target="_blank" style="text-decoration: none; color: inherit;">
-                                        <?= htmlspecialchars($so->document_number) ?>
-                                    </a>
-                                <?php endif; ?>
-                            </td>
-                            <td style="padding: 14px 18px; font-size: 13px; color: #555;">
-                                <?= date('Y-m-d', strtotime($so->document_date)) ?>
-                            </td>
-                            <td style="padding: 14px 18px; font-size: 13px; color: #333; font-weight: 500;">
-                                <?= htmlspecialchars($so->customer_name) ?>
-                                <?php if (!empty($so->rep_name)): ?>
-                                    <div style="font-size: 11px; color: #777; margin-top: 3px; font-weight: 400;">
-                                        <i class="ph ph-user-circle" style="vertical-align: middle;"></i> Rep: <?= htmlspecialchars($so->rep_name) ?>
-                                    </div>
-                                <?php endif; ?>
-                            </td>
-                            <td style="padding: 14px 18px; font-size: 13px;">
-                                <?php if ($so->source_type === 'standard'): ?>
-                                    <span style="background: #e3f2fd; color: #0d47a1; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                                        📋 Standard SO
-                                    </span>
-                                <?php else: ?>
-                                    <span style="background: #f3e5f5; color: #4a148c; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                                        🚚 Route Rep <?= !empty($so->route_name) ? '(' . htmlspecialchars($so->route_name) . ')' : '' ?>
-                                    </span>
-                                <?php endif; ?>
-                            </td>
-                            <td style="padding: 14px 18px; font-size: 13px; color: #111; font-weight: 600; text-align: right; font-family: monospace;">
-                                Rs: <?= number_format($so->grand_total, 2) ?>
-                            </td>
-                            <td style="padding: 14px 18px; text-align: center;">
-                                <?php 
-                                    $status = $so->status ?? 'Pending';
-                                    $badgeBg = '#fff9c4'; $badgeColor = '#f57f17';
-                                    if ($status === 'Transferred' || $status === 'Completed') { $badgeBg = '#e8f5e9'; $badgeColor = '#2e7d32'; }
-                                    elseif ($status === 'Pending') { $badgeBg = '#fff3e0'; $badgeColor = '#e65100'; }
-                                    elseif ($status === 'Voided') { $badgeBg = '#eceff1'; $badgeColor = '#37474f'; }
-                                ?>
-                                <span style="background: <?= $badgeBg ?>; color: <?= $badgeColor ?>; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase;">
-                                    <?= $status === 'Transferred' ? 'Invoiced' : $status ?>
-                                </span>
-                            </td>
-                            <td style="padding: 14px 18px; text-align: right;">
-                                <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
-                                    
-                                    <!-- Print -->
-                                    <?php if ($so->source_type === 'standard'): ?>
-                                        <a href="<?= APP_URL ?>/salesorder/show/<?= $so->id ?>" target="_blank" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
-                                            <i class="ph ph-printer"></i> Print
-                                        </a>
-                                    <?php else: ?>
-                                        <a href="<?= APP_URL ?>/sales/show/<?= $so->id ?>" target="_blank" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
-                                            <i class="ph ph-printer"></i> Print
-                                        </a>
-                                    <?php endif; ?>
-
-                                    <!-- Edit -->
-                                    <a href="<?= APP_URL ?>/sales/edit/<?= $so->id ?>?type=sales_order" target="_blank" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; border-color: #0066cc; color: #0066cc;">
-                                        <i class="ph ph-pencil"></i> Edit
-                                    </a>
-
-                                    <!-- Convert / Transfer to Invoice -->
-                                    <?php if ($status !== 'Transferred' && $status !== 'Completed'): ?>
-                                        <?php if ($so->source_type === 'standard'): ?>
-                                            <a href="<?= APP_URL ?>/sales/create?from_so=<?= $so->id ?>" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; border-color: #2e7d32; color: #2e7d32; background: #e8f5e9;">
-                                                <i class="ph ph-arrow-square-out"></i> Convert
-                                            </a>
-                                        <?php else: ?>
-                                            <a href="<?= APP_URL ?>/sales/create?from_so_route=<?= $so->id ?>" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; border-color: #2e7d32; color: #2e7d32; background: #e8f5e9;">
-                                                <i class="ph ph-arrow-square-out"></i> Convert
-                                            </a>
-                                        <?php endif; ?>
-                                    <?php endif; ?>
-
-                                    <!-- Delete -->
-                                    <button type="button" class="btn" style="padding: 5px 8px; font-size: 12px; background: #ef4444; color: #fff; border:none; border-radius:4px; cursor:pointer; display: inline-flex; align-items: center; gap: 4px;" onclick="openDeleteModal(<?= $so->id ?>, '<?= $so->document_number ?>', '<?= $so->source_type ?>')">
-                                        <i class="ph ph-trash"></i> Delete
-                                    </button>
-                                </div>
+                </thead>
+                <tbody>
+                    <?php if (empty($data['orders'])): ?>
+                        <tr>
+                            <td colspan="8" style="padding: 40px; text-align: center; color: #888; font-size: 14px;">
+                                <i class="ph ph-folder-open" style="font-size: 32px; display: block; margin: 0 auto 10px; color: #ccc;"></i>
+                                No sales orders matching the current criteria found.
                             </td>
                         </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
+                    <?php else: ?>
+                        <?php foreach ($data['orders'] as $so): ?>
+                            <tr style="border-bottom: 1px solid #f0f0f2; transition: background 0.15s;" onmouseover="this.style.background='#fbfbfd'" onmouseout="this.style.background='transparent'">
+                                <td style="padding: 14px 18px; text-align: center;">
+                                    <input type="checkbox" name="ids[]" value="<?= htmlspecialchars($so->source_type) ?>:<?= $so->id ?>" class="row-checkbox" onchange="updateSelectedCount()">
+                                </td>
+                                <td style="padding: 14px 18px; font-size: 13px; font-weight: 600; color: #0066cc; font-family: monospace;">
+                                    <?php if ($so->source_type === 'standard'): ?>
+                                        <a href="<?= APP_URL ?>/salesorder/show/<?= $so->id ?>" target="_blank" style="text-decoration: none; color: inherit;">
+                                            <?= htmlspecialchars($so->document_number) ?>
+                                        </a>
+                                    <?php else: ?>
+                                        <a href="<?= APP_URL ?>/sales/show/<?= $so->id ?>" target="_blank" style="text-decoration: none; color: inherit;">
+                                            <?= htmlspecialchars($so->document_number) ?>
+                                        </a>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="padding: 14px 18px; font-size: 13px; color: #555;">
+                                    <?= date('Y-m-d', strtotime($so->document_date)) ?>
+                                </td>
+                                <td style="padding: 14px 18px; font-size: 13px; color: #333; font-weight: 500;">
+                                    <?= htmlspecialchars($so->customer_name) ?>
+                                    <?php if (!empty($so->rep_name)): ?>
+                                        <div style="font-size: 11px; color: #777; margin-top: 3px; font-weight: 400;">
+                                            <i class="ph ph-user-circle" style="vertical-align: middle;"></i> Rep: <?= htmlspecialchars($so->rep_name) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="padding: 14px 18px; font-size: 13px;">
+                                    <?php if ($so->source_type === 'standard'): ?>
+                                        <span style="background: #e3f2fd; color: #0d47a1; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                                            📋 Standard SO
+                                        </span>
+                                    <?php else: ?>
+                                        <span style="background: #f3e5f5; color: #4a148c; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                                            🚚 Route Rep <?= !empty($so->route_name) ? '(' . htmlspecialchars($so->route_name) . ')' : '' ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="padding: 14px 18px; font-size: 13px; color: #111; font-weight: 600; text-align: right; font-family: monospace;">
+                                    Rs: <?= number_format($so->grand_total, 2) ?>
+                                </td>
+                                <td style="padding: 14px 18px; text-align: center;">
+                                    <?php 
+                                        $status = $so->status ?? 'Pending';
+                                        $badgeBg = '#fff9c4'; $badgeColor = '#f57f17';
+                                        if ($status === 'Transferred' || $status === 'Completed') { $badgeBg = '#e8f5e9'; $badgeColor = '#2e7d32'; }
+                                        elseif ($status === 'Pending') { $badgeBg = '#fff3e0'; $badgeColor = '#e65100'; }
+                                        elseif ($status === 'Voided') { $badgeBg = '#eceff1'; $badgeColor = '#37474f'; }
+                                    ?>
+                                    <span style="background: <?= $badgeBg ?>; color: <?= $badgeColor ?>; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase;">
+                                        <?= $status === 'Transferred' ? 'Invoiced' : $status ?>
+                                    </span>
+                                </td>
+                                <td style="padding: 14px 18px; text-align: right;">
+                                    <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
+                                        
+                                        <!-- Print -->
+                                        <?php if ($so->source_type === 'standard'): ?>
+                                            <a href="<?= APP_URL ?>/salesorder/show/<?= $so->id ?>" target="_blank" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                                                <i class="ph ph-printer"></i> Print
+                                            </a>
+                                        <?php else: ?>
+                                            <a href="<?= APP_URL ?>/sales/show/<?= $so->id ?>" target="_blank" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                                                <i class="ph ph-printer"></i> Print
+                                            </a>
+                                        <?php endif; ?>
+ 
+                                        <!-- Edit -->
+                                        <a href="<?= APP_URL ?>/sales/edit/<?= $so->id ?>?type=sales_order" target="_blank" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; border-color: #0066cc; color: #0066cc;">
+                                            <i class="ph ph-pencil"></i> Edit
+                                        </a>
+ 
+                                        <!-- Convert / Transfer to Invoice -->
+                                        <?php if ($status !== 'Transferred' && $status !== 'Completed'): ?>
+                                            <?php if ($so->source_type === 'standard'): ?>
+                                                <a href="<?= APP_URL ?>/sales/create?from_so=<?= $so->id ?>" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; border-color: #2e7d32; color: #2e7d32; background: #e8f5e9;">
+                                                    <i class="ph ph-arrow-square-out"></i> Convert
+                                                </a>
+                                            <?php else: ?>
+                                                <a href="<?= APP_URL ?>/sales/create?from_so_route=<?= $so->id ?>" class="btn btn-outline" style="padding: 5px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; border-color: #2e7d32; color: #2e7d32; background: #e8f5e9;">
+                                                    <i class="ph ph-arrow-square-out"></i> Convert
+                                                </a>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+ 
+                                        <!-- Delete -->
+                                        <button type="button" class="btn" style="padding: 5px 8px; font-size: 12px; background: #ef4444; color: #fff; border:none; border-radius:4px; cursor:pointer; display: inline-flex; align-items: center; gap: 4px;" onclick="openDeleteModal(<?= $so->id ?>, '<?= $so->document_number ?>', '<?= $so->source_type ?>')">
+                                            <i class="ph ph-trash"></i> Delete
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </form>
 
     <!-- Pagination Footer -->
     <?php if ($data['total_pages'] > 1): ?>
@@ -324,5 +377,70 @@ window.onclick = function(event) {
     if (event.target == modal) {
         closeDeleteModal();
     }
+}
+
+// Bulk Actions Logic
+function toggleSelectAll(master) {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(cb => cb.checked = master.checked);
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+    const panel = document.getElementById('bulkActionBar');
+    const badge = document.getElementById('selectedCountBadge');
+    
+    if (checkboxes.length > 0) {
+        panel.style.display = 'flex';
+        badge.textContent = checkboxes.length + ' selected';
+    } else {
+        panel.style.display = 'none';
+        const selectAll = document.getElementById('selectAllCheckbox');
+        if (selectAll) selectAll.checked = false;
+    }
+}
+
+function toggleBulkActionInputs() {
+    const action = document.getElementById('bulkActionSelect').value;
+    
+    document.getElementById('bulkDateInputContainer').style.display = action === 'change_date' ? 'block' : 'none';
+    document.getElementById('bulkRepInputContainer').style.display = action === 'change_rep' ? 'block' : 'none';
+    document.getElementById('bulkPasswordInputContainer').style.display = action === 'delete' ? 'block' : 'none';
+    
+    // Add required attributes dynamically
+    document.querySelector('input[name="bulk_date"]').required = action === 'change_date';
+    document.querySelector('select[name="bulk_rep"]').required = action === 'change_rep';
+    document.querySelector('input[name="admin_password"]').required = action === 'delete';
+}
+
+function handleBulkSubmit(e) {
+    const action = document.getElementById('bulkActionSelect').value;
+    if (!action) {
+        alert('Please select a bulk action.');
+        e.preventDefault();
+        return false;
+    }
+    
+    const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+    if (checkboxes.length === 0) {
+        alert('No records selected.');
+        e.preventDefault();
+        return false;
+    }
+    
+    if (action === 'delete') {
+        const password = document.querySelector('input[name="admin_password"]').value;
+        if (!password) {
+            alert('Admin password is required for bulk deletion.');
+            e.preventDefault();
+            return false;
+        }
+        if (!confirm('Are you sure you want to permanently delete the ' + checkboxes.length + ' selected records? This action requires administrator validation and cannot be undone.')) {
+            e.preventDefault();
+            return false;
+        }
+    }
+    return true;
 }
 </script>
