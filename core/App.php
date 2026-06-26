@@ -15,8 +15,10 @@ class App {
 
         // Strip the mobile 'rep' or 'driver' prefix if present
         $isMobileApi = false;
+        $mobilePrefix = '';
         if (isset($url[0]) && (strtolower($url[0]) === 'rep' || strtolower($url[0]) === 'driver')) {
             $isMobileApi = true;
+            $mobilePrefix = ucfirst(strtolower($url[0]));
             array_shift($url);
         }
 
@@ -57,18 +59,34 @@ class App {
 
             if (isset($url[0])) {
                 $cleanControllerName = str_replace('-', '', ucwords($url[0], '-'));
-                $controllerName = $cleanControllerName . 'Controller';
                 
                 // Case-insensitive controller file matching for cross-platform compatibility (Linux / Plesk)
                 $matchedController = null;
                 $controllersDir = '../app/Controllers/';
                 if (is_dir($controllersDir)) {
                     $files = scandir($controllersDir);
-                    $targetLower = strtolower($controllerName . '.php');
-                    foreach ($files as $file) {
-                        if (strtolower($file) === $targetLower) {
-                            $matchedController = pathinfo($file, PATHINFO_FILENAME);
-                            break;
+                    
+                    // 1. Try prepending the mobile prefix if applicable (e.g. DriverDashboardController)
+                    if ($isMobileApi && !empty($mobilePrefix)) {
+                        $prefixedControllerName = $mobilePrefix . $cleanControllerName . 'Controller';
+                        $targetLowerPrefixed = strtolower($prefixedControllerName . '.php');
+                        foreach ($files as $file) {
+                            if (strtolower($file) === $targetLowerPrefixed) {
+                                $matchedController = pathinfo($file, PATHINFO_FILENAME);
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // 2. Fallback to normal controller name if no prefixed controller matches
+                    if ($matchedController === null) {
+                        $controllerName = $cleanControllerName . 'Controller';
+                        $targetLower = strtolower($controllerName . '.php');
+                        foreach ($files as $file) {
+                            if (strtolower($file) === $targetLower) {
+                                $matchedController = pathinfo($file, PATHINFO_FILENAME);
+                                break;
+                            }
                         }
                     }
                 }
@@ -77,6 +95,7 @@ class App {
                     $this->controller = $matchedController;
                     unset($url[0]);
                 } else {
+                    $controllerName = $cleanControllerName . 'Controller';
                     // Force an error to show exactly what file is missing
                     die("<div style='padding:20px; font-family:sans-serif; color:red;'>
                             <h3>MVC Routing Error 404</h3>
