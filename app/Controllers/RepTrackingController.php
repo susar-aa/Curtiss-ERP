@@ -42,6 +42,36 @@ class RepTrackingController extends Controller {
         });
 
         $db = new Database();
+        $db->query("SELECT id, username, email, employee_id FROM users WHERE LOWER(role) = 'driver' AND (status = 'Active' OR status IS NULL)");
+        $driverUsers = $db->resultSet() ?: [];
+
+        foreach ($driverUsers as $du) {
+            $alreadyExists = false;
+            foreach ($drivers as $d) {
+                if ((!empty($du->employee_id) && $d->id == $du->employee_id) || 
+                    (!empty($du->email) && strtolower($d->email) === strtolower($du->email))) {
+                    $alreadyExists = true;
+                    break;
+                }
+            }
+            if (!$alreadyExists) {
+                $virtualDriver = new stdClass();
+                $virtualDriver->id = null;
+                $virtualDriver->employee_id = $du->employee_id;
+                $virtualDriver->username = $du->username;
+                
+                $parts = explode('.', str_replace('@', '.', $du->username));
+                $virtualDriver->first_name = ucfirst($parts[0]);
+                $virtualDriver->last_name = isset($parts[1]) ? ucfirst($parts[1]) : '';
+                $virtualDriver->email = $du->email;
+                $virtualDriver->job_title = 'Driver';
+                $virtualDriver->status = 'Active';
+                
+                $drivers[] = $virtualDriver;
+            }
+        }
+
+        $db = new Database();
         $db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1600'");
         $parent = $db->single();
         $parentId = $parent ? $parent->id : 0;

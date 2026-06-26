@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 class DriverRoute {
     private $db;
 
@@ -48,6 +48,42 @@ class DriverRoute {
             $e2_fullname = trim($user->e2_first . ' ' . $user->e2_last);
             $possibilities[] = $e2_fullname;
             $possibilities[] = $user->e2_first;
+        }
+
+        // 5. Fallback full name and first name from username if full_name is empty
+        if (empty($user->full_name)) {
+            $cleanUsername = str_replace('@', '.', $user->username);
+            $parts = explode('.', $cleanUsername);
+            $firstName = ucfirst($parts[0]);
+            $lastName = isset($parts[1]) ? ucfirst($parts[1]) : '';
+            $virtualFullName = trim($firstName . ' ' . $lastName);
+            
+            $possibilities[] = $virtualFullName;
+            $possibilities[] = $firstName;
+            // Also include lowercase versions
+            $possibilities[] = strtolower($virtualFullName);
+            $possibilities[] = strtolower($firstName);
+        }
+
+        // 6. Username prefixes and subparts
+        $userParts = explode('@', $user->username);
+        if (!empty($userParts[0])) {
+            $possibilities[] = $userParts[0];
+            $subParts = explode('.', $userParts[0]);
+            foreach ($subParts as $sp) {
+                $possibilities[] = $sp;
+                $possibilities[] = ucfirst($sp);
+            }
+        }
+
+        // 7. Email and Email prefix
+        if (!empty($user->email)) {
+            $possibilities[] = $user->email;
+            $emailParts = explode('@', $user->email);
+            if (!empty($emailParts[0])) {
+                $possibilities[] = $emailParts[0];
+                $possibilities[] = ucfirst($emailParts[0]);
+            }
         }
         
         // Clean, normalize, and unique-filter the possibilities
