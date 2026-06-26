@@ -900,6 +900,7 @@ $editingItems = $data['editing_items'] ?? [];
 
     function addItemRow(itemOrId, code = null, qty = 1, desc = null, price = null, discVal = 0, discType = 'Rs') {
         let item = {};
+        let isDuplicate = false;
         if (typeof itemOrId === 'object' && itemOrId !== null) {
             // Interactive UI addition from search selection
             item = itemOrId;
@@ -910,15 +911,11 @@ $editingItems = $data['editing_items'] ?? [];
             discType = 'Rs';
 
             // Check for duplicates in the existing invoice rows
-            let isDuplicate = false;
             document.querySelectorAll('input[name="item_selection[]"]').forEach(input => {
                 if (input.value === item.id) {
                     isDuplicate = true;
                 }
             });
-            if (isDuplicate) {
-                alert(`⚠️ Warning: Product "${item.name}" has already been added to this billing!`);
-            }
         } else {
             // Programmatic loading addition from existing edit items loop
             let matched = catalog.find(c => c.id === itemOrId);
@@ -992,6 +989,103 @@ $editingItems = $data['editing_items'] ?? [];
                 }
             }, 50);
         }
+
+        if (isDuplicate) {
+            showDuplicateWarning(item.name, null, () => {
+                tr.remove();
+                renumberInvoiceRows();
+                calcTotals();
+            });
+        }
+    }
+
+    function showDuplicateWarning(itemName, onKeep, onRemove) {
+        // Create backdrop
+        const backdrop = document.createElement('div');
+        backdrop.style.position = 'fixed';
+        backdrop.style.top = '0';
+        backdrop.style.left = '0';
+        backdrop.style.width = '100%';
+        backdrop.style.height = '100%';
+        backdrop.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        backdrop.style.zIndex = '9999';
+        backdrop.style.display = 'flex';
+        backdrop.style.alignItems = 'center';
+        backdrop.style.justifyContent = 'center';
+
+        // Create modal content panel
+        const panel = document.createElement('div');
+        panel.style.backgroundColor = '#fff';
+        panel.style.padding = '24px';
+        panel.style.borderRadius = '8px';
+        panel.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.2)';
+        panel.style.width = '90%';
+        panel.style.maxWidth = '400px';
+        panel.style.textAlign = 'center';
+        panel.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+
+        // Add Icon / Title
+        const title = document.createElement('h3');
+        title.innerText = '⚠️ Duplicate Product Warning';
+        title.style.margin = '0 0 12px 0';
+        title.style.color = '#d97706';
+        title.style.fontSize = '18px';
+
+        // Add message
+        const msg = document.createElement('p');
+        msg.innerHTML = `Product <strong>${itemName}</strong> is already added to this billing.<br><br>Do you want to keep both or remove the duplicate?`;
+        msg.style.margin = '0 0 20px 0';
+        msg.style.color = '#4b5563';
+        msg.style.fontSize = '14px';
+        msg.style.lineHeight = '1.5';
+
+        // Create actions container
+        const actions = document.createElement('div');
+        actions.style.display = 'flex';
+        actions.style.justifyContent = 'center';
+        actions.style.gap = '12px';
+
+        // Remove button
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.innerText = '🗑️ Remove Duplicate';
+        removeBtn.style.padding = '8px 16px';
+        removeBtn.style.border = '1px solid #dc2626';
+        removeBtn.style.backgroundColor = '#fff';
+        removeBtn.style.color = '#dc2626';
+        removeBtn.style.borderRadius = '6px';
+        removeBtn.style.fontWeight = '600';
+        removeBtn.style.cursor = 'pointer';
+        removeBtn.style.fontSize = '13px';
+        removeBtn.onclick = () => {
+            document.body.removeChild(backdrop);
+            if (onRemove) onRemove();
+        };
+
+        // Keep button
+        const keepBtn = document.createElement('button');
+        keepBtn.type = 'button';
+        keepBtn.innerText = '✓ Keep Both';
+        keepBtn.style.padding = '8px 16px';
+        keepBtn.style.border = 'none';
+        keepBtn.style.backgroundColor = '#10b981';
+        keepBtn.style.color = '#fff';
+        keepBtn.style.borderRadius = '6px';
+        keepBtn.style.fontWeight = '600';
+        keepBtn.style.cursor = 'pointer';
+        keepBtn.style.fontSize = '13px';
+        keepBtn.onclick = () => {
+            document.body.removeChild(backdrop);
+            if (onKeep) onKeep();
+        };
+
+        actions.appendChild(removeBtn);
+        actions.appendChild(keepBtn);
+        panel.appendChild(title);
+        panel.appendChild(msg);
+        panel.appendChild(actions);
+        backdrop.appendChild(panel);
+        document.body.appendChild(backdrop);
     }
 
     function handleQtyKeydown(event, input) {
