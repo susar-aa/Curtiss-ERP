@@ -670,6 +670,139 @@ if (!function_exists('hasPermission')) {
         
         /* Utility */
         .hidden { display: none !important; }
+
+        /* Nav page heading (right side of navbar) */
+        .nav-page-heading {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 8px 0 12px;
+            flex-shrink: 0;
+        }
+        .nav-page-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-accent);
+            flex-shrink: 0;
+            animation: pulse-dot 2.5s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+        .nav-page-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+            letter-spacing: -0.2px;
+            white-space: nowrap;
+            max-width: 260px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Dashboard top bar (search + user actions row) */
+        .dashboard-topbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .dashboard-search {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 220px;
+            max-width: 480px;
+            height: 42px;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 22px;
+            padding: 0 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+            transition: box-shadow 0.2s, border-color 0.2s;
+            cursor: text;
+        }
+        @media (prefers-color-scheme: dark) {
+            .dashboard-search { background: rgba(30,30,50,0.85); border-color: rgba(255,255,255,0.08); }
+        }
+        .dashboard-search:hover, .dashboard-search:focus-within {
+            box-shadow: 0 4px 20px rgba(79,70,229,0.15);
+            border-color: rgba(79,70,229,0.3);
+        }
+        .dashboard-search i { color: var(--text-muted); font-size: 16px; flex-shrink: 0; }
+        .dashboard-search input {
+            border: none; background: transparent; outline: none;
+            font-size: 13.5px; color: var(--text-main); width: 100%; font-family: inherit;
+        }
+        .dashboard-search input::placeholder { color: var(--text-muted); }
+        .dashboard-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+        }
+        .dash-icon-btn {
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-muted); font-size: 18px; text-decoration: none;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0,0,0,0.07);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+            position: relative;
+            cursor: pointer;
+        }
+        @media (prefers-color-scheme: dark) {
+            .dash-icon-btn { background: rgba(30,30,50,0.85); border-color: rgba(255,255,255,0.08); }
+        }
+        .dash-icon-btn:hover {
+            background: rgba(79,70,229,0.1);
+            color: var(--text-accent);
+            box-shadow: 0 4px 16px rgba(79,70,229,0.15);
+        }
+        .dash-icon-btn.danger { color: #ef4444; }
+        .dash-icon-btn.danger:hover { background: rgba(239,68,68,0.1); box-shadow: 0 4px 16px rgba(239,68,68,0.15); }
+        .dash-user-pill {
+            display: flex; align-items: center; gap: 10px;
+            padding: 5px 14px 5px 5px;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0,0,0,0.07);
+            border-radius: 22px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            cursor: default;
+            transition: background 0.18s;
+        }
+        @media (prefers-color-scheme: dark) {
+            .dash-user-pill { background: rgba(30,30,50,0.85); border-color: rgba(255,255,255,0.08); }
+        }
+        .dash-user-pill:hover { background: rgba(79,70,229,0.06); }
+        .dash-user-avatar {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 12px; font-weight: 700; flex-shrink: 0;
+        }
+        .dash-user-info { display: flex; flex-direction: column; gap: 1px; }
+        .dash-user-name { font-size: 13px; font-weight: 600; color: var(--text-main); white-space: nowrap; }
+        .dash-user-role { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+        .dash-notif-badge {
+            background: #ef4444; color: #fff;
+            border-radius: 10px; padding: 2px 5px; font-size: 9px; font-weight: 700;
+            position: absolute; top: 3px; right: 3px;
+            border: 2px solid rgba(255,255,255,0.9); line-height: 1.2; min-width: 16px; text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -713,13 +846,12 @@ if (!function_exists('hasPermission')) {
         }
     ?>
 
-    <!-- FLOATING NAV BAR (Redesigned) -->
+    <!-- FLOATING NAV BAR -->
     <nav class="glass-nav">
 
-        <!-- Brand -->
+        <!-- Brand: Logo only -->
         <a href="<?= APP_URL ?>/dashboard" class="nav-brand">
-            <div class="nav-brand-logo"><?= strtoupper(substr(APP_NAME, 0, 2)) ?></div>
-            <span class="nav-brand-name"><?= APP_NAME ?></span>
+            <img src="<?= APP_URL ?>/Curtiss Logo.png" alt="Curtiss" style="height: 32px; width: 32px; object-fit: contain; display: block;">
         </a>
 
         <div class="glass-nav-divider"></div>
@@ -1267,41 +1399,10 @@ if (!function_exists('hasPermission')) {
             <?php endif; ?>
         </div><!-- /.glass-nav-left -->
 
-        <!-- Center Search Bar -->
-        <div class="nav-search-wrap">
-            <div class="nav-search" onclick="this.querySelector('input').focus()">
-                <i class="ph ph-magnifying-glass"></i>
-                <input type="text" id="navGlobalSearch" placeholder="Search products, customers, invoices..." autocomplete="off">
-                <span class="nav-search-shortcut" title="Press / to search">/</span>
-            </div>
-        </div>
-
-        <!-- Right Actions -->
-        <div class="glass-nav-right">
-            <?php if (!empty($storeUrl)): ?>
-            <a href="<?= htmlspecialchars($storeUrl) ?>" target="_blank" class="nav-icon-btn" title="Open Store">
-                <i class="ph ph-storefront"></i>
-            </a>
-            <?php endif; ?>
-
-            <a href="<?= APP_URL ?>/notification" class="nav-icon-btn" title="Notifications">
-                <i class="ph ph-bell"></i>
-                <?php if($notifCount > 0): ?>
-                    <span class="badge-alert"><?= $notifCount ?></span>
-                <?php endif; ?>
-            </a>
-
-            <div class="glass-nav-divider"></div>
-
-            <!-- User Pill -->
-            <div class="nav-user-pill">
-                <span class="nav-user-name"><?= htmlspecialchars($_SESSION['username'] ?? 'User') ?></span>
-                <div class="nav-user-avatar"><?= strtoupper(substr($_SESSION['username'] ?? 'U', 0, 2)) ?></div>
-            </div>
-
-            <a href="<?= APP_URL ?>/auth/logout" class="nav-icon-btn active-red" title="Sign out" style="margin-left: 2px;">
-                <i class="ph ph-sign-out"></i>
-            </a>
+        <!-- Page Heading (pushes to right) -->
+        <div class="nav-page-heading">
+            <span class="nav-page-dot"></span>
+            <span class="nav-page-title"><?= htmlspecialchars($currentPageTitle) ?></span>
         </div>
 
     </nav>

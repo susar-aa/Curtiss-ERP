@@ -311,6 +311,47 @@ $currentUrl = $_GET['url'] ?? 'dashboard';
     }
 </style>
 
+<!-- Dashboard Top Bar -->
+<div class="dashboard-topbar">
+
+    <!-- Search -->
+    <div class="dashboard-search" onclick="this.querySelector('input').focus()">
+        <i class="ph ph-magnifying-glass"></i>
+        <input type="text" id="dashSearch" placeholder="Search customers, invoices, products..." autocomplete="off">
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="dashboard-actions">
+
+        <?php if (!empty($storeUrl)): ?>
+        <a href="<?= htmlspecialchars($storeUrl) ?>" target="_blank" class="dash-icon-btn" title="Open Store">
+            <i class="ph ph-storefront"></i>
+        </a>
+        <?php endif; ?>
+
+        <a href="<?= APP_URL ?>/notification" class="dash-icon-btn" title="Notifications">
+            <i class="ph ph-bell"></i>
+            <?php if ($notifCount > 0): ?>
+                <span class="dash-notif-badge"><?= $notifCount ?></span>
+            <?php endif; ?>
+        </a>
+
+        <!-- User Pill -->
+        <div class="dash-user-pill">
+            <div class="dash-user-avatar"><?= strtoupper(substr($_SESSION['username'] ?? 'U', 0, 2)) ?></div>
+            <div class="dash-user-info">
+                <span class="dash-user-name"><?= htmlspecialchars($_SESSION['username'] ?? 'User') ?></span>
+                <span class="dash-user-role"><?= htmlspecialchars(ucfirst($_SESSION['role'] ?? 'Staff')) ?></span>
+            </div>
+        </div>
+
+        <a href="<?= APP_URL ?>/auth/logout" class="dash-icon-btn danger" title="Sign out">
+            <i class="ph ph-sign-out"></i>
+        </a>
+
+    </div>
+</div>
+
 <!-- Dashboard Welcome -->
 <div class="dashboard-welcome">
     <div>
