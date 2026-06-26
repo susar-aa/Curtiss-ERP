@@ -1943,20 +1943,34 @@ if (!function_exists('hasPermission')) {
             return originalSend.apply(this, args);
         };
 
-        // 3. Inactivity Timeout (15 Minutes)
-        let inactivityTimeout;
+        // 3. Inactivity Timeout (15 Minutes - Shared across all tabs via localStorage)
         const TIMEOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+        
+        if (!localStorage.getItem('lastActiveTime')) {
+            localStorage.setItem('lastActiveTime', Date.now().toString());
+        }
+
         function resetInactivityTimer() {
             if (window.sessionExpiredHandled) return;
-            clearTimeout(inactivityTimeout);
-            inactivityTimeout = setTimeout(handleInactivityTimeout, TIMEOUT_DURATION);
+            localStorage.setItem('lastActiveTime', Date.now().toString());
         }
-        function handleInactivityTimeout() {
-            originalFetch('<?= APP_URL ?>/auth/timeout_logout')
-                .finally(() => {
-                    handleSessionExpiration();
-                });
+
+        function checkInactivityTimeout() {
+            if (window.sessionExpiredHandled) return;
+            const lastActive = parseInt(localStorage.getItem('lastActiveTime') || '0');
+            if (Date.now() - lastActive > TIMEOUT_DURATION) {
+                window.sessionExpiredHandled = true;
+                originalFetch('<?= APP_URL ?>/auth/timeout_logout')
+                    .finally(() => {
+                        window.sessionExpiredHandled = false;
+                        handleSessionExpiration();
+                    });
+            }
         }
+
+        // Run check every 5 seconds
+        setInterval(checkInactivityTimeout, 5000);
+
         window.addEventListener('load', resetInactivityTimer);
         document.addEventListener('mousemove', resetInactivityTimer);
         document.addEventListener('keypress', resetInactivityTimer);

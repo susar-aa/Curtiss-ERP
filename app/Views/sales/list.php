@@ -153,6 +153,9 @@
                             </td>
                             <td style="padding: 14px 18px; text-align: right;">
                                 <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
+                                    <button type="button" class="btn btn-outline" style="padding: 5px 9px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; border-color: #e65100; color: #e65100;" onclick="confirmConvert(<?= $inv->id ?>, '<?= $inv->invoice_number ?>')">
+                                        <i class="ph ph-recycle"></i> Convert to SO
+                                    </button>
                                     <a href="<?= APP_URL ?>/sales/show/<?= $inv->id ?>" target="_blank" class="btn btn-outline" style="padding: 5px 9px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
                                         <i class="ph ph-printer"></i> Print
                                     </a>
@@ -245,6 +248,12 @@ function openDeleteModal(id, number, type = 'invoice') {
 
 function closeDeleteModal() {
     document.getElementById('deleteAuthModal').style.display = 'none';
+}
+
+function confirmConvert(id, number) {
+    if (confirm("Are you sure you want to convert Invoice " + number + " back to a Sales Order? This will delete the invoice, reverse all general ledger entries, and add the stock back to inventory.")) {
+        window.location.href = '<?= APP_URL ?>/sales/convert_to_so/' + id;
+    }
 }
 
 // Close modal if user clicks outside content

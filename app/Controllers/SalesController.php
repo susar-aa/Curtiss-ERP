@@ -1032,6 +1032,153 @@ class SalesController extends Controller {
     }
 
     /**
+     * Convert an Invoice back to a Sales Order and restock the deducted inventory.
+     */
+    public function convert_to_so($id = null) {
+        if (!$id) {
+            $_SESSION['flash_error'] = "Invoice ID is missing!";
+            header('Location: ' . APP_URL . '/sales');
+            exit;
+        }
+
+        $invoiceModel = $this->model('Invoice');
+        $inv = $invoiceModel->getInvoiceById($id);
+
+        if (!$inv) {
+            $_SESSION['flash_error'] = "Invoice not found!";
+            header('Location: ' . APP_URL . '/sales');
+            exit;
+        }
+
+        // Cache the invoice items before deletion
+        $items = $invoiceModel->getInvoiceItems($id);
+
+        // Generate next sales order number
+        $this->db->query("SELECT id FROM sales_orders ORDER BY id DESC LIMIT 1");
+        $lastRow = $this->db->single();
+        $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+        $orderNumber = 'SO-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+
+        // Delete invoice and reverse stock/ledgers/transactions
+        $success = $invoiceModel->deleteInvoiceWithAccounting($id, $_SESSION['user_id']);
+
+        if (!$success) {
+            $_SESSION['flash_error'] = "Failed to revert invoice stock/ledgers: " . ($_SESSION['invoice_error'] ?? '');
+            header('Location: ' . APP_URL . '/sales');
+            exit;
+        }
+
+        try {
+            $this->db->beginTransaction();
+
+            $subtotal = floatval($inv->total_amount);
+            $discount = 0.00;
+            if (floatval($inv->global_discount_val) > 0) {
+                if ($inv->global_discount_type === '%') {
+                    $discount = ($subtotal * floatval($inv->global_discount_val) / 100);
+                } else {
+                    $discount = floatval($inv->global_discount_val);
+                }
+            }
+            $grandTotal = $subtotal - $discount + floatval($inv->tax_amount ?? 0);
+
+            // Insert into sales_orders
+            $this->db->query("INSERT INTO sales_orders (order_number, customer_id, customer_name, customer_phone, billing_type, subtotal, discount, grand_total, notes, rep_name, mca, rep_tp, po_number, order_date, due_date, payment_term_id, status) 
+                              VALUES (:order_num, :cust_id, :cust_name, :cust_phone, 'wholesale', :sub, :disc, :grand, :notes, :rep, :mca, :rep_tp, :po, :o_date, :d_date, :term_id, 'Pending')");
+            $this->db->bind(':order_num', $orderNumber);
+            $this->db->bind(':cust_id', $inv->customer_id);
+            $this->db->bind(':cust_name', $inv->customer_name);
+            $this->db->bind(':cust_phone', $inv->phone);
+            $this->db->bind(':sub', $subtotal);
+            $this->db->bind(':disc', $discount);
+            $this->db->bind(':grand', $grandTotal);
+            $this->db->bind(':notes', ($inv->notes ?? '') . " (Converted from Invoice {$inv->invoice_number})");
+            
+            // Find rep name or route details if any
+            $repName = '';
+            if (!empty($inv->rep_route_id)) {
+                $this->db->query("SELECT CONCAT(e.first_name, ' ', e.last_name) as rep_name 
+                                  FROM employees e 
+                                  JOIN users u ON u.employee_id = e.id 
+                                  JOIN rep_daily_routes r ON r.user_id = u.id 
+                                  WHERE r.id = :route_id LIMIT 1");
+                $this->db->bind(':route_id', $inv->rep_route_id);
+                $repRow = $this->db->single();
+                $repName = $repRow ? $repRow->rep_name : '';
+            }
+            $this->db->bind(':rep', $repName);
+            
+            // MCA
+            $mca = '';
+            $this->db->query("SELECT name FROM mca_areas WHERE id = (SELECT mca_id FROM customers WHERE id = :cust_id LIMIT 1) LIMIT 1");
+            $this->db->bind(':cust_id', $inv->customer_id);
+            $mcaRow = $this->db->single();
+            $mca = $mcaRow ? $mcaRow->name : '';
+            $this->db->bind(':mca', $mca);
+            
+            $this->db->bind(':rep_tp', '');
+            $this->db->bind(':po', '');
+            $this->db->bind(':o_date', date('Y-m-d'));
+            $this->db->bind(':d_date', date('Y-m-d'));
+            $this->db->bind(':term_id', $inv->payment_term_id);
+            $this->db->execute();
+
+            $orderId = $this->db->lastInsertId();
+
+            // Insert cached items into sales_order_items
+            foreach ($items as $item) {
+                // Get SKU
+                $sku = 'ITEM';
+                $this->db->query("SELECT item_code FROM items WHERE id = :id");
+                $this->db->bind(':id', $item->item_id);
+                $itemRow = $this->db->single();
+                if ($itemRow) {
+                    $sku = $itemRow->item_code;
+                }
+
+                $this->db->query("INSERT INTO sales_order_items (sales_order_id, item_id, variation_option_id, sku, name, billing_price, qty, discount_value, discount_type, total) 
+                                  VALUES (:so_id, :item_id, :var_id, :sku, :name, :price, :qty, :disc_val, :disc_type, :total)");
+                $this->db->bind(':so_id', $orderId);
+                $this->db->bind(':item_id', $item->item_id);
+                $this->db->bind(':var_id', $item->variation_option_id);
+                $this->db->bind(':sku', $sku);
+                $this->db->bind(':name', $item->description);
+                $this->db->bind(':price', $item->unit_price);
+                $this->db->bind(':qty', $item->quantity);
+                $this->db->bind(':disc_val', $item->discount_value);
+                $this->db->bind(':disc_type', $item->discount_type);
+                $this->db->bind(':total', $item->total);
+                $this->db->execute();
+            }
+
+            // Write to deleted_invoices audit table for record keeping
+            $this->db->query("INSERT INTO deleted_invoices (invoice_number, customer_name, total_amount, deleted_user_name, delete_reason, record_type) 
+                              VALUES (:inv_num, :cust_name, :total, :deleted_user, :reason, 'Invoice')");
+            $this->db->bind(':inv_num', $inv->invoice_number);
+            $this->db->bind(':cust_name', $inv->customer_name);
+            $this->db->bind(':total', $grandTotal);
+            $this->db->bind(':deleted_user', $_SESSION['username'] ?? 'System');
+            $this->db->bind(':reason', "Converted to Sales Order {$orderNumber}");
+            $this->db->execute();
+
+            $this->db->commit();
+
+            // Log activity
+            $this->logActivity('Convert Invoice to SO', 'Billing', "Converted Invoice {$inv->invoice_number} to Sales Order {$orderNumber} (Stock added back to Inventory).", $orderId, null, null);
+
+            $_SESSION['flash_success'] = "Invoice {$inv->invoice_number} successfully converted to Sales Order {$orderNumber}! Inventory stock has been restocked.";
+            header('Location: ' . APP_URL . '/salesorder/show/' . $orderId);
+            exit;
+
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            $_SESSION['flash_error'] = "Failed to create Sales Order: " . $e->getMessage();
+            header('Location: ' . APP_URL . '/sales');
+            exit;
+        }
+    }
+
+    /**
      * Render the deleted invoices and sales orders audit log
      */
     public function deleted_list() {
