@@ -908,6 +908,17 @@ $editingItems = $data['editing_items'] ?? [];
             price = item.price;
             discVal = 0;
             discType = 'Rs';
+
+            // Check for duplicates in the existing invoice rows
+            let isDuplicate = false;
+            document.querySelectorAll('input[name="item_selection[]"]').forEach(input => {
+                if (input.value === item.id) {
+                    isDuplicate = true;
+                }
+            });
+            if (isDuplicate) {
+                alert(`⚠️ Warning: Product "${item.name}" has already been added to this billing!`);
+            }
         } else {
             // Programmatic loading addition from existing edit items loop
             let matched = catalog.find(c => c.id === itemOrId);

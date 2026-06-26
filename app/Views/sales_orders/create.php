@@ -537,6 +537,17 @@ $reps = $db->resultSet();
     }
 
     function addItemRow(item, code = null, qty = 1, desc = null, price = null, discVal = 0, discType = 'Rs') {
+        // Check for duplicates in the existing invoice rows
+        let isDuplicate = false;
+        document.querySelectorAll('input[name="item_selection[]"]').forEach(input => {
+            if (input.value === item.id) {
+                isDuplicate = true;
+            }
+        });
+        if (isDuplicate) {
+            alert(`⚠️ Warning: Product "${item.name}" has already been added to this sales order!`);
+        }
+
         const tbody = document.getElementById('invoiceBody');
         const tr = document.createElement('tr');
         
