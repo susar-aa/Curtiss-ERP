@@ -671,6 +671,85 @@ if (!function_exists('hasPermission')) {
         /* Utility */
         .hidden { display: none !important; }
 
+        /* Hamburger menu button */
+        .nav-menu-btn {
+            width: 36px; height: 36px; border-radius: 10px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 4px; cursor: pointer; flex-shrink: 0;
+            border: none; background: transparent;
+            transition: background 0.18s;
+            padding: 0;
+        }
+        .nav-menu-btn:hover { background: rgba(79,70,229,0.08); }
+        .nav-menu-btn span {
+            display: block; width: 16px; height: 2px;
+            background: var(--text-muted); border-radius: 2px;
+            transition: background 0.18s;
+        }
+        .nav-menu-btn:hover span { background: var(--text-accent); }
+
+        /* Full-screen menu overlay */
+        .fs-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(8,8,20,0.94);
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            display: none; opacity: 0;
+            transition: opacity 0.3s ease;
+            overflow-y: auto;
+        }
+        .fs-overlay.open { display: block; }
+        .fs-overlay.visible { opacity: 1; }
+        .fs-inner {
+            max-width: 960px; margin: 0 auto;
+            padding: 60px 40px 80px;
+        }
+        .fs-close {
+            position: fixed; top: 20px; right: 24px;
+            width: 44px; height: 44px; border-radius: 50%;
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.8); font-size: 22px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 10000;
+            transition: background 0.18s, color 0.18s;
+        }
+        .fs-close:hover { background: rgba(239,68,68,0.2); color: #ff8080; }
+        .fs-title {
+            font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+            text-transform: uppercase; color: rgba(255,255,255,0.35);
+            margin-bottom: 28px;
+        }
+        .fs-sections {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 28px;
+        }
+        .fs-section { display: flex; flex-direction: column; gap: 6px; }
+        .fs-section-label {
+            font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+            text-transform: uppercase; color: rgba(255,255,255,0.3);
+            margin-bottom: 4px; padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .fs-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .fs-link {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 14px; border-radius: 12px;
+            text-decoration: none; color: rgba(255,255,255,0.82);
+            font-size: 14px; font-weight: 500;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.07);
+            transition: background 0.18s, color 0.18s, border-color 0.18s;
+            white-space: nowrap;
+        }
+        .fs-link:hover {
+            background: rgba(79,70,229,0.2);
+            border-color: rgba(79,70,229,0.4);
+            color: #fff;
+        }
+        .fs-link i { font-size: 16px; opacity: 0.75; }
+        .fs-arrow { color: rgba(255,255,255,0.2); font-size: 18px; flex-shrink: 0; }
+
         /* Nav page heading (right side of navbar) */
         .nav-page-heading {
             margin-left: auto;
@@ -851,7 +930,7 @@ if (!function_exists('hasPermission')) {
 
         <!-- Brand: Logo only -->
         <a href="<?= APP_URL ?>/dashboard" class="nav-brand">
-            <img src="<?= APP_URL ?>/Curtiss Logo.png" alt="Curtiss" style="height: 32px; width: 32px; object-fit: contain; display: block;">
+            <img src="<?= APP_URL ?>/Curtiss-bg-removed.png" alt="Curtiss" style="height: 32px; width: 32px; object-fit: contain; display: block;">
         </a>
 
         <div class="glass-nav-divider"></div>
@@ -1399,13 +1478,106 @@ if (!function_exists('hasPermission')) {
             <?php endif; ?>
         </div><!-- /.glass-nav-left -->
 
-        <!-- Page Heading (pushes to right) -->
+        <!-- Page Heading + Menu Button -->
         <div class="nav-page-heading">
             <span class="nav-page-dot"></span>
             <span class="nav-page-title"><?= htmlspecialchars($currentPageTitle) ?></span>
         </div>
 
+        <button class="nav-menu-btn" onclick="openFsMenu()" title="Open Menu">
+            <span></span><span></span><span></span>
+        </button>
+
     </nav>
+
+    <!-- FULL-SCREEN MENU OVERLAY -->
+    <div class="fs-overlay" id="fsOverlay">
+        <button class="fs-close" onclick="closeFsMenu()"><i class="ph ph-x"></i></button>
+        <div class="fs-inner">
+            <div class="fs-title">Navigation</div>
+            <div class="fs-sections">
+
+                <div class="fs-section">
+                    <div class="fs-section-label">Vendors</div>
+                    <div class="fs-row">
+                        <a href="<?= APP_URL ?>/purchase" class="fs-link"><i class="ph ph-shopping-cart"></i> Purchase Orders</a>
+                        <span class="fs-arrow">→</span>
+                        <a href="<?= APP_URL ?>/expenses" class="fs-link"><i class="ph ph-receipt"></i> Enter Bills</a>
+                    </div>
+                </div>
+
+                <div class="fs-section">
+                    <div class="fs-section-label">Customers</div>
+                    <div class="fs-row">
+                        <a href="<?= APP_URL ?>/crm" class="fs-link"><i class="ph ph-briefcase"></i> Leads &amp; CRM</a>
+                        <span class="fs-arrow">→</span>
+                        <a href="<?= APP_URL ?>/estimate" class="fs-link"><i class="ph ph-file-text"></i> Estimates</a>
+                        <span class="fs-arrow">→</span>
+                        <a href="<?= APP_URL ?>/sales" class="fs-link"><i class="ph ph-credit-card"></i> Invoices</a>
+                        <span class="fs-arrow">→</span>
+                        <a href="<?= APP_URL ?>/banking" class="fs-link"><i class="ph ph-hand-coins"></i> Payments</a>
+                    </div>
+                    <div class="fs-row" style="margin-top:6px">
+                        <a href="<?= APP_URL ?>/territory" class="fs-link"><i class="ph ph-map-trifold"></i> Territory</a>
+                        <a href="<?= APP_URL ?>/creditnote" class="fs-link"><i class="ph ph-arrow-counter-clockwise"></i> Refunds</a>
+                    </div>
+                </div>
+
+                <div class="fs-section">
+                    <div class="fs-section-label">Employees</div>
+                    <div class="fs-row">
+                        <a href="<?= APP_URL ?>/hrm" class="fs-link"><i class="ph ph-user-circle-gear"></i> Directory</a>
+                        <span class="fs-arrow">→</span>
+                        <a href="<?= APP_URL ?>/hrm/payroll" class="fs-link"><i class="ph ph-bank"></i> Payroll</a>
+                    </div>
+                </div>
+
+                <div class="fs-section">
+                    <div class="fs-section-label">Company</div>
+                    <div class="fs-row">
+                        <a href="<?= APP_URL ?>/accounting/coa" class="fs-link"><i class="ph ph-notebook"></i> Chart of Accts</a>
+                        <a href="<?= APP_URL ?>/inventory" class="fs-link"><i class="ph ph-package"></i> Inventory</a>
+                        <a href="<?= APP_URL ?>/settings" class="fs-link"><i class="ph ph-gear"></i> Settings</a>
+                        <a href="<?= APP_URL ?>/report" class="fs-link"><i class="ph ph-chart-line-up"></i> Reports</a>
+                    </div>
+                </div>
+
+                <div class="fs-section">
+                    <div class="fs-section-label">Banking</div>
+                    <div class="fs-row">
+                        <a href="<?= APP_URL ?>/banking" class="fs-link"><i class="ph ph-bank"></i> Deposits</a>
+                        <a href="<?= APP_URL ?>/accounting/journal" class="fs-link"><i class="ph ph-pen-nib"></i> Journal</a>
+                        <a href="<?= APP_URL ?>/banking" class="fs-link"><i class="ph ph-check-circle"></i> Reconcile</a>
+                        <a href="<?= APP_URL ?>/cheque" class="fs-link"><i class="ph ph-signature"></i> Cheques</a>
+                    </div>
+                </div>
+
+                <div class="fs-section">
+                    <div class="fs-section-label">Admin</div>
+                    <div class="fs-row">
+                        <a href="<?= APP_URL ?>/user" class="fs-link"><i class="ph ph-lock-key"></i> Users</a>
+                        <a href="<?= APP_URL ?>/audit" class="fs-link"><i class="ph ph-shield-check"></i> Audit Trail</a>
+                        <a href="<?= APP_URL ?>/auth/logout" class="fs-link" style="color:rgba(255,120,120,0.85);"><i class="ph ph-sign-out"></i> Logout</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <script>
+    function openFsMenu() {
+        const o = document.getElementById('fsOverlay');
+        o.classList.add('open');
+        requestAnimationFrame(() => o.classList.add('visible'));
+        document.body.style.overflow = 'hidden';
+    }
+    function closeFsMenu() {
+        const o = document.getElementById('fsOverlay');
+        o.classList.remove('visible');
+        setTimeout(() => { o.classList.remove('open'); document.body.style.overflow = ''; }, 300);
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFsMenu(); });
+    </script>
 
     <div class="app-container">
         <main class="main-content">
