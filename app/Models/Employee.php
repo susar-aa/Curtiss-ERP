@@ -17,14 +17,18 @@ class Employee {
     }
 
     public function addEmployee($data) {
-        $this->db->query("INSERT INTO employees (first_name, last_name, email, phone, department, job_title, base_salary, hire_date) 
-                          VALUES (:fname, :lname, :email, :phone, :dept, :title, :salary, :hdate)");
+        $this->db->query("INSERT INTO employees (first_name, last_name, email, phone, department, job_title, base_salary, hire_date, status) 
+                          VALUES (:fname, :lname, :email, :phone, :dept, :title, :salary, :hdate, 'Active')");
         
+        $email = !empty($data['email']) ? trim($data['email']) : null;
+        $phone = !empty($data['phone']) ? trim($data['phone']) : null;
+        $dept = !empty($data['department']) ? trim($data['department']) : null;
+
         $this->db->bind(':fname', $data['first_name']);
         $this->db->bind(':lname', $data['last_name']);
-        $this->db->bind(':email', $data['email']);
-        $this->db->bind(':phone', $data['phone']);
-        $this->db->bind(':dept', $data['department']);
+        $this->db->bind(':email', $email);
+        $this->db->bind(':phone', $phone);
+        $this->db->bind(':dept', $dept);
         $this->db->bind(':title', $data['job_title']);
         $this->db->bind(':salary', $data['base_salary']);
         $this->db->bind(':hdate', $data['hire_date']);

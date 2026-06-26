@@ -32,11 +32,15 @@ class HrmController extends Controller {
                 'hire_date' => $_POST['hire_date']
             ];
 
-            if ($this->employeeModel->addEmployee($empData)) {
-                $data['success'] = 'Employee added successfully.';
-                $data['employees'] = $this->employeeModel->getAllEmployees();
-            } else {
-                $data['error'] = 'Failed to add employee.';
+            try {
+                if ($this->employeeModel->addEmployee($empData)) {
+                    $data['success'] = 'Employee added successfully.';
+                    $data['employees'] = $this->employeeModel->getAllEmployees();
+                } else {
+                    $data['error'] = 'Failed to add employee.';
+                }
+            } catch (Exception $e) {
+                $data['error'] = 'Database Error: ' . $e->getMessage();
             }
         }
 
