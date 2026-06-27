@@ -4,33 +4,6 @@ class AuditLog {
 
     public function __construct() {
         $this->db = new Database();
-        try {
-            $this->db->query("SHOW COLUMNS FROM audit_logs");
-            $rows = $this->db->resultSet();
-            $existingCols = [];
-            foreach ($rows as $r) {
-                $existingCols[] = strtolower($r->Field ?? $r->field ?? '');
-            }
-            
-            if (!in_array('record_id', $existingCols)) {
-                $this->db->query("ALTER TABLE audit_logs ADD COLUMN record_id INT NULL DEFAULT NULL");
-                $this->db->execute();
-            }
-            if (!in_array('old_values', $existingCols)) {
-                $this->db->query("ALTER TABLE audit_logs ADD COLUMN old_values LONGTEXT NULL DEFAULT NULL");
-                $this->db->execute();
-            }
-            if (!in_array('new_values', $existingCols)) {
-                $this->db->query("ALTER TABLE audit_logs ADD COLUMN new_values LONGTEXT NULL DEFAULT NULL");
-                $this->db->execute();
-            }
-            if (!in_array('browser_device', $existingCols)) {
-                $this->db->query("ALTER TABLE audit_logs ADD COLUMN browser_device VARCHAR(255) NULL DEFAULT NULL");
-                $this->db->execute();
-            }
-        } catch (Exception $e) {
-            // Silently fallback
-        }
     }
 
     public function getAllLogs($limit = 100) {

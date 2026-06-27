@@ -1,3 +1,45 @@
+# Curtiss ERP Project - Comprehensive Analysis Report
+**Date:** June 27, 2026
+
+---
+
+## 1. PROJECT OVERVIEW
+
+Curtiss ERP is a custom-built Enterprise Resource Planning system for a distribution/sales business. It manages:
+- **Inventory** (items, categories, warehouse, vendors)
+- **Sales** (invoices, accounts receivable, sales orders)
+- **Purchasing/Procurement** (POs, GRNs, supplier management)
+- **HRM** (employees, attendance, leaves, payroll, performance)
+- **Accounting** (chart of accounts, journal entries, year-end close)
+- **Banking** (banking, reconciliation, cheques)
+- **CRM** (leads, customers)
+- **E-Commerce** integration (WooCommerce sync)
+- **Mobile App API** (rep dashboard, driver dashboard, rep tracking)
+- **Customer Portal**
+- **Reports** (30+ report types via ReportEngine)
+
+**Architecture:** Custom PHP MVC framework (no popular framework like Laravel/CodeIgniter)
+
+**Database:** MySQL (XAMPP localhost / Plesk production)
+
+---
+
+## 2. CRITICAL ISSUES & BUGS
+
+### 2.1 SECURITY ISSUES (HIGH PRIORITY)
+
+| # | Issue | Severity | Location |
+|---|-------|----------|----------|
+| 1 | **Hard-coded database credentials in plaintext** | CRITICAL | `config/database.php` lines 3-6 |
+| 2 | **Brevo API key hard-coded in repository** | CRITICAL | `config/database.php` line 25 |
+| 3 | **No environment variables (.env) usage** | HIGH | Entire project |
+| 4 | **SQL injection at `str_replace` on line 123 in SalesController** | HIGH | `SalesController.php` line 123 - raw string replacement on SQL query |
+| 5 | **CSRF bypass for all API/mobile sync endpoints** | MEDIUM | `App.php` line 29 - `!$isApiSync` disables CSRF for all API calls |
+| 6 | **Session fixation - no session_regenerate_id() after login** | MEDIUM | Auth flow |
+| 7 | **Dynamic column names in SQL queries (Item model)** | MEDIUM | `Item.php` - `$this->priceColumn` etc. used directly in SQL |
+| 8 | **XSS vulnerabilities in views** (html_entity_decode without escaping) | MEDIUM | Multiple views, `InventoryController.php` line 988-999 |
+
+
 ### 2.2 ARCHITECTURAL ISSUES
 
 | # | Issue | Severity | Location |

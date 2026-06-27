@@ -87,14 +87,26 @@ class RepDashboardController extends Controller {
 
             $lastSync = isset($_GET['last_sync_timestamp']) ? trim($_GET['last_sync_timestamp']) : '';
 
-            $columnExists = function($table, $column) {
-                try {
-                    $this->db->query("SHOW COLUMNS FROM `$table` LIKE :col");
-                    $this->db->bind(':col', $column);
-                    return $this->db->single() ? true : false;
-                } catch (Exception $e) {
-                    return false;
+            static $columnsCache = [];
+            $columnExists = function($table, $column) use (&$columnsCache) {
+                $table = strtolower($table);
+                $column = strtolower($column);
+                if (!isset($columnsCache[$table])) {
+                    try {
+                        $this->db->query("SHOW COLUMNS FROM `$table`");
+                        $cols = $this->db->resultSet() ?: [];
+                        $columnsCache[$table] = [];
+                        foreach ($cols as $col) {
+                            $field = is_object($col) ? ($col->Field ?? $col->field ?? '') : ($col['Field'] ?? $col['field'] ?? '');
+                            if ($field) {
+                                $columnsCache[$table][strtolower($field)] = true;
+                            }
+                        }
+                    } catch (Exception $e) {
+                        $columnsCache[$table] = [];
+                    }
                 }
+                return isset($columnsCache[$table][$column]);
             };
 
             $getDeltaFilter = function($table, $lastSync, $hasWhere = false, $alias = null) use ($columnExists) {

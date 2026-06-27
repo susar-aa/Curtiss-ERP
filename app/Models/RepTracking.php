@@ -5,55 +5,6 @@ class RepTracking {
 
     public function __construct() {
         $this->db = new Database();
-
-        $columns = [
-            'is_verified' => "TINYINT(1) NOT NULL DEFAULT 0",
-            'is_flagged' => "TINYINT(1) NOT NULL DEFAULT 0",
-            'adjusted_amount' => "DECIMAL(12,2) NULL",
-            'verification_notes' => "TEXT NULL",
-            'verified_by' => "INT(11) NULL",
-            'verified_at' => "DATETIME NULL",
-            'mobile_local_id' => "INT NULL",
-            'mobile_rep_id' => "INT NULL",
-            'debit_account_id' => "INT(11) NULL",
-            'credit_account_id' => "INT(11) NULL"
-        ];
-
-        foreach ($columns as $col => $definition) {
-            try {
-                $this->db->query("SHOW COLUMNS FROM pending_collections LIKE :col");
-                $this->db->bind(':col', $col);
-                if (!$this->db->single()) {
-                    $this->db->query("ALTER TABLE pending_collections ADD COLUMN `$col` $definition");
-                    $this->db->execute();
-                }
-            } catch (Exception $e) {
-                // Failsafe to avoid crashing page initialization
-            }
-        }
-
-        try {
-            $this->db->query("CREATE TABLE IF NOT EXISTS `product_substitutions` (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `delivery_id` INT NOT NULL,
-                `route_id` INT NOT NULL,
-                `original_item_id` INT NOT NULL,
-                `replacement_item_id` INT NOT NULL,
-                `required_qty` DECIMAL(12,2) NOT NULL,
-                `loaded_qty` DECIMAL(12,2) NOT NULL,
-                `user_id` INT NULL,
-                `status` VARCHAR(50) DEFAULT 'Pending Bill Update',
-                `pricing_choice` VARCHAR(50) NULL,
-                `original_bill_value` DECIMAL(12,2) NULL,
-                `updated_bill_value` DECIMAL(12,2) NULL,
-                `applied_by` INT NULL,
-                `applied_at` DATETIME NULL,
-                `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
-            )");
-            $this->db->execute();
-        } catch (Exception $e) {
-            // Failsafe
-        }
     }
 
     public function getAllRoutes() {

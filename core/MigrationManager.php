@@ -1,0 +1,208 @@
+<?php
+
+class MigrationManager {
+    private static $initialized = false;
+
+    /**
+     * List of all system migrations.
+     * The key is the unique migration identifier.
+     * The value is either a SQL string or a callable function.
+     */
+    private static function getMigrations() {
+        return [
+            'create_migrations_table' => "
+                CREATE TABLE IF NOT EXISTS migrations (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    migration VARCHAR(255) UNIQUE NOT NULL,
+                    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'customers_username' => "ALTER TABLE customers ADD COLUMN username VARCHAR(100) UNIQUE NULL AFTER email",
+            'customers_password' => "ALTER TABLE customers ADD COLUMN password VARCHAR(255) NULL AFTER username",
+            'create_wholesaler_requests' => "
+                CREATE TABLE IF NOT EXISTS wholesaler_requests (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    business_name VARCHAR(150) NOT NULL,
+                    address TEXT NOT NULL,
+                    contact_number VARCHAR(50) NOT NULL,
+                    city VARCHAR(100) NOT NULL,
+                    email_address VARCHAR(150) NOT NULL UNIQUE,
+                    username VARCHAR(100) NOT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    notes TEXT NULL,
+                    status ENUM('pending', 'approved', 'declined') DEFAULT 'pending',
+                    linked_customer_id INT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (linked_customer_id) REFERENCES customers(id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'create_ecommerce_retail_customers' => "
+                CREATE TABLE IF NOT EXISTS ecommerce_retail_customers (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL,
+                    email VARCHAR(150) NOT NULL UNIQUE,
+                    username VARCHAR(100) UNIQUE NULL,
+                    password VARCHAR(255) NOT NULL,
+                    phone VARCHAR(50) NULL,
+                    address TEXT NULL,
+                    city VARCHAR(100) NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'add_username_to_ecommerce_retail_customers' => "ALTER TABLE ecommerce_retail_customers ADD COLUMN username VARCHAR(100) UNIQUE NULL AFTER email",
+            'add_ecommerce_store_url_to_company_settings' => "ALTER TABLE company_settings ADD COLUMN ecommerce_store_url VARCHAR(255) NULL DEFAULT ''",
+            'add_facebook_page_id_to_company_settings' => "ALTER TABLE company_settings ADD COLUMN facebook_page_id VARCHAR(100) NULL DEFAULT ''",
+            'add_facebook_access_token_to_company_settings' => "ALTER TABLE company_settings ADD COLUMN facebook_access_token TEXT NULL",
+            'add_tax_number_to_company_settings' => "ALTER TABLE company_settings ADD COLUMN tax_number VARCHAR(100) NULL",
+            'customers_status' => "ALTER TABLE customers ADD COLUMN status VARCHAR(20) DEFAULT 'active' AFTER notes",
+            'item_categories_status' => "ALTER TABLE item_categories ADD COLUMN status VARCHAR(20) DEFAULT 'active'",
+            'mca_areas_status' => "ALTER TABLE mca_areas ADD COLUMN status VARCHAR(20) DEFAULT 'active'",
+            'items_quantity_reserved' => "ALTER TABLE items ADD COLUMN quantity_reserved INT DEFAULT 0 AFTER quantity_on_hand",
+            'item_variation_options_quantity_reserved' => "ALTER TABLE item_variation_options ADD COLUMN quantity_reserved INT DEFAULT 0 AFTER quantity_on_hand",
+            'invoice_items_variation_option_id' => "ALTER TABLE invoice_items ADD COLUMN variation_option_id INT NULL DEFAULT NULL AFTER item_id",
+            'audit_logs_record_id' => "ALTER TABLE audit_logs ADD COLUMN record_id INT NULL DEFAULT NULL",
+            'audit_logs_old_values' => "ALTER TABLE audit_logs ADD COLUMN old_values LONGTEXT NULL DEFAULT NULL",
+            'audit_logs_new_values' => "ALTER TABLE audit_logs ADD COLUMN new_values LONGTEXT NULL DEFAULT NULL",
+            'audit_logs_browser_device' => "ALTER TABLE audit_logs ADD COLUMN browser_device VARCHAR(255) NULL DEFAULT NULL",
+            'deliveries_selected_credit_invoices' => "ALTER TABLE deliveries ADD COLUMN selected_credit_invoices TEXT NULL",
+            'deliveries_secondary_rep_route_id' => "ALTER TABLE deliveries ADD COLUMN secondary_rep_route_id INT NULL AFTER rep_route_id",
+            'deliveries_reconciliation_json' => "ALTER TABLE deliveries ADD COLUMN reconciliation_json TEXT NULL",
+            'deliveries_return_stock_json' => "ALTER TABLE deliveries ADD COLUMN return_stock_json TEXT NULL",
+            'deliveries_accounting_entries_json' => "ALTER TABLE deliveries ADD COLUMN accounting_entries_json TEXT NULL",
+            'rep_daily_routes_notes' => "ALTER TABLE rep_daily_routes ADD COLUMN notes TEXT NULL",
+            'invoices_stock_status' => "ALTER TABLE invoices ADD COLUMN stock_status VARCHAR(20) DEFAULT 'deducted' AFTER status",
+            'invoices_notes' => "ALTER TABLE invoices ADD COLUMN notes TEXT NULL AFTER global_discount_type",
+            'invoice_items_item_id' => "ALTER TABLE invoice_items ADD COLUMN item_id INT NULL DEFAULT NULL AFTER invoice_id",
+            'invoices_cheque_date' => "ALTER TABLE invoices ADD COLUMN cheque_date DATE NULL AFTER due_date",
+            'invoices_payment_term_id' => "ALTER TABLE invoices ADD COLUMN payment_term_id INT NULL DEFAULT NULL AFTER due_date",
+            'invoices_uuid' => "ALTER TABLE invoices ADD COLUMN uuid VARCHAR(100) UNIQUE NULL AFTER invoice_number",
+            'sales_orders_payment_term_id' => "ALTER TABLE sales_orders ADD COLUMN payment_term_id INT NULL DEFAULT NULL AFTER due_date",
+            'goods_receipt_notes_receipt_number' => "ALTER TABLE goods_receipt_notes ADD COLUMN receipt_number VARCHAR(100) NULL AFTER grn_number",
+            'goods_receipt_notes_is_approved' => "ALTER TABLE goods_receipt_notes ADD COLUMN is_approved TINYINT(1) DEFAULT 0 AFTER notes",
+            'goods_receipt_notes_approved_by' => "ALTER TABLE goods_receipt_notes ADD COLUMN approved_by INT NULL AFTER is_approved",
+            
+            // Item model self-healing columns
+            'items_variations_json' => "ALTER TABLE items ADD COLUMN variations_json TEXT NULL",
+            'items_image_path' => "ALTER TABLE items ADD COLUMN image_path VARCHAR(255) NULL",
+            'items_additional_images' => "ALTER TABLE items ADD COLUMN additional_images TEXT NULL",
+            'items_barcode' => "ALTER TABLE items ADD COLUMN barcode VARCHAR(100) NULL",
+            'items_category_id' => "ALTER TABLE items ADD COLUMN category_id INT NULL",
+            'items_warehouse_id' => "ALTER TABLE items ADD COLUMN warehouse_id INT NULL",
+            'items_vendor_id' => "ALTER TABLE items ADD COLUMN vendor_id INT NULL",
+            'items_cost_price' => "ALTER TABLE items ADD COLUMN cost_price DECIMAL(10,2) NOT NULL DEFAULT 0.00",
+            'items_brand' => "ALTER TABLE items ADD COLUMN brand VARCHAR(100) NULL",
+            'items_warehouse' => "ALTER TABLE items ADD COLUMN warehouse VARCHAR(100) NULL",
+            'items_alert_qty' => "ALTER TABLE items ADD COLUMN alert_qty INT NOT NULL DEFAULT 5",
+            'items_unit' => "ALTER TABLE items ADD COLUMN unit VARCHAR(20) NOT NULL DEFAULT 'pcs'",
+            'items_status' => "ALTER TABLE items ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'",
+            'items_weight' => "ALTER TABLE items ADD COLUMN weight VARCHAR(50) NULL",
+            'items_sync_woo' => "ALTER TABLE items ADD COLUMN sync_woo TINYINT NOT NULL DEFAULT 1",
+            'items_sample_code' => "ALTER TABLE items ADD COLUMN sample_code VARCHAR(100) NULL",
+            'items_price' => "ALTER TABLE items ADD COLUMN price DECIMAL(10,2) NOT NULL DEFAULT 0.00",
+            'items_wholesale_price' => "ALTER TABLE items ADD COLUMN wholesale_price DECIMAL(10,2) NOT NULL DEFAULT 0.00",
+            'items_item_code' => "ALTER TABLE items ADD COLUMN item_code VARCHAR(100) NULL",
+            'items_name' => "ALTER TABLE items ADD COLUMN name VARCHAR(255) NOT NULL DEFAULT ''",
+            'items_qty' => "ALTER TABLE items ADD COLUMN qty INT NOT NULL DEFAULT 0",
+            'items_description' => "ALTER TABLE items ADD COLUMN description TEXT NULL",
+            'create_stock_batches' => "
+                CREATE TABLE IF NOT EXISTS stock_batches (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    item_id INT NOT NULL,
+                    variation_option_id INT NULL DEFAULT NULL,
+                    grn_id INT NULL DEFAULT NULL,
+                    quantity_received DECIMAL(15,2) NOT NULL,
+                    quantity_remaining DECIMAL(15,2) NOT NULL,
+                    unit_cost DECIMAL(15,2) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX (item_id),
+                    INDEX (variation_option_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'create_invoice_item_batches' => "
+                CREATE TABLE IF NOT EXISTS invoice_item_batches (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    invoice_item_id INT NULL DEFAULT NULL,
+                    sales_invoice_item_id INT NULL DEFAULT NULL,
+                    stock_batch_id INT NOT NULL,
+                    quantity DECIMAL(15,2) NOT NULL,
+                    unit_cost DECIMAL(15,2) NOT NULL,
+                    INDEX (invoice_item_id),
+                    INDEX (sales_invoice_item_id),
+                    INDEX (stock_batch_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'invoice_items_cost_at_sale' => "ALTER TABLE invoice_items ADD COLUMN cost_at_sale DECIMAL(15,2) DEFAULT 0.00",
+            'sales_invoice_items_cost_at_sale' => "ALTER TABLE sales_invoice_items ADD COLUMN cost_at_sale DECIMAL(15,2) DEFAULT 0.00",
+        ];
+    }
+
+    /**
+     * Executes pending migrations.
+     */
+    public static function run(PDO $dbh) {
+        if (self::$initialized) {
+            return;
+        }
+
+        // 1. Ensure migrations table exists
+        try {
+            $dbh->exec("
+                CREATE TABLE IF NOT EXISTS migrations (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    migration VARCHAR(255) UNIQUE NOT NULL,
+                    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+        } catch (PDOException $e) {
+            // If we can't even create migrations table, return silently to preserve system uptime
+            return;
+        }
+
+        // 2. Fetch already executed migrations
+        $executed = [];
+        try {
+            $stmt = $dbh->query("SELECT migration FROM migrations");
+            if ($stmt) {
+                $executed = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            }
+        } catch (PDOException $e) {
+            return;
+        }
+
+        // 3. Run pending migrations in order
+        $migrations = self::getMigrations();
+        foreach ($migrations as $name => $sql) {
+            if (in_array($name, $executed)) {
+                continue;
+            }
+
+            $success = false;
+            try {
+                if (is_callable($sql)) {
+                    $success = call_user_func($sql, $dbh);
+                } else {
+                    $dbh->exec($sql);
+                    $success = true;
+                }
+            } catch (PDOException $e) {
+                // If migration fails because column/table already exists, we count it as success (previously manually run)
+                // MySQL Error Codes: 1050 (table exists), 1060 (column exists), 1061 (duplicate key)
+                $errorCode = $e->errorInfo[1] ?? 0;
+                if (in_array($errorCode, [1050, 1060, 1061])) {
+                    $success = true;
+                }
+            }
+
+            if ($success) {
+                try {
+                    $stmt = $dbh->prepare("INSERT INTO migrations (migration) VALUES (:migration)");
+                    $stmt->execute([':migration' => $name]);
+                } catch (PDOException $e) {
+                    // Ignore duplicate key or other errors inserting log
+                }
+            }
+        }
+
+        self::$initialized = true;
+    }
+}

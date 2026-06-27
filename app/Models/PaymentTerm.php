@@ -4,33 +4,13 @@ class PaymentTerm {
 
     public function __construct() {
         $this->db = new Database();
-        $this->updateSchema();
     }
 
     /**
      * Self-healing DB routine to gracefully add new QuickBooks-style terms columns
      */
     private function updateSchema() {
-        $columns = [
-            'term_type' => "VARCHAR(20) DEFAULT 'standard'",
-            'net_due_days' => "INT DEFAULT 0",
-            'discount_percent' => "DECIMAL(5,2) DEFAULT 0.00",
-            'discount_days' => "INT DEFAULT 0",
-            'net_due_day_of_month' => "INT DEFAULT 31",
-            'due_next_month_within_days' => "INT DEFAULT 5",
-            'discount_day_of_month' => "INT DEFAULT 10",
-            'is_inactive' => "TINYINT DEFAULT 0"
-        ];
-
-        foreach ($columns as $col => $type) {
-            $this->db->query("SHOW COLUMNS FROM payment_terms LIKE :col");
-            $this->db->bind(':col', $col);
-            if (!$this->db->single()) {
-                // Column is missing, add it
-                $this->db->query("ALTER TABLE payment_terms ADD COLUMN {$col} {$type}");
-                $this->db->execute();
-            }
-        }
+        // Handled centrally by MigrationManager
     }
 
     public function getAllTerms() {

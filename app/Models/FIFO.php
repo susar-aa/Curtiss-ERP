@@ -4,72 +4,13 @@ class FIFO {
 
     public function __construct() {
         $this->db = new Database();
-        $this->initDatabase();
     }
 
     /**
      * Failsafe DDL migration to create FIFO-required tables and columns
      */
     private function initDatabase() {
-        // Safe check to avoid DDL statements which cause implicit commits in MySQL
-        if ($this->db->inTransaction()) {
-            return;
-        }
-
-        try {
-            $this->db->query("SELECT 1 FROM stock_batches LIMIT 1");
-            $this->db->execute();
-            return; // Table exists, bypass DDL!
-        } catch (Throwable $t) {
-            // Table does not exist, run migrations below
-        }
-
-        try {
-            // 1. Create stock_batches table
-            $this->db->query("CREATE TABLE IF NOT EXISTS stock_batches (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                item_id INT NOT NULL,
-                variation_option_id INT NULL DEFAULT NULL,
-                grn_id INT NULL DEFAULT NULL,
-                quantity_received DECIMAL(15,2) NOT NULL,
-                quantity_remaining DECIMAL(15,2) NOT NULL,
-                unit_cost DECIMAL(15,2) NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX (item_id),
-                INDEX (variation_option_id)
-            )");
-            $this->db->execute();
-
-            // 2. Create invoice_item_batches table
-            $this->db->query("CREATE TABLE IF NOT EXISTS invoice_item_batches (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                invoice_item_id INT NULL DEFAULT NULL,
-                sales_invoice_item_id INT NULL DEFAULT NULL,
-                stock_batch_id INT NOT NULL,
-                quantity DECIMAL(15,2) NOT NULL,
-                unit_cost DECIMAL(15,2) NOT NULL,
-                INDEX (invoice_item_id),
-                INDEX (sales_invoice_item_id),
-                INDEX (stock_batch_id)
-            )");
-            $this->db->execute();
-
-            // 3. Add cost_at_sale column to invoice_items if missing
-            $this->db->query("SHOW COLUMNS FROM invoice_items LIKE 'cost_at_sale'");
-            if (!$this->db->single()) {
-                $this->db->query("ALTER TABLE invoice_items ADD COLUMN cost_at_sale DECIMAL(15,2) DEFAULT 0.00");
-                $this->db->execute();
-            }
-
-            // 4. Add cost_at_sale column to sales_invoice_items if missing
-            $this->db->query("SHOW COLUMNS FROM sales_invoice_items LIKE 'cost_at_sale'");
-            if (!$this->db->single()) {
-                $this->db->query("ALTER TABLE sales_invoice_items ADD COLUMN cost_at_sale DECIMAL(15,2) DEFAULT 0.00");
-                $this->db->execute();
-            }
-        } catch (Exception $e) {
-            // Silently ignore or log DDL errors
-        }
+        // Handled centrally by MigrationManager
     }
 
     /**

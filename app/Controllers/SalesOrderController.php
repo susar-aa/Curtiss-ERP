@@ -15,7 +15,6 @@ class SalesOrderController extends Controller {
         $this->customerModel = $this->model('Customer');
         $this->itemModel = $this->model('Item');
         $this->companyModel = $this->model('Company');
-        $this->model('Invoice'); // Trigger self-healing DDL migrations for invoices table
         $this->db = new Database();
         
         $this->ensureSalesOrderTablesExist();
@@ -25,68 +24,7 @@ class SalesOrderController extends Controller {
      * Self-healing migration to support Sales Order tables
      */
     private function ensureSalesOrderTablesExist() {
-        try {
-            $this->db->query("CREATE TABLE IF NOT EXISTS sales_orders (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                order_number VARCHAR(50) NOT NULL UNIQUE,
-                customer_id INT NOT NULL,
-                customer_name VARCHAR(150) NOT NULL,
-                customer_phone VARCHAR(50) NULL,
-                billing_type ENUM('retail', 'wholesale') NOT NULL DEFAULT 'retail',
-                subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                discount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                grand_total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                notes TEXT NULL,
-                rep_name VARCHAR(100) NULL,
-                mca VARCHAR(100) NULL,
-                rep_tp VARCHAR(50) NULL,
-                po_number VARCHAR(50) NULL,
-                order_date DATE NOT NULL,
-                due_date DATE NOT NULL,
-                payment_term_id INT NULL DEFAULT NULL,
-                status VARCHAR(50) DEFAULT 'Pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )");
-            $this->db->execute();
-
-            $this->db->query("CREATE TABLE IF NOT EXISTS sales_order_items (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                sales_order_id INT NOT NULL,
-                item_id INT NOT NULL,
-                variation_option_id INT NULL DEFAULT NULL,
-                sku VARCHAR(100) NOT NULL,
-                name VARCHAR(255) NOT NULL,
-                billing_price DECIMAL(10,2) NOT NULL,
-                qty INT NOT NULL,
-                discount_value DECIMAL(10,2) DEFAULT 0.00,
-                discount_type VARCHAR(10) DEFAULT 'Rs',
-                total DECIMAL(10,2) NOT NULL,
-                FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id) ON DELETE CASCADE
-            )");
-            $this->db->execute();
-
-            // Self-healing migration for sales_orders payment_term_id
-            $this->db->query("SHOW COLUMNS FROM sales_orders LIKE 'payment_term_id'");
-            if (!$this->db->single()) {
-                $this->db->query("ALTER TABLE sales_orders ADD COLUMN payment_term_id INT NULL DEFAULT NULL AFTER due_date");
-                $this->db->execute();
-            }
-
-            // Ensure deleted_invoices table exists
-            $this->db->query("CREATE TABLE IF NOT EXISTS deleted_invoices (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                invoice_number VARCHAR(50) NOT NULL,
-                customer_name VARCHAR(150) NOT NULL,
-                total_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                deleted_user_name VARCHAR(100) NOT NULL,
-                deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                delete_reason TEXT NOT NULL,
-                record_type VARCHAR(20) NOT NULL DEFAULT 'Invoice'
-            )");
-            $this->db->execute();
-        } catch (Exception $e) {
-            // Fallback silently
-        }
+        // Handled centrally by MigrationManager
     }
 
     /**

@@ -3,29 +3,7 @@
 // Ensures the view never crashes even if the controller doesn't pass the exact data arrays.
 $db = new Database();
 
-// --- SELF-HEALING DATABASE SCHEMA MIGRATIONS ---
-// Automatically adds missing columns in the background to prevent DB crash HTML outputs inside the JS block
-try {
-    $db->query("SHOW COLUMNS FROM items LIKE 'quantity_reserved'");
-    if (!$db->single()) {
-        $db->query("ALTER TABLE items ADD COLUMN quantity_reserved INT DEFAULT 0 AFTER quantity_on_hand");
-        $db->execute();
-    }
-    
-    $db->query("SHOW COLUMNS FROM item_variation_options LIKE 'quantity_reserved'");
-    if (!$db->single()) {
-        $db->query("ALTER TABLE item_variation_options ADD COLUMN quantity_reserved INT DEFAULT 0 AFTER quantity_on_hand");
-        $db->execute();
-    }
 
-    $db->query("SHOW COLUMNS FROM invoice_items LIKE 'variation_option_id'");
-    if (!$db->single()) {
-        $db->query("ALTER TABLE invoice_items ADD COLUMN variation_option_id INT NULL DEFAULT NULL AFTER item_id");
-        $db->execute();
-    }
-} catch (Exception $e) {
-    // Silently capture any database schema exceptions to keep layout fluid
-}
 
 $catalog_items = $data['catalog_items'] ?? $data['items'] ?? [];
 if (empty($catalog_items)) {

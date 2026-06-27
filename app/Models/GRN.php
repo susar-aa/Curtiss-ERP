@@ -4,33 +4,6 @@ class GRN {
 
     public function __construct() {
         $this->db = new Database();
-        // Individual self-healing migrations to ensure all fields are correctly initialized
-        $fieldsToCheck = [
-            'goods_receipt_notes' => [
-                'receipt_number' => "ALTER TABLE goods_receipt_notes ADD COLUMN receipt_number VARCHAR(100) NULL AFTER grn_number",
-                'is_approved' => "ALTER TABLE goods_receipt_notes ADD COLUMN is_approved TINYINT(1) DEFAULT 0 AFTER notes",
-                'approved_by' => "ALTER TABLE goods_receipt_notes ADD COLUMN approved_by INT NULL AFTER is_approved",
-                'approved_at' => "ALTER TABLE goods_receipt_notes ADD COLUMN approved_at DATETIME NULL AFTER approved_by"
-            ],
-            'grn_items' => [
-                'retail_margin' => "ALTER TABLE grn_items ADD COLUMN retail_margin DECIMAL(15,2) DEFAULT 0.00 AFTER wholesale_price",
-                'wholesale_margin' => "ALTER TABLE grn_items ADD COLUMN wholesale_margin DECIMAL(15,2) DEFAULT 0.00 AFTER retail_margin"
-            ]
-        ];
-
-        foreach ($fieldsToCheck as $table => $columns) {
-            foreach ($columns as $column => $sql) {
-                try {
-                    $this->db->query("SHOW COLUMNS FROM {$table} LIKE '{$column}'");
-                    if (!$this->db->single()) {
-                        $this->db->query($sql);
-                        $this->db->execute();
-                    }
-                } catch (Throwable $e) {
-                    // Fail silently to avoid breaking page load on DB configuration hitches
-                }
-            }
-        }
     }
 
     public function getGRNsPaginated($search = '', $limit = 10, $offset = 0, $filters = []) {

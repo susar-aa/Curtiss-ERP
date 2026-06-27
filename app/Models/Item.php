@@ -10,6 +10,9 @@ class Item {
     private $wholesalePriceColumn = 'wholesale_price'; // For WholesaleX B2B compatibility
     private $orderByColumn = 'id DESC';
 
+    // Static cache for detected columns to optimize performance
+    private static $cachedColumns = null;
+
     public function __construct() {
         $this->db = new Database();
         $this->detectColumns();
@@ -17,10 +20,20 @@ class Item {
 
     /**
      * Dynamically inspect the 'items' table schema to adapt to different column names.
-     * Automatically runs ALTER TABLE migrations to append WholesaleX, Variations,
-     * Warehouse Relations, and Supplier parameters so the database is self-healing.
+     * Caches results in a static property to run exactly once per request.
      */
     private function detectColumns() {
+        if (self::$cachedColumns !== null) {
+            $this->priceColumn = self::$cachedColumns['priceColumn'];
+            $this->itemCodeColumn = self::$cachedColumns['itemCodeColumn'];
+            $this->nameColumn = self::$cachedColumns['nameColumn'];
+            $this->qtyColumn = self::$cachedColumns['qtyColumn'];
+            $this->descColumn = self::$cachedColumns['descColumn'];
+            $this->wholesalePriceColumn = self::$cachedColumns['wholesalePriceColumn'];
+            $this->orderByColumn = self::$cachedColumns['orderByColumn'];
+            return;
+        }
+
         try {
             $this->db->query("DESCRIBE items");
             $columns = $this->db->resultSet();
@@ -29,139 +42,57 @@ class Item {
                     return strtolower($col->Field ?? $col->field ?? '');
                 }, $columns);
 
-                $altered = false;
-
-                // 1. Detect & Migrate Price
-                $foundPrice = false;
+                // 1. Detect Price
+                $priceCol = 'price';
                 foreach ($fields as $f) {
                     if ($f === 'selling_price' || $f === 'price' || $f === 'unit_price' || $f === 'rate') {
-                        $this->priceColumn = $f;
-                        $foundPrice = true;
+                        $priceCol = $f;
                         break;
                     }
                 }
-                if (!$foundPrice) {
-                    $this->db->query("ALTER TABLE items ADD price DECIMAL(10,2) NOT NULL DEFAULT 0.00");
-                    $this->db->execute();
-                    $this->priceColumn = 'price';
-                    $fields[] = 'price';
-                    $altered = true;
-                }
+                $this->priceColumn = $priceCol;
 
-                // 2. Detect & Migrate Wholesale Price (WholesaleX B2B)
-                $foundWholesale = false;
+                // 2. Detect Wholesale Price
+                $wholesaleCol = 'wholesale_price';
                 foreach ($fields as $f) {
                     if ($f === 'wholesale_price' || $f === 'b2b_price' || $f === 'wholesale' || $f === 'trade_price') {
-                        $this->wholesalePriceColumn = $f;
-                        $foundWholesale = true;
+                        $wholesaleCol = $f;
                         break;
                     }
                 }
-                if (!$foundWholesale) {
-                    $this->db->query("ALTER TABLE items ADD wholesale_price DECIMAL(10,2) NOT NULL DEFAULT 0.00");
-                    $this->db->execute();
-                    $this->wholesalePriceColumn = 'wholesale_price';
-                    $fields[] = 'wholesale_price';
-                    $altered = true;
-                }
+                $this->wholesalePriceColumn = $wholesaleCol;
 
-                // 3. Detect & Migrate Item Code / SKU
-                $foundCode = false;
+                // 3. Detect Item Code / SKU
+                $codeCol = 'item_code';
                 foreach ($fields as $f) {
                     if ($f === 'item_code' || $f === 'sku' || $f === 'code' || $f === 'barcode') {
-                        $this->itemCodeColumn = $f;
-                        $foundCode = true;
+                        $codeCol = $f;
                         break;
                     }
                 }
-                if (!$foundCode) {
-                    $this->db->query("ALTER TABLE items ADD item_code VARCHAR(100) NULL");
-                    $this->db->execute();
-                    $this->itemCodeColumn = 'item_code';
-                    $fields[] = 'item_code';
-                    $altered = true;
-                }
+                $this->itemCodeColumn = $codeCol;
 
                 // 4. Detect Name / Title
-                if (!in_array('name', $fields) && !in_array('title', $fields)) {
-                    $this->db->query("ALTER TABLE items ADD name VARCHAR(255) NOT NULL");
-                    $this->db->execute();
-                    $this->nameColumn = 'name';
-                    $fields[] = 'name';
-                    $altered = true;
-                } else {
-                    $this->nameColumn = in_array('name', $fields) ? 'name' : 'title';
-                }
+                $this->nameColumn = in_array('name', $fields) ? 'name' : (in_array('title', $fields) ? 'title' : 'name');
 
                 // 5. Detect Qty / Stock
-                $foundQty = false;
+                $qtyCol = 'qty';
                 if (in_array('qty', $fields)) {
-                    $this->qtyColumn = 'qty';
-                    $foundQty = true;
+                    $qtyCol = 'qty';
                 } elseif (in_array('quantity_on_hand', $fields)) {
-                    $this->qtyColumn = 'quantity_on_hand';
-                    $foundQty = true;
+                    $qtyCol = 'quantity_on_hand';
                 } else {
                     foreach ($fields as $f) {
                         if ($f === 'quantity' || $f === 'stock' || $f === 'stock_quantity' || $f === 'stock_qty') {
-                            $this->qtyColumn = $f;
-                            $foundQty = true;
+                            $qtyCol = $f;
                             break;
                         }
                     }
                 }
-                if (!$foundQty) {
-                    $this->db->query("ALTER TABLE items ADD qty INT NOT NULL DEFAULT 0");
-                    $this->db->execute();
-                    $this->qtyColumn = 'qty';
-                    $fields[] = 'qty';
-                    $altered = true;
-                }
+                $this->qtyColumn = $qtyCol;
 
                 // 6. Detect Description
-                if (!in_array('description', $fields) && !in_array('desc', $fields)) {
-                    $this->db->query("ALTER TABLE items ADD description TEXT NULL");
-                    $this->db->execute();
-                    $this->descColumn = 'description';
-                    $fields[] = 'description';
-                    $altered = true;
-                } else {
-                    $this->descColumn = in_array('description', $fields) ? 'description' : 'desc';
-                }
-
-                // 7. Migrate relational columns to support complete, crash-free forms
-                $migrations = [
-                    'variations_json' => "ALTER TABLE items ADD variations_json TEXT NULL",
-                    'image_path' => "ALTER TABLE items ADD image_path VARCHAR(255) NULL",
-                    'additional_images' => "ALTER TABLE items ADD additional_images TEXT NULL",
-                    'barcode' => "ALTER TABLE items ADD barcode VARCHAR(100) NULL",
-                    'category_id' => "ALTER TABLE items ADD category_id INT NULL",
-                    'warehouse_id' => "ALTER TABLE items ADD warehouse_id INT NULL",
-                    'vendor_id' => "ALTER TABLE items ADD vendor_id INT NULL",
-                    'cost_price' => "ALTER TABLE items ADD cost_price DECIMAL(10,2) NOT NULL DEFAULT 0.00",
-                    'brand' => "ALTER TABLE items ADD brand VARCHAR(100) NULL",
-                    'warehouse' => "ALTER TABLE items ADD warehouse VARCHAR(100) NULL",
-                    'alert_qty' => "ALTER TABLE items ADD alert_qty INT NOT NULL DEFAULT 5",
-                    'unit' => "ALTER TABLE items ADD unit VARCHAR(20) NOT NULL DEFAULT 'pcs'",
-                    'status' => "ALTER TABLE items ADD status VARCHAR(20) NOT NULL DEFAULT 'active'",
-                    'weight' => "ALTER TABLE items ADD weight VARCHAR(50) NULL",
-                    'sync_woo' => "ALTER TABLE items ADD sync_woo TINYINT NOT NULL DEFAULT 1",
-                    'sample_code' => "ALTER TABLE items ADD sample_code VARCHAR(100) NULL"
-                ];
-
-                foreach ($migrations as $col => $sql) {
-                    if (!in_array($col, $fields)) {
-                        $this->db->query($sql);
-                        $this->db->execute();
-                        $fields[] = $col;
-                        $altered = true;
-                    }
-                }
-
-                if ($altered) {
-                    $this->detectColumns();
-                    return;
-                }
+                $this->descColumn = in_array('description', $fields) ? 'description' : (in_array('desc', $fields) ? 'desc' : 'description');
 
                 // Set order parameter
                 if (in_array('created_at', $fields)) {
@@ -169,6 +100,18 @@ class Item {
                 } else {
                     $this->orderByColumn = 'id DESC';
                 }
+
+                // Cache the values
+                self::$cachedColumns = [
+                    'priceColumn' => $this->priceColumn,
+                    'itemCodeColumn' => $this->itemCodeColumn,
+                    'nameColumn' => $this->nameColumn,
+                    'qtyColumn' => $this->qtyColumn,
+                    'descColumn' => $this->descColumn,
+                    'wholesalePriceColumn' => $this->wholesalePriceColumn,
+                    'orderByColumn' => $this->orderByColumn,
+                    'fields' => $fields
+                ];
             }
         } catch (Exception $e) {
             // Fall back silently
@@ -358,13 +301,20 @@ class Item {
     public function getItemsDelta($lastSync = '') {
         $whereSql = '';
         if (!empty($lastSync)) {
-            $this->db->query("SHOW COLUMNS FROM items LIKE 'updated_at'");
-            if ($this->db->single()) {
+            $fields = self::$cachedColumns['fields'] ?? [];
+            if (in_array('updated_at', $fields)) {
                 $whereSql = " WHERE i.updated_at > :last_sync";
+            } elseif (in_array('created_at', $fields)) {
+                $whereSql = " WHERE i.created_at > :last_sync";
             } else {
-                $this->db->query("SHOW COLUMNS FROM items LIKE 'created_at'");
+                $this->db->query("SHOW COLUMNS FROM items LIKE 'updated_at'");
                 if ($this->db->single()) {
-                    $whereSql = " WHERE i.created_at > :last_sync";
+                    $whereSql = " WHERE i.updated_at > :last_sync";
+                } else {
+                    $this->db->query("SHOW COLUMNS FROM items LIKE 'created_at'");
+                    if ($this->db->single()) {
+                        $whereSql = " WHERE i.created_at > :last_sync";
+                    }
                 }
             }
         } else {

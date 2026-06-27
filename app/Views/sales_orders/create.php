@@ -2,14 +2,7 @@
 // Smart Failsafe Data Fetcher
 $db = new Database();
 
-// --- SELF-HEALING DATABASE SCHEMA MIGRATIONS ---
-try {
-    $db->query("SHOW COLUMNS FROM items LIKE 'quantity_reserved'");
-    if (!$db->single()) {
-        $db->query("ALTER TABLE items ADD COLUMN quantity_reserved INT DEFAULT 0 AFTER quantity_on_hand");
-        $db->execute();
-    }
-} catch (Exception $e) {}
+
 
 $catalog_items = $data['catalog_items'] ?? [];
 if (empty($catalog_items)) {
