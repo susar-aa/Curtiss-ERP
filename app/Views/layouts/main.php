@@ -1712,6 +1712,25 @@ if (!function_exists('hasPermission')) {
                         </a>
                         <?php endif; ?>
                     </div>
+                    <div class="mega-menu-col">
+                        <div class="mega-menu-header">Maintenance</div>
+                        <?php if (hasPermission('settings')): ?>
+                        <a href="<?= APP_URL ?>/backup" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-database"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Backup &amp; Restore</div>
+                                <div class="desc">Database dumps &amp; states</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/diagnostics" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-heartbeat"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">System Health</div>
+                                <div class="desc">Engine metrics &amp; logs</div>
+                            </div>
+                        </a>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
             <?php endif; ?>
@@ -1863,6 +1882,8 @@ if (!function_exists('hasPermission')) {
                         <?php if (hasPermission('settings')): ?>
                             <a href="<?= APP_URL ?>/settings" class="fs-link"><i class="ph ph-gear"></i> Settings</a>
                             <a href="<?= APP_URL ?>/settings/releases" class="fs-link"><i class="ph ph-cloud-arrow-down"></i> Releases</a>
+                            <a href="<?= APP_URL ?>/backup" class="fs-link"><i class="ph ph-database"></i> Backup &amp; Restore</a>
+                            <a href="<?= APP_URL ?>/diagnostics" class="fs-link"><i class="ph ph-heartbeat"></i> System Health</a>
                         <?php endif; ?>
                         <?php if (hasPermission('user')): ?><a href="<?= APP_URL ?>/user" class="fs-link"><i class="ph ph-lock-key"></i> Users &amp; Roles</a><?php endif; ?>
                         <?php if (hasPermission('tax')): ?><a href="<?= APP_URL ?>/tax" class="fs-link"><i class="ph ph-scales"></i> Tax Rates</a><?php endif; ?>

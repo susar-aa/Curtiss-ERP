@@ -76,7 +76,7 @@
                 <td style="text-align: right; font-weight:bold;"><?= number_format($est->total_amount, 2) ?></td>
                 <td style="text-align: center;">
                     <a href="<?= APP_URL ?>/estimate/show/<?= $est->id ?>" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;">View</a>
-                    <?php if($est->status == 'Accepted'): ?>
+                    <?php if($est->status !== 'Invoiced'): ?>
                         <button onclick="openConvertModal(<?= $est->id ?>, '<?= htmlspecialchars($est->estimate_number) ?>')" class="btn btn-success" style="padding: 4px 8px; font-size: 11px; margin-left: 5px;">Convert to Invoice</button>
                     <?php endif; ?>
                 </td>
