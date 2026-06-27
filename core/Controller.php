@@ -93,4 +93,54 @@ class Controller {
         }
         return true;
     }
+
+    /**
+     * Generate a CSRF token if one does not exist.
+     * @return string The generated or existing CSRF token.
+     */
+    protected function generateCsrfToken() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        return $_SESSION['csrf_token'];
+    }
+
+    /**
+     * Validate the CSRF token from request parameters, request headers, or JSON body.
+     * @return bool True if valid, false otherwise.
+     */
+    protected function validateCsrf() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? null;
+        if (!$token && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $input = file_get_contents('php://input');
+            $json = json_decode($input, true);
+            $token = $json['csrf_token'] ?? null;
+        }
+        return ($token && isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token));
+    }
+
+    /**
+     * Validate CSRF token or terminate the request with 403.
+     */
+    protected function validateCsrfOrDie() {
+        if (!$this->validateCsrf()) {
+            $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
+                      (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+            if ($isAjax) {
+                header('HTTP/1.1 403 Forbidden');
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'success' => false, 'message' => 'CSRF token validation failed.']);
+                exit;
+            } else {
+                http_response_code(403);
+                die("CSRF validation failed.");
+            }
+        }
+    }
 }

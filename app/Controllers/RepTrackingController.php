@@ -8,26 +8,13 @@ class RepTrackingController extends Controller {
             header('Location: ' . APP_URL . '/auth/login'); 
             exit; 
         }
-        if (empty($_SESSION['csrf_token'])) {
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        }
+        $this->generateCsrfToken();
         $this->trackingModel = $this->model('RepTracking');
         $this->deliveryModel = $this->model('Delivery');
     }
 
     private function validateCsrf() {
-        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? null;
-        if (!$token) {
-            $json = json_decode(file_get_contents('php://input'), true);
-            $token = $json['csrf_token'] ?? null;
-        }
-
-        if (!$token || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
-            header('HTTP/1.1 403 Forbidden');
-            header('Content-Type: application/json');
-            echo json_encode(['status' => 'error', 'message' => 'CSRF token validation failed.']);
-            exit;
-        }
+        $this->validateCsrfOrDie();
     }
 
     public function index() {

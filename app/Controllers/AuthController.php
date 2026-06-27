@@ -8,9 +8,7 @@ class AuthController extends Controller {
 
     public function login() {
         // Generate CSRF token if not exists
-        if (empty($_SESSION['csrf_token'])) {
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        }
+        $this->generateCsrfToken();
 
         // Check if already logged in
         if (isset($_SESSION['user_id'])) {
@@ -50,7 +48,7 @@ class AuthController extends Controller {
             }
 
             // CSRF protection validation
-            if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+            if (!$this->validateCsrf()) {
                 $data['csrf_err'] = 'Security validation failed (CSRF mismatch). Please refresh and try again.';
                 $this->logActivity('Login Suspicious', 'Auth', "CSRF token mismatch detected for login attempt.");
             }

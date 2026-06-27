@@ -31,7 +31,12 @@ class App {
             if (empty($token) && isset($_SERVER['HTTP_X_CSRF_TOKEN'])) {
                 $token = $_SERVER['HTTP_X_CSRF_TOKEN'];
             }
-            if (empty($token) || !isset($_SESSION['csrf_token']) || $token !== $_SESSION['csrf_token']) {
+            if (empty($token)) {
+                $input = file_get_contents('php://input');
+                $json = json_decode($input, true);
+                $token = $json['csrf_token'] ?? '';
+            }
+            if (empty($token) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
                 $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
                           (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
                 if ($isAjax) {
@@ -76,7 +81,7 @@ class App {
         }
 
         // Check if user is logged in. If not, force routing to AuthController (unless it is auth controller, an API sync request, or a public invoice view)
-        if (!isset($_SESSION['user_id']) && !$isApiSync && !$isPublicInvoice && (isset($url[0]) ? strtolower($url[0]) !== 'auth' : true)) {
+        if (!isset($_SESSION['user_id']) && !$isMobileSync && !$isPublicInvoice && (isset($url[0]) ? strtolower($url[0]) !== 'auth' : true)) {
             $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
                       (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
                       (strpos($_SERVER['REQUEST_URI'], '/fetch_data') !== false) ||
