@@ -297,6 +297,14 @@ document.addEventListener('submit', function(e) {
         // Read disabled state
         input.disabled = select.disabled;
 
+        // Transfer required attribute to the focusable input to prevent
+        // "An invalid form control with name='...' is not focusable" console error
+        if (select.required) {
+            input.required = true;
+            select.removeAttribute('required');
+            select.dataset.required = 'true';
+        }
+
         const dropdown = document.createElement('div');
         dropdown.className = 'searchable-select-dropdown';
 
