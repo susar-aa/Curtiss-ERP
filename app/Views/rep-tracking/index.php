@@ -4026,7 +4026,7 @@
         
         closeAttachInvoiceModal();
         
-        fetch('<?= APP_URL ?>/RepTracking/api_attach_invoices', {
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_attach_invoices', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ route_id: currentRouteId, invoice_ids: checkedInvoices })
