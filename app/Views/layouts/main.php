@@ -167,6 +167,28 @@ if (!function_exists('hasPermission')) {
         }
 
         /* Brand section */
+        .nav-back-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            color: var(--text-main);
+            transition: background-color 0.2s, transform 0.2s;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .nav-back-btn:hover {
+            background-color: rgba(0, 0, 0, 0.08);
+            transform: translateX(-2px);
+        }
+        @media (prefers-color-scheme: dark) {
+            .nav-back-btn:hover {
+                background-color: rgba(255, 255, 255, 0.12);
+            }
+        }
+
         .nav-brand {
             display: flex;
             align-items: center;
@@ -1118,6 +1140,11 @@ if (!function_exists('hasPermission')) {
 
     <!-- FLOATING NAV BAR -->
     <nav class="glass-nav">
+
+        <!-- Back Button -->
+        <a href="javascript:history.back()" class="nav-back-btn" title="Go Back">
+            <i class="ph ph-arrow-left" style="font-size: 20px;"></i>
+        </a>
 
         <!-- Brand: Logo only -->
         <a href="<?= APP_URL ?>/dashboard" class="nav-brand">
