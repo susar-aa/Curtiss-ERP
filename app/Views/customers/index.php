@@ -644,13 +644,13 @@ foreach ($data['customers'] ?? [] as $cust) {
 
         <!-- Filters Block -->
         <div class="filter-shelf">
-            <!-- Route / Territory (Filter by Route option) -->
+            <!-- Filter by Route -->
             <div class="filter-chip">
-                <span class="filter-chip-label">Territory</span>
+                <span class="filter-chip-label">Route</span>
                 <div class="sf-dropdown" tabindex="0">
-                    <div class="sf-dropdown-val" id="route-dropdown-val">All Territories</div>
+                    <div class="sf-dropdown-val" id="route-dropdown-val">All Routes</div>
                     <div class="sf-dropdown-menu">
-                        <div class="sf-dropdown-item active" data-val="" onclick="selectRoute('', 'All Territories')">All Territories</div>
+                        <div class="sf-dropdown-item active" data-val="" onclick="selectRoute('', 'All Routes')">All Routes</div>
                         <?php 
                         $routes = [];
                         foreach($data['customers'] as $c) {
@@ -658,7 +658,7 @@ foreach ($data['customers'] ?? [] as $cust) {
                         }
                         sort($routes);
                         foreach($routes as $r): ?>
-                            <div class="sf-dropdown-item" data-val="<?= htmlspecialchars(strtolower($r)) ?>" onclick="selectRoute('<?= htmlspecialchars(strtolower($r)) ?>', '<?= htmlspecialchars($r) ?>')"><?= htmlspecialchars($r) ?></div>
+                            <div class="sf-dropdown-item" data-val="<?= htmlspecialchars(strtolower($r), ENT_QUOTES, 'UTF-8') ?>" onclick="selectRoute('<?= htmlspecialchars(strtolower($r), ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars($r, ENT_QUOTES, 'UTF-8') ?>')"><?= htmlspecialchars($r) ?></div>
                         <?php endforeach; ?>
                     </div>
                     <input type="hidden" id="filterRoute" value="">
@@ -727,16 +727,22 @@ foreach ($data['customers'] ?? [] as $cust) {
                                 
                                 <td>
                                     <div style="display:flex; align-items:center; gap:12px;">
-                                        <div class="avatar-circle"><?= strtoupper(substr($c->name, 0, 2)) ?></div>
+                                        <div class="avatar-circle"><?= strtoupper(substr($c->name ?? '', 0, 2)) ?></div>
                                         <div>
-                                            <strong style="font-size:14.5px; font-weight:600; color:var(--t-primary);"><?= htmlspecialchars($c->name) ?></strong>
-                                            <span style="font-size:11px; color:var(--t-secondary); display:block; margin-top:2px;" class="truncate-text">🏠 <?= htmlspecialchars($c->address ?: 'No Address') ?></span>
+                                            <strong style="font-size:14.5px; font-weight:600; color:var(--t-primary);"><?= htmlspecialchars($c->name ?? '') ?></strong>
+                                            <span style="font-size:11px; color:var(--t-secondary); display:block; margin-top:2px;" class="truncate-text">
+                                                🏠 <?= !empty($c->address) ? htmlspecialchars($c->address) : '<span style="color:var(--c-red); font-weight:600;">Missing Address</span>' ?>
+                                            </span>
                                         </div>
                                     </div>
                                 </td>
                                 <td>
-                                    <span style="font-size:13px; font-weight:500; display:block;">📞 <?= htmlspecialchars($c->phone ?: 'No Phone') ?></span>
-                                    <span style="font-size:11px; color:var(--t-secondary); display:block; margin-top:2px;"><?= htmlspecialchars($c->email ?: 'No Email') ?></span>
+                                    <span style="font-size:13px; font-weight:500; display:block;">
+                                        📞 <?= !empty($c->phone) ? htmlspecialchars($c->phone) : '<span style="color:var(--c-red); font-weight:600;">Missing Phone</span>' ?>
+                                    </span>
+                                    <span style="font-size:11px; color:var(--t-secondary); display:block; margin-top:2px;">
+                                        <?= !empty($c->email) ? htmlspecialchars($c->email) : '<span style="color:var(--c-red); font-weight:600;">Missing Email</span>' ?>
+                                    </span>
                                 </td>
                                 <td class="txt-right" style="font-weight:700; font-family:var(--f-mono); font-size:14px; color: <?= $bal > 0 ? 'var(--c-red)' : 'var(--c-green)' ?>;">
                                     Rs: <?= number_format($bal, 2) ?>
@@ -751,7 +757,7 @@ foreach ($data['customers'] ?? [] as $cust) {
                                         <button type="button" class="act-btn view" onclick="showCustomerProfile(<?= $c->id ?>)" title="View ledger & profile">
                                             <i class="fa-solid fa-eye"></i>
                                         </button>
-                                        <button type="button" class="act-btn edit" onclick="sharePortal(<?= $c->id ?>, '<?= htmlspecialchars(addslashes($c->phone ?? '')) ?>', '<?= htmlspecialchars(addslashes($c->name)) ?>')" title="Share B2B Portal Link">
+                                        <button type="button" class="act-btn edit" onclick="sharePortal(<?= $c->id ?>, '<?= htmlspecialchars(addslashes($c->phone ?? '')) ?>', '<?= htmlspecialchars(addslashes($c->name ?? '')) ?>')" title="Share B2B Portal Link">
                                             <i class="fa-solid fa-share-nodes"></i>
                                         </button>
                                     </div>
@@ -851,12 +857,12 @@ foreach ($data['customers'] ?? [] as $cust) {
             </div>
             <div>
                 <h3 class="modal-title" style="font-size: 17px; font-weight: 700; display:flex; align-items:center; gap: 10px;">
-                    <?= htmlspecialchars($c->name) ?>
+                    <?= htmlspecialchars($c->name ?? '') ?>
                 </h3>
                 <div style="font-size: 12px; color: var(--t-secondary); display: flex; gap: 14px; margin-top: 2px;">
-                    <span>📞 <?= htmlspecialchars($c->phone ?: 'N/A') ?></span>
-                    <span>✉️ <?= htmlspecialchars($c->email ?: 'N/A') ?></span>
-                    <span>📍 Route: <?= htmlspecialchars($c->mca_name ?: 'Unassigned') ?></span>
+                    <span>📞 <?= !empty($c->phone) ? htmlspecialchars($c->phone) : '<span style="color:var(--c-red); font-weight:600;">Missing Phone</span>' ?></span>
+                    <span>✉️ <?= !empty($c->email) ? htmlspecialchars($c->email) : '<span style="color:var(--c-red); font-weight:600;">Missing Email</span>' ?></span>
+                    <span>📍 Route: <?= !empty($c->mca_name) ? htmlspecialchars($c->mca_name) : '<span style="color:var(--c-red); font-weight:600;">Unassigned Route</span>' ?></span>
                 </div>
             </div>
         </div>
@@ -1006,17 +1012,17 @@ foreach ($data['customers'] ?? [] as $cust) {
                         
                         <div class="sf-group">
                             <label>Customer Name *</label>
-                            <input type="text" name="name" class="sf-input" value="<?= htmlspecialchars($c->name) ?>" required>
+                            <input type="text" name="name" class="sf-input" value="<?= htmlspecialchars($c->name ?? '') ?>" required>
                         </div>
                         
                         <div class="grid-2">
                             <div class="sf-group">
                                 <label>Email Address</label>
-                                <input type="email" name="email" class="sf-input" value="<?= htmlspecialchars($c->email) ?>">
+                                <input type="email" name="email" class="sf-input" value="<?= htmlspecialchars($c->email ?? '') ?>">
                             </div>
                             <div class="sf-group">
                                 <label>Phone Number</label>
-                                <input type="text" name="phone" class="sf-input" value="<?= htmlspecialchars($c->phone) ?>">
+                                <input type="text" name="phone" class="sf-input" value="<?= htmlspecialchars($c->phone ?? '') ?>">
                             </div>
                         </div>
                         
@@ -1026,11 +1032,11 @@ foreach ($data['customers'] ?? [] as $cust) {
                                 <input type="text" name="whatsapp" class="sf-input" value="<?= htmlspecialchars($c->whatsapp ?? '') ?>">
                             </div>
                             <div class="sf-group">
-                                <label>Assigned Territory / Route</label>
+                                <label>Assigned Route</label>
                                 <select name="mca_id" class="sf-input" style="height:41px;">
                                     <option value="">Unassigned</option>
                                     <?php foreach($data['mca_areas'] as $route): ?>
-                                        <option value="<?= $route->id ?>" <?= $c->mca_id == $route->id ? 'selected' : '' ?>><?= htmlspecialchars($route->name) ?></option>
+                                        <option value="<?= $route->id ?>" <?= $c->mca_id == $route->id ? 'selected' : '' ?>><?= htmlspecialchars($route->name ?? '') ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -1049,17 +1055,17 @@ foreach ($data['customers'] ?? [] as $cust) {
                         
                         <div class="sf-group">
                             <label>Billing Address</label>
-                            <textarea name="address" class="sf-input" rows="2" style="resize:vertical; min-height:50px;"><?= htmlspecialchars($c->address) ?></textarea>
+                            <textarea name="address" class="sf-input" rows="2" style="resize:vertical; min-height:50px;"><?= htmlspecialchars($c->address ?? '') ?></textarea>
                         </div>
                         
                         <div class="grid-2">
                             <div class="sf-group">
                                 <label>Latitude (GPS)</label>
-                                <input type="text" name="latitude" class="sf-input" value="<?= $c->latitude ?>">
+                                <input type="text" name="latitude" class="sf-input" value="<?= htmlspecialchars($c->latitude ?? '') ?>">
                             </div>
                             <div class="sf-group">
                                 <label>Longitude (GPS)</label>
-                                <input type="text" name="longitude" class="sf-input" value="<?= $c->longitude ?>">
+                                <input type="text" name="longitude" class="sf-input" value="<?= htmlspecialchars($c->longitude ?? '') ?>">
                             </div>
                         </div>
                         
@@ -1114,11 +1120,11 @@ foreach ($data['customers'] ?? [] as $cust) {
                 <div class="grid-2">
                     <div class="sf-group"><label>WhatsApp Number</label><input type="text" name="whatsapp" class="sf-input" placeholder="e.g. +94771234567"></div>
                     <div class="sf-group">
-                        <label>Assign Territory / Route</label>
+                        <label>Assign Route</label>
                         <select name="mca_id" class="sf-input" style="height:41px;">
                             <option value="">Unassigned</option>
                             <?php foreach($data['mca_areas'] as $route): ?>
-                                <option value="<?= $route->id ?>"><?= htmlspecialchars($route->name) ?></option>
+                                <option value="<?= $route->id ?>"><?= htmlspecialchars($route->name ?? '') ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -1166,7 +1172,7 @@ foreach ($data['customers'] ?? [] as $cust) {
             <div class="modal-body">
                 <p style="font-size: 12px; color: var(--t-secondary); margin-top:-10px; margin-bottom: 20px; line-height:1.5;">
                     Select a CSV file containing customer details. Required column: <strong>Name</strong>.<br>
-                    Supported columns: <strong>Name, Email, Phone, WhatsApp, Address, Latitude, Longitude, Territory, Opening Balance</strong>.
+                    Supported columns: <strong>Name, Email, Phone, WhatsApp, Address, Latitude, Longitude, Route/Territory, Opening Balance</strong>.
                 </p>
                 <div class="drop-zone">
                     <input type="file" name="csv_file" accept=".csv" required>
@@ -1324,7 +1330,7 @@ foreach ($data['customers'] ?? [] as $cust) {
 
     function clearAllFilters() {
         document.getElementById('searchInput').value = '';
-        selectRoute('', 'All Territories');
+        selectRoute('', 'All Routes');
         selectStatus('', 'All Accounts');
     }
 
