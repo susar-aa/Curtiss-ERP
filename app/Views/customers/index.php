@@ -740,9 +740,11 @@ foreach ($data['customers'] ?? [] as $cust) {
                                     <span style="font-size:13px; font-weight:500; display:block;">
                                         📞 <?= !empty($c->phone) ? htmlspecialchars($c->phone) : '<span style="color:var(--c-red); font-weight:600;">Missing Phone</span>' ?>
                                     </span>
-                                    <span style="font-size:11px; color:var(--t-secondary); display:block; margin-top:2px;">
-                                        <?= !empty($c->email) ? htmlspecialchars($c->email) : '<span style="color:var(--c-red); font-weight:600;">Missing Email</span>' ?>
-                                    </span>
+                                    <?php if (!empty($c->email)): ?>
+                                        <span style="font-size:11px; color:var(--t-secondary); display:block; margin-top:2px;">
+                                            <?= htmlspecialchars($c->email) ?>
+                                        </span>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="txt-right" style="font-weight:700; font-family:var(--f-mono); font-size:14px; color: <?= $bal > 0 ? 'var(--c-red)' : 'var(--c-green)' ?>;">
                                     Rs: <?= number_format($bal, 2) ?>
@@ -881,7 +883,7 @@ foreach ($data['customers'] ?? [] as $cust) {
             <button class="tab-btn active" onclick="switchModalTab('ledger')" id="mbtn_ledger">Activity Ledger</button>
             <button class="tab-btn" onclick="switchModalTab('invoices')" id="mbtn_invoices">Invoices</button>
             <button class="tab-btn" onclick="switchModalTab('cheques')" id="mbtn_cheques">Cheques (PDC)</button>
-            <button class="tab-btn" onclick="switchModalTab('profile')" id="mbtn_profile">Profile & Map</button>
+            <button class="tab-btn" onclick="switchModalTab('profile')" id="mbtn_profile">Profile</button>
         </div>
 
         <!-- TAB 1: Ledger -->
