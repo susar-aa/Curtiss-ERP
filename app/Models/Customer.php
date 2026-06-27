@@ -255,4 +255,10 @@ class Customer {
         $this->db->bind(':limit', $limit, PDO::PARAM_INT);
         return $this->db->resultSet();
     }
+
+    public function deleteCustomer($id) {
+        $this->db->query("DELETE FROM customers WHERE id = :id");
+        $this->db->bind(':id', $id);
+        return $this->db->execute();
+    }
 }

@@ -1092,9 +1092,63 @@ foreach ($data['customers'] ?? [] as $cust) {
                     </div>
                 </div>
             </div>
+
+            <!-- Danger Zone: Delete Customer -->
+            <div style="margin-top: 35px; padding-top: 20px; border-top: 1px dashed var(--c-separator);">
+                <div style="background: rgba(255, 59, 48, 0.04); border: 0.5px solid rgba(255, 59, 48, 0.15); border-radius: var(--r-md); padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap;">
+                    <div style="min-width: 250px; flex: 1;">
+                        <h4 style="margin: 0; font-size: 13.5px; font-weight: 700; color: var(--c-red); display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Danger Zone
+                        </h4>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--t-secondary); line-height: 1.4;">
+                            Permanently delete this customer record. This action cannot be undone and will fail if they have transaction records.
+                        </p>
+                    </div>
+                    <div>
+                        <button type="button" class="sf-btn danger" onclick="confirmDeleteCustomer(<?= $c->id ?>, '<?= htmlspecialchars(addslashes($c->name ?? '')) ?>')" style="padding: 8px 16px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-trash-can"></i> Delete Customer
+                        </button>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 <?php endif; ?>
+
+<!-- ============================================================
+     MODAL: CONFIRM CUSTOMER DELETE (WITH PASSWORD VERIFICATION)
+     ============================================================ -->
+<div class="modal-veil hidden" id="deleteCustomerModal" onclick="if(event.target === this) closeModal('deleteCustomerModal')">
+    <div class="sf-modal" style="width: 400px;">
+        <div class="modal-head" style="border-bottom: none; padding-bottom: 0;">
+            <h3 class="modal-title" style="color: var(--c-red); display: flex; align-items: center; gap: 8px; font-size: 16px;">
+                <i class="fa-solid fa-triangle-exclamation"></i> Delete Customer
+            </h3>
+            <button type="button" class="modal-close" onclick="closeModal('deleteCustomerModal')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="deleteCustomerForm" onsubmit="submitDeleteCustomer(event)">
+            <div class="modal-body" style="padding-top: 12px; padding-bottom: 12px;">
+                <p style="font-size: 13px; color: var(--t-secondary); line-height: 1.5; margin: 0 0 16px 0;">
+                    Are you sure you want to delete <strong id="delete-customer-name" style="color: var(--t-primary);"></strong>?<br>
+                    Please enter your logged-in user password to confirm this action:
+                </p>
+                <input type="hidden" id="delete-customer-id" value="">
+                <div class="sf-group" style="margin: 0;">
+                    <label>Your Account Password *</label>
+                    <input type="password" id="delete-confirm-password" class="sf-input" placeholder="Enter your password" required autocomplete="current-password">
+                    <div id="delete-error-msg" style="color: var(--c-red); font-size: 11.5px; font-weight: 600; margin-top: 6px; display: none;"></div>
+                </div>
+            </div>
+            <div class="modal-foot" style="border-top: none; padding-top: 0; display: flex; justify-content: flex-end; gap: 10px; padding-bottom: 24px; background: transparent;">
+                <button type="button" class="sf-btn neutral" onclick="closeModal('deleteCustomerModal')">Cancel</button>
+                <button type="submit" class="sf-btn danger" id="delete-confirm-btn" style="display: flex; align-items: center; gap: 6px; font-weight: 700;">
+                    Confirm Delete
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- ============================================================
      MODAL: REGISTER NEW CUSTOMER
@@ -1435,6 +1489,65 @@ foreach ($data['customers'] ?? [] as $cust) {
         } else {
             prompt("Customer has no phone number saved. Copy the link below to share manually:", portalLink);
         }
+    }
+
+    // --- Customer Delete Flow Scripts ---
+    let activeDeleteCustomerId = null;
+
+    function confirmDeleteCustomer(id, name) {
+        activeDeleteCustomerId = id;
+        document.getElementById('delete-customer-id').value = id;
+        document.getElementById('delete-customer-name').textContent = name;
+        document.getElementById('delete-confirm-password').value = '';
+        document.getElementById('delete-error-msg').style.display = 'none';
+        document.getElementById('delete-error-msg').textContent = '';
+        openModal('deleteCustomerModal');
+    }
+
+    function submitDeleteCustomer(e) {
+        e.preventDefault();
+        const pwdInput = document.getElementById('delete-confirm-password');
+        const errorMsg = document.getElementById('delete-error-msg');
+        const submitBtn = document.getElementById('delete-confirm-btn');
+        
+        if (!pwdInput.value.trim()) {
+            errorMsg.textContent = 'Password is required.';
+            errorMsg.style.display = 'block';
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Deleting...';
+        errorMsg.style.display = 'none';
+
+        const fd = new FormData();
+        fd.append('password', pwdInput.value);
+
+        fetch('<?= APP_URL ?>/customer/delete/' + activeDeleteCustomerId, {
+            method: 'POST',
+            body: fd
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                window.location.href = '<?= APP_URL ?>/customer/index';
+            } else {
+                errorMsg.textContent = data.error || 'Failed to delete customer.';
+                errorMsg.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Confirm Delete';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            errorMsg.textContent = 'A connection error occurred. Please try again.';
+            errorMsg.style.display = 'block';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Confirm Delete';
+        });
     }
 
     // Handle initial state if selected customer exists on page load

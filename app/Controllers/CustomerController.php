@@ -506,4 +506,51 @@ class CustomerController extends Controller {
         header('Location: ' . APP_URL . '/customer/index');
         exit;
     }
+
+    public function delete($id) {
+        $this->checkPermission('customer', 'delete');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Invalid request method.']);
+            exit;
+        }
+
+        header('Content-Type: application/json');
+        
+        $password = $_POST['password'] ?? '';
+        $username = $_SESSION['username'] ?? '';
+
+        $userModel = $this->model('User');
+        $user = $userModel->login($username, $password);
+
+        if ($user) {
+            $customer = $this->customerModel->getCustomerById($id);
+            if (!$customer) {
+                echo json_encode(['success' => false, 'error' => 'Customer not found.']);
+                exit;
+            }
+
+            try {
+                if ($this->customerModel->deleteCustomer($id)) {
+                    $this->logActivity(
+                        'Customer Deleted',
+                        'Customer',
+                        "Customer '{$customer->name}' (ID: {$id}) deleted by '{$username}'.",
+                        $id
+                    );
+                    echo json_encode(['success' => true, 'message' => 'Customer deleted successfully!']);
+                    exit;
+                } else {
+                    echo json_encode(['success' => false, 'error' => 'Failed to delete customer. There might be active transactions associated with this customer.']);
+                    exit;
+                }
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'error' => 'Failed to delete customer. This customer might have transaction records (Invoices/Payments/PDC) linked to their account.']);
+                exit;
+            }
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Invalid password. Please enter your correct logged-in password.']);
+            exit;
+        }
+    }
 }
