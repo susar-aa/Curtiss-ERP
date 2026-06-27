@@ -232,6 +232,11 @@ class Item {
             $params[':category_id'] = intval($filters['category_id']);
         }
 
+        if (isset($filters['status']) && $filters['status'] !== '') {
+            $whereClauses[] = "i.status = :status";
+            $params[':status'] = $filters['status'];
+        }
+
         return !empty($whereClauses) ? "WHERE " . implode(" AND ", $whereClauses) : "";
     }
 

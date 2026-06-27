@@ -17,6 +17,7 @@ $filters['min_price'] = $filters['min_price'] ?? '';
 $filters['max_price'] = $filters['max_price'] ?? '';
 $filters['stock_status'] = $filters['stock_status'] ?? '';
 $filters['category_id'] = $filters['category_id'] ?? '';
+$filters['status'] = $filters['status'] ?? '';
 $categories = $data['categories'] ?? [];
 $isCurrentlyAdmin = (strtolower($_SESSION['role'] ?? '') === 'admin');
 
@@ -924,8 +925,6 @@ if ($importResults) unset($_SESSION['import_results']);
 
         <!-- Header -->
         <div class="inv-header">
-            <h1 class="inv-header-title">Inventory</h1>
-            <p class="inv-header-desc">Monitor stock levels, manage physical warehouses, and track products across locations.</p>
 
             <!-- Stat Cards -->
             <div class="stat-row">
@@ -1047,9 +1046,9 @@ if ($importResults) unset($_SESSION['import_results']);
                 </div>
             </div>
 
-            <!-- Status -->
+            <!-- Stock Status -->
             <div class="filter-chip">
-                <span class="filter-chip-label">Status</span>
+                <span class="filter-chip-label">Stock Status</span>
                 <div class="sf-dropdown" tabindex="0">
                     <?php
                     $statusNames = ['' => 'All', 'instock' => 'In Stock', 'lowstock' => 'Low Stock', 'outstock' => 'Out of Stock'];
@@ -1063,6 +1062,24 @@ if ($importResults) unset($_SESSION['import_results']);
                         <div class="sf-dropdown-item <?= $filters['stock_status'] === 'outstock' ? 'active' : '' ?>" onclick="selectStatus('outstock', 'Out of Stock')">Out of Stock</div>
                     </div>
                     <input type="hidden" name="stock_status" id="stockStatusInput" value="<?= htmlspecialchars($filters['stock_status']) ?>">
+                </div>
+            </div>
+
+            <!-- Operational Status (Active/Inactive) -->
+            <div class="filter-chip">
+                <span class="filter-chip-label">Status</span>
+                <div class="sf-dropdown" tabindex="0">
+                    <?php
+                    $itemStatuses = ['' => 'All', 'active' => 'Active', 'inactive' => 'Inactive'];
+                    $selectedItemStatusName = $itemStatuses[$filters['status'] ?? ''] ?? 'All';
+                    ?>
+                    <div class="sf-dropdown-val" id="item-status-dropdown-val"><?= htmlspecialchars($selectedItemStatusName) ?></div>
+                    <div class="sf-dropdown-menu">
+                        <div class="sf-dropdown-item <?= ($filters['status'] ?? '') === '' ? 'active' : '' ?>" onclick="selectItemStatus('', 'All')">All</div>
+                        <div class="sf-dropdown-item <?= ($filters['status'] ?? '') === 'active' ? 'active' : '' ?>" onclick="selectItemStatus('active', 'Active')">Active</div>
+                        <div class="sf-dropdown-item <?= ($filters['status'] ?? '') === 'inactive' ? 'active' : '' ?>" onclick="selectItemStatus('inactive', 'Inactive')">Inactive</div>
+                    </div>
+                    <input type="hidden" name="status" id="itemStatusInput" value="<?= htmlspecialchars($filters['status'] ?? '') ?>">
                 </div>
             </div>
 
@@ -1676,6 +1693,14 @@ function selectStatus(val, name) {
     applyAjaxFilters();
 }
 
+function selectItemStatus(val, name) {
+    document.getElementById('itemStatusInput').value       = val;
+    document.getElementById('item-status-dropdown-val').textContent = name || 'All';
+    document.activeElement.blur();
+    document.getElementById('currentPageInput').value = '1';
+    applyAjaxFilters();
+}
+
 let searchTimeout = null;
 function triggerSearchDelay() {
     clearTimeout(searchTimeout);
@@ -1737,6 +1762,7 @@ function clearAllFilters() {
     document.getElementById('minPriceInput').value = '';
     document.getElementById('maxPriceInput').value = '';
     selectStatus('', 'All');
+    selectItemStatus('', 'All');
     selectCategory('', 'All');
 }
 
