@@ -31,6 +31,7 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
+require_once '../vendor/autoload.php';
 require_once '../config/database.php';
 require_once '../core/Database.php';
 require_once '../core/Controller.php';

@@ -94,6 +94,16 @@ $totalOutstanding = $billed - $paid - $credited;
             background-color: #0c5e31;
         }
 
+        .btn-pdf {
+            background-color: #d32f2f; /* PDF Red */
+            border-color: #d32f2f;
+            margin-right: 8px;
+        }
+
+        .btn-pdf:hover {
+            background-color: #b71c1c;
+        }
+
         /* Header Section */
         .invoice-header {
             display: flex;
@@ -414,6 +424,7 @@ $totalOutstanding = $billed - $paid - $credited;
         <!-- Screen Controls -->
         <div class="print-controls">
             <button onclick="exportToExcel()" class="btn-print btn-excel">📊 Export to Excel</button>
+            <a href="<?= APP_URL ?>/sales/download_pdf/<?= $data['invoice']->id ?>" class="btn-print btn-pdf">📄 Download PDF</a>
             <button onclick="window.print()" class="btn-print">🖨️ Print Document</button>
         </div>
 

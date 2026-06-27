@@ -614,7 +614,8 @@ $editingItems = $data['editing_items'] ?? [];
             phone: <?= json_encode((string)($c->phone ?? '')) ?>,
             address: <?= json_encode((string)($c->address ?? '')) ?>,
             mca: <?= json_encode((string)($c->mca_name ?? $c->territory ?? '')) ?>,
-            outstanding: <?= floatval($c->outstanding_balance ?? 0) ?>
+            outstanding: <?= floatval($c->outstanding_balance ?? 0) ?>,
+            credit_limit: <?= floatval($c->credit_limit ?? 0) ?>
         },
         <?php endforeach; ?>
     ];
@@ -674,7 +675,154 @@ $editingItems = $data['editing_items'] ?? [];
         resList.style.display = 'block';
     }
 
+    let selectedCustomerObj = null;
+
+    function showCreditLimitBlockDialog(customerName, creditLimit, projected, exceeded) {
+        const backdrop = document.createElement('div');
+        backdrop.style.position = 'fixed';
+        backdrop.style.top = '0';
+        backdrop.style.left = '0';
+        backdrop.style.width = '100%';
+        backdrop.style.height = '100%';
+        backdrop.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+        backdrop.style.backdropFilter = 'blur(4px)';
+        backdrop.style.zIndex = '10000';
+        backdrop.style.display = 'flex';
+        backdrop.style.alignItems = 'center';
+        backdrop.style.justifyContent = 'center';
+
+        const panel = document.createElement('div');
+        panel.style.backgroundColor = '#fff';
+        panel.style.padding = '28px';
+        panel.style.borderRadius = '12px';
+        panel.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
+        panel.style.width = '90%';
+        panel.style.maxWidth = '450px';
+        panel.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+        panel.style.border = '1px solid #fee2e2';
+
+        const header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.alignItems = 'center';
+        header.style.gap = '12px';
+        header.style.marginBottom = '16px';
+        header.innerHTML = `
+            <div style="background-color: #fee2e2; color: #ef4444; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">
+                <i class="fa-solid fa-ban"></i>
+            </div>
+            <h3 style="margin: 0; color: #991b1b; font-size: 18px; font-weight: 700;">Credit Limit Exceeded</h3>
+        `;
+        panel.appendChild(header);
+
+        const body = document.createElement('div');
+        body.style.fontSize = '14px';
+        body.style.color = '#374151';
+        body.style.lineHeight = '1.6';
+        body.style.marginBottom = '24px';
+        body.innerHTML = `
+            <p style="margin: 0 0 12px 0;">This transaction has been blocked. Finalizing this invoice will exceed the credit limit for <strong>${escapeHtml(customerName)}</strong>.</p>
+            <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; display: grid; gap: 8px; font-family: monospace;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #6b7280;">Credit Limit:</span>
+                    <span style="font-weight: bold; color: #111827;">Rs. ${creditLimit.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #6b7280;">Projected Balance:</span>
+                    <span style="font-weight: bold; color: #991b1b;">Rs. ${projected.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                </div>
+                <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 4px 0;">
+                <div style="display: flex; justify-content: space-between; font-size: 13px; color: #b91c1c; font-weight: bold;">
+                    <span>Exceeded Amount:</span>
+                    <span>Rs. ${exceeded.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                </div>
+            </div>
+        `;
+        panel.appendChild(body);
+
+        const footer = document.createElement('div');
+        footer.style.display = 'flex';
+        footer.style.justifyContent = 'flex-end';
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.innerText = 'Dismiss';
+        closeBtn.style.padding = '8px 20px';
+        closeBtn.style.backgroundColor = '#1f2937';
+        closeBtn.style.color = '#fff';
+        closeBtn.style.border = 'none';
+        closeBtn.style.borderRadius = '6px';
+        closeBtn.style.fontWeight = '600';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.style.fontSize = '13px';
+        closeBtn.onclick = () => { backdrop.remove(); };
+        footer.appendChild(closeBtn);
+        panel.appendChild(footer);
+
+        backdrop.appendChild(panel);
+        document.body.appendChild(backdrop);
+    }
+
+    function updateProjectedOutstandingIndicator() {
+        if (!selectedCustomerObj) return;
+        
+        const outBal = parseFloat(selectedCustomerObj.outstanding) || 0;
+        const limit = parseFloat(selectedCustomerObj.credit_limit) || 0;
+        const outDiv = document.getElementById('customerOutstanding');
+        if (!outDiv) return;
+
+        const subTotalText = document.getElementById('grandTotal').innerText.replace(/,/g, '');
+        const newTotal = parseFloat(subTotalText) || 0;
+        
+        let oldInvoiceTotal = 0;
+        <?php if ($inv): ?>
+            const oldSub = parseFloat("<?= isset($inv->total_amount) ? $inv->total_amount : 0 ?>") || 0;
+            const oldDiscVal = parseFloat("<?= isset($inv->global_discount_val) ? $inv->global_discount_val : 0 ?>") || 0;
+            const oldDiscType = "<?= isset($inv->global_discount_type) ? $inv->global_discount_type : 'Rs' ?>";
+            const oldDisc = (oldDiscType === '%') ? (oldSub * oldDiscVal / 100) : oldDiscVal;
+            oldInvoiceTotal = (oldSub - oldDisc) + (parseFloat("<?= isset($inv->tax_amount) ? $inv->tax_amount : 0 ?>") || 0);
+        <?php endif; ?>
+        
+        const projected = outBal - oldInvoiceTotal + newTotal;
+
+        outDiv.style.display = 'block';
+        let html = '';
+        if (limit > 0) {
+            html += `<div style="margin-bottom: 4px;"><strong>Credit Limit:</strong> Rs. ${limit.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
+        } else {
+            html += `<div style="margin-bottom: 4px;"><strong>Credit Limit:</strong> <span style="color:#2e7d32; font-weight:bold;">No Limit</span></div>`;
+        }
+
+        if (outBal > 0.01) {
+            html += `<div style="color:#c62828;">⚠ Current Outstanding: Rs. ${outBal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
+        } else if (outBal < -0.01) {
+            html += `<div style="color:#2e7d32;">✓ Available Credit (Overpaid): Rs. ${Math.abs(outBal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
+        } else {
+            html += `<div style="color:#666;">No Outstanding Balance</div>`;
+        }
+
+        if (limit > 0) {
+            const remaining = limit - projected;
+            if (remaining >= 0) {
+                html += `<div style="color:#2e7d32; font-weight:bold; margin-top:4px; padding-top:4px; border-top:1px solid #d2dbe4;">Projected Remaining Credit: Rs. ${remaining.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
+                outDiv.style.background = '#f0f4f8';
+                outDiv.style.color = '#333';
+                outDiv.style.border = '1px solid #d2dbe4';
+            } else {
+                html += `<div style="color:#c62828; font-weight:bold; margin-top:4px; padding-top:4px; border-top:1px solid #ef9a9a;">❌ Exceeded Credit Limit by: Rs. ${Math.abs(remaining).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
+                outDiv.style.background = '#ffebee';
+                outDiv.style.color = '#c62828';
+                outDiv.style.border = '1px solid #ef9a9a';
+            }
+        } else {
+            outDiv.style.background = '#f0f4f8';
+            outDiv.style.color = '#333';
+            outDiv.style.border = '1px solid #d2dbe4';
+        }
+
+        outDiv.innerHTML = html;
+    }
+
     function selectCustomer(cust) {
+        selectedCustomerObj = cust;
         document.getElementById('customerIdInput').value = cust.id;
         document.getElementById('customerSearch').value = cust.name;
         document.getElementById('customerSearchResults').style.display = 'none';
@@ -691,26 +839,7 @@ $editingItems = $data['editing_items'] ?? [];
             phoneInput.value = cust.phone || '';
         }
 
-        // Handle the real-time outstanding balance
-        const outBal = parseFloat(cust.outstanding) || 0;
-        const outDiv = document.getElementById('customerOutstanding');
-        
-        if (cust.id !== "" && (outBal > 0.01 || outBal < -0.01)) {
-            outDiv.style.display = 'block';
-            if (outBal > 0) {
-                outDiv.style.background = '#ffebee';
-                outDiv.style.color = '#c62828';
-                outDiv.style.border = '1px solid #ef9a9a';
-                outDiv.innerHTML = `⚠ Previous Outstanding Balance: Rs <span>${outBal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`;
-            } else {
-                outDiv.style.background = '#e8f5e9';
-                outDiv.style.color = '#2e7d32';
-                outDiv.style.border = '1px solid #a5d6a7';
-                outDiv.innerHTML = `✓ Available Credit (Overpaid): Rs <span>${Math.abs(outBal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`;
-            }
-        } else {
-            outDiv.style.display = 'none';
-        }
+        updateProjectedOutstandingIndicator();
     }
 
     let activeSearchIndex = -1;
@@ -1138,6 +1267,9 @@ $editingItems = $data['editing_items'] ?? [];
 
         // Run Customizable Discount Checks
         checkDiscounts();
+
+        // Update credit limit indicator dynamically
+        updateProjectedOutstandingIndicator();
     }
 
     function showDiscountPrompt(title, message, onAccept, onReject) {
@@ -1513,6 +1645,51 @@ $editingItems = $data['editing_items'] ?? [];
             console.error("=== TRANSACTION ERROR ENCOUNTERED ===");
             console.error("Backend Error Message: ", serverError);
             console.error("=====================================");
+        }
+
+        // Form submit credit limit check
+        const invForm = document.getElementById('invoiceForm');
+        if (invForm) {
+            invForm.addEventListener('submit', function(e) {
+                // If it is a sales order, skip credit limit block as it doesn't impact physical inventory / ledger accounts immediately
+                const formType = document.querySelector('input[name="type"]')?.value;
+                if (formType === 'sales_order') {
+                    // Check if route sales order (which is saved in invoices table with stock_status = 'reserved')
+                    const repRouteId = document.querySelector('input[name="rep_route_id"]')?.value;
+                    const editingInvId = document.querySelector('input[name="editing_invoice_id"]')?.value;
+                    if (!repRouteId && !editingInvId) {
+                        return true;
+                    }
+                }
+
+                const customerId = document.getElementById('customerIdInput').value;
+                const cust = customers.find(c => String(c.id) === String(customerId));
+                if (cust) {
+                    const creditLimit = parseFloat(cust.credit_limit) || 0;
+                    if (creditLimit > 0) {
+                        const outBal = parseFloat(cust.outstanding) || 0;
+                        const subTotalText = document.getElementById('grandTotal').innerText.replace(/,/g, '');
+                        const newTotal = parseFloat(subTotalText) || 0;
+                        
+                        let oldInvoiceTotal = 0;
+                        <?php if ($inv): ?>
+                            const oldSub = parseFloat("<?= isset($inv->total_amount) ? $inv->total_amount : 0 ?>") || 0;
+                            const oldDiscVal = parseFloat("<?= isset($inv->global_discount_val) ? $inv->global_discount_val : 0 ?>") || 0;
+                            const oldDiscType = "<?= isset($inv->global_discount_type) ? $inv->global_discount_type : 'Rs' ?>";
+                            const oldDisc = (oldDiscType === '%') ? (oldSub * oldDiscVal / 100) : oldDiscVal;
+                            oldInvoiceTotal = (oldSub - oldDisc) + (parseFloat("<?= isset($inv->tax_amount) ? $inv->tax_amount : 0 ?>") || 0);
+                        <?php endif; ?>
+                        
+                        const projected = outBal - oldInvoiceTotal + newTotal;
+                        if (projected > creditLimit) {
+                            e.preventDefault();
+                            const exceeded = projected - creditLimit;
+                            showCreditLimitBlockDialog(cust.name, creditLimit, projected, exceeded);
+                            return false;
+                        }
+                    }
+                }
+            });
         }
     });
 </script>

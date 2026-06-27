@@ -616,6 +616,36 @@ class SalesController extends Controller {
                     $globalDiscount = ($globalDiscountType === '%') ? ($subtotal * $globalDiscountVal / 100) : $globalDiscountVal;
                     $grandTotal = max(0.00, $subtotal - $globalDiscount);
 
+                    // --- SERVER-SIDE CREDIT LIMIT VALIDATION ---
+                    $customerModel = $this->model('Customer');
+                    $customerStats = $customerModel->getCustomerStats($customerId);
+                    $customerObj = $customerModel->getCustomerById($customerId);
+                    $creditLimit = $customerObj ? floatval($customerObj->credit_limit) : 0.00;
+                    $customerName = $customerObj ? $customerObj->name : 'Customer';
+
+                    if ($creditLimit > 0.00) {
+                        $currentOutstanding = $customerStats ? floatval($customerStats->outstanding) : 0.00;
+                        $oldInvoiceGrandTotal = 0.00;
+                        if ($editingId > 0) {
+                            $this->db->query("SELECT status, total_amount, global_discount_val, global_discount_type, tax_amount FROM invoices WHERE id = :id");
+                            $this->db->bind(':id', $editingId);
+                            $oldInv = $this->db->single();
+                            if ($oldInv && $oldInv->status != 'Voided') {
+                                $oldSub = floatval($oldInv->total_amount);
+                                $oldDiscVal = floatval($oldInv->global_discount_val);
+                                $oldDiscType = $oldInv->global_discount_type;
+                                $oldDisc = ($oldDiscType === '%') ? ($oldSub * $oldDiscVal / 100) : $oldDiscVal;
+                                $oldInvoiceGrandTotal = ($oldSub - $oldDisc) + floatval($oldInv->tax_amount);
+                            }
+                        }
+                        $projectedOutstanding = $currentOutstanding - $oldInvoiceGrandTotal + $grandTotal;
+
+                        if ($projectedOutstanding > $creditLimit) {
+                            $overLimitAmount = $projectedOutstanding - $creditLimit;
+                            throw new Exception("Credit Limit Exceeded: Billed invoice brings {$customerName}'s outstanding balance to Rs. " . number_format($projectedOutstanding, 2) . ", which exceeds the credit limit of Rs. " . number_format($creditLimit, 2) . " by Rs. " . number_format($overLimitAmount, 2) . ".");
+                        }
+                    }
+
                     $invoiceData = [
                         'customer_id' => $customerId,
                         'invoice_number' => $invoiceNumber,
@@ -1379,5 +1409,460 @@ class SalesController extends Controller {
             'content_view' => 'sales/deleted_list'
         ];
         $this->view('layouts/main', $data);
+    }
+
+    /**
+     * Download Invoice as PDF using Dompdf
+     */
+    public function download_pdf($id = null) {
+        if (!$id) {
+            header('Location: ' . APP_URL . '/sales');
+            exit;
+        }
+
+        $invoiceModel = $this->model('Invoice');
+        $companyModel = $this->model('Company');
+        $invoice = $invoiceModel->getInvoiceById($id);
+
+        if (!$invoice) {
+            die('Invoice not found.');
+        }
+
+        // Calculate amount paid for this invoice
+        $invoicePaid = 0;
+        try {
+            $db = new Database();
+            $db->query("SELECT COALESCE(SUM(amount), 0) as paid FROM customer_payments WHERE invoice_id = :id");
+            $db->bind(':id', $id);
+            $row = $db->single();
+            if ($row) {
+                $invoicePaid = floatval($row->paid);
+            }
+        } catch (Exception $e) {
+            $invoicePaid = 0;
+        }
+
+        $items = $invoiceModel->getInvoiceItems($id);
+        $company = $companyModel->getSettings();
+
+        // Previous Balance calculation
+        try {
+            $db = new Database();
+            $db->query("
+                SELECT 
+                    COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) as total_billed
+                FROM invoices WHERE customer_id = :id AND status != 'Voided'
+            ");
+            $db->bind(':id', $invoice->customer_id);
+            $billed = $db->single()->total_billed ?? 0;
+
+            $db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :id");
+            $db->bind(':id', $invoice->customer_id);
+            $paid = $db->single()->total_paid ?? 0;
+
+            $db->query("SELECT COALESCE(SUM(total_amount), 0) as total_credited FROM credit_notes WHERE customer_id = :id");
+            $db->bind(':id', $invoice->customer_id);
+            $credited = $db->single()->total_credited ?? 0;
+
+            $totalOutstanding = $billed - $paid - $credited;
+        } catch (Exception $e) {
+            $totalOutstanding = 0;
+        }
+
+        // Calculations for totals
+        $subTotal = floatval($invoice->total_amount);
+        $globalDiscountAmount = 0;
+        if (floatval($invoice->global_discount_val) > 0) {
+            if ($invoice->global_discount_type == '%') {
+                $globalDiscountAmount = $subTotal * (floatval($invoice->global_discount_val) / 100);
+            } else {
+                $globalDiscountAmount = floatval($invoice->global_discount_val);
+            }
+        }
+        $taxAmount = floatval($invoice->tax_amount ?? 0);
+        $grandTotal = $subTotal - $globalDiscountAmount + $taxAmount;
+        $balanceDue = $grandTotal - $invoicePaid;
+
+        // Render HTML for Dompdf
+        $logoHtml = '';
+        if (!empty($company->logo_path)) {
+            $logoFile = 'uploads/' . $company->logo_path;
+            if (file_exists($logoFile)) {
+                $type = pathinfo($logoFile, PATHINFO_EXTENSION);
+                $data = file_get_contents($logoFile);
+                $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+                $logoHtml = '<img src="' . $base64 . '" style="max-height: 55px; margin-bottom: 5px; object-fit: contain;">';
+            } else {
+                $logoHtml = '<div style="font-size: 14pt; font-weight: bold; text-transform: uppercase;">' . htmlspecialchars($company->company_name) . '</div>';
+            }
+        } else {
+            $logoHtml = '<div style="font-size: 14pt; font-weight: bold; text-transform: uppercase;">' . htmlspecialchars($company->company_name) . '</div>';
+        }
+
+        $itemsHtml = '';
+        $rowNum = 1;
+        foreach ($items as $item) {
+            $discText = '-';
+            if (floatval($item->discount_value) > 0) {
+                $discText = ($item->discount_type == '%') ? ($item->discount_value . '%') : number_format($item->discount_value, 2);
+            }
+            $itemsHtml .= '
+            <tr>
+                <td style="text-align: center; padding: 6px 4px; border-bottom: 1px solid #eaeaea; font-size: 8.5pt;">' . $rowNum++ . '</td>
+                <td style="padding: 6px 4px; border-bottom: 1px solid #eaeaea; font-size: 8.5pt;">' . htmlspecialchars($item->description) . '</td>
+                <td style="text-align: right; padding: 6px 4px; border-bottom: 1px solid #eaeaea; font-size: 8.5pt;">' . number_format($item->quantity, 0) . '</td>
+                <td style="text-align: right; padding: 6px 4px; border-bottom: 1px solid #eaeaea; font-size: 8.5pt;">' . number_format($item->unit_price, 2) . '</td>
+                <td style="text-align: right; padding: 6px 4px; border-bottom: 1px solid #eaeaea; font-size: 8.5pt;">' . $discText . '</td>
+                <td style="text-align: right; padding: 6px 4px; border-bottom: 1px solid #eaeaea; font-size: 8.5pt;">' . number_format($item->total, 2) . '</td>
+            </tr>';
+        }
+
+        $chequeDateHtml = '';
+        if (!empty($invoice->cheque_date)) {
+            $chequeDateHtml = '
+            <tr>
+                <th style="text-align: right; font-size: 7.5pt; font-weight: bold; text-transform: uppercase; padding-right: 10px;">Cheque Date:</th>
+                <td style="text-align: right; font-size: 8.5pt;">' . date('d-M-Y', strtotime($invoice->cheque_date)) . '</td>
+            </tr>';
+        }
+
+        $addressHtml = '';
+        if (!empty($company->address)) {
+            $addressHtml .= nl2br(htmlspecialchars($company->address)) . '<br>';
+        }
+        $phoneHtml = '';
+        if (!empty($company->phone)) {
+            $phoneHtml .= 'Tel: ' . htmlspecialchars($company->phone) . '<br>';
+        }
+        $emailHtml = '';
+        if (!empty($company->email)) {
+            $emailHtml .= 'Email: ' . htmlspecialchars($company->email) . '<br>';
+        }
+        $taxHtml = '';
+        if (!empty($company->tax_number)) {
+            $taxHtml .= 'VAT/Tax Reg: ' . htmlspecialchars($company->tax_number);
+        }
+
+        $custAddressHtml = '';
+        if (!empty($invoice->address)) {
+            $custAddressHtml .= nl2br(htmlspecialchars($invoice->address)) . '<br>';
+        }
+        $custPhoneHtml = '';
+        if (!empty($invoice->phone)) {
+            $custPhoneHtml .= 'Tel: ' . htmlspecialchars($invoice->phone);
+        }
+
+        $html = '
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>Invoice ' . htmlspecialchars($invoice->invoice_number) . '</title>
+            <style>
+                body {
+                    font-family: "Helvetica Neue", "Helvetica", Helvetica, Arial, sans-serif;
+                    font-size: 8.5pt;
+                    color: #000;
+                    line-height: 1.3;
+                    margin: 0;
+                    padding: 0;
+                }
+                .invoice-header {
+                    width: 100%;
+                    border-bottom: 2px solid #000;
+                    padding-bottom: 10px;
+                    margin-bottom: 15px;
+                }
+                .company-info {
+                    width: 55%;
+                    float: left;
+                }
+                .invoice-meta {
+                    width: 40%;
+                    float: right;
+                    text-align: right;
+                }
+                .document-title {
+                    font-size: 18pt;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    margin-bottom: 8px;
+                }
+                .meta-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+                .meta-table th {
+                    text-align: right;
+                    font-size: 7.5pt;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    padding: 2px 10px 2px 0;
+                    white-space: nowrap;
+                }
+                .meta-table td {
+                    text-align: right;
+                    font-size: 8.5pt;
+                    padding: 2px 0;
+                }
+                .customer-section {
+                    width: 100%;
+                    margin-bottom: 15px;
+                    clear: both;
+                }
+                .bill-to {
+                    width: 48%;
+                    float: left;
+                }
+                .section-heading {
+                    font-size: 8pt;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    border-bottom: 1px solid #000;
+                    padding-bottom: 3px;
+                    margin-bottom: 6px;
+                }
+                .customer-name {
+                    font-size: 10pt;
+                    font-weight: bold;
+                    margin-bottom: 2px;
+                }
+                .table-items {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20px;
+                    clear: both;
+                }
+                .table-items th {
+                    border-top: 2px solid #000;
+                    border-bottom: 2px solid #000;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    font-size: 7.5pt;
+                    text-align: left;
+                    padding: 6px 4px;
+                }
+                .table-items td {
+                    border-bottom: 1px solid #eaeaea;
+                    padding: 6px 4px;
+                }
+                .bottom-section {
+                    width: 100%;
+                    margin-bottom: 20px;
+                    clear: both;
+                }
+                .payment-info {
+                    width: 50%;
+                    float: left;
+                    font-size: 8pt;
+                    border: 1px solid #000;
+                    padding: 10px;
+                    background-color: #fafafa;
+                    box-sizing: border-box;
+                }
+                .summary-section {
+                    width: 45%;
+                    float: right;
+                }
+                .table-totals {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+                .table-totals th {
+                    text-align: right;
+                    font-weight: normal;
+                    color: #444;
+                    font-size: 8.5pt;
+                    padding: 4px 6px;
+                }
+                .table-totals td {
+                    text-align: right;
+                    font-size: 8.5pt;
+                    padding: 4px 6px;
+                }
+                .signature-section {
+                    width: 100%;
+                    margin-top: 30px;
+                    clear: both;
+                }
+                .signature-box {
+                    width: 30%;
+                    float: left;
+                    text-align: center;
+                }
+                .signature-line {
+                    border-bottom: 1px solid #000;
+                    margin-bottom: 4px;
+                    height: 30px;
+                }
+                .signature-label {
+                    font-size: 7.5pt;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                }
+                .document-footer {
+                    width: 100%;
+                    border-top: 1px solid #ccc;
+                    padding-top: 5px;
+                    font-size: 7.5pt;
+                    color: #666;
+                    position: absolute;
+                    bottom: 0;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="main-content">
+                <!-- Header -->
+                <div class="invoice-header">
+                    <div class="company-info">
+                        ' . $logoHtml . '
+                        <div style="font-size: 8pt; color: #222; margin-top: 5px;">
+                            ' . $addressHtml . '
+                            ' . $phoneHtml . '
+                            ' . $emailHtml . '
+                            ' . $taxHtml . '
+                        </div>
+                    </div>
+
+                    <div class="invoice-meta">
+                        <div class="document-title">Invoice</div>
+                        <table class="meta-table">
+                            <tr>
+                                <th>Invoice No:</th>
+                                <td>' . htmlspecialchars($invoice->invoice_number) . '</td>
+                            </tr>
+                            <tr>
+                                <th>Date:</th>
+                                <td>' . date('d-M-Y', strtotime($invoice->invoice_date)) . '</td>
+                            </tr>
+                            <tr>
+                                <th>Due Date:</th>
+                                <td>' . date('d-M-Y', strtotime($invoice->due_date)) . '</td>
+                            </tr>
+                            ' . $chequeDateHtml . '
+                            <tr>
+                                <th>Status:</th>
+                                <td><strong>' . strtoupper($invoice->status) . '</strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div style="clear: both;"></div>
+                </div>
+
+                <!-- Customer Section -->
+                <div class="customer-section">
+                    <div class="bill-to">
+                        <div class="section-heading">Bill To</div>
+                        <div class="customer-name">' . htmlspecialchars($invoice->customer_name) . '</div>
+                        <div class="customer-details">
+                            ' . $custAddressHtml . '
+                            ' . $custPhoneHtml . '
+                        </div>
+                    </div>
+                    <div style="clear: both;"></div>
+                </div>
+
+                <!-- Items Table -->
+                <table class="table-items">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%; text-align: center;">#</th>
+                            <th style="width: 45%;">Description</th>
+                            <th style="width: 10%; text-align: right;">Qty</th>
+                            <th style="width: 13%; text-align: right;">Price</th>
+                            <th style="width: 12%; text-align: right;">Disc.</th>
+                            <th style="width: 15%; text-align: right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ' . $itemsHtml . '
+                    </tbody>
+                </table>
+
+                <!-- Bottom Section -->
+                <div class="bottom-section">
+                    <div class="payment-info">
+                        <div class="section-heading" style="border-bottom: 1px solid #ccc; margin-bottom: 8px; padding-bottom: 4px;">Payment & Bank Details</div>
+                        <div style="line-height: 1.5;">
+                            ' . nl2br(htmlspecialchars($company->bank_details ?? '')) . '
+                        </div>
+                    </div>
+
+                    <div class="summary-section">
+                        <table class="table-totals">
+                            <tr>
+                                <th>Subtotal:</th>
+                                <td style="text-align: right;">Rs. ' . number_format($subTotal, 2) . '</td>
+                            </tr>
+                            <tr>
+                                <th>Discount:</th>
+                                <td style="text-align: right;">Rs. ' . number_format($globalDiscountAmount, 2) . '</td>
+                            </tr>
+                            <tr>
+                                <th>Tax / VAT:</th>
+                                <td style="text-align: right;">Rs. ' . number_format($taxAmount, 2) . '</td>
+                            </tr>
+                            <tr style="border-top: 2px solid #000; border-bottom: 2px solid #000; font-weight: bold; font-size: 9.5pt;">
+                                <th style="font-weight: bold; color: #000; text-align: right;">Grand Total:</th>
+                                <td style="text-align: right; font-weight: bold;">Rs. ' . number_format($grandTotal, 2) . '</td>
+                            </tr>
+                            <tr>
+                                <th>Amount Paid:</th>
+                                <td style="text-align: right;">Rs. ' . number_format($invoicePaid, 2) . '</td>
+                            </tr>
+                            <tr style="border-bottom: 2px solid #000; font-weight: bold; font-size: 10pt;">
+                                <th style="font-weight: bold; color: #000; text-align: right;">Balance Due:</th>
+                                <td style="text-align: right; font-weight: bold;">Rs. ' . number_format($balanceDue, 2) . '</td>
+                            </tr>
+                            <tr>
+                                <th>Total Outstanding:</th>
+                                <td style="text-align: right; font-weight: bold; color: #c62828;">Rs. ' . number_format($totalOutstanding, 2) . '</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div style="clear: both;"></div>
+                </div>
+
+                <!-- Signatures Section -->
+                <div class="signature-section">
+                    <div class="signature-box">
+                        <div class="signature-line"></div>
+                        <div class="signature-label">Prepared By</div>
+                    </div>
+                    <div class="signature-box" style="margin-left: 5%;">
+                        <div class="signature-line"></div>
+                        <div class="signature-label">Approved By</div>
+                    </div>
+                    <div class="signature-box" style="margin-left: 5%;">
+                        <div class="signature-line"></div>
+                        <div class="signature-label">Received By (Customer)</div>
+                    </div>
+                    <div style="clear: both;"></div>
+                </div>
+            </div>
+
+            <div class="document-footer">
+                <div style="float: left;">Generated dynamically on ' . date('d-M-Y H:i:s') . '</div>
+                <div style="float: right;">Thank you for your business!</div>
+                <div style="clear: both;"></div>
+            </div>
+        </body>
+        </html>';
+
+        // Instantiate Dompdf with configuration
+        $options = new \Dompdf\Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+
+        $dompdf = new \Dompdf\Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        // Output the generated PDF to Browser for direct download
+        $filename = 'invoice_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $invoice->invoice_number) . '.pdf';
+        $dompdf->stream($filename, ['Attachment' => true]);
+        exit;
     }
 }

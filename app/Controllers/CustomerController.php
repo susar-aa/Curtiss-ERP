@@ -81,6 +81,7 @@ class CustomerController extends Controller {
                     'lng' => !empty($_POST['longitude']) ? $_POST['longitude'] : null,
                     'mca_id' => $mcaId,
                     'territory' => $territoryName,
+                    'credit_limit' => isset($_POST['credit_limit']) ? floatval($_POST['credit_limit']) : 0.00,
                     'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00
                 ];
 
@@ -114,6 +115,7 @@ class CustomerController extends Controller {
                     'lng' => !empty($_POST['longitude']) ? $_POST['longitude'] : null,
                     'mca_id' => $mcaId,
                     'territory' => $territoryName,
+                    'credit_limit' => isset($_POST['credit_limit']) ? floatval($_POST['credit_limit']) : 0.00,
                     'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00
                 ];
 
@@ -174,6 +176,7 @@ class CustomerController extends Controller {
             'lng' => !empty($_POST['longitude']) ? $_POST['longitude'] : null,
             'mca_id' => $mcaId,
             'territory' => $territoryName,
+            'credit_limit' => isset($_POST['credit_limit']) ? floatval($_POST['credit_limit']) : 0.00,
             'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00
         ];
 
