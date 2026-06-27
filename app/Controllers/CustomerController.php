@@ -80,7 +80,8 @@ class CustomerController extends Controller {
                     'lat' => !empty($_POST['latitude']) ? $_POST['latitude'] : null,
                     'lng' => !empty($_POST['longitude']) ? $_POST['longitude'] : null,
                     'mca_id' => $mcaId,
-                    'territory' => $territoryName
+                    'territory' => $territoryName,
+                    'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00
                 ];
 
                 if (!empty($addData['name'])) {
@@ -112,7 +113,8 @@ class CustomerController extends Controller {
                     'lat' => !empty($_POST['latitude']) ? $_POST['latitude'] : null,
                     'lng' => !empty($_POST['longitude']) ? $_POST['longitude'] : null,
                     'mca_id' => $mcaId,
-                    'territory' => $territoryName
+                    'territory' => $territoryName,
+                    'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00
                 ];
 
                 if (!empty($updateData['name'])) {
@@ -171,7 +173,8 @@ class CustomerController extends Controller {
             'lat' => !empty($_POST['latitude']) ? $_POST['latitude'] : null,
             'lng' => !empty($_POST['longitude']) ? $_POST['longitude'] : null,
             'mca_id' => $mcaId,
-            'territory' => $territoryName
+            'territory' => $territoryName,
+            'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00
         ];
 
         if ($this->customerModel->addCustomer($addData)) {
@@ -219,7 +222,8 @@ class CustomerController extends Controller {
             'Address',
             'Latitude',
             'Longitude',
-            'Territory'
+            'Territory',
+            'Opening Balance'
         ]);
 
         $customers = $this->customerModel->getAllCustomers();
@@ -233,7 +237,8 @@ class CustomerController extends Controller {
                 $c->address ?? '',
                 $c->latitude ?? '',
                 $c->longitude ?? '',
-                $c->mca_name ?? ''
+                $c->mca_name ?? '',
+                $c->opening_balance ?? 0.00
             ]);
         }
 
@@ -308,6 +313,7 @@ class CustomerController extends Controller {
             $latIdx       = $colMap['latitude'] ?? ($colMap['lat'] ?? -1);
             $lngIdx       = $colMap['longitude'] ?? ($colMap['lng'] ?? -1);
             $territoryIdx = $colMap['territory'] ?? ($colMap['mca'] ?? ($colMap['route'] ?? -1));
+            $openingBalIdx = $colMap['opening balance'] ?? ($colMap['opening_balance'] ?? ($colMap['opening'] ?? -1));
 
             // Load lookup maps to avoid N+1 queries during insertion
             $territoryMap = [];
@@ -317,7 +323,7 @@ class CustomerController extends Controller {
             }
 
             $customerMap = [];
-            $this->db->query("SELECT id, name, phone, email, whatsapp, address, latitude, longitude, mca_id, territory FROM customers");
+            $this->db->query("SELECT id, name, phone, email, whatsapp, address, latitude, longitude, mca_id, territory, opening_balance FROM customers");
             foreach ($this->db->resultSet() as $c) {
                 $customerMap[strtolower(trim($c->name))] = $c;
             }
@@ -343,6 +349,7 @@ class CustomerController extends Controller {
                     $latitude      = $latIdx       !== -1 ? trim($row[$latIdx] ?? '') : '';
                     $longitude     = $lngIdx       !== -1 ? trim($row[$lngIdx] ?? '') : '';
                     $territoryName = $territoryIdx !== -1 ? trim($row[$territoryIdx] ?? '') : '';
+                    $openingBal    = $openingBalIdx !== -1 ? floatval(trim($row[$openingBalIdx] ?? 0.00)) : 0.00;
 
                     // Resolve territory (MCA area) on-the-fly
                     $mcaId = null;
@@ -384,7 +391,8 @@ class CustomerController extends Controller {
                         'lat' => !empty($latitude) ? $latitude : null,
                         'lng' => !empty($longitude) ? $longitude : null,
                         'mca_id' => $mcaId,
-                        'territory' => !empty($territoryName) ? $territoryName : null
+                        'territory' => !empty($territoryName) ? $territoryName : null,
+                        'opening_balance' => $openingBal
                     ];
 
                     if ($existingCustomer) {
@@ -406,7 +414,8 @@ class CustomerController extends Controller {
                             'latitude' => 'Latitude',
                             'longitude' => 'Longitude',
                             'mca_id' => 'Territory ID',
-                            'territory' => 'Territory Name'
+                            'territory' => 'Territory Name',
+                            'opening_balance' => 'Opening Balance'
                         ];
 
                         foreach ($fieldsToCompare as $dbKey => $label) {
@@ -460,7 +469,8 @@ class CustomerController extends Controller {
                                 'latitude' => $latitude,
                                 'longitude' => $longitude,
                                 'mca_id' => $mcaId,
-                                'territory' => $territoryName
+                                'territory' => $territoryName,
+                                'opening_balance' => $openingBal
                             ];
                             $customerMap[$custKey] = $newCustomerObj;
                         } else {

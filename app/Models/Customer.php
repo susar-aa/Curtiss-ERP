@@ -7,9 +7,10 @@ class Customer {
     }
 
     public function getAllCustomers() {
-        // FIXED: Dynamically calculates the True Grand Total and JOINS the mca_areas table for filtering
+        // FIXED: Dynamically calculates the True Grand Total, adds opening_balance, and JOINS the mca_areas table for filtering
         $this->db->query("
             SELECT c.*, m.name as mca_name,
+                   c.opening_balance + 
                    (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = c.id AND status != 'Voided') 
                    - 
                    (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE customer_id = c.id AND status = 'Active') 
@@ -33,6 +34,11 @@ class Customer {
     }
 
     public function getCustomerStats($id) {
+        $this->db->query("SELECT opening_balance FROM customers WHERE id = :id");
+        $this->db->bind(':id', $id);
+        $custObj = $this->db->single();
+        $opening = $custObj ? floatval($custObj->opening_balance) : 0.00;
+
         $this->db->query("
             SELECT 
                 COUNT(id) as total_orders,
@@ -52,7 +58,8 @@ class Customer {
 
         $stats->total_paid = $paid->total_paid;
         $stats->total_credited = $credited->total_credited;
-        $stats->outstanding = $stats->total_billed - $stats->total_paid - $stats->total_credited;
+        $stats->opening_balance = $opening;
+        $stats->outstanding = $opening + $stats->total_billed - $stats->total_paid - $stats->total_credited;
         
         return $stats;
     }
@@ -94,8 +101,8 @@ class Customer {
     }
 
     public function addCustomer($data) {
-        $this->db->query("INSERT INTO customers (name, email, phone, whatsapp, address, latitude, longitude, mca_id, territory, credit_limit, customer_type, notes, uuid) 
-                          VALUES (:name, :email, :phone, :whatsapp, :address, :lat, :lng, :mca_id, :territory, :credit_limit, :customer_type, :notes, :uuid)");
+        $this->db->query("INSERT INTO customers (name, email, phone, whatsapp, address, latitude, longitude, mca_id, territory, credit_limit, customer_type, notes, uuid, opening_balance) 
+                          VALUES (:name, :email, :phone, :whatsapp, :address, :lat, :lng, :mca_id, :territory, :credit_limit, :customer_type, :notes, :uuid, :opening_balance)");
         $this->db->bind(':name', $data['name']);
         $this->db->bind(':email', $data['email'] ?: null);
         $this->db->bind(':phone', $data['phone'] ?: null);
@@ -109,6 +116,7 @@ class Customer {
         $this->db->bind(':customer_type', $data['customer_type'] ?? 'Standard');
         $this->db->bind(':notes', $data['notes'] ?: null);
         $this->db->bind(':uuid', $data['uuid'] ?? null);
+        $this->db->bind(':opening_balance', $data['opening_balance'] ?? 0.00);
         return $this->db->execute();
     }
 
@@ -119,7 +127,7 @@ class Customer {
     public function updateCustomer($data) {
         $this->db->query("UPDATE customers SET name = :name, email = :email, phone = :phone, whatsapp = :whatsapp, address = :address, 
                           latitude = :lat, longitude = :lng, mca_id = :mca_id, territory = :territory, 
-                          credit_limit = :credit_limit, customer_type = :customer_type, notes = :notes, uuid = :uuid 
+                          credit_limit = :credit_limit, customer_type = :customer_type, notes = :notes, uuid = :uuid, opening_balance = :opening_balance
                           WHERE id = :id");
         $this->db->bind(':id', $data['id']);
         $this->db->bind(':name', $data['name']);
@@ -135,6 +143,7 @@ class Customer {
         $this->db->bind(':customer_type', $data['customer_type'] ?? 'Standard');
         $this->db->bind(':notes', $data['notes'] ?: null);
         $this->db->bind(':uuid', $data['uuid'] ?? null);
+        $this->db->bind(':opening_balance', $data['opening_balance'] ?? 0.00);
         return $this->db->execute();
     }
 

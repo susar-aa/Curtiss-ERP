@@ -103,37 +103,6 @@ foreach ($data['customers'] ?? [] as $cust) {
     padding: 16px 24px 100px;
 }
 
-/* ---- Page Header ---- */
-.cust-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-}
-.cust-header-left {
-    display: flex;
-    flex-direction: column;
-}
-.cust-eyebrow {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--c-blue);
-    margin-bottom: 4px;
-}
-.cust-title {
-    font-size: 30px;
-    font-weight: 800;
-    letter-spacing: -0.025em;
-    color: var(--t-primary);
-    margin: 0;
-}
-.cust-header-right {
-    display: flex;
-    gap: 8px;
-}
-
 /* ---- Stat Cards ---- */
 .stat-row {
     display: grid;
@@ -400,6 +369,101 @@ foreach ($data['customers'] ?? [] as $cust) {
 .act-btn.edit  { color: var(--t-secondary); }
 .act-btn.edit:hover { background: var(--c-fill); }
 
+/* ---- Command Bar (Dynamic Island style) ---- */
+.cmd-bar {
+    position: fixed;
+    bottom: 28px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(28, 28, 30, 0.92);
+    backdrop-filter: saturate(180%) blur(28px);
+    -webkit-backdrop-filter: saturate(180%) blur(28px);
+    border: 0.5px solid rgba(255,255,255,0.12);
+    border-radius: var(--r-pill);
+    padding: 7px 10px;
+    display: flex; align-items: center; gap: 4px;
+    box-shadow: var(--shadow-xl), 0 0 0 0.5px rgba(0,0,0,0.3);
+    z-index: 100;
+}
+.cmd-search {
+    display: flex; align-items: center; gap: 9px;
+    background: rgba(255,255,255,0.1);
+    border-radius: var(--r-pill);
+    padding: 8px 14px;
+    width: 196px;
+    transition: width var(--dur-slow) var(--ease-ios),
+                background var(--dur-mid);
+}
+.cmd-search:focus-within {
+    width: 300px;
+    background: rgba(255,255,255,0.18);
+}
+.cmd-search i { color: rgba(255,255,255,0.55); font-size: 14px; flex-shrink: 0; }
+.cmd-search input {
+    background: transparent; border: none; outline: none;
+    color: #fff; font-size: 14px; font-weight: 500;
+    font-family: var(--f-system); width: 100%;
+}
+.cmd-search input::placeholder { color: rgba(255,255,255,0.45); }
+.cmd-divider { width: 0.5px; height: 22px; background: rgba(255,255,255,0.15); margin: 0 3px; }
+.cmd-icon {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.8); font-size: 15px;
+    background: transparent; border: none; cursor: pointer; text-decoration: none;
+    transition: background var(--dur-fast);
+}
+.cmd-icon:hover { background: rgba(255,255,255,0.12); color: #fff; }
+.cmd-cta {
+    display: flex; align-items: center; gap: 7px;
+    background: #fff; color: #1c1c1e;
+    border: none; border-radius: var(--r-pill);
+    padding: 0 18px; height: 38px;
+    font-size: 14px; font-weight: 700;
+    font-family: var(--f-system);
+    cursor: pointer; text-decoration: none;
+    transition: transform var(--dur-fast) var(--ease-spring),
+                background var(--dur-fast);
+    margin-left: 2px;
+}
+.cmd-cta:hover { background: #e5e5ea; transform: scale(0.97); }
+
+/* ---- Pagination styles ---- */
+.sf-pagination {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px; background: var(--c-surface2);
+    border-top: 0.5px solid var(--c-separator);
+}
+.pg-info { font-size: 13px; color: var(--t-secondary); }
+.pg-right { display: flex; align-items: center; gap: 20px; }
+.pg-size-wrap { display: flex; align-items: center; gap: 8px; }
+.pg-size-lbl { font-size: 12px; font-weight: 600; color: var(--t-label); text-transform: uppercase; }
+.pg-size-sel {
+    font-family: var(--f-system); font-size: 13px; font-weight: 600;
+    color: var(--t-primary); background: var(--c-fill);
+    border: 0.5px solid var(--c-separator); border-radius: var(--r-sm);
+    padding: 5px 9px; outline: none; cursor: pointer;
+    transition: border-color var(--dur-fast);
+}
+.pg-size-sel:hover { border-color: var(--c-blue); }
+.pg-nav { display: flex; border: 0.5px solid var(--c-separator); border-radius: var(--r-sm); overflow: hidden; }
+.pg-btn {
+    width: 34px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--c-surface); border: none; cursor: pointer;
+    color: var(--t-primary); font-size: 12px;
+    transition: background var(--dur-fast);
+}
+.pg-btn:hover:not(:disabled) { background: var(--c-fill); }
+.pg-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.pg-btn + .pg-btn { border-left: 0.5px solid var(--c-separator); }
+.pg-current {
+    padding: 0 14px; display: flex; align-items: center;
+    font-size: 13px; font-weight: 600; color: var(--t-primary);
+    background: var(--c-surface);
+    border-left: 0.5px solid var(--c-separator);
+    border-right: 0.5px solid var(--c-separator);
+}
+
 /* ---- Modal System ---- */
 .modal-veil {
     position: fixed; inset: 0; z-index: 2000;
@@ -500,21 +564,8 @@ foreach ($data['customers'] ?? [] as $cust) {
 <div class="cust-root">
     <div class="cust-wrap">
 
-        <!-- Header -->
-        <div class="cust-header">
-            <div class="cust-header-left">
-                <span class="cust-eyebrow">Directories</span>
-                <h1 class="cust-title">Customers</h1>
-            </div>
-            <div class="cust-header-right">
-                <a href="<?= APP_URL ?>/customer/exportCSV" class="sf-btn neutral"><i class="fa-solid fa-download"></i> Export CSV</a>
-                <button type="button" class="sf-btn neutral" onclick="openModal('csvImportModal')"><i class="fa-solid fa-upload"></i> Import CSV</button>
-                <button type="button" class="sf-btn primary" onclick="openModal('addCustomerModal')"><i class="fa-solid fa-plus"></i> New Customer</button>
-            </div>
-        </div>
-
         <!-- Stat Cards Row -->
-        <div class="stat-row">
+        <div class="stat-row" style="margin-top: 10px;">
             <div class="stat-card blue">
                 <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
                 <div class="stat-info">
@@ -593,13 +644,7 @@ foreach ($data['customers'] ?? [] as $cust) {
 
         <!-- Filters Block -->
         <div class="filter-shelf">
-            <!-- Search -->
-            <div class="filter-chip">
-                <span class="filter-chip-label">Search</span>
-                <input type="text" id="searchInput" placeholder="Name, Phone, Route, Address..." onkeyup="filterList()" style="border:none; outline:none; background:transparent; font-size:13.5px; font-weight:600; color:var(--t-primary); width:240px; padding:0;">
-            </div>
-
-            <!-- Route / Territory -->
+            <!-- Route / Territory (Filter by Route option) -->
             <div class="filter-chip">
                 <span class="filter-chip-label">Territory</span>
                 <div class="sf-dropdown" tabindex="0">
@@ -649,7 +694,6 @@ foreach ($data['customers'] ?? [] as $cust) {
                 <thead>
                     <tr>
                         <th>Customer / Company</th>
-                        <th>Assigned Territory</th>
                         <th>Contact Details</th>
                         <th class="txt-right">Outstanding Balance</th>
                         <th>Status</th>
@@ -659,7 +703,7 @@ foreach ($data['customers'] ?? [] as $cust) {
                 <tbody id="custList">
                     <?php if (empty($data['customers'])): ?>
                         <tr>
-                            <td colspan="6" style="text-align:center; padding:40px; color:var(--t-secondary);">
+                            <td colspan="5" style="text-align:center; padding:40px; color:var(--t-secondary);">
                                 <i class="fa-solid fa-building" style="font-size:28px; margin-bottom:8px; color:var(--t-tertiary);"></i><br>
                                 No customers registered yet.
                             </td>
@@ -691,9 +735,6 @@ foreach ($data['customers'] ?? [] as $cust) {
                                     </div>
                                 </td>
                                 <td>
-                                    <span style="font-weight:600; font-size:13px; color:var(--t-secondary);">📍 <?= htmlspecialchars($c->mca_name ?: 'Unassigned') ?></span>
-                                </td>
-                                <td>
                                     <span style="font-size:13px; font-weight:500; display:block;">📞 <?= htmlspecialchars($c->phone ?: 'No Phone') ?></span>
                                     <span style="font-size:11px; color:var(--t-secondary); display:block; margin-top:2px;"><?= htmlspecialchars($c->email ?: 'No Email') ?></span>
                                 </td>
@@ -720,9 +761,50 @@ foreach ($data['customers'] ?? [] as $cust) {
                     <?php endif; ?>
                 </tbody>
             </table>
+
+            <!-- Pagination Block -->
+            <div class="sf-pagination">
+                <div class="pg-info" id="pg-info-text">
+                    Showing <strong>1</strong> – <strong>15</strong> of <strong><?= count($data['customers']) ?></strong>
+                </div>
+                <div class="pg-right">
+                    <div class="pg-size-wrap">
+                        <span class="pg-size-lbl">Per page</span>
+                        <select class="pg-size-sel native-select" onchange="updatePageSize(this.value)">
+                            <option value="15" selected>15</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="1000">All</option>
+                        </select>
+                    </div>
+                    <div class="pg-nav" id="pg-nav-container">
+                        <button type="button" class="pg-btn" id="pg-prev-btn" onclick="navigatePage(currentPage - 1)">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <div class="pg-current" id="pg-current-text">1 / 1</div>
+                        <button type="button" class="pg-btn" id="pg-next-btn" onclick="navigatePage(currentPage + 1)">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
     </div>
+</div>
+
+<!-- ============================================================
+     FLOATING COMMAND / SEARCH BAR (DYNAMIC ISLAND)
+     ============================================================ -->
+<div class="cmd-bar">
+    <div class="cmd-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="Search customers..." onkeyup="filterList()">
+    </div>
+    <div class="cmd-divider"></div>
+    <a href="<?= APP_URL ?>/customer/exportCSV" class="cmd-icon" title="Export CSV"><i class="fa-solid fa-download"></i></a>
+    <button type="button" class="cmd-icon" onclick="openModal('csvImportModal')" title="Import CSV"><i class="fa-solid fa-upload"></i></button>
+    <button type="button" class="cmd-cta" onclick="openModal('addCustomerModal')"><i class="fa-solid fa-plus" style="font-size:13px;"></i> New</button>
 </div>
 
 <!-- ============================================================
@@ -953,6 +1035,17 @@ foreach ($data['customers'] ?? [] as $cust) {
                                 </select>
                             </div>
                         </div>
+
+                        <div class="grid-2">
+                            <div class="sf-group">
+                                <label>Opening Balance (Rs)</label>
+                                <input type="number" step="0.01" name="opening_balance" class="sf-input" value="<?= htmlspecialchars($c->opening_balance ?? '0.00') ?>">
+                            </div>
+                            <div class="sf-group">
+                                <label>Credit Limit (Rs)</label>
+                                <input type="number" step="0.01" name="credit_limit" class="sf-input" value="<?= htmlspecialchars($c->credit_limit ?? '0.00') ?>">
+                            </div>
+                        </div>
                         
                         <div class="sf-group">
                             <label>Billing Address</label>
@@ -1030,6 +1123,17 @@ foreach ($data['customers'] ?? [] as $cust) {
                         </select>
                     </div>
                 </div>
+
+                <div class="grid-2">
+                    <div class="sf-group">
+                        <label>Opening Balance (Rs)</label>
+                        <input type="number" step="0.01" name="opening_balance" class="sf-input" placeholder="0.00" value="0.00">
+                    </div>
+                    <div class="sf-group">
+                        <label>Credit Limit (Rs)</label>
+                        <input type="number" step="0.01" name="credit_limit" class="sf-input" placeholder="0.00" value="0.00">
+                    </div>
+                </div>
                 
                 <div class="sf-group">
                     <label>Billing Address</label>
@@ -1062,7 +1166,7 @@ foreach ($data['customers'] ?? [] as $cust) {
             <div class="modal-body">
                 <p style="font-size: 12px; color: var(--t-secondary); margin-top:-10px; margin-bottom: 20px; line-height:1.5;">
                     Select a CSV file containing customer details. Required column: <strong>Name</strong>.<br>
-                    Supported columns: <strong>Name, Email, Phone, WhatsApp, Address, Latitude, Longitude, Territory</strong>.
+                    Supported columns: <strong>Name, Email, Phone, WhatsApp, Address, Latitude, Longitude, Territory, Opening Balance</strong>.
                 </p>
                 <div class="drop-zone">
                     <input type="file" name="csv_file" accept=".csv" required>
@@ -1080,6 +1184,11 @@ foreach ($data['customers'] ?? [] as $cust) {
 </div>
 
 <script>
+    // --- Pagination State ---
+    let currentPage = 1;
+    let pageSize = 15;
+    let matchingRows = [];
+
     // --- Custom Dropdown Handlers ---
     function selectRoute(val, label) {
         document.getElementById('filterRoute').value = val;
@@ -1096,6 +1205,7 @@ foreach ($data['customers'] ?? [] as $cust) {
         });
         
         document.activeElement.blur();
+        currentPage = 1;
         filterList();
     }
 
@@ -1114,6 +1224,7 @@ foreach ($data['customers'] ?? [] as $cust) {
         });
         
         document.activeElement.blur();
+        currentPage = 1;
         filterList();
     }
 
@@ -1124,7 +1235,7 @@ foreach ($data['customers'] ?? [] as $cust) {
         const statusFilter = document.getElementById('filterStatus').value;
         
         const rows = document.querySelectorAll('.customer-row');
-        let visibleCount = 0;
+        matchingRows = [];
         
         rows.forEach(row => {
             const name = row.getAttribute('data-name');
@@ -1151,14 +1262,70 @@ foreach ($data['customers'] ?? [] as $cust) {
             }
             
             if (matchesSearch && matchesRoute && matchesStatus) {
-                row.style.display = '';
-                visibleCount++;
+                matchingRows.push(row);
             } else {
                 row.style.display = 'none';
             }
         });
         
-        document.getElementById('matching-count').textContent = visibleCount;
+        document.getElementById('matching-count').textContent = matchingRows.length;
+
+        // Reset current page if it is out of bounds
+        const totalPages = Math.ceil(matchingRows.length / pageSize) || 1;
+        if (currentPage > totalPages) {
+            currentPage = totalPages;
+        }
+
+        updatePaginationUI();
+    }
+
+    // --- Pagination rendering ---
+    function updatePaginationUI() {
+        const totalItems = matchingRows.length;
+        const totalPages = Math.ceil(totalItems / pageSize) || 1;
+        
+        const startIndex = totalItems > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+        const endIndex = Math.min(currentPage * pageSize, totalItems);
+        
+        // Update pagination info text
+        document.getElementById('pg-info-text').innerHTML = totalItems > 0 
+            ? `Showing <strong>${startIndex}</strong> – <strong>${endIndex}</strong> of <strong>${totalItems}</strong>` 
+            : 'No results';
+            
+        // Show/hide pagination nav container
+        const pgNav = document.getElementById('pg-nav-container');
+        if (totalPages > 1) {
+            pgNav.classList.remove('hidden');
+            document.getElementById('pg-current-text').textContent = `${currentPage} / ${totalPages}`;
+            document.getElementById('pg-prev-btn').disabled = currentPage <= 1;
+            document.getElementById('pg-next-btn').disabled = currentPage >= totalPages;
+        } else {
+            pgNav.classList.add('hidden');
+        }
+        
+        // Hide all rows first, then show only page slice
+        const rows = document.querySelectorAll('.customer-row');
+        rows.forEach(r => r.style.display = 'none');
+        
+        const pageRows = matchingRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+        pageRows.forEach(r => r.style.display = '');
+    }
+
+    function navigatePage(pageNum) {
+        currentPage = pageNum;
+        updatePaginationUI();
+    }
+
+    function updatePageSize(size) {
+        pageSize = parseInt(size);
+        currentPage = 1;
+        filterList();
+    }
+
+    function clearAllFilters() {
+        document.getElementById('searchInput').value = '';
+        selectRoute('', 'All Territories');
+        selectStatus('', 'All Accounts');
     }
 
     // --- Modal Control Helper functions ---
@@ -1266,6 +1433,11 @@ foreach ($data['customers'] ?? [] as $cust) {
     <?php if ($data['selected_customer']): ?>
     document.addEventListener('DOMContentLoaded', () => {
         openPrepopulatedCustomerProfile(<?= $data['selected_customer']->id ?>);
+        filterList();
+    });
+    <?php else: ?>
+    document.addEventListener('DOMContentLoaded', () => {
+        filterList();
     });
     <?php endif; ?>
 </script>
