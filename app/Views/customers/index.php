@@ -853,28 +853,43 @@ foreach ($data['customers'] ?? [] as $cust) {
     <?php $c = $data['selected_customer']; $s = $data['stats']; ?>
     
     <div id="modal-header-source" class="hidden">
-        <div style="display: flex; gap: 15px; align-items: center; flex: 1;">
-            <div class="avatar-circle" style="width: 40px; height: 40px; font-size: 16px; background: var(--c-blue-light); color: var(--c-blue);">
-                <?= strtoupper(substr($c->name, 0, 2)) ?>
+        <div style="display: flex; gap: 15px; align-items: center; min-width: 0; flex: 1;">
+            <div class="avatar-circle" style="width: 40px; height: 40px; font-size: 16px; background: var(--c-blue-light); color: var(--c-blue); flex-shrink: 0;">
+                <?= strtoupper(substr($c->name ?? '', 0, 2)) ?>
             </div>
-            <div>
-                <h3 class="modal-title" style="font-size: 17px; font-weight: 700; display:flex; align-items:center; gap: 10px;">
+            <div style="min-width: 0; max-width: 250px;">
+                <h3 class="modal-title" style="font-size: 16.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0;" title="<?= htmlspecialchars($c->name ?? '') ?>">
                     <?= htmlspecialchars($c->name ?? '') ?>
                 </h3>
-                <div style="font-size: 12px; color: var(--t-secondary); display: flex; gap: 14px; margin-top: 2px;">
-                    <span>📞 <?= !empty($c->phone) ? htmlspecialchars($c->phone) : '<span style="color:var(--c-red); font-weight:600;">Missing Phone</span>' ?></span>
-                    <span>✉️ <?= !empty($c->email) ? htmlspecialchars($c->email) : '<span style="color:var(--c-red); font-weight:600;">Missing Email</span>' ?></span>
-                    <span>📍 Route: <?= !empty($c->mca_name) ? htmlspecialchars($c->mca_name) : '<span style="color:var(--c-red); font-weight:600;">Unassigned Route</span>' ?></span>
+                <div style="font-size: 11px; color: var(--t-secondary); display: flex; gap: 10px; margin-top: 2px; white-space: nowrap; overflow: hidden;">
+                    <span>📞 <?= !empty($c->phone) ? htmlspecialchars($c->phone) : '<span style="color:var(--c-red); font-weight:600;">Missing</span>' ?></span>
+                    <span>✉️ <?= !empty($c->email) ? htmlspecialchars($c->email) : '<span style="color:var(--c-red); font-weight:600;">Missing</span>' ?></span>
+                    <span>📍 <?= !empty($c->mca_name) ? htmlspecialchars($c->mca_name) : '<span style="color:var(--c-red); font-weight:600;">Unassigned</span>' ?></span>
                 </div>
             </div>
         </div>
-        <div style="text-align: right; margin-right: 18px;">
-            <div style="font-size: 10px; color: var(--t-label); text-transform: uppercase; font-weight: bold; letter-spacing:0.04em;">Outstanding Balance</div>
-            <div style="font-size: 20px; font-weight: bold; color: <?= $s->outstanding > 0 ? 'var(--c-red)' : 'var(--c-green)' ?>;">
-                Rs: <?= number_format($s->outstanding, 2) ?>
+        
+        <!-- Header Statistics Cards -->
+        <div style="display: flex; gap: 8px; margin-right: 18px; flex-shrink: 0; align-items: center;">
+            <div style="background: var(--c-fill); padding: 5px 10px; border-radius: var(--r-sm); text-align: center; min-width: 70px;">
+                <div style="font-size: 8.5px; color: var(--t-label); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Orders</div>
+                <div style="font-size: 13px; font-weight: bold; color: var(--t-primary); margin-top: 1px;"><?= $s->total_orders ?></div>
+            </div>
+            <div style="background: var(--c-fill); padding: 5px 10px; border-radius: var(--r-sm); text-align: center; min-width: 100px;">
+                <div style="font-size: 8.5px; color: var(--t-label); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Total Billed</div>
+                <div style="font-size: 13px; font-weight: bold; color: var(--t-primary); margin-top: 1px; font-family: var(--f-mono);">Rs: <?= number_format($s->total_billed, 2) ?></div>
+            </div>
+            <div style="background: var(--c-green-light); padding: 5px 10px; border-radius: var(--r-sm); border: 0.5px solid rgba(52,199,89,0.2); text-align: center; min-width: 100px;">
+                <div style="font-size: 8.5px; color: var(--c-green); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Total Paid</div>
+                <div style="font-size: 13px; font-weight: bold; color: var(--c-green); margin-top: 1px; font-family: var(--f-mono);">Rs: <?= number_format($s->total_paid, 2) ?></div>
+            </div>
+            <div style="background: <?= $s->outstanding > 0 ? 'var(--c-red-light)' : 'var(--c-green-light)' ?>; padding: 5px 10px; border-radius: var(--r-sm); border: 0.5px solid <?= $s->outstanding > 0 ? 'rgba(255,59,48,0.2)' : 'rgba(52,199,89,0.2)' ?>; text-align: center; min-width: 100px;">
+                <div style="font-size: 8.5px; color: <?= $s->outstanding > 0 ? 'var(--c-red)' : 'var(--c-green)' ?>; text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Outstanding</div>
+                <div style="font-size: 13px; font-weight: bold; color: <?= $s->outstanding > 0 ? 'var(--c-red)' : 'var(--c-green)' ?>; margin-top: 1px; font-family: var(--f-mono);">Rs: <?= number_format($s->outstanding, 2) ?></div>
             </div>
         </div>
-        <button type="button" onclick="closeCustomerProfile()" class="modal-close" style="width:30px; height:30px;"><i class="fa-solid fa-xmark"></i></button>
+
+        <button type="button" onclick="closeCustomerProfile()" class="modal-close" style="width:30px; height:30px; flex-shrink: 0;"><i class="fa-solid fa-xmark"></i></button>
     </div>
 
     <div id="modal-profile-content-source" class="hidden">
@@ -991,21 +1006,6 @@ foreach ($data['customers'] ?? [] as $cust) {
         <div id="mtab_profile" class="tab-content" style="padding: 22px; overflow-y: auto; flex: 1;">
             <div class="grid-2">
                 <div>
-                    <div style="display:flex; gap:12px; margin-bottom: 20px;">
-                        <div style="flex:1; background:var(--c-surface2); padding:12px; border-radius:var(--r-md); border:0.5px solid var(--c-separator); text-align:center;">
-                            <div style="font-size:10px; color:var(--t-label); text-transform:uppercase; font-weight:700;">Total Orders</div>
-                            <div style="font-size:18px; font-weight:bold; color:var(--t-primary); margin-top:2px;"><?= $s->total_orders ?></div>
-                        </div>
-                        <div style="flex:1; background:var(--c-surface2); padding:12px; border-radius:var(--r-md); border:0.5px solid var(--c-separator); text-align:center;">
-                            <div style="font-size:10px; color:var(--t-label); text-transform:uppercase; font-weight:700;">Total Billed</div>
-                            <div style="font-size:18px; font-weight:bold; color:var(--t-primary); margin-top:2px; font-family:var(--f-mono);">Rs: <?= number_format($s->total_billed, 2) ?></div>
-                        </div>
-                        <div style="flex:1; background:var(--c-green-light); padding:12px; border-radius:var(--r-md); border:0.5px solid rgba(52,199,89,0.2); text-align:center;">
-                            <div style="font-size:10px; color:var(--c-green); text-transform:uppercase; font-weight:700;">Total Paid</div>
-                            <div style="font-size:18px; font-weight:bold; color:var(--c-green); margin-top:2px; font-family:var(--f-mono);">Rs: <?= number_format($s->total_paid, 2) ?></div>
-                        </div>
-                    </div>
-
                     <h4 style="margin:0 0 14px 0; border-bottom: 0.5px solid var(--c-separator); padding-bottom: 6px; font-size:14px; font-weight:700; text-transform:uppercase; color:var(--t-secondary);">Edit Customer Profile</h4>
                     
                     <form action="<?= APP_URL ?>/customer/index/<?= $c->id ?>" method="POST">
