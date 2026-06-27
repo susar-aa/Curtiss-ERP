@@ -185,10 +185,9 @@ class SupplierReturn {
                 $this->db->execute();
 
                 // Deduct stock in items table
-                $this->db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty), qty = GREATEST(0, CAST(qty AS SIGNED) - :qty) WHERE id = :iid");
-                $this->db->bind(':qty', $item['qty']);
-                $this->db->bind(':iid', $item['item_id']);
-                $this->db->execute();
+                require_once '../app/Models/Item.php';
+                $itemModel = new Item();
+                $itemModel->updateStockDelta($item['item_id'], -$item['qty']);
 
                 // Deduct stock in item_variation_options table (If applicable)
                 if ($item['var_opt_id']) {

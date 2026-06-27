@@ -57,7 +57,17 @@ class User {
     }
 
     public function getUserPermissions($userId) {
-        $this->db->query("SELECT * FROM user_permissions WHERE user_id = :user_id");
+        // Query to fetch permissions aggregated from all roles assigned to this user
+        $this->db->query("
+            SELECT rp.module, 
+                   MAX(rp.can_view) AS can_view, 
+                   MAX(rp.can_create_edit) AS can_create_edit, 
+                   MAX(rp.can_delete) AS can_delete
+            FROM user_roles ur
+            JOIN role_permissions rp ON ur.role_id = rp.role_id
+            WHERE ur.user_id = :user_id
+            GROUP BY rp.module
+        ");
         $this->db->bind(':user_id', $userId);
         $rows = $this->db->resultSet();
         $perms = [];
@@ -68,6 +78,21 @@ class User {
                 'can_delete' => (bool)$row->can_delete
             ];
         }
+        
+        // If user has direct permissions as fallback (backward compatibility)
+        if (empty($perms)) {
+            $this->db->query("SELECT * FROM user_permissions WHERE user_id = :user_id");
+            $this->db->bind(':user_id', $userId);
+            $rowsFallback = $this->db->resultSet();
+            foreach ($rowsFallback as $row) {
+                $perms[$row->module] = [
+                    'can_view' => (bool)$row->can_view,
+                    'can_create_edit' => (bool)$row->can_create_edit,
+                    'can_delete' => (bool)$row->can_delete
+                ];
+            }
+        }
+        
         return $perms;
     }
 
@@ -98,6 +123,117 @@ class User {
             }
         }
         return true;
+    }
+
+    public function getUserRoles($userId) {
+        $this->db->query("
+            SELECT r.* 
+            FROM roles r
+            JOIN user_roles ur ON r.id = ur.role_id
+            WHERE ur.user_id = :user_id
+        ");
+        $this->db->bind(':user_id', $userId);
+        return $this->db->resultSet();
+    }
+
+    public function getUserRoleIds($userId) {
+        $this->db->query("SELECT role_id FROM user_roles WHERE user_id = :user_id");
+        $this->db->bind(':user_id', $userId);
+        $rows = $this->db->resultSet();
+        $ids = [];
+        foreach ($rows as $row) {
+            $ids[] = intval($row->role_id);
+        }
+        return $ids;
+    }
+
+    public function saveUserRoles($userId, $roleIds) {
+        $this->db->query("DELETE FROM user_roles WHERE user_id = :user_id");
+        $this->db->bind(':user_id', $userId);
+        $this->db->execute();
+
+        if (!empty($roleIds)) {
+            foreach ($roleIds as $roleId) {
+                $this->db->query("INSERT INTO user_roles (user_id, role_id) VALUES (:user_id, :role_id)");
+                $this->db->bind(':user_id', $userId);
+                $this->db->bind(':role_id', $roleId);
+                $this->db->execute();
+            }
+        }
+        return true;
+    }
+
+    public function getAllRoles() {
+        $this->db->query("SELECT * FROM roles ORDER BY name ASC");
+        return $this->db->resultSet();
+    }
+
+    public function getRolePermissions($roleId) {
+        $this->db->query("SELECT * FROM role_permissions WHERE role_id = :role_id");
+        $this->db->bind(':role_id', $roleId);
+        $rows = $this->db->resultSet();
+        $perms = [];
+        foreach ($rows as $row) {
+            $perms[$row->module] = [
+                'can_view' => (bool)$row->can_view,
+                'can_create_edit' => (bool)$row->can_create_edit,
+                'can_delete' => (bool)$row->can_delete
+            ];
+        }
+        return $perms;
+    }
+
+    public function saveRolePermissions($roleId, $permissions) {
+        $this->db->query("DELETE FROM role_permissions WHERE role_id = :role_id");
+        $this->db->bind(':role_id', $roleId);
+        $this->db->execute();
+
+        if (!empty($permissions)) {
+            foreach ($permissions as $module => $actions) {
+                $canView = !empty($actions['view']) ? 1 : 0;
+                $canCreateEdit = !empty($actions['create_edit']) ? 1 : 0;
+                $canDelete = !empty($actions['delete']) ? 1 : 0;
+
+                if ($canView || $canCreateEdit || $canDelete) {
+                    $this->db->query("INSERT INTO role_permissions (role_id, module, can_view, can_create_edit, can_delete) 
+                                      VALUES (:role_id, :module, :can_view, :can_create_edit, :can_delete)");
+                    $this->db->bind(':role_id', $roleId);
+                    $this->db->bind(':module', $module);
+                    $this->db->bind(':can_view', $canView);
+                    $this->db->bind(':can_create_edit', $canCreateEdit);
+                    $this->db->bind(':can_delete', $canDelete);
+                    $this->db->execute();
+                }
+            }
+        }
+        return true;
+    }
+
+    public function createRole($name, $description) {
+        $this->db->query("INSERT INTO roles (name, description) VALUES (:name, :description)");
+        $this->db->bind(':name', $name);
+        $this->db->bind(':description', $description);
+        return $this->db->execute();
+    }
+
+    public function updateRole($id, $name, $description) {
+        $this->db->query("UPDATE roles SET name = :name, description = :description WHERE id = :id");
+        $this->db->bind(':name', $name);
+        $this->db->bind(':description', $description);
+        $this->db->bind(':id', $id);
+        return $this->db->execute();
+    }
+
+    public function deleteRole($id) {
+        $this->db->query("DELETE FROM roles WHERE id = :id");
+        $this->db->bind(':id', $id);
+        return $this->db->execute();
+    }
+
+    public function findRoleById($id) {
+        $this->db->query("SELECT * FROM roles WHERE id = :id");
+        $this->db->bind(':id', $id);
+        return $this->db->single();
     }
 
     public function updateUser($data) {

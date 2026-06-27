@@ -29,32 +29,6 @@ class SalesController extends Controller {
      */
     private function ensureSalesTablesExist() {
         try {
-            $this->db->query("CREATE TABLE IF NOT EXISTS sales_invoices (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                invoice_number VARCHAR(50) NOT NULL UNIQUE,
-                customer_name VARCHAR(150) NOT NULL,
-                customer_phone VARCHAR(50) NULL,
-                billing_type ENUM('retail', 'wholesale') NOT NULL DEFAULT 'retail',
-                subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                discount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                grand_total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )");
-            $this->db->execute();
-
-            $this->db->query("CREATE TABLE IF NOT EXISTS sales_invoice_items (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                invoice_id INT NOT NULL,
-                item_id INT NOT NULL,
-                sku VARCHAR(100) NOT NULL,
-                name VARCHAR(255) NOT NULL,
-                billing_price DECIMAL(10,2) NOT NULL,
-                qty INT NOT NULL,
-                total DECIMAL(10,2) NOT NULL,
-                FOREIGN KEY (invoice_id) REFERENCES sales_invoices(id) ON DELETE CASCADE
-            )");
-            $this->db->execute();
-
             $this->db->query("CREATE TABLE IF NOT EXISTS deleted_invoices (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 invoice_number VARCHAR(50) NOT NULL,
@@ -259,10 +233,6 @@ class SalesController extends Controller {
             // Generate next invoice number
             $this->db->query("SELECT id FROM invoices ORDER BY id DESC LIMIT 1");
             $lastRow = $this->db->single();
-            if (!$lastRow) {
-                $this->db->query("SELECT id FROM sales_invoices ORDER BY id DESC LIMIT 1");
-                $lastRow = $this->db->single();
-            }
             $nextId = $lastRow ? ($lastRow->id + 1) : 1;
             $invoiceNumber = 'INV-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
         }

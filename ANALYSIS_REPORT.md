@@ -1,5 +1,6 @@
-# Curtiss ERP Project - Comprehensive Analysis Report
-**Date:** June 27, 2026
+# Curtiss ERP Project - Comprehensive Analysis Report (v2)
+**Date:** June 27, 2026 (UPDATED)
+**Previous Report:** See git commit `21e1652c` (older version)
 
 ---
 
@@ -19,251 +20,225 @@ Curtiss ERP is a custom-built Enterprise Resource Planning system for a distribu
 - **Reports** (30+ report types via ReportEngine)
 
 **Architecture:** Custom PHP MVC framework (no popular framework like Laravel/CodeIgniter)
-
 **Database:** MySQL (XAMPP localhost / Plesk production)
+**Total Controllers:** 51 | **Total Models:** 47 | **Total Views:** ~120 | **Services:** 2
 
 ---
 
-## 2. CRITICAL ISSUES & BUGS
+## 2. IMPROVEMENTS DETECTED (Since Previous Analysis)
 
-### 2.1 SECURITY ISSUES (HIGH PRIORITY)
+The following issues from the previous analysis have been **FIXED or IMPROVED**:
 
-| # | Issue | Severity | Location |
-|---|-------|----------|----------|
-| 1 | **Hard-coded database credentials in plaintext** | CRITICAL | `config/database.php` lines 3-6 |
-| 2 | **Brevo API key hard-coded in repository** | CRITICAL | `config/database.php` line 25 |
-| 3 | **No environment variables (.env) usage** | HIGH | Entire project |
-| 4 | **SQL injection at `str_replace` on line 123 in SalesController** | HIGH | `SalesController.php` line 123 - raw string replacement on SQL query |
-| 5 | **CSRF bypass for all API/mobile sync endpoints** | MEDIUM | `App.php` line 29 - `!$isApiSync` disables CSRF for all API calls |
-| 6 | **Session fixation - no session_regenerate_id() after login** | MEDIUM | Auth flow |
-| 7 | **Dynamic column names in SQL queries (Item model)** | MEDIUM | `Item.php` - `$this->priceColumn` etc. used directly in SQL |
-| 8 | **XSS vulnerabilities in views** (html_entity_decode without escaping) | MEDIUM | Multiple views, `InventoryController.php` line 988-999 |
+| # | Previous Issue | Status | Details |
+|---|----------------|--------|---------|
+| 1 | Hard-coded DB credentials in `config/database.php` | ✅ **FIXED** | Now uses `.env` file + custom `loadEnv()` function |
+| 2 | Brevo API key hard-coded in code | ✅ **FIXED** | Now reads from `getenv('BREVO_API_KEY')` |
+| 3 | No `.env` file usage | ✅ **FIXED** | `.env` + `.env.example` created with `loadEnv()` parser |
+| 4 | Schema migrations on EVERY request (in Database.php) | ✅ **FIXED** | Moved to `MigrationManager::run()` with tracking table |
+| 5 | No migration management system | ✅ **FIXED** | New `core/MigrationManager.php` with `migrations` DB table |
+| 6 | SQL injection via `str_replace` in SalesController | ✅ **FIXED** | Replaced with proper parameterized count query |
+| 7 | Self-healing ALTER TABLE in Item model | ✅ **FIXED** | Removed - now handled by MigrationManager |
+| 8 | No caching layer at all | ✅ **FIXED** | New `core/Cache.php` with 3-tier caching (static → APCu → file) |
+| 9 | Dynamic column SQL injection risk in Item model | ✅ **FIXED** | Added `safeCol()` regex sanitizer for dynamic column names |
+| 10 | PDO Persistent mode (connection issues) | ✅ **FIXED** | Changed from `PDO::ATTR_PERSISTENT => true` → `false` |
+| 11 | `DESCRIBE items` on every request in Item model | ✅ **FIXED** | Now cached via static `$cachedColumns` + `Cache::get/set` (86400s TTL) |
+| 12 | Exposed uploads directory | ✅ **FIXED** | `.htaccess` with `Options -Indexes` + `index.php` files added |
 
+---
 
-### 2.2 ARCHITECTURAL ISSUES
+## 3. REMAINING CRITICAL ISSUES & BUGS
 
-| # | Issue | Severity | Location |
-|---|-------|----------|----------|
-| 9 | **No proper routing/URL rewriting** - Single `index.php` entry point with query string `?url=` | MEDIUM | `.htaccess` + `App.php` |
-| 10 | **Self-healing database schema migrations run on every request** | HIGH | `Database.php` constructor runs ALTER TABLE queries on EVERY connection |
-| 11 | **No migration management system** - Schema changes scattered in code | HIGH | `Database.php`, `Item.php`, `SalesController.php` |
-| 12 | **No input validation library** - Manual filtering everywhere | MEDIUM | `InventoryController.php` line 935 |
-| 13 | **No error/exception handling framework** | MEDIUM | All controllers use try-catch with silent failure |
-
-### 2.3 DATABASE DESIGN ISSUES
-
-| # | Issue | Severity | Description |
-|---|-------|----------|-------------|
-| 14 | **Dynamic column detection in Item model** - Checking column names on every request | HIGH | `Item.php::detectColumns()` runs DESCRIBE on every request |
-| 15 | **items table has both `qty` AND `quantity_on_hand`** | MEDIUM | Dual stock columns cause synchronization bugs |
-| 16 | **JSON fields stored without validation** (variations_json, additional_images) | MEDIUM | No schema validation for JSON data |
-| 17 | **Missing proper indexes** - No analysis of slow queries | MEDIUM | Large tables likely slow |
-| 18 | **Circular/confusing table structure** - `sales_invoices` vs `invoices` tables | MEDIUM | Two invoice tables for different purposes |
-
-### 2.4 CODE QUALITY ISSUES
+### 3.1 SECURITY ISSUES (HIGH PRIORITY)
 
 | # | Issue | Severity | Location |
 |---|-------|----------|----------|
-| 19 | **SalesController is 1868 lines** - Massive monolithic controller | HIGH | `SalesController.php` |
-| 20 | **InventoryController is 2074 lines** - Same problem | HIGH | `InventoryController.php` |
-| 21 | **main.php layout is 2547 lines** - Everything in one file | HIGH | `app/Views/layouts/main.php` |
-| 22 | **No separation of concerns** - Business logic mixed with DB access | MEDIUM | All controllers |
-| 23 | **Duplicate code** - CSRF check appears 3+ times across files | MEDIUM | `App.php`, `Controller.php` |
-| 24 | **Global CSS in layout file instead of separate stylesheets** | MEDIUM | `main.php` |
-| 25 | **No PHPDoc/type hints** on many methods | LOW | Various files |
-| 26 | **`str_replace` used for SQL query manipulation** instead of proper parameterization | HIGH | `SalesController.php` line 123 |
+| 1 | **.env file still contains real credentials in repository** | CRITICAL | `.env` - should be `.gitignored` (check if it is) |
+| 2 | **No session_regenerate_id() after login** (session fixation) | HIGH | Authentication flow |
+| 3 | **CSRF bypass for all API/mobile sync endpoints** | HIGH | `App.php` line 29 - `!$isApiSync` disables CSRF |
+| 4 | **XSS vulnerabilities in views** (html_entity_decode without escaping) | MEDIUM | Multiple views, `InventoryController.php` |
+| 5 | **Dynamic SQL column names** - `safeCol()` is good but not bulletproof | MEDIUM | `Item.php` - column names still interpolated into SQL |
+| 6 | **No rate limiting on API endpoints** | MEDIUM | All API routes accessible without throttling |
 
-### 2.5 FUNCTIONAL BUGS
+### 3.2 ARCHITECTURAL ISSUES
 
-| # | Issue | Severity | Description |
-|---|-------|----------|-------------|
-| 27 | **Stock quantity sync issue** - `qty` and `quantity_on_hand` can diverge | HIGH | `Item.php` - both columns updated but logic is unclear |
-| 28 | **SalesController uses `invoices` table while also creating `sales_invoices`** | HIGH | Two parallel invoice systems |
-| 29 | **No FIFO cost calculation for COGS** - Profit reports may be inaccurate | HIGH | `FIFO.php` exists but integration may be incomplete |
-| 30 | **No transaction rollback on failed invoice creation** | HIGH | Sales creation logic |
-| 31 | **Pagination offset can go negative** - No validation at multiple locations | MEDIUM | Various controllers |
-| 32 | **Image upload directory exposed in public path** | MEDIUM | `public/uploads/products/` |
+| # | Issue | Severity | Location |
+|---|-------|----------|----------|
+| 7 | **Monolithic controllers** - Still too large | HIGH | `SalesController.php` = 1857 lines, `RepTrackingController.php` = 2552 lines, `InventoryController.php` = 2074 lines |
+| 8 | **main.php layout is 2547 lines** - Everything in one file | HIGH | `app/Views/layouts/main.php` |
+| 9 | **No proper routing/URL rewriting** | MEDIUM | Relies on `?url=` query parameter |
+| 10 | **No input validation library** - Manual filtering everywhere | MEDIUM | All controllers |
+| 11 | **No global exception handler** - try-catch with silent failure everywhere | MEDIUM | All controllers |
+| 12 | **No separation of concerns** - Business logic mixed with DB access | MEDIUM | All controllers |
 
-### 2.6 PERFORMANCE ISSUES
+### 3.3 DATABASE DESIGN ISSUES
 
 | # | Issue | Severity | Description |
 |---|-------|----------|-------------|
-| 33 | **Database schema inspection on every request** (DESCRIBE/SHOW COLUMNS) | HIGH | Every page load does schema checks |
-| 34 | **No caching layer** (Redis/Memcached/APCu) | HIGH | All data fetched from DB every request |
-| 35 | **No query optimization** - Many queries lack proper indexes | MEDIUM | Large datasets will be slow |
-| 36 | **No pagination on some list views** | MEDIUM | Several views load all records |
-| 37 | **Single PDO connection with persistent mode** can cause issues | MEDIUM | `PDO::ATTR_PERSISTENT => true` |
+| 13 | **items table has both `qty` AND `quantity_on_hand`** | HIGH | Dual stock columns - Item model tracks `hasQtyColumn`/`hasQuantityOnHandColumn` but still writes to both |
+| 14 | **Two parallel invoice systems** (`invoices` + `sales_invoices`) | HIGH | Can cause data inconsistency |
+| 15 | **JSON fields without schema validation** (variations_json, additional_images) | MEDIUM | No validation for stored JSON |
+| 16 | **MigrationManager has hard-coded migration list** | MEDIUM | Adding migrations requires code change, no SQL file support |
 
-### 2.7 MISSING FEATURES
+### 3.4 FUNCTIONAL BUGS
+
+| # | Issue | Severity | Description |
+|---|-------|----------|-------------|
+| 17 | **Stock sync between `qty` and `quantity_on_hand` can still diverge** | HIGH | Both columns updated but sync logic unclear |
+| 18 | **No FIFO cost calculation fully integrated** | HIGH | `FIFO.php` exists, `stock_batches` & `invoice_item_batches` tables created, but integration incomplete |
+| 19 | **No transaction rollback on failed invoice creation** | HIGH | Sales creation logic |
+| 20 | **Pagination offset can go negative in some controllers** | MEDIUM | Several controllers lack validation |
+| 21 | **Image upload directory still in public path** | MEDIUM | `public/uploads/products/` - accessible if directory listing enabled |
+
+### 3.5 PERFORMANCE ISSUES
+
+| # | Issue | Severity | Description |
+|---|-------|----------|-------------|
+| 22 | **No query optimization indexes on many tables** | MEDIUM | MigrationManager has some index creation (12 indexes) but many tables still lack them |
+| 23 | **No Redis/Memcached for production caching** | MEDIUM | Cache class falls back to file-based (temp dir) |
+| 24 | **No pagination on some list views** | MEDIUM | Several views load all records |
+
+---
+
+## 4. NEW ISSUES INTRODUCED
+
+| # | Issue | Severity | Location |
+|---|-------|----------|----------|
+| 1 | **`loadEnv()` function is defined in `config/database.php`** - creates global dependency | LOW | `config/database.php` - should be in a bootstrap file |
+| 2 | **`.env` file is manually parsed** - lacks proper quoting, multi-line value support | LOW | Custom parser vs using `vlucas/phpdotenv` library |
+| 3 | **MigrationManager has 109 migrations hard-coded** - no way to run SQL files | MEDIUM | Adding migrations requires editing PHP code |
+| 4 | **Cache class uses `unserialize()` on user data** - potential PHP object injection | MEDIUM | `core/Cache.php` line 31 |
+| 5 | **`Cache::clear()` called after migrations** - may cause race conditions | LOW | `MigrationManager.php` line 241 |
+
+---
+
+## 5. STILL MISSING FEATURES
 
 | # | Feature | Priority | Description |
 |---|---------|----------|-------------|
-| 1 | **Role-Based Access Control (RBAC) system** | CRITICAL | Current permission system is basic array-based |
-| 2 | **Audit trail for all financial transactions** | HIGH | Only basic activity logging exists |
-| 3 | **Multi-warehouse inventory tracking** | HIGH | Basic support but no transfer management |
-| 4 | **Barcode/RFID scanning integration** | HIGH | No API endpoints for handheld scanners |
-| 5 | **Automated backup system** | HIGH | Manual backup only via BackupController |
-| 6 | **Email notification system** | HIGH | BrevoMailer exists but not fully integrated |
-| 7 | **Dashboard with real-time KPIs** | HIGH | Basic dashboard only |
+| 1 | **Role-Based Access Control (RBAC)** | CRITICAL | Current permission system is basic session array |
+| 2 | **Audit trail for ALL financial transactions** | HIGH | Only basic activity logging exists |
+| 3 | **Multi-warehouse inventory transfer management** | HIGH | Basic warehouse support but no transfer workflow |
+| 4 | **Barcode/RFID scanning API endpoints** | HIGH | No API for handheld scanners |
+| 5 | **Automated backup scheduling** | HIGH | Manual backup only |
+| 6 | **Email notification system fully integrated** | HIGH | BrevoMailer exists but not fully utilized |
+| 7 | **Real-time dashboard KPIs** | HIGH | Basic dashboard only |
 | 8 | **Budget vs Actual comparison** | MEDIUM | BudgetController exists but limited |
 | 9 | **Dunning/Collections automation** | MEDIUM | DunningController exists but basic |
 | 10 | **Payment gateway integration** | MEDIUM | No online payment processing |
 | 11 | **Multi-currency support** | MEDIUM | Single currency only |
-| 12 | **Multi-language/i18n** | MEDIUM | English only |
-| 13 | **Two-factor authentication (2FA)** | MEDIUM | Password only |
-| 14 | **API rate limiting** | MEDIUM | No throttling on API endpoints |
-| 15 | **WebSocket/Push notifications** | MEDIUM | No real-time updates |
-| 16 | **Advanced reporting with charts** | MEDIUM | Only tabular reports |
+| 12 | **Two-factor authentication (2FA)** | MEDIUM | Password only |
+| 13 | **WebSocket/Push notifications** | MEDIUM | No real-time updates |
+| 14 | **Advanced chart-based reporting** | MEDIUM | Only tabular reports |
 
 ---
 
-## 3. FEATURE RECOMMENDATIONS FOR PRODUCTIVITY IMPROVEMENT
+## 6. FEATURE RECOMMENDATIONS FOR PRODUCTIVITY IMPROVEMENT
 
-### 3.1 HIGH PRIORITY FEATURES
+### 6.1 HIGH PRIORITY (Implement Next)
 
-#### 3.1.1 Environment Configuration & Security Hardening
-- Migrate all secrets to `.env` file with `vlucas/phpdotenv`
-- Implement proper role-based permissions stored in database
-- Add session security (regenerate ID, timeout, lockout after failed attempts)
-- Implement proper OWASP security headers (CSP, X-Frame-Options, HSTS)
+#### 6.1.1 Security Hardening (Continuation)
+- Add `.env` to `.gitignore` immediately
+- Implement proper `.env` parsing using `vlucas/phpdotenv` composer package
+- Add `session_regenerate_id(true)` after successful login
+- Implement CSRF tokens for API endpoints (not just web forms)
+- Add security headers middleware (CSP, X-Frame-Options, HSTS, X-Content-Type-Options)
 
-#### 3.1.2 Advanced Inventory Management
-- **Real-time stock valuation** with proper FIFO/Average costing
-- **Warehouse bin locations** with pick-path optimization
-- **Automated reorder point calculations** based on historical demand
-- **Serial number / Lot tracking** for traceability
-- **Inventory cycle counting** module with mobile support
+#### 6.1.2 Operations & Inventory
+- **Consolidate `qty` and `quantity_on_hand`** - Single source of truth for stock levels
+- **Complete FIFO integration** - Link `stock_batches` to sales for proper COGS calculation
+- **Automated reorder point system** - Suggest POs based on historical demand + lead time
+- **Cycle counting module** - Mobile-friendly stock count with variance reports
+- **Warehouse bin/shelf locations** - Track exact product locations in warehouse
 
-#### 3.1.3 Sales & Customer Management
-- **Sales order fulfillment tracking** (order → pick → pack → ship → invoice)
-- **Customer credit limit management** with automated blocking
-- **Bulk pricing rules** (volume discounts, contract pricing)
-- **Sales funnel analytics** with conversion tracking
-- **Automated invoice delivery** via email/SMS
+#### 6.1.3 Sales & Financial
+- **Cash flow forecasting** - Based on AR aging + PO commitments + historical patterns
+- **Automated bank reconciliation** - Import bank statements and match transactions
+- **Customer credit limit management** - Auto-block customers exceeding limits
+- **Sales order fulfillment pipeline** - Order → Pick → Pack → Ship → Invoice tracking
 
-#### 3.1.4 Financial Management
-- **Cash flow forecasting** based on AR aging and PO commitments
-- **Automated bank reconciliation** with bank feed import
-- **Multi-period budget management** with variance alerts
-- **Fixed asset management** with depreciation calculation
-- **Inter-company transactions** support
+### 6.2 MEDIUM PRIORITY
 
-### 3.2 MEDIUM PRIORITY FEATURES
+#### 6.2.1 Route & Distribution
+- **Route optimization** using Google Maps API for efficient delivery sequencing
+- **Driver mobile app enhancements** - Real-time GPS tracking, photo proof of delivery, e-signature
+- **Automated vehicle scheduling** based on route load and vehicle capacity
+- **Return logistics management** - Track returned items from delivery
 
-#### 3.2.1 Operations
-- **Delivery route optimization** using Google Maps/Distance Matrix API
-- **Driver mobile app** with real-time GPS tracking and e-signature capture
-- **Automated purchase order generation** based on reorder points
-- **Supplier performance scorecards** (OTIF, quality, pricing)
-- **Quality control checklists** for GRN process
+#### 6.2.2 HR & Payroll
+- **Employee self-service portal** (leave applications, payslip viewing)
+- **Biometric attendance integration** (fingerprint/face recognition devices)
+- **Overtime approval workflow** with automated calculation
+- **Asset assignment tracking** (company phones, vehicles, laptops)
 
-#### 3.2.2 HR & Payroll
-- **Employee self-service portal** (leave requests, payslip download)
-- **Automated attendance integration** with biometric devices
-- **Overtime calculation** with approval workflow
-- **Performance review automation** with 360-degree feedback
-- **Training & certification tracking**
-
-#### 3.2.3 Analytics & Business Intelligence
-- **Executive dashboard** with drill-down capabilities (using Chart.js or ApexCharts)
-- **Sales forecasting** using historical data patterns
-- **Profitability analysis** by customer, product, region, sales rep
-- **Inventory turnover reports** with slow-moving/obsolete alerts
+#### 6.2.3 Business Intelligence
+- **Interactive dashboards** with Chart.js/ApexCharts (sales trends, inventory turnover)
+- **Sales forecasting engine** using moving averages / seasonality
+- **Profitability analysis** by customer, product category, route, sales rep
 - **Custom report builder** with drag-and-drop interface
 
-### 3.3 NICE-TO-HAVE FEATURES
+### 6.3 NICE-TO-HAVE
 
-#### 3.3.1 Integration & Automation
-- **E-commerce deep integration** (WooCommerce/Shopify real-time sync)
-- **Accounting integration** with Xero/QuickBooks
-- **SMS notifications** via Twilio for order status
-- **WhatsApp Business API** for customer communication
-- **Zapier/Make.com webhook triggers** for workflow automation
-
-#### 3.3.2 User Experience
-- **Dark mode toggle** (partial implementation exists in CSS)
-- **Keyboard shortcuts** for power users
-- **Bulk operations** (edit, delete, export across all modules)
-- **Drag-and-drop dashboard widgets**
-- **Customizable table views** (show/hide columns, save layouts)
-
-#### 3.3.3 Technical Improvements
-- **GraphQL API** for mobile apps instead of raw REST
-- **Redis caching** for frequently accessed data
-- **Database read replicas** for reporting queries
-- **Automated testing** (PHPUnit for backend, Cypress for frontend)
-- **CI/CD pipeline** with GitHub Actions
+- WhatsApp Business API integration for customer communication
+- SMS notifications via Twilio for payment reminders
+- Zapier/Make.com webhook support for no-code automation
+- Dark mode toggle (partial CSS exists)
+- Keyboard shortcuts for power users
+- Bulk operations across all modules
+- Customizable table layouts (save column preferences)
+- Automated testing (PHPUnit + Cypress)
 
 ---
 
-## 4. IMMEDIATE ACTION ITEMS (Top 10 Critical Fixes)
+## 7. IMMEDIATE ACTION ITEMS (Top 10)
 
 | # | Action | Impact | Effort |
 |---|--------|--------|--------|
-| 1 | **Move credentials to `.env` file** | Security | 2 hours |
-| 2 | **Stop schema migrations on every request** | Performance + Stability | 4 hours |
-| 3 | **Fix SQL injection in SalesController (str_replace)** | Security | 1 hour |
-| 4 | **Add CSRF for API endpoints with proper tokens** | Security | 4 hours |
-| 5 | **Consolidate `qty` and `quantity_on_hand` columns** | Data integrity | 3 hours |
-| 6 | **Add proper input validation and sanitization** | Security | 8 hours |
-| 7 | **Break up monolithic controllers into service classes** | Maintainability | 16 hours |
-| 8 | **Add database transaction rollbacks on failures** | Data integrity | 4 hours |
-| 9 | **Implement query caching layer** | Performance | 8 hours |
-| 10 | **Add pagination to all list views** | Performance | 6 hours |
+| 1 | **Add `.env` to `.gitignore`** | Security | 5 min |
+| 2 | **Fix session fixation - add `session_regenerate_id()` after login** | Security | 1 hour |
+| 3 | **Add CSRF tokens for API endpoints** | Security | 4 hours |
+| 4 | **Consolidate `qty` and `quantity_on_hand` stock columns** | Data integrity | 3 hours |
+| 5 | **Complete FIFO integration for COGS calculation** | Financial accuracy | 8 hours |
+| 6 | **Add database transaction rollbacks on all write operations** | Data integrity | 4 hours |
+| 7 | **Install `vlucas/phpdotenv` via composer for proper .env parsing** | Security | 1 hour |
+| 8 | **Break up largest controllers into service classes** | Maintainability | 20 hours |
+| 9 | **Extract CSS from main.php into proper stylesheets** | Maintainability | 4 hours |
+| 10 | **Replace `unserialize()` in Cache with safe JSON-only storage** | Security | 1 hour |
 
 ---
 
-## 5. LONG-TERM ARCHITECTURE RECOMMENDATIONS
+## 8. EXISTING STRENGTHS
 
-### 5.1 Short-term (1-3 months)
-- Extract all configuration to `.env`
-- Implement proper error handling with a global exception handler
-- Create a migration system (even simple SQL files with version tracking)
-- Add comprehensive audit logging for all CRUD operations
-- Fix all security vulnerabilities (SQL injection, XSS, CSRF)
+The project's notable strengths (updated with new improvements):
 
-### 5.2 Medium-term (3-6 months)
-- Refactor into service layer architecture (Controllers → Services → Models)
-- Implement unit and integration testing
-- Add Redis/Memcached caching layer
-- Create proper RESTful API versioning
-- Implement webhook system for integrations
-
-### 5.3 Long-term (6-12 months)
-- Consider migrating to Laravel or Symfony for maintainability
-- Implement microservices for heavy modules (reporting, inventory)
-- Add event-driven architecture for real-time updates
-- Implement CQRS for separating read/write operations
-- Create a plugin/module system for extensibility
+1. ✅ **Environment configuration** - Now uses `.env` file (was hard-coded before)
+2. ✅ **Centralized migration system** - `MigrationManager` with tracking table (was inline before)
+3. ✅ **Multi-layer caching** - Static array → APCu → File-based (`core/Cache.php`) - NEW
+4. ✅ **SQL injection protection** - `safeCol()` sanitizer for dynamic column names - NEW
+5. ✅ **Upload directory security** - `.htaccess` + `index.php` files - NEW
+6. ✅ **Comprehensive module coverage** - Most business functions implemented
+7. ✅ **PWA support** - Service worker, offline manifest
+8. ✅ **Cross-platform compatibility** - Localhost (XAMPP) + Production (Plesk)
+9. ✅ **Glassmorphism modern UI** - Clean, professional design
+10. ✅ **Mobile API support** - Rep and driver mobile apps
+11. ✅ **30+ report types** - Dynamic ReportEngine with SQL-driven configuration
+12. ✅ **Full CSV Import/Export** - Inventory catalog with validation
+13. ✅ **Activity logging** - Audit trail for major operations
+14. ✅ **Responsive design** - Mobile-friendly layout
 
 ---
 
-## 6. EXISTING STRENGTHS
+## 9. PROGRESS SUMMARY
 
-Despite the issues identified, the project has notable strengths:
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Hard-coded secrets in code | 3 locations | 0 locations | ✅ 100% fixed |
+| Schema migrations on every request | Every page load | Once per migration | ✅ Fixed |
+| SQL injection vulnerabilities | 1 (str_replace) | 0 | ✅ Fixed |
+| Caching system | None | 3-tier cache | ✅ Added |
+| Migration management | None | 109 tracked migrations | ✅ Added |
+| Dynamic column SQL injection | Unprotected | `safeCol()` sanitizer | ✅ Fixed |
+| Upload directory security | None | `.htaccess` + `index.php` | ✅ Added |
+| Critical issues remaining | 8 | 5 | ⚠️ In progress |
+| High severity issues remaining | 12 | 8 | ⚠️ In progress |
 
-1. **Self-healing database** - Automatic schema migrations (though needs optimization)
-2. **Comprehensive module coverage** - Most business functions implemented
-3. **PWA support** - Service worker, offline manifest
-4. **Cross-platform compatibility** - Works on localhost (XAMPP) and production (Plesk)
-5. **Glassmorphism UI** - Modern, clean design
-6. **Mobile API support** - Rep and driver mobile apps
-7. **Report Engine** - 30+ report types with dynamic configuration
-8. **CSV Import/Export** - Full inventory catalog import with validation
-9. **Activity logging** - Audit trail for major operations
-10. **Responsive design** - Mobile-friendly layout
-
----
-
-## 7. SUMMARY OF FINDINGS
-
-- **Total files analyzed:** 100+ (controllers, models, views, services, core)
-- **Critical issues found:** 8 (security + data integrity)
-- **High severity issues:** 12 (architecture + performance)
-- **Medium severity issues:** 17 (code quality + missing features)
-- **Missing features identified:** 16 (critical to nice-to-have)
-- **Feature recommendations:** 30+ (productivity and accuracy improvements)
-- **Estimated effort for critical fixes:** ~56 hours (top 10 items)
-- **Estimated effort for full optimization:** 6-12 months team effort
-
-**Bottom Line:** The ERP system is functional and covers the essential business operations but requires significant security hardening, code refactoring, and performance optimization before it can be considered production-grade for larger scale operations.
+**Bottom Line:** The ERP system has seen significant improvements in security and architecture. The most critical security issues (hard-coded credentials, SQL injection) have been addressed. The new caching and migration systems demonstrate good architectural direction. However, the system still needs work on session security, CSRF for APIs, FIFO integration, and code modularization before it can be considered fully production-grade.

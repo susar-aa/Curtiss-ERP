@@ -35,11 +35,6 @@ class Controller {
      * Check permissions for module access
      */
     public function checkPermission($module, $action = 'view') {
-        // Admin role always has all access
-        if (isset($_SESSION['role']) && strtolower($_SESSION['role']) === 'admin') {
-            return true;
-        }
-        
         // If not logged in, redirect to login
         if (!isset($_SESSION['user_id'])) {
             $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
@@ -63,17 +58,10 @@ class Controller {
             exit;
         }
 
-        $hasAccess = false;
-        if (isset($_SESSION['permissions']) && isset($_SESSION['permissions'][$module])) {
-            $perm = $_SESSION['permissions'][$module];
-            if ($action === 'view') {
-                $hasAccess = (bool)($perm['can_view'] ?? false);
-            } elseif ($action === 'create_edit') {
-                $hasAccess = (bool)($perm['can_create_edit'] ?? false);
-            } elseif ($action === 'delete') {
-                $hasAccess = (bool)($perm['can_delete'] ?? false);
-            }
-        }
+        // Consume centralized RbacService
+        require_once __DIR__ . '/RbacService.php';
+        $rbac = RbacService::getInstance();
+        $hasAccess = $rbac->check($_SESSION['user_id'], $module, $action);
 
         if (!$hasAccess) {
             // If AJAX request, return a clean JSON or plain error message

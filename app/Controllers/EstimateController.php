@@ -49,23 +49,54 @@ class EstimateController extends Controller {
             $estimateItems = $this->estimateModel->getEstimateItems($estimateId);
 
             if ($estimate && count($estimateItems) > 0) {
+                // Map items and calculate subtotal
+                $subtotal = 0.00;
+                $items = [];
+                
+                foreach ($estimateItems as $i) {
+                    $itemTotal = floatval($i->quantity) * floatval($i->unit_price);
+                    $subtotal += $itemTotal;
+
+                    // Try to resolve item_id by searching by description (name)
+                    $itemId = 0;
+                    $this->db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
+                    $this->db->bind(':name', $i->description);
+                    $rowItem = $this->db->single();
+                    if ($rowItem) {
+                        $itemId = $rowItem->id;
+                    }
+
+                    $items[] = [
+                        'item_selection' => $itemId . '|0',
+                        'description' => $i->description,
+                        'quantity' => floatval($i->quantity),
+                        'unit_price' => floatval($i->unit_price),
+                        'discount_value' => 0.00,
+                        'discount_type' => 'Rs',
+                        'total' => $itemTotal
+                    ];
+                }
+
+                // Generate new invoice number
+                $this->db->query("SELECT id FROM invoices ORDER BY id DESC LIMIT 1");
+                $lastRow = $this->db->single();
+                $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+                $invoiceNumber = 'INV-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+
                 // Map estimate data to invoice data array
                 $invoiceData = [
                     'customer_id' => $estimate->customer_id,
-                    'invoice_number' => 'INV-' . time(), // Generate new invoice number
-                    'date' => date('Y-m-d'),
-                    'due_date' => date('Y-m-d', strtotime('+14 days')) // Default terms
+                    'invoice_number' => $invoiceNumber,
+                    'invoice_date' => date('Y-m-d'),
+                    'due_date' => date('Y-m-d', strtotime('+14 days')),
+                    'subtotal' => $subtotal,
+                    'global_discount_val' => 0.00,
+                    'global_discount_type' => 'Rs',
+                    'notes' => 'Converted from Estimate ' . $estimate->estimate_number,
+                    'grand_total' => $subtotal,
+                    'rep_route_id' => null,
+                    'stock_status' => 'deducted'
                 ];
-
-                // Map items
-                $items = [];
-                foreach ($estimateItems as $i) {
-                    $items[] = [
-                        'desc' => $i->description,
-                        'qty' => $i->quantity,
-                        'price' => $i->unit_price
-                    ];
-                }
 
                 // Push to the true accounting engine
                 if ($this->invoiceModel->createInvoiceWithAccounting($invoiceData, $items, $arAccount, $revAccount, $_SESSION['user_id'])) {

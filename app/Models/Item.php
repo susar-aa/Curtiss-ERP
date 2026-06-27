@@ -9,6 +9,8 @@ class Item {
     private $descColumn = 'description';
     private $wholesalePriceColumn = 'wholesale_price'; // For WholesaleX B2B compatibility
     private $orderByColumn = 'id DESC';
+    private $hasQtyColumn = true;
+    private $hasQuantityOnHandColumn = true;
 
     // Static cache for detected columns to optimize performance
     private static $cachedColumns = null;
@@ -31,6 +33,23 @@ class Item {
             $this->descColumn = self::$cachedColumns['descColumn'];
             $this->wholesalePriceColumn = self::$cachedColumns['wholesalePriceColumn'];
             $this->orderByColumn = self::$cachedColumns['orderByColumn'];
+            $this->hasQtyColumn = self::$cachedColumns['hasQtyColumn'];
+            $this->hasQuantityOnHandColumn = self::$cachedColumns['hasQuantityOnHandColumn'];
+            return;
+        }
+
+        $cached = Cache::get('items_schema_columns');
+        if ($cached) {
+            self::$cachedColumns = $cached;
+            $this->priceColumn = $cached['priceColumn'];
+            $this->itemCodeColumn = $cached['itemCodeColumn'];
+            $this->nameColumn = $cached['nameColumn'];
+            $this->qtyColumn = $cached['qtyColumn'];
+            $this->descColumn = $cached['descColumn'];
+            $this->wholesalePriceColumn = $cached['wholesalePriceColumn'];
+            $this->orderByColumn = $cached['orderByColumn'];
+            $this->hasQtyColumn = $cached['hasQtyColumn'];
+            $this->hasQuantityOnHandColumn = $cached['hasQuantityOnHandColumn'];
             return;
         }
 
@@ -41,6 +60,9 @@ class Item {
                 $fields = array_map(function($col) {
                     return strtolower($col->Field ?? $col->field ?? '');
                 }, $columns);
+
+                $this->hasQtyColumn = in_array('qty', $fields);
+                $this->hasQuantityOnHandColumn = in_array('quantity_on_hand', $fields);
 
                 // 1. Detect Price
                 $priceCol = 'price';
@@ -110,8 +132,11 @@ class Item {
                     'descColumn' => $this->descColumn,
                     'wholesalePriceColumn' => $this->wholesalePriceColumn,
                     'orderByColumn' => $this->orderByColumn,
+                    'hasQtyColumn' => $this->hasQtyColumn,
+                    'hasQuantityOnHandColumn' => $this->hasQuantityOnHandColumn,
                     'fields' => $fields
                 ];
+                Cache::set('items_schema_columns', self::$cachedColumns, 86400);
             }
         } catch (Exception $e) {
             // Fall back silently
@@ -400,15 +425,32 @@ class Item {
         $priceCol = $this->safeCol($this->priceColumn);
         $wholesalePriceCol = $this->safeCol($this->wholesalePriceColumn);
         $itemCodeCol = $this->safeCol($this->itemCodeColumn);
-        $qtyCol = $this->safeCol($this->qtyColumn);
         $descCol = $this->safeCol($this->descColumn);
 
+        $qtyColumnNames = [];
+        $qtyParamBindings = [];
+        if ($this->hasQtyColumn) {
+            $qtyColumnNames[] = 'qty';
+            $qtyParamBindings[] = ':qty';
+        }
+        if ($this->hasQuantityOnHandColumn) {
+            $qtyColumnNames[] = 'quantity_on_hand';
+            $qtyParamBindings[] = ':qty';
+        }
+        if (empty($qtyColumnNames)) {
+            $qtyColumnNames[] = 'quantity_on_hand';
+            $qtyParamBindings[] = ':qty';
+        }
+
+        $qtyColsStr = implode(', ', $qtyColumnNames);
+        $qtyValsStr = implode(', ', $qtyParamBindings);
+
         $this->db->query("INSERT INTO items (
-            {$itemCodeCol}, name, {$priceCol}, {$wholesalePriceCol}, {$qtyCol}, quantity_on_hand, {$descCol},
+            {$itemCodeCol}, name, {$priceCol}, {$wholesalePriceCol}, {$qtyColsStr}, {$descCol},
             barcode, category_id, brand, warehouse, alert_qty, unit, status, weight, sync_woo, variations_json, image_path,
             additional_images, cost_price, warehouse_id, vendor_id, sample_code, retail_margin, wholesale_margin
         ) VALUES (
-            :item_code, :name, :price, :wholesale_price, :qty, :qty, :description,
+            :item_code, :name, :price, :wholesale_price, {$qtyValsStr}, :description,
             :barcode, :category_id, :brand, :warehouse, :alert_qty, :unit, :status, :weight, :sync_woo, :variations_json, :image_path,
             :additional_images, :cost_price, :warehouse_id, :vendor_id, :sample_code, :retail_margin, :wholesale_margin
         )");
@@ -445,16 +487,26 @@ class Item {
         $priceCol = $this->safeCol($this->priceColumn);
         $wholesalePriceCol = $this->safeCol($this->wholesalePriceColumn);
         $itemCodeCol = $this->safeCol($this->itemCodeColumn);
-        $qtyCol = $this->safeCol($this->qtyColumn);
         $descCol = $this->safeCol($this->descColumn);
+
+        $qtyUpdates = [];
+        if ($this->hasQtyColumn) {
+            $qtyUpdates[] = "qty = :qty";
+        }
+        if ($this->hasQuantityOnHandColumn) {
+            $qtyUpdates[] = "quantity_on_hand = :qty";
+        }
+        if (empty($qtyUpdates)) {
+            $qtyUpdates[] = "quantity_on_hand = :qty";
+        }
+        $qtyUpdatesStr = implode(', ', $qtyUpdates);
 
         $this->db->query("UPDATE items SET 
             {$itemCodeCol} = :item_code,
             name = :name,
             {$priceCol} = :price,
             {$wholesalePriceCol} = :wholesale_price,
-            {$qtyCol} = :qty,
-            quantity_on_hand = :qty,
+            {$qtyUpdatesStr},
             {$descCol} = :description,
             barcode = :barcode,
             category_id = :category_id,
@@ -509,10 +561,44 @@ class Item {
         if (is_numeric($this->qtyColumn)) {
             return true;
         }
-        $qtyCol = $this->safeCol($this->qtyColumn);
-        $this->db->query("UPDATE items SET {$qtyCol} = :qty, quantity_on_hand = :qty WHERE id = :id");
+        $qtyUpdates = [];
+        if ($this->hasQtyColumn) {
+            $qtyUpdates[] = "qty = :qty";
+        }
+        if ($this->hasQuantityOnHandColumn) {
+            $qtyUpdates[] = "quantity_on_hand = :qty";
+        }
+        if (empty($qtyUpdates)) {
+            $qtyUpdates[] = "quantity_on_hand = :qty";
+        }
+        $qtyUpdatesStr = implode(', ', $qtyUpdates);
+
+        $this->db->query("UPDATE items SET {$qtyUpdatesStr} WHERE id = :id");
         $this->db->bind(':id', $id);
         $this->db->bind(':qty', $newQty);
+        return $this->db->execute();
+    }
+
+    /**
+     * Increment or decrement stock by a delta in a schema-aware manner.
+     * Prevents negative stock underflow using GREATEST(0, ...).
+     */
+    public function updateStockDelta($id, $delta) {
+        $qtyUpdates = [];
+        if ($this->hasQtyColumn) {
+            $qtyUpdates[] = "qty = GREATEST(0, CAST(qty AS SIGNED) + :delta)";
+        }
+        if ($this->hasQuantityOnHandColumn) {
+            $qtyUpdates[] = "quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :delta)";
+        }
+        if (empty($qtyUpdates)) {
+            $qtyUpdates[] = "quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :delta)";
+        }
+        $qtyUpdatesStr = implode(', ', $qtyUpdates);
+
+        $this->db->query("UPDATE items SET {$qtyUpdatesStr} WHERE id = :id");
+        $this->db->bind(':id', $id);
+        $this->db->bind(':delta', $delta);
         return $this->db->execute();
     }
 

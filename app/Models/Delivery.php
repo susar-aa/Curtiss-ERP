@@ -404,10 +404,9 @@ class Delivery {
                             }
 
                             if ($itemId) {
-                                $this->db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty), qty = GREATEST(0, CAST(qty AS SIGNED) - :qty) WHERE id = :id");
-                                $this->db->bind(':qty', $qty);
-                                $this->db->bind(':id', $itemId);
-                                $this->db->execute();
+                                require_once '../app/Models/Item.php';
+                                $itemModel = new Item();
+                                $itemModel->updateStockDelta($itemId, -$qty);
 
                                 $this->db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :loadedQty) WHERE id = :id");
                                 $this->db->bind(':loadedQty', $loadedQty);
@@ -506,10 +505,9 @@ class Delivery {
                             $this->db->bind(':id', $varId);
                             $this->db->execute();
                         } else if ($itemId) {
-                            $this->db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :adj), qty = GREATEST(0, CAST(qty AS SIGNED) + :adj) WHERE id = :id");
-                            $this->db->bind(':adj', $adjustment);
-                            $this->db->bind(':id', $itemId);
-                            $this->db->execute();
+                            require_once '../app/Models/Item.php';
+                            $itemModel = new Item();
+                            $itemModel->updateStockDelta($itemId, $adjustment);
                         }
 
                         // Log stock movement in ledger (counted returns adjustment)

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 class DriverInvoice {
     private $db;
 
@@ -517,10 +517,9 @@ class DriverInvoice {
                                 $this->db->bind(':id', $varId);
                                 $this->db->execute();
                             } else {
-                                $this->db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
-                                $this->db->bind(':qty', $deliveredQty);
-                                $this->db->bind(':id', $itemId);
-                                $this->db->execute();
+                                require_once '../app/Models/Item.php';
+                                $itemModel = new Item();
+                                $itemModel->updateStockDelta($itemId, -$deliveredQty);
                             }
 
                             // B. Deduct FIFO stock costing

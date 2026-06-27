@@ -286,10 +286,9 @@ class CreditNote {
 
                 if ($item['item_id']) {
                     if ($isGood) {
-                        $this->db->query("UPDATE items SET quantity_on_hand = quantity_on_hand + :qty, qty = qty + :qty WHERE id = :id");
-                        $this->db->bind(':qty', $item['qty']);
-                        $this->db->bind(':id', $item['item_id']);
-                        $this->db->execute();
+                        require_once '../app/Models/Item.php';
+                        $itemModel = new Item();
+                        $itemModel->updateStockDelta($item['item_id'], $item['qty']);
 
                         if ($item['var_opt_id']) {
                             $this->db->query("UPDATE item_variation_options SET quantity_on_hand = quantity_on_hand + :qty WHERE id = :id");

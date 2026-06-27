@@ -40,11 +40,16 @@
     <div class="header-actions">
         <div>
             <h2 style="margin:0 0 5px 0; font-weight: 700;">System Users & Access Control</h2>
-            <p style="margin:0; font-size:13px; color:var(--text-muted);">Manage login credentials and granular modular permissions for employees.</p>
+            <p style="margin:0; font-size:13px; color:var(--text-muted);">Manage login credentials, assign roles, and manage permissions.</p>
         </div>
-        <a href="<?= APP_URL ?>/user/create" class="btn">
-            <i class="ph-bold ph-user-plus"></i> + Create User Account
-        </a>
+        <div style="display: flex; gap: 10px;">
+            <a href="<?= APP_URL ?>/user/roles" class="btn btn-outline" style="border-color: #0066cc;">
+                <i class="ph-bold ph-shield"></i> Manage Roles & Permissions
+            </a>
+            <a href="<?= APP_URL ?>/user/create" class="btn">
+                <i class="ph-bold ph-user-plus"></i> + Create User Account
+            </a>
+        </div>
     </div>
 
     <table class="data-table">
@@ -53,7 +58,7 @@
                 <th>Username</th>
                 <th>Email Address</th>
                 <th>Linked Employee</th>
-                <th>System Role</th>
+                <th>Assigned Roles</th>
                 <th style="text-align: center;">Signature</th>
                 <th>Permissions Status</th>
                 <th>Status</th>
@@ -72,7 +77,17 @@
                         <span style="color: #888; font-style: italic;">None</span>
                     <?php endif; ?>
                 </td>
-                <td><span class="role-badge role-<?= $u->role ?>"><?= $u->role ?></span></td>
+                <td>
+                    <?php if (!empty($u->roles)): ?>
+                        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                            <?php foreach ($u->roles as $role): ?>
+                                <span class="role-badge role-<?= strtolower(str_replace(' ', '-', $role->name)) ?>"><?= htmlspecialchars($role->name) ?></span>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <span class="role-badge role-<?= $u->role ?>"><?= $u->role ?></span>
+                    <?php endif; ?>
+                </td>
                 <td style="text-align: center;">
                     <?php if(!empty($u->signature_path)): ?>
                         <span style="color: #2e7d32; font-size: 12px; font-weight: bold;"><i class="ph-bold ph-check"></i> Uploaded</span>
@@ -81,11 +96,22 @@
                     <?php endif; ?>
                 </td>
                 <td>
-                    <?php if (strtolower($u->role) === 'admin'): ?>
+                    <?php 
+                    $isAdmin = false;
+                    if (!empty($u->roles)) {
+                        foreach ($u->roles as $role) {
+                            if (strtolower($role->name) === 'admin') {
+                                $isAdmin = true;
+                            }
+                        }
+                    } else {
+                        $isAdmin = (strtolower($u->role) === 'admin');
+                    }
+                    if ($isAdmin): ?>
                         <span style="color: #c62828; font-size: 12px; font-weight: bold;"><i class="ph-bold ph-shield"></i> Full Access (Admin)</span>
                     <?php else: ?>
                         <span style="color: #0066cc; font-size: 12px; font-weight: bold;">
-                            <i class="ph-bold ph-key"></i> <?= count($u->permissions) ?> Module(s) Custom
+                            <i class="ph-bold ph-key"></i> <?= count($u->permissions) ?> Module(s) Inherited
                         </span>
                     <?php endif; ?>
                 </td>

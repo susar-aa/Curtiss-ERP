@@ -206,16 +206,17 @@ class PurchaseOrder {
                 $this->db->execute();
 
                 // Instantly update Stock in Inventory
+                require_once '../app/Models/Item.php';
+                $itemModel = new Item();
                 if ($itemId) {
-                    $this->db->query("UPDATE items SET quantity_on_hand = quantity_on_hand + :qty, qty = qty + :qty WHERE id = :iid");
-                    $this->db->bind(':qty', $qty);
-                    $this->db->bind(':iid', $itemId);
-                    $this->db->execute();
+                    $itemModel->updateStockDelta($itemId, $qty);
                 } else {
-                    $this->db->query("UPDATE items SET quantity_on_hand = quantity_on_hand + :qty, qty = qty + :qty WHERE name = :desc");
-                    $this->db->bind(':qty', $qty);
+                    $this->db->query("SELECT id FROM items WHERE name = :desc LIMIT 1");
                     $this->db->bind(':desc', $desc);
-                    $this->db->execute();
+                    $rowItem = $this->db->single();
+                    if ($rowItem) {
+                        $itemModel->updateStockDelta($rowItem->id, $qty);
+                    }
                 }
 
                 // Update precise Variation Stock if provided

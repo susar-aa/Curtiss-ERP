@@ -128,10 +128,9 @@ class Invoice {
                 } else {
                     // Direct creation deducts from Physical stock immediately (with unsigned underflow safety)
                     if ($itemId) {
-                        $this->db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty), qty = GREATEST(0, CAST(qty AS SIGNED) - :qty) WHERE id = :id");
-                        $this->db->bind(':qty', $item['quantity']);
-                        $this->db->bind(':id', $itemId);
-                        $this->db->execute();
+                        require_once '../app/Models/Item.php';
+                        $itemModel = new Item();
+                        $itemModel->updateStockDelta($itemId, -$item['quantity']);
                     }
                     if ($varId) {
                         $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
@@ -213,10 +212,9 @@ class Invoice {
                 } else {
                     // Reverse the physical deduction: Add back to quantity_on_hand
                     if ($itemId) {
-                        $this->db->query("UPDATE items SET quantity_on_hand = quantity_on_hand + :qty, qty = qty + :qty WHERE id = :id");
-                        $this->db->bind(':qty', $oldItem->quantity);
-                        $this->db->bind(':id', $itemId);
-                        $this->db->execute();
+                        require_once '../app/Models/Item.php';
+                        $itemModel = new Item();
+                        $itemModel->updateStockDelta($itemId, $oldItem->quantity);
                     }
                     if ($varId) {
                         $this->db->query("UPDATE item_variation_options SET quantity_on_hand = quantity_on_hand + :qty WHERE id = :id");
@@ -335,10 +333,9 @@ class Invoice {
                 } else {
                     // Deduct from Main Product Quantity on Hand directly since the invoice is now finalized (unsigned underflow safety)
                     if ($itemId) {
-                        $this->db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty), qty = GREATEST(0, CAST(qty AS SIGNED) - :qty) WHERE id = :id");
-                        $this->db->bind(':qty', $item['quantity']);
-                        $this->db->bind(':id', $itemId);
-                        $this->db->execute();
+                        require_once '../app/Models/Item.php';
+                        $itemModel = new Item();
+                        $itemModel->updateStockDelta($itemId, -$item['quantity']);
                     }
                     if ($varId) {
                         $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
@@ -414,10 +411,9 @@ class Invoice {
                     }
                 } else {
                     if ($itemId) {
-                        $this->db->query("UPDATE items SET quantity_on_hand = quantity_on_hand + :qty, qty = qty + :qty WHERE id = :id");
-                        $this->db->bind(':qty', $oldItem->quantity);
-                        $this->db->bind(':id', $itemId);
-                        $this->db->execute();
+                        require_once '../app/Models/Item.php';
+                        $itemModel = new Item();
+                        $itemModel->updateStockDelta($itemId, $oldItem->quantity);
                     }
                     if ($varId) {
                         $this->db->query("UPDATE item_variation_options SET quantity_on_hand = quantity_on_hand + :qty WHERE id = :id");

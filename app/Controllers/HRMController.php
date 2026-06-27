@@ -8,6 +8,8 @@ class HrmController extends Controller {
     }
 
     public function index() {
+        $this->checkPermission('hrm', 'view');
+
         $data = [
             'title' => 'HRM & Employees',
             'content_view' => 'hrm/index',
@@ -27,6 +29,8 @@ class HrmController extends Controller {
         }
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'add_employee') {
+            $this->checkPermission('hrm', 'create_edit');
+
             $empData = [
                 'first_name' => trim($_POST['first_name']),
                 'last_name' => trim($_POST['last_name']),
@@ -86,6 +90,8 @@ class HrmController extends Controller {
     }
 
     public function edit() {
+        $this->checkPermission('hrm', 'create_edit');
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: ' . APP_URL . '/hrm');
             exit;
@@ -150,6 +156,8 @@ class HrmController extends Controller {
     }
 
     public function delete($id) {
+        $this->checkPermission('hrm', 'delete');
+
         try {
             if ($this->employeeModel->deleteEmployee($id)) {
                 $_SESSION['flash_success'] = 'Employee and their linked user account deleted successfully.';

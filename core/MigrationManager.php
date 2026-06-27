@@ -56,6 +56,8 @@ class MigrationManager {
             'add_tax_number_to_company_settings' => "ALTER TABLE company_settings ADD COLUMN tax_number VARCHAR(100) NULL",
             'customers_status' => "ALTER TABLE customers ADD COLUMN status VARCHAR(20) DEFAULT 'active' AFTER notes",
             'item_categories_status' => "ALTER TABLE item_categories ADD COLUMN status VARCHAR(20) DEFAULT 'active'",
+            'item_categories_woo_category_id' => "ALTER TABLE item_categories ADD COLUMN woo_category_id INT NULL DEFAULT NULL",
+            'item_categories_description' => "ALTER TABLE item_categories ADD COLUMN description TEXT NULL",
             'mca_areas_status' => "ALTER TABLE mca_areas ADD COLUMN status VARCHAR(20) DEFAULT 'active'",
             'items_quantity_reserved' => "ALTER TABLE items ADD COLUMN quantity_reserved INT DEFAULT 0 AFTER quantity_on_hand",
             'item_variation_options_quantity_reserved' => "ALTER TABLE item_variation_options ADD COLUMN quantity_reserved INT DEFAULT 0 AFTER quantity_on_hand",
@@ -133,6 +135,179 @@ class MigrationManager {
             ",
             'invoice_items_cost_at_sale' => "ALTER TABLE invoice_items ADD COLUMN cost_at_sale DECIMAL(15,2) DEFAULT 0.00",
             'sales_invoice_items_cost_at_sale' => "ALTER TABLE sales_invoice_items ADD COLUMN cost_at_sale DECIMAL(15,2) DEFAULT 0.00",
+            'add_indexes_for_performance' => function(PDO $dbh) {
+                $indexes = [
+                    ['items', 'category_id', 'idx_items_category_id'],
+                    ['items', 'vendor_id', 'idx_items_vendor_id'],
+                    ['items', 'status', 'idx_items_status'],
+                    ['items', 'barcode', 'idx_items_barcode'],
+                    ['invoices', 'customer_id', 'idx_invoices_customer_id'],
+                    ['invoices', 'rep_route_id', 'idx_invoices_rep_route_id'],
+                    ['invoices', 'status', 'idx_invoices_status'],
+                    ['invoice_items', 'invoice_id', 'idx_invoice_items_invoice_id'],
+                    ['invoice_items', 'item_id', 'idx_invoice_items_item_id'],
+                    ['rep_daily_routes', 'user_id', 'idx_rep_routes_user_id'],
+                    ['customers', 'mca_id', 'idx_customers_mca_id'],
+                    ['customers', 'status', 'idx_customers_status']
+                ];
+                foreach ($indexes as $idx) {
+                    list($table, $col, $idxName) = $idx;
+                    try {
+                        $stmt = $dbh->prepare("SHOW INDEX FROM `$table` WHERE Key_name = :idx");
+                        $stmt->execute([':idx' => $idxName]);
+                        if (!$stmt->fetch()) {
+                            $dbh->exec("CREATE INDEX `$idxName` ON `$table` (`$col`)");
+                        }
+                    } catch (PDOException $e) {
+                        // Ignore if table/column does not exist
+                    }
+                }
+                return true;
+            },
+            'rbac_setup' => function(PDO $dbh) {
+                // 1. Create tables
+                $dbh->exec("CREATE TABLE IF NOT EXISTS roles (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL UNIQUE,
+                    description VARCHAR(255) NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+                $dbh->exec("CREATE TABLE IF NOT EXISTS role_permissions (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    role_id INT NOT NULL,
+                    module VARCHAR(50) NOT NULL,
+                    can_view TINYINT(1) DEFAULT 0,
+                    can_create_edit TINYINT(1) DEFAULT 0,
+                    can_delete TINYINT(1) DEFAULT 0,
+                    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+                    UNIQUE KEY role_module (role_id, module)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+                $dbh->exec("CREATE TABLE IF NOT EXISTS user_roles (
+                    user_id INT NOT NULL,
+                    role_id INT NOT NULL,
+                    PRIMARY KEY (user_id, role_id),
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+                // 2. Seed default roles
+                $defaultRoles = [
+                    ['Admin', 'Full System Administrator Access'],
+                    ['Office Staff', 'Standard back-office operation access'],
+                    ['Driver', 'Logistics and delivery application access'],
+                    ['Rep (Sales Representative)', 'Mobile sales representative app access'],
+                    ['Accountant', 'Full accounting, budgeting, and financial reports access']
+                ];
+
+                $roleIds = [];
+                $stmt = $dbh->prepare("INSERT INTO roles (name, description) VALUES (:name, :description) ON DUPLICATE KEY UPDATE description = VALUES(description)");
+                foreach ($defaultRoles as $r) {
+                    $stmt->execute([':name' => $r[0], ':description' => $r[1]]);
+                }
+
+                // Get role IDs
+                $stmt = $dbh->query("SELECT id, name FROM roles");
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $roleIds[strtolower($row['name'])] = $row['id'];
+                }
+
+                // Seed Admin permissions: grant view, create_edit, delete to all modules
+                $modules = [
+                    'crm', 'customer', 'estimate', 'sales', 'creditnote', 'dunning', 'discount',
+                    'reptracking', 'delivery', 'territory', 'inventory', 'category', 'variation',
+                    'warehouse', 'supplier', 'purchase', 'grn', 'supplier_return', 'expenses',
+                    'hrm', 'project', 'vehicle', 'cheque', 'accounting', 'customerpayment',
+                    'supplierpayment', 'asset', 'report', 'ecommerce', 'settings', 'user', 'tax',
+                    'paymentterm', 'audit'
+                ];
+
+                if (isset($roleIds['admin'])) {
+                    $adminId = $roleIds['admin'];
+                    $permStmt = $dbh->prepare("INSERT INTO role_permissions (role_id, module, can_view, can_create_edit, can_delete) 
+                                               VALUES (:role_id, :module, 1, 1, 1) 
+                                               ON DUPLICATE KEY UPDATE can_view = 1, can_create_edit = 1, can_delete = 1");
+                    foreach ($modules as $m) {
+                        $permStmt->execute([':role_id' => $adminId, ':module' => $m]);
+                    }
+                }
+
+                // Seed Accountant permissions
+                if (isset($roleIds['accountant'])) {
+                    $accId = $roleIds['accountant'];
+                    $accPerms = [
+                        'accounting' => [1, 1, 1],
+                        'customerpayment' => [1, 1, 1],
+                        'supplierpayment' => [1, 1, 1],
+                        'expenses' => [1, 1, 1],
+                        'report' => [1, 1, 0],
+                        'sales' => [1, 1, 0]
+                    ];
+                    $permStmt = $dbh->prepare("INSERT INTO role_permissions (role_id, module, can_view, can_create_edit, can_delete) 
+                                               VALUES (:role_id, :module, :can_view, :can_create_edit, :can_delete) 
+                                               ON DUPLICATE KEY UPDATE can_view = VALUES(can_view), can_create_edit = VALUES(can_create_edit), can_delete = VALUES(can_delete)");
+                    foreach ($accPerms as $m => $p) {
+                        $permStmt->execute([':role_id' => $accId, ':module' => $m, ':can_view' => $p[0], ':can_create_edit' => $p[1], ':can_delete' => $p[2]]);
+                    }
+                }
+
+                // Seed Representative permissions
+                if (isset($roleIds['rep (sales representative)'])) {
+                    $repId = $roleIds['rep (sales representative)'];
+                    $repPerms = [
+                        'crm' => [1, 1, 0],
+                        'customer' => [1, 1, 0],
+                        'estimate' => [1, 1, 0],
+                        'sales' => [1, 1, 0],
+                        'reptracking' => [1, 1, 0]
+                    ];
+                    $permStmt = $dbh->prepare("INSERT INTO role_permissions (role_id, module, can_view, can_create_edit, can_delete) 
+                                               VALUES (:role_id, :module, :can_view, :can_create_edit, :can_delete) 
+                                               ON DUPLICATE KEY UPDATE can_view = VALUES(can_view), can_create_edit = VALUES(can_create_edit), can_delete = VALUES(can_delete)");
+                    foreach ($repPerms as $m => $p) {
+                        $permStmt->execute([':role_id' => $repId, ':module' => $m, ':can_view' => $p[0], ':can_create_edit' => $p[1], ':can_delete' => $p[2]]);
+                    }
+                }
+
+                // Seed Driver permissions
+                if (isset($roleIds['driver'])) {
+                    $driverId = $roleIds['driver'];
+                    $driverPerms = [
+                        'delivery' => [1, 1, 0]
+                    ];
+                    $permStmt = $dbh->prepare("INSERT INTO role_permissions (role_id, module, can_view, can_create_edit, can_delete) 
+                                               VALUES (:role_id, :module, :can_view, :can_create_edit, :can_delete) 
+                                               ON DUPLICATE KEY UPDATE can_view = VALUES(can_view), can_create_edit = VALUES(can_create_edit), can_delete = VALUES(can_delete)");
+                    foreach ($driverPerms as $m => $p) {
+                        $permStmt->execute([':role_id' => $driverId, ':module' => $m, ':can_view' => $p[0], ':can_create_edit' => $p[1], ':can_delete' => $p[2]]);
+                    }
+                }
+
+                // 3. Migrate existing users from `users.role` to `user_roles`
+                $userStmt = $dbh->query("SELECT id, role FROM users");
+                $userRolesStmt = $dbh->prepare("INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (:user_id, :role_id)");
+                while ($user = $userStmt->fetch(PDO::FETCH_ASSOC)) {
+                    $roleName = strtolower(trim($user['role']));
+                    $targetRoleId = null;
+                    if ($roleName === 'admin') {
+                        $targetRoleId = $roleIds['admin'] ?? null;
+                    } elseif ($roleName === 'accountant') {
+                        $targetRoleId = $roleIds['accountant'] ?? null;
+                    } elseif ($roleName === 'driver') {
+                        $targetRoleId = $roleIds['driver'] ?? null;
+                    } elseif ($roleName === 'rep') {
+                        $targetRoleId = $roleIds['rep (sales representative)'] ?? null;
+                    } else {
+                        $targetRoleId = $roleIds['office staff'] ?? null;
+                    }
+
+                    if ($targetRoleId) {
+                        $userRolesStmt->execute([':user_id' => $user['id'], ':role_id' => $targetRoleId]);
+                    }
+                }
+                return true;
+            }
         ];
     }
 
@@ -171,6 +346,7 @@ class MigrationManager {
 
         // 3. Run pending migrations in order
         $migrations = self::getMigrations();
+        $anyRan = false;
         foreach ($migrations as $name => $sql) {
             if (in_array($name, $executed)) {
                 continue;
@@ -194,12 +370,19 @@ class MigrationManager {
             }
 
             if ($success) {
+                $anyRan = true;
                 try {
                     $stmt = $dbh->prepare("INSERT INTO migrations (migration) VALUES (:migration)");
                     $stmt->execute([':migration' => $name]);
                 } catch (PDOException $e) {
                     // Ignore duplicate key or other errors inserting log
                 }
+            }
+        }
+
+        if ($anyRan) {
+            if (class_exists('Cache')) {
+                Cache::clear();
             }
         }
 
