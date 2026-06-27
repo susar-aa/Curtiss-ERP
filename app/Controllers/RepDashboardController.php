@@ -85,7 +85,7 @@ class RepDashboardController extends Controller {
                 exit;
             }
 
-            $lastSync = isset($_GET['last_sync_timestamp']) ? trim($_GET['last_sync_timestamp']) : '';
+            $lastSync = isset($_GET['last_sync']) ? trim($_GET['last_sync']) : (isset($_GET['last_sync_timestamp']) ? trim($_GET['last_sync_timestamp']) : '');
 
             static $columnsCache = [];
             $columnExists = function($table, $column) use (&$columnsCache) {
@@ -168,7 +168,7 @@ class RepDashboardController extends Controller {
             // 3. Get customers
             $deltaCust = $getDeltaFilter('customers', $lastSync, true, 'c');
             $this->db->query("
-                SELECT c.id, c.name, c.phone, c.whatsapp, c.address, c.territory, c.latitude, c.longitude, c.mca_id, m.name as mca_name,
+                SELECT c.id, c.name, c.phone, c.whatsapp, c.address, c.territory, c.latitude, c.longitude, c.mca_id, m.name as mca_name, c.updated_at,
                        c.email, c.credit_limit, c.customer_type, c.notes, c.status,
                        ((SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = c.id AND status != 'Voided') 
                        - 
@@ -203,7 +203,8 @@ class RepDashboardController extends Controller {
                     'credit_limit' => floatval($c->credit_limit ?? 0.00),
                     'customer_type' => $c->customer_type ?? 'Standard',
                     'notes' => $c->notes ?? '',
-                    'status' => $c->status ?? 'active'
+                    'status' => $c->status ?? 'active',
+                    'updated_at' => $c->updated_at ?? ''
                 ];
             }
             
@@ -954,6 +955,33 @@ class RepDashboardController extends Controller {
             'success' => true,
             'results' => $results
         ]);
+        exit;
+    }
+
+    public function api_logout() {
+        header('Content-Type: application/json');
+        
+        $json = file_get_contents('php://input');
+        $data = json_decode($json, true);
+        
+        $userId = isset($data['user_id']) ? intval($data['user_id']) : 0;
+        
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (isset($_SESSION['username'])) {
+            $this->logActivity('API Logout', 'Auth', "User '{$_SESSION['username']}' logged out via API.", $_SESSION['user_id'] ?? $userId);
+        } else if ($userId > 0) {
+            $this->logActivity('API Logout', 'Auth', "User ID {$userId} logged out via API.", $userId);
+        }
+        
+        unset($_SESSION['user_id']);
+        unset($_SESSION['username']);
+        unset($_SESSION['role']);
+        session_destroy();
+        
+        echo json_encode(['success' => true, 'message' => 'Logged out successfully on server.']);
         exit;
     }
 }
