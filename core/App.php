@@ -25,6 +25,50 @@ class App {
         // Check if this is an API sync request
         $isApiSync = $isMobileApi || isset($_GET['api_sync']) || (isset($url[1]) && (strpos($url[1], 'api_') === 0 || strpos($url[1], 'sync_') === 0));
 
+        // Global CSRF Protection
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isApiSync) {
+            $token = $_POST['csrf_token'] ?? '';
+            if (empty($token) && isset($_SERVER['HTTP_X_CSRF_TOKEN'])) {
+                $token = $_SERVER['HTTP_X_CSRF_TOKEN'];
+            }
+            if (empty($token) || !isset($_SESSION['csrf_token']) || $token !== $_SESSION['csrf_token']) {
+                $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
+                          (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    http_response_code(403);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'CSRF token validation failed. Please refresh the page and try again.'
+                    ]);
+                    exit;
+                } else {
+                    http_response_code(403);
+                    die("<!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Security Mismatch</title>
+                        <style>
+                            body { font-family: -apple-system, sans-serif; background: #f0f2f5; color: #333; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+                            .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 400px; text-align: center; }
+                            h3 { color: #ff3b30; margin-top: 0; }
+                            p { font-size: 14px; color: #666; line-height: 1.5; }
+                            .btn { display: inline-block; background: #0066cc; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; margin-top: 15px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class='card'>
+                            <h3>Security Validation Failed</h3>
+                            <p>Your session may have expired, or the request was flagged as unauthorized (CSRF Mismatch).</p>
+                            <p>Please go back, refresh the page, and try again.</p>
+                            <a href='javascript:history.back()\' class=\'btn\'>Go Back</a>
+                        </div>
+                    </body>
+                    </html>");
+                }
+            }
+        }
+
         // Allow public access to sales/show
         $isPublicInvoice = false;
         if (isset($url[0]) && strtolower($url[0]) === 'sales' && isset($url[1]) && strtolower($url[1]) === 'show' && isset($url[2])) {

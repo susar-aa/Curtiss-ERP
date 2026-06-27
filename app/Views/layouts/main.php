@@ -39,7 +39,7 @@ if (!function_exists('hasPermission')) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= APP_NAME ?> - <?= $data['title'] ?? 'Dashboard' ?></title>
+    <title><?= $data['title'] ?? 'Dashboard' ?></title>
     
     <!-- PWA Manifest & Mobile App Support -->
     <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
@@ -2365,6 +2365,112 @@ if (!function_exists('hasPermission')) {
                 });
             }
         });
+    </script>
+    
+    <!-- Automatic CSRF Injections for forms and AJAX requests -->
+    <script>
+        (function() {
+            const csrfToken = '<?= $_SESSION['csrf_token'] ?? '' ?>';
+            if (!csrfToken) return;
+
+            // 1. Function to inject into forms
+            function injectCsrf(container) {
+                const forms = (container || document).querySelectorAll('form[method="POST"], form[method="post"]');
+                forms.forEach(form => {
+                    if (!form.querySelector('input[name="csrf_token"]')) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'csrf_token';
+                        input.value = csrfToken;
+                        form.appendChild(input);
+                    }
+                });
+            }
+
+            // Run on initial load
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => injectCsrf());
+            } else {
+                injectCsrf();
+            }
+
+            // 2. Observe DOM mutations to inject CSRF into dynamically loaded/created forms
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach(mutation => {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === 1) { // Element node
+                            if (node.tagName === 'FORM' && (node.getAttribute('method') || '').toUpperCase() === 'POST') {
+                                if (!node.querySelector('input[name="csrf_token"]')) {
+                                    const input = document.createElement('input');
+                                    input.type = 'hidden';
+                                    input.name = 'csrf_token';
+                                    input.value = csrfToken;
+                                    node.appendChild(input);
+                                }
+                            } else {
+                                injectCsrf(node);
+                            }
+                        }
+                    });
+                });
+            });
+            observer.observe(document.documentElement, { childList: true, subtree: true });
+
+            // 3. Setup jQuery AJAX global header if jQuery is loaded
+            if (window.jQuery) {
+                window.jQuery.ajaxSetup({
+                    headers: { 'X-CSRF-TOKEN': csrfToken }
+                });
+            } else {
+                // Wait for jQuery just in case it loads later
+                document.addEventListener('DOMContentLoaded', () => {
+                    if (window.jQuery) {
+                        window.jQuery.ajaxSetup({
+                            headers: { 'X-CSRF-TOKEN': csrfToken }
+                        });
+                    }
+                });
+            }
+
+            // 4. Intercept standard fetch requests
+            const originalFetch = window.fetch;
+            window.fetch = function(input, init) {
+                init = init || {};
+                const method = init.method ? init.method.toUpperCase() : 'GET';
+                if (method === 'POST') {
+                    init.headers = init.headers || {};
+                    if (init.headers instanceof Headers) {
+                        init.headers.set('X-CSRF-TOKEN', csrfToken);
+                    } else if (Array.isArray(init.headers)) {
+                        let exists = false;
+                        for (let i = 0; i < init.headers.length; i++) {
+                            if (init.headers[i][0].toUpperCase() === 'X-CSRF-TOKEN') {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists) init.headers.push(['X-CSRF-TOKEN', csrfToken]);
+                    } else {
+                        init.headers['X-CSRF-TOKEN'] = csrfToken;
+                    }
+                }
+                return originalFetch.call(this, input, init);
+            };
+
+            // 5. Intercept XMLHttpRequests (like native AJAX, Axios, etc.)
+            const originalOpen = XMLHttpRequest.prototype.open;
+            const originalSend = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
+                this._method = method;
+                return originalOpen.apply(this, arguments);
+            };
+            XMLHttpRequest.prototype.send = function(body) {
+                if ((this._method || '').toUpperCase() === 'POST') {
+                    this.setRequestHeader('X-CSRF-TOKEN', csrfToken);
+                }
+                return originalSend.apply(this, arguments);
+            };
+        })();
     </script>
     
     <?php include '../app/Views/layouts/resilient_loader.php'; ?>

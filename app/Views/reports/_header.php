@@ -5,7 +5,7 @@ $filterAction = $data['filter_action'] ?? '';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title><?= htmlspecialchars($data['title']) ?> - <?= APP_NAME ?></title>
+    <title><?= htmlspecialchars($data['title']) ?></title>
     <style>
         body { background: #f0f2f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #1a1a1a; margin: 0; }
         .report-wrap { max-width: 1100px; margin: 0 auto; }
