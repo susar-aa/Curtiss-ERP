@@ -188,10 +188,19 @@ class AccountingController extends Controller {
             if (empty($lines)) { $data['error'] = 'You must enter at least one transaction line.'; } 
             elseif (round($totalDebit, 2) !== round($totalCredit, 2)) { $data['error'] = 'Accounting Error: Total Debits must equal Total Credits.'; } 
             else {
-                if ($this->journalModel->postEntry($date, $reference, $description, $lines, $_SESSION['user_id'])) {
-                    $data['success'] = 'Journal Entry successfully posted.';
-                    $data['entries'] = $this->journalModel->getAllEntries();
-                } else { $data['error'] = 'Database Error: Failed to post entry.'; }
+                // Check if date falls in a locked/closed financial year
+                $db = new Database();
+                $db->query("SELECT COUNT(*) as cnt FROM financial_years WHERE end_date >= :entry_date");
+                $db->bind(':entry_date', $date);
+                $res = $db->single();
+                if ($res && $res->cnt > 0) {
+                    $data['error'] = 'Accounting Error: The period containing date ' . $date . ' is closed and locked.';
+                } else {
+                    if ($this->journalModel->postEntry($date, $reference, $description, $lines, $_SESSION['user_id'])) {
+                        $data['success'] = 'Journal Entry successfully posted.';
+                        $data['entries'] = $this->journalModel->getAllEntries();
+                    } else { $data['error'] = 'Database Error: Failed to post entry.'; }
+                }
             }
         }
         $this->view('layouts/main', $data);

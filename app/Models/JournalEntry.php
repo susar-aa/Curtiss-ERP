@@ -16,6 +16,14 @@ class JournalEntry {
 
     public function postEntry($date, $reference, $description, $lines, $userId) {
         try {
+            // Check if period is closed/locked
+            $this->db->query("SELECT COUNT(*) as cnt FROM financial_years WHERE end_date >= :entry_date");
+            $this->db->bind(':entry_date', $date);
+            $res = $this->db->single();
+            if ($res && $res->cnt > 0) {
+                return false;
+            }
+
             $this->db->beginTransaction();
 
             $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by) 

@@ -1,72 +1,175 @@
-<?php
-/* STREAMING_CHUNK:Balance Sheet Printable View */
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Balance Sheet - <?= APP_NAME ?></title>
-    <style>
-        body { background: #f4f5f7; font-family: sans-serif; padding: 40px; color: #333; }
-        .report-box { max-width: 800px; margin: auto; background: #fff; padding: 50px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-        .text-center { text-align: center; }
-        .company-name { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        td { padding: 10px 0; border-bottom: 1px solid #eee; }
-        .num { text-align: right; }
-        .header-row { font-weight: bold; font-size: 16px; border-bottom: 2px solid #333; padding-top: 20px; }
-        .total-row { font-weight: bold; padding-top: 15px; }
-        .total-row td { border-bottom: 2px solid #333; }
-        .grand-total td { font-size: 16px; border-bottom: 4px double #333; }
-        @media print { body { padding: 0; background: #fff; } .report-box { box-shadow: none; padding: 0; } }
-    </style>
-</head>
-<body>
-    <div class="report-box">
-        <div class="text-center">
+<style>
+    /* Styling & Theme Variables */
+    .report-container {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: var(--text-dark, #333);
+        margin: 20px auto;
+        max-width: 900px;
+    }
+    .report-card {
+        background: #fff;
+        border: 1px solid var(--mac-border, #e2e8f0);
+        border-radius: 12px;
+        padding: 40px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        position: relative;
+    }
+    @media (prefers-color-scheme: dark) {
+        .report-card { background: #1e1e2d; border-color: #2d2d3d; color: #f1f5f9; }
+    }
+    
+    .report-header {
+        text-align: center;
+        margin-bottom: 30px;
+        border-bottom: 1px solid var(--mac-border, #e2e8f0);
+        padding-bottom: 20px;
+    }
+    @media (prefers-color-scheme: dark) {
+        .report-header { border-color: #27272a; }
+    }
+    
+    .company-name { font-size: 24px; font-weight: 800; color: #0066cc; margin-bottom: 5px; }
+    .report-title { font-size: 20px; font-weight: 700; margin: 5px 0; }
+    .report-date { font-size: 14px; color: #64748b; margin: 0; }
+    
+    .report-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    .report-table td { padding: 12px 0; border-bottom: 1px solid var(--mac-border, #e2e8f0); font-size: 14px; }
+    @media (prefers-color-scheme: dark) {
+        .report-table td { border-color: #27272a; }
+    }
+    
+    .num { text-align: right !important; font-family: monospace; font-size: 15px; font-weight: bold; }
+    .header-row { font-weight: bold; font-size: 16px; border-bottom: 2px solid var(--text-dark, #333); padding-top: 25px; color: #0066cc; }
+    @media (prefers-color-scheme: dark) {
+        .header-row { border-bottom-color: #52525b; color: #3b82f6; }
+    }
+    
+    .total-row { font-weight: bold; background: rgba(0,0,0,0.01); }
+    .total-row td { border-bottom: 2px solid var(--text-dark, #333); font-size: 15px; }
+    @media (prefers-color-scheme: dark) {
+        .total-row td { border-bottom-color: #52525b; }
+    }
+    
+    .grand-total td { font-size: 16px; border-bottom: 4px double #0066cc !important; color: #0066cc; }
+    @media (prefers-color-scheme: dark) {
+        .grand-total td { border-bottom-color: #3b82f6 !important; color: #3b82f6; }
+    }
+    
+    .status-alert {
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        font-weight: bold;
+        margin-top: 30px;
+    }
+    .status-ok { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+    .status-warn { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+    
+    .actions-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .btn {
+        padding: 10px 20px;
+        background: #0066cc;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn:hover { background: #0056b3; }
+    
+    @media print {
+        .glass-nav, .nav-back-btn, header, footer, .actions-bar, .fs-overlay, .fs-inner, .fs-close, button {
+            display: none !important;
+        }
+        body, .main-content, .report-container, .report-card {
+            background: #fff !important;
+            color: #000 !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            border: none !important;
+        }
+    }
+</style>
+
+<div class="report-container">
+    <div class="actions-bar">
+        <a href="<?= APP_URL ?>/report" class="btn" style="background:#64748b;">&larr; Back to Hub</a>
+        <button onclick="window.print()" class="btn">🖨️ Print Statement</button>
+    </div>
+
+    <div class="report-card">
+        <div class="report-header">
             <div class="company-name"><?= htmlspecialchars($data['company']->company_name) ?></div>
-            <h2>Balance Sheet</h2>
-            <p>As of <?= date('F j, Y') ?></p>
+            <h2 class="report-title">Balance Sheet</h2>
+            <p class="report-date">As of <?= date('F j, Y') ?></p>
         </div>
 
-        <table>
+        <table class="report-table">
             <!-- ASSETS -->
             <tr><td colspan="2" class="header-row">Assets</td></tr>
             <?php foreach($data['assets'] as $acc): ?>
-                <tr><td><?= htmlspecialchars($acc->account_name) ?></td><td class="num"><?= number_format($acc->balance, 2) ?></td></tr>
+                <tr>
+                    <td style="padding-left: 15px;"><?= htmlspecialchars($acc->account_name) ?> (GL-<?= htmlspecialchars($acc->account_code) ?>)</td>
+                    <td class="num">Rs <?= number_format($acc->balance, 2) ?></td>
+                </tr>
             <?php endforeach; ?>
-            <tr class="total-row grand-total"><td>Total Assets</td><td class="num" style="color: #0066cc;">Rs: <?= number_format($data['total_assets'], 2) ?></td></tr>
+            <tr class="total-row grand-total">
+                <td>Total Assets</td>
+                <td class="num">Rs <?= number_format($data['total_assets'], 2) ?></td>
+            </tr>
 
             <!-- LIABILITIES -->
             <tr><td colspan="2" class="header-row" style="padding-top: 30px;">Liabilities</td></tr>
             <?php foreach($data['liabilities'] as $acc): ?>
-                <tr><td><?= htmlspecialchars($acc->account_name) ?></td><td class="num"><?= number_format($acc->balance, 2) ?></td></tr>
+                <tr>
+                    <td style="padding-left: 15px;"><?= htmlspecialchars($acc->account_name) ?> (GL-<?= htmlspecialchars($acc->account_code) ?>)</td>
+                    <td class="num">Rs <?= number_format($acc->balance, 2) ?></td>
+                </tr>
             <?php endforeach; ?>
-            <tr class="total-row"><td>Total Liabilities</td><td class="num">Rs: <?= number_format($data['total_liabilities'], 2) ?></td></tr>
+            <tr class="total-row">
+                <td>Total Liabilities</td>
+                <td class="num">Rs <?= number_format($data['total_liabilities'], 2) ?></td>
+            </tr>
 
             <!-- EQUITY -->
             <tr><td colspan="2" class="header-row" style="padding-top: 30px;">Equity</td></tr>
             <?php foreach($data['equities'] as $acc): ?>
-                <tr><td><?= htmlspecialchars($acc->account_name) ?></td><td class="num"><?= number_format($acc->balance, 2) ?></td></tr>
+                <tr>
+                    <td style="padding-left: 15px;"><?= htmlspecialchars($acc->account_name) ?> (GL-<?= htmlspecialchars($acc->account_code) ?>)</td>
+                    <td class="num">Rs <?= number_format($acc->balance, 2) ?></td>
+                </tr>
             <?php endforeach; ?>
-            <tr><td><em>Net Income (Calculated)</em></td><td class="num"><em><?= number_format($data['net_income'], 2) ?></em></td></tr>
-            <tr class="total-row"><td>Total Equity</td><td class="num">Rs: <?= number_format($data['total_equity'], 2) ?></td></tr>
+            <tr>
+                <td style="padding-left: 15px; font-style: italic;">Net Income (Current Period P&L)</td>
+                <td class="num" style="font-style: italic;">Rs <?= number_format($data['net_income'], 2) ?></td>
+            </tr>
+            <tr class="total-row">
+                <td>Total Equity</td>
+                <td class="num">Rs <?= number_format($data['total_equity'], 2) ?></td>
+            </tr>
 
             <!-- TOTAL LIABILITIES & EQUITY -->
             <tr class="total-row grand-total">
                 <td style="padding-top: 30px;">Total Liabilities & Equity</td>
-                <td class="num" style="padding-top: 30px; color: #0066cc;">Rs: <?= number_format($data['total_liabilities_equity'], 2) ?></td>
+                <td class="num" style="padding-top: 30px;">Rs <?= number_format($data['total_liabilities_equity'], 2) ?></td>
             </tr>
         </table>
         
         <?php if(round($data['total_assets'], 2) === round($data['total_liabilities_equity'], 2)): ?>
-            <p style="text-align: center; color: #2e7d32; font-weight: bold; margin-top: 20px;">✓ The Balance Sheet is perfectly balanced.</p>
+            <div class="status-alert status-ok">
+                ✓ Balance Sheet Integrity Check Passed: Assets = Liabilities + Equity
+            </div>
         <?php else: ?>
-            <p style="text-align: center; color: #c62828; font-weight: bold; margin-top: 20px;">⚠ WARNING: Out of balance.</p>
+            <div class="status-alert status-warn">
+                ⚠ Balance Sheet integrity warning: Out of balance by Rs <?= number_format(abs($data['total_assets'] - $data['total_liabilities_equity']), 2) ?>
+            </div>
         <?php endif; ?>
     </div>
-    <div class="text-center" style="margin-top: 20px;">
-        <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer;">Print Report</button>
-    </div>
-</body>
-</html>
+</div>

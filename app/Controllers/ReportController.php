@@ -57,6 +57,195 @@ class ReportController extends Controller {
             die("Report '$reportKey' is not registered.");
         }
 
+        if ($reportKey === 'balance_sheet') {
+            $companyModel = $this->model('Company');
+            $company = $companyModel->getSettings();
+            $reportModel = $this->model('Report');
+
+            // Calculate Net Income (P&L Accounts: Revenue - Expense)
+            $plAccounts = $reportModel->getAccountsByTypes(['Revenue', 'Expense']);
+            $netIncome = 0;
+            foreach ($plAccounts as $acc) {
+                if ($acc->account_type == 'Revenue') {
+                    $netIncome += $acc->balance;
+                } else {
+                    $netIncome -= $acc->balance;
+                }
+            }
+
+            // Get balance sheet accounts (Asset, Liability, Equity)
+            $bsAccounts = $reportModel->getAccountsByTypes(['Asset', 'Liability', 'Equity']);
+            $assets = [];
+            $liabilities = [];
+            $equities = [];
+            $totalAssets = 0;
+            $totalLiabilities = 0;
+            $totalEquity = 0;
+
+            foreach ($bsAccounts as $acc) {
+                if ($acc->account_type == 'Asset') {
+                    $assets[] = $acc;
+                    $totalAssets += $acc->balance;
+                } elseif ($acc->account_type == 'Liability') {
+                    $liabilities[] = $acc;
+                    $totalLiabilities += $acc->balance;
+                } elseif ($acc->account_type == 'Equity') {
+                    $equities[] = $acc;
+                    $totalEquity += $acc->balance;
+                }
+            }
+
+            $totalEquity += $netIncome;
+            $totalLiabilitiesAndEquity = $totalLiabilities + $totalEquity;
+
+            $data = [
+                'title' => 'Balance Sheet',
+                'content_view' => 'reports/balance_sheet',
+                'company' => $company,
+                'assets' => $assets,
+                'liabilities' => $liabilities,
+                'equities' => $equities,
+                'total_assets' => $totalAssets,
+                'total_liabilities' => $totalLiabilities,
+                'net_income' => $netIncome,
+                'total_equity' => $totalEquity,
+                'total_liabilities_equity' => $totalLiabilitiesAndEquity
+            ];
+            $this->view('layouts/main', $data);
+            return;
+        }
+
+        if ($reportKey === 'cash_flow') {
+            $companyModel = $this->model('Company');
+            $company = $companyModel->getSettings();
+            $reportModel = $this->model('Report');
+
+            $accounts = $reportModel->getAccountsByTypes(['Asset', 'Liability', 'Equity', 'Revenue', 'Expense']);
+
+            $netIncome = 0; $operating = []; $investing = []; $financing = []; $cashBalance = 0;
+
+            foreach($accounts as $acc) {
+                $nameStr = strtolower($acc->account_name);
+                if ($acc->account_type == 'Revenue') { $netIncome += $acc->balance; }
+                elseif ($acc->account_type == 'Expense') { $netIncome -= $acc->balance; }
+                
+                if ($acc->account_type == 'Asset') {
+                    if (strpos($nameStr, 'cash') !== false || strpos($nameStr, 'bank') !== false) {
+                        $cashBalance += $acc->balance; 
+                    } elseif (strpos($nameStr, 'equipment') !== false || strpos($nameStr, 'asset') !== false) {
+                        $investing[] = ['name' => 'Purchase of ' . $acc->account_name, 'amount' => -$acc->balance]; 
+                    } else {
+                        $operating[] = ['name' => 'Change in ' . $acc->account_name, 'amount' => -$acc->balance]; 
+                    }
+                } elseif ($acc->account_type == 'Liability') {
+                    $operating[] = ['name' => 'Change in ' . $acc->account_name, 'amount' => $acc->balance]; 
+                } elseif ($acc->account_type == 'Equity') {
+                    if (strpos($nameStr, 'retained') === false) { 
+                        $financing[] = ['name' => 'Change in ' . $acc->account_name, 'amount' => $acc->balance];
+                    }
+                }
+            }
+
+            $data = [
+                'title' => 'Statement of Cash Flows',
+                'content_view' => 'reports/cash_flow',
+                'company' => $company,
+                'net_income' => $netIncome,
+                'operating' => $operating,
+                'investing' => $investing,
+                'financing' => $financing,
+                'ending_cash' => $cashBalance
+            ];
+            $this->view('layouts/main', $data);
+            return;
+        }
+
+        if ($reportKey === 'multi_period_comparison') {
+            $companyModel = $this->model('Company');
+            $company = $companyModel->getSettings();
+            $reportModel = $this->model('Report');
+
+            // Get selected dates or defaults
+            $startDate = $_GET['start_date'] ?? date('Y-m-01');
+            $endDate = $_GET['end_date'] ?? date('Y-m-t');
+            $comparisonType = $_GET['comparison_type'] ?? 'mom';
+
+            if ($comparisonType === 'yoy') {
+                $compStartDate = date('Y-m-d', strtotime('-1 year', strtotime($startDate)));
+                $compEndDate = date('Y-m-d', strtotime('-1 year', strtotime($endDate)));
+            } else {
+                $compStartDate = date('Y-m-d', strtotime('-1 month', strtotime($startDate)));
+                $compEndDate = date('Y-m-d', strtotime('-1 month', strtotime($endDate)));
+            }
+
+            $db = new Database();
+            $db->query("SELECT c.id, c.account_code, c.account_name, c.account_type,
+                               SUM(CASE WHEN c.account_type IN ('Asset', 'Expense') THEN (COALESCE(t.debit, 0) - COALESCE(t.credit, 0))
+                                        ELSE (COALESCE(t.credit, 0) - COALESCE(t.debit, 0)) END) as balance
+                        FROM chart_of_accounts c
+                        LEFT JOIN transactions t ON c.id = t.account_id
+                        LEFT JOIN journal_entries je ON t.journal_entry_id = je.id AND je.status = 'Posted'
+                            AND je.entry_date BETWEEN :start AND :end
+                        GROUP BY c.id, c.account_code, c.account_name, c.account_type
+                        ORDER BY c.account_code ASC");
+            $db->bind(':start', $startDate);
+            $db->bind(':end', $endDate);
+            $baseBalances = $db->resultSet() ?: [];
+
+            $db->query("SELECT c.id,
+                               SUM(CASE WHEN c.account_type IN ('Asset', 'Expense') THEN (COALESCE(t.debit, 0) - COALESCE(t.credit, 0))
+                                        ELSE (COALESCE(t.credit, 0) - COALESCE(t.debit, 0)) END) as balance
+                        FROM chart_of_accounts c
+                        LEFT JOIN transactions t ON c.id = t.account_id
+                        LEFT JOIN journal_entries je ON t.journal_entry_id = je.id AND je.status = 'Posted'
+                            AND je.entry_date BETWEEN :start AND :end
+                        GROUP BY c.id");
+            $db->bind(':start', $compStartDate);
+            $db->bind(':end', $compEndDate);
+            $compBalancesRaw = $db->resultSet() ?: [];
+            
+            $compBalances = [];
+            foreach ($compBalancesRaw as $cb) {
+                $compBalances[$cb->id] = $cb->balance;
+            }
+
+            $comparisonData = [];
+            foreach ($baseBalances as $bb) {
+                $compVal = $compBalances[$bb->id] ?? 0.0;
+                $variance = $bb->balance - $compVal;
+                $pctChange = 0.0;
+                if (round($compVal, 2) != 0.0) {
+                    $pctChange = ($variance / abs($compVal)) * 100;
+                } elseif (round($bb->balance, 2) != 0.0) {
+                    $pctChange = 100.0;
+                }
+
+                $comparisonData[] = [
+                    'account_code' => $bb->account_code,
+                    'account_name' => $bb->account_name,
+                    'account_type' => $bb->account_type,
+                    'base_balance' => $bb->balance,
+                    'comp_balance' => $compVal,
+                    'variance' => $variance,
+                    'pct_change' => $pctChange
+                ];
+            }
+
+            $data = [
+                'title' => 'Multi-Period Comparative Report',
+                'content_view' => 'reports/multi_period_comparison',
+                'company' => $company,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'comp_start_date' => $compStartDate,
+                'comp_end_date' => $compEndDate,
+                'comparison_type' => $comparisonType,
+                'comparison_data' => $comparisonData
+            ];
+            $this->view('layouts/main', $data);
+            return;
+        }
+
         $reportMetadata = $registry[$reportKey];
 
         // Fetch dynamic filter options from the database

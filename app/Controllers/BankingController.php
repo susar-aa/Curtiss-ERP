@@ -240,14 +240,55 @@ class BankingController extends Controller {
 
         // Handle the submission of checked transactions
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'save_reconciliation') {
-            
-            if (isset($_POST['cleared_tx']) && !empty($_POST['cleared_tx'])) {
-                if ($this->coaModel->clearTransactions($_POST['cleared_tx'])) {
-                    $data['success'] = count($_POST['cleared_tx']) . ' transaction(s) have been successfully reconciled and cleared!';
-                    // Refresh the uncleared list so they disappear from the screen
-                    $data['uncleared'] = $this->coaModel->getUnclearedTransactions($accountId);
+            $statementBalance = floatval($_POST['statement_balance'] ?? 0.0);
+            $clearedTx = $_POST['cleared_tx'] ?? [];
+
+            if (!empty($clearedTx)) {
+                // Fetch current uncleared to calculate and validate
+                $unclearedList = $this->coaModel->getUnclearedTransactions($accountId);
+                $unclearedMap = [];
+                $totalUnclearedImpact = 0.0;
+                foreach ($unclearedList as $t) {
+                    $unclearedMap[$t->id] = $t;
+                    $totalUnclearedImpact += ($t->debit > 0) ? floatval($t->debit) : -floatval($t->credit);
+                }
+
+                $validCleared = [];
+                $selectedDeposits = 0.0;
+                $selectedPayments = 0.0;
+
+                foreach ($clearedTx as $txId) {
+                    $txId = intval($txId);
+                    if (isset($unclearedMap[$txId])) {
+                        $validCleared[] = $txId;
+                        $t = $unclearedMap[$txId];
+                        $impact = ($t->debit > 0) ? floatval($t->debit) : -floatval($t->credit);
+                        if ($impact > 0) {
+                            $selectedDeposits += $impact;
+                        } else {
+                            $selectedPayments += abs($impact);
+                        }
+                    }
+                }
+
+                if (count($validCleared) !== count($clearedTx)) {
+                    $data['error'] = 'Data Integrity Error: One or more selected transactions are invalid or already cleared.';
                 } else {
-                    $data['error'] = 'Database error: Failed to update transaction status.';
+                    $startingClearedBalance = floatval($account->balance) - $totalUnclearedImpact;
+                    $newClearedBalance = $startingClearedBalance + $selectedDeposits - $selectedPayments;
+                    $difference = $statementBalance - $newClearedBalance;
+
+                    if (abs($difference) >= 0.01) {
+                        $data['error'] = 'Reconciliation Error: Selected transactions do not match the statement ending balance (Difference: Rs ' . number_format($difference, 2) . ').';
+                    } else {
+                        if ($this->coaModel->clearTransactions($validCleared)) {
+                            $data['success'] = count($validCleared) . ' transaction(s) have been successfully reconciled and cleared!';
+                            $data['statement_balance'] = $statementBalance;
+                            $data['uncleared'] = $this->coaModel->getUnclearedTransactions($accountId);
+                        } else {
+                            $data['error'] = 'Database error: Failed to update transaction status.';
+                        }
+                    }
                 }
             } else {
                  $data['error'] = 'No transactions were selected to clear.';

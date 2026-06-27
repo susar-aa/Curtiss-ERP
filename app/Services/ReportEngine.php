@@ -617,6 +617,21 @@ class ReportEngine {
                           JOIN chart_of_accounts c ON t.account_id = c.id
                           WHERE 1=1"
             ],
+            'balance_sheet' => [
+                'title' => 'Balance Sheet',
+                'category' => 'finance',
+                'custom_render' => true
+            ],
+            'cash_flow' => [
+                'title' => 'Statement of Cash Flows',
+                'category' => 'finance',
+                'custom_render' => true
+            ],
+            'multi_period_comparison' => [
+                'title' => 'Multi-Period Comparison (YoY & MoM)',
+                'category' => 'finance',
+                'custom_render' => true
+            ],
 
             // 7. Collection Reports
             'credit_collection' => [

@@ -47,6 +47,12 @@ document.addEventListener('submit', function(e) {
         formData.append(submitter.name, submitter.value);
     }
 
+    // Fail-safe inject CSRF token if not already in FormData
+    const resilientCsrfToken = '<?= $_SESSION['csrf_token'] ?? '' ?>';
+    if (resilientCsrfToken && !formData.has('csrf_token')) {
+        formData.append('csrf_token', resilientCsrfToken);
+    }
+
     const targetUrl = form.getAttribute('action') || window.location.href;
 
     // Diagnostic logging
@@ -59,12 +65,17 @@ document.addEventListener('submit', function(e) {
     }
     console.log('----------------------------------------');
 
+    const fetchHeaders = {
+        'X-Requested-With': 'XMLHttpRequest'
+    };
+    if (resilientCsrfToken) {
+        fetchHeaders['X-CSRF-TOKEN'] = resilientCsrfToken;
+    }
+
     fetch(targetUrl, {
         method: form.method || 'POST',
         body: formData,
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
+        headers: fetchHeaders
     })
     .then(response => {
         if (!response.ok) {
