@@ -1711,42 +1711,105 @@ class RepTrackingController extends Controller {
         $endDate = isset($_GET['end_date']) ? trim($_GET['end_date']) : '';
         $status = isset($_GET['status']) ? trim($_GET['status']) : '';
         
-        $queryStr = "
-            SELECT i.id, i.invoice_number, i.invoice_date, c.name as customer_name, i.status,
-                   (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
-            FROM invoices i
-            JOIN customers c ON i.customer_id = c.id
-            WHERE (i.rep_route_id IS NULL OR i.rep_route_id = 0)
-              AND i.stock_status = 'reserved'
-              AND i.status != 'Voided'
-        ";
-        $params = [];
-        if (!empty($search)) {
-            $queryStr .= " AND (i.invoice_number LIKE :search OR c.name LIKE :search2)";
-            $params['search'] = '%' . $search . '%';
-            $params['search2'] = '%' . $search . '%';
+        $invoicesList = [];
+        
+        // 1. Fetch unattached route bookings from invoices
+        if (empty($status) || $status !== 'Pending') {
+            $queryStr = "
+                SELECT i.id, i.invoice_number, i.invoice_date, c.name as customer_name, i.status,
+                       (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
+                FROM invoices i
+                JOIN customers c ON i.customer_id = c.id
+                WHERE (i.rep_route_id IS NULL OR i.rep_route_id = 0)
+                  AND i.stock_status = 'reserved'
+                  AND i.status != 'Voided'
+            ";
+            $params = [];
+            if (!empty($search)) {
+                $queryStr .= " AND (i.invoice_number LIKE :search OR c.name LIKE :search2)";
+                $params['search'] = '%' . $search . '%';
+                $params['search2'] = '%' . $search . '%';
+            }
+            if (!empty($startDate)) {
+                $queryStr .= " AND i.invoice_date >= :start_date";
+                $params['start_date'] = $startDate;
+            }
+            if (!empty($endDate)) {
+                $queryStr .= " AND i.invoice_date <= :end_date";
+                $params['end_date'] = $endDate;
+            }
+            if (!empty($status)) {
+                $queryStr .= " AND i.status = :status";
+                $params['status'] = $status;
+            }
+            $queryStr .= " ORDER BY i.invoice_number DESC LIMIT 50";
+            $db = new Database();
+            $db->query($queryStr);
+            foreach ($params as $key => $val) {
+                $db->bind(':' . $key, $val);
+            }
+            $invoices = $db->resultSet() ?: [];
+            foreach ($invoices as $inv) {
+                $invoicesList[] = [
+                    'id' => 'route:' . $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'invoice_date' => $inv->invoice_date,
+                    'customer_name' => $inv->customer_name,
+                    'status' => $inv->status,
+                    'true_grand_total' => floatval($inv->true_grand_total)
+                ];
+            }
         }
-        if (!empty($startDate)) {
-            $queryStr .= " AND i.invoice_date >= :start_date";
-            $params['start_date'] = $startDate;
+
+        // 2. Fetch pending standard sales orders
+        if (empty($status) || $status === 'Pending') {
+            $soQueryStr = "
+                SELECT so.id, so.order_number as invoice_number, so.order_date as invoice_date, c.name as customer_name, so.status,
+                       so.grand_total as true_grand_total
+                FROM sales_orders so
+                JOIN customers c ON so.customer_id = c.id
+                WHERE so.status = 'Pending'
+            ";
+            $soParams = [];
+            if (!empty($search)) {
+                $soQueryStr .= " AND (so.order_number LIKE :search OR c.name LIKE :search2)";
+                $soParams['search'] = '%' . $search . '%';
+                $soParams['search2'] = '%' . $search . '%';
+            }
+            if (!empty($startDate)) {
+                $soQueryStr .= " AND so.order_date >= :start_date";
+                $soParams['start_date'] = $startDate;
+            }
+            if (!empty($endDate)) {
+                $soQueryStr .= " AND so.order_date <= :end_date";
+                $soParams['end_date'] = $endDate;
+            }
+            $soQueryStr .= " ORDER BY so.order_number DESC LIMIT 50";
+            $db = new Database();
+            $db->query($soQueryStr);
+            foreach ($soParams as $key => $val) {
+                $db->bind(':' . $key, $val);
+            }
+            $soList = $db->resultSet() ?: [];
+            foreach ($soList as $so) {
+                $invoicesList[] = [
+                    'id' => 'standard:' . $so->id,
+                    'invoice_number' => $so->invoice_number,
+                    'invoice_date' => $so->invoice_date,
+                    'customer_name' => $so->customer_name,
+                    'status' => $so->status,
+                    'true_grand_total' => floatval($so->true_grand_total)
+                ];
+            }
         }
-        if (!empty($endDate)) {
-            $queryStr .= " AND i.invoice_date <= :end_date";
-            $params['end_date'] = $endDate;
-        }
-        if (!empty($status)) {
-            $queryStr .= " AND i.status = :status";
-            $params['status'] = $status;
-        }
-        $queryStr .= " ORDER BY i.invoice_number DESC LIMIT 50";
-        $db = new Database();
-        $db->query($queryStr);
-        foreach ($params as $key => $val) {
-            $db->bind(':' . $key, $val);
-        }
-        $invoices = $db->resultSet() ?: [];
+
+        // Sort combined list by date desc
+        usort($invoicesList, function($a, $b) {
+            return strcmp($b['invoice_date'], $a['invoice_date']);
+        });
+
         header('Content-Type: application/json');
-        echo json_encode(['status' => 'success', 'invoices' => $invoices]);
+        echo json_encode(['status' => 'success', 'invoices' => $invoicesList]);
         exit;
     }
 
@@ -1763,14 +1826,108 @@ class RepTrackingController extends Controller {
         }
         try {
             $db = new Database();
-            $db->beginTransaction();
-            foreach ($invoiceIds as $invId) {
-                $db->query("UPDATE invoices SET rep_route_id = :rid WHERE id = :id");
-                $db->bind(':rid', $routeId);
-                $db->bind(':id', $invId);
-                $db->execute();
+            foreach ($invoiceIds as $compositeId) {
+                if (strpos($compositeId, 'standard:') === 0) {
+                    $soId = intval(substr($compositeId, 9));
+                    
+                    // Fetch standard sales order details
+                    $db->query("SELECT * FROM sales_orders WHERE id = :id");
+                    $db->bind(':id', $soId);
+                    $so = $db->single();
+                    if (!$so) {
+                        throw new Exception("Standard Sales Order not found for ID: " . $soId);
+                    }
+                    
+                    // Fetch items
+                    $db->query("SELECT * FROM sales_order_items WHERE sales_order_id = :id");
+                    $db->bind(':id', $soId);
+                    $soItems = $db->resultSet() ?: [];
+                    
+                    // Prepare items payload
+                    $itemsPayload = [];
+                    foreach ($soItems as $item) {
+                        $compositeItemSelection = $item->item_id . '|' . ($item->variation_option_id ?: '0');
+                        $itemsPayload[] = [
+                            'item_selection' => $compositeItemSelection,
+                            'description' => $item->name,
+                            'quantity' => $item->qty,
+                            'unit_price' => $item->billing_price,
+                            'discount_value' => $item->discount_value,
+                            'discount_type' => $item->discount_type,
+                            'total' => $item->total
+                        ];
+                    }
+                    
+                    // AR and Revenue Accounts
+                    $arAccountId = null;
+                    $db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' AND (account_name LIKE '%Receivable%' OR account_code LIKE '1100%') LIMIT 1");
+                    $arRow = $db->single();
+                    $arAccountId = $arRow ? $arRow->id : null;
+
+                    $revenueAccountId = null;
+                    $db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' AND (account_name LIKE '%Sales%' OR account_name LIKE '%Revenue%' OR account_code LIKE '4000%') LIMIT 1");
+                    $revRow = $db->single();
+                    $revenueAccountId = $revRow ? $revRow->id : null;
+
+                    if (!$arAccountId || !$revenueAccountId) {
+                        throw new Exception("Accounting Accounts not configured.");
+                    }
+                    
+                    // Create invoice number
+                    $db->query("SELECT id FROM invoices ORDER BY id DESC LIMIT 1");
+                    $lastRow = $db->single();
+                    $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+                    $invoiceNumber = 'INV-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+                    
+                    $invoiceData = [
+                        'customer_id' => $so->customer_id,
+                        'invoice_number' => $invoiceNumber,
+                        'invoice_date' => date('Y-m-d'),
+                        'due_date' => date('Y-m-d'),
+                        'payment_term_id' => $so->payment_term_id,
+                        'subtotal' => $so->subtotal,
+                        'global_discount_val' => $so->discount,
+                        'global_discount_type' => 'Rs',
+                        'notes' => trim($so->notes ?? ''),
+                        'rep_route_id' => $routeId,
+                        'grand_total' => $so->grand_total,
+                        'stock_status' => 'reserved'
+                    ];
+                    
+                    $invoiceModel = $this->model('Invoice');
+                    $invoiceId = $invoiceModel->createInvoiceWithAccounting(
+                        $invoiceData,
+                        $itemsPayload,
+                        $arAccountId,
+                        $revenueAccountId,
+                        $_SESSION['user_id']
+                    );
+                    
+                    if ($invoiceId) {
+                        // Update standard sales order status to Transferred
+                        $db->query("UPDATE sales_orders SET status = 'Transferred' WHERE id = :id");
+                        $db->bind(':id', $soId);
+                        $db->execute();
+                    } else {
+                        throw new Exception("Failed to convert Sales Order to Invoice.");
+                    }
+                    
+                } else {
+                    // It is a route booking (invoice)
+                    $invId = $compositeId;
+                    if (strpos($invId, 'route:') === 0) {
+                        $invId = substr($invId, 6);
+                    }
+                    $invId = intval($invId);
+                    
+                    $db->beginTransaction();
+                    $db->query("UPDATE invoices SET rep_route_id = :rid WHERE id = :id");
+                    $db->bind(':rid', $routeId);
+                    $db->bind(':id', $invId);
+                    $db->execute();
+                    $db->commit();
+                }
             }
-            $db->commit();
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'message' => 'Invoices attached successfully!']);
             exit;

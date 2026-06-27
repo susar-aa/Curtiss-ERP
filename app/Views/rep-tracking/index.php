@@ -885,42 +885,30 @@
                         <p style="margin:0; font-size:12px;">Map the transactions of this route to appropriate general ledger accounts. Make manual overrides if needed and finalize the route.</p>
                     </div>
 
-                    <!-- Dispatch Assignment Section inside Accounting final tab -->
-                    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
-                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-truck"></i> Dispatch & Logistics Assignment</h4>
-                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px;">
-                            <div>
-                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Vehicle Number *</label>
-                                <select id="settleDaVehicle" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;" required>
-                                    <option value="">-- Select Vehicle --</option>
-                                    <?php foreach($data['vehicles'] as $v): ?>
-                                        <?php if($v->status === 'Active'): ?>
-                                            <option value="<?= htmlspecialchars($v->vehicle_number) ?>"><?= htmlspecialchars($v->vehicle_number) ?></option>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Driver Name *</label>
-                                <select id="settleDaDriver" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;" required>
-                                    <option value="">-- Select Driver --</option>
-                                    <?php foreach($data['drivers'] as $d): ?>
-                                        <option value="<?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?>"><?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Partner / Helper</label>
-                                <select id="settleDaPartner" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
-                                    <option value="">-- None --</option>
-                                    <?php foreach($data['employees'] as $e): ?>
-                                        <?php if($e->status === 'Active'): ?>
-                                            <option value="<?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?>"><?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?> (<?= htmlspecialchars($e->job_title) ?>)</option>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
+                    <!-- Dispatch Assignment Section inside Accounting final tab (Hidden to streamline interface) -->
+                    <div style="display:none;">
+                        <select id="settleDaVehicle">
+                            <option value="">-- Select Vehicle --</option>
+                            <?php foreach($data['vehicles'] as $v): ?>
+                                <?php if($v->status === 'Active'): ?>
+                                    <option value="<?= htmlspecialchars($v->vehicle_number) ?>"><?= htmlspecialchars($v->vehicle_number) ?></option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </select>
+                        <select id="settleDaDriver">
+                            <option value="">-- Select Driver --</option>
+                            <?php foreach($data['drivers'] as $d): ?>
+                                <option value="<?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?>"><?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select id="settleDaPartner">
+                            <option value="">-- None --</option>
+                            <?php foreach($data['employees'] as $e): ?>
+                                <?php if($e->status === 'Active'): ?>
+                                    <option value="<?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?>"><?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?> (<?= htmlspecialchars($e->job_title) ?>)</option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
 
                     <!-- General Ledger account double entry mappings card -->
@@ -4031,7 +4019,7 @@
     function confirmAttachInvoices() {
         const checkedInvoices = [];
         document.querySelectorAll('.attach-invoice-checkbox:checked').forEach(cb => {
-            checkedInvoices.push(parseInt(cb.value));
+            checkedInvoices.push(cb.value);
         });
         
         if (checkedInvoices.length === 0) { alert("Please select at least one sales order to attach."); return; }
