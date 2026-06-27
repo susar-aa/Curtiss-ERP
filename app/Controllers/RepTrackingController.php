@@ -2148,6 +2148,96 @@ class RepTrackingController extends Controller {
         }
     }
 
+    public function api_get_invoice_for_delivery($invoiceId) {
+        $invoiceId = intval($invoiceId);
+        
+        $driverInvoiceModel = $this->model('DriverInvoice');
+        $invoice = $driverInvoiceModel->getInvoiceDetails($invoiceId);
+        if (!$invoice) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Invoice not found.']);
+            exit;
+        }
+        
+        $items = $driverInvoiceModel->getInvoiceItems($invoiceId);
+        $arrears = $driverInvoiceModel->getCustomerTotalArrears($invoice->customer_id, $invoice->rep_route_id);
+        
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'success',
+            'invoice' => $invoice,
+            'items' => $items,
+            'arrears' => $arrears
+        ]);
+        exit;
+    }
+
+    public function api_process_delivery_visit() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        $this->validateCsrf();
+        
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $routeId = intval($payload['route_id'] ?? 0);
+        $customerId = intval($payload['customer_id'] ?? 0);
+        $userId = $_SESSION['user_id'];
+        
+        if ($routeId <= 0 || $customerId <= 0) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Invalid route or customer ID.']);
+            exit;
+        }
+        
+        $driverInvoiceModel = $this->model('DriverInvoice');
+        
+        // 1. Process deliveries
+        $deliveries = $payload['deliveries'] ?? [];
+        foreach ($deliveries as $del) {
+            $invoiceId = intval($del['invoice_id'] ?? 0);
+            $deliveryStatus = $del['delivery_status'] ?? 'Delivered';
+            if ($invoiceId > 0) {
+                $driverInvoiceModel->updateInvoiceDeliveryStatus($invoiceId, $deliveryStatus);
+                
+                $items = $del['items'] ?? [];
+                foreach ($items as $item) {
+                    $itemId = intval($item['invoice_item_id'] ?? 0);
+                    $deliveredQty = floatval($item['delivered_qty'] ?? 0);
+                    if ($itemId > 0) {
+                        if ($deliveredQty <= 0) {
+                            $driverInvoiceModel->deleteInvoiceItem($itemId);
+                        } else {
+                            $driverInvoiceModel->updateInvoiceItemQty($itemId, $deliveredQty);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 2. Process payments (collections)
+        $collections = $payload['collections'] ?? null;
+        if ($collections) {
+            $cashAmt = floatval($collections['cash'] ?? 0);
+            $bankAmt = floatval($collections['bank'] ?? 0);
+            $cheques = $collections['cheques'] ?? [];
+            
+            $collectionsPayload = [
+                'cash' => $cashAmt,
+                'bank' => $bankAmt,
+                'cheques' => $cheques
+            ];
+            
+            if ($cashAmt > 0 || $bankAmt > 0 || count($cheques) > 0) {
+                $driverInvoiceModel->checkoutShop($customerId, $routeId, $userId, $collectionsPayload);
+            }
+        }
+        
+        // 3. Auto-apply payments to invoices
+        $this->autoApplyPaymentsToInvoices($customerId);
+        
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'success', 'message' => 'Delivery visit processed successfully!']);
+        exit;
+    }
+
     public function api_save_return_stock() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
         $this->validateCsrf();

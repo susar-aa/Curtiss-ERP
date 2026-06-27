@@ -779,6 +779,7 @@
                                     <th style="text-align:right;">Grand Total (Rs)</th>
                                     <th style="text-align:center;">Delivery Status</th>
                                     <th style="text-align:center;">Payment Status</th>
+                                    <th style="text-align:center;">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="deliveryTabInvoicesTbody">
@@ -1152,6 +1153,99 @@
                     <div style="font-size: 11px; color: #666;">Rep: <?= htmlspecialchars($route->first_name . ' ' . $route->last_name) ?></div>
                 </div>
             <?php endforeach; ?>
+        </div>
+    </div>
+</div>
+
+<!-- Server-side Delivery Process Modal -->
+<div class="modal-backdrop" id="serverDeliveryProcessModal" style="display: none; align-items: center; justify-content: center;">
+    <div class="modal-panel" style="max-width: 750px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-header" style="background: #0066cc; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; color: #fff; font-weight: bold;">
+            <span><i class="ph ph-steering-wheel"></i> Process Visit: <span id="sdpCustomerName"></span></span>
+            <button onclick="closeServerDeliveryProcessModal()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
+        </div>
+        <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 20px; background: #fafafa;">
+            
+            <!-- Hidden details -->
+            <input type="hidden" id="sdpInvoiceId" />
+            <input type="hidden" id="sdpCustomerId" />
+
+            <!-- Visit Status & Info -->
+            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
+                <div>
+                    <div style="font-size: 11px; text-transform: uppercase; color: #888; font-weight: bold;">Processing Invoice</div>
+                    <strong id="sdpInvoiceNumber" style="font-size: 15px; color: #0066cc;"></strong>
+                </div>
+                <div>
+                    <div style="font-size: 11px; text-transform: uppercase; color: #888; font-weight: bold;">Delivery Status</div>
+                    <select id="sdpDeliveryStatus" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: bold; font-size: 13px;">
+                        <option value="Pending">Pending</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="Postponed">Postponed</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Arrears & Outstanding Info -->
+            <div id="sdpArrearsInfoBox" style="background: #fffbeb; padding: 12px 15px; border-radius: 8px; border: 1px solid #fef3c7; color: #b45309; font-size: 13px; font-weight: 500;">
+                <i class="ph ph-warning"></i> Customer Outstanding Balance: <strong id="sdpOutstandingArrears">Rs 0.00</strong>
+            </div>
+
+            <!-- Items Section (Adjust Bills) -->
+            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <h4 style="margin: 0 0 10px 0; font-size: 13px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 6px;">
+                    <i class="ph ph-package" style="color:#0066cc;"></i> Adjust Invoice Items (Bill Quantity)
+                </h4>
+                <div style="max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
+                    <table class="data-table" style="margin-top: 0; font-size: 12px;">
+                        <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 5;">
+                            <tr>
+                                <th>Item Description</th>
+                                <th style="text-align: right; width: 80px;">Loaded</th>
+                                <th style="text-align: right; width: 120px;">Delivered Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sdpItemsTbody">
+                            <!-- Populated in JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Collections Section (Record Payments & Credit Collections) -->
+            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <h4 style="margin: 0 0 15px 0; font-size: 13px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 6px;">
+                    <i class="ph ph-coins" style="color:#2e7d32;"></i> Record Payments & Collections
+                </h4>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <label>Cash Amount (Rs)</label>
+                        <input type="number" step="0.01" min="0" id="sdpCashAmount" style="width:100%; padding:8px 12px; border:1px solid #ccc; border-radius:6px;" value="0.00">
+                    </div>
+                    <div>
+                        <label>Bank Transfer (Rs)</label>
+                        <input type="number" step="0.01" min="0" id="sdpBankAmount" style="width:100%; padding:8px 12px; border:1px solid #ccc; border-radius:6px;" value="0.00">
+                    </div>
+                </div>
+
+                <!-- Cheques list section -->
+                <div style="border-top: 1px dashed #e2e8f0; padding-top: 15px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <strong style="font-size:12px; color:#555;">Cheque Collections</strong>
+                        <button type="button" onclick="addSdpChequeRow()" class="btn-premium secondary" style="padding:4px 8px; font-size:11px; cursor:pointer;"><i class="ph ph-plus"></i> Add Cheque</button>
+                    </div>
+                    <div id="sdpChequesContainer" style="display:flex; flex-direction:column; gap:10px;">
+                        <!-- Cheque rows go here -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <div class="modal-footer" style="background: #f8fafc; border-top: 1px solid #e2e8f0;">
+            <button class="qb-btn" onclick="closeServerDeliveryProcessModal()" style="border:1px solid #ccc; padding:8px 18px; border-radius:6px; font-size:12px; cursor:pointer;">Cancel</button>
+            <button class="qb-btn" onclick="submitServerDeliveryProcess()" style="background:#0066cc; color:#fff; border:none; padding:8px 18px; border-radius:6px; font-size:12px; cursor:pointer; font-weight: bold;">Save & Process Visit</button>
         </div>
     </div>
 </div>
@@ -2629,14 +2723,14 @@
         if (!summaryCards || !tbody) return;
 
         summaryCards.innerHTML = '<div style="grid-column: span 4; text-align:center; padding:10px;">Loading performance summary... ⏳</div>';
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading customer dispatches... ⏳</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Loading customer dispatches... ⏳</td></tr>';
 
         const rdata = document.getElementById('route_data_' + routeId);
         const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
 
         if (!delId || delId === '0' || delId === '') {
             summaryCards.innerHTML = '<div style="grid-column: span 4; text-align:center; padding:10px; color:#888;">Delivery has not been arranged/dispatched yet.</div>';
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">No dispatch data available.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">No dispatch data available.</td></tr>';
             return;
         }
 
@@ -2645,7 +2739,7 @@
             .then(data => {
                 if (data.status !== 'success' || !data.delivery) {
                     summaryCards.innerHTML = '<div style="grid-column: span 4; text-align:center; color:red;">Error loading delivery.</div>';
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Failed to load details.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Failed to load details.</td></tr>';
                     return;
                 }
 
@@ -2676,13 +2770,27 @@
 
                 tbody.innerHTML = '';
                 if (invoices.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">No invoices dispatched.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">No invoices dispatched.</td></tr>';
                     return;
                 }
 
                 invoices.forEach(inv => {
                     let dColor = inv.delivery_status === 'Delivered' ? '#2e7d32' : '#d05d00';
                     let pColor = inv.status === 'Paid' ? '#2e7d32' : '#d05d00';
+                    
+                    let actionHtml = '';
+                    if (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized') {
+                        actionHtml = `<span style="color:#888; font-size:11px; font-weight:bold;">Closed</span>`;
+                    } else {
+                        actionHtml = `
+                            <button onclick="openServerDeliveryProcessModal(${inv.id}, ${inv.customer_id}, '${inv.invoice_number}', '${inv.customer_name.replace(/'/g, "\\'")}', ${inv.true_grand_total})" 
+                                    class="btn-premium primary" 
+                                    style="padding:4px 8px; font-size:11px; display:inline-flex; align-items:center; gap:4px; font-weight:bold; cursor:pointer;">
+                                ⚙️ Process Visit
+                            </button>
+                        `;
+                    }
+
                     tbody.innerHTML += `
                         <tr>
                             <td><strong>${inv.customer_name}</strong></td>
@@ -2690,10 +2798,183 @@
                             <td style="text-align:right; font-family:monospace; font-weight:bold;">Rs ${parseFloat(inv.true_grand_total).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
                             <td style="text-align:center; color:${dColor}; font-weight:bold;">${inv.delivery_status || 'Pending'}</td>
                             <td style="text-align:center; color:${pColor}; font-weight:bold;">${inv.status}</td>
+                            <td style="text-align:center;">${actionHtml}</td>
                         </tr>
                     `;
                 });
             });
+    }
+
+    function openServerDeliveryProcessModal(invoiceId, customerId, invoiceNumber, customerName, grandTotal) {
+        document.getElementById('sdpInvoiceId').value = invoiceId;
+        document.getElementById('sdpCustomerId').value = customerId;
+        document.getElementById('sdpCustomerName').innerText = customerName;
+        document.getElementById('sdpInvoiceNumber').innerText = invoiceNumber;
+        document.getElementById('sdpCashAmount').value = '0.00';
+        document.getElementById('sdpBankAmount').value = '0.00';
+        document.getElementById('sdpChequesContainer').innerHTML = '';
+        document.getElementById('sdpItemsTbody').innerHTML = '<tr><td colspan="3" style="text-align:center;">Loading items... ⏳</td></tr>';
+        
+        document.getElementById('serverDeliveryProcessModal').style.display = 'flex';
+        
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_invoice_for_delivery/' + invoiceId)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('sdpDeliveryStatus').value = data.invoice.delivery_status || 'Pending';
+                    
+                    const arrears = parseFloat(data.arrears || 0);
+                    document.getElementById('sdpOutstandingArrears').innerText = 'Rs ' + arrears.toLocaleString('en-US', {minimumFractionDigits: 2});
+                    
+                    let tbody = document.getElementById('sdpItemsTbody');
+                    tbody.innerHTML = '';
+                    
+                    if (!data.items || data.items.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#888;">No items in this invoice.</td></tr>';
+                    } else {
+                        data.items.forEach(item => {
+                            tbody.innerHTML += `
+                                <tr data-item-id="${item.id}">
+                                    <td><strong>${item.description}</strong></td>
+                                    <td style="text-align:right; font-family:monospace;">${parseFloat(item.loaded_quantity)}</td>
+                                    <td style="text-align:right;">
+                                        <input type="number" step="any" min="0" max="${item.loaded_quantity}" class="sdp-delivered-qty" 
+                                               value="${item.quantity}" style="width: 80px; text-align: right; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px;" />
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                    }
+                } else {
+                    alert('Error: ' + data.message);
+                    closeServerDeliveryProcessModal();
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Failed to load invoice items.');
+                closeServerDeliveryProcessModal();
+            });
+    }
+
+    function closeServerDeliveryProcessModal() {
+        document.getElementById('serverDeliveryProcessModal').style.display = 'none';
+    }
+
+    function addSdpChequeRow() {
+        const container = document.getElementById('sdpChequesContainer');
+        const row = document.createElement('div');
+        row.className = 'sdp-cheque-row';
+        row.style.display = 'grid';
+        row.style.gridTemplateColumns = '1.5fr 1fr 1.2fr 1fr 40px';
+        row.style.gap = '10px';
+        row.style.alignItems = 'center';
+        row.style.background = '#f8fafc';
+        row.style.padding = '10px';
+        row.style.borderRadius = '6px';
+        row.style.border = '1px solid #e2e8f0';
+        
+        row.innerHTML = `
+            <input type="text" placeholder="Bank Name" class="sdp-ch-bank" style="padding:6px; border:1px solid #ccc; border-radius:4px; font-size:12px; width:100%;" required />
+            <input type="text" placeholder="Cheque #" class="sdp-ch-number" style="padding:6px; border:1px solid #ccc; border-radius:4px; font-size:12px; width:100%;" required />
+            <input type="date" class="sdp-ch-date" style="padding:6px; border:1px solid #ccc; border-radius:4px; font-size:12px; width:100%;" required />
+            <input type="number" step="0.01" min="0" placeholder="Amount" class="sdp-ch-amount" style="padding:6px; border:1px solid #ccc; border-radius:4px; font-size:12px; width:100%;" required />
+            <button type="button" onclick="this.closest('.sdp-cheque-row').remove()" style="background:none; border:none; color:#ef4444; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="ph ph-trash"></i></button>
+        `;
+        container.appendChild(row);
+    }
+
+    function submitServerDeliveryProcess() {
+        const routeId = currentRouteId;
+        const customerId = document.getElementById('sdpCustomerId').value;
+        const invoiceId = document.getElementById('sdpInvoiceId').value;
+        const deliveryStatus = document.getElementById('sdpDeliveryStatus').value;
+        
+        // 1. Gather invoice items updates
+        const items = [];
+        document.querySelectorAll('#sdpItemsTbody tr').forEach(row => {
+            const itemId = row.getAttribute('data-item-id');
+            const qtyInput = row.querySelector('.sdp-delivered-qty');
+            if (itemId && qtyInput) {
+                items.push({
+                    invoice_item_id: parseInt(itemId),
+                    delivered_qty: parseFloat(qtyInput.value) || 0
+                });
+            }
+        });
+        
+        // 2. Gather payments & collections
+        const cash = parseFloat(document.getElementById('sdpCashAmount').value) || 0;
+        const bank = parseFloat(document.getElementById('sdpBankAmount').value) || 0;
+        
+        const cheques = [];
+        let chequeValidationFailed = false;
+        document.querySelectorAll('.sdp-cheque-row').forEach(row => {
+            const bankName = row.querySelector('.sdp-ch-bank').value.trim();
+            const chNum = row.querySelector('.sdp-ch-number').value.trim();
+            const chDate = row.querySelector('.sdp-ch-date').value;
+            const chAmt = parseFloat(row.querySelector('.sdp-ch-amount').value) || 0;
+            
+            if (!bankName || !chNum || !chDate || chAmt <= 0) {
+                chequeValidationFailed = true;
+            }
+            
+            cheques.push({
+                bank: bankName,
+                number: chNum,
+                date: chDate,
+                amount: chAmt
+            });
+        });
+        
+        if (chequeValidationFailed) {
+            alert('Please fill out all fields in the added cheque rows with valid values.');
+            return;
+        }
+        
+        // Confirm action
+        if (!confirm('Are you sure you want to process this visit and save changes? This will modify the delivery status, adjust quantities, and record payments.')) {
+            return;
+        }
+        
+        const payload = {
+            route_id: parseInt(routeId),
+            customer_id: parseInt(customerId),
+            deliveries: [
+                {
+                    invoice_id: parseInt(invoiceId),
+                    delivery_status: deliveryStatus,
+                    items: items
+                }
+            ],
+            collections: {
+                cash: cash,
+                bank: bank,
+                cheques: cheques
+            }
+        };
+        
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_process_delivery_visit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                closeServerDeliveryProcessModal();
+                loadDeliveryLiveStage(routeId);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('An unexpected error occurred during submission.');
+        });
     }
 
     function loadTab8Reconciliation(routeId) {
@@ -2731,8 +3012,8 @@
                 currentDeliveryDetails = data;
                 const balancing = data.balancing;
 
-                const expectedCashSales = parseFloat(balancing.expected_cash_sales || 0);
-                const expectedCashColls = parseFloat(balancing.expected_cash_collections || 0);
+                const expectedCashSales = parseFloat(balancing.cash_sales || 0);
+                const expectedCashColls = parseFloat(balancing.cash_collections || 0);
                 const totalExpectedCash = expectedCashSales + expectedCashColls;
 
                 document.getElementById('reconExpectedCash').innerText = 'Rs ' + expectedCashSales.toLocaleString('en-US', {minimumFractionDigits: 2});
@@ -2746,6 +3027,23 @@
                         const recon = JSON.parse(data.delivery.reconciliation_json);
                         actualCash = parseFloat(recon.actual_cash || 0);
                         remarks = recon.audit_remarks || '';
+                    } catch(e) {}
+                }
+
+                // Fallback: if actualCash is 0, try to populate it using the driver's submitted cash_denominations total
+                if (actualCash === 0 && data.delivery && data.delivery.cash_denominations) {
+                    try {
+                        const denoms = JSON.parse(data.delivery.cash_denominations);
+                        let sum = 0;
+                        const denomList = [5000, 2000, 1000, 500, 100, 50, 20];
+                        denomList.forEach(den => {
+                            const count = parseInt(denoms[den] || 0);
+                            sum += den * count;
+                        });
+                        sum += parseFloat(denoms.coins || 0);
+                        if (sum > 0) {
+                            actualCash = sum;
+                        }
                     } catch(e) {}
                 }
 
