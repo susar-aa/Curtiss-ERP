@@ -3,565 +3,1251 @@ $importResults = $_SESSION['customer_import_results'] ?? null;
 if ($importResults) {
     unset($_SESSION['customer_import_results']);
 }
+
+// Dynamic Stats calculation from $data['customers']
+$totalCustomers = count($data['customers'] ?? []);
+$totalOutstanding = 0;
+$owedCustomersCount = 0;
+foreach ($data['customers'] ?? [] as $cust) {
+    $bal = floatval($cust->outstanding_balance ?? 0);
+    $totalOutstanding += $bal;
+    if ($bal > 0) {
+        $owedCustomersCount++;
+    }
+}
 ?>
+
+<!-- Inter Font & FontAwesome Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
 <style>
-    .split-layout { display: flex; height: calc(100vh - 80px); background: #f4f5f7; border-radius: 8px; overflow: hidden; gap: 0; border: 1px solid var(--mac-border); box-shadow: 0 2px 10px rgba(0,0,0,0.05);}
-    @media (prefers-color-scheme: dark) { .split-layout { background: #121212; } }
-    
-    /* Left Pane */
-    .left-pane { width: 320px; background: rgba(0,0,0,0.02); border-right: 1px solid var(--mac-border); display: flex; flex-direction: column; overflow: hidden; }
-    @media (prefers-color-scheme: dark) { .left-pane { background: #1e1e2d; } }
-    .search-bar { padding: 15px 15px 10px 15px; background: var(--mac-bg); }
-    .search-input { width: 100%; padding: 10px; border: 1px solid var(--mac-border); border-radius: 8px; background: rgba(0,0,0,0.04); color: var(--text-main); font-size: 13px; box-sizing: border-box; outline:none;}
-    .search-input:focus { border-color: #0066cc; background: #fff; }
-    
-    .customer-list { flex: 1; overflow-y: auto; }
-    .customer-item { padding: 15px; border-bottom: 1px solid var(--mac-border); cursor: pointer; text-decoration: none; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; transition: 0.2s; background: transparent;}
-    .customer-item:hover { background: rgba(0,102,204,0.05); }
-    .customer-item.active { background: #0066cc; color: #fff; border-color: #0066cc; }
-    .customer-item.active .text-sub, .customer-item.active .bal-text { color: rgba(255,255,255,0.8) !important; }
-    .text-sub { font-size: 11px; color: #888; display: block; margin-top: 4px; }
-    
-    /* Right Pane */
-    .right-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #fff;}
-    @media (prefers-color-scheme: dark) { .right-pane { background: #1a1a2e; } }
-    
-    .right-header { padding: 20px 25px; border-bottom: 1px solid var(--mac-border); display: flex; justify-content: space-between; align-items: flex-start; background: #fff;}
-    @media (prefers-color-scheme: dark) { .right-header { background: #1e1e2d; } }
-    
-    .avatar-circle { width: 50px; height: 50px; background: #e8f5e9; color: #2e7d32; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; flex-shrink: 0;}
-    
-    /* Tabs System */
-    .tabs { display: flex; border-bottom: 1px solid var(--mac-border); background: rgba(0,0,0,0.02); padding: 0 25px;}
-    .tab-btn { padding: 12px 20px; border: none; background: transparent; cursor: pointer; font-size: 13px; font-weight: 600; color: #666; border-bottom: 3px solid transparent; transition: 0.2s;}
-    .tab-btn:hover { color: #0066cc; }
-    .tab-btn.active { color: #0066cc; border-bottom-color: #0066cc; }
-    
-    .tab-content { flex: 1; padding: 25px; overflow-y: auto; display: none; }
-    .tab-content.active { display: block; }
-    
-    .data-table { width: 100%; border-collapse: collapse; }
-    .data-table th, .data-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--mac-border); font-size: 13px;}
-    .data-table th { color: #888; font-weight: 600; font-size: 11px; text-transform: uppercase; background: rgba(0,0,0,0.02);}
-    .num-col { text-align: right !important; }
-    
-    .btn { padding: 8px 16px; background: #0066cc; color: #fff; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 13px; font-weight: 600; transition: 0.2s;}
-    .btn:hover { opacity: 0.9; }
-    .btn-outline { background: transparent; border: 1px solid var(--mac-border); color: #555; }
-    .btn-outline:hover { background: rgba(0,0,0,0.05); }
-    .btn-success { background: #2e7d32; }
-    
-    .status-badge { padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
-    .status-Paid { background: #e8f5e9; color: #2e7d32; }
-    .status-Unpaid { background: #fff3e0; color: #ef6c00; }
-    .status-Pending { background: #f5f5f5; color: #666; }
-    .status-Cleared { background: #e8f5e9; color: #2e7d32; }
-    .status-Bounced { background: #ffebee; color: #c62828; }
+/* ============================================================
+   SF PRO + APPLE DESIGN LANGUAGE — CUSTOMER CATALOG
+   ============================================================ */
 
-    .map-box { width: 100%; height: 250px; border-radius: 8px; border: 1px solid var(--mac-border); background: #eee; overflow: hidden; margin-top: 15px;}
+:root {
+    --c-bg:           #f2f2f7;
+    --c-surface:      #ffffff;
+    --c-surface2:     #f9f9fb;
+    --c-fill:         rgba(120,120,128,0.12);
+    --c-fill2:        rgba(120,120,128,0.16);
+    --c-separator:    rgba(60,60,67,0.12);
+    --c-separator2:   rgba(60,60,67,0.06);
 
-    /* Modals */
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
-    .modal-content { background: var(--mac-bg); backdrop-filter: blur(20px); padding: 30px; border-radius: 12px; width: 500px; border: 1px solid var(--mac-border); max-height: 90vh; overflow-y:auto;}
-    .form-group { margin-bottom: 15px; }
-    .form-group label { display: block; margin-bottom: 5px; font-size: 13px; font-weight: 500; }
-    .form-control { width: 100%; padding: 10px 12px; border: 1px solid var(--mac-border); border-radius: 6px; background: transparent; color: var(--text-main); box-sizing: border-box; outline:none; font-size: 14px;}
-    .form-control:focus { border-color: #0066cc; }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-    .truncate-text { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+    --c-blue:         #007aff;
+    --c-blue-light:   #e5f2ff;
+    --c-blue-mid:     #b3d6ff;
+    --c-green:        #34c759;
+    --c-green-light:  #e6f9ec;
+    --c-orange:       #ff9500;
+    --c-orange-light: #fff4e5;
+    --c-red:          #ff3b30;
+    --c-red-light:    #fff0ef;
+
+    --f-system: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', sans-serif;
+    --f-mono:   ui-monospace, 'SF Mono', 'Menlo', 'Monaco', monospace;
+
+    --t-primary:   #1c1c1e;
+    --t-secondary: #636366;
+    --t-tertiary:  #aeaeb2;
+    --t-label:     #8e8e93;
+
+    --shadow-xs:  0 1px 2px rgba(0,0,0,0.04);
+    --shadow-sm:  0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-md:  0 8px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+    --shadow-xl:  0 24px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.06);
+
+    --r-xs: 6px;
+    --r-sm: 10px;
+    --r-md: 14px;
+    --r-lg: 20px;
+    --r-xl: 26px;
+    --r-pill: 999px;
+
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-ios:    cubic-bezier(0.25, 0.1, 0.25, 1);
+    --dur-fast:    0.18s;
+    --dur-mid:     0.28s;
+    --dur-slow:    0.42s;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --c-bg:           #121212;
+        --c-surface:      #1e1e2e;
+        --c-surface2:     #161622;
+        --c-fill:         rgba(255,255,255,0.08);
+        --c-fill2:        rgba(255,255,255,0.12);
+        --c-separator:    rgba(255,255,255,0.15);
+        --c-separator2:   rgba(255,255,255,0.08);
+        --t-primary:   #f5f5f7;
+        --t-secondary: #a1a1aa;
+        --t-tertiary:  #71717a;
+        --t-label:     #52525b;
+    }
+}
+
+.cust-root {
+    font-family: var(--f-system);
+    font-size: 15px;
+    color: var(--t-primary);
+    background: var(--c-bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.cust-wrap {
+    max-width: 1420px;
+    margin: 0 auto;
+    padding: 16px 24px 100px;
+}
+
+/* ---- Page Header ---- */
+.cust-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+.cust-header-left {
+    display: flex;
+    flex-direction: column;
+}
+.cust-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-blue);
+    margin-bottom: 4px;
+}
+.cust-title {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    color: var(--t-primary);
+    margin: 0;
+}
+.cust-header-right {
+    display: flex;
+    gap: 8px;
+}
+
+/* ---- Stat Cards ---- */
+.stat-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+}
+.stat-card {
+    background: var(--c-surface);
+    border-radius: var(--r-xl);
+    padding: 16px 20px;
+    box-shadow: var(--shadow-sm);
+    border: 0.5px solid var(--c-separator);
+    transition: transform var(--dur-fast) var(--ease-ios), box-shadow var(--dur-fast) var(--ease-ios);
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2.5px;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+}
+.stat-card.blue::before  { background: var(--c-blue); }
+.stat-card.orange::before { background: var(--c-orange); }
+.stat-card.red::before   { background: var(--c-red); }
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+.stat-icon {
+    width: 46px; height: 46px;
+    border-radius: var(--r-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+.stat-card.blue  .stat-icon { background: var(--c-blue-light);   color: var(--c-blue); }
+.stat-card.orange .stat-icon { background: var(--c-orange-light); color: var(--c-orange); }
+.stat-card.red   .stat-icon { background: var(--c-red-light);    color: var(--c-red); }
+.stat-info { display: flex; flex-direction: column; justify-content: center; }
+.stat-num {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    color: var(--t-primary);
+    line-height: 1.1;
+    margin-bottom: 2px;
+}
+.stat-lbl {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--t-label);
+}
+
+/* ---- Filter Shelf ---- */
+.filter-shelf {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.filter-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--c-surface);
+    border: 0.5px solid var(--c-separator);
+    border-radius: var(--r-pill);
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--t-secondary);
+    box-shadow: var(--shadow-xs);
+    transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.filter-chip:focus-within {
+    border-color: var(--c-blue);
+    box-shadow: 0 0 0 3px rgba(0,122,255,0.12);
+}
+.filter-chip-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--t-label);
+    text-transform: uppercase;
+}
+.filter-reset {
+    background: transparent;
+    border: 0.5px solid var(--c-separator);
+    border-radius: var(--r-pill);
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--t-secondary);
+    cursor: pointer;
+    transition: all var(--dur-fast);
+}
+.filter-reset:hover { background: var(--c-fill); color: var(--t-primary); }
+.filter-count {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--t-secondary);
+    font-weight: 500;
+}
+.filter-count strong { color: var(--t-primary); font-weight: 700; }
+
+/* ---- Custom Dropdown ---- */
+.sf-dropdown { position: relative; outline: none; cursor: pointer; }
+.sf-dropdown-val {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 13.5px; font-weight: 600; color: var(--t-primary);
+}
+.sf-dropdown-val::after {
+    content: '';
+    display: inline-block; width: 12px; height: 12px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238e8e93' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+.sf-dropdown-menu {
+    position: absolute; top: calc(100% + 10px); left: 0; z-index: 200;
+    background: var(--c-surface);
+    border-radius: var(--r-md);
+    border: 0.5px solid var(--c-separator);
+    box-shadow: var(--shadow-xl);
+    min-width: 200px;
+    max-height: 280px; overflow-y: auto;
+    opacity: 0; visibility: hidden;
+    transform: translateY(-6px) scale(0.98);
+    transform-origin: top left;
+    transition: opacity var(--dur-mid) var(--ease-ios),
+                transform var(--dur-mid) var(--ease-ios),
+                visibility var(--dur-mid);
+    padding: 6px;
+}
+.sf-dropdown:focus-within .sf-dropdown-menu {
+    opacity: 1; visibility: visible; transform: translateY(0) scale(1);
+}
+.sf-dropdown-item {
+    padding: 9px 12px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--t-primary);
+    border-radius: var(--r-sm);
+    transition: background var(--dur-fast);
+    cursor: pointer;
+}
+.sf-dropdown-item:hover { background: var(--c-fill); }
+.sf-dropdown-item.active { background: var(--c-blue-light); color: var(--c-blue); font-weight: 600; }
+
+/* ---- Table Panel ---- */
+.table-panel {
+    background: var(--c-surface);
+    border-radius: var(--r-xl);
+    border: 0.5px solid var(--c-separator);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    position: relative;
+}
+.cust-table { width: 100%; border-collapse: collapse; }
+.cust-table thead th {
+    padding: 13px 18px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--t-label);
+    background: var(--c-surface2);
+    border-bottom: 0.5px solid var(--c-separator);
+    white-space: nowrap;
+    text-align: left;
+}
+.cust-table tbody tr {
+    transition: background var(--dur-fast);
+    border-bottom: 0.5px solid var(--c-separator2);
+    cursor: pointer;
+}
+.cust-table tbody tr:last-child { border-bottom: none; }
+.cust-table tbody tr:hover { background: var(--c-fill2); }
+.cust-table td {
+    padding: 14px 18px;
+    font-size: 14px;
+    color: var(--t-primary);
+    vertical-align: middle;
+}
+
+/* ---- Badges & Labels ---- */
+.sf-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 8px; border-radius: var(--r-xs);
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.02em;
+}
+.sf-badge.badge-active { background: var(--c-green-light); color: var(--c-green); }
+.sf-badge.badge-owed   { background: var(--c-red-light);   color: var(--c-red); }
+.sf-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.avatar-circle {
+    width: 36px; height: 36px;
+    background: var(--c-fill);
+    color: var(--t-secondary);
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700;
+    flex-shrink: 0;
+}
+
+/* ---- Alerts ---- */
+.sf-alert {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--c-surface);
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-xs);
+    border: 0.5px solid var(--c-separator);
+    border-left-width: 3.5px;
+    font-size: 14px;
+}
+.sf-alert.success { border-left-color: var(--c-green); }
+.sf-alert.error   { border-left-color: var(--c-red); }
+.sf-alert-icon { font-size: 18px; flex-shrink: 0; padding-top: 1px; }
+.sf-alert.success .sf-alert-icon { color: var(--c-green); }
+.sf-alert.error   .sf-alert-icon { color: var(--c-red); }
+.sf-alert-title { font-weight: 700; color: var(--t-primary); margin-bottom: 2px; }
+.sf-alert-msg   { color: var(--t-secondary); font-size: 13px; }
+.sf-alert-close {
+    margin-left: auto; flex-shrink: 0; background: none; border: none;
+    color: var(--t-tertiary); cursor: pointer; font-size: 15px; padding: 2px;
+}
+.sf-alert-close:hover { color: var(--t-secondary); }
+
+/* ---- Button Elements ---- */
+.sf-btn {
+    padding: 8px 14px;
+    border-radius: var(--r-md);
+    font-size: 13px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 0.5px solid transparent; cursor: pointer;
+    transition: transform var(--dur-fast) var(--ease-spring), filter var(--dur-fast);
+    text-decoration: none;
+}
+.sf-btn:active { transform: scale(0.97); }
+.sf-btn.primary { background: var(--c-blue); color: #fff; }
+.sf-btn.neutral { background: var(--c-surface); border-color: var(--c-separator); color: var(--t-primary); box-shadow: var(--shadow-xs); }
+.sf-btn.neutral:hover { background: var(--c-surface2); }
+.sf-btn.danger { background: var(--c-red); color: #fff; }
+.sf-btn.success { background: var(--c-green); color: #fff; }
+
+.act-btn {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: none; background: transparent; cursor: pointer;
+    font-size: 13.5px; transition: background var(--dur-fast);
+    text-decoration: none;
+}
+.act-btn.view  { color: var(--c-blue); }
+.act-btn.view:hover { background: var(--c-blue-light); }
+.act-btn.edit  { color: var(--t-secondary); }
+.act-btn.edit:hover { background: var(--c-fill); }
+
+/* ---- Modal System ---- */
+.modal-veil {
+    position: fixed; inset: 0; z-index: 2000;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity var(--dur-mid) var(--ease-ios);
+}
+.modal-veil.hidden { display: none; }
+.sf-modal {
+    background: var(--c-surface);
+    border: 0.5px solid var(--c-separator);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-xl);
+    width: 520px; max-width: 95vw;
+    animation: sfModalSlide var(--dur-mid) var(--ease-spring);
+    overflow: hidden;
+}
+@keyframes sfModalSlide {
+    from { transform: translateY(20px) scale(0.97); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+}
+.modal-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 24px; border-bottom: 0.5px solid var(--c-separator);
+}
+.modal-title { font-size: 16px; font-weight: 700; margin: 0; }
+.modal-close {
+    background: var(--c-fill); border: none; width: 26px; height: 26px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    color: var(--t-label); cursor: pointer; font-size: 12px;
+}
+.modal-close:hover { background: var(--c-fill2); color: var(--t-secondary); }
+.modal-body { padding: 24px; }
+.modal-foot {
+    display: flex; justify-content: flex-end; gap: 10px;
+    padding: 16px 24px; background: var(--c-surface2);
+    border-top: 0.5px solid var(--c-separator);
+}
+
+/* ---- Input elements ---- */
+.sf-group { margin-bottom: 16px; }
+.sf-group label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 600; color: var(--t-secondary); text-transform: uppercase; }
+.sf-input {
+    width: 100%; padding: 10px 14px;
+    border-radius: var(--r-sm); border: 0.5px solid var(--c-separator);
+    background: var(--c-surface2); color: var(--t-primary);
+    font-size: 14px; outline: none; transition: border-color var(--dur-fast);
+    box-sizing: border-box;
+}
+.sf-input:focus { border-color: var(--c-blue); background: var(--c-surface); }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* ---- Tabs in Modal ---- */
+.tabs { display: flex; border-bottom: 0.5px solid var(--c-separator); background: var(--c-surface2); padding: 0 24px; }
+.tab-btn {
+    padding: 12px 18px; border: none; background: transparent; cursor: pointer;
+    font-size: 13px; font-weight: 600; color: var(--t-secondary);
+    border-bottom: 2.5px solid transparent; transition: 0.18s;
+}
+.tab-btn:hover { color: var(--c-blue); }
+.tab-btn.active { color: var(--c-blue); border-bottom-color: var(--c-blue); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.data-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.data-table th, .data-table td { padding: 10px 12px; text-align: left; border-bottom: 0.5px solid var(--c-separator2); font-size: 13px; }
+.data-table th { color: var(--t-label); font-weight: 600; font-size: 10.5px; text-transform: uppercase; background: var(--c-surface2); }
+.num-col { text-align: right !important; }
+
+.status-badge { padding: 3px 6px; border-radius: var(--r-xs); font-size: 9.5px; font-weight: bold; text-transform: uppercase; }
+.status-Paid, .status-Cleared { background: var(--c-green-light); color: var(--c-green); }
+.status-Unpaid, .status-Pending { background: var(--c-orange-light); color: var(--c-orange); }
+.status-Bounced { background: var(--c-red-light); color: var(--c-red); }
+
+.map-box { width: 100%; height: 230px; border-radius: var(--r-md); border: 0.5px solid var(--c-separator); background: var(--c-surface2); overflow: hidden; margin-top: 8px; }
+
+/* ---- Drop-Zone ---- */
+.drop-zone {
+    border: 1.5px dashed var(--c-separator); padding: 28px; border-radius: var(--r-md);
+    text-align: center; background: var(--c-surface2); position: relative; cursor: pointer;
+    transition: background var(--dur-fast);
+}
+.drop-zone:hover { background: var(--c-fill); }
+.drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.drop-zone-icon { font-size: 28px; margin-bottom: 8px; color: var(--t-tertiary); }
+.drop-zone-title { font-size: 13px; font-weight: 700; color: var(--t-primary); margin-bottom: 2px; }
+.drop-zone-sub { font-size: 11px; color: var(--t-secondary); }
+
+/* ---- Spin ---- */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.7s linear infinite; display: inline-block; }
+
+.hidden { display: none !important; }
+.truncate-text { max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 </style>
 
-<?php if(!empty($data['error'])): ?>
-    <div style="padding: 10px; background:#ffebee; color:#c62828; border-radius:8px; margin-bottom:15px;"><?= $data['error'] ?></div>
-<?php endif; ?>
-<?php if(!empty($data['success'])): ?>
-    <div style="padding: 10px; background:#e8f5e9; color:#2e7d32; border-radius:8px; margin-bottom:15px;"><?= $data['success'] ?></div>
-<?php endif; ?>
+<div class="cust-root">
+    <div class="cust-wrap">
 
-<?php if ($importResults): ?>
-    <div style="padding: 15px; background: #e8f5e9; border: 1px solid #c8e6c9; color: #2e7d32; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-        <h4 style="margin: 0 0 5px 0; font-weight: bold; font-size: 14px;">CSV Import Completed</h4>
-        <ul style="margin: 0 0 10px 0; padding-left: 20px; font-size: 13px;">
-            <li>Added: <strong><?= intval($importResults['added']) ?></strong> new customers</li>
-            <li>Updated: <strong><?= intval($importResults['updated']) ?></strong> existing customers</li>
-        </ul>
-        <?php if (!empty($importResults['success_logs'])): ?>
-            <div style="margin-top: 10px; font-size: 11px; max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.03); padding: 8px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.05);">
-                <?php foreach ($importResults['success_logs'] as $log): ?>
-                    <div style="margin-bottom: 3px;">✅ <?= htmlspecialchars($log) ?></div>
-                <?php endforeach; ?>
+        <!-- Header -->
+        <div class="cust-header">
+            <div class="cust-header-left">
+                <span class="cust-eyebrow">Directories</span>
+                <h1 class="cust-title">Customers</h1>
             </div>
-        <?php endif; ?>
-        <?php if (!empty($importResults['errors'])): ?>
-            <div style="margin-top: 10px; font-size: 11px; max-height: 100px; overflow-y: auto; background: #ffebee; color: #c62828; padding: 8px; border-radius: 6px; border: 1px solid #ffcdd2;">
-                <?php foreach ($importResults['errors'] as $err): ?>
-                    <div style="margin-bottom: 3px;">❌ <?= htmlspecialchars($err) ?></div>
-                <?php endforeach; ?>
+            <div class="cust-header-right">
+                <a href="<?= APP_URL ?>/customer/exportCSV" class="sf-btn neutral"><i class="fa-solid fa-download"></i> Export CSV</a>
+                <button type="button" class="sf-btn neutral" onclick="openModal('csvImportModal')"><i class="fa-solid fa-upload"></i> Import CSV</button>
+                <button type="button" class="sf-btn primary" onclick="openModal('addCustomerModal')"><i class="fa-solid fa-plus"></i> New Customer</button>
             </div>
-        <?php endif; ?>
-    </div>
-<?php endif; ?>
-
-<div class="split-layout">
-    
-    <!-- Left Pane: Customer List with Advanced Filters -->
-    <div class="left-pane">
-        <div class="search-bar" style="display: flex; gap: 8px; align-items: center;">
-            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search customers..." onkeyup="filterList()">
-            <button class="btn btn-success" style="padding: 10px 14px; font-size: 13px; flex-shrink: 0;" onclick="openModal('addCustomerModal')">+ Add</button>
-        </div>
-        
-        <!-- CSV Import/Export Buttons -->
-        <div style="padding: 0 15px 10px 15px; background: var(--mac-bg); display: flex; gap: 8px; border-bottom: 1px solid var(--mac-border);">
-            <a href="<?= APP_URL ?>/customer/exportCSV" class="btn btn-outline" style="flex: 1; text-align: center; font-size: 12px; padding: 6px 10px; border-radius: 6px; text-decoration: none;">📤 Export CSV</a>
-            <button class="btn btn-outline" style="flex: 1; font-size: 12px; padding: 6px 10px; border-radius: 6px;" onclick="openModal('csvImportModal')">📥 Import CSV</button>
-        </div>
-        
-        <!-- NEW: Filter Panel -->
-        <div style="padding: 0 15px 15px 15px; border-bottom: 1px solid var(--mac-border); background: var(--mac-bg); display:flex; flex-direction:column; gap:8px;">
-            <select id="filterRoute" class="search-input" onchange="filterList()" style="padding: 6px 10px; font-size: 12px;">
-                <option value="">All Territories / Routes</option>
-                <?php 
-                $routes = [];
-                foreach($data['customers'] as $c) {
-                    if(!empty($c->mca_name) && !in_array($c->mca_name, $routes)) { $routes[] = $c->mca_name; }
-                }
-                sort($routes);
-                foreach($routes as $r): ?>
-                    <option value="<?= htmlspecialchars(strtolower($r)) ?>"><?= htmlspecialchars($r) ?></option>
-                <?php endforeach; ?>
-            </select>
-            
-            <select id="filterStatus" class="search-input" onchange="filterList()" style="padding: 6px 10px; font-size: 12px;">
-                <option value="">All Payment Statuses</option>
-                <option value="owed">Has Unpaid Balance (Owed)</option>
-                <option value="cleared">All Cleared (Zero Balance)</option>
-            </select>
         </div>
 
-        <div class="customer-list" id="custList">
-            <?php foreach($data['customers'] as $c): ?>
-                <?php $isActive = ($data['selected_customer'] && $data['selected_customer']->id == $c->id); ?>
-                <a href="<?= APP_URL ?>/customer/index/<?= $c->id ?>" 
-                   class="customer-item <?= $isActive ? 'active' : '' ?>"
-                   data-route="<?= htmlspecialchars(strtolower($c->mca_name ?? '')) ?>"
-                   data-outstanding="<?= $c->outstanding_balance ?>">
-                    <div>
-                        <strong class="c-name"><?= htmlspecialchars($c->name) ?></strong>
-                        <span class="text-sub c-contact">📞 <?= htmlspecialchars($c->phone ?: 'No phone') ?></span>
-                        <span class="text-sub c-email" style="font-size: 10px; opacity: 0.8;"><?= htmlspecialchars($c->email ?: 'No email') ?></span>
-                        <span class="text-sub c-route" style="font-weight: 500;">📍 Route: <?= htmlspecialchars($c->mca_name ?: 'Unassigned') ?></span>
-                        <span class="text-sub c-address truncate-text" style="font-style: italic;">🏠 <?= htmlspecialchars($c->address ?: 'No address') ?></span>
-                    </div>
-                    <div style="text-align: right;">
-                        <span style="font-size: 10px; color: <?= $isActive ? 'rgba(255,255,255,0.7)' : '#888' ?>;">Unpaid</span><br>
-                        <span class="bal-text" style="font-size: 12px; font-weight: bold; color: <?= $isActive ? '#fff' : ($c->outstanding_balance > 0 ? '#c62828' : '#2e7d32') ?>;">
-                            Rs: <?= number_format($c->outstanding_balance, 2) ?>
-                        </span>
-                    </div>
-                </a>
-            <?php endforeach; ?>
-        </div>
-    </div>
-
-    <!-- Right Pane: Tabbed Dashboard -->
-    <div class="right-pane">
-        <?php if(!$data['selected_customer']): ?>
-            <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#888;">
-                <div style="font-size: 40px; margin-bottom: 10px;">🏢</div>
-                <p>Select a customer from the left to view their ledger and profile.</p>
-            </div>
-        <?php else: ?>
-            <?php $c = $data['selected_customer']; $s = $data['stats']; ?>
-            
-            <!-- Fixed Top Header -->
-            <div class="right-header">
-                <div style="display: flex; gap: 15px; align-items: center;">
-                    <div class="avatar-circle"><?= strtoupper(substr($c->name, 0, 2)) ?></div>
-                    <div>
-                        <h2 style="margin: 0 0 5px 0; display:flex; align-items:center; gap: 10px;">
-                            <?= htmlspecialchars($c->name) ?>
-                            <button class="btn btn-outline" style="font-size: 10px; padding: 2px 8px;" onclick="openModal('editModal')">✏️ Edit</button>
-                        </h2>
-                        <div style="font-size: 13px; color: #666; display: flex; gap: 15px;">
-                            <span>📞 <?= htmlspecialchars($c->phone ?: 'N/A') ?></span>
-                            <span>✉️ <?= htmlspecialchars($c->email ?: 'N/A') ?></span>
-                            <span>🗺️ <?= htmlspecialchars($c->mca_name ?: 'Route Unassigned') ?></span>
-                        </div>
-                    </div>
+        <!-- Stat Cards Row -->
+        <div class="stat-row">
+            <div class="stat-card blue">
+                <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num"><?= number_format($totalCustomers) ?></div>
+                    <div class="stat-lbl">Total Customers</div>
                 </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 11px; color: #888; text-transform: uppercase; font-weight: bold;">Total Unpaid Balance</div>
-                    <div style="font-size: 24px; font-weight: bold; color: <?= $s->outstanding > 0 ? '#c62828' : '#2e7d32' ?>;">
-                        Rs: <?= number_format($s->outstanding, 2) ?>
+            </div>
+            <div class="stat-card orange">
+                <div class="stat-icon"><i class="fa-solid fa-wallet"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num">Rs. <?= number_format($totalOutstanding, 2) ?></div>
+                    <div class="stat-lbl">Total Outstanding</div>
+                </div>
+            </div>
+            <div class="stat-card red">
+                <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num"><?= number_format($owedCustomersCount) ?></div>
+                    <div class="stat-lbl">Owed Accounts</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <?php if (!empty($data['error'])): ?>
+            <div class="sf-alert error" id="error-alert">
+                <i class="fa-solid fa-circle-exclamation sf-alert-icon"></i>
+                <div>
+                    <div class="sf-alert-title">Error</div>
+                    <div class="sf-alert-msg"><?= htmlspecialchars($data['error']) ?></div>
+                </div>
+                <button type="button" class="sf-alert-close" onclick="document.getElementById('error-alert').style.display='none'"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        <?php endif; ?>
+        
+        <?php if (!empty($data['success'])): ?>
+            <div class="sf-alert success" id="success-alert">
+                <i class="fa-solid fa-circle-check sf-alert-icon"></i>
+                <div>
+                    <div class="sf-alert-title">Success</div>
+                    <div class="sf-alert-msg"><?= htmlspecialchars($data['success']) ?></div>
+                </div>
+                <button type="button" class="sf-alert-close" onclick="document.getElementById('success-alert').style.display='none'"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($importResults): ?>
+            <div class="sf-alert success" id="import-alert" style="display:flex; flex-direction:column; gap:12px; border-left-color: var(--c-blue);">
+                <div style="display:flex; align-items:flex-start; gap:12px; width:100%;">
+                    <i class="fa-solid fa-circle-check sf-alert-icon" style="color:var(--c-blue);"></i>
+                    <div style="flex:1;">
+                        <div class="sf-alert-title">CSV Import Completed</div>
+                        <ul style="margin: 4px 0 0 16px; padding: 0; display: flex; gap: 20px; list-style-type: disc; font-size:13px;">
+                            <li>Added: <strong><?= intval($importResults['added']) ?></strong> customers</li>
+                            <li>Updated: <strong><?= intval($importResults['updated']) ?></strong> customers</li>
+                        </ul>
                     </div>
-                    <div style="margin-top: 5px; display: flex; gap: 10px; justify-content: flex-end;">
-                        <button class="btn btn-outline" style="padding: 8px 16px; border-color: #f57c00; color: #f57c00;" onclick="sharePortal(<?= $c->id ?>, '<?= htmlspecialchars(addslashes($c->phone ?? '')) ?>', '<?= htmlspecialchars(addslashes($c->name)) ?>')">🔗 Share B2B Portal</button>
+                    <button type="button" class="sf-alert-close" onclick="document.getElementById('import-alert').style.display='none'"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <?php if (!empty($importResults['success_logs'])): ?>
+                    <div style="background:rgba(0,122,255,0.05); border-radius:var(--r-xs); padding:8px 12px; font-size:11px; max-height:80px; overflow-y:auto; border:0.5px solid rgba(0,122,255,0.1); width:100%;">
+                        <?php foreach ($importResults['success_logs'] as $log): ?>
+                            <div style="margin-bottom:2px; color:#0056b3;">✅ <?= htmlspecialchars($log) ?></div>
+                        <?php endforeach; ?>
                     </div>
+                <?php endif; ?>
+                <?php if (!empty($importResults['errors'])): ?>
+                    <div style="background:rgba(255,59,48,0.05); border-radius:var(--r-xs); padding:8px 12px; font-size:11px; max-height:80px; overflow-y:auto; border:0.5px solid rgba(255,59,48,0.1); width:100%;">
+                        <?php foreach ($importResults['errors'] as $err): ?>
+                            <div style="margin-bottom:2px; color:var(--c-red);">❌ <?= htmlspecialchars($err) ?></div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
+        <!-- Filters Block -->
+        <div class="filter-shelf">
+            <!-- Search -->
+            <div class="filter-chip">
+                <span class="filter-chip-label">Search</span>
+                <input type="text" id="searchInput" placeholder="Name, Phone, Route, Address..." onkeyup="filterList()" style="border:none; outline:none; background:transparent; font-size:13.5px; font-weight:600; color:var(--t-primary); width:240px; padding:0;">
+            </div>
+
+            <!-- Route / Territory -->
+            <div class="filter-chip">
+                <span class="filter-chip-label">Territory</span>
+                <div class="sf-dropdown" tabindex="0">
+                    <div class="sf-dropdown-val" id="route-dropdown-val">All Territories</div>
+                    <div class="sf-dropdown-menu">
+                        <div class="sf-dropdown-item active" data-val="" onclick="selectRoute('', 'All Territories')">All Territories</div>
+                        <?php 
+                        $routes = [];
+                        foreach($data['customers'] as $c) {
+                            if(!empty($c->mca_name) && !in_array($c->mca_name, $routes)) { $routes[] = $c->mca_name; }
+                        }
+                        sort($routes);
+                        foreach($routes as $r): ?>
+                            <div class="sf-dropdown-item" data-val="<?= htmlspecialchars(strtolower($r)) ?>" onclick="selectRoute('<?= htmlspecialchars(strtolower($r)) ?>', '<?= htmlspecialchars($r) ?>')"><?= htmlspecialchars($r) ?></div>
+                        <?php endforeach; ?>
+                    </div>
+                    <input type="hidden" id="filterRoute" value="">
                 </div>
             </div>
 
-            <!-- Tab Navigation -->
-            <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab('ledger')" id="btn_ledger">Activity Ledger</button>
-                <button class="tab-btn" onclick="switchTab('invoices')" id="btn_invoices">Invoices</button>
-                <button class="tab-btn" onclick="switchTab('cheques')" id="btn_cheques">Cheques (PDC)</button>
-                <button class="tab-btn" onclick="switchTab('profile')" id="btn_profile">Profile & Map</button>
+            <!-- Payment Status -->
+            <div class="filter-chip">
+                <span class="filter-chip-label">Ledger</span>
+                <div class="sf-dropdown" tabindex="0">
+                    <div class="sf-dropdown-val" id="status-dropdown-val">All Accounts</div>
+                    <div class="sf-dropdown-menu">
+                        <div class="sf-dropdown-item active" data-val="" onclick="selectStatus('', 'All Accounts')">All Accounts</div>
+                        <div class="sf-dropdown-item" data-val="owed" onclick="selectStatus('owed', 'Has Unpaid Balance')">Has Unpaid Balance</div>
+                        <div class="sf-dropdown-item" data-val="cleared" onclick="selectStatus('cleared', 'Zero Balance')">Zero Balance</div>
+                    </div>
+                    <input type="hidden" id="filterStatus" value="">
+                </div>
             </div>
 
-            <!-- TAB 1: Activity Ledger -->
-            <div class="tab-content active" id="tab_ledger">
-                <table class="data-table">
-                    <thead>
+            <!-- Reset Button -->
+            <button type="button" onclick="clearAllFilters()" class="filter-reset">Reset</button>
+
+            <!-- Counter -->
+            <div class="filter-count">
+                <strong id="matching-count"><?= count($data['customers']) ?></strong> customers
+            </div>
+        </div>
+
+        <!-- Table View -->
+        <div class="table-panel">
+            <table class="cust-table">
+                <thead>
+                    <tr>
+                        <th>Customer / Company</th>
+                        <th>Assigned Territory</th>
+                        <th>Contact Details</th>
+                        <th class="txt-right">Outstanding Balance</th>
+                        <th>Status</th>
+                        <th style="width:120px;" class="txt-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="custList">
+                    <?php if (empty($data['customers'])): ?>
                         <tr>
-                            <th>Date</th>
-                            <th>Description</th>
-                            <th class="num-col">Debit (Dr)</th>
-                            <th class="num-col">Credit (Cr)</th>
-                            <th class="num-col">Running Balance</th>
+                            <td colspan="6" style="text-align:center; padding:40px; color:var(--t-secondary);">
+                                <i class="fa-solid fa-building" style="font-size:28px; margin-bottom:8px; color:var(--t-tertiary);"></i><br>
+                                No customers registered yet.
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        <?php if(empty($data['ledger'])): ?>
-                            <tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">No financial activity yet.</td></tr>
-                        <?php else: foreach($data['ledger'] as $l): ?>
-                            <tr>
-                                <td style="color:#666; font-size:12px;"><?= date('M d, Y', strtotime($l->date)) ?></td>
-                                <td>
-                                    <strong><?= $l->type ?></strong>
-                                    
-                                    <!-- Clickable Link Logic for Invoices and Credit/Return Notes -->
-                                    <?php if($l->type == 'Invoice'): ?>
-                                        <a href="<?= APP_URL ?>/sales/show/<?= $l->id ?>" target="_blank" style="color:#0066cc; font-size: 11px; margin-left: 5px; font-weight:bold; text-decoration:none;">
-                                            <?= htmlspecialchars($l->ref) ?> ↗
-                                        </a>
-                                    <?php elseif($l->type == 'Credit Note'): ?>
-                                        <a href="<?= APP_URL ?>/creditnote/show/<?= $l->id ?>" target="_blank" style="color:#ff3b30; font-size: 11px; margin-left: 5px; font-weight:bold; text-decoration:none;">
-                                            <?= htmlspecialchars($l->ref) ?> ↗
-                                        </a>
-                                    <?php else: ?>
-                                        <span style="color:#888; font-size: 11px; margin-left: 5px;"><?= htmlspecialchars($l->ref) ?></span>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="num-col" style="color:#333; font-weight:500;"><?= $l->debit > 0 ? 'Rs: ' . number_format($l->debit, 2) : '-' ?></td>
-                                <td class="num-col" style="color:#2e7d32; font-weight:500;"><?= $l->credit > 0 ? 'Rs: ' . number_format($l->credit, 2) : '-' ?></td>
-                                <td class="num-col" style="font-weight:bold; color: <?= $l->balance > 0 ? '#c62828' : '#2e7d32' ?>;">Rs: <?= number_format($l->balance, 2) ?></td>
-                            </tr>
-                        <?php endforeach; endif; ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- TAB 2: Latest Invoices -->
-            <div class="tab-content" id="tab_invoices">
-                <table class="data-table">
-                    <thead><tr><th>Order #</th><th>Date</th><th class="num-col">Grand Total</th><th>Status</th></tr></thead>
-                    <tbody>
-                        <?php if(empty($data['invoices'])): ?>
-                            <tr><td colspan="4" style="text-align:center; color:#888; padding: 20px;">No invoices found.</td></tr>
-                        <?php else: foreach($data['invoices'] as $inv): ?>
+                    <?php else: ?>
+                        <?php foreach($data['customers'] as $c): ?>
                             <?php 
-                                // Recalculate true grand total for UI list
-                                $trueInvTotal = $inv->total_amount;
-                                if($inv->global_discount_val > 0) {
-                                    $trueInvTotal -= ($inv->global_discount_type == '%' ? ($inv->total_amount * $inv->global_discount_val / 100) : $inv->global_discount_val);
-                                }
-                                $trueInvTotal += $inv->tax_amount;
+                            $bal = floatval($c->outstanding_balance); 
+                            $badgeCls = $bal > 0 ? 'badge-owed' : 'badge-active';
+                            $badgeTxt = $bal > 0 ? 'Owed' : 'Cleared';
                             ?>
-                            <tr>
-                                <td><a href="<?= APP_URL ?>/sales/show/<?= $inv->id ?>" target="_blank" style="color:#0066cc; font-weight:bold; text-decoration:none;"><?= $inv->invoice_number ?></a></td>
-                                <td style="color:#666; font-size:12px;"><?= date('M d, Y', strtotime($inv->invoice_date)) ?></td>
-                                <td class="num-col" style="font-weight:bold;">Rs: <?= number_format($trueInvTotal, 2) ?></td>
-                                <td><span class="status-badge status-<?= $inv->status ?>"><?= $inv->status ?></span></td>
-                            </tr>
-                        <?php endforeach; endif; ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- TAB 3: Latest Cheques -->
-            <div class="tab-content" id="tab_cheques">
-                <table class="data-table">
-                    <thead><tr><th>Bank & Date</th><th class="num-col">Amount</th><th>Status</th></tr></thead>
-                    <tbody>
-                        <?php if(empty($data['cheques'])): ?>
-                            <tr><td colspan="3" style="text-align:center; color:#888; padding: 20px;">No cheques recorded.</td></tr>
-                        <?php else: foreach($data['cheques'] as $chk): ?>
-                            <tr>
+                            <tr class="customer-row" 
+                                onclick="showCustomerProfile(<?= $c->id ?>)"
+                                data-id="<?= $c->id ?>"
+                                data-name="<?= htmlspecialchars(strtolower($c->name ?? '')) ?>"
+                                data-phone="<?= htmlspecialchars(strtolower($c->phone ?? '')) ?>"
+                                data-email="<?= htmlspecialchars(strtolower($c->email ?? '')) ?>"
+                                data-route="<?= htmlspecialchars(strtolower($c->mca_name ?? '')) ?>"
+                                data-address="<?= htmlspecialchars(strtolower($c->address ?? '')) ?>"
+                                data-outstanding="<?= $bal ?>">
+                                
                                 <td>
-                                    <strong><?= htmlspecialchars($chk->bank_name) ?></strong><br>
-                                    <span style="font-size:11px; color:#666;"><?= date('M d, Y', strtotime($chk->banking_date)) ?></span>
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <div class="avatar-circle"><?= strtoupper(substr($c->name, 0, 2)) ?></div>
+                                        <div>
+                                            <strong style="font-size:14.5px; font-weight:600; color:var(--t-primary);"><?= htmlspecialchars($c->name) ?></strong>
+                                            <span style="font-size:11px; color:var(--t-secondary); display:block; margin-top:2px;" class="truncate-text">🏠 <?= htmlspecialchars($c->address ?: 'No Address') ?></span>
+                                        </div>
+                                    </div>
                                 </td>
-                                <td class="num-col" style="font-weight:bold;">Rs: <?= number_format($chk->amount, 2) ?></td>
-                                <td><span class="status-badge status-<?= $chk->status ?>"><?= $chk->status ?></span></td>
+                                <td>
+                                    <span style="font-weight:600; font-size:13px; color:var(--t-secondary);">📍 <?= htmlspecialchars($c->mca_name ?: 'Unassigned') ?></span>
+                                </td>
+                                <td>
+                                    <span style="font-size:13px; font-weight:500; display:block;">📞 <?= htmlspecialchars($c->phone ?: 'No Phone') ?></span>
+                                    <span style="font-size:11px; color:var(--t-secondary); display:block; margin-top:2px;"><?= htmlspecialchars($c->email ?: 'No Email') ?></span>
+                                </td>
+                                <td class="txt-right" style="font-weight:700; font-family:var(--f-mono); font-size:14px; color: <?= $bal > 0 ? 'var(--c-red)' : 'var(--c-green)' ?>;">
+                                    Rs: <?= number_format($bal, 2) ?>
+                                </td>
+                                <td>
+                                    <span class="sf-badge <?= $badgeCls ?>">
+                                        <span class="dot"></span><?= $badgeTxt ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="display:flex; justify-content:center; gap:6px;" onclick="event.stopPropagation()">
+                                        <button type="button" class="act-btn view" onclick="showCustomerProfile(<?= $c->id ?>)" title="View ledger & profile">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                        <button type="button" class="act-btn edit" onclick="sharePortal(<?= $c->id ?>, '<?= htmlspecialchars(addslashes($c->phone ?? '')) ?>', '<?= htmlspecialchars(addslashes($c->name)) ?>')" title="Share B2B Portal Link">
+                                            <i class="fa-solid fa-share-nodes"></i>
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
-                        <?php endforeach; endif; ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- TAB 4: Profile & Map -->
-            <div class="tab-content" id="tab_profile">
-                <div class="grid-2">
-                    <!-- Profile Stats -->
-                    <div>
-                        <div style="display:flex; gap:20px; margin-bottom: 20px;">
-                            <div style="flex:1; background:rgba(0,0,0,0.02); padding:15px; border-radius:8px; border:1px solid var(--mac-border);">
-                                <div style="font-size:11px; color:#888; text-transform:uppercase; font-weight:bold;">Total Orders</div>
-                                <div style="font-size:20px; font-weight:bold; color:var(--text-main);"><?= $s->total_orders ?></div>
-                            </div>
-                            <div style="flex:1; background:rgba(0,0,0,0.02); padding:15px; border-radius:8px; border:1px solid var(--mac-border);">
-                                <div style="font-size:11px; color:#888; text-transform:uppercase; font-weight:bold;">Total Billed</div>
-                                <div style="font-size:20px; font-weight:bold; color:var(--text-main);">Rs: <?= number_format($s->total_billed, 2) ?></div>
-                            </div>
-                            <div style="flex:1; background:rgba(46,125,50,0.05); padding:15px; border-radius:8px; border:1px solid rgba(46,125,50,0.2);">
-                                <div style="font-size:11px; color:#2e7d32; text-transform:uppercase; font-weight:bold;">Total Paid</div>
-                                <div style="font-size:20px; font-weight:bold; color:#2e7d32;">Rs: <?= number_format($s->total_paid, 2) ?></div>
-                            </div>
-                        </div>
-
-                        <h3 style="margin-top:0; border-bottom: 1px solid var(--mac-border); padding-bottom: 10px;">Update Details</h3>
-                        <form action="<?= APP_URL ?>/customer/index/<?= $c->id ?>" method="POST">
-                            <input type="hidden" name="action" value="update_customer">
-                            <input type="hidden" name="customer_id" value="<?= $c->id ?>">
-                            
-                            <div class="form-group"><label>Customer/Company Name *</label><input type="text" name="name" class="form-control" value="<?= htmlspecialchars($c->name) ?>" required></div>
-                            <div class="grid-2">
-                                <div class="form-group"><label>Email Address</label><input type="email" name="email" class="form-control" value="<?= htmlspecialchars($c->email) ?>"></div>
-                                <div class="form-group"><label>Phone Number</label><input type="text" name="phone" class="form-control" value="<?= htmlspecialchars($c->phone) ?>"></div>
-                            </div>
-                            <div class="grid-2">
-                                <div class="form-group"><label>WhatsApp Number</label><input type="text" name="whatsapp" class="form-control" value="<?= htmlspecialchars($c->whatsapp ?? '') ?>"></div>
-                                <div class="form-group">
-                                    <label>Assigned Territory / Route</label>
-                                    <select name="mca_id" class="form-control">
-                                        <option value="">Unassigned</option>
-                                        <?php foreach($data['mca_areas'] as $route): ?>
-                                            <option value="<?= $route->id ?>" <?= $c->mca_id == $route->id ? 'selected' : '' ?>><?= htmlspecialchars($route->name) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="form-group"><label>Billing Address</label><textarea name="address" class="form-control" rows="2"><?= htmlspecialchars($c->address) ?></textarea></div>
-                            
-                            <div class="grid-2">
-                                <div class="form-group"><label>Latitude (GPS)</label><input type="text" name="latitude" class="form-control" value="<?= $c->latitude ?>"></div>
-                                <div class="form-group"><label>Longitude (GPS)</label><input type="text" name="longitude" class="form-control" value="<?= $c->longitude ?>"></div>
-                            </div>
-                            
-                            <div style="text-align: right; margin-top: 10px;">
-                                <button type="submit" class="btn">Save Changes</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Map View -->
-                    <div>
-                        <h3 style="margin-top:0; border-bottom: 1px solid var(--mac-border); padding-bottom: 10px;">Location</h3>
-                        <div class="map-box">
-                            <?php if($c->latitude && $c->longitude): ?>
-                                <iframe width="100%" height="100%" frameborder="0" style="border:0;" src="https://maps.google.com/maps?q=<?= $c->latitude ?>,<?= $c->longitude ?>&hl=en&z=14&output=embed"></iframe>
-                            <?php else: ?>
-                                <div style="display:flex; height:100%; align-items:center; justify-content:center; color:#aaa; font-size:13px; flex-direction:column;">
-                                    <span style="font-size: 30px; margin-bottom: 5px;">🗺️</span>
-                                    No GPS coordinates saved.
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        <?php endif; ?>
-    </div>
-</div>
-
-<?php if($data['selected_customer']): ?>
-<!-- Edit Profile Modal (Still functional if triggered via top button) -->
-<div class="modal" id="editModal">
-    <div class="modal-content" style="width: 550px;">
-        <h3 style="margin-top:0; color:#0066cc;">Edit Customer Details</h3>
-        <p style="font-size: 12px; color: #666; margin-top:-5px; margin-bottom: 20px;">Or use the Profile tab for quick edits.</p>
-        <form action="<?= APP_URL ?>/customer/index/<?= $c->id ?>" method="POST">
-            <input type="hidden" name="action" value="update_customer">
-            <input type="hidden" name="customer_id" value="<?= $c->id ?>">
-            <div class="form-group"><label>Customer/Company Name *</label><input type="text" name="name" class="form-control" value="<?= htmlspecialchars($c->name) ?>" required></div>
-            <div class="grid-2">
-                <div class="form-group"><label>Email Address</label><input type="email" name="email" class="form-control" value="<?= htmlspecialchars($c->email) ?>"></div>
-                <div class="form-group"><label>Phone Number</label><input type="text" name="phone" class="form-control" value="<?= htmlspecialchars($c->phone) ?>"></div>
-            </div>
-            <div class="grid-2">
-                <div class="form-group"><label>WhatsApp Number</label><input type="text" name="whatsapp" class="form-control" value="<?= htmlspecialchars($c->whatsapp ?? '') ?>"></div>
-                <div class="form-group">
-                    <label>Assigned Territory / Route</label>
-                    <select name="mca_id" class="form-control">
-                        <option value="">Unassigned</option>
-                        <?php foreach($data['mca_areas'] as $route): ?>
-                            <option value="<?= $route->id ?>" <?= $c->mca_id == $route->id ? 'selected' : '' ?>><?= htmlspecialchars($route->name) ?></option>
                         <?php endforeach; ?>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group"><label>Billing Address</label><textarea name="address" class="form-control" rows="2"><?= htmlspecialchars($c->address) ?></textarea></div>
-            <div class="grid-2">
-                <div class="form-group"><label>Latitude (GPS)</label><input type="text" name="latitude" class="form-control" value="<?= $c->latitude ?>"></div>
-                <div class="form-group"><label>Longitude (GPS)</label><input type="text" name="longitude" class="form-control" value="<?= $c->longitude ?>"></div>
-            </div>
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                <button type="button" class="btn btn-outline" onclick="closeModal('editModal')">Cancel</button>
-                <button type="submit" class="btn">Save Changes</button>
-            </div>
-        </form>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+
     </div>
 </div>
+
+<!-- ============================================================
+     POPUP MODAL: CUSTOMER PROFILE LEDGER & DETAILS
+     ============================================================ -->
+<div id="customerProfileModal" class="modal-veil hidden" onclick="if(event.target === this) closeCustomerProfile()">
+    <div class="sf-modal" style="width: 85%; max-width: 1000px; height: 85vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: var(--r-lg);">
+        
+        <!-- Modal Head Container -->
+        <div class="modal-head" id="modal-header-container" style="padding: 18px 24px; border-bottom: 0.5px solid var(--c-separator); background: var(--c-surface2);">
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div class="avatar-circle" style="width: 40px; height: 40px; font-size: 16px;">C</div>
+                <div>
+                    <h3 class="modal-title" style="font-size: 18px; font-weight: 700;">Customer Details</h3>
+                </div>
+            </div>
+            <button type="button" onclick="closeCustomerProfile()" class="modal-close" style="width:30px; height:30px;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        
+        <!-- Modal Loader -->
+        <div id="modal-loader" style="display:none; flex:1; align-items:center; justify-content:center; flex-direction:column; gap:12px; background:var(--c-surface);">
+            <i class="fa-solid fa-spinner spin" style="font-size:32px; color:var(--c-blue);"></i>
+            <span style="font-size:14px; color:var(--t-secondary); font-weight:500;">Loading customer profile...</span>
+        </div>
+        
+        <!-- Modal Content Container -->
+        <div id="modal-profile-content" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+            <!-- Content will load dynamically here -->
+        </div>
+
+    </div>
+</div>
+
+<!-- ============================================================
+     HIDDEN TEMPLATE SOURCES (EXTRACTED VIA DOM PARSER OR DIRECT)
+     ============================================================ -->
+<?php if ($data['selected_customer']): ?>
+    <?php $c = $data['selected_customer']; $s = $data['stats']; ?>
+    
+    <div id="modal-header-source" class="hidden">
+        <div style="display: flex; gap: 15px; align-items: center; flex: 1;">
+            <div class="avatar-circle" style="width: 40px; height: 40px; font-size: 16px; background: var(--c-blue-light); color: var(--c-blue);">
+                <?= strtoupper(substr($c->name, 0, 2)) ?>
+            </div>
+            <div>
+                <h3 class="modal-title" style="font-size: 17px; font-weight: 700; display:flex; align-items:center; gap: 10px;">
+                    <?= htmlspecialchars($c->name) ?>
+                </h3>
+                <div style="font-size: 12px; color: var(--t-secondary); display: flex; gap: 14px; margin-top: 2px;">
+                    <span>📞 <?= htmlspecialchars($c->phone ?: 'N/A') ?></span>
+                    <span>✉️ <?= htmlspecialchars($c->email ?: 'N/A') ?></span>
+                    <span>📍 Route: <?= htmlspecialchars($c->mca_name ?: 'Unassigned') ?></span>
+                </div>
+            </div>
+        </div>
+        <div style="text-align: right; margin-right: 18px;">
+            <div style="font-size: 10px; color: var(--t-label); text-transform: uppercase; font-weight: bold; letter-spacing:0.04em;">Outstanding Balance</div>
+            <div style="font-size: 20px; font-weight: bold; color: <?= $s->outstanding > 0 ? 'var(--c-red)' : 'var(--c-green)' ?>;">
+                Rs: <?= number_format($s->outstanding, 2) ?>
+            </div>
+        </div>
+        <button type="button" onclick="closeCustomerProfile()" class="modal-close" style="width:30px; height:30px;"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div id="modal-profile-content-source" class="hidden">
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchModalTab('ledger')" id="mbtn_ledger">Activity Ledger</button>
+            <button class="tab-btn" onclick="switchModalTab('invoices')" id="mbtn_invoices">Invoices</button>
+            <button class="tab-btn" onclick="switchModalTab('cheques')" id="mbtn_cheques">Cheques (PDC)</button>
+            <button class="tab-btn" onclick="switchModalTab('profile')" id="mbtn_profile">Profile & Map</button>
+        </div>
+
+        <!-- TAB 1: Ledger -->
+        <div id="mtab_ledger" class="tab-content active" style="padding: 22px; overflow-y: auto; flex: 1;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th class="num-col">Debit (Dr)</th>
+                        <th class="num-col">Credit (Cr)</th>
+                        <th class="num-col">Running Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if(empty($data['ledger'])): ?>
+                        <tr><td colspan="5" style="text-align: center; color: var(--t-secondary); padding: 20px;">No financial activity yet.</td></tr>
+                    <?php else: foreach($data['ledger'] as $l): ?>
+                        <tr>
+                            <td style="color:var(--t-secondary); font-size:12px;"><?= date('M d, Y', strtotime($l->date)) ?></td>
+                            <td>
+                                <strong><?= $l->type ?></strong>
+                                <?php if($l->type == 'Invoice'): ?>
+                                    <a href="<?= APP_URL ?>/sales/show/<?= $l->id ?>" target="_blank" style="color:var(--c-blue); font-size: 11px; margin-left: 5px; font-weight:bold; text-decoration:none;">
+                                        <?= htmlspecialchars($l->ref) ?> ↗
+                                    </a>
+                                <?php elseif($l->type == 'Credit Note'): ?>
+                                    <a href="<?= APP_URL ?>/creditnote/show/<?= $l->id ?>" target="_blank" style="color:var(--c-red); font-size: 11px; margin-left: 5px; font-weight:bold; text-decoration:none;">
+                                        <?= htmlspecialchars($l->ref) ?> ↗
+                                    </a>
+                                <?php else: ?>
+                                    <span style="color:var(--t-secondary); font-size: 11px; margin-left: 5px;"><?= htmlspecialchars($l->ref) ?></span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="num-col" style="color:var(--t-primary); font-weight:500; font-family:var(--f-mono);"><?= $l->debit > 0 ? 'Rs: ' . number_format($l->debit, 2) : '-' ?></td>
+                            <td class="num-col" style="color:var(--c-green); font-weight:500; font-family:var(--f-mono);"><?= $l->credit > 0 ? 'Rs: ' . number_format($l->credit, 2) : '-' ?></td>
+                            <td class="num-col" style="font-weight:bold; font-family:var(--f-mono); color: <?= $l->balance > 0 ? 'var(--c-red)' : 'var(--c-green)' ?>;">Rs: <?= number_format($l->balance, 2) ?></td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- TAB 2: Invoices -->
+        <div id="mtab_invoices" class="tab-content" style="padding: 22px; overflow-y: auto; flex: 1;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Order #</th>
+                        <th>Date</th>
+                        <th class="num-col">Grand Total</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if(empty($data['invoices'])): ?>
+                        <tr><td colspan="4" style="text-align:center; color:var(--t-secondary); padding: 20px;">No invoices found.</td></tr>
+                    <?php else: foreach($data['invoices'] as $inv): ?>
+                        <?php 
+                            $trueInvTotal = $inv->total_amount;
+                            if($inv->global_discount_val > 0) {
+                                $trueInvTotal -= ($inv->global_discount_type == '%' ? ($inv->total_amount * $inv->global_discount_val / 100) : $inv->global_discount_val);
+                            }
+                            $trueInvTotal += $inv->tax_amount;
+                        ?>
+                        <tr>
+                            <td><a href="<?= APP_URL ?>/sales/show/<?= $inv->id ?>" target="_blank" style="color:var(--c-blue); font-weight:bold; text-decoration:none;"><?= $inv->invoice_number ?></a></td>
+                            <td style="color:var(--t-secondary); font-size:12px;"><?= date('M d, Y', strtotime($inv->invoice_date)) ?></td>
+                            <td class="num-col" style="font-weight:bold; font-family:var(--f-mono);">Rs: <?= number_format($trueInvTotal, 2) ?></td>
+                            <td><span class="status-badge status-<?= $inv->status ?>"><?= $inv->status ?></span></td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- TAB 3: Cheques -->
+        <div id="mtab_cheques" class="tab-content" style="padding: 22px; overflow-y: auto; flex: 1;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Bank & Date</th>
+                        <th class="num-col">Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if(empty($data['cheques'])): ?>
+                        <tr><td colspan="3" style="text-align:center; color:var(--t-secondary); padding: 20px;">No cheques recorded.</td></tr>
+                    <?php else: foreach($data['cheques'] as $chk): ?>
+                        <tr>
+                            <td>
+                                <strong><?= htmlspecialchars($chk->bank_name) ?></strong><br>
+                                <span style="font-size:11px; color:var(--t-secondary);"><?= date('M d, Y', strtotime($chk->banking_date)) ?></span>
+                            </td>
+                            <td class="num-col" style="font-weight:bold; font-family:var(--f-mono);">Rs: <?= number_format($chk->amount, 2) ?></td>
+                            <td><span class="status-badge status-<?= $chk->status ?>"><?= $chk->status ?></span></td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- TAB 4: Profile & Map -->
+        <div id="mtab_profile" class="tab-content" style="padding: 22px; overflow-y: auto; flex: 1;">
+            <div class="grid-2">
+                <div>
+                    <div style="display:flex; gap:12px; margin-bottom: 20px;">
+                        <div style="flex:1; background:var(--c-surface2); padding:12px; border-radius:var(--r-md); border:0.5px solid var(--c-separator); text-align:center;">
+                            <div style="font-size:10px; color:var(--t-label); text-transform:uppercase; font-weight:700;">Total Orders</div>
+                            <div style="font-size:18px; font-weight:bold; color:var(--t-primary); margin-top:2px;"><?= $s->total_orders ?></div>
+                        </div>
+                        <div style="flex:1; background:var(--c-surface2); padding:12px; border-radius:var(--r-md); border:0.5px solid var(--c-separator); text-align:center;">
+                            <div style="font-size:10px; color:var(--t-label); text-transform:uppercase; font-weight:700;">Total Billed</div>
+                            <div style="font-size:18px; font-weight:bold; color:var(--t-primary); margin-top:2px; font-family:var(--f-mono);">Rs: <?= number_format($s->total_billed, 2) ?></div>
+                        </div>
+                        <div style="flex:1; background:var(--c-green-light); padding:12px; border-radius:var(--r-md); border:0.5px solid rgba(52,199,89,0.2); text-align:center;">
+                            <div style="font-size:10px; color:var(--c-green); text-transform:uppercase; font-weight:700;">Total Paid</div>
+                            <div style="font-size:18px; font-weight:bold; color:var(--c-green); margin-top:2px; font-family:var(--f-mono);">Rs: <?= number_format($s->total_paid, 2) ?></div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin:0 0 14px 0; border-bottom: 0.5px solid var(--c-separator); padding-bottom: 6px; font-size:14px; font-weight:700; text-transform:uppercase; color:var(--t-secondary);">Edit Customer Profile</h4>
+                    
+                    <form action="<?= APP_URL ?>/customer/index/<?= $c->id ?>" method="POST">
+                        <input type="hidden" name="action" value="update_customer">
+                        <input type="hidden" name="customer_id" value="<?= $c->id ?>">
+                        
+                        <div class="sf-group">
+                            <label>Customer Name *</label>
+                            <input type="text" name="name" class="sf-input" value="<?= htmlspecialchars($c->name) ?>" required>
+                        </div>
+                        
+                        <div class="grid-2">
+                            <div class="sf-group">
+                                <label>Email Address</label>
+                                <input type="email" name="email" class="sf-input" value="<?= htmlspecialchars($c->email) ?>">
+                            </div>
+                            <div class="sf-group">
+                                <label>Phone Number</label>
+                                <input type="text" name="phone" class="sf-input" value="<?= htmlspecialchars($c->phone) ?>">
+                            </div>
+                        </div>
+                        
+                        <div class="grid-2">
+                            <div class="sf-group">
+                                <label>WhatsApp Number</label>
+                                <input type="text" name="whatsapp" class="sf-input" value="<?= htmlspecialchars($c->whatsapp ?? '') ?>">
+                            </div>
+                            <div class="sf-group">
+                                <label>Assigned Territory / Route</label>
+                                <select name="mca_id" class="sf-input" style="height:41px;">
+                                    <option value="">Unassigned</option>
+                                    <?php foreach($data['mca_areas'] as $route): ?>
+                                        <option value="<?= $route->id ?>" <?= $c->mca_id == $route->id ? 'selected' : '' ?>><?= htmlspecialchars($route->name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="sf-group">
+                            <label>Billing Address</label>
+                            <textarea name="address" class="sf-input" rows="2" style="resize:vertical; min-height:50px;"><?= htmlspecialchars($c->address) ?></textarea>
+                        </div>
+                        
+                        <div class="grid-2">
+                            <div class="sf-group">
+                                <label>Latitude (GPS)</label>
+                                <input type="text" name="latitude" class="sf-input" value="<?= $c->latitude ?>">
+                            </div>
+                            <div class="sf-group">
+                                <label>Longitude (GPS)</label>
+                                <input type="text" name="longitude" class="sf-input" value="<?= $c->longitude ?>">
+                            </div>
+                        </div>
+                        
+                        <div style="text-align: right; margin-top: 10px;">
+                            <button type="submit" class="sf-btn primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- GPS Map View -->
+                <div>
+                    <h4 style="margin:0 0 14px 0; border-bottom: 0.5px solid var(--c-separator); padding-bottom: 6px; font-size:14px; font-weight:700; text-transform:uppercase; color:var(--t-secondary);">Map Location</h4>
+                    <div class="map-box">
+                        <?php if($c->latitude && $c->longitude): ?>
+                            <iframe width="100%" height="100%" frameborder="0" style="border:0;" src="https://maps.google.com/maps?q=<?= $c->latitude ?>,<?= $c->longitude ?>&hl=en&z=14&output=embed"></iframe>
+                        <?php else: ?>
+                            <div style="display:flex; height:100%; align-items:center; justify-content:center; color:var(--t-tertiary); font-size:13px; flex-direction:column; gap:6px;">
+                                <i class="fa-solid fa-map-location-dot" style="font-size: 28px;"></i>
+                                No GPS coordinates registered.
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 <?php endif; ?>
 
-<!-- Add Customer Modal (Always accessible) -->
-<div class="modal" id="addCustomerModal">
-    <div class="modal-content" style="width: 550px;">
-        <h3 style="margin-top:0; color:#2e7d32;">Add New Customer</h3>
-        <p style="font-size: 12px; color: #666; margin-top:-5px; margin-bottom: 20px;">Create a new customer profile on the ERP system.</p>
-        
+<!-- ============================================================
+     MODAL: REGISTER NEW CUSTOMER
+     ============================================================ -->
+<div class="modal-veil hidden" id="addCustomerModal" onclick="if(event.target === this) closeModal('addCustomerModal')">
+    <div class="sf-modal">
+        <div class="modal-head">
+            <h3 class="modal-title" style="color:var(--c-blue);"><i class="fa-solid fa-user-plus" style="margin-right:6px;"></i>Add New Customer</h3>
+            <button type="button" class="modal-close" onclick="closeModal('addCustomerModal')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
         <form action="<?= APP_URL ?>/customer/index" method="POST">
-            <input type="hidden" name="action" value="add_customer">
-            
-            <div class="form-group">
-                <label>Customer/Company Name *</label>
-                <input type="text" name="name" class="form-control" placeholder="e.g. Acme Corporation" required>
-            </div>
-            
-            <div class="grid-2">
-                <div class="form-group"><label>Email Address</label><input type="email" name="email" class="form-control" placeholder="e.g. acme@example.com"></div>
-                <div class="form-group"><label>Phone Number</label><input type="text" name="phone" class="form-control" placeholder="e.g. +94771234567"></div>
-            </div>
-            
-            <div class="grid-2">
-                <div class="form-group"><label>WhatsApp Number</label><input type="text" name="whatsapp" class="form-control" placeholder="e.g. +94771234567"></div>
-                <div class="form-group">
-                    <label>Assign Territory / Route</label>
-                    <select name="mca_id" class="form-control">
-                        <option value="">Unassigned</option>
-                        <?php foreach($data['mca_areas'] as $route): ?>
-                            <option value="<?= $route->id ?>"><?= htmlspecialchars($route->name) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+            <div class="modal-body">
+                <input type="hidden" name="action" value="add_customer">
+                
+                <div class="sf-group">
+                    <label>Customer/Company Name *</label>
+                    <input type="text" name="name" class="sf-input" placeholder="e.g. Acme Corporation" required>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="sf-group"><label>Email Address</label><input type="email" name="email" class="sf-input" placeholder="e.g. acme@example.com"></div>
+                    <div class="sf-group"><label>Phone Number</label><input type="text" name="phone" class="sf-input" placeholder="e.g. +94771234567"></div>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="sf-group"><label>WhatsApp Number</label><input type="text" name="whatsapp" class="sf-input" placeholder="e.g. +94771234567"></div>
+                    <div class="sf-group">
+                        <label>Assign Territory / Route</label>
+                        <select name="mca_id" class="sf-input" style="height:41px;">
+                            <option value="">Unassigned</option>
+                            <?php foreach($data['mca_areas'] as $route): ?>
+                                <option value="<?= $route->id ?>"><?= htmlspecialchars($route->name) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="sf-group">
+                    <label>Billing Address</label>
+                    <textarea name="address" class="sf-input" rows="2" placeholder="e.g. 123 Main Street, Colombo" style="resize:vertical; min-height:50px;"></textarea>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="sf-group"><label>Latitude (GPS)</label><input type="text" name="latitude" class="sf-input" placeholder="Optional"></div>
+                    <div class="sf-group"><label>Longitude (GPS)</label><input type="text" name="longitude" class="sf-input" placeholder="Optional"></div>
                 </div>
             </div>
-            
-            <div class="form-group">
-                <label>Billing Address</label>
-                <textarea name="address" class="form-control" rows="2" placeholder="e.g. 123 Main Street, Colombo"></textarea>
-            </div>
-            
-            <div class="grid-2">
-                <div class="form-group"><label>Latitude (GPS)</label><input type="text" name="latitude" class="form-control" placeholder="Optional"></div>
-                <div class="form-group"><label>Longitude (GPS)</label><input type="text" name="longitude" class="form-control" placeholder="Optional"></div>
-            </div>
-            
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                <button type="button" class="btn btn-outline" onclick="closeModal('addCustomerModal')">Cancel</button>
-                <button type="submit" class="btn btn-success">Save & Register</button>
+            <div class="modal-foot">
+                <button type="button" class="sf-btn neutral" onclick="closeModal('addCustomerModal')">Cancel</button>
+                <button type="submit" class="sf-btn primary">Save & Register</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- CSV Import Modal -->
-<div class="modal" id="csvImportModal">
-    <div class="modal-content" style="width: 500px;">
-        <h3 style="margin-top:0; color:#2e7d32;">Import Customers from CSV</h3>
-        <p style="font-size: 12px; color: #666; margin-top:-5px; margin-bottom: 20px;">
-            Select a CSV file containing customer details. Required column: <strong>Name</strong>.
-            Supported columns: <strong>Name, Email, Phone, WhatsApp, Address, Latitude, Longitude, Territory</strong>.
-        </p>
-        
+<!-- ============================================================
+     MODAL: CSV IMPORT
+     ============================================================ -->
+<div class="modal-veil hidden" id="csvImportModal" onclick="if(event.target === this) closeModal('csvImportModal')">
+    <div class="sf-modal" style="width:480px;">
+        <div class="modal-head">
+            <h3 class="modal-title" style="color:var(--c-green);"><i class="fa-solid fa-file-csv" style="margin-right:6px;"></i>Import Customers (CSV)</h3>
+            <button type="button" class="modal-close" onclick="closeModal('csvImportModal')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
         <form action="<?= APP_URL ?>/customer/importCSV" method="POST" enctype="multipart/form-data">
-            <div class="form-group" style="border: 2px dashed var(--mac-border); padding: 25px; border-radius: 8px; text-align: center; background: rgba(0,0,0,0.02); position: relative; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background='rgba(0,0,0,0.02)'">
-                <input type="file" name="csv_file" accept=".csv" required style="position: absolute; inset:0; opacity:0; cursor:pointer;">
-                <div style="font-size: 24px; margin-bottom: 8px;">📁</div>
-                <span style="font-size:13px; font-weight:600; color:#555;">Choose a CSV file or drag it here</span>
+            <div class="modal-body">
+                <p style="font-size: 12px; color: var(--t-secondary); margin-top:-10px; margin-bottom: 20px; line-height:1.5;">
+                    Select a CSV file containing customer details. Required column: <strong>Name</strong>.<br>
+                    Supported columns: <strong>Name, Email, Phone, WhatsApp, Address, Latitude, Longitude, Territory</strong>.
+                </p>
+                <div class="drop-zone">
+                    <input type="file" name="csv_file" accept=".csv" required>
+                    <div class="drop-zone-icon"><i class="fa-solid fa-file-csv"></i></div>
+                    <div class="drop-zone-title">Choose a CSV file</div>
+                    <div class="drop-zone-sub">or drag and drop it here</div>
+                </div>
             </div>
-            
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                <button type="button" class="btn btn-outline" onclick="closeModal('csvImportModal')">Cancel</button>
-                <button type="submit" class="btn btn-success">Import Customers</button>
+            <div class="modal-foot">
+                <button type="button" class="sf-btn neutral" onclick="closeModal('csvImportModal')">Cancel</button>
+                <button type="submit" class="sf-btn success">Import Customers</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-    function switchTab(tabName) {
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        document.getElementById('tab_' + tabName).classList.add('active');
-        document.getElementById('btn_' + tabName).classList.add('active');
+    // --- Custom Dropdown Handlers ---
+    function selectRoute(val, label) {
+        document.getElementById('filterRoute').value = val;
+        document.getElementById('route-dropdown-val').textContent = label;
+        
+        // Update active classes
+        const dropdown = document.getElementById('route-dropdown-val').closest('.sf-dropdown');
+        dropdown.querySelectorAll('.sf-dropdown-item').forEach(item => {
+            if (item.getAttribute('data-val') === val) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+        
+        document.activeElement.blur();
+        filterList();
     }
 
-    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function selectStatus(val, label) {
+        document.getElementById('filterStatus').value = val;
+        document.getElementById('status-dropdown-val').textContent = label;
+        
+        // Update active classes
+        const dropdown = document.getElementById('status-dropdown-val').closest('.sf-dropdown');
+        dropdown.querySelectorAll('.sf-dropdown-item').forEach(item => {
+            if (item.getAttribute('data-val') === val) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+        
+        document.activeElement.blur();
+        filterList();
+    }
 
-    // NEW: Advanced Filter Logic
+    // --- Search & Filter Logic ---
     function filterList() {
-        const query = document.getElementById('searchInput').value.toLowerCase();
-        const routeFilter = document.getElementById('filterRoute').value.toLowerCase();
+        const query = document.getElementById('searchInput').value.toLowerCase().trim();
+        const routeFilter = document.getElementById('filterRoute').value.toLowerCase().trim();
         const statusFilter = document.getElementById('filterStatus').value;
         
-        const items = document.querySelectorAll('.customer-item');
+        const rows = document.querySelectorAll('.customer-row');
+        let visibleCount = 0;
         
-        items.forEach(item => {
-            const name = item.querySelector('.c-name').innerText.toLowerCase();
-            const contact = item.querySelector('.c-contact').innerText.toLowerCase();
-            const email = item.querySelector('.c-email') ? item.querySelector('.c-email').innerText.toLowerCase() : '';
-            const routeText = item.querySelector('.c-route') ? item.querySelector('.c-route').innerText.toLowerCase() : '';
-            const address = item.querySelector('.c-address') ? item.querySelector('.c-address').innerText.toLowerCase() : '';
-            const route = item.getAttribute('data-route');
-            const outstanding = parseFloat(item.getAttribute('data-outstanding'));
-
-            let matchesSearch = name.includes(query) || 
-                                contact.includes(query) || 
-                                email.includes(query) || 
-                                routeText.includes(query) || 
-                                address.includes(query);
-            let matchesRoute = routeFilter === "" || route === routeFilter;
+        rows.forEach(row => {
+            const name = row.getAttribute('data-name');
+            const phone = row.getAttribute('data-phone');
+            const email = row.getAttribute('data-email');
+            const route = row.getAttribute('data-route');
+            const address = row.getAttribute('data-address');
+            const outstanding = parseFloat(row.getAttribute('data-outstanding'));
+            
+            const matchesSearch = query === '' || 
+                                  name.includes(query) || 
+                                  phone.includes(query) || 
+                                  email.includes(query) || 
+                                  route.includes(query) || 
+                                  address.includes(query);
+                                  
+            const matchesRoute = routeFilter === '' || route === routeFilter;
+            
             let matchesStatus = true;
-
             if (statusFilter === 'owed') {
                 matchesStatus = outstanding > 0;
             } else if (statusFilter === 'cleared') {
                 matchesStatus = outstanding <= 0;
             }
-
+            
             if (matchesSearch && matchesRoute && matchesStatus) {
-                item.style.display = 'flex';
+                row.style.display = '';
+                visibleCount++;
             } else {
-                item.style.display = 'none';
+                row.style.display = 'none';
             }
         });
+        
+        document.getElementById('matching-count').textContent = visibleCount;
     }
 
-    function togglePaymentFields() {
-        const method = document.getElementById('payMethod').value;
-        const cqDiv = document.getElementById('chequeFields');
-        const bInput = document.getElementById('cq_bank');
-        const nInput = document.getElementById('cq_num');
-        const dInput = document.getElementById('cq_date');
+    // --- Modal Control Helper functions ---
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-        if (method === 'Cheque') {
-            cqDiv.style.display = 'block';
-            bInput.required = true;
-            nInput.required = true;
-            dInput.required = true;
-        } else {
-            cqDiv.style.display = 'none';
-            bInput.required = false;
-            nInput.required = false;
-            dInput.required = false;
+    // --- Customer Profile Popup Modal Handlers ---
+    function showCustomerProfile(id) {
+        const modal = document.getElementById('customerProfileModal');
+        const loader = document.getElementById('modal-loader');
+        const content = document.getElementById('modal-profile-content');
+        
+        modal.classList.remove('hidden');
+        loader.style.display = 'flex';
+        content.style.display = 'none';
+        
+        // Update URL
+        const targetUrl = '<?= APP_URL ?>/customer/index/' + id;
+        window.history.pushState({ path: targetUrl }, '', targetUrl);
+        
+        fetch(targetUrl)
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load profile');
+                return response.text();
+            })
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                const newContent = doc.getElementById('modal-profile-content-source');
+                const newHeader = doc.getElementById('modal-header-container');
+                
+                if (newContent && newHeader) {
+                    document.getElementById('modal-header-container').innerHTML = newHeader.innerHTML;
+                    content.innerHTML = newContent.innerHTML;
+                    
+                    loader.style.display = 'none';
+                    content.style.display = 'flex';
+                } else {
+                    throw new Error('Malformed content returned from server');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                content.innerHTML = `
+                    <div style="padding:40px; text-align:center; color:var(--c-red);">
+                        <i class="fa-solid fa-triangle-exclamation" style="font-size:32px; margin-bottom:12px;"></i><br>
+                        Failed to load customer profile details.
+                    </div>`;
+                loader.style.display = 'none';
+                content.style.display = 'block';
+            });
+    }
+
+    function openPrepopulatedCustomerProfile(id) {
+        const modal = document.getElementById('customerProfileModal');
+        const content = document.getElementById('modal-profile-content');
+        
+        const headerSrc = document.getElementById('modal-header-source');
+        const contentSrc = document.getElementById('modal-profile-content-source');
+        
+        if (headerSrc && contentSrc) {
+            document.getElementById('modal-header-container').innerHTML = headerSrc.innerHTML;
+            content.innerHTML = contentSrc.innerHTML;
+            modal.classList.remove('hidden');
         }
     }
 
+    function closeCustomerProfile() {
+        document.getElementById('customerProfileModal').classList.add('hidden');
+        const targetUrl = '<?= APP_URL ?>/customer/index';
+        window.history.pushState({ path: targetUrl }, '', targetUrl);
+    }
+
+    // --- Tab Switching inside Profile Modal ---
+    function switchModalTab(tabName) {
+        const content = document.getElementById('modal-profile-content');
+        content.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+        content.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        const activeTab = content.querySelector('#mtab_' + tabName);
+        const activeBtn = content.querySelector('#mbtn_' + tabName);
+        
+        if (activeTab) activeTab.style.display = 'block';
+        if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    // --- Share Portal Helper ---
     function sharePortal(id, phone, name) {
-        // Obscure the ID slightly to prevent basic URL guessing
         const encodedId = btoa(id);
         const portalLink = "<?= APP_URL ?>/portal/show/" + encodedId;
         const msg = `Hello ${name},\n\nYou can view your live account statement, outstanding balances, and download past invoices on our B2B Customer Portal here:\n\n${portalLink}\n\nThank you!`;
@@ -572,8 +1258,14 @@ if ($importResults) {
             const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
             window.open(waUrl, '_blank');
         } else {
-            // Fallback for desktop/no-phone
             prompt("Customer has no phone number saved. Copy the link below to share manually:", portalLink);
         }
     }
+
+    // Handle initial state if selected customer exists on page load
+    <?php if ($data['selected_customer']): ?>
+    document.addEventListener('DOMContentLoaded', () => {
+        openPrepopulatedCustomerProfile(<?= $data['selected_customer']->id ?>);
+    });
+    <?php endif; ?>
 </script>
