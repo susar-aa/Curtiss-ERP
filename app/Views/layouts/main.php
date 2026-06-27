@@ -1943,8 +1943,8 @@ if (!function_exists('hasPermission')) {
             return originalSend.apply(this, args);
         };
 
-        // 3. Inactivity Timeout (15 Minutes - Shared across all tabs via localStorage)
-        const TIMEOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+        // 3. Inactivity Timeout (60 Minutes - Shared across all tabs via localStorage)
+        const TIMEOUT_DURATION = 60 * 60 * 1000; // 60 minutes
         
         if (!localStorage.getItem('lastActiveTime')) {
             localStorage.setItem('lastActiveTime', Date.now().toString());

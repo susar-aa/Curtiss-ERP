@@ -206,6 +206,12 @@ class AuthController extends Controller {
     }
 
     public function check_session() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        if (isset($_SESSION['user_id'])) {
+            $_SESSION['last_activity'] = time(); // Touch session to update file mtime and prevent GC expiration
+        }
         header('Content-Type: application/json');
         echo json_encode([
             'logged_in' => isset($_SESSION['user_id'])
