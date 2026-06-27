@@ -1,14 +1,10 @@
 <?php
 class HrmController extends Controller {
     private $employeeModel;
-    private $payrollModel;
-    private $coaModel;
 
     public function __construct() {
         if (!isset($_SESSION['user_id'])) { header('Location: ' . APP_URL . '/auth/login'); exit; }
         $this->employeeModel = $this->model('Employee');
-        $this->payrollModel = $this->model('Payroll');
-        $this->coaModel = $this->model('ChartOfAccount');
     }
 
     public function index() {
@@ -19,6 +15,16 @@ class HrmController extends Controller {
             'error' => '',
             'success' => ''
         ];
+
+        // Handle success/error flash messages
+        if (isset($_SESSION['flash_success'])) {
+            $data['success'] = $_SESSION['flash_success'];
+            unset($_SESSION['flash_success']);
+        }
+        if (isset($_SESSION['flash_error'])) {
+            $data['error'] = $_SESSION['flash_error'];
+            unset($_SESSION['flash_error']);
+        }
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'add_employee') {
             $empData = [
@@ -63,10 +69,11 @@ class HrmController extends Controller {
 
             try {
                 if ($this->employeeModel->addEmployee($empData, $userData)) {
-                    $data['success'] = $createLogin 
+                    $_SESSION['flash_success'] = $createLogin 
                         ? 'Employee and user login created successfully.' 
                         : 'Employee added successfully.';
-                    $data['employees'] = $this->employeeModel->getAllEmployees();
+                    header('Location: ' . APP_URL . '/hrm');
+                    exit;
                 } else {
                     $data['error'] = 'Failed to add employee.';
                 }
@@ -78,51 +85,82 @@ class HrmController extends Controller {
         $this->view('layouts/main', $data);
     }
 
-    public function payroll() {
-        $accounts = $this->coaModel->getAccounts();
-        $expenses = array_filter($accounts, function($a) { return $a->account_type == 'Expense'; });
-        $banks = array_filter($accounts, function($a) { return $a->account_type == 'Asset'; });
-        
-        $activeEmployees = $this->employeeModel->getActiveEmployees();
-        $totalEstimatedGross = 0;
-        foreach($activeEmployees as $emp) {
-            $totalEstimatedGross += $emp->base_salary;
+    public function edit() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . APP_URL . '/hrm');
+            exit;
         }
 
-        $data = [
-            'title' => 'Payroll Processing',
-            'content_view' => 'hrm/payroll',
-            'payroll_runs' => $this->payrollModel->getAllPayrollRuns(),
-            'expenses' => $expenses,
-            'banks' => $banks,
-            'active_employees_count' => count($activeEmployees),
-            'estimated_gross' => $totalEstimatedGross,
-            'error' => '',
-            'success' => ''
+        $id = intval($_POST['id']);
+        $empData = [
+            'id' => $id,
+            'first_name' => trim($_POST['first_name']),
+            'last_name' => trim($_POST['last_name']),
+            'email' => trim($_POST['email']),
+            'phone' => trim($_POST['phone']),
+            'department' => trim($_POST['department']),
+            'job_title' => trim($_POST['job_title']),
+            'base_salary' => floatval($_POST['base_salary']),
+            'hire_date' => $_POST['hire_date'],
+            'status' => $_POST['status'] ?? 'Active'
         ];
 
-        if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'run_payroll') {
-            $periodStart = $_POST['period_start'];
-            $periodEnd = $_POST['period_end'];
-            $runDate = $_POST['run_date'];
-            $wageExpenseAccId = $_POST['wage_expense_account_id'];
-            $bankAccId = $_POST['bank_account_id'];
-            
-            // Using base salary for simplicity in this phase
-            $gross = $totalEstimatedGross; 
+        $createLogin = isset($_POST['create_login']) && $_POST['create_login'] == '1';
+        $userData = null;
 
-            if ($gross <= 0) {
-                $data['error'] = 'No active employees with a salary found.';
-            } else {
-                if ($this->payrollModel->processPayroll($periodStart, $periodEnd, $runDate, $gross, $wageExpenseAccId, $bankAccId, $_SESSION['user_id'])) {
-                    $data['success'] = 'Payroll processed and posted to ledger successfully!';
-                    $data['payroll_runs'] = $this->payrollModel->getAllPayrollRuns(); // Refresh
-                } else {
-                    $data['error'] = 'Database Error: Failed to process payroll.';
-                }
+        if ($createLogin) {
+            $username = trim($_POST['username'] ?? '');
+            $password = $_POST['password'] ?? '';
+            $role = $_POST['role'] ?? 'office';
+            
+            $appsArray = $_POST['accessible_apps'] ?? ['ERP System'];
+            $accessibleApps = implode(',', $appsArray);
+
+            // Check if username conflict exists with another user
+            $userModel = $this->model('User');
+            $existing = $userModel->findUserByUsername($username);
+            if ($existing && $existing->employee_id != $id) {
+                $_SESSION['flash_error'] = 'Failed to update employee: Username is already taken by another account.';
+                header('Location: ' . APP_URL . '/hrm');
+                exit;
             }
+
+            $userData = [
+                'username' => $username,
+                'email' => trim($_POST['email']),
+                'password' => $password, // empty password handled inside updateEmployee
+                'role' => $role,
+                'status' => 'Active',
+                'accessible_apps' => $accessibleApps
+            ];
         }
 
-        $this->view('layouts/main', $data);
+        try {
+            if ($this->employeeModel->updateEmployee($empData, $userData)) {
+                $_SESSION['flash_success'] = 'Employee details updated successfully.';
+            } else {
+                $_SESSION['flash_error'] = 'Failed to update employee details.';
+            }
+        } catch (Exception $e) {
+            $_SESSION['flash_error'] = 'Database Error: ' . $e->getMessage();
+        }
+
+        header('Location: ' . APP_URL . '/hrm');
+        exit;
+    }
+
+    public function delete($id) {
+        try {
+            if ($this->employeeModel->deleteEmployee($id)) {
+                $_SESSION['flash_success'] = 'Employee and their linked user account deleted successfully.';
+            } else {
+                $_SESSION['flash_error'] = 'Failed to delete employee.';
+            }
+        } catch (Exception $e) {
+            $_SESSION['flash_error'] = 'Database Error: ' . $e->getMessage();
+        }
+
+        header('Location: ' . APP_URL . '/hrm');
+        exit;
     }
 }
