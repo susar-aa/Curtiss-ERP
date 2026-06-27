@@ -60,3 +60,6 @@ ALTER TABLE invoices ADD COLUMN IF NOT EXISTS uuid VARCHAR(100) UNIQUE NULL AFTE
 
 ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS item_id INT NULL DEFAULT NULL AFTER invoice_id;
 ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS variation_option_id INT NULL DEFAULT NULL AFTER item_id;
+
+-- 5. Add accessible_apps column to users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS accessible_apps VARCHAR(255) DEFAULT 'ERP System' AFTER status;

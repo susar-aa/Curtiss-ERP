@@ -231,13 +231,14 @@
                         <th>Name</th>
                         <th>Job Title &amp; Dept</th>
                         <th>Contact</th>
+                        <th>System Access</th>
                         <th>Status</th>
                         <th style="text-align: right;">Base Salary (Rs:)</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if(empty($data['employees'])): ?>
-                    <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px;">No employees found.</td></tr>
+                    <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 40px;">No employees found.</td></tr>
                     <?php else: foreach($data['employees'] as $emp): ?>
                     <tr>
                         <td>
@@ -251,6 +252,29 @@
                         <td>
                             <div><?= htmlspecialchars($emp->email ?: '—') ?></div>
                             <div style="font-size:11px; color: var(--text-muted); margin-top: 2px;"><?= htmlspecialchars($emp->phone ?: '—') ?></div>
+                        </td>
+                        <td>
+                            <?php if(!empty($emp->username)): ?>
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <span style="font-weight:600; color: var(--text-accent); font-size:12.5px; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="ph ph-shield-check" style="font-size: 15px;"></i> <?= htmlspecialchars($emp->username) ?>
+                                    </span>
+                                    <span style="font-size: 11px; color: var(--text-muted);">
+                                        Role: <strong><?= htmlspecialchars(ucfirst($emp->user_role)) ?></strong>
+                                    </span>
+                                    <?php if(!empty($emp->accessible_apps)): ?>
+                                        <div style="display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px;">
+                                            <?php foreach(explode(',', $emp->accessible_apps) as $app): ?>
+                                                <span style="font-size: 9px; padding: 1px 5px; background: rgba(79, 70, 229, 0.08); color: var(--text-accent); border-radius: 4px; font-weight: 600; border: 0.5px solid rgba(79, 70, 229, 0.15); display: inline-block;">
+                                                    <?= htmlspecialchars(trim($app)) ?>
+                                                </span>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php else: ?>
+                                <span style="font-size:12px; color: var(--text-muted); font-style: italic;">No login created</span>
+                            <?php endif; ?>
                         </td>
                         <td><span class="status-badge status-<?= $emp->status ?>"><?= $emp->status ?></span></td>
                         <td style="text-align: right; font-weight: 700; color: var(--text-main);"><?= number_format($emp->base_salary, 2) ?></td>
@@ -298,6 +322,55 @@
                 <div class="form-group"><label>Hire Date</label><input type="date" name="hire_date" class="form-control" value="<?= date('Y-m-d') ?>" required></div>
                 <div class="form-group"><label>Base Salary (Rs:) *</label><input type="number" name="base_salary" step="0.01" min="0" class="form-control" required></div>
             </div>
+
+            <!-- Optional user login credentials -->
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--glass-border);">
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px; cursor: pointer; color: var(--text-main);">
+                    <input type="checkbox" name="create_login" id="createLoginCheckbox" value="1" onchange="toggleLoginFields()">
+                    <span>Create User Login Credentials</span>
+                </label>
+            </div>
+
+            <div id="loginFieldsContainer" style="display: none; margin-top: 15px;">
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Username *</label>
+                        <input type="text" name="username" id="loginUsername" class="form-control" placeholder="e.g. johndoe">
+                    </div>
+                    <div class="form-group">
+                        <label>Password *</label>
+                        <input type="password" name="password" id="loginPassword" class="form-control" placeholder="Enter secure password">
+                    </div>
+                </div>
+                <div class="grid-2" style="grid-template-columns: 1fr 1fr; align-items: start;">
+                    <div class="form-group">
+                        <label>System Role *</label>
+                        <select name="role" id="loginRole" class="form-control">
+                            <option value="office">Office User</option>
+                            <option value="rep">Representative (Rep)</option>
+                            <option value="driver">Driver</option>
+                            <option value="admin">Administrator (Admin)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="margin-bottom: 8px;">App Access Permissions *</label>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; cursor: pointer; color: var(--text-main);">
+                                <input type="checkbox" name="accessible_apps[]" value="ERP System" checked> ERP System
+                            </label>
+                            <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; cursor: pointer; color: var(--text-main);">
+                                <input type="checkbox" name="accessible_apps[]" value="Driver App"> Driver App
+                            </label>
+                            <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; cursor: pointer; color: var(--text-main);">
+                                <input type="checkbox" name="accessible_apps[]" value="Rep App"> Rep App
+                            </label>
+                            <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; cursor: pointer; color: var(--text-main);">
+                                <input type="checkbox" name="accessible_apps[]" value="Curtiss Portal"> Curtiss Portal
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
             
             <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--glass-border);">
                 <button type="button" class="btn btn-outline" onclick="document.getElementById('empModal').style.display='none'">Cancel</button>
@@ -306,3 +379,15 @@
         </form>
     </div>
 </div>
+
+<script>
+function toggleLoginFields() {
+    const checked = document.getElementById('createLoginCheckbox').checked;
+    const container = document.getElementById('loginFieldsContainer');
+    container.style.display = checked ? 'block' : 'none';
+    
+    document.getElementById('loginUsername').required = checked;
+    document.getElementById('loginPassword').required = checked;
+    document.getElementById('loginRole').required = checked;
+}
+</script>

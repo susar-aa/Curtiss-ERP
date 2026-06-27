@@ -32,9 +32,40 @@ class HrmController extends Controller {
                 'hire_date' => $_POST['hire_date']
             ];
 
+            $createLogin = isset($_POST['create_login']) && $_POST['create_login'] == '1';
+            $userData = null;
+
+            if ($createLogin) {
+                $username = trim($_POST['username'] ?? '');
+                $password = $_POST['password'] ?? '';
+                $role = $_POST['role'] ?? 'office';
+                
+                $appsArray = $_POST['accessible_apps'] ?? ['ERP System'];
+                $accessibleApps = implode(',', $appsArray);
+
+                $userModel = $this->model('User');
+                if ($userModel->findUserByUsername($username)) {
+                    $data['error'] = 'Failed to add employee: Username is already taken.';
+                    $this->view('layouts/main', $data);
+                    return;
+                }
+
+                $userData = [
+                    'username' => $username,
+                    'email' => trim($_POST['email']),
+                    'password' => $password,
+                    'role' => $role,
+                    'signature_path' => null,
+                    'status' => 'Active',
+                    'accessible_apps' => $accessibleApps
+                ];
+            }
+
             try {
-                if ($this->employeeModel->addEmployee($empData)) {
-                    $data['success'] = 'Employee added successfully.';
+                if ($this->employeeModel->addEmployee($empData, $userData)) {
+                    $data['success'] = $createLogin 
+                        ? 'Employee and user login created successfully.' 
+                        : 'Employee added successfully.';
                     $data['employees'] = $this->employeeModel->getAllEmployees();
                 } else {
                     $data['error'] = 'Failed to add employee.';
