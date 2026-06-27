@@ -1416,12 +1416,10 @@ if ($importResults) unset($_SESSION['import_results']);
                     <span style="font-size:13px; color:var(--t-secondary);">This cannot be undone.</span>
                 </p>
                 <div id="deleteErrorContainer" class="modal-err hidden"></div>
-                <?php if (!$isCurrentlyAdmin): ?>
-                <div class="sf-input-group">
-                    <input type="text"     name="admin_username" id="deleteAdminUsername" class="sf-input" placeholder="Admin username" required>
-                    <input type="password" name="password"       id="deleteAdminPassword" class="sf-input" placeholder="Admin password" required>
+                <div class="sf-group">
+                    <label style="font-size: 12px; font-weight: 600; color: var(--t-label); display: block; margin-bottom: 6px;">Your Account Password *</label>
+                    <input type="password" name="password" id="deleteAdminPassword" class="sf-input" placeholder="Enter your password" required autocomplete="current-password">
                 </div>
-                <?php endif; ?>
             </div>
             <div class="modal-foot">
                 <button type="button" onclick="closeDeleteModal()" class="sf-btn neutral">Cancel</button>
@@ -1883,8 +1881,6 @@ function confirmDelete(id, name) {
     if (err) { err.classList.add('hidden'); err.textContent = ''; }
     const pw = document.getElementById('deleteAdminPassword');
     if (pw) pw.value = '';
-    const un = document.getElementById('deleteAdminUsername');
-    if (un) un.value = '';
     document.getElementById('deleteProductModal').classList.remove('hidden');
 }
 

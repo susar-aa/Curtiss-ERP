@@ -1721,33 +1721,12 @@ class InventoryController extends Controller {
         header('Content-Type: application/json');
         
         $password = $_POST['password'] ?? '';
-        $isAdmin = (strtolower($_SESSION['role'] ?? '') === 'admin');
+        $username = $_SESSION['username'] ?? '';
 
         $userModel = $this->model('User');
-        $authorized = false;
-        $authUsername = '';
+        $user = $userModel->login($username, $password);
 
-        if ($isAdmin) {
-            $authorized = true;
-            $authUsername = $_SESSION['username'] ?? '';
-        } else {
-            // Verify provided admin credentials
-            $adminUsername = trim($_POST['admin_username'] ?? '');
-            if (empty($adminUsername)) {
-                echo json_encode(['success' => false, 'error' => 'Admin username is required.']);
-                exit;
-            }
-            $user = $userModel->login($adminUsername, $password);
-            if ($user && strtolower($user->role) === 'admin') {
-                $authorized = true;
-                $authUsername = $adminUsername;
-            } else {
-                echo json_encode(['success' => false, 'error' => 'Invalid admin credentials or user is not an administrator.']);
-                exit;
-            }
-        }
-
-        if ($authorized) {
+        if ($user) {
             $item = $this->itemModel->getItemById($id);
             if (!$item) {
                 echo json_encode(['success' => false, 'error' => 'Product not found.']);
@@ -1759,7 +1738,7 @@ class InventoryController extends Controller {
                 $this->logActivity(
                     'Product Deleted',
                     'Inventory',
-                    "Product '{$item->name}' (Code: {$item->item_code}) deleted by administrator '{$authUsername}' (Requesting user: '{$_SESSION['username']}').",
+                    "Product '{$item->name}' (Code: {$item->item_code}) deleted by '{$username}'.",
                     $id
                 );
 
@@ -1769,10 +1748,10 @@ class InventoryController extends Controller {
                 echo json_encode(['success' => false, 'error' => 'Failed to delete product from database.']);
                 exit;
             }
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Invalid password. Please enter your correct logged-in password.']);
+            exit;
         }
-
-        echo json_encode(['success' => false, 'error' => 'Unauthorized action.']);
-        exit;
     }
 
     public function bulkUpdate() {
