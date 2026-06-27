@@ -1440,15 +1440,36 @@ if (!function_exists('hasPermission')) {
                         <a href="<?= APP_URL ?>/hrm" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-user-circle-gear"></i></div>
                             <div class="mega-list-item-content">
-                                <div class="title">HRM & Employees</div>
-                                <div class="desc">Staff directories</div>
+                                <div class="title">Employee Directory</div>
+                                <div class="desc">Staff directory & login access</div>
                             </div>
                         </a>
-                        <a href="<?= APP_URL ?>/hrm/payroll" class="mega-list-item">
+                        <a href="<?= APP_URL ?>/payroll" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-bank"></i></div>
                             <div class="mega-list-item-content">
                                 <div class="title">Run Payroll</div>
-                                <div class="desc">Process salaries</div>
+                                <div class="desc">Process salaries & post ledger</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/leave" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-calendar-blank"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Leave Management</div>
+                                <div class="desc">Requests & approval logs</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/attendance" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-fingerprint"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Attendance Tracking</div>
+                                <div class="desc">Shift log registry & clock-in</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/performance" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-trend-up"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Performance Reviews</div>
+                                <div class="desc">Manager feedback & rating cards</div>
                             </div>
                         </a>
                         <?php endif; ?>

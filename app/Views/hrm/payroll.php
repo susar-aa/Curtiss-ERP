@@ -25,7 +25,7 @@
         <div style="padding: 10px; background:#e8f5e9; color:#2e7d32; border-radius:4px; margin-bottom:15px;"><?= $data['success'] ?></div>
     <?php endif; ?>
 
-    <form action="<?= APP_URL ?>/hrm/payroll" method="POST" style="background: rgba(0,0,0,0.02); padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid var(--mac-border);">
+    <form action="<?= APP_URL ?>/payroll/run" method="POST" style="background: rgba(0,0,0,0.02); padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid var(--mac-border);">
         <input type="hidden" name="action" value="run_payroll">
         <h4 style="margin-top:0; border-bottom: 1px solid var(--mac-border); padding-bottom: 10px;">New Payroll Run</h4>
         
