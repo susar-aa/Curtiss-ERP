@@ -120,7 +120,26 @@ class SalesController extends Controller {
         }
 
         // Count total records for pagination
-        $countQuery = str_replace("SELECT i.*, c.name as customer_name", "SELECT COUNT(*) as total", $queryStr);
+        $countQuery = "SELECT COUNT(*) as total 
+                       FROM invoices i 
+                       JOIN customers c ON i.customer_id = c.id 
+                       WHERE (i.stock_status IS NULL OR i.stock_status = 'deducted')";
+        if (!empty($search)) {
+            $countQuery .= " AND (i.invoice_number LIKE :search OR c.name LIKE :search OR i.notes LIKE :search)";
+        }
+        if (!empty($startDate)) {
+            $countQuery .= " AND i.invoice_date >= :start_date";
+        }
+        if (!empty($endDate)) {
+            $countQuery .= " AND i.invoice_date <= :end_date";
+        }
+        if ($customerId > 0) {
+            $countQuery .= " AND i.customer_id = :customer_id";
+        }
+        if (!empty($status)) {
+            $countQuery .= " AND i.status = :status";
+        }
+
         $this->db->query($countQuery);
         foreach ($params as $key => $val) {
             $this->db->bind($key, $val);

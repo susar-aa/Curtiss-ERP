@@ -1312,9 +1312,8 @@ if (!function_exists('erp_safe_json_encode')) {
                 calculateMarkupProfit();
             }
 
-            // Populate existing variations in Edit Mode
             <?php if ($is_edit && isset($item->variations_json) && !empty($item->variations_json)): ?>
-                const savedVariations = <?php echo html_entity_decode($item->variations_json, ENT_QUOTES, 'UTF-8'); ?>;
+                const savedVariations = <?php echo json_encode(json_decode($item->variations_json) ?: [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
                 if (Array.isArray(savedVariations)) {
                     savedVariations.forEach(item => addVariationRow(item));
                 }

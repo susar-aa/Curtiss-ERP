@@ -22,11 +22,11 @@ class App {
             array_shift($url);
         }
 
-        // Check if this is an API sync request
-        $isApiSync = $isMobileApi || isset($_GET['api_sync']) || (isset($url[1]) && (strpos($url[1], 'api_') === 0 || strpos($url[1], 'sync_') === 0));
+        // Check if this is a stateless Mobile API sync request (bypasses CSRF only when no active web session exists)
+        $isMobileSync = ($isMobileApi || isset($_GET['api_sync'])) && !isset($_SESSION['user_id']);
 
         // Global CSRF Protection
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isApiSync) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isMobileSync) {
             $token = $_POST['csrf_token'] ?? '';
             if (empty($token) && isset($_SERVER['HTTP_X_CSRF_TOKEN'])) {
                 $token = $_SERVER['HTTP_X_CSRF_TOKEN'];

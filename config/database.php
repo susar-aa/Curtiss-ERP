@@ -1,9 +1,44 @@
 <?php
+// Load Environment Variables from .env file
+function loadEnv($path) {
+    if (!file_exists($path)) {
+        return;
+    }
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if (empty($line) || strpos($line, '#') === 0) {
+            continue;
+        }
+        $parts = explode('=', $line, 2);
+        if (count($parts) === 2) {
+            $key = trim($parts[0]);
+            $val = trim($parts[1]);
+            // Strip wrapping quotes
+            if (preg_match('/^["\'](.*)["\']$/', $val, $matches)) {
+                $val = $matches[1];
+            }
+            if (getenv($key) === false) {
+                putenv("$key=$val");
+            }
+            if (!isset($_ENV[$key])) {
+                $_ENV[$key] = $val;
+            }
+            if (!isset($_SERVER[$key])) {
+                $_SERVER[$key] = $val;
+            }
+        }
+    }
+}
+
+// Load env file from project root
+loadEnv(__DIR__ . '/../.env');
+
 // Database Constants
-define('DB_HOST', 'localhost');
-define('DB_USER', 'suzxlabs'); 
-define('DB_PASS', 'Susara@200611003614');    
-define('DB_NAME', 'curtiss_erp'); 
+define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+define('DB_USER', getenv('DB_USER') ?: 'root'); 
+define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');    
+define('DB_NAME', getenv('DB_NAME') ?: 'curtiss_erp'); 
 
 // App Root URL - Dynamically determined for local dev (XAMPP) & Plesk production
 if (isset($_SERVER['HTTP_HOST'])) {
@@ -21,7 +56,5 @@ if (isset($_SERVER['HTTP_HOST'])) {
 // Site Name
 define('APP_NAME', 'CURTISS ERP');
 
-// Brevo API Configuration (Replace with your actual API Key from brevo.com)
-define('BREVO_API_KEY', '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');
-
-
+// Brevo API Configuration
+define('BREVO_API_KEY', getenv('BREVO_API_KEY') ?: '');

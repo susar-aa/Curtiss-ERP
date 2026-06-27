@@ -257,6 +257,7 @@ class AuthController extends Controller {
             if (session_status() === PHP_SESSION_NONE) {
                 session_start();
             }
+            session_regenerate_id(true);
             $_SESSION['user_id'] = $user->id;
             $_SESSION['username'] = $user->username;
             $_SESSION['role'] = $user->role;

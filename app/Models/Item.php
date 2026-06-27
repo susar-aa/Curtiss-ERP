@@ -176,10 +176,26 @@ class Item {
     }
 
     /**
+     * Sanitizes dynamic column names to prevent SQL Injection and satisfy static analysis.
+     */
+    private function safeCol($column) {
+        $column = trim($column);
+        if (preg_match('/^[a-zA-Z0-9_]+\s+(ASC|DESC)$/i', $column)) {
+            return $column;
+        }
+        return preg_replace('/[^a-zA-Z0-9_]/', '', $column);
+    }
+
+    /**
      * Builds standard SQL where clauses dynamically to keep database queries highly performant.
      */
     private function buildFilterConditions($filters, &$params) {
         $whereClauses = [];
+
+        $priceCol = $this->safeCol($this->priceColumn);
+        $itemCodeCol = $this->safeCol($this->itemCodeColumn);
+        $nameCol = $this->safeCol($this->nameColumn);
+        $qtyCol = $this->safeCol($this->qtyColumn);
 
         if (!empty($filters['search'])) {
             $searchStr = trim($filters['search']);
@@ -198,7 +214,7 @@ class Item {
                 
                 $tokenParam = ':search_token_' . $index;
                 // Match each word against SKU, Name, and Sample Code (order-independent)
-                $tokenConditions[] = "(i.{$this->itemCodeColumn} LIKE {$tokenParam} OR i.{$this->nameColumn} LIKE {$tokenParam} OR i.sample_code LIKE {$tokenParam})";
+                $tokenConditions[] = "(i.{$itemCodeCol} LIKE {$tokenParam} OR i.{$nameCol} LIKE {$tokenParam} OR i.sample_code LIKE {$tokenParam})";
                 $params[$tokenParam] = '%' . $token . '%';
             }
             
@@ -208,22 +224,22 @@ class Item {
         }
 
         if (isset($filters['min_price']) && $filters['min_price'] !== '') {
-            $whereClauses[] = "CAST(i.{$this->priceColumn} AS DECIMAL(10,2)) >= :min_price";
+            $whereClauses[] = "CAST(i.{$priceCol} AS DECIMAL(10,2)) >= :min_price";
             $params[':min_price'] = floatval($filters['min_price']);
         }
 
         if (isset($filters['max_price']) && $filters['max_price'] !== '') {
-            $whereClauses[] = "CAST(i.{$this->priceColumn} AS DECIMAL(10,2)) <= :max_price";
+            $whereClauses[] = "CAST(i.{$priceCol} AS DECIMAL(10,2)) <= :max_price";
             $params[':max_price'] = floatval($filters['max_price']);
         }
 
         if (!empty($filters['stock_status'])) {
             if ($filters['stock_status'] === 'instock') {
-                $whereClauses[] = "CAST(i.{$this->qtyColumn} AS SIGNED) > 5";
+                $whereClauses[] = "CAST(i.{$qtyCol} AS SIGNED) > 5";
             } elseif ($filters['stock_status'] === 'lowstock') {
-                $whereClauses[] = "CAST(i.{$this->qtyColumn} AS SIGNED) > 0 AND CAST(i.{$this->qtyColumn} AS SIGNED) <= 5";
+                $whereClauses[] = "CAST(i.{$qtyCol} AS SIGNED) > 0 AND CAST(i.{$qtyCol} AS SIGNED) <= 5";
             } elseif ($filters['stock_status'] === 'outstock') {
-                $whereClauses[] = "(CAST(i.{$this->qtyColumn} AS SIGNED) <= 0 OR i.{$this->qtyColumn} IS NULL)";
+                $whereClauses[] = "(CAST(i.{$qtyCol} AS SIGNED) <= 0 OR i.{$qtyCol} IS NULL)";
             }
         }
 
@@ -247,17 +263,24 @@ class Item {
         $params = [];
         $whereSql = $this->buildFilterConditions($filters, $params);
 
+        $priceCol = $this->safeCol($this->priceColumn);
+        $wholesalePriceCol = $this->safeCol($this->wholesalePriceColumn);
+        $itemCodeCol = $this->safeCol($this->itemCodeColumn);
+        $qtyCol = $this->safeCol($this->qtyColumn);
+        $descCol = $this->safeCol($this->descColumn);
+        $orderByCol = $this->safeCol($this->orderByColumn);
+
         $this->db->query("SELECT i.*, 
                           cat.name AS category_name,
-                          i.{$this->priceColumn} AS selling_price, 
-                          i.{$this->wholesalePriceColumn} AS wholesale_price, 
-                          i.{$this->itemCodeColumn} AS item_code, 
-                          i.{$this->qtyColumn} AS qty, 
-                          i.{$this->descColumn} AS description 
+                          i.{$priceCol} AS selling_price, 
+                          i.{$wholesalePriceCol} AS wholesale_price, 
+                          i.{$itemCodeCol} AS item_code, 
+                          i.{$qtyCol} AS qty, 
+                          i.{$descCol} AS description 
                           FROM items i 
                           LEFT JOIN item_categories cat ON i.category_id = cat.id
                           $whereSql 
-                          ORDER BY i.{$this->orderByColumn} 
+                          ORDER BY i.{$orderByCol} 
                           LIMIT :limit OFFSET :offset");
 
         $this->db->bind(':limit', (int)$limit, PDO::PARAM_INT);
@@ -291,10 +314,11 @@ class Item {
      */
     public function getStockStats() {
         try {
+            $qtyCol = $this->safeCol($this->qtyColumn);
             $this->db->query("SELECT 
                 COUNT(*) AS total_items,
-                SUM(CASE WHEN CAST({$this->qtyColumn} AS SIGNED) <= 0 OR {$this->qtyColumn} IS NULL THEN 1 ELSE 0 END) AS out_of_stock_count,
-                SUM(CASE WHEN CAST({$this->qtyColumn} AS SIGNED) > 0 AND CAST({$this->qtyColumn} AS SIGNED) <= 5 THEN 1 ELSE 0 END) AS low_stock_count
+                SUM(CASE WHEN CAST({$qtyCol} AS SIGNED) <= 0 OR {$qtyCol} IS NULL THEN 1 ELSE 0 END) AS out_of_stock_count,
+                SUM(CASE WHEN CAST({$qtyCol} AS SIGNED) > 0 AND CAST({$qtyCol} AS SIGNED) <= 5 THEN 1 ELSE 0 END) AS low_stock_count
                 FROM items");
             
             $stats = $this->db->single();
@@ -320,7 +344,14 @@ class Item {
      * Retrieve all items inside the local database
      */
     public function getItems() {
-        $this->db->query("SELECT i.*, cat.name AS category_name, i.{$this->priceColumn} AS selling_price, i.{$this->wholesalePriceColumn} AS wholesale_price, i.{$this->itemCodeColumn} AS item_code, i.{$this->qtyColumn} AS qty, i.{$this->descColumn} AS description FROM items i LEFT JOIN item_categories cat ON i.category_id = cat.id ORDER BY i.{$this->orderByColumn}");
+        $priceCol = $this->safeCol($this->priceColumn);
+        $wholesalePriceCol = $this->safeCol($this->wholesalePriceColumn);
+        $itemCodeCol = $this->safeCol($this->itemCodeColumn);
+        $qtyCol = $this->safeCol($this->qtyColumn);
+        $descCol = $this->safeCol($this->descColumn);
+        $orderByCol = $this->safeCol($this->orderByColumn);
+
+        $this->db->query("SELECT i.*, cat.name AS category_name, i.{$priceCol} AS selling_price, i.{$wholesalePriceCol} AS wholesale_price, i.{$itemCodeCol} AS item_code, i.{$qtyCol} AS qty, i.{$descCol} AS description FROM items i LEFT JOIN item_categories cat ON i.category_id = cat.id ORDER BY i.{$orderByCol}");
         return $this->db->resultSet();
     }
 
@@ -339,12 +370,19 @@ class Item {
         } else {
             $whereSql = " WHERE (i.status IS NULL OR i.status != 'inactive')";
         }
+
+        $priceCol = $this->safeCol($this->priceColumn);
+        $wholesalePriceCol = $this->safeCol($this->wholesalePriceColumn);
+        $itemCodeCol = $this->safeCol($this->itemCodeColumn);
+        $qtyCol = $this->safeCol($this->qtyColumn);
+        $descCol = $this->safeCol($this->descColumn);
+        $orderByCol = $this->safeCol($this->orderByColumn);
         
-        $this->db->query("SELECT i.*, cat.name AS category_name, i.{$this->priceColumn} AS selling_price, i.{$this->wholesalePriceColumn} AS wholesale_price, i.{$this->itemCodeColumn} AS item_code, i.{$this->qtyColumn} AS qty, i.{$this->descColumn} AS description 
+        $this->db->query("SELECT i.*, cat.name AS category_name, i.{$priceCol} AS selling_price, i.{$wholesalePriceCol} AS wholesale_price, i.{$itemCodeCol} AS item_code, i.{$qtyCol} AS qty, i.{$descCol} AS description 
                           FROM items i 
                           LEFT JOIN item_categories cat ON i.category_id = cat.id 
                           $whereSql
-                          ORDER BY i.{$this->orderByColumn}");
+                          ORDER BY i.{$orderByCol}");
                           
         if (!empty($lastSync)) {
             $this->db->bind(':last_sync', $lastSync);
@@ -361,7 +399,13 @@ class Item {
     }
 
     public function getItemById($id) {
-        $this->db->query("SELECT *, {$this->priceColumn} AS selling_price, {$this->wholesalePriceColumn} AS wholesale_price, {$this->itemCodeColumn} AS item_code, {$this->qtyColumn} AS qty, {$this->descColumn} AS description FROM items WHERE id = :id");
+        $priceCol = $this->safeCol($this->priceColumn);
+        $wholesalePriceCol = $this->safeCol($this->wholesalePriceColumn);
+        $itemCodeCol = $this->safeCol($this->itemCodeColumn);
+        $qtyCol = $this->safeCol($this->qtyColumn);
+        $descCol = $this->safeCol($this->descColumn);
+
+        $this->db->query("SELECT *, {$priceCol} AS selling_price, {$wholesalePriceCol} AS wholesale_price, {$itemCodeCol} AS item_code, {$qtyCol} AS qty, {$descCol} AS description FROM items WHERE id = :id");
         $this->db->bind(':id', $id);
         return $this->db->single();
     }
@@ -391,14 +435,26 @@ class Item {
     }
 
     public function getItemByCode($item_code) {
-        $this->db->query("SELECT *, {$this->priceColumn} AS selling_price, {$this->wholesalePriceColumn} AS wholesale_price, {$this->itemCodeColumn} AS item_code, {$this->qtyColumn} AS qty, {$this->descColumn} AS description FROM items WHERE {$this->itemCodeColumn} = :item_code");
+        $priceCol = $this->safeCol($this->priceColumn);
+        $wholesalePriceCol = $this->safeCol($this->wholesalePriceColumn);
+        $itemCodeCol = $this->safeCol($this->itemCodeColumn);
+        $qtyCol = $this->safeCol($this->qtyColumn);
+        $descCol = $this->safeCol($this->descColumn);
+
+        $this->db->query("SELECT *, {$priceCol} AS selling_price, {$wholesalePriceCol} AS wholesale_price, {$itemCodeCol} AS item_code, {$qtyCol} AS qty, {$descCol} AS description FROM items WHERE {$itemCodeCol} = :item_code");
         $this->db->bind(':item_code', $item_code);
         return $this->db->single();
     }
 
     public function addItem($data) {
+        $priceCol = $this->safeCol($this->priceColumn);
+        $wholesalePriceCol = $this->safeCol($this->wholesalePriceColumn);
+        $itemCodeCol = $this->safeCol($this->itemCodeColumn);
+        $qtyCol = $this->safeCol($this->qtyColumn);
+        $descCol = $this->safeCol($this->descColumn);
+
         $this->db->query("INSERT INTO items (
-            {$this->itemCodeColumn}, name, {$this->priceColumn}, {$this->wholesalePriceColumn}, {$this->qtyColumn}, quantity_on_hand, {$this->descColumn},
+            {$itemCodeCol}, name, {$priceCol}, {$wholesalePriceCol}, {$qtyCol}, quantity_on_hand, {$descCol},
             barcode, category_id, brand, warehouse, alert_qty, unit, status, weight, sync_woo, variations_json, image_path,
             additional_images, cost_price, warehouse_id, vendor_id, sample_code, retail_margin, wholesale_margin
         ) VALUES (
@@ -436,14 +492,20 @@ class Item {
     }
 
     public function updateItem($data) {
+        $priceCol = $this->safeCol($this->priceColumn);
+        $wholesalePriceCol = $this->safeCol($this->wholesalePriceColumn);
+        $itemCodeCol = $this->safeCol($this->itemCodeColumn);
+        $qtyCol = $this->safeCol($this->qtyColumn);
+        $descCol = $this->safeCol($this->descColumn);
+
         $this->db->query("UPDATE items SET 
-            {$this->itemCodeColumn} = :item_code,
+            {$itemCodeCol} = :item_code,
             name = :name,
-            {$this->priceColumn} = :price,
-            {$this->wholesalePriceColumn} = :wholesale_price,
-            {$this->qtyColumn} = :qty,
+            {$priceCol} = :price,
+            {$wholesalePriceCol} = :wholesale_price,
+            {$qtyCol} = :qty,
             quantity_on_hand = :qty,
-            {$this->descColumn} = :description,
+            {$descCol} = :description,
             barcode = :barcode,
             category_id = :category_id,
             brand = :brand,
@@ -497,7 +559,8 @@ class Item {
         if (is_numeric($this->qtyColumn)) {
             return true;
         }
-        $this->db->query("UPDATE items SET {$this->qtyColumn} = :qty, quantity_on_hand = :qty WHERE id = :id");
+        $qtyCol = $this->safeCol($this->qtyColumn);
+        $this->db->query("UPDATE items SET {$qtyCol} = :qty, quantity_on_hand = :qty WHERE id = :id");
         $this->db->bind(':id', $id);
         $this->db->bind(':qty', $newQty);
         return $this->db->execute();
