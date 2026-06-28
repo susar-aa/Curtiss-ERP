@@ -893,7 +893,7 @@ class ReportController extends Controller {
         exit;
     }
 
-    private function validateCsrf() {
+    protected function validateCsrf() {
         $this->validateCsrfOrDie();
     }
 

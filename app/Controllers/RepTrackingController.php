@@ -13,7 +13,7 @@ class RepTrackingController extends Controller {
         $this->deliveryModel = $this->model('Delivery');
     }
 
-    private function validateCsrf() {
+    protected function validateCsrf() {
         $this->validateCsrfOrDie();
     }
 
