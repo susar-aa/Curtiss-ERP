@@ -644,6 +644,7 @@
                                 <button id="btnTab3BindRoutes" onclick="openRouteBindingModal()" style="padding:6px 12px; background:#3f51b5; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;"><i class="ph ph-link"></i> Bind Routes</button>
                                 <button id="btnTab3CreateSO" onclick="redirectToAddInvoice()" style="padding:6px 12px; background:#0066cc; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;"><i class="ph ph-plus-circle"></i> Create Sales Order</button>
                                 <button id="btnTab3AttachSO" onclick="openAttachInvoiceModal()" style="padding:6px 12px; background:#5c6bc0; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;"><i class="ph ph-link"></i> Attach Sales Order</button>
+                                <button id="btnTab3PrintInvoices" onclick="printRouteInvoices()" style="padding:6px 12px; background:#1e293b; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;"><i class="ph ph-printer"></i> Print All Invoices</button>
                             </div>
                         </div>
                         <table class="data-table">
@@ -3621,6 +3622,12 @@
     function redirectToAddInvoice() {
         if (currentRouteId) {
             window.location.href = '<?= APP_URL ?>/sales/create?type=sales_order&route_id=' + currentRouteId;
+        }
+    }
+
+    function printRouteInvoices() {
+        if (currentRouteId) {
+            window.open('<?= APP_URL ?>/RepTracking/print_route_invoices/' + currentRouteId, '_blank');
         }
     }
 

@@ -875,6 +875,76 @@ class RepTrackingController extends Controller {
         $this->view('rep-tracking/print_loading', $data);
     }
 
+    public function print_route_invoices($routeId) {
+        $route = $this->trackingModel->getRouteById($routeId);
+        if (!$route) {
+            die("Route not found.");
+        }
+        
+        $bills = $this->trackingModel->getRouteBills($routeId);
+        
+        $invoiceModel = $this->model('Invoice');
+        $companyModel = $this->model('Company');
+        $company = $companyModel->getSettings();
+        
+        $invoicesData = [];
+        foreach ($bills as $bill) {
+            if ($bill->status === 'Voided') continue;
+            
+            // Get full invoice details (includes customer address, phone, tax details)
+            $fullInvoice = $invoiceModel->getInvoiceById($bill->id);
+            if (!$fullInvoice) continue;
+            
+            $invoicePaid = 0;
+            try {
+                $db = new Database();
+                $db->query("SELECT COALESCE(SUM(amount), 0) as paid FROM customer_payments WHERE invoice_id = :id");
+                $db->bind(':id', $bill->id);
+                $row = $db->single();
+                if ($row) {
+                    $invoicePaid = floatval($row->paid);
+                }
+            } catch (Exception $e) {
+                $invoicePaid = 0;
+            }
+            
+            // Calculate customer outstanding balance
+            $db = new Database();
+            $db->query("
+                SELECT 
+                    COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) as total_billed
+                FROM invoices WHERE customer_id = :id AND status != 'Voided'
+            ");
+            $db->bind(':id', $fullInvoice->customer_id);
+            $billed = $db->single()->total_billed ?? 0;
+
+            $db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :id");
+            $db->bind(':id', $fullInvoice->customer_id);
+            $paid = $db->single()->total_paid ?? 0;
+
+            $db->query("SELECT COALESCE(SUM(total_amount), 0) as total_credited FROM credit_notes WHERE customer_id = :id");
+            $db->bind(':id', $fullInvoice->customer_id);
+            $credited = $db->single()->total_credited ?? 0;
+
+            $totalOutstanding = $billed - $paid - $credited;
+            
+            $invoicesData[] = [
+                'invoice' => $fullInvoice,
+                'items' => $invoiceModel->getInvoiceItems($bill->id),
+                'invoice_paid' => $invoicePaid,
+                'total_outstanding' => $totalOutstanding
+            ];
+        }
+        
+        $data = [
+            'route' => $route,
+            'company' => $company,
+            'invoices' => $invoicesData
+        ];
+        
+        $this->view('rep-tracking/print_route_invoices', $data);
+    }
+
     public function api_get_route_collections($routeId) {
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') { die("Invalid Request"); }
         $collections = $this->trackingModel->getRouteCollections($routeId);
