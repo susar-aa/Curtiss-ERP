@@ -243,19 +243,19 @@ if ($inv && isset($inv->id)) {
     .qb-title { font-size: 17px; color: var(--text-primary); font-weight: 600; margin: 0; }
 
     .qb-input-field {
-        width: 100%;
-        height: 26px;
-        border: 0.5px solid var(--border);
-        border-radius: 6px;
-        padding: 4px 8px;
-        font-size: 12px;
-        font-family: inherit;
-        box-sizing: border-box;
-        background: #fff;
-        color: var(--text-primary);
-        font-weight: 500;
-        margin-top: 4px;
-    }
+    width: 100%;
+    height: 28px;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-family: inherit;
+    box-sizing: border-box;
+    background: #fff;
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-top: 4px;
+}
     .qb-input-field:focus {
         border-color: var(--text-accent);
         outline: none;
@@ -272,7 +272,7 @@ if ($inv && isset($inv->id)) {
         padding: 0 10px;
         font-size: 12px;
         font-weight: 550;
-        border: 0.5px solid var(--border);
+        border: 1px solid var(--border-strong);
         border-radius: 6px;
         background: #fff;
         color: var(--text-primary);
@@ -359,27 +359,43 @@ if ($inv && isset($inv->id)) {
         table-layout: fixed;
     }
     .qb-table thead th {
-        position: sticky;
-        top: 0;
-        background: var(--surface-1);
-        color: var(--text-secondary);
-        padding: 8px 6px;
-        text-align: left;
-        font-size: 11px;
-        font-weight: 550;
-        border-bottom: 0.5px solid var(--border);
-        z-index: 10;
-    }
+    position: sticky;
+    top: 0;
+    background: var(--table-header-bg);
+    color: var(--table-header-text);
+    padding: 9px 6px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border-strong);
+    z-index: 10;
+}
     .qb-table td {
-        padding: 6px;
-        border-bottom: 0.5px solid var(--border);
-        vertical-align: middle;
-        color: var(--text-primary);
-        font-size: 12px;
-    }
-    .qb-table tr:hover {
-        background-color: #fafafa;
-    }
+    padding: 7px 6px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    color: var(--text-primary);
+    font-size: 12px;
+}
+
+/* Zebra striping: every row alternates so it's easy to track across columns */
+#invoiceBody tr:nth-child(odd) {
+    background-color: var(--row-odd);
+}
+#invoiceBody tr:nth-child(even) {
+    background-color: var(--row-even);
+}
+#invoiceBody tr:hover {
+    background-color: var(--row-hover) !important;
+}
+
+/* Make the row number column stand out a bit (acts as a visual anchor per row) */
+.line-row-num {
+    font-weight: 700;
+    color: var(--text-primary) !important;
+}
     .qb-table input {
         width: 100%;
         border: none;
@@ -705,7 +721,7 @@ if ($inv && isset($inv->id)) {
                     <input type="text" name="notes" value="<?= ($inv && isset($inv->notes)) ? htmlspecialchars((string)$inv->notes) : '' ?>" style="width:100%; height:28px; font-size:12px; border:0.5px solid var(--border); border-radius:6px; padding:0 8px; box-sizing:border-box; font-weight: 500;" />
                 </div>
 
-                <div style="background:var(--surface-1); border-radius:10px; padding:10px 14px; display:grid; grid-template-columns: 1fr auto; gap:6px 12px; align-items:center;">
+                <div style="background:var(--surface-1); border:1px solid var(--border-strong); border-radius:10px; padding:10px 14px; display:grid; grid-template-columns: 1fr auto; gap:6px 12px; align-items:center;">
                     <span style="color:var(--text-secondary); font-size:12px; font-weight: 500;">Subtotal LKR</span>
                     <span id="subTotal" style="font-weight:550; text-align:right; font-size:13px; font-family: monospace;">0.00</span>
                     
