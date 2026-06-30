@@ -991,7 +991,6 @@
                         <i class="ph ph-swap"></i> Switch
                     </button>
                     <button type="button" id="btnViewMap" onclick="openMapModal()" style="padding: 8px 12px; border: none; background: var(--c-orange); color: #fff; border-radius: var(--r-sm); font-weight: 600; cursor: pointer; font-size: 12px; display: none; align-items: center; gap: 4px; box-shadow: var(--shadow-xs);"><i class="ph ph-map-pin"></i> Map</button>
-                    <button type="button" id="btnUnbindRoute" onclick="unbindActiveRoute()" style="padding: 8px 12px; border: none; background: var(--c-red); color: #fff; border-radius: var(--r-sm); font-weight: 600; cursor: pointer; font-size: 12px; display: none; align-items: center; gap: 4px; box-shadow: var(--shadow-xs);"><i class="ph ph-link-break"></i> Undo Bind</button>
                 </div>
             </div>
         </div>
@@ -1098,30 +1097,6 @@
                 <!-- Dynamic Stage Containers -->
                 <div id="stageContentWrapper" style="display:none; padding: 16px 20px;">
                 
-                <!-- Bound Route Summary Card -->
-                <div id="boundRouteSummaryContainer" style="display:none; background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:15px; margin-bottom:20px; color:#0369a1; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                        <div style="flex: 1; min-width: 280px;">
-                            <h4 style="margin:0 0 8px 0; font-size:14px; font-weight:bold; display:flex; align-items:center; gap:6px; color: #0284c7;">
-                                <i class="ph ph-link"></i> Bound Route Consolidation
-                            </h4>
-                            <div style="font-size:12px; margin-bottom:8px; line-height: 1.4;">
-                                <strong>Constituent Routes:</strong> <span id="brsConstituentsList" style="background:#e0f2fe; padding:2px 6px; border-radius:4px; font-weight:bold;">Route A, Route B</span>
-                            </div>
-                            <div style="font-size:12px; display:flex; gap:15px; flex-wrap:wrap; font-weight:500;">
-                                <span><i class="ph ph-users"></i> Total Customers: <strong id="brsTotalCustomers" style="color:#0f172a;">0</strong></span>
-                                <span><i class="ph ph-file-text"></i> Total Invoices: <strong id="brsTotalInvoices" style="color:#0f172a;">0</strong></span>
-                                <span><i class="ph ph-currency-dollar"></i> Total Route Value: <strong id="brsTotalValue" style="color:#16a34a;">Rs 0.00</strong></span>
-                                <span><i class="ph ph-package"></i> Total Products: <strong id="brsTotalProducts" style="color:#0f172a;">0 (Qty: 0)</strong></span>
-                            </div>
-                        </div>
-                        <div>
-                            <button onclick="unbindCombinedRoute()" style="padding:8px 16px; background:#ef4444; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(239,68,68,0.2); transition: all 0.2s;">
-                                <i class="ph ph-link-break"></i> Undo Route Binding
-                            </button>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- COMPLETED ARCHIVE OPTIONS (READ ONLY AT THE TOP IF FINALIZED) -->
                 <div id="completedArchiveBanner" style="display:none; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:15px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
@@ -1141,7 +1116,7 @@
                 <div class="workspace-tab-panel" id="tabpanel-1" style="display:none;">
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
                         <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff;">
-                            <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">📋 Route & Representative Info</h4>
+                            <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-clipboard-text"></i> Route & Representative Info</h4>
                             <table style="width:100%; border-collapse:collapse; font-size:13px;">
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Route Name</td><td style="padding:10px 0; font-weight:bold;" id="tab1RouteName">-</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Representative</td><td style="padding:10px 0; font-weight:bold;" id="tab1RepName">-</td></tr>
@@ -1151,7 +1126,7 @@
                             </table>
                         </div>
                         <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff;">
-                            <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">🚗 Odometer Readings</h4>
+                            <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-gauge"></i> Odometer Readings</h4>
                             <table style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom:15px;">
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Start ODO</td><td style="padding:10px 0; font-weight:bold;" id="tab1StartMeter">-</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">End ODO</td><td style="padding:10px 0; font-weight:bold;" id="tab1EndMeter">-</td></tr>
@@ -1160,22 +1135,16 @@
                         </div>
                     </div>
                     <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
-                        <h4 style="margin:0 0 10px 0; color:var(--primary); font-size:15px; font-weight:bold;">📝 Route General Notes</h4>
+                        <h4 style="margin:0 0 10px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-note-pencil"></i> Route General Notes</h4>
                         <textarea id="tab1RouteNotes" style="width:100%; height:100px; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; resize:vertical;" placeholder="Write any remarks or observations regarding this route..."></textarea>
                         <div style="text-align:right; margin-top:10px;">
-                            <button id="btnSaveRouteNotes" onclick="saveRouteNotes()" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer;">💾 Save Route Notes</button>
+                            <button id="btnSaveRouteNotes" onclick="saveRouteNotes()" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-floppy-disk"></i> Save Route Notes</button>
                         </div>
                     </div>
                 </div>
 
                 <!-- TAB 2: CREDIT COLLECTIONS -->
                 <div class="workspace-tab-panel" id="tabpanel-2" style="display:none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <div>
-                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Credit Collections Audit</h3>
-                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Verify debit/credit accounts and approve representative collections.</p>
-                        </div>
-                    </div>
                     <!-- Collections Verification Table Card -->
                     <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); display:flex; flex-direction:column; justify-content:space-between; margin-bottom:20px;">
                         <div>
@@ -1213,20 +1182,13 @@
 
                 <!-- TAB 3: ADJUSTMENTS -->
                 <div class="workspace-tab-panel" id="tabpanel-3" style="display:none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <div>
-                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Route Adjustments & Sales Orders</h3>
-                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Attach, detach, or create Sales Orders before the route dispatch.</p>
-                        </div>
-                    </div>
                     <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); margin-bottom:20px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                            <h4 style="margin:0; font-size:14px; font-weight:bold;">Sales Order Operations</h4>
+                            <h4 style="margin:0; font-size:14px; font-weight:bold; display:flex; align-items:center; gap:6px;"><i class="ph ph-wrench"></i> Sales Order Operations</h4>
                             <div style="display:flex; gap:10px;">
-                                <button id="btnTab3BindRoutes" onclick="openRouteBindingModal()" style="padding:6px 12px; background:#3f51b5; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;"><i class="ph ph-link"></i> Bind Routes</button>
-                                <button id="btnTab3CreateSO" onclick="redirectToAddInvoice()" style="padding:6px 12px; background:#0066cc; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;"><i class="ph ph-plus-circle"></i> Create Sales Order</button>
-                                <button id="btnTab3AttachSO" onclick="openAttachInvoiceModal()" style="padding:6px 12px; background:#5c6bc0; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;"><i class="ph ph-link"></i> Attach Sales Order</button>
-                                <button id="btnTab3PrintInvoices" onclick="printRouteInvoices()" style="padding:6px 12px; background:#1e293b; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;"><i class="ph ph-printer"></i> Print All Invoices</button>
+                                <button id="btnTab3CreateSO" onclick="redirectToAddInvoice()" style="padding:6px 12px; background:#0066cc; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-plus-circle"></i> Create Sales Order</button>
+                                <button id="btnTab3AttachSO" onclick="openAttachInvoiceModal()" style="padding:6px 12px; background:#5c6bc0; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-link"></i> Attach Sales Order</button>
+                                <button id="btnTab3PrintInvoices" onclick="printRouteInvoices()" style="padding:6px 12px; background:#1e293b; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-printer"></i> Print All Invoices</button>
                             </div>
                         </div>
                         <table class="data-table">
@@ -1247,29 +1209,12 @@
 
                 <!-- TAB 4: LOADING -->
                 <div class="workspace-tab-panel" id="tabpanel-4" style="display:none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <div>
-                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Loading Verification Checklist</h3>
-                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Verify and audit the loaded product physical counts before vehicle dispatch.</p>
-                        </div>
-                    </div>
                     <div id="loadingBox" style="margin-bottom:20px;"></div>
-                    <div style="text-align:right;">
-                        <button onclick="printLoadingSheet('final')" style="padding:8px 16px; background:#3f51b5; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;"><i class="ph ph-printer"></i> Print Loading Sheet</button>
-                        <button onclick="printLoadingSheet('summary')" style="padding:8px 16px; background:#673ab7; color:#fff; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; margin-left:10px;"><i class="ph ph-printer"></i> Print Loading Summary</button>
-                    </div>
                 </div>
 
                 <!-- TAB 5: VARIANCE -->
                 <div class="workspace-tab-panel" id="tabpanel-5" style="display:none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <div>
-                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Variance Adjustment Approval</h3>
-                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Review shortages and overages identified from final picking. Confirm variances before proceeding.</p>
-                        </div>
-                    </div>
                     <div id="varianceAuditBox" style="margin-bottom:20px;"></div>
-
                 </div>
 
                 <!-- TAB 6: DISPATCH -->
@@ -1358,6 +1303,7 @@
                         <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-chart-bar"></i> Delivery Performance Summary</h4>
                         <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:15px;" id="deliveryTabSummaryCards">
                             <!-- Populated dynamically -->
+                        </div>
                     </div>
                     <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm);">
                         <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-map-pin"></i> Customer Visit & Dispatch Status</h4>
@@ -1388,52 +1334,55 @@
                         </div>
                     </div>
                     
-                    <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:20px;">
-                        <div>
-                            <!-- Cash Reconciliation Card -->
-                            <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); margin-bottom:20px;">
-                                <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-coins"></i> Cash Collections Counter</h4>
-                                <table style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom:15px;">
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Expected Cash Sales</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right;" id="reconExpectedCash">Rs 0.00</td></tr>
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Expected Cash Collections</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right;" id="reconExpectedCollections">Rs 0.00</td></tr>
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Total Expected Cash</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right; color:#2e7d32;" id="reconTotalExpectedCash">Rs 0.00</td></tr>
-                                    <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Actual Counted Cash</td><td style="padding:10px 0; text-align:right;"><input type="number" step="0.01" min="0" id="reconActualCash" oninput="calculateCashVariance()" style="padding:6px; border:1px solid #ccc; border-radius:4px; width:150px; text-align:right; font-weight:bold; font-family:monospace;" value="0.00"></td></tr>
-                                    <tr><td style="padding:10px 0; color:#64748b; font-weight:bold;">Cash Variance</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right;" id="reconCashVariance">Rs 0.00</td></tr>
-                                </table>
-                            </div>
-
-                            <!-- Cheque Reconciliation Card -->
-                            <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff;">
-                                <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-bank"></i> Cheques Verification</h4>
-                                <table class="data-table" style="font-size:11px;">
-                                    <thead>
-                                        <tr>
-                                            <th>Customer Name</th>
-                                            <th>Cheque Number</th>
-                                            <th style="text-align:right;">Amount (Rs)</th>
-                                            <th style="text-align:center;">Approve</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="reconChequesTbody">
-                                        <!-- Dynamically populated -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <div>
-                            <!-- Notes & Save Draft Card -->
-                            <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); height:100%; display:flex; flex-direction:column; justify-content:space-between;">
-                                <div>
-                                    <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-note"></i> Audit Remarks</h4>
-                                    <textarea id="reconAuditNotes" style="width:100%; height:180px; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; resize:none;" placeholder="Write any audit notes regarding cash discrepancy, bank transfer receipts verified, etc..."></textarea>
+                    <div id="tab8ContentContainer">
+                        <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:20px;">
+                            <div>
+                                <!-- Cash Reconciliation Card -->
+                                <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); margin-bottom:20px;">
+                                    <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-coins"></i> Cash Collections Counter</h4>
+                                    <table style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom:15px;">
+                                        <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Expected Cash Sales</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right;" id="reconExpectedCash">Rs 0.00</td></tr>
+                                        <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Expected Cash Collections</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right;" id="reconExpectedCollections">Rs 0.00</td></tr>
+                                        <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Total Expected Cash</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right; color:#2e7d32;" id="reconTotalExpectedCash">Rs 0.00</td></tr>
+                                        <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Actual Counted Cash</td><td style="padding:10px 0; text-align:right;"><input type="number" step="0.01" min="0" id="reconActualCash" oninput="calculateCashVariance()" style="padding:6px; border:1px solid #ccc; border-radius:4px; width:150px; text-align:right; font-weight:bold; font-family:monospace;" value="0.00"></td></tr>
+                                        <tr><td style="padding:10px 0; color:#64748b; font-weight:bold;">Cash Variance</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right;" id="reconCashVariance">Rs 0.00</td></tr>
+                                    </table>
                                 </div>
-                                <div style="text-align:right; margin-top:20px;">
-                                    <button id="btnSaveReconciliationDraft" onclick="saveReconciliationDraft()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer; width:100%;"><i class="ph ph-floppy-disk"></i> Save Reconciliation Draft</button>
+
+                                <!-- Cheque Reconciliation Card -->
+                                <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff;">
+                                    <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-bank"></i> Cheques Verification</h4>
+                                    <table class="data-table" style="font-size:11px;">
+                                        <thead>
+                                            <tr>
+                                                <th>Customer Name</th>
+                                                <th>Cheque Number</th>
+                                                <th style="text-align:right;">Amount (Rs)</th>
+                                                <th style="text-align:center;">Approve</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="reconChequesTbody">
+                                            <!-- Dynamically populated -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div>
+                                <!-- Notes & Save Draft Card -->
+                                <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); height:100%; display:flex; flex-direction:column; justify-content:space-between;">
+                                    <div>
+                                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-note"></i> Audit Remarks</h4>
+                                        <textarea id="reconAuditNotes" style="width:100%; height:180px; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; resize:none;" placeholder="Write any audit notes regarding cash discrepancy, bank transfer receipts verified, etc..."></textarea>
+                                    </div>
+                                    <div style="text-align:right; margin-top:20px;">
+                                        <button id="btnSaveReconciliationDraft" onclick="saveReconciliationDraft()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer; width:100%;"><i class="ph ph-floppy-disk"></i> Save Reconciliation Draft</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                    <div id="tab8GuardContainer" style="display:none;"></div>
                 </div>
 
                 <!-- TAB 9: RETURN STOCK VERIFICATION -->
@@ -1507,29 +1456,32 @@
                         </select>
                     </div>
 
-                    <!-- General Ledger account double entry mappings card -->
-                    <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); margin-bottom:20px;">
-                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-briefcase"></i> Account Mappings</h4>
-                        <div style="display: flex; gap: 10px; border-bottom: 1px solid #eee; margin-bottom: 15px;">
-                            <button type="button" class="left-tab-btn active" id="settleDeTabCollectionsBtn" onclick="switchSettleDeTab('collections')"><i class="ph ph-coins"></i> Cash/Cheques Posting</button>
-                            <button type="button" class="left-tab-btn" id="settleDeTabSalesBtn" onclick="switchSettleDeTab('sales')"><i class="ph ph-file-text"></i> Invoices Sales Posting</button>
+                    <div id="tab10ContentContainer">
+                        <!-- General Ledger account double entry mappings card -->
+                        <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); margin-bottom:20px;">
+                            <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-briefcase"></i> Account Mappings</h4>
+                            <div style="display: flex; gap: 10px; border-bottom: 1px solid #eee; margin-bottom: 15px;">
+                                <button type="button" class="left-tab-btn active" id="settleDeTabCollectionsBtn" onclick="switchSettleDeTab('collections')"><i class="ph ph-coins"></i> Cash/Cheques Posting</button>
+                                <button type="button" class="left-tab-btn" id="settleDeTabSalesBtn" onclick="switchSettleDeTab('sales')"><i class="ph ph-file-text"></i> Invoices Sales Posting</button>
+                            </div>
+                            <div id="settleDeCollectionsContainer"></div>
+                            <div id="settleDeSalesContainer" style="display:none;"></div>
+                            <div style="text-align:right; margin-top:20px;">
+                                <button id="btnSaveAccountingDraft" onclick="saveAccountingDraft()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;"><i class="ph ph-floppy-disk"></i> Save Account Mappings Draft</button>
+                            </div>
                         </div>
-                        <div id="settleDeCollectionsContainer"></div>
-                        <div id="settleDeSalesContainer" style="display:none;"></div>
-                        <div style="text-align:right; margin-top:20px;">
-                            <button id="btnSaveAccountingDraft" onclick="saveAccountingDraft()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;"><i class="ph ph-floppy-disk"></i> Save Account Mappings Draft</button>
-                        </div>
-                    </div>
 
-                    <!-- Settle Actions -->
-                    <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); display:flex; justify-content:space-between; align-items:center;">
-                        <div id="settleStatusText" style="font-size:12px; color:#c62828; font-weight:bold;">
-                            Please verify Cash, Cheques, and Return stock counts under Reconciliation & Return Stock tabs to unlock Finalization.
+                        <!-- Settle Actions -->
+                        <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); display:flex; justify-content:space-between; align-items:center;">
+                            <div id="settleStatusText" style="font-size:12px; color:#c62828; font-weight:bold;">
+                                Please verify Cash, Cheques, and Return stock counts under Reconciliation & Return Stock tabs to unlock Finalization.
+                            </div>
+                            <button id="settleSubmitBtn" onclick="submitFinalSettle()" style="padding:12px 24px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:14px; opacity:0.5; cursor:not-allowed;" disabled>
+                                <i class="ph ph-scales"></i> Settle Balancing & Finalize Route
+                            </button>
                         </div>
-                        <button id="settleSubmitBtn" onclick="submitFinalSettle()" style="padding:12px 24px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:14px; opacity:0.5; cursor:not-allowed;" disabled>
-                            <i class="ph ph-scales"></i> Settle Balancing & Finalize Route
-                        </button>
                     </div>
+                    <div id="tab10GuardContainer" style="display:none;"></div>
                 </div>
 
                 <!-- COMPLETED / READ ONLY VIEW -->
@@ -2722,10 +2674,9 @@
 
                 let listHtml = '';
                 let printButtonsHtml = `
-                    <div style="margin-bottom: 15px; text-align: right;">
-                        <button class="btn btn-secondary" onclick="printLoadingSheet('pre')" style="padding:6px 12px; font-size:12px; font-weight:bold; margin-right:10px;">🖨️ Print Pre-Loading Picking Sheet</button>
-                        <button class="btn btn-primary" onclick="printLoadingSheet('final')" style="padding:6px 12px; font-size:12px; font-weight:bold; margin-right:10px;">🖨️ Print Final Loading Verification Sheet</button>
-                        <button class="btn btn-info" onclick="printLoadingSheet('summary')" style="padding:6px 12px; font-size:12px; font-weight:bold;">🖨️ Print Dispatch Summary</button>
+                    <div style="margin-bottom: 15px; text-align: right; display: flex; justify-content: flex-end; gap: 10px;">
+                        <button class="btn btn-primary" onclick="printLoadingSheet('final')" style="padding:8px 16px; background:#3f51b5; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-printer"></i> Print Loading Sheet</button>
+                        <button class="btn btn-secondary" onclick="printLoadingSheet('summary')" style="padding:8px 16px; background:#673ab7; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-printer"></i> Print Loading Summary</button>
                     </div>
                 `;
 
@@ -2745,8 +2696,8 @@
 
                     box.innerHTML = `
                         ${printButtonsHtml}
-                        <div style="background:#fff7ed; border:1px solid #ffedd5; padding:12px; border-radius:6px; margin-bottom:15px; color:#c2410c; font-size:12px; font-weight:600;">
-                            ℹ️ Verification has not started yet. Showing original required loading quantities.
+                        <div style="background:#fff7ed; border:1px solid #ffedd5; padding:12px; border-radius:6px; margin-bottom:15px; color:#c2410c; font-size:12px; font-weight:600; display:flex; align-items:center; gap:6px;">
+                            <i class="ph ph-info"></i> Verification has not started yet. Showing original required loading quantities.
                         </div>
                         <table class="data-table">
                             <thead>
@@ -2773,7 +2724,7 @@
 
                             if (Math.abs(diff) < 0.01) {
                                 rowBg = 'background-color: #d1fae5; color: #065f46;';
-                                diffIndicator = '✔ Match';
+                                diffIndicator = '<i class="ph ph-check-circle" style="color: #16a34a; font-size: 14px;"></i> Match';
                             } else if (diff < 0) {
                                 rowBg = 'background-color: #fee2e2; color: #991b1b;';
                                 diffIndicator = `Shortage (${diff.toFixed(1)})`;
@@ -2786,7 +2737,7 @@
                             if (item.replaced_by_name) {
                                 nameHtml += `<div style="font-size:11px; color:#673ab7; font-weight:bold; margin-top:2px;">→ Replaced By ${item.replaced_by_name} (Qty: ${item.replacement_qty})</div>`;
                             } else if (item.replaces_name) {
-                                nameHtml += `<div style="font-size:11px; color:#16a34a; font-weight:bold; margin-top:2px;">★ Replacement for ${item.replaces_name}</div>`;
+                                nameHtml += `<div style="font-size:11px; color:#16a34a; font-weight:bold; margin-top:2px;"><i class="ph ph-star" style="color: #16a34a;"></i> Replacement for ${item.replaces_name}</div>`;
                             }
 
                             listHtml += `
@@ -2929,8 +2880,8 @@
             }
 
             const statusBadge = isItemBalanced 
-                ? `<span style="background:#d1fae5; color:#065f46; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;">✔ Balanced</span>`
-                : `<span style="background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold;">⚠️ Unbalanced</span>`;
+                ? `<span style="background:#d1fae5; color:#065f46; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-check-circle" style="font-size:13px;"></i> Balanced</span>`
+                : `<span style="background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-warning" style="font-size:13px;"></i> Unbalanced</span>`;
 
             tableRows += `
                 <tr style="border-bottom:1px solid #e2e8f0;">
@@ -2989,42 +2940,12 @@
             });
 
             substitutionHtml = `
-                <h5 style="margin:0 0 10px 0; font-size:13px; color:#475569; text-transform:uppercase; font-weight:bold;">🔄 Product Substitutions</h5>
+                <h5 style="margin:0 0 10px 0; font-size:13px; color:#475569; text-transform:uppercase; font-weight:bold; display:flex; align-items:center; gap:6px;"><i class="ph ph-swap"></i> Product Substitutions</h5>
                 <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px; margin-bottom:25px;">
                     ${subRows}
                 </div>
             `;
         }
-
-        html += `
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
-                <div style="background:#fee2e2; border:1px solid #fca5a5; border-radius:6px; padding:12px; text-align:center; color:#991b1b;">
-                    <span>Shortages to Reconcile</span><br><strong style="font-size:16px;">${totalShortages} pcs</strong>
-                </div>
-                <div style="background:#fff3e0; border:1px solid #ffe0b2; border-radius:6px; padding:12px; text-align:center; color:#e65100;">
-                    <span>Overages to Reconcile</span><br><strong style="font-size:16px;">${totalOverages} pcs</strong>
-                </div>
-            </div>
-            
-            ${substitutionHtml}
-            
-            <h5 style="margin:0 0 10px 0; font-size:13px; color:#475569; text-transform:uppercase; font-weight:bold;">📦 Product Loading Variances</h5>
-            <table class="data-table" style="margin-bottom:25px; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden;">
-                <thead>
-                    <tr style="background:#f1f5f9;">
-                        <th style="padding:10px; text-align:left;">Product Name</th>
-                        <th style="padding:10px; text-align:center;">Required</th>
-                        <th style="padding:10px; text-align:center;">Pre-Loaded</th>
-                        <th style="padding:10px; text-align:center; background:#e2e8f0;">Final Loaded</th>
-                        <th style="padding:10px; text-align:center;">Variance</th>
-                        <th style="padding:10px; text-align:center;">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${tableRows}
-                </tbody>
-            </table>
-        `;
 
         let reconciliationPanels = '';
         let hasAnyVariance = false;
@@ -3037,9 +2958,9 @@
             const subInfo = currentSubstitutions.find(s => parseInt(s.replacement_item_id) === parseInt(item.item_id) || parseInt(s.original_item_id) === parseInt(item.item_id));
             if (subInfo) {
                 if (parseInt(subInfo.replacement_item_id) === parseInt(item.item_id)) {
-                    subBadge = `<span style="display:inline-block; margin-top:4px; padding:2px 6px; background:#eff6ff; color:#1d4ed8; border-radius:4px; font-size:10px; font-weight:bold; margin-bottom:5px;">🔄 Replaced "${subInfo.original_item_name}"</span>`;
+                    subBadge = `<span style="display:inline-flex; align-items:center; gap:4px; margin-top:4px; padding:2px 6px; background:#eff6ff; color:#1d4ed8; border-radius:4px; font-size:10px; font-weight:bold; margin-bottom:5px;"><i class="ph ph-swap"></i> Replaced "${subInfo.original_item_name}"</span>`;
                 } else {
-                    subBadge = `<span style="display:inline-block; margin-top:4px; padding:2px 6px; background:#fef2f2; color:#b91c1c; border-radius:4px; font-size:10px; font-weight:bold; margin-bottom:5px;">🔄 Replaced by "${subInfo.replacement_item_name}"</span>`;
+                    subBadge = `<span style="display:inline-flex; align-items:center; gap:4px; margin-top:4px; padding:2px 6px; background:#fef2f2; color:#b91c1c; border-radius:4px; font-size:10px; font-weight:bold; margin-bottom:5px;"><i class="ph ph-swap"></i> Replaced by "${subInfo.replacement_item_name}"</span>`;
                 }
             }
 
@@ -3052,8 +2973,8 @@
                  let actionSelect = '';
                  if (inv.quantity === 0) {
                      actionSelect = `
-                         <div style="margin-top:5px; color:#dc2626; font-size:11px; font-weight:bold;">
-                             ⚠️ Product will be removed from invoice
+                         <div style="margin-top:5px; color:#dc2626; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:4px;">
+                             <i class="ph ph-warning"></i> Product will be removed from invoice
                          </div>
                      `;
                  }
@@ -3061,7 +2982,7 @@
                 invoiceRows += `
                     <div style="display:grid; grid-template-columns:1.5fr 1fr 1fr 1.2fr; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;">
                         <div style="font-size:12px; font-weight:500;">
-                            📄 <strong>${inv.invoice_number}</strong><br>
+                            <i class="ph ph-file-text"></i> <strong>${inv.invoice_number}</strong><br>
                             <span style="font-size:10px; color:#64748b;">${inv.customer_name}</span>
                             ${actionSelect}
                         </div>
@@ -3087,18 +3008,18 @@
 
             const unbalancedVal = item.final_loaded_qty - currentTotal;
             const panelStatus = (Math.abs(unbalancedVal) < 0.01)
-                ? `<span style="color:#16a34a; font-weight:bold;">✔ Balanced</span>`
-                : `<span style="color:#dc2626; font-weight:bold;">⚠️ Unbalanced (${unbalancedVal > 0 ? '+' : ''}${unbalancedVal.toFixed(1)} pcs)</span>`;
+                ? `<span style="color:#16a34a; font-weight:bold; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-check-circle" style="font-size:14px;"></i> Balanced</span>`
+                : `<span style="color:#dc2626; font-weight:bold; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-warning" style="font-size:14px;"></i> Unbalanced (${unbalancedVal > 0 ? '+' : ''}${unbalancedVal.toFixed(1)} pcs)</span>`;
 
             let autoDistBtn = isReadOnly ? '' : `
-                <button onclick="autoDistributeVariance(${item.item_id})" style="padding:4px 10px; background:#3b82f6; color:#fff; border:none; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; margin-right:10px;">⚡ Auto-Distribute</button>
+                <button onclick="autoDistributeVariance(${item.item_id})" style="padding:4px 10px; background:#3b82f6; color:#fff; border:none; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; margin-right:10px; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-lightning"></i> Auto-Distribute</button>
             `;
 
             reconciliationPanels += `
                 <div style="border:1px solid #cbd5e1; border-radius:8px; padding:15px; margin-bottom:20px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #e2e8f0; padding-bottom:8px;">
                         <div>
-                            <strong style="font-size:13px; color:#0f172a;">🛠️ Reconcile: ${item.item_name}</strong><br>
+                            <strong style="font-size:13px; color:#0f172a;"><i class="ph ph-wrench"></i> Reconcile: ${item.item_name}</strong><br>
                             ${subBadge ? subBadge + '<br>' : ''}
                             <span style="font-size:11px; color:#475569;">Variance: <strong>${item.variance > 0 ? '+' : ''}${item.variance}</strong> | Required: <strong>${item.required_qty}</strong> | Final Loaded: <strong>${item.final_loaded_qty}</strong></span>
                         </div>
@@ -3120,28 +3041,62 @@
 
         if (!hasAnyVariance) {
             reconciliationPanels = `
-                <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:20px; text-align:center; color:#166534; font-weight:bold; margin-bottom:20px;">
-                    🎉 All items are fully balanced! No billing adjustments required.
+                <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:20px; text-align:center; color:#166534; font-weight:bold; margin-bottom:20px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <i class="ph ph-check-circle" style="font-size:16px;"></i> All items are fully balanced! No billing adjustments required.
                 </div>
             `;
         }
 
+        // --- CONSTRUCT THE HTML: Reconciliation Engine at the Top, Table and totals at the bottom ---
+        
+        // 1. Bill Reconciliation Engine & Submit/Approve Button
         html += `
-            <h5 style="margin:0 0 10px 0; font-size:13px; color:#475569; text-transform:uppercase; font-weight:bold;">⚖️ Bill Reconciliation Engine</h5>
+            <h5 style="margin:0 0 10px 0; font-size:13px; color:#475569; text-transform:uppercase; font-weight:bold; display:flex; align-items:center; gap:6px;"><i class="ph ph-scales"></i> Bill Reconciliation Engine</h5>
             ${reconciliationPanels}
         `;
 
         if (!isReadOnly) {
             html += `
-                <div style="text-align:right; margin-top:20px;">
+                <div style="text-align:right; margin-top:10px; margin-bottom:25px;">
                     <button id="btnSubmitVarianceAdjustments" onclick="submitVarianceAdjustments()" 
                             ${hasUnbalanced ? 'disabled' : ''}
-                            style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:${hasUnbalanced ? 'not-allowed' : 'pointer'}; opacity:${hasUnbalanced ? 0.5 : 1};">
-                        ⚖️ Approve & Apply Billing Adjustments
+                            style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:${hasUnbalanced ? 'not-allowed' : 'pointer'}; opacity:${hasUnbalanced ? 0.5 : 1}; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="ph ph-scales"></i> Approve & Apply Billing Adjustments
                     </button>
                 </div>
             `;
         }
+
+        // 2. Shortages / Overages Total Cards
+        html += `
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
+                <div style="background:#fee2e2; border:1px solid #fca5a5; border-radius:6px; padding:12px; text-align:center; color:#991b1b;">
+                    <span>Shortages to Reconcile</span><br><strong style="font-size:16px;">${totalShortages} pcs</strong>
+                </div>
+                <div style="background:#fff3e0; border:1px solid #ffe0b2; border-radius:6px; padding:12px; text-align:center; color:#e65100;">
+                    <span>Overages to Reconcile</span><br><strong style="font-size:16px;">${totalOverages} pcs</strong>
+                </div>
+            </div>
+            
+            ${substitutionHtml}
+            
+            <h5 style="margin:0 0 10px 0; font-size:13px; color:#475569; text-transform:uppercase; font-weight:bold; display:flex; align-items:center; gap:6px;"><i class="ph ph-package"></i> Product Loading Variances</h5>
+            <table class="data-table" style="margin-bottom:25px; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden;">
+                <thead>
+                    <tr style="background:#f1f5f9;">
+                        <th style="padding:10px; text-align:left;">Product Name</th>
+                        <th style="padding:10px; text-align:center;">Required</th>
+                        <th style="padding:10px; text-align:center;">Pre-Loaded</th>
+                        <th style="padding:10px; text-align:center; background:#e2e8f0;">Final Loaded</th>
+                        <th style="padding:10px; text-align:center;">Variance</th>
+                        <th style="padding:10px; text-align:center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+        `;
 
         box.innerHTML = html;
     }
@@ -3622,9 +3577,52 @@
         });
     }
 
+    function applyDefensiveGuard(delId, guardId, contentId) {
+        const guardEl = document.getElementById(guardId);
+        const contentEl = document.getElementById(contentId);
+        if (!guardEl || !contentEl) return false;
+
+        let isBlocked = false;
+        let title = '';
+        let desc = '';
+
+        if (!delId || delId === '0' || delId === '') {
+            isBlocked = true;
+            title = 'Delivery Data Incomplete';
+            desc = 'Reconciliation and postings are unavailable because delivery has not been arranged for this route yet.';
+        } else if (currentRouteStatus !== 'Completed' && currentRouteStatus !== 'Finalized') {
+            isBlocked = true;
+            title = 'Preview Not Available';
+            desc = 'Reconciliation and GL postings can only be performed once the route delivery has completed execution and is marked as Completed or Finalized.';
+        }
+
+        if (isBlocked) {
+            guardEl.innerHTML = `
+                <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 45px 20px; text-align: center; max-width: 580px; margin: 40px auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <div style="width: 60px; height: 60px; background: #fffbeb; color: #d97706; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; font-size: 28px;">
+                        <i class="ph ph-warning-circle"></i>
+                    </div>
+                    <h4 style="margin: 0 0 10px 0; font-size: 15px; font-weight: bold; color: #0f172a;">${title}</h4>
+                    <p style="margin: 0; font-size: 12px; color: #64748b; line-height: 1.6;">${desc}</p>
+                </div>
+            `;
+            guardEl.style.display = 'block';
+            contentEl.style.display = 'none';
+            return true;
+        } else {
+            guardEl.style.display = 'none';
+            contentEl.style.display = 'block';
+            return false;
+        }
+    }
+
     function loadTab8Reconciliation(routeId) {
         const rdata = document.getElementById('route_data_' + routeId);
         const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
+
+        if (applyDefensiveGuard(delId, 'tab8GuardContainer', 'tab8ContentContainer')) {
+            return;
+        }
 
         document.getElementById('reconExpectedCash').innerText = 'Rs 0.00';
         document.getElementById('reconExpectedCollections').innerText = 'Rs 0.00';
@@ -3633,11 +3631,6 @@
         document.getElementById('reconCashVariance').innerText = 'Rs 0.00';
         document.getElementById('reconAuditNotes').value = '';
         document.getElementById('reconChequesTbody').innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading cheques... ⏳</td></tr>';
-
-        if (!delId || delId === '0' || delId === '') {
-            document.getElementById('reconChequesTbody').innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">Delivery has not been arranged.</td></tr>';
-            return;
-        }
 
         const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
         const saveBtn = document.getElementById('btnSaveReconciliationDraft');
@@ -3907,6 +3900,10 @@
         const rdata = document.getElementById('route_data_' + routeId);
         const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
 
+        if (applyDefensiveGuard(delId, 'tab10GuardContainer', 'tab10ContentContainer')) {
+            return;
+        }
+
         const colContainer = document.getElementById('settleDeCollectionsContainer');
         const salesContainer = document.getElementById('settleDeSalesContainer');
         
@@ -3916,11 +3913,6 @@
         document.getElementById('settleDaVehicle').value = '';
         document.getElementById('settleDaDriver').value = '';
         document.getElementById('settleDaPartner').value = '';
-
-        if (!delId || delId === '0' || delId === '') {
-            colContainer.innerHTML = '<p style="text-align:center; color:#888;">Delivery has not been arranged.</p>';
-            return;
-        }
 
         const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
         const saveBtn = document.getElementById('btnSaveAccountingDraft');
