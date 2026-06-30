@@ -1566,72 +1566,89 @@
                         <span>Delivery Manifest <strong id="adjDeliveryStatusId">#--</strong> successfully generated. Ready for warehouse.</span>
                     </div>
 
-                    <!-- Form View (Always Visible macOS Window) -->
+                    <!-- Form View (Always Visible macOS Split Layout) -->
                     <div id="adjDeliveryFormView">
-                        <div class="macos-window">
-                            <div class="macos-titlebar">
-                                <div class="macos-dots">
-                                    <span class="macos-dot close"></span>
-                                    <span class="macos-dot minimize"></span>
-                                    <span class="macos-dot zoom"></span>
+                        <form id="adjDeliveryArrangeForm" style="display: flex; flex-wrap: wrap; gap: 20px; max-width: 1150px; margin: 0 auto; align-items: stretch;">
+                            
+                            <!-- Left Card: Delivery Details -->
+                            <div class="macos-window" style="flex: 1 1 380px; margin: 0; display: flex; flex-direction: column;">
+                                <div class="macos-titlebar">
+                                    <div class="macos-dots">
+                                        <span class="macos-dot close"></span>
+                                        <span class="macos-dot minimize"></span>
+                                        <span class="macos-dot zoom"></span>
+                                    </div>
+                                    <span class="macos-title">Delivery Details</span>
                                 </div>
-                                <span class="macos-title">Delivery Arrangement Info</span>
+                                <div class="macos-content" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                                        <div>
+                                            <label class="macos-label">Delivery Date</label>
+                                            <input type="date" id="adjDaDate" class="macos-input" value="<?= date('Y-m-d') ?>">
+                                        </div>
+
+                                        <div>
+                                            <label class="macos-label">Vehicle Number *</label>
+                                            <select id="adjDaVehicle" class="macos-select" required>
+                                                <option value="">-- Select Vehicle --</option>
+                                                <?php foreach($data['vehicles'] as $v): ?>
+                                                    <?php if($v->status === 'Active'): ?>
+                                                        <option value="<?= htmlspecialchars($v->vehicle_number) ?>"><?= htmlspecialchars($v->vehicle_number) ?></option>
+                                                    <?php endif; ?>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label class="macos-label">Driver Name *</label>
+                                            <select id="adjDaDriver" class="macos-select" required>
+                                                <option value="">-- Select Driver --</option>
+                                                <?php foreach($data['drivers'] as $d): ?>
+                                                    <option value="<?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?>"><?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label class="macos-label">Partner / Helper</label>
+                                            <select id="adjDaPartner" class="macos-select">
+                                                <option value="">-- None --</option>
+                                                <?php foreach($data['employees'] as $e): ?>
+                                                    <?php if($e->status === 'Active'): ?>
+                                                        <option value="<?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?>"><?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?> (<?= htmlspecialchars($e->job_title) ?>)</option>
+                                                    <?php endif; ?>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div style="text-align: right; margin-top: 20px;">
+                                        <button type="button" onclick="submitAdjustmentsLogisticsArrange()" class="macos-btn-primary" style="width: 100%; justify-content: center; padding: 10px;">
+                                            <i class="ph ph-truck"></i> Save Delivery Arrangement
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <form id="adjDeliveryArrangeForm" class="macos-content">
-                                <div>
-                                    <label class="macos-label">Delivery Date</label>
-                                    <input type="date" id="adjDaDate" class="macos-input" value="<?= date('Y-m-d') ?>">
-                                </div>
 
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                    <div>
-                                        <label class="macos-label">Vehicle Number *</label>
-                                        <select id="adjDaVehicle" class="macos-select" required>
-                                            <option value="">-- Select Vehicle --</option>
-                                            <?php foreach($data['vehicles'] as $v): ?>
-                                                <?php if($v->status === 'Active'): ?>
-                                                    <option value="<?= htmlspecialchars($v->vehicle_number) ?>"><?= htmlspecialchars($v->vehicle_number) ?></option>
-                                                <?php endif; ?>
-                                            <?php endforeach; ?>
-                                        </select>
+                            <!-- Right Card: Credit Bills Dispatch -->
+                            <div class="macos-window" style="flex: 1.2 1 480px; margin: 0; display: flex; flex-direction: column;">
+                                <div class="macos-titlebar">
+                                    <div class="macos-dots">
+                                        <span class="macos-dot close"></span>
+                                        <span class="macos-dot minimize"></span>
+                                        <span class="macos-dot zoom"></span>
                                     </div>
-                                    <div>
-                                        <label class="macos-label">Driver Name *</label>
-                                        <select id="adjDaDriver" class="macos-select" required>
-                                            <option value="">-- Select Driver --</option>
-                                            <?php foreach($data['drivers'] as $d): ?>
-                                                <option value="<?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?>"><?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
+                                    <span class="macos-title">Credit Bills Selection</span>
                                 </div>
-
-                                <div>
-                                    <label class="macos-label">Partner / Helper</label>
-                                    <select id="adjDaPartner" class="macos-select">
-                                        <option value="">-- None --</option>
-                                        <?php foreach($data['employees'] as $e): ?>
-                                            <?php if($e->status === 'Active'): ?>
-                                                <option value="<?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?>"><?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?> (<?= htmlspecialchars($e->job_title) ?>)</option>
-                                            <?php endif; ?>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label class="macos-label">Select Territory Credit Invoices to dispatch with this vehicle</label>
-                                    <div id="adjDaBillsContainer" class="macos-checkbox-list">
+                                <div class="macos-content" style="flex: 1; display: flex; flex-direction: column;">
+                                    <label class="macos-label" style="margin-bottom: 10px;">Select Territory Credit Invoices to dispatch with this vehicle</label>
+                                    <div id="adjDaBillsContainer" class="macos-checkbox-list" style="flex: 1; min-height: 280px; max-height: none;">
                                         <!-- Outstanding credit bills list -->
                                     </div>
                                 </div>
+                            </div>
 
-                                <div style="text-align:right; margin-top: 10px;">
-                                    <button type="button" onclick="submitAdjustmentsLogisticsArrange()" class="macos-btn-primary">
-                                        <i class="ph ph-truck"></i> Save Delivery Arrangement
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                        </form>
                     </div>
                 </div>
 
