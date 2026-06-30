@@ -1395,7 +1395,7 @@ foreach ($data['customers'] ?? [] as $cust) {
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
     // --- Customer Profile Popup Modal Handlers ---
-    function showCustomerProfile(id) {
+    function showCustomerProfile(id, tab = null) {
         const modal = document.getElementById('customerProfileModal');
         const loader = document.getElementById('modal-loader');
         const content = document.getElementById('modal-profile-content');
@@ -1405,7 +1405,10 @@ foreach ($data['customers'] ?? [] as $cust) {
         content.style.display = 'none';
         
         // Update URL
-        const targetUrl = '<?= APP_URL ?>/customer/index/' + id;
+        let targetUrl = '<?= APP_URL ?>/customer/index/' + id;
+        if (tab) {
+            targetUrl += '?tab=' + tab;
+        }
         window.history.pushState({ path: targetUrl }, '', targetUrl);
         
         fetch(targetUrl)
@@ -1426,6 +1429,10 @@ foreach ($data['customers'] ?? [] as $cust) {
                     
                     loader.style.display = 'none';
                     content.style.display = 'flex';
+
+                    if (tab) {
+                        switchModalTab(tab);
+                    }
                 } else {
                     throw new Error('Malformed content returned from server');
                 }
@@ -1453,6 +1460,12 @@ foreach ($data['customers'] ?? [] as $cust) {
             document.getElementById('modal-header-container').innerHTML = headerSrc.innerHTML;
             content.innerHTML = contentSrc.innerHTML;
             modal.classList.remove('hidden');
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const tab = urlParams.get('tab');
+            if (tab) {
+                switchModalTab(tab);
+            }
         }
     }
 

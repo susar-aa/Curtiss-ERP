@@ -364,6 +364,8 @@ if ($inv && isset($inv->id)) {
                     <?php else: ?>
                         <button type="button" class="qb-btn" style="padding:6px 12px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px; border:1px solid #e2e8f0; background:#f5f5f7; color:#a1a1a6; cursor:not-allowed;" disabled>Next <i class="ph ph-caret-right"></i></button>
                     <?php endif; ?>
+
+                    <a href="<?= APP_URL ?>/sales/create?type=<?= $type ?><?= !empty($rep_route_id) ? '&route_id='.$rep_route_id : '' ?>&back_url=<?= urlencode($backUrl) ?>" class="qb-btn" style="padding:6px 12px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px; border:1px solid #d1d1d6; background:#fff; text-decoration:none; color:#1d1d1f;"><i class="ph ph-plus"></i> New</a>
                 </div>
             </div>
 
@@ -902,13 +904,13 @@ if ($inv && isset($inv->id)) {
 
     function openCustomerEdit() {
         if (selectedCustomerObj && selectedCustomerObj.id) {
-            window.open('<?= APP_URL ?>/customer/index/' + selectedCustomerObj.id, '_blank');
+            window.open('<?= APP_URL ?>/customer/index/' + selectedCustomerObj.id + '?tab=profile', '_blank');
         }
     }
 
     function openCustomerHistory() {
         if (selectedCustomerObj && selectedCustomerObj.id) {
-            window.open('<?= APP_URL ?>/customer/index/' + selectedCustomerObj.id, '_blank');
+            window.open('<?= APP_URL ?>/customer/index/' + selectedCustomerObj.id + '?tab=invoices', '_blank');
         }
     }
 
