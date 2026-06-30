@@ -430,7 +430,7 @@ if ($inv && isset($inv->id)) {
         flex: 1;
         border: 1px solid var(--slate-200);
         border-radius: var(--radius-md);
-        overflow: hidden;
+        overflow: visible;
         background: var(--white);
         box-shadow: var(--shadow-sm);
         display: flex;
@@ -464,7 +464,7 @@ if ($inv && isset($inv->id)) {
         gap: 0;
         border: 1px solid var(--slate-200);
         border-radius: var(--radius-sm);
-        overflow: hidden;
+        overflow: visible;
     }
     .inv-field-col {
         flex: 1;
@@ -607,11 +607,11 @@ if ($inv && isset($inv->id)) {
     .search-results li:hover span { color: var(--white) !important; }
     .search-results li:hover .sr-price { color: var(--white) !important; }
 
-    #searchResults {
+    #searchResults, #customerSearchResults {
         width: 760px;
         max-width: calc(100vw - 32px);
     }
-    #searchResults li {
+    #searchResults li, #customerSearchResults li {
         display: flex;
         align-items: center;
         gap: 12px;
@@ -619,6 +619,8 @@ if ($inv && isset($inv->id)) {
         width: 100%;
         box-sizing: border-box;
     }
+    
+    /* Product search results list item layout */
     #searchResults li .sr-name {
         flex: 2;
         min-width: 0;
@@ -659,15 +661,99 @@ if ($inv && isset($inv->id)) {
         font-size: 13px;
         white-space: nowrap;
     }
-    #searchResults li:hover {
-        background: var(--primary);
+
+    /* Customer search results list item layout */
+    #customerSearchResults li .csr-name {
+        flex: 1.8;
+        min-width: 0;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--slate-800);
+        word-break: break-word;
+    }
+    #customerSearchResults li .csr-route {
+        flex: 1.2;
+        min-width: 0;
+        font-size: 12px;
+        color: var(--slate-500);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    #customerSearchResults li .csr-phone {
+        flex: 1;
+        min-width: 0;
+        font-size: 12px;
+        color: var(--slate-500);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    #customerSearchResults li .csr-address {
+        flex: 1.8;
+        min-width: 0;
+        font-size: 12px;
+        color: var(--slate-500);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    #customerSearchResults li .csr-outstanding {
+        flex: 1.2;
+        min-width: 0;
+        font-size: 12px;
+        font-weight: 600;
+        text-align: right;
+        white-space: nowrap;
+    }
+    #customerSearchResults li .csr-outstanding.has-balance {
+        color: var(--danger);
+    }
+    #customerSearchResults li .csr-outstanding.overpaid {
+        color: var(--success);
+    }
+    #customerSearchResults li .csr-outstanding.no-balance {
+        color: var(--slate-500);
+    }
+
+    /* Hover and highlighted navigation states */
+    #searchResults li:hover,
+    #searchResults li.highlighted,
+    #customerSearchResults li:hover,
+    #customerSearchResults li.highlighted {
+        background: var(--primary) !important;
         color: var(--white) !important;
     }
     #searchResults li:hover .sr-name,
+    #searchResults li.highlighted .sr-name,
     #searchResults li:hover .sr-sku,
+    #searchResults li.highlighted .sr-sku,
     #searchResults li:hover .sr-sample,
-    #searchResults li:hover .sr-price {
+    #searchResults li.highlighted .sr-sample,
+    #searchResults li:hover .sr-price,
+    #searchResults li.highlighted .sr-price {
         color: var(--white) !important;
+    }
+    #customerSearchResults li:hover .csr-name,
+    #customerSearchResults li.highlighted .csr-name,
+    #customerSearchResults li:hover .csr-route,
+    #customerSearchResults li.highlighted .csr-route,
+    #customerSearchResults li:hover .csr-phone,
+    #customerSearchResults li.highlighted .csr-phone,
+    #customerSearchResults li:hover .csr-address,
+    #customerSearchResults li.highlighted .csr-address,
+    #customerSearchResults li:hover .csr-outstanding,
+    #customerSearchResults li.highlighted .csr-outstanding {
+        color: var(--white) !important;
+    }
+    #customerSearchResults li:hover i,
+    #customerSearchResults li.highlighted i {
+        color: var(--white) !important;
+    }
+    #searchResults li:hover span,
+    #searchResults li.highlighted span {
+        color: var(--white) !important;
+        background: rgba(255, 255, 255, 0.2) !important;
     }
 
     /* ── Line items table ── */
@@ -1078,10 +1164,10 @@ if ($inv && isset($inv->id)) {
                     <button type="submit" name="save_action" value="close" class="btn btn-sm btn-primary">
                         <i class="ph ph-floppy-disk"></i> Save &amp; Close
                     </button>
+                    <button type="submit" name="save_action" value="new" class="btn btn-sm">
+                        <i class="ph ph-plus"></i> Save &amp; New
+                    </button>
                     <?php if (!$inv): ?>
-                        <button type="submit" name="save_action" value="new" class="btn btn-sm">
-                            <i class="ph ph-plus"></i> Save &amp; New
-                        </button>
                         <button type="submit" name="save_action" value="print" class="btn btn-sm">
                             <i class="ph ph-printer"></i> Save &amp; Print
                         </button>
@@ -1119,7 +1205,7 @@ if ($inv && isset($inv->id)) {
                             <input type="hidden" name="customer_id" id="customerIdInput" required>
                             <input type="text" id="customerSearch" class="customer-search-input"
                                    placeholder="Search by name, route, phone, address..."
-                                   onkeyup="filterCustomerSearch(event)" autocomplete="off" required>
+                                   autocomplete="off" required>
                             <ul id="customerSearchResults" class="search-results" style="width:100%;"></ul>
                             <textarea id="billToAddress" class="customer-address-area"
                                       readonly placeholder="Customer address will appear here..."></textarea>
@@ -1480,8 +1566,21 @@ if ($inv && isset($inv->id)) {
         return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-    function filterCustomerSearch(e) {
-        const val = e.target.value.toLowerCase().trim();
+    let activeCustomerSearchIndex = -1;
+
+    function highlightCustomerSearchItem(items) {
+        items.forEach((item, index) => {
+            if (index === activeCustomerSearchIndex) {
+                item.classList.add('highlighted');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('highlighted');
+            }
+        });
+    }
+
+    function renderCustomerSearch(query) {
+        const val = query.toLowerCase().trim();
         const resList = document.getElementById('customerSearchResults');
         resList.innerHTML = '';
         if(!val) { resList.style.display = 'none'; return; }
@@ -1495,6 +1594,7 @@ if ($inv && isset($inv->id)) {
 
         if(filtered.length === 0) {
             const li = document.createElement('li');
+            li.className = 'no-results';
             li.style.padding = '10px 14px';
             li.style.color = '#94a3b8';
             li.innerText = 'No customers found';
@@ -1503,21 +1603,29 @@ if ($inv && isset($inv->id)) {
             return;
         }
 
-        filtered.forEach(cust => {
+        filtered.forEach((cust, index) => {
             const li = document.createElement('li');
-            li.style.flexDirection = 'column';
-            li.style.alignItems = 'flex-start';
+            li.setAttribute('data-index', index);
+            
+            const balanceVal = parseFloat(cust.outstanding) || 0;
+            let balanceText = 'Rs. 0.00';
+            let balanceClass = 'no-balance';
+            if (balanceVal > 0) {
+                balanceText = 'Rs. ' + balanceVal.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+                balanceClass = 'has-balance';
+            } else if (balanceVal < 0) {
+                balanceText = 'Rs. ' + Math.abs(balanceVal).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (CR)';
+                balanceClass = 'overpaid';
+            }
+
             li.innerHTML = `
-                <div style="width:100%;">
-                    <strong style="font-size:13px; color:#1e293b;">${escapeHtml(cust.name)}</strong>
-                    <div style="font-size:11px; color:#64748b; margin-top:3px; line-height:1.4;">
-                        ${cust.phone ? `<i class="ph ph-phone"></i> ${escapeHtml(cust.phone)}&nbsp;&nbsp;` : ''}
-                        ${cust.mca ? `<i class="ph ph-map-pin"></i> <strong>${escapeHtml(cust.mca)}</strong><br>` : ''}
-                        ${cust.address ? `<span style="font-style:italic; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px;"><i class="ph ph-house"></i> ${escapeHtml(cust.address)}</span>` : ''}
-                    </div>
-                </div>
+                <div class="csr-name">${escapeHtml(cust.name)}</div>
+                <div class="csr-route"><i class="ph ph-map-pin"></i> ${escapeHtml(cust.mca || 'No Route')}</div>
+                <div class="csr-phone">${cust.phone ? `<i class="ph ph-phone"></i> ${escapeHtml(cust.phone)}` : 'N/A'}</div>
+                <div class="csr-address">${cust.address ? `<i class="ph ph-house"></i> ${escapeHtml(cust.address)}` : 'N/A'}</div>
+                <div class="csr-outstanding ${balanceClass}">Bal: ${balanceText}</div>
             `;
-            li.onclick = () => { selectCustomer(cust); };
+            li.addEventListener('click', () => { selectCustomer(cust); });
             resList.appendChild(li);
         });
         resList.style.display = 'block';
@@ -1723,21 +1831,47 @@ if ($inv && isset($inv->id)) {
                 }
             }
         });
+
+        // Customer Search Event Listeners & Keyboard Navigation
+        const customerSearch = document.getElementById('customerSearch');
+        const custResList = document.getElementById('customerSearchResults');
+        if (customerSearch && custResList) {
+            customerSearch.addEventListener('input', function() {
+                activeCustomerSearchIndex = -1;
+                renderCustomerSearch(this.value);
+            });
+            customerSearch.addEventListener('keydown', function(e) {
+                const items = custResList.querySelectorAll('li:not(.no-results)');
+                if (items.length === 0) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeCustomerSearchIndex++;
+                    if (activeCustomerSearchIndex >= items.length) activeCustomerSearchIndex = 0;
+                    highlightCustomerSearchItem(items);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeCustomerSearchIndex--;
+                    if (activeCustomerSearchIndex < 0) activeCustomerSearchIndex = items.length - 1;
+                    highlightCustomerSearchItem(items);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (activeCustomerSearchIndex >= 0 && activeCustomerSearchIndex < items.length) {
+                        items[activeCustomerSearchIndex].click();
+                    } else if (items.length > 0) {
+                        items[0].click();
+                    }
+                }
+            });
+        }
     });
 
     function highlightSearchItem(items) {
         items.forEach((item, index) => {
             if (index === activeSearchIndex) {
-                item.style.backgroundColor = '#2563eb';
-                item.style.color = '#fff';
-                const priceDiv = item.querySelector('.sr-price');
-                if (priceDiv) priceDiv.style.color = '#fff';
+                item.classList.add('highlighted');
                 item.scrollIntoView({ block: 'nearest' });
             } else {
-                item.style.backgroundColor = '';
-                item.style.color = '';
-                const priceDiv = item.querySelector('.sr-price');
-                if (priceDiv) priceDiv.style.color = '#2563eb';
+                item.classList.remove('highlighted');
             }
         });
     }
