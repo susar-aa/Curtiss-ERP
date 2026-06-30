@@ -1,6 +1,6 @@
 <div class="mac-container" style="padding: 20px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #111;">🗑️ Deleted Invoices Audit Log</h1>
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #111;"><i class="ph ph-trash"></i> Deleted Invoices Audit Log</h1>
         <a href="<?= APP_URL ?>/sales/create" class="btn btn-outline" style="font-size:12px; border:1px solid #0066cc; color:#0066cc; background:transparent;">+ Create Invoice</a>
     </div>
 
@@ -55,14 +55,14 @@
                             </td>
                             <td style="padding: 12px 15px; font-size: 13px; color: #333; font-weight: 500;">
                                 <span style="background: #f0f0f5; padding: 3px 8px; border-radius: 12px; font-size: 11px; color: #555;">
-                                    👤 <?= htmlspecialchars($invoice->deleted_user_name ?? 'System Admin') ?>
+                                    <i class="ph ph-user"></i> <?= htmlspecialchars($invoice->deleted_user_name ?? 'System Admin') ?>
                                 </span>
                             </td>
                             <td style="padding: 12px 15px; font-size: 12px; color: #666;">
                                 <?= date('Y-m-d H:i:s', strtotime($invoice->deleted_at)) ?>
                             </td>
                             <td style="padding: 12px 15px; font-size: 12px; color: #e65100; font-style: italic; background: #fffde7; font-weight: 500;">
-                                ⚠️ <?= htmlspecialchars($invoice->delete_reason) ?>
+                                <i class="ph ph-warning"></i> <?= htmlspecialchars($invoice->delete_reason) ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>

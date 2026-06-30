@@ -677,20 +677,25 @@ class SalesController extends Controller {
                             $this->logActivity('Edit Invoice', 'Billing', "Updated and re-posted Invoice {$invoiceNumber} for Customer ID {$customerId} totaling Rs: " . number_format($grandTotal, 2), $editingId, $oldValues, $newValues);
                             $_SESSION['flash_success'] = "Sales Order {$invoiceNumber} successfully updated!";
                             
-                            $routeId = !empty($_POST['rep_route_id']) ? intval($_POST['rep_route_id']) : null;
-                            if (!$routeId && $editingId > 0) {
-                                $this->db->query("SELECT rep_route_id FROM invoices WHERE id = :id");
-                                $this->db->bind(':id', $editingId);
-                                $row = $this->db->single();
-                                if ($row) {
-                                    $routeId = $row->rep_route_id;
-                                }
-                            }
-                            
-                            if ($routeId) {
-                                header('Location: ' . APP_URL . '/RepTracking?route_id=' . $routeId . '&filter=adjustments');
+                            $backUrl = $_POST['back_url'] ?? '';
+                            if (!empty($backUrl)) {
+                                header('Location: ' . $backUrl);
                             } else {
-                                header('Location: ' . APP_URL . '/sales/show/' . $editingId);
+                                $routeId = !empty($_POST['rep_route_id']) ? intval($_POST['rep_route_id']) : null;
+                                if (!$routeId && $editingId > 0) {
+                                    $this->db->query("SELECT rep_route_id FROM invoices WHERE id = :id");
+                                    $this->db->bind(':id', $editingId);
+                                    $row = $this->db->single();
+                                    if ($row) {
+                                        $routeId = $row->rep_route_id;
+                                    }
+                                }
+                                
+                                if ($routeId) {
+                                    header('Location: ' . APP_URL . '/RepTracking?route_id=' . $routeId . '&filter=adjustments');
+                                } else {
+                                    header('Location: ' . APP_URL . '/sales/show/' . $editingId);
+                                }
                             }
                             exit;
                         } else {
@@ -720,6 +725,7 @@ class SalesController extends Controller {
                             }
 
                             $saveAction = $_POST['save_action'] ?? 'close';
+                            $backUrl = $_POST['back_url'] ?? '';
                             
                             $this->db->query("SELECT phone, name FROM customers WHERE id = :id");
                             $this->db->bind(':id', $customerId);
@@ -729,20 +735,37 @@ class SalesController extends Controller {
 
                             $routeId = !empty($_POST['rep_route_id']) ? intval($_POST['rep_route_id']) : null;
 
-                            if ($routeId) {
+                            if ($saveAction === 'new') {
                                 $_SESSION['flash_success'] = "Sales Order {$invoiceNumber} successfully created!";
-                                if ($saveAction === 'new') {
-                                    header('Location: ' . APP_URL . '/sales/create?type=sales_order&route_id=' . $routeId);
-                                } else {
-                                    header('Location: ' . APP_URL . '/RepTracking?route_id=' . $routeId . '&filter=adjustments');
+                                $newUrl = APP_URL . '/sales/create?type=' . urlencode($_POST['type'] ?? 'invoice');
+                                if ($routeId) {
+                                    $newUrl .= '&route_id=' . $routeId;
                                 }
+                                if (!empty($backUrl)) {
+                                    $newUrl .= '&back_url=' . urlencode($backUrl);
+                                }
+                                header('Location: ' . $newUrl);
                             } else if ($saveAction === 'print') {
-                                header('Location: ' . APP_URL . '/sales/create?print_id=' . $invoiceId);
+                                $printUrl = APP_URL . '/sales/create?print_id=' . $invoiceId;
+                                if (!empty($backUrl)) {
+                                    $printUrl .= '&back_url=' . urlencode($backUrl);
+                                }
+                                header('Location: ' . $printUrl);
                             } elseif ($saveAction === 'whatsapp') {
-                                header('Location: ' . APP_URL . '/sales/create?wa_id=' . $invoiceId . '&wa_phone=' . urlencode($custPhone) . '&wa_name=' . urlencode($custName));
+                                $waUrl = APP_URL . '/sales/create?wa_id=' . $invoiceId . '&wa_phone=' . urlencode($custPhone) . '&wa_name=' . urlencode($custName);
+                                if (!empty($backUrl)) {
+                                    $waUrl .= '&back_url=' . urlencode($backUrl);
+                                }
+                                header('Location: ' . $waUrl);
                             } else {
                                 $_SESSION['flash_success'] = "Invoice {$invoiceNumber} successfully created and posted to general ledger!";
-                                header('Location: ' . APP_URL . '/sales/show/' . $invoiceId);
+                                if (!empty($backUrl)) {
+                                    header('Location: ' . $backUrl);
+                                } else if ($routeId) {
+                                    header('Location: ' . APP_URL . '/RepTracking?route_id=' . $routeId . '&filter=adjustments');
+                                } else {
+                                    header('Location: ' . APP_URL . '/sales/show/' . $invoiceId);
+                                }
                             }
                             exit;
                         } else {

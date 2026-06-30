@@ -134,6 +134,56 @@ if (empty($revenues)) {
 // Extract Invoice Parameters
 $inv = $data['editing_invoice'] ?? null;
 $editingItems = $data['editing_items'] ?? [];
+
+// Determine back URL
+$rep_route_id = $_GET['rep_route_id'] ?? $_GET['route_id'] ?? (isset($inv->rep_route_id) ? $inv->rep_route_id : '');
+$backUrl = $_GET['back_url'] ?? $_SERVER['HTTP_REFERER'] ?? '';
+if (empty($backUrl) || strpos($backUrl, '/sales/create') !== false || strpos($backUrl, '/sales/store') !== false) {
+    if (!empty($rep_route_id)) {
+        $backUrl = APP_URL . '/RepTracking?route_id=' . $rep_route_id . '&filter=adjustments';
+    } else {
+        $backUrl = APP_URL . '/sales';
+    }
+}
+
+// Previous & Next navigation IDs
+$prevId = null;
+$nextId = null;
+$type = $data['type'] ?? 'invoice';
+if ($inv && isset($inv->id)) {
+    $currentId = intval($inv->id);
+    if ($type === 'sales_order') {
+        $db->query("SELECT id FROM sales_orders WHERE id < :id ORDER BY id DESC LIMIT 1");
+        $db->bind(':id', $currentId);
+        $row = $db->single();
+        if ($row) $prevId = $row->id;
+
+        $db->query("SELECT id FROM sales_orders WHERE id > :id ORDER BY id ASC LIMIT 1");
+        $db->bind(':id', $currentId);
+        $row = $db->single();
+        if ($row) $nextId = $row->id;
+    } else {
+        $db->query("SELECT id FROM invoices WHERE id < :id AND status != 'Voided' ORDER BY id DESC LIMIT 1");
+        $db->bind(':id', $currentId);
+        $row = $db->single();
+        if ($row) $prevId = $row->id;
+
+        $db->query("SELECT id FROM invoices WHERE id > :id AND status != 'Voided' ORDER BY id ASC LIMIT 1");
+        $db->bind(':id', $currentId);
+        $row = $db->single();
+        if ($row) $nextId = $row->id;
+    }
+} else {
+    if ($type === 'sales_order') {
+        $db->query("SELECT id FROM sales_orders ORDER BY id DESC LIMIT 1");
+        $row = $db->single();
+        if ($row) $prevId = $row->id;
+    } else {
+        $db->query("SELECT id FROM invoices WHERE status != 'Voided' ORDER BY id DESC LIMIT 1");
+        $row = $db->single();
+        if ($row) $prevId = $row->id;
+    }
+}
 ?>
 <style>
     /* Full-Screen App Layout CSS */
@@ -280,7 +330,7 @@ $editingItems = $data['editing_items'] ?? [];
 
     <?php if (!empty($rep_route_name)): ?>
         <div style="padding: 10px; background:#e0f7fa; color:#006064; border:1px solid #b2ebf2; margin-bottom:10px; font-weight:bold; border-radius: 4px; display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-            <span>📍 Adding Invoice to Rep Route: <strong><?= htmlspecialchars($rep_route_name) ?></strong></span>
+            <span><i class="ph ph-map-pin"></i> Adding Invoice to Rep Route: <strong><?= htmlspecialchars($rep_route_name) ?></strong></span>
         </div>
     <?php endif; ?>
 
@@ -289,24 +339,53 @@ $editingItems = $data['editing_items'] ?? [];
             <input type="hidden" name="type" value="<?= htmlspecialchars((string)($data['type'] ?? 'invoice')) ?>">
             <input type="hidden" name="rep_route_id" value="<?= htmlspecialchars((string)$rep_route_id) ?>">
             <input type="hidden" name="from_sales_order_id" value="<?= htmlspecialchars((string)($data['from_sales_order_id'] ?? '0')) ?>">
+            <input type="hidden" name="back_url" value="<?= htmlspecialchars($backUrl) ?>">
+            <input type="hidden" name="mca" id="displayMca" value="<?= ($inv && isset($inv->mca)) ? htmlspecialchars((string)$inv->mca) : '' ?>">
             <?php if ($inv): ?>
                 <input type="hidden" name="editing_invoice_id" value="<?= isset($inv->id) ? $inv->id : '' ?>">
             <?php endif; ?>
             
+            <!-- macOS Style Navigation Title Bar -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #e2e8f0; padding-bottom:10px; flex-shrink:0;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <a href="<?= htmlspecialchars($backUrl) ?>" class="qb-btn" style="padding: 6px 12px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px; color:#555; background:#fff; border:1px solid #d1d1d6; text-decoration:none;"><i class="ph ph-arrow-left"></i> Back</a>
+                    <div class="qb-title" style="margin:0; font-size:20px; font-weight:700; color:#1d1d1f;"><?= htmlspecialchars($data['title'] ?? ($inv ? 'Edit Invoice' : 'New Invoice')) ?></div>
+                </div>
+                
+                <div style="display:flex; gap:6px;">
+                    <?php if ($prevId): ?>
+                        <a href="<?= APP_URL ?>/sales/edit/<?= $prevId ?>?type=<?= $type ?><?= !empty($rep_route_id) ? '&route_id='.$rep_route_id : '' ?>&back_url=<?= urlencode($backUrl) ?>" class="qb-btn" style="padding:6px 12px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px; border:1px solid #d1d1d6; background:#fff; text-decoration:none; color:#1d1d1f;"><i class="ph ph-caret-left"></i> Previous</a>
+                    <?php else: ?>
+                        <button type="button" class="qb-btn" style="padding:6px 12px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px; border:1px solid #e2e8f0; background:#f5f5f7; color:#a1a1a6; cursor:not-allowed;" disabled><i class="ph ph-caret-left"></i> Previous</button>
+                    <?php endif; ?>
+
+                    <?php if ($nextId): ?>
+                        <a href="<?= APP_URL ?>/sales/edit/<?= $nextId ?>?type=<?= $type ?><?= !empty($rep_route_id) ? '&route_id='.$rep_route_id : '' ?>&back_url=<?= urlencode($backUrl) ?>" class="qb-btn" style="padding:6px 12px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px; border:1px solid #d1d1d6; background:#fff; text-decoration:none; color:#1d1d1f;">Next <i class="ph ph-caret-right"></i></a>
+                    <?php else: ?>
+                        <button type="button" class="qb-btn" style="padding:6px 12px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px; border:1px solid #e2e8f0; background:#f5f5f7; color:#a1a1a6; cursor:not-allowed;" disabled>Next <i class="ph ph-caret-right"></i></button>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <div class="qb-grid-top">
                 <div style="width: 300px;">
-                    <div class="qb-title"><?= htmlspecialchars($data['title'] ?? ($inv ? 'Edit Invoice' : 'New Invoice')) ?></div>
                     <div class="qb-box" style="position: relative;">
                         <div class="qb-box-header" style="display: flex; justify-content: space-between; align-items: center; padding: 3px 6px;">
                             <span>Bill To</span>
                             <button type="button" onclick="openNewCustomerModal()" style="background: #2e7d32; border: none; color: #fff; border-radius: 3px; font-weight: bold; cursor: pointer; font-size: 10px; padding: 2px 6px; line-height: 1;">+ New Customer</button>
                         </div>
                         <input type="hidden" name="customer_id" id="customerIdInput" required>
-                        <input type="text" id="customerSearch" class="qb-input" style="width: 100%; border:none; border-bottom:1px solid #ccc; font-weight:bold; padding: 6px;" placeholder="🔍 Search Customer by Name, Route, Address..." onkeyup="filterCustomerSearch(event)" autocomplete="off" required>
+                        <input type="text" id="customerSearch" class="qb-input" style="width: 100%; border:none; border-bottom:1px solid #ccc; font-weight:bold; padding: 6px;" placeholder="Search Customer by Name, Route, Address..." onkeyup="filterCustomerSearch(event)" autocomplete="off" required>
                         <ul id="customerSearchResults" class="search-results" style="width: 100%;"></ul>
                         <textarea id="billToAddress" class="qb-input" style="width: 100%; height: 60px; border:none; resize:none;" readonly placeholder="Customer address will appear here..."></textarea>
                     </div>
                     
+                    <!-- Customer Edit and Invoice History Buttons -->
+                    <div id="customerOptionsContainer" style="display: none; gap: 8px; margin-top: 6px;">
+                        <button type="button" onclick="openCustomerEdit()" class="qb-btn" style="flex:1; font-size: 11px; padding: 4px 6px; display:inline-flex; align-items:center; justify-content:center; gap:4px; border-radius:4px;"><i class="ph ph-pencil-simple"></i> Edit Profile</button>
+                        <button type="button" onclick="openCustomerHistory()" class="qb-btn" style="flex:1; font-size: 11px; padding: 4px 6px; display:inline-flex; align-items:center; justify-content:center; gap:4px; border-radius:4px;"><i class="ph ph-clock-counter-clockwise"></i> View History</button>
+                    </div>
+
                     <!-- Real-time outstanding balance indicator -->
                     <div id="customerOutstanding" style="font-size: 11px; padding: 5px; border-radius: 4px; margin-top: 5px; display: none;"></div>
                 </div>
@@ -359,17 +438,13 @@ $editingItems = $data['editing_items'] ?? [];
                     </div>
                 </div>
                 <div class="qb-mid-col">
-                    <div class="qb-mid-header">MCA</div>
-                    <div class="qb-mid-body"><input type="text" name="mca" id="displayMca" value="<?= ($inv && isset($inv->mca)) ? htmlspecialchars((string)$inv->mca) : '' ?>" placeholder="Editable Route Info"></div>
-                </div>
-                <div class="qb-mid-col">
                     <div class="qb-mid-header">Rep TP#</div>
                     <div class="qb-mid-body"><input type="text" name="rep_tp" id="displayPhone" value="<?= ($inv && isset($inv->rep_tp)) ? htmlspecialchars((string)$inv->rep_tp) : '' ?>" placeholder="Phone #"></div>
                 </div>
             </div>
 
             <div class="search-wrapper">
-                <input type="text" id="itemSearch" class="item-search-bar" placeholder="🔍 Search Catalog by Item Code or Name, SKU, Category, Sample Code..." autocomplete="off">
+                <input type="text" id="itemSearch" class="item-search-bar" placeholder="Search Catalog by Item Code or Name, SKU, Category, Sample Code..." autocomplete="off">
                 <ul id="searchResults" class="search-results"></ul>
             </div>
 
@@ -455,10 +530,10 @@ $editingItems = $data['editing_items'] ?? [];
                     <button type="submit" name="save_action" value="close" class="qb-btn qb-btn-primary">Save & Close</button>
                     <?php if (!$inv): ?>
                         <button type="submit" name="save_action" value="new" class="qb-btn">Save & New</button>
-                        <button type="submit" name="save_action" value="print" class="qb-btn">Save & Print 🖨️</button>
-                        <button type="submit" name="save_action" value="whatsapp" class="qb-btn wa-btn">Save & WhatsApp 💬</button>
+                        <button type="submit" name="save_action" value="print" class="qb-btn">Save & Print</button>
+                        <button type="submit" name="save_action" value="whatsapp" class="qb-btn wa-btn">Save & WhatsApp</button>
                     <?php endif; ?>
-                    <button type="button" class="qb-btn" onclick="window.location.href='<?= !empty($rep_route_id) ? (APP_URL . '/RepTracking?route_id=' . $rep_route_id . '&filter=adjustments') : (APP_URL . '/sales') ?>'">Cancel</button>
+                    <button type="button" class="qb-btn" onclick="window.location.href='<?= htmlspecialchars($backUrl) ?>'">Cancel</button>
                 </div>
             </div>
 
@@ -470,7 +545,7 @@ $editingItems = $data['editing_items'] ?? [];
 <div class="modal-backdrop" id="newCustomerModal" style="display: none; align-items: center; justify-content: center; z-index: 2000; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);">
     <div class="modal-panel" style="max-width: 480px; width: 90%; background: #fff; border-radius: 6px; overflow: hidden; border: 1px solid #b0c4de; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
         <div class="modal-header" style="background: #2e7d32; color: #fff; padding: 10px 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
-            <span>➕ Register New Customer</span>
+            <span>Register New Customer</span>
             <button type="button" onclick="closeNewCustomerModal()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
         </div>
         <form id="ajaxNewCustomerForm" onsubmit="submitAjaxNewCustomer(event)" style="margin: 0;">
@@ -638,9 +713,9 @@ $editingItems = $data['editing_items'] ?? [];
                 <div style="width: 100%;">
                     <strong style="font-size: 12px; color: #111;">${escapeHtml(cust.name)}</strong>
                     <div style="font-size: 10px; color: #666; margin-top: 3px; line-height: 1.3;">
-                        ${cust.phone ? `📞 ${escapeHtml(cust.phone)}<br>` : ''}
-                        ${cust.mca ? `📍 Route: <strong>${escapeHtml(cust.mca)}</strong><br>` : ''}
-                        ${cust.address ? `<span style="font-style: italic; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px;">🏠 ${escapeHtml(cust.address)}</span>` : ''}
+                        ${cust.phone ? `<i class="ph ph-phone" style="font-size:11px;"></i> ${escapeHtml(cust.phone)}<br>` : ''}
+                        ${cust.mca ? `<i class="ph ph-map-pin" style="font-size:11px;"></i> Route: <strong>${escapeHtml(cust.mca)}</strong><br>` : ''}
+                        ${cust.address ? `<span style="font-style: italic; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px;"><i class="ph ph-house" style="font-size:11px;"></i> ${escapeHtml(cust.address)}</span>` : ''}
                     </div>
                 </div>
             `;
@@ -770,9 +845,9 @@ $editingItems = $data['editing_items'] ?? [];
         }
 
         if (outBal > 0.01) {
-            html += `<div style="color:#c62828;">⚠ Current Outstanding: Rs. ${outBal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
+            html += `<div style="color:#c62828;"><i class="ph ph-warning" style="font-size:11px;"></i> Current Outstanding: Rs. ${outBal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
         } else if (outBal < -0.01) {
-            html += `<div style="color:#2e7d32;">✓ Available Credit (Overpaid): Rs. ${Math.abs(outBal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
+            html += `<div style="color:#2e7d32;"><i class="ph ph-check" style="font-size:11px;"></i> Available Credit (Overpaid): Rs. ${Math.abs(outBal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
         } else {
             html += `<div style="color:#666;">No Outstanding Balance</div>`;
         }
@@ -785,7 +860,7 @@ $editingItems = $data['editing_items'] ?? [];
                 outDiv.style.color = '#333';
                 outDiv.style.border = '1px solid #d2dbe4';
             } else {
-                html += `<div style="color:#c62828; font-weight:bold; margin-top:4px; padding-top:4px; border-top:1px solid #ef9a9a;">❌ Exceeded Credit Limit by: Rs. ${Math.abs(remaining).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
+                html += `<div style="color:#c62828; font-weight:bold; margin-top:4px; padding-top:4px; border-top:1px solid #ef9a9a;"><i class="ph ph-x-circle" style="font-size:11px;"></i> Exceeded Credit Limit by: Rs. ${Math.abs(remaining).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
                 outDiv.style.background = '#ffebee';
                 outDiv.style.color = '#c62828';
                 outDiv.style.border = '1px solid #ef9a9a';
@@ -817,7 +892,24 @@ $editingItems = $data['editing_items'] ?? [];
             phoneInput.value = cust.phone || '';
         }
 
+        const optsContainer = document.getElementById('customerOptionsContainer');
+        if(optsContainer) {
+            optsContainer.style.display = 'flex';
+        }
+
         updateProjectedOutstandingIndicator();
+    }
+
+    function openCustomerEdit() {
+        if (selectedCustomerObj && selectedCustomerObj.id) {
+            window.open('<?= APP_URL ?>/customer/index/' + selectedCustomerObj.id, '_blank');
+        }
+    }
+
+    function openCustomerHistory() {
+        if (selectedCustomerObj && selectedCustomerObj.id) {
+            window.open('<?= APP_URL ?>/customer/index/' + selectedCustomerObj.id, '_blank');
+        }
     }
 
     let activeSearchIndex = -1;
@@ -971,9 +1063,9 @@ $editingItems = $data['editing_items'] ?? [];
                 customers.push(newCust);
                 selectCustomer(newCust);
                 closeNewCustomerModal();
-                alert("🎉 Customer added and selected successfully!");
+                alert("Customer added and selected successfully!");
             } else {
-                alert("⚠️ Error: " + data.message);
+                alert("Error: " + data.message);
             }
         })
         .catch(err => {
@@ -1133,7 +1225,7 @@ $editingItems = $data['editing_items'] ?? [];
 
         // Add Icon / Title
         const title = document.createElement('h3');
-        title.innerText = '⚠️ Duplicate Product Warning';
+        title.innerHTML = '<i class="ph ph-warning" style="color:#d97706; font-size:18px;"></i> Duplicate Product Warning';
         title.style.margin = '0 0 12px 0';
         title.style.color = '#d97706';
         title.style.fontSize = '18px';
@@ -1155,7 +1247,7 @@ $editingItems = $data['editing_items'] ?? [];
         // Remove button
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
-        removeBtn.innerText = '🗑️ Remove Duplicate';
+        removeBtn.innerHTML = '<i class="ph ph-trash"></i> Remove Duplicate';
         removeBtn.style.padding = '8px 16px';
         removeBtn.style.border = '1px solid #dc2626';
         removeBtn.style.backgroundColor = '#fff';
@@ -1172,7 +1264,7 @@ $editingItems = $data['editing_items'] ?? [];
         // Keep button
         const keepBtn = document.createElement('button');
         keepBtn.type = 'button';
-        keepBtn.innerText = '✓ Keep Both';
+        keepBtn.innerHTML = '<i class="ph ph-check"></i> Keep Both';
         keepBtn.style.padding = '8px 16px';
         keepBtn.style.border = 'none';
         keepBtn.style.backgroundColor = '#10b981';
