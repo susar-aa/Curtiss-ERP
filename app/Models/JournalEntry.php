@@ -170,4 +170,55 @@ class JournalEntry {
             return "Database Error: " . $e->getMessage();
         }
     }
+
+    public function voidEntry($id) {
+        try {
+            // 1. Fetch the journal entry
+            $this->db->query("SELECT * FROM journal_entries WHERE id = :id");
+            $this->db->bind(':id', $id);
+            $entry = $this->db->single();
+            if (!$entry) return false;
+            if ($entry->status === 'Voided') return true; // Already voided
+            if ($entry->is_closed) return false; // Cannot void a closed financial year entry
+
+            $this->db->beginTransaction();
+
+            // 2. Fetch all transaction lines for this journal entry
+            $this->db->query("SELECT * FROM transactions WHERE journal_entry_id = :id");
+            $this->db->bind(':id', $id);
+            $lines = $this->db->resultSet();
+
+            // 3. Revert impact on COA balances
+            foreach ($lines as $line) {
+                $this->db->query("SELECT account_type FROM chart_of_accounts WHERE id = :aid");
+                $this->db->bind(':aid', $line->account_id);
+                $account = $this->db->single();
+
+                $balanceUpdateSql = "UPDATE chart_of_accounts SET balance = balance ";
+                if (in_array($account->account_type, ['Asset', 'Expense'])) {
+                    $balanceUpdateSql .= "- :debit + :credit ";
+                } else {
+                    $balanceUpdateSql .= "+ :debit - :credit ";
+                }
+                $balanceUpdateSql .= "WHERE id = :aid";
+
+                $this->db->query($balanceUpdateSql);
+                $this->db->bind(':debit', $line->debit);
+                $this->db->bind(':credit', $line->credit);
+                $this->db->bind(':aid', $line->account_id);
+                $this->db->execute();
+            }
+
+            // 4. Update journal entry status to Voided
+            $this->db->query("UPDATE journal_entries SET status = 'Voided' WHERE id = :id");
+            $this->db->bind(':id', $id);
+            $this->db->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (PDOException $e) {
+            $this->db->rollBack();
+            return false;
+        }
+    }
 }

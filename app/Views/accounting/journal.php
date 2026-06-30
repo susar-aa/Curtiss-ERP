@@ -130,19 +130,39 @@
                 <th>Description</th>
                 <th>Status</th>
                 <th>Posted By</th>
+                <th style="text-align: right; width: 100px;">Actions</th>
             </tr>
         </thead>
         <tbody>
             <?php if(empty($data['entries'])): ?>
-            <tr><td colspan="5" style="text-align: center; color: #888;">No entries found.</td></tr>
+            <tr><td colspan="6" style="text-align: center; color: #888;">No entries found.</td></tr>
             <?php else: ?>
                 <?php foreach($data['entries'] as $entry): ?>
                 <tr>
                     <td><?= date('M d, Y', strtotime($entry->entry_date)) ?></td>
                     <td><strong><?= htmlspecialchars($entry->reference) ?></strong></td>
                     <td><?= htmlspecialchars($entry->description) ?></td>
-                    <td><span style="color: #2e7d32; font-weight: bold;">✓ <?= $entry->status ?></span></td>
+                    <td>
+                        <?php if($entry->status === 'Posted'): ?>
+                            <span style="color: #2e7d32; font-weight: bold;">✓ <?= $entry->status ?></span>
+                        <?php elseif($entry->status === 'Voided'): ?>
+                            <span style="color: #c62828; text-decoration: line-through; font-weight: bold;"><?= $entry->status ?></span>
+                        <?php else: ?>
+                            <span style="color: #f59e0b; font-weight: bold;"><?= $entry->status ?></span>
+                        <?php endif; ?>
+                    </td>
                     <td><?= htmlspecialchars($entry->username) ?></td>
+                    <td style="text-align: right;">
+                        <?php if($entry->status === 'Posted' && !$entry->is_closed): ?>
+                            <form action="<?= APP_URL ?>/accounting/void_journal" method="POST" onsubmit="return confirm('Are you sure you want to void this journal entry? This will reverse all ledger balances for these accounts.')" style="display:inline;">
+                                <input type="hidden" name="entry_id" value="<?= $entry->id ?>">
+                                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                                <button type="submit" class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;">Void</button>
+                            </form>
+                        <?php else: ?>
+                            <span style="color: #aaa; font-size: 11px;">-</span>
+                        <?php endif; ?>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
             <?php endif; ?>

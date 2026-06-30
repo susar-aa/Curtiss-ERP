@@ -162,7 +162,17 @@ class AccountingController extends Controller {
     }
 
     public function journal() {
+        $this->generateCsrfToken();
         $data = ['title' => 'General Journal', 'content_view' => 'accounting/journal', 'accounts' => $this->coaModel->getAccounts(), 'entries' => $this->journalModel->getAllEntries(), 'error' => '', 'success' => ''];
+
+        if (isset($_SESSION['flash_success'])) {
+            $data['success'] = $_SESSION['flash_success'];
+            unset($_SESSION['flash_success']);
+        }
+        if (isset($_SESSION['flash_error'])) {
+            $data['error'] = $_SESSION['flash_error'];
+            unset($_SESSION['flash_error']);
+        }
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $date = trim($_POST['entry_date']);
@@ -262,5 +272,24 @@ class AccountingController extends Controller {
         }
 
         $this->view('layouts/main', $data);
+    }
+
+    public function void_journal() {
+        if ($_SESSION['role'] !== 'Admin' && $_SESSION['role'] !== 'Accountant') {
+            die("Access Denied: Only Administrators or Accountants can void journal entries.");
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $this->validateCsrfOrDie();
+
+            $id = intval($_POST['entry_id']);
+            if ($this->journalModel->voidEntry($id)) {
+                $_SESSION['flash_success'] = 'Journal Entry has been successfully voided and account balances reversed.';
+            } else {
+                $_SESSION['flash_error'] = 'Failed to void journal entry. (Maybe it belongs to a closed/locked period).';
+            }
+        }
+        header('Location: ' . APP_URL . '/accounting/journal');
+        exit;
     }
 }
