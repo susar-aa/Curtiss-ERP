@@ -422,11 +422,13 @@ $totalOutstanding = $billed - $paid - $credited;
     <div class="page-wrapper">
         
         <!-- Screen Controls -->
+        <?php if (!isset($_GET['hide_buttons']) || $_GET['hide_buttons'] !== '1'): ?>
         <div class="print-controls">
             <button onclick="exportToExcel()" class="btn-print btn-excel">📊 Export to Excel</button>
             <a href="<?= APP_URL ?>/sales/download_pdf/<?= $data['invoice']->id ?>" class="btn-print btn-pdf">📄 Download PDF</a>
             <button onclick="window.print()" class="btn-print">🖨️ Print Document</button>
         </div>
+        <?php endif; ?>
 
         <div class="main-content">
             <!-- Header -->

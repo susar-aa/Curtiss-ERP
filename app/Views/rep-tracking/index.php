@@ -48,14 +48,17 @@
         position: absolute;
         right: 0;
         top: 100%;
-        background: var(--c-surface);
-        border: 0.5px solid var(--c-separator);
-        border-radius: var(--r-md);
-        box-shadow: var(--shadow-lg);
-        z-index: 1000;
-        min-width: 170px;
-        padding: 6px 0;
-        margin-top: 4px;
+        background: rgba(255, 255, 255, 0.78) !important;
+        backdrop-filter: blur(20px) saturate(190%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+        border: 0.5px solid rgba(0, 0, 0, 0.15) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.02) !important;
+        z-index: 1001;
+        min-width: 190px;
+        padding: 6px;
+        margin-top: 6px;
+        overflow: hidden;
     }
     .dots-dropdown.show {
         display: block;
@@ -63,25 +66,60 @@
     .dots-dropdown-item {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 8px 14px;
-        font-size: 13px;
-        color: var(--t-primary);
+        justify-content: space-between;
+        flex-direction: row-reverse;
+        gap: 12px;
+        padding: 9px 12px;
+        font-size: 14px;
+        font-weight: 450;
+        color: #0f172a !important;
         cursor: pointer;
         text-align: left;
-        transition: background 0.15s;
+        transition: background 0.12s;
         width: 100%;
         border: none;
         background: none;
+        border-radius: 8px;
     }
     .dots-dropdown-item:hover {
-        background: var(--c-fill);
+        background: rgba(0, 0, 0, 0.05) !important;
+    }
+    .dots-dropdown-item i {
+        font-size: 16px;
+        color: rgba(15, 23, 42, 0.6) !important;
     }
     .dots-dropdown-item.danger {
-        color: var(--c-red);
+        color: #ff3b30 !important;
+    }
+    .dots-dropdown-item.danger i {
+        color: #ff3b30 !important;
     }
     .dots-dropdown-item.danger:hover {
-        background: var(--c-red-light);
+        background: rgba(255, 59, 48, 0.08) !important;
+    }
+    .dots-dropdown-divider {
+        height: 0.5px;
+        background: rgba(0, 0, 0, 0.1);
+        margin: 4px 6px;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        .dots-dropdown {
+            background: rgba(28, 28, 30, 0.82) !important;
+            border: 0.5px solid rgba(255, 255, 255, 0.15) !important;
+        }
+        .dots-dropdown-item {
+            color: #f8fafc !important;
+        }
+        .dots-dropdown-item i {
+            color: rgba(248, 250, 252, 0.6) !important;
+        }
+        .dots-dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+        }
+        .dots-dropdown-divider {
+            background: rgba(255, 255, 255, 0.1);
+        }
     }
 
     /* ============================================================
@@ -1702,6 +1740,9 @@
     </div> <!-- closes .pane-middle -->
 
     <!-- Centered Invoice Popup Modal -->
+    <!-- Global Context Menu Backdrop Blur -->
+    <div id="menuBackdrop" onclick="closeAllDotsMenus()" style="display: none; position: fixed; inset: 0; z-index: 999; background: rgba(0, 0, 0, 0.08); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); transition: all 0.2s ease;"></div>
+
     <div class="modal-backdrop" id="invoiceSliderBackdrop" style="display: none; z-index: 2000;">
         <div class="modal-panel" style="max-width: 950px; width: 90%; height: 85vh; display: flex; flex-direction: column; position: relative;">
             <button onclick="closeInvoiceSlider()" style="position: absolute; top: 12px; right: 16px; background: var(--c-fill); border: none; font-size: 16px; font-weight: bold; color: var(--t-secondary); cursor: pointer; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 10;">✕</button>
@@ -2832,7 +2873,7 @@
                                 <button class="dots-dropdown-item" onclick="event.stopPropagation(); openMoveInvoiceModal(${bill.id}, '${bill.invoice_number}')">
                                     <i class="ph ph-arrow-square-out"></i> Move
                                 </button>
-                                <div style="border-top: 1px solid var(--c-separator); margin: 4px 0;"></div>
+                                <div class="dots-dropdown-divider"></div>
                             `;
                         }
                         dropdownHtml += `
@@ -3158,9 +3199,53 @@
             if (variance === 0) {
                 allocatedSum = item.final_loaded_qty;
             } else {
-                item.invoices.forEach(inv => {
-                    allocatedSum += inv.quantity;
-                });
+                item.                invoices.forEach(inv => {
+                    let dColor = '#d05d00';
+                    if (inv.delivery_status === 'Delivered') dColor = '#2e7d32';
+                    else if (inv.delivery_status === 'Cancelled') dColor = '#ef4444';
+                    else if (inv.delivery_status === 'Postponed') dColor = '#6b7280';
+
+                    let pColor = inv.status === 'Paid' ? '#2e7d32' : '#d05d00';
+                    
+                    let actionHtml = '';
+                    if (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized') {
+                        actionHtml = `<span style="color:#888; font-size:11px; font-weight:bold;">Closed</span>`;
+                    } else {
+                        actionHtml = `
+                            <button onclick="openServerDeliveryProcessModal(${inv.id}, ${inv.customer_id}, '${inv.invoice_number}', '${inv.customer_name.replace(/'/g, "\\'")}', ${inv.true_grand_total})" 
+                                    class="btn-premium primary" 
+                                    style="padding:4px 8px; font-size:11px; display:inline-flex; align-items:center; gap:4px; font-weight:bold; cursor:pointer;">
+                                ⚙️ Process Visit
+                            </button>
+                        `;
+                    }
+
+                    let statusSelectHtml = '';
+                    const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+                    if (isReadOnly) {
+                        statusSelectHtml = `<span style="color:${dColor}; font-weight:bold;">${inv.delivery_status || 'Pending'}</span>`;
+                    } else {
+                        statusSelectHtml = `
+                            <select onchange="updateSingleInvoiceDeliveryStatus(${inv.id}, ${inv.customer_id}, this.value)" 
+                                    style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; font-weight: bold; color: ${dColor}; background: #fff; outline: none; cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow-xs);">
+                                <option value="Pending" ${inv.delivery_status === 'Pending' ? 'selected' : ''} style="color:#d05d00;">Pending</option>
+                                <option value="Delivered" ${inv.delivery_status === 'Delivered' ? 'selected' : ''} style="color:#2e7d32;">Delivered</option>
+                                <option value="Cancelled" ${inv.delivery_status === 'Cancelled' ? 'selected' : ''} style="color:#ef4444;">Cancelled</option>
+                                <option value="Postponed" ${inv.delivery_status === 'Postponed' ? 'selected' : ''} style="color:#6b7280;">Postponed</option>
+                            </select>
+                        `;
+                    }
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${inv.customer_name}</strong></td>
+                            <td style="font-weight:bold; color:var(--primary);">${inv.invoice_number}</td>
+                            <td style="text-align:right; font-family:monospace; font-weight:bold;">Rs ${parseFloat(inv.true_grand_total).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                            <td style="text-align:center;">${statusSelectHtml}</td>
+                            <td style="text-align:center; color:${pColor}; font-weight:bold;">${inv.status}</td>
+                            <td style="text-align:center;">${actionHtml}</td>
+                        </tr>
+                    `;
             }
 
             const isItemBalanced = (item.invoices.length === 0 || Math.abs(allocatedSum - item.final_loaded_qty) < 0.01);
@@ -4573,7 +4658,7 @@
         const iframe = document.getElementById('invoiceIframe');
         iframe.src = 'about:blank';
         setTimeout(() => {
-            iframe.src = '<?= APP_URL ?>/sales/show/' + invoiceId;
+            iframe.src = '<?= APP_URL ?>/sales/show/' + invoiceId + '?hide_buttons=1';
         }, 50);
         backdrop.style.display = 'flex';
     }
@@ -4999,21 +5084,92 @@
     /* Dots Menu Handlers */
     function toggleDotsMenu(e, id) {
         e.stopPropagation();
+        const btn = e.currentTarget;
         const dropdown = document.getElementById('dots-dropdown-' + id);
+        if (!dropdown) return;
+        
         const isShowing = dropdown.classList.contains('show');
         
         // Hide all other dropdowns
-        document.querySelectorAll('.dots-dropdown').forEach(d => d.classList.remove('show'));
+        closeAllDotsMenus();
         
         if (!isShowing) {
+            // Determine vertical position to open upwards if near the bottom
+            const rect = btn.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+            
+            // If the button is in the bottom 40% of the viewport, open upwards
+            if (rect.top > windowHeight * 0.6) {
+                dropdown.style.top = 'auto';
+                dropdown.style.bottom = '100%';
+                dropdown.style.marginTop = '0';
+                dropdown.style.marginBottom = '6px';
+            } else {
+                dropdown.style.top = '100%';
+                dropdown.style.bottom = 'auto';
+                dropdown.style.marginTop = '6px';
+                dropdown.style.marginBottom = '0';
+            }
+            
             dropdown.classList.add('show');
+            
+            const backdrop = document.getElementById('menuBackdrop');
+            if (backdrop) backdrop.style.display = 'block';
+            
+            // Lift the menu container's z-index above the backdrop
+            const container = btn.closest('.dots-menu-container');
+            if (container) {
+                container.style.zIndex = '1001';
+            }
         }
+    }
+
+    function closeAllDotsMenus() {
+        document.querySelectorAll('.dots-dropdown').forEach(d => d.classList.remove('show'));
+        const backdrop = document.getElementById('menuBackdrop');
+        if (backdrop) backdrop.style.display = 'none';
+        document.querySelectorAll('.dots-menu-container').forEach(c => c.style.zIndex = '');
     }
 
     // Close dropdowns on click outside
     document.addEventListener('click', function() {
-        document.querySelectorAll('.dots-dropdown').forEach(d => d.classList.remove('show'));
+        closeAllDotsMenus();
     });
+
+    function updateSingleInvoiceDeliveryStatus(invoiceId, customerId, newStatus) {
+        const payload = {
+            route_id: parseInt(currentRouteId),
+            customer_id: parseInt(customerId),
+            deliveries: [
+                {
+                    invoice_id: parseInt(invoiceId),
+                    delivery_status: newStatus,
+                    items: []
+                }
+            ],
+            collections: null
+        };
+        
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_process_delivery_visit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                loadDeliveryLiveStage(currentRouteId);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('An unexpected error occurred during status update.');
+        });
+    }
 
     function editSalesOrder(id) {
         window.open('<?= APP_URL ?>/sales/edit/' + id + '?type=sales_order', '_blank');
