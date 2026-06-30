@@ -953,6 +953,129 @@
     body.workspace-showing .cmd-bar {
         display: none !important;
     }
+
+    /* macOS Style UI Elements */
+    .macos-window {
+        background: #ffffff;
+        border: 1px solid #d1d1d6;
+        border-radius: 12px;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.02);
+        max-width: 680px;
+        margin: 20px auto;
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .macos-titlebar {
+        background: #f5f5f7;
+        border-bottom: 1px solid #d1d1d6;
+        padding: 10px 16px;
+        display: flex;
+        align-items: center;
+        position: relative;
+    }
+    .macos-dots {
+        display: flex;
+        gap: 8px;
+    }
+    .macos-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .macos-dot.close { background: #ff5f56; border: 0.5px solid #e0443e; }
+    .macos-dot.minimize { background: #ffbd2e; border: 0.5px solid #dfa123; }
+    .macos-dot.zoom { background: #27c93f; border: 0.5px solid #1aab29; }
+    
+    .macos-title {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 13px;
+        font-weight: 600;
+        color: #1d1d1f;
+    }
+    .macos-content {
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    .macos-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #86868b;
+        margin-bottom: 6px;
+        display: block;
+    }
+    .macos-input, .macos-select {
+        width: 100%;
+        background: #ffffff;
+        border: 1px solid #d1d1d6;
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-size: 13px;
+        color: #1d1d1f;
+        outline: none;
+        transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    .macos-input:focus, .macos-select:focus {
+        border-color: #007aff;
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.25);
+    }
+    .macos-btn-primary {
+        background: #007aff;
+        color: #ffffff;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .macos-btn-primary:hover {
+        background: #0066d6;
+    }
+    .macos-btn-primary:active {
+        background: #0051a8;
+    }
+    .macos-checkbox-list {
+        border: 1px solid #d1d1d6;
+        border-radius: 6px;
+        max-height: 180px;
+        overflow-y: auto;
+        background: #ffffff;
+        padding: 4px;
+    }
+    .macos-checkbox-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.12s, color 0.12s;
+    }
+    .macos-checkbox-item:hover {
+        background: rgba(0, 122, 255, 0.08);
+    }
+    .macos-banner {
+        background: rgba(0, 122, 255, 0.05);
+        border: 1px solid rgba(0, 122, 255, 0.2);
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        color: #007aff;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 500;
+        margin-bottom: 20px;
+    }
 </style>
 
 <?php if (isset($_SESSION['flash_success'])): ?>
@@ -1438,65 +1561,77 @@
                     </div>
                     
                     <!-- Global Status Banner -->
-                    <div id="adjDeliveryStatusBanner" style="display:none; background: #e0f2fe; border: 1px solid #bae6fd; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; color: #0369a1; align-items: center; gap: 8px; font-weight: 550;">
+                    <div id="adjDeliveryStatusBanner" class="macos-banner" style="display:none;">
                         <i class="ph-bold ph-paperclip" style="font-size: 16px;"></i>
                         <span>Delivery Manifest <strong id="adjDeliveryStatusId">#--</strong> successfully generated. Ready for warehouse.</span>
                     </div>
 
-                    <!-- Form View (Always Visible) -->
+                    <!-- Form View (Always Visible macOS Window) -->
                     <div id="adjDeliveryFormView">
-                        <form id="adjDeliveryArrangeForm" style="display:flex; flex-direction:column; gap:20px; max-width:650px; background:var(--c-surface); border:0.5px solid var(--c-separator); padding:30px; border-radius:var(--r-lg); margin:0 auto; box-shadow:var(--shadow-md);">
-                            <div>
-                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Delivery Date</label>
-                                <input type="date" id="adjDaDate" value="<?= date('Y-m-d') ?>" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+                        <div class="macos-window">
+                            <div class="macos-titlebar">
+                                <div class="macos-dots">
+                                    <span class="macos-dot close"></span>
+                                    <span class="macos-dot minimize"></span>
+                                    <span class="macos-dot zoom"></span>
+                                </div>
+                                <span class="macos-title">Delivery Arrangement Info</span>
                             </div>
-
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <form id="adjDeliveryArrangeForm" class="macos-content">
                                 <div>
-                                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Vehicle Number *</label>
-                                    <select id="adjDaVehicle" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;" required>
-                                        <option value="">-- Select Vehicle --</option>
-                                        <?php foreach($data['vehicles'] as $v): ?>
-                                            <?php if($v->status === 'Active'): ?>
-                                                <option value="<?= htmlspecialchars($v->vehicle_number) ?>"><?= htmlspecialchars($v->vehicle_number) ?></option>
+                                    <label class="macos-label">Delivery Date</label>
+                                    <input type="date" id="adjDaDate" class="macos-input" value="<?= date('Y-m-d') ?>">
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div>
+                                        <label class="macos-label">Vehicle Number *</label>
+                                        <select id="adjDaVehicle" class="macos-select" required>
+                                            <option value="">-- Select Vehicle --</option>
+                                            <?php foreach($data['vehicles'] as $v): ?>
+                                                <?php if($v->status === 'Active'): ?>
+                                                    <option value="<?= htmlspecialchars($v->vehicle_number) ?>"><?= htmlspecialchars($v->vehicle_number) ?></option>
+                                                <?php endif; ?>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="macos-label">Driver Name *</label>
+                                        <select id="adjDaDriver" class="macos-select" required>
+                                            <option value="">-- Select Driver --</option>
+                                            <?php foreach($data['drivers'] as $d): ?>
+                                                <option value="<?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?>"><?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="macos-label">Partner / Helper</label>
+                                    <select id="adjDaPartner" class="macos-select">
+                                        <option value="">-- None --</option>
+                                        <?php foreach($data['employees'] as $e): ?>
+                                            <?php if($e->status === 'Active'): ?>
+                                                <option value="<?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?>"><?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?> (<?= htmlspecialchars($e->job_title) ?>)</option>
                                             <?php endif; ?>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
+
                                 <div>
-                                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Driver Name *</label>
-                                    <select id="adjDaDriver" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;" required>
-                                        <option value="">-- Select Driver --</option>
-                                        <?php foreach($data['drivers'] as $d): ?>
-                                            <option value="<?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?>"><?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                    <label class="macos-label">Select Territory Credit Invoices to dispatch with this vehicle</label>
+                                    <div id="adjDaBillsContainer" class="macos-checkbox-list">
+                                        <!-- Outstanding credit bills list -->
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div>
-                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Partner / Helper</label>
-                                <select id="adjDaPartner" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
-                                    <option value="">-- None --</option>
-                                    <?php foreach($data['employees'] as $e): ?>
-                                        <?php if($e->status === 'Active'): ?>
-                                            <option value="<?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?>"><?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?> (<?= htmlspecialchars($e->job_title) ?>)</option>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:6px;">Select Territory Credit Invoices to dispatch with this vehicle</label>
-                                <div id="adjDaBillsContainer" style="border:1px solid #ccc; border-radius:6px; max-height:160px; overflow-y:auto; background:#fff; padding:8px;">
-                                    <!-- Outstanding credit bills list -->
+                                <div style="text-align:right; margin-top: 10px;">
+                                    <button type="button" onclick="submitAdjustmentsLogisticsArrange()" class="macos-btn-primary">
+                                        <i class="ph ph-truck"></i> Save Delivery Arrangement
+                                    </button>
                                 </div>
-                            </div>
-
-                            <div style="text-align:right;">
-                                <button type="button" onclick="submitAdjustmentsLogisticsArrange()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;"><i class="ph ph-truck"></i> Save Delivery Arrangement</button>
-                            </div>
-                        </form>
+                            </form>
+                        </div>
                     </div>
                 </div>
 
@@ -2558,9 +2693,9 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert("🎉 Route notes saved successfully!");
+                alert("Route notes saved successfully!");
             } else {
-                alert("⚠️ Error: " + data.message);
+                alert("Error: " + data.message);
             }
         });
     }
@@ -2569,7 +2704,7 @@
 
     function loadCollectionsVerificationStage2(routeId) {
         const tbody = document.getElementById('glCollectionsTableBody');
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Loading collections... ⏳</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Loading collections... </td></tr>';
         currentGLCollectionsState = [];
         
         document.getElementById('glTotalCash').innerText = 'Rs 0.00';
@@ -2782,7 +2917,7 @@
         const container = document.getElementById('adjDaBillsContainer');
         if (!container) return;
 
-        container.innerHTML = '<p style="text-align:center; color:#888;">Loading credit bills... ⏳</p>';
+        container.innerHTML = '<p style="text-align:center; color:#888;">Loading credit bills... </p>';
         const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
         let selectedInvoices = [];
 
@@ -2834,7 +2969,7 @@
 
     function loadAdjustmentsStage(routeId) {
         const tbody = document.getElementById('adjustmentsInvoicesTbody');
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Loading Sales Orders... ⏳</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Loading Sales Orders... </td></tr>';
 
         const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
 
@@ -2972,7 +3107,7 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert("🎉 Delivery arranged successfully!");
+                alert("Delivery arranged successfully!");
                 const rdata = document.getElementById('route_data_' + currentRouteId);
                 if (rdata) {
                     rdata.setAttribute('data-delivery-id', data.delivery_id);
@@ -2980,7 +3115,7 @@
                 onRouteDataChanged();
                 loadDispatchStage(currentRouteId);
             } else {
-                alert("⚠️ Error: " + data.message);
+                alert("Error: " + data.message);
             }
         });
     }
@@ -2988,7 +3123,7 @@
     function loadLoadingStage(routeId) {
         const box = document.getElementById('loadingBox');
         if (!box) return;
-        box.innerHTML = 'Loading loading items checklist... ⏳';
+        box.innerHTML = 'Loading loading items checklist... ';
 
         fetchSecure('<?= APP_URL ?>/RepTracking/api_get_route_variances/' + routeId)
             .then(res => res.json())
@@ -3111,7 +3246,7 @@
     function loadVarianceAdjustmentStage(routeId) {
         const box = document.getElementById('varianceAuditBox');
         if (!box) return;
-        box.innerHTML = '<div style="padding:20px; text-align:center;">Loading shortages & overages... ⏳</div>';
+        box.innerHTML = '<div style="padding:20px; text-align:center;">Loading shortages & overages... </div>';
         currentVarianceState = {};
         currentSubstitutions = [];
 
@@ -3649,8 +3784,8 @@
         const tbody = document.getElementById('deliveryTabInvoicesTbody');
         if (!summaryCards || !tbody) return;
 
-        summaryCards.innerHTML = '<div style="grid-column: span 4; text-align:center; padding:10px;">Loading performance summary... ⏳</div>';
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Loading customer dispatches... ⏳</td></tr>';
+        summaryCards.innerHTML = '<div style="grid-column: span 4; text-align:center; padding:10px;">Loading performance summary... </div>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Loading customer dispatches... </td></tr>';
 
         const rdata = document.getElementById('route_data_' + routeId);
         const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
@@ -3717,7 +3852,7 @@
                             <button onclick="openServerDeliveryProcessModal(${inv.id}, ${inv.customer_id}, '${inv.invoice_number}', '${inv.customer_name.replace(/'/g, "\\'")}', ${inv.true_grand_total})" 
                                     class="btn-premium primary" 
                                     style="padding:4px 8px; font-size:11px; display:inline-flex; align-items:center; gap:4px; font-weight:bold; cursor:pointer;">
-                                ⚙️ Process Visit
+                                <i class="ph ph-gear"></i> Process Visit
                             </button>
                         `;
                     }
@@ -3760,7 +3895,7 @@
         document.getElementById('sdpCashAmount').value = '0.00';
         document.getElementById('sdpBankAmount').value = '0.00';
         document.getElementById('sdpChequesContainer').innerHTML = '';
-        document.getElementById('sdpItemsTbody').innerHTML = '<tr><td colspan="3" style="text-align:center;">Loading items... ⏳</td></tr>';
+        document.getElementById('sdpItemsTbody').innerHTML = '<tr><td colspan="3" style="text-align:center;">Loading items... </td></tr>';
         
         document.getElementById('serverDeliveryProcessModal').style.display = 'flex';
         
@@ -3977,7 +4112,7 @@
         document.getElementById('reconActualCash').value = '0.00';
         document.getElementById('reconCashVariance').innerText = 'Rs 0.00';
         document.getElementById('reconAuditNotes').value = '';
-        document.getElementById('reconChequesTbody').innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading cheques... ⏳</td></tr>';
+        document.getElementById('reconChequesTbody').innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading cheques... </td></tr>';
 
         const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
         const saveBtn = document.getElementById('btnSaveReconciliationDraft');
@@ -4119,10 +4254,10 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert("🎉 Reconciliation draft saved successfully!");
+                alert("Reconciliation draft saved successfully!");
                 onRouteDataChanged();
             } else {
-                alert("⚠️ Error: " + data.message);
+                alert("Error: " + data.message);
             }
         });
     }
@@ -4132,7 +4267,7 @@
         const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
 
         const tbody = document.getElementById('settleStockTableBody');
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading return stock counts... ⏳</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading return stock counts... </td></tr>';
 
         const verifyStockCheck = document.getElementById('settleVerifyStock');
         if (verifyStockCheck) {
@@ -4235,10 +4370,10 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert("🎉 Return stock draft saved successfully!");
+                alert("Return stock draft saved successfully!");
                 onRouteDataChanged();
             } else {
-                alert("⚠️ Error: " + data.message);
+                alert("Error: " + data.message);
             }
         });
     }
@@ -4254,7 +4389,7 @@
         const colContainer = document.getElementById('settleDeCollectionsContainer');
         const salesContainer = document.getElementById('settleDeSalesContainer');
         
-        colContainer.innerHTML = '<p style="text-align:center; color:#888;">Loading account mappings... ⏳</p>';
+        colContainer.innerHTML = '<p style="text-align:center; color:#888;">Loading account mappings... </p>';
         salesContainer.innerHTML = '';
 
         document.getElementById('settleDaVehicle').value = '';
@@ -4336,10 +4471,10 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert("🎉 Accounting mappings draft saved successfully!");
+                alert("Accounting mappings draft saved successfully!");
                 onRouteDataChanged();
             } else {
-                alert("⚠️ Error: " + data.message);
+                alert("Error: " + data.message);
             }
         });
     }
@@ -4534,7 +4669,7 @@
 
         const btn = document.getElementById('settleSubmitBtn');
         btn.disabled = true;
-        btn.innerText = 'Settling Route... ⏳';
+        btn.innerText = 'Settling Route... ';
 
         fetchSecure('<?= APP_URL ?>/RepTracking/finalize', {
             method: 'POST',
@@ -4554,12 +4689,12 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert("🎉 Settle balancing successfully completed! Route marked as Completed.");
+                alert("Settle balancing successfully completed! Route marked as Completed.");
                 window.location.reload();
             } else {
-                alert("⚠️ Error: " + data.message);
+                alert("Error: " + data.message);
                 btn.disabled = false;
-                btn.innerText = '⚖️ Settle Balancing & Finalize Route';
+                btn.innerText = '<i class="ph ph-scales"></i> Settle Balancing & Finalize Route';
                 checkSettleVerification();
             }
         });
@@ -4605,11 +4740,11 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert(`🎉 Route advanced to ${targetStatus}`);
+                alert(`Route advanced to ${targetStatus}`);
                 const filterType = getDataTypeFromStatus(targetStatus);
                 window.location.href = window.location.pathname + `?route_id=${currentRouteId}&filter=${filterType}`;
             } else {
-                alert("⚠️ Error: " + data.message);
+                alert("Error: " + data.message);
             }
         });
     }
@@ -4652,11 +4787,11 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert("🎉 Success: " + data.message);
+                alert("Success: " + data.message);
                 closeInvoiceSlider();
                 loadRouteDetails(currentRouteId);
             } else {
-                alert("⚠️ Error: " + data.message);
+                alert("Error: " + data.message);
             }
         });
     }
@@ -4796,7 +4931,7 @@
                 ${index > 2 ? `<button type="button" onclick="removeBindingSlot(${index})" style="position: absolute; top: 10px; right: 10px; border: none; background: #dc2626; color: #fff; width: 22px; height: 22px; border-radius: 50%; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: bold; padding:0;">✕</button>` : ''}
                 <h5 style="margin: 0 0 5px 0; color: #3f51b5; font-size: 12px; font-weight: bold; text-transform: uppercase;">Slot ${index}</h5>
                 <div class="rb-slot-box">
-                    <div style="font-size: 20px; color: #cbd5e1; margin-bottom: 6px;" id="rb_slot_icon_${index}">➕</div>
+                    <div style="font-size: 20px; color: #cbd5e1; margin-bottom: 6px;" id="rb_slot_icon_${index}">+</div>
                     <select class="rb-slot-select" id="rb_select_${index}" onchange="onBindingSlotRouteSelect(${index}, this)">
                         ${optionsHtml}
                     </select>
@@ -4820,7 +4955,7 @@
         if (!routeId) {
             billsContainer.style.display = 'none';
             billsContainer.innerHTML = '';
-            icon.innerText = '➕';
+            icon.innerText = '+';
             return;
         }
         
@@ -4830,9 +4965,9 @@
         const selectedRouteName = selectedRoute ? selectedRoute.name : '';
         const selectedRepName = selectedRoute ? selectedRoute.rep : '';
 
-        icon.innerText = '🔗';
+        icon.innerText = '<i class="ph ph-link"></i>';
         billsContainer.style.display = 'block';
-        billsContainer.innerHTML = '<p style="text-align: center; color: #888;">Loading details... ⏳</p>';
+        billsContainer.innerHTML = '<p style="text-align: center; color: #888;">Loading details... </p>';
         
         fetch('<?= APP_URL ?>/RepTracking/api_get_route_details/' + routeId)
             .then(res => res.json())
@@ -4907,12 +5042,12 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert("🎉 Success: " + data.message);
+                alert("Success: " + data.message);
                 closeRouteBindingModal();
                 // Redirect/reload switching filter to Adjustments
                 window.location.href = window.location.pathname + `?filter=adjustments`;
             } else {
-                alert("⚠️ Error: " + data.message);
+                alert("Error: " + data.message);
             }
         });
     }
@@ -4932,10 +5067,10 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert("🎉 Success: " + data.message);
+                alert("Success: " + data.message);
                 window.location.href = window.location.pathname + `?filter=adjustments`;
             } else {
-                alert("⚠️ Error: " + data.message);
+                alert("Error: " + data.message);
             }
         });
     }
@@ -4985,7 +5120,7 @@
         const status = document.getElementById('soFilterStatus').value;
         const container = document.getElementById('unattachedInvoicesContainer');
         
-        container.innerHTML = '<p style="text-align: center; color: #888; margin: 10px 0;">Searching... ⏳</p>';
+        container.innerHTML = '<p style="text-align: center; color: #888; margin: 10px 0;">Searching... </p>';
         
         let url = '<?= APP_URL ?>/RepTracking/api_get_unattached_invoices?search=' + encodeURIComponent(query);
         if (startDate) url += '&start_date=' + encodeURIComponent(startDate);
@@ -5037,10 +5172,10 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert("🎉 Attached successfully!");
+                alert("Attached successfully!");
                 loadRouteDetails(currentRouteId);
             } else {
-                alert("⚠️ Error: " + data.message);
+                alert("Error: " + data.message);
             }
         });
     }
@@ -5258,11 +5393,11 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert("🎉 Sales Order successfully moved to the destination route!");
+                alert("Sales Order successfully moved to the destination route!");
                 onRouteDataChanged();
                 loadAdjustmentsStage(currentRouteId);
             } else {
-                alert("⚠️ Error: " + data.message);
+                alert("Error: " + data.message);
             }
         });
     }
