@@ -182,49 +182,17 @@ class SalesOrderController extends Controller {
      */
     public function create() {
         $repRouteId = !empty($_GET['rep_route_id']) ? intval($_GET['rep_route_id']) : null;
+        $backUrl = !empty($_GET['back_url']) ? $_GET['back_url'] : '';
+        
+        $url = APP_URL . '/sales/create?type=sales_order';
         if ($repRouteId) {
-            header('Location: ' . APP_URL . '/sales/create?type=sales_order&rep_route_id=' . $repRouteId);
-            exit;
+            $url .= '&rep_route_id=' . $repRouteId;
         }
-
-        $items = $this->itemModel->getAllItems();
-
-        // Standardize wholesale pricing for catalog items
-        foreach ($items as $key => $item) {
-            $billingPrice = 0.00;
-            if (is_object($item)) {
-                if (isset($item->wholesale_price) && floatval($item->wholesale_price) > 0) {
-                    $billingPrice = floatval($item->wholesale_price);
-                } elseif (isset($item->selling_price) && floatval($item->selling_price) > 0) {
-                    $billingPrice = floatval($item->selling_price);
-                } elseif (isset($item->price) && floatval($item->price) > 0) {
-                    $billingPrice = floatval($item->price);
-                }
-                $item->selling_price = $billingPrice;
-                $item->price = $billingPrice;
-            }
+        if (!empty($backUrl)) {
+            $url .= '&back_url=' . urlencode($backUrl);
         }
-
-        // Generate next sales order number
-        $this->db->query("SELECT id FROM sales_orders ORDER BY id DESC LIMIT 1");
-        $lastRow = $this->db->single();
-        $nextId = $lastRow ? ($lastRow->id + 1) : 1;
-        $orderNumber = 'SO-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
-
-        // Fetch all payment terms
-        $termModel = $this->model('PaymentTerm');
-        $paymentTerms = $termModel->getAllTerms();
-
-        $data = [
-            'title' => 'Create Sales Order',
-            'content_view' => 'sales_orders/create',
-            'catalog_items' => $items,
-            'payment_terms' => $paymentTerms,
-            'order_number' => $orderNumber,
-            'error' => ''
-        ];
-
-        $this->view('layouts/main', $data);
+        header('Location: ' . $url);
+        exit;
     }
 
     /**
