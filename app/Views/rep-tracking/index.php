@@ -4,6 +4,21 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <style>
+    /* Workspace Active Visual Density Optimizations */
+    body.workspace-showing .app-container {
+        margin-top: 68px !important;
+        height: calc(100vh - 68px) !important;
+    }
+    body.workspace-showing .main-content {
+        padding: 12px 16px 12px 16px !important;
+        height: 100% !important;
+        overflow: hidden !important;
+    }
+    body.workspace-showing .app-workspace {
+        height: 100% !important;
+        border-radius: var(--r-lg) !important;
+    }
+
     /* Dots Menu styles */
     .dots-menu-container {
         position: relative;
@@ -4980,7 +4995,7 @@
         searchUnattachedInvoices();
     }
 
-</script>
+
     /* Dots Menu Handlers */
     function toggleDotsMenu(e, id) {
         e.stopPropagation();
@@ -5122,3 +5137,5 @@
             }
         });
     }
+
+</script>
