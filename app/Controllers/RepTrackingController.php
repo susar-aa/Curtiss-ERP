@@ -225,7 +225,6 @@ class RepTrackingController extends Controller {
             LEFT JOIN route_bindings rb ON r.route_binding_id = rb.id
             LEFT JOIN deliveries d ON d.rep_route_id = r.id OR d.secondary_rep_route_id = r.id
             WHERE r.status != 'Bound' AND r.status != 'Bound Into Route'
-              AND (r.status = 'Completed' OR r.status = 'Finalized')
             ORDER BY r.start_time DESC
         ");
         $rawRoutes = $db->resultSet() ?: [];

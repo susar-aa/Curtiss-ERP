@@ -4,6 +4,71 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <style>
+    /* Dots Menu styles */
+    .dots-menu-container {
+        position: relative;
+        display: inline-block;
+    }
+    .dots-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 6px;
+        font-size: 16px;
+        color: var(--t-secondary);
+        border-radius: 50%;
+        transition: background 0.2s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+    }
+    .dots-btn:hover {
+        background: var(--c-fill);
+        color: var(--t-primary);
+    }
+    .dots-dropdown {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        background: var(--c-surface);
+        border: 0.5px solid var(--c-separator);
+        border-radius: var(--r-md);
+        box-shadow: var(--shadow-lg);
+        z-index: 1000;
+        min-width: 170px;
+        padding: 6px 0;
+        margin-top: 4px;
+    }
+    .dots-dropdown.show {
+        display: block;
+    }
+    .dots-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        font-size: 13px;
+        color: var(--t-primary);
+        cursor: pointer;
+        text-align: left;
+        transition: background 0.15s;
+        width: 100%;
+        border: none;
+        background: none;
+    }
+    .dots-dropdown-item:hover {
+        background: var(--c-fill);
+    }
+    .dots-dropdown-item.danger {
+        color: var(--c-red);
+    }
+    .dots-dropdown-item.danger:hover {
+        background: var(--c-red-light);
+    }
+
     /* ============================================================
        SF PRO + APPLE DESIGN LANGUAGE — REP TRACKING MODULE
        ============================================================ */
@@ -1011,6 +1076,8 @@
                      data-constituent="<?= htmlspecialchars($route->constituent_routes_info ?? '') ?>"
                      data-start="<?= $route->start_meter ?>"
                      data-end="<?= $route->end_meter ?: 'Active' ?>"
+                      data-start-time="<?= date('Y-m-d H:i:s', strtotime($route->start_time)) ?>"
+                      data-end-time="<?= $route->end_time ? date('Y-m-d H:i:s', strtotime($route->end_time)) : 'Active' ?>"
                      data-sales="<?= number_format($route->total_sales, 2) ?>"
                      data-bills="<?= $route->bill_count ?>"
                      data-status="<?= $route->status ?>"
@@ -1028,7 +1095,7 @@
     <!-- Middle Pane: Workspace -->
     <div class="pane-middle">
         <!-- Header -->
-        <div class="mid-header" id="midHeader" style="visibility: hidden; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 20px; background: var(--c-surface); border-bottom: 1px solid var(--c-separator);">
+        <div class="mid-header" id="midHeader" style="display: none !important; visibility: hidden; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 20px; background: var(--c-surface); border-bottom: 1px solid var(--c-separator);">
             
             <!-- Left Side: Back button + Route Name + Status Badge -->
             <div style="display: flex; align-items: center; gap: 16px; min-width: 0;">
@@ -1089,6 +1156,11 @@
         <div id="workspaceLayoutWrapper" style="display: none; flex: 1; flex-direction: row; min-height: 0; width: 100%;">
             <!-- Left Side: Workflow Sidebar -->
             <div class="workflow-sidebar" id="workflowSidebar">
+                <div style="padding: 0 8px 16px 8px; border-bottom: 1.5px solid var(--c-separator); margin-bottom: 16px;">
+                    <button type="button" onclick="goBackToRoutes()" style="width: 100%; background: var(--c-fill); border: 0.5px solid var(--c-separator); color: var(--c-blue); font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border-radius: var(--r-md); transition: 0.2s;">
+                        <i class="ph ph-arrow-left" style="font-weight: bold;"></i> Back to Route List
+                    </button>
+                </div>
                 <div class="workflow-sidebar-steps">
                     <div class="sidebar-step-item active" id="sb-step-1" onclick="switchRouteTab(1)">
                         <div class="step-dot">1</div>
@@ -1194,12 +1266,23 @@
                         <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff;">
                             <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-clipboard-text"></i> Route & Representative Info</h4>
                             <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Route Code</td><td style="padding:10px 0; font-weight:bold; font-family:var(--f-mono);" id="tab1RouteNumber">-</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Route Name</td><td style="padding:10px 0; font-weight:bold;" id="tab1RouteName">-</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Representative</td><td style="padding:10px 0; font-weight:bold;" id="tab1RepName">-</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Current Status</td><td style="padding:10px 0;"><span id="tab1Status" style="font-weight:bold; background:#e2e8f0; padding:2px 8px; border-radius:4px; font-size:11px;">-</span></td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Start Time</td><td style="padding:10px 0;" id="tab1StartTime">-</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">End Time</td><td style="padding:10px 0;" id="tab1EndTime">-</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Total Sales Value</td><td style="padding:10px 0; font-weight:bold; color:var(--c-green);" id="tab1SalesValue">-</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Total Bills Count</td><td style="padding:10px 0; font-weight:bold;" id="tab1BillsCount">-</td></tr>
                             </table>
+                            <div style="display: flex; gap: 8px; margin-top: 15px;">
+                                <button type="button" onclick="openRouteSwitcherModal()" style="flex:1; justify-content:center; display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border:0.5px solid var(--c-blue-mid); background:var(--c-surface); color:var(--c-blue); border-radius:var(--r-sm); font-weight:600; cursor:pointer; font-size:12px; box-shadow:var(--shadow-xs);">
+                                    <i class="ph ph-swap"></i> Switch Route
+                                </button>
+                                <button type="button" id="btnViewMapDetails" onclick="openMapModal()" style="flex:1; justify-content:center; display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border:none; background:var(--c-orange); color:#fff; border-radius:var(--r-sm); font-weight:600; cursor:pointer; font-size:12px; box-shadow:var(--shadow-xs);">
+                                    <i class="ph ph-map-pin"></i> View Map
+                                </button>
+                            </div>
                         </div>
                         <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff;">
                             <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-gauge"></i> Odometer Readings</h4>
@@ -1257,24 +1340,23 @@
                 </div>
 
                 <!-- TAB 3: ADJUSTMENTS -->
-                <div class="workspace-tab-panel" id="tabpanel-3" style="display:none;">
-                    <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); margin-bottom:20px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                            <h4 style="margin:0; font-size:14px; font-weight:bold; display:flex; align-items:center; gap:6px;"><i class="ph ph-wrench"></i> Sales Order Operations</h4>
-                            <div style="display:flex; gap:10px;">
-                                <button id="btnTab3CreateSO" onclick="redirectToAddInvoice()" style="padding:6px 12px; background:#0066cc; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-plus-circle"></i> Create Sales Order</button>
-                                <button id="btnTab3AttachSO" onclick="openAttachInvoiceModal()" style="padding:6px 12px; background:#5c6bc0; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-link"></i> Attach Sales Order</button>
-                                <button id="btnTab3PrintInvoices" onclick="printRouteInvoices()" style="padding:6px 12px; background:#1e293b; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-printer"></i> Print All Invoices</button>
-                            </div>
+                <div class="workspace-tab-panel" id="tabpanel-3" style="display:none; margin: -16px -20px; height: calc(100% + 32px); background: var(--c-surface);">
+                    <div style="border-bottom: 1.5px solid var(--c-separator); padding: 16px 20px; background: var(--c-surface); display:flex; justify-content:space-between; align-items:center;">
+                        <h4 style="margin:0; font-size:14px; font-weight:bold; display:flex; align-items:center; gap:6px; color: var(--t-primary);"><i class="ph ph-wrench"></i> Sales Order Operations</h4>
+                        <div style="display:flex; gap:10px;">
+                            <button id="btnTab3CreateSO" onclick="redirectToAddInvoice()" style="padding:8px 16px; background:#0066cc; border:none; color:#fff; border-radius:var(--r-sm); font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-plus-circle"></i> Create Sales Order</button>
+                            <button id="btnTab3AttachSO" onclick="openAttachInvoiceModal()" style="padding:8px 16px; background:#5c6bc0; border:none; color:#fff; border-radius:var(--r-sm); font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-link"></i> Attach Sales Order</button>
+                            <button id="btnTab3PrintInvoices" onclick="printRouteInvoices()" style="padding:8px 16px; background:#1e293b; border:none; color:#fff; border-radius:var(--r-sm); font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-printer"></i> Print All Invoices</button>
                         </div>
-                        <table class="data-table">
+                    </div>
+                    <div style="padding: 16px 20px; background: var(--c-surface);">
+                        <table class="data-table" style="margin-top:0;">
                             <thead>
                                 <tr>
                                     <th>Invoice Number</th>
                                     <th>Time</th>
                                     <th>Customer Name</th>
                                     <th style="text-align:right;">Grand Total (Rs)</th>
-                                    <th style="text-align:center;">Status</th>
                                     <th style="text-align:center; width:100px;">Actions</th>
                                 </tr>
                             </thead>
@@ -1604,17 +1686,62 @@
         </div>
     </div> <!-- closes .pane-middle -->
 
-    <!-- Right Pane: Invoice Slide-Out Viewer -->
-    <div class="pane-right-slider" id="invoiceSlider">
-        <div class="slider-header">
-            <span>Sales Order Mini-Viewer</span>
-            <div>
-                <a id="btnEditInvoice" href="#" style="background: rgba(255,255,255,0.2); color: #fff; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; margin-right: 15px; border: 1px solid rgba(255,255,255,0.4);"><i class="ph ph-pencil"></i> Edit</a>
-                <button id="btnDeleteInvoice" onclick="deleteSalesOrder()" style="background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; margin-right: 15px; cursor: pointer; font-weight: bold;"><i class="ph ph-trash"></i> Delete</button>
-                <button class="close-slider" onclick="closeInvoiceSlider()">✕</button>
+    <!-- Centered Invoice Popup Modal -->
+    <div class="modal-backdrop" id="invoiceSliderBackdrop" style="display: none; z-index: 2000;">
+        <div class="modal-panel" style="max-width: 950px; width: 90%; height: 85vh; display: flex; flex-direction: column; position: relative;">
+            <button onclick="closeInvoiceSlider()" style="position: absolute; top: 12px; right: 16px; background: var(--c-fill); border: none; font-size: 16px; font-weight: bold; color: var(--t-secondary); cursor: pointer; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 10;">✕</button>
+            <iframe id="invoiceIframe" src="about:blank" style="width: 100%; flex: 1; border: none; border-radius: var(--r-lg); background: #fff;"></iframe>
+        </div>
+    </div>
+
+    <!-- Secure Delete Confirmation Modal -->
+    <div class="modal-backdrop" id="deleteConfirmModal" style="display: none; z-index: 2005;">
+        <div class="modal-panel">
+            <div class="modal-header" style="background: var(--c-red-light); color: var(--c-red); border-bottom: 0.5px solid var(--c-separator); padding: 16px 20px;">
+                <h3 style="margin:0; font-size:16px; font-weight:700;"><i class="ph ph-warning-octagon"></i> Secure Deletion</h3>
+            </div>
+            <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+                <p style="margin:0; font-size:13px; color:var(--t-secondary);">
+                    You are about to delete Sales Order <strong id="deleteTargetInvNum" style="color:var(--t-primary);"></strong>. This will permanently reverse general ledger entries and restore stock to inventory.
+                </p>
+                <div>
+                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:var(--t-secondary); display:block; margin-bottom:4px;">Administrator Password *</label>
+                    <input type="password" id="deleteConfirmPassword" placeholder="Enter password" style="width:100%; padding:10px; border:1px solid var(--c-separator); border-radius:var(--r-md); background:var(--c-bg); color:var(--t-primary); font-size:13px;" required>
+                </div>
+                <div>
+                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:var(--t-secondary); display:block; margin-bottom:4px;">Reason for Deletion *</label>
+                    <textarea id="deleteConfirmReason" placeholder="Reason (e.g. Cancelled by customer)" style="width:100%; height:70px; padding:10px; border:1px solid var(--c-separator); border-radius:var(--r-md); background:var(--c-bg); color:var(--t-primary); font-size:13px; resize:none;" required></textarea>
+                </div>
+            </div>
+            <div style="padding: 12px 20px; background: var(--c-surface2); border-top: 0.5px solid var(--c-separator); display:flex; justify-content:flex-end; gap:10px;">
+                <button onclick="closeDeleteConfirmModal()" style="padding:8px 16px; background:var(--c-fill); border:1px solid var(--c-separator); color:var(--t-secondary); border-radius:var(--r-sm); font-size:12px; font-weight:bold; cursor:pointer;">Cancel</button>
+                <button onclick="submitDeleteSalesOrder()" style="padding:8px 16px; background:var(--c-red); border:none; color:#fff; border-radius:var(--r-sm); font-size:12px; font-weight:bold; cursor:pointer;">Permanently Delete</button>
             </div>
         </div>
-        <iframe id="invoiceIframe" src="about:blank"></iframe>
+    </div>
+
+    <!-- Move Sales Order Modal -->
+    <div class="modal-backdrop" id="moveInvoiceModal" style="display: none; z-index: 2005;">
+        <div class="modal-panel">
+            <div class="modal-header" style="background: var(--c-blue-light); color: var(--c-blue); border-bottom: 0.5px solid var(--c-separator); padding: 16px 20px;">
+                <h3 style="margin:0; font-size:16px; font-weight:700;"><i class="ph ph-arrow-square-out"></i> Move Sales Order</h3>
+            </div>
+            <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+                <p style="margin:0; font-size:13px; color:var(--t-secondary);">
+                    Select the destination route to move Sales Order <strong id="moveTargetInvNum" style="color:var(--t-primary);"></strong> to.
+                </p>
+                <div>
+                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:var(--t-secondary); display:block; margin-bottom:4px;">Destination Route *</label>
+                    <select id="moveDestinationRouteSelect" style="width:100%; padding:10px; border:1px solid var(--c-separator); border-radius:var(--r-md); background:var(--c-bg); color:var(--t-primary); font-size:13px;" required>
+                        <option value="">-- Select Destination Route --</option>
+                    </select>
+                </div>
+            </div>
+            <div style="padding: 12px 20px; background: var(--c-surface2); border-top: 0.5px solid var(--c-separator); display:flex; justify-content:flex-end; gap:10px;">
+                <button onclick="closeMoveInvoiceModal()" style="padding:8px 16px; background:var(--c-fill); border:1px solid var(--c-separator); color:var(--t-secondary); border-radius:var(--r-sm); font-size:12px; font-weight:bold; cursor:pointer;">Cancel</button>
+                <button onclick="submitMoveSalesOrder()" style="padding:8px 16px; background:var(--c-blue); border:none; color:#fff; border-radius:var(--r-sm); font-size:12px; font-weight:bold; cursor:pointer;">Move Sales Order</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -2323,11 +2450,26 @@
         const d = document.getElementById('route_data_' + routeId);
         if (!d) return;
 
+        const formattedRouteNo = '#RT-' + String(routeId).padStart(5, '0');
+
+        document.getElementById('tab1RouteNumber').innerText = formattedRouteNo;
         document.getElementById('tab1RouteName').innerText = d.getAttribute('data-rname') || '';
         document.getElementById('tab1RepName').innerText = d.getAttribute('data-rep') || '';
-        document.getElementById('tab1Status').innerText = d.getAttribute('data-status') || '';
-        document.getElementById('tab1StartTime').innerText = d.getAttribute('data-start') || '';
-        document.getElementById('tab1EndTime').innerText = d.getAttribute('data-end') || '';
+        
+        const status = d.getAttribute('data-status') || '';
+        const statusBadge = document.getElementById('tab1Status');
+        if (statusBadge) {
+            statusBadge.innerText = status;
+            statusBadge.style.background = (status === 'Completed' || status === 'Finalized') ? '#e2f0d9' : '#fff3cd';
+            statusBadge.style.color = (status === 'Completed' || status === 'Finalized') ? '#2e7d32' : '#d97706';
+            statusBadge.style.borderColor = (status === 'Completed' || status === 'Finalized') ? '#2e7d32' : '#d97706';
+        }
+
+        document.getElementById('tab1SalesValue').innerText = 'Rs ' + (d.getAttribute('data-sales') || '0.00');
+        document.getElementById('tab1BillsCount').innerText = d.getAttribute('data-bills') || '0';
+
+        document.getElementById('tab1StartTime').innerText = d.getAttribute('data-start-time') || '';
+        document.getElementById('tab1EndTime').innerText = d.getAttribute('data-end-time') || '';
         document.getElementById('tab1StartMeter').innerText = d.getAttribute('data-start') || '';
         document.getElementById('tab1EndMeter').innerText = d.getAttribute('data-end') || '';
         
@@ -2659,17 +2801,60 @@
                 } else {
                     bills.forEach(bill => {
                         let time = new Date(bill.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                        let statColor = bill.status === 'Paid' ? '#2e7d32' : (bill.status === 'Unpaid' ? '#ef6c00' : '#666');
-                        let actionBtn = isReadOnly ? '-' : `
-                            <button onclick="detachInvoice(${bill.id})" style="padding:4px 8px; background:#ef4444; color:#fff; border:none; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold;">❌ Remove</button>
+                        
+                        let dropdownHtml = '';
+                        if (!isReadOnly) {
+                            dropdownHtml += `
+                                <button class="dots-dropdown-item" onclick="event.stopPropagation(); editSalesOrder(${bill.id})">
+                                    <i class="ph ph-pencil"></i> Edit
+                                </button>
+                                <button class="dots-dropdown-item danger" onclick="event.stopPropagation(); confirmDeleteSalesOrder(${bill.id}, '${bill.invoice_number}')">
+                                    <i class="ph ph-trash"></i> Delete
+                                </button>
+                                <button class="dots-dropdown-item" onclick="event.stopPropagation(); detachInvoice(${bill.id})">
+                                    <i class="ph ph-link-break"></i> Remove
+                                </button>
+                                <button class="dots-dropdown-item" onclick="event.stopPropagation(); openMoveInvoiceModal(${bill.id}, '${bill.invoice_number}')">
+                                    <i class="ph ph-arrow-square-out"></i> Move
+                                </button>
+                                <div style="border-top: 1px solid var(--c-separator); margin: 4px 0;"></div>
+                            `;
+                        }
+                        dropdownHtml += `
+                            <button class="dots-dropdown-item" onclick="event.stopPropagation(); openInvoiceSlider(${bill.id})">
+                                <i class="ph ph-eye"></i> View Invoice
+                            </button>
+                            <button class="dots-dropdown-item" onclick="event.stopPropagation(); printInvoice(${bill.id})">
+                                <i class="ph ph-printer"></i> Print
+                            </button>
+                            <button class="dots-dropdown-item" onclick="event.stopPropagation(); viewCustomerProfile('${bill.customer_name.replace("'", "\\'")}')">
+                                <i class="ph ph-user"></i> View Customer
+                            </button>
+                            <button class="dots-dropdown-item" onclick="event.stopPropagation(); downloadInvoicePdf(${bill.id})">
+                                <i class="ph ph-file-pdf"></i> Download PDF
+                            </button>
+                            <button class="dots-dropdown-item" onclick="event.stopPropagation(); exportInvoiceExcel(${bill.id})">
+                                <i class="ph ph-file-xls"></i> Export Excel
+                            </button>
                         `;
+
+                        let actionBtn = `
+                            <div class="dots-menu-container">
+                                <button class="dots-btn" onclick="toggleDotsMenu(event, ${bill.id})">
+                                    <i class="ph-bold ph-dots-three-vertical"></i>
+                                </button>
+                                <div class="dots-dropdown" id="dots-dropdown-${bill.id}">
+                                    ${dropdownHtml}
+                                </div>
+                            </div>
+                        `;
+
                         tbody.innerHTML += `
                             <tr>
                                 <td style="font-weight:bold; color:var(--primary); cursor:pointer;" onclick="openInvoiceSlider(${bill.id})">${bill.invoice_number}</td>
                                 <td>${time}</td>
                                 <td><strong>${bill.customer_name}</strong></td>
                                 <td style="text-align:right; font-family:monospace; font-weight:bold;">${parseFloat(bill.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
-                                <td style="text-align:center;"><span style="color:${statColor}; font-weight:bold; text-transform:uppercase;">${bill.status}</span></td>
                                 <td style="text-align:center;">${actionBtn}</td>
                             </tr>
                         `;
@@ -4369,17 +4554,18 @@
     }
 
     function openInvoiceSlider(invoiceId) {
-        const slider = document.getElementById('invoiceSlider');
+        const backdrop = document.getElementById('invoiceSliderBackdrop');
         const iframe = document.getElementById('invoiceIframe');
-        document.getElementById('btnEditInvoice').href = '<?= APP_URL ?>/sales/edit/' + invoiceId + '?type=sales_order';
-        document.getElementById('btnDeleteInvoice').setAttribute('data-invoice-id', invoiceId);
-        iframe.src = '<?= APP_URL ?>/sales/show/' + invoiceId;
-        slider.classList.add('open');
+        iframe.src = 'about:blank';
+        setTimeout(() => {
+            iframe.src = '<?= APP_URL ?>/sales/show/' + invoiceId;
+        }, 50);
+        backdrop.style.display = 'flex';
     }
 
     function closeInvoiceSlider() {
-        document.getElementById('invoiceSlider').classList.remove('open');
-        setTimeout(() => { document.getElementById('invoiceIframe').src = 'about:blank'; }, 300);
+        document.getElementById('invoiceSliderBackdrop').style.display = 'none';
+        document.getElementById('invoiceIframe').src = 'about:blank';
     }
     function deleteSalesOrder() {
         const invoiceId = document.getElementById('btnDeleteInvoice').getAttribute('data-invoice-id');
@@ -4795,3 +4981,144 @@
     }
 
 </script>
+    /* Dots Menu Handlers */
+    function toggleDotsMenu(e, id) {
+        e.stopPropagation();
+        const dropdown = document.getElementById('dots-dropdown-' + id);
+        const isShowing = dropdown.classList.contains('show');
+        
+        // Hide all other dropdowns
+        document.querySelectorAll('.dots-dropdown').forEach(d => d.classList.remove('show'));
+        
+        if (!isShowing) {
+            dropdown.classList.add('show');
+        }
+    }
+
+    // Close dropdowns on click outside
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.dots-dropdown').forEach(d => d.classList.remove('show'));
+    });
+
+    function editSalesOrder(id) {
+        window.open('<?= APP_URL ?>/sales/edit/' + id + '?type=sales_order', '_blank');
+    }
+
+    function printInvoice(id) {
+        window.open('<?= APP_URL ?>/sales/show/' + id + '?print=1', '_blank');
+    }
+
+    function viewCustomerProfile(customerName) {
+        window.open('<?= APP_URL ?>/customers?search=' + encodeURIComponent(customerName), '_blank');
+    }
+
+    function downloadInvoicePdf(id) {
+        window.open('<?= APP_URL ?>/sales/show/' + id + '?pdf=1', '_blank');
+    }
+
+    function exportInvoiceExcel(id) {
+        window.open('<?= APP_URL ?>/sales/show/' + id + '?excel=1', '_blank');
+    }
+
+    /* Secure Delete Handlers */
+    let deleteTargetId = null;
+
+    function confirmDeleteSalesOrder(id, invNum) {
+        deleteTargetId = id;
+        document.getElementById('deleteTargetInvNum').innerText = invNum;
+        document.getElementById('deleteConfirmPassword').value = '';
+        document.getElementById('deleteConfirmReason').value = '';
+        document.getElementById('deleteConfirmModal').style.display = 'flex';
+    }
+
+    function closeDeleteConfirmModal() {
+        document.getElementById('deleteConfirmModal').style.display = 'none';
+        deleteTargetId = null;
+    }
+
+    function submitDeleteSalesOrder() {
+        const password = document.getElementById('deleteConfirmPassword').value;
+        const reason = document.getElementById('deleteConfirmReason').value.trim();
+        
+        if (!password) { alert("Please enter the administrator password."); return; }
+        if (!reason) { alert("Please enter a deletion reason."); return; }
+        
+        const formData = new URLSearchParams();
+        formData.append('password', password);
+        formData.append('delete_reason', reason);
+        
+        closeDeleteConfirmModal();
+        
+        fetchSecure('<?= APP_URL ?>/sales/delete/' + deleteTargetId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: formData.toString()
+        })
+        .then(res => {
+            alert("Sales Order successfully deleted and stock balances reversed!");
+            onRouteDataChanged();
+            loadAdjustmentsStage(currentRouteId);
+        })
+        .catch(err => {
+            alert("Error deleting sales order: " + err.message);
+        });
+    }
+
+    /* Move Sales Order Handlers */
+    let moveTargetId = null;
+
+    function openMoveInvoiceModal(id, invNum) {
+        moveTargetId = id;
+        document.getElementById('moveTargetInvNum').innerText = invNum;
+        
+        const select = document.getElementById('moveDestinationRouteSelect');
+        select.innerHTML = '<option value="">-- Select Destination Route --</option>';
+        
+        document.querySelectorAll('.route-item').forEach(el => {
+            const rId = el.id.replace('route_', '');
+            if (parseInt(rId) === parseInt(currentRouteId)) return;
+            
+            const d = document.getElementById('route_data_' + rId);
+            if (!d) return;
+            const rName = d.getAttribute('data-rname') || '';
+            const repName = d.getAttribute('data-rep') || '';
+            const date = d.getAttribute('data-date') || '';
+            
+            const opt = document.createElement('option');
+            opt.value = rId;
+            opt.innerText = `#RT-${String(rId).padStart(5, '0')} - ${rName} (${repName} | ${date})`;
+            select.appendChild(opt);
+        });
+        
+        document.getElementById('moveInvoiceModal').style.display = 'flex';
+    }
+
+    function closeMoveInvoiceModal() {
+        document.getElementById('moveInvoiceModal').style.display = 'none';
+        moveTargetId = null;
+    }
+
+    function submitMoveSalesOrder() {
+        const targetRouteId = document.getElementById('moveDestinationRouteSelect').value;
+        if (!targetRouteId) { alert("Please select a destination route."); return; }
+        
+        closeMoveInvoiceModal();
+        
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_attach_invoices', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ route_id: targetRouteId, invoice_ids: ['route:' + moveTargetId] })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert("🎉 Sales Order successfully moved to the destination route!");
+                onRouteDataChanged();
+                loadAdjustmentsStage(currentRouteId);
+            } else {
+                alert("⚠️ Error: " + data.message);
+            }
+        });
+    }
