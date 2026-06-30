@@ -113,6 +113,10 @@ $mcaAreas = $db->resultSet() ?: [];
 // Fetch Employees specifically marked as Reps/Sales (or fallback to all active employees)
 $db->query("SELECT * FROM employees WHERE status = 'Active' AND job_title = 'Rep' ORDER BY first_name ASC");
 $reps = $db->resultSet();
+if (empty($reps)) {
+    $db->query("SELECT * FROM employees WHERE status = 'Active' ORDER BY first_name ASC");
+    $reps = $db->resultSet();
+}
 
 // Automate Accounting Defaults
 $assets = $data['assets'] ?? [];
@@ -337,7 +341,7 @@ if ($inv && isset($inv->id)) {
     .inv-header-row {
         display: flex;
         gap: 12px;
-        align-items: flex-start;
+        align-items: stretch;
         flex-shrink: 0;
     }
 
@@ -350,6 +354,8 @@ if ($inv && isset($inv->id)) {
         overflow: visible;
         background: var(--white);
         box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
     }
     .customer-card-header {
         display: flex;
@@ -364,7 +370,13 @@ if ($inv && isset($inv->id)) {
         letter-spacing: 0.5px;
         text-transform: uppercase;
     }
-    .customer-card-body { padding: 10px; position: relative; }
+    .customer-card-body {
+        padding: 10px;
+        position: relative;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
     .customer-search-input {
         width: 100%;
         padding: 7px 10px;
@@ -386,7 +398,8 @@ if ($inv && isset($inv->id)) {
     }
     .customer-address-area {
         width: 100%;
-        height: 50px;
+        flex: 1;
+        min-height: 50px;
         padding: 6px 10px;
         border: 1px solid var(--slate-200);
         border-radius: var(--radius-sm);
@@ -420,6 +433,8 @@ if ($inv && isset($inv->id)) {
         overflow: hidden;
         background: var(--white);
         box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
     }
     .inv-meta-card-header {
         padding: 7px 12px;
@@ -435,6 +450,8 @@ if ($inv && isset($inv->id)) {
         display: flex;
         flex-direction: column;
         gap: 10px;
+        flex: 1;
+        justify-content: space-between;
     }
     /* Date + Invoice # row */
     .inv-id-row {
@@ -480,17 +497,20 @@ if ($inv && isset($inv->id)) {
     }
     .inv-field-input:focus { background: var(--primary-light); }
     .inv-field-select {
-        padding: 5px 6px;
+        padding: 5px 24px 5px 8px;
         font-family: var(--font);
         font-size: 12px;
         color: var(--slate-800);
         border: none;
-        background: transparent;
+        background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath fill='%23475569' d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80a8,8,0,0,1,11.32-11.32L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E") no-repeat right 8px center;
+        background-size: 10px;
         width: 100%;
         box-sizing: border-box;
         outline: none;
-        text-align: center;
         cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
     }
 
     /* ── Inline labeled field (date, invoice#) ── */
@@ -586,6 +606,69 @@ if ($inv && isset($inv->id)) {
     .search-results li:hover { background: var(--primary); color: var(--white); }
     .search-results li:hover span { color: var(--white) !important; }
     .search-results li:hover .sr-price { color: var(--white) !important; }
+
+    #searchResults {
+        width: 760px;
+        max-width: calc(100vw - 32px);
+    }
+    #searchResults li {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    #searchResults li .sr-name {
+        flex: 2;
+        min-width: 0;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--slate-800);
+        word-break: break-word;
+    }
+    #searchResults li .sr-sku {
+        flex: 1.2;
+        min-width: 0;
+        font-size: 12px;
+        color: var(--slate-500);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    #searchResults li .sr-sample {
+        flex: 0.8;
+        min-width: 0;
+        font-size: 12px;
+        color: var(--slate-500);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    #searchResults li .sr-stock {
+        flex: 1;
+        min-width: 0;
+        text-align: center;
+    }
+    #searchResults li .sr-price {
+        flex: 1;
+        text-align: right;
+        color: var(--primary);
+        font-family: monospace;
+        font-weight: 700;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+    #searchResults li:hover {
+        background: var(--primary);
+        color: var(--white) !important;
+    }
+    #searchResults li:hover .sr-name,
+    #searchResults li:hover .sr-sku,
+    #searchResults li:hover .sr-sample,
+    #searchResults li:hover .sr-price {
+        color: var(--white) !important;
+    }
 
     /* ── Line items table ── */
     .table-scroll-container {
@@ -1006,6 +1089,11 @@ if ($inv && isset($inv->id)) {
                             <i class="ph ph-whatsapp-logo"></i> Save &amp; WhatsApp
                         </button>
                     <?php endif; ?>
+                    <?php if ($inv): ?>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="promptDeleteInvoice(<?= $inv->id ?>)">
+                            <i class="ph ph-trash"></i> Delete
+                        </button>
+                    <?php endif; ?>
                     <button type="button" class="btn btn-sm btn-danger-outline"
                             onclick="window.location.href='<?= htmlspecialchars($backUrl) ?>'">
                         <i class="ph ph-x"></i> Cancel
@@ -1194,7 +1282,7 @@ if ($inv && isset($inv->id)) {
                         <span class="totals-value" id="grandTotal">0.00</span>
                     </div>
                     <div class="totals-row totals-row-balance">
-                        <span class="totals-label">Balance Due LKR</span>
+                        <span class="totals-label">Total with Balance LKR</span>
                         <span class="totals-value" id="balanceDue">0.00</span>
                     </div>
                 </div>
@@ -1274,6 +1362,37 @@ if ($inv && isset($inv->id)) {
                 <button type="submit" class="btn btn-success">
                     <i class="ph ph-user-plus"></i> Add Customer
                 </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ═══ DELETE INVOICE MODAL ═══ -->
+<div class="modal-backdrop-custom" id="deleteInvoiceModal">
+    <div class="modal-panel-custom" style="max-width: 400px;">
+        <div class="modal-header-custom" style="background: var(--danger); color: var(--white); display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; border-top-left-radius: inherit; border-top-right-radius: inherit;">
+            <span style="font-weight: 600;"><i class="ph ph-warning-octagon" style="margin-right:5px;"></i>Delete Invoice</span>
+            <button type="button" class="modal-close-btn" onclick="closeDeleteInvoiceModal()" style="color: var(--white); opacity: 0.8; border: none; background: transparent; cursor: pointer; font-size: 16px;">
+                <i class="ph ph-x"></i>
+            </button>
+        </div>
+        <form id="deleteInvoiceForm" method="POST" style="margin:0;">
+            <div class="modal-body-custom" style="padding: 18px;">
+                <p style="font-size: 13px; color: var(--slate-700); margin-bottom: 12px; line-height: 1.5;">
+                    Are you sure you want to delete this invoice? This will reverse all stock and ledger entries. <strong>This action cannot be undone.</strong>
+                </p>
+                <div style="margin-bottom: 10px;">
+                    <label class="modal-field-label" style="display: block; font-size: 11px; font-weight: 600; color: var(--slate-500); margin-bottom: 4px; text-transform: uppercase;">Admin Password</label>
+                    <input type="password" name="password" id="deletePasswordInput" required class="modal-input" placeholder="Enter password to confirm">
+                </div>
+                <div style="margin-bottom: 0;">
+                    <label class="modal-field-label" style="display: block; font-size: 11px; font-weight: 600; color: var(--slate-500); margin-bottom: 4px; text-transform: uppercase;">Reason for Deletion</label>
+                    <input type="text" name="delete_reason" id="deleteReasonInput" required class="modal-input" placeholder="e.g. Incorrect items or quantity">
+                </div>
+            </div>
+            <div class="modal-footer-custom" style="display: flex; gap: 8px; justify-content: flex-end; padding: 12px 18px; background: var(--slate-50); border-bottom-left-radius: inherit; border-bottom-right-radius: inherit;">
+                <button type="button" class="btn" onclick="closeDeleteInvoiceModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="submitDeleteInvoice()">Confirm Delete</button>
             </div>
         </form>
     </div>
@@ -1458,6 +1577,10 @@ if ($inv && isset($inv->id)) {
 
         const projected = outBal - oldInvoiceTotal + newTotal;
         outDiv.style.display = 'block';
+        const balDueEl = document.getElementById('balanceDue');
+        if (balDueEl) {
+            balDueEl.innerText = projected.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+        }
 
         let html = '';
         if (limit > 0) {
@@ -1566,12 +1689,11 @@ if ($inv && isset($inv->id)) {
                 }
 
                 li.innerHTML = `
-                    <div>
-                        <strong style="font-size:13px;">${item.name}</strong><br>
-                        <span style="font-size:11px;color:#94a3b8;">SKU: ${item.code || 'N/A'}${item.sample_code ? ' · Sample: ' + item.sample_code : ''}</span>
-                        &nbsp;${stockBadge}
-                    </div>
-                    <div class="sr-price" style="color:#2563eb;font-family:monospace;font-weight:700;font-size:14px;white-space:nowrap;">Rs ${item.price.toFixed(2)}</div>
+                    <div class="sr-name">${item.name}</div>
+                    <div class="sr-sku">SKU: ${item.code || 'N/A'}</div>
+                    <div class="sr-sample">${item.sample_code ? 'Sample: ' + item.sample_code : ''}</div>
+                    <div class="sr-stock">${stockBadge}</div>
+                    <div class="sr-price">Rs ${item.price.toFixed(2)}</div>
                 `;
                 li.addEventListener('click', function() { selectSearchItem(item); });
                 resList.appendChild(li);
@@ -2148,6 +2270,31 @@ if ($inv && isset($inv->id)) {
             });
         }
     });
+
+    function promptDeleteInvoice(id) {
+        document.getElementById('deleteInvoiceForm').action = '<?= APP_URL ?>/sales/delete/' + id;
+        document.getElementById('deletePasswordInput').value = '';
+        document.getElementById('deleteReasonInput').value = '';
+        document.getElementById('deleteInvoiceModal').style.display = 'flex';
+    }
+
+    function closeDeleteInvoiceModal() {
+        document.getElementById('deleteInvoiceModal').style.display = 'none';
+    }
+
+    function submitDeleteInvoice() {
+        const pass = document.getElementById('deletePasswordInput').value.trim();
+        const reason = document.getElementById('deleteReasonInput').value.trim();
+        if (!pass) {
+            alert('Please enter your admin password.');
+            return;
+        }
+        if (!reason) {
+            alert('Please enter the reason for deletion.');
+            return;
+        }
+        document.getElementById('deleteInvoiceForm').submit();
+    }
 </script>
 
 <?php include '../app/Views/layouts/resilient_loader.php'; ?>
