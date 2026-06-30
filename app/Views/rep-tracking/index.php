@@ -1437,8 +1437,14 @@
                         </div>
                     </div>
                     
-                    <!-- Form View -->
-                    <div id="adjDeliveryFormView" style="display:none;">
+                    <!-- Global Status Banner -->
+                    <div id="adjDeliveryStatusBanner" style="display:none; background: #e0f2fe; border: 1px solid #bae6fd; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; color: #0369a1; align-items: center; gap: 8px; font-weight: 550;">
+                        <i class="ph-bold ph-paperclip" style="font-size: 16px;"></i>
+                        <span>Delivery Manifest <strong id="adjDeliveryStatusId">#--</strong> successfully generated. Ready for warehouse.</span>
+                    </div>
+
+                    <!-- Form View (Always Visible) -->
+                    <div id="adjDeliveryFormView">
                         <form id="adjDeliveryArrangeForm" style="display:flex; flex-direction:column; gap:20px; max-width:650px; background:var(--c-surface); border:0.5px solid var(--c-separator); padding:30px; border-radius:var(--r-lg); margin:0 auto; box-shadow:var(--shadow-md);">
                             <div>
                                 <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Delivery Date</label>
@@ -1491,14 +1497,6 @@
                                 <button type="button" onclick="submitAdjustmentsLogisticsArrange()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;"><i class="ph ph-truck"></i> Save Delivery Arrangement</button>
                             </div>
                         </form>
-                    </div>
-
-                    <!-- Arranged View -->
-                    <div id="adjDeliveryArrangedView" style="display:none;">
-                        <div id="adjArrangedDetailsContainer" style="background:#f8fafc; border:1px solid #e2e8f0; padding:15px; border-radius:8px; font-size:13px; line-height:1.6; margin-bottom:15px;"></div>
-                        <div>
-                            <button id="btnEditDeliveryManifest" onclick="document.getElementById('adjDeliveryFormView').style.display='block'; document.getElementById('adjDeliveryArrangedView').style.display='none';" style="padding:8px 16px; background:#e2e8f0; color:#333; border:none; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer;"><i class="ph ph-pencil"></i> Edit/Re-arrange Delivery</button>
-                        </div>
                     </div>
                 </div>
 
@@ -2780,6 +2778,60 @@
         }
     }
 
+    function loadOutstandingBillsChecklist(routeId, delId) {
+        const container = document.getElementById('adjDaBillsContainer');
+        if (!container) return;
+
+        container.innerHTML = '<p style="text-align:center; color:#888;">Loading credit bills... ⏳</p>';
+        const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+        let selectedInvoices = [];
+
+        const renderBills = (selectedIds) => {
+            fetchSecure('<?= APP_URL ?>/RepTracking/api_get_outstanding_bills/' + routeId)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status !== 'success' || !data.bills || data.bills.length === 0) {
+                        container.innerHTML = '<p style="text-align:center; color:#888; margin:10px 0;">No outstanding credit bills found in these territories.</p>';
+                    } else {
+                        let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+                        data.bills.forEach(cust => {
+                            cust.bills.forEach(b => {
+                                let amtFormatted = parseFloat(b.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2});
+                                const isChecked = selectedIds.includes(parseInt(b.id)) ? 'checked' : '';
+                                html += `
+                                    <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; padding:6px; border-bottom:1px solid #f0f0f0;">
+                                        <input type="checkbox" class="adj-da-bill-checkbox" value="${b.id}" style="width:16px; height:16px;" ${isReadOnly ? 'disabled' : ''} ${isChecked}>
+                                        <div style="flex:1;">
+                                            <div style="font-weight:bold;">${b.invoice_number}</div>
+                                            <div style="font-size:11px; color:#666;">Customer: <strong>${cust.customer_name}</strong> | Date: ${b.invoice_date}</div>
+                                        </div>
+                                        <div style="font-weight:bold; font-family:monospace; color:#c62828;">Rs ${amtFormatted}</div>
+                                    </label>
+                                `;
+                            });
+                        });
+                        html += '</div>';
+                        container.innerHTML = html;
+                    }
+                });
+        };
+
+        if (delId && delId !== '0' && delId !== '') {
+            fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
+                .then(res => res.json())
+                .then(dData => {
+                    if (dData.delivery && dData.delivery.selected_credit_invoices) {
+                        try {
+                            selectedInvoices = JSON.parse(dData.delivery.selected_credit_invoices).map(id => parseInt(id));
+                        } catch (e) {}
+                    }
+                    renderBills(selectedInvoices);
+                });
+        } else {
+            renderBills([]);
+        }
+    }
+
     function loadAdjustmentsStage(routeId) {
         const tbody = document.getElementById('adjustmentsInvoicesTbody');
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Loading Sales Orders... ⏳</td></tr>';
@@ -2793,59 +2845,9 @@
         }
 
         // Load outstanding bills and pre-check already selected ones if delivery is already arranged
-        const container = document.getElementById('adjDaBillsContainer');
-        if (container) {
-            container.innerHTML = '<p style="text-align:center; color:#888;">Loading credit bills... ⏳</p>';
-            
-            const rdata = document.getElementById('route_data_' + routeId);
-            const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
-            let selectedInvoices = [];
-
-            const renderBills = (selectedIds) => {
-                fetchSecure('<?= APP_URL ?>/RepTracking/api_get_outstanding_bills/' + routeId)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.status !== 'success' || !data.bills || data.bills.length === 0) {
-                            container.innerHTML = '<p style="text-align:center; color:#888; margin:10px 0;">No outstanding credit bills found in these territories.</p>';
-                        } else {
-                            let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
-                            data.bills.forEach(cust => {
-                                cust.bills.forEach(b => {
-                                    let amtFormatted = parseFloat(b.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2});
-                                    const isChecked = selectedIds.includes(parseInt(b.id)) ? 'checked' : '';
-                                    html += `
-                                        <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; padding:6px; border-bottom:1px solid #f0f0f0;">
-                                            <input type="checkbox" class="adj-da-bill-checkbox" value="${b.id}" style="width:16px; height:16px;" ${isReadOnly ? 'disabled' : ''} ${isChecked}>
-                                            <div style="flex:1;">
-                                                <div style="font-weight:bold;">${b.invoice_number}</div>
-                                                <div style="font-size:11px; color:#666;">Customer: <strong>${cust.customer_name}</strong> | Date: ${b.invoice_date}</div>
-                                            </div>
-                                            <div style="font-weight:bold; font-family:monospace; color:#c62828;">Rs ${amtFormatted}</div>
-                                        </label>
-                                    `;
-                                });
-                            });
-                            html += '</div>';
-                            container.innerHTML = html;
-                        }
-                    });
-            };
-
-            if (delId && delId !== '0' && delId !== '') {
-                fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
-                    .then(res => res.json())
-                    .then(dData => {
-                        if (dData.delivery && dData.delivery.selected_credit_invoices) {
-                            try {
-                                selectedInvoices = JSON.parse(dData.delivery.selected_credit_invoices).map(id => parseInt(id));
-                            } catch (e) {}
-                        }
-                        renderBills(selectedInvoices);
-                    });
-            } else {
-                renderBills([]);
-            }
-        }
+        const rdata = document.getElementById('route_data_' + routeId);
+        const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
+        loadOutstandingBillsChecklist(routeId, delId);
 
         fetchSecure('<?= APP_URL ?>/RepTracking/api_get_route_details/' + routeId)
             .then(res => res.json())
@@ -3592,56 +3594,51 @@
 
     function loadDispatchStage(routeId) {
         const formView = document.getElementById('adjDeliveryFormView');
-        const arrangedView = document.getElementById('adjDeliveryArrangedView');
-        if (!formView || !arrangedView) return;
+        if (!formView) return;
 
         const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+
+        // Form is always visible
+        formView.style.display = 'block';
 
         const rdata = document.getElementById('route_data_' + routeId);
         const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
 
+        const statusBanner = document.getElementById('adjDeliveryStatusBanner');
+        const statusId = document.getElementById('adjDeliveryStatusId');
+
+        // Load outstanding bills and pre-check
+        loadOutstandingBillsChecklist(routeId, delId);
+
         if (!delId || delId === '0' || delId === '') {
             // Not arranged yet
-            arrangedView.style.display = 'none';
-            formView.style.display = isReadOnly ? 'none' : 'block';
-            if (isReadOnly) {
-                arrangedView.style.display = 'block';
-                document.getElementById('adjArrangedDetailsContainer').innerHTML = `<p style="text-align:center; color:#888;">No delivery was arranged for this route.</p>`;
+            if (statusBanner) statusBanner.style.display = 'none';
+            
+            // Set default date if blank
+            const dateInput = document.getElementById('adjDaDate');
+            if (dateInput && !dateInput.value) {
+                dateInput.value = new Date().toISOString().split('T')[0];
             }
+            
+            // Reset dropdowns
+            document.getElementById('adjDaVehicle').value = '';
+            document.getElementById('adjDaDriver').value = '';
+            document.getElementById('adjDaPartner').value = '';
         } else {
             // Already arranged
-            formView.style.display = 'none';
-            arrangedView.style.display = 'block';
-
-            const editBtn = document.getElementById('btnEditDeliveryManifest');
-            if (editBtn) {
-                editBtn.style.display = isReadOnly ? 'none' : 'inline-block';
+            if (statusBanner) {
+                statusBanner.style.display = 'flex';
+                statusId.innerText = '#' + delId;
             }
             
             fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
                 .then(res => res.json())
                 .then(dData => {
-                    const container = document.getElementById('adjArrangedDetailsContainer');
                     if (dData.delivery) {
                         if (document.getElementById('adjDaDate')) document.getElementById('adjDaDate').value = dData.delivery.delivery_date || '';
                         if (document.getElementById('adjDaVehicle')) document.getElementById('adjDaVehicle').value = dData.delivery.vehicle_number || '';
                         if (document.getElementById('adjDaDriver')) document.getElementById('adjDaDriver').value = dData.delivery.driver_name || '';
                         if (document.getElementById('adjDaPartner')) document.getElementById('adjDaPartner').value = dData.delivery.partner_name || '';
-
-                        container.innerHTML = `
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                                <div><strong>Delivery ID:</strong> #${dData.delivery.id}</div>
-                                <div><strong>Delivery Date:</strong> ${dData.delivery.delivery_date}</div>
-                                <div><strong>Vehicle Number:</strong> ${dData.delivery.vehicle_number || 'Pending'}</div>
-                                <div><strong>Driver Name:</strong> ${dData.delivery.driver_name || 'Pending'}</div>
-                                <div><strong>Helper Name:</strong> ${dData.delivery.partner_name || 'None'}</div>
-                            </div>
-                            <div style="margin-top:10px; font-weight:bold; font-size:12px; color:#1e3a8a;">
-                                🔗 Delivery Manifest successfully generated. Ready for warehouse.
-                            </div>
-                        `;
-                    } else {
-                        container.innerHTML = 'Error loading delivery details.';
                     }
                 });
         }
