@@ -14,6 +14,25 @@ class User {
         return $this->db->resultSet();
     }
 
+    public function getUnifiedStaffList() {
+        $this->db->query("
+            SELECT 
+                e.id AS employee_id, e.first_name, e.last_name, e.email AS employee_email, e.phone, e.department, e.job_title, e.base_salary, e.hire_date, e.status AS employee_status,
+                u.id AS user_id, u.username, u.email AS user_email, u.role AS user_role, u.status AS user_status, u.accessible_apps, u.signature_path
+            FROM employees e
+            LEFT JOIN users u ON u.employee_id = e.id
+            
+            UNION
+            
+            SELECT 
+                NULL AS employee_id, NULL AS first_name, NULL AS last_name, NULL AS employee_email, NULL AS phone, NULL AS department, NULL AS job_title, NULL AS base_salary, NULL AS hire_date, NULL AS employee_status,
+                u.id AS user_id, u.username, u.email AS user_email, u.role AS user_role, u.status AS user_status, u.accessible_apps, u.signature_path
+            FROM users u
+            WHERE u.employee_id IS NULL OR u.employee_id NOT IN (SELECT id FROM employees)
+        ");
+        return $this->db->resultSet();
+    }
+
     public function findUserByUsername($username) {
         $this->db->query("SELECT * FROM users WHERE username = :username");
         $this->db->bind(':username', $username);

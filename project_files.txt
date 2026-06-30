@@ -1,3 +1,5 @@
+c:\xampp\htdocs\Curtiss-ERP\.env
+c:\xampp\htdocs\Curtiss-ERP\.env.example
 c:\xampp\htdocs\Curtiss-ERP\.htaccess
 c:\xampp\htdocs\Curtiss-ERP\.user.ini
 c:\xampp\htdocs\Curtiss-ERP\add_customer_opening_balance.sql
@@ -277,6 +279,7 @@ c:\xampp\htdocs\Curtiss-ERP\app\Views\purchases\wizard.php
 c:\xampp\htdocs\Curtiss-ERP\app\Views\release\index.php
 c:\xampp\htdocs\Curtiss-ERP\app\Views\rep-tracking\index.php
 c:\xampp\htdocs\Curtiss-ERP\app\Views\rep-tracking\print_loading.php
+c:\xampp\htdocs\Curtiss-ERP\app\Views\rep-tracking\print_route_invoices.php
 c:\xampp\htdocs\Curtiss-ERP\app\Views\reports\ar_aging.php
 c:\xampp\htdocs\Curtiss-ERP\app\Views\reports\balance_sheet.php
 c:\xampp\htdocs\Curtiss-ERP\app\Views\reports\cash_flow.php
@@ -317,8 +320,11 @@ c:\xampp\htdocs\Curtiss-ERP\app\Views\supplier_returns\view.php
 c:\xampp\htdocs\Curtiss-ERP\app\Views\taxes\index.php
 c:\xampp\htdocs\Curtiss-ERP\app\Views\territories\index.php
 c:\xampp\htdocs\Curtiss-ERP\app\Views\users\create.php
+c:\xampp\htdocs\Curtiss-ERP\app\Views\users\create_role.php
 c:\xampp\htdocs\Curtiss-ERP\app\Views\users\edit.php
+c:\xampp\htdocs\Curtiss-ERP\app\Views\users\edit_role.php
 c:\xampp\htdocs\Curtiss-ERP\app\Views\users\index.php
+c:\xampp\htdocs\Curtiss-ERP\app\Views\users\roles.php
 c:\xampp\htdocs\Curtiss-ERP\app\Views\variations\index.php
 c:\xampp\htdocs\Curtiss-ERP\app\Views\vehicles\index.php
 c:\xampp\htdocs\Curtiss-ERP\app\Views\vendors\index.php
@@ -328,8 +334,12 @@ c:\xampp\htdocs\Curtiss-ERP\artifacts\schema.txt
 c:\xampp\htdocs\Curtiss-ERP\config\database.php
 c:\xampp\htdocs\Curtiss-ERP\core\app
 c:\xampp\htdocs\Curtiss-ERP\core\App.php
+c:\xampp\htdocs\Curtiss-ERP\core\Cache.php
 c:\xampp\htdocs\Curtiss-ERP\core\Controller.php
 c:\xampp\htdocs\Curtiss-ERP\core\Database.php
+c:\xampp\htdocs\Curtiss-ERP\core\MigrationManager.php
+c:\xampp\htdocs\Curtiss-ERP\core\RbacInterface.php
+c:\xampp\htdocs\Curtiss-ERP\core\RbacService.php
 c:\xampp\htdocs\Curtiss-ERP\core\app\Models
 c:\xampp\htdocs\Curtiss-ERP\public\.htaccess
 c:\xampp\htdocs\Curtiss-ERP\public\.user.ini
@@ -349,13 +359,17 @@ c:\xampp\htdocs\Curtiss-ERP\public\search_error_log.php
 c:\xampp\htdocs\Curtiss-ERP\public\service-worker.js
 c:\xampp\htdocs\Curtiss-ERP\public\test_db.php
 c:\xampp\htdocs\Curtiss-ERP\public\uploads
+c:\xampp\htdocs\Curtiss-ERP\public\uploads\.htaccess
+c:\xampp\htdocs\Curtiss-ERP\public\uploads\index.php
 c:\xampp\htdocs\Curtiss-ERP\public\uploads\logo_1778683247.png
 c:\xampp\htdocs\Curtiss-ERP\public\uploads\products
 c:\xampp\htdocs\Curtiss-ERP\public\uploads\sig_1778827845_812.png
+c:\xampp\htdocs\Curtiss-ERP\public\uploads\products\index.php
 c:\xampp\htdocs\Curtiss-ERP\public\uploads\products\test_image.png
 c:\xampp\htdocs\Curtiss-ERP\scratch\all_items_db.txt
 c:\xampp\htdocs\Curtiss-ERP\scratch\check_cleared.php
 c:\xampp\htdocs\Curtiss-ERP\scratch\check_db.php
+c:\xampp\htdocs\Curtiss-ERP\scratch\check_sales_tables.php
 c:\xampp\htdocs\Curtiss-ERP\scratch\db_test.php
 c:\xampp\htdocs\Curtiss-ERP\scratch\describe_bindings.php
 c:\xampp\htdocs\Curtiss-ERP\scratch\describe_cheques.php
@@ -858,7 +872,6 @@ c:\xampp\htdocs\Curtiss-ERP\vendor\thecodingmachine\safe\generated\yaml.php
 c:\xampp\htdocs\Curtiss-ERP\vendor\thecodingmachine\safe\generated\yaz.php
 c:\xampp\htdocs\Curtiss-ERP\vendor\thecodingmachine\safe\generated\zip.php
 c:\xampp\htdocs\Curtiss-ERP\vendor\thecodingmachine\safe\generated\zlib.php
-c:\xampp\htdocs\Curtiss-ERP\vendor\thecodingmachine\safe\generated\Exceptions\.gitkeep
 c:\xampp\htdocs\Curtiss-ERP\vendor\thecodingmachine\safe\generated\Exceptions\ApacheException.php
 c:\xampp\htdocs\Curtiss-ERP\vendor\thecodingmachine\safe\generated\Exceptions\ApcuException.php
 c:\xampp\htdocs\Curtiss-ERP\vendor\thecodingmachine\safe\generated\Exceptions\ArrayException.php

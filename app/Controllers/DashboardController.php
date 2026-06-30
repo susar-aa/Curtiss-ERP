@@ -325,7 +325,7 @@ class DashboardController extends Controller {
                             'id' => $row->id,
                             'title' => $row->name,
                             'subtitle' => 'Driver | Phone: ' . ($row->phone ?: 'N/A'),
-                            'url' => APP_URL . '/hrm',
+                            'url' => APP_URL . '/user',
                             'tag' => 'driver'
                         ];
                     }
@@ -582,7 +582,7 @@ class DashboardController extends Controller {
                 ['title' => 'CRM & Leads', 'subtitle' => 'Manage client opportunities, lead scoring, and history', 'url' => APP_URL . '/crm', 'terms' => ['crm', 'leads', 'opportunities', 'pipeline']],
                 ['title' => 'Estimates & Quotes', 'subtitle' => 'Draft and issue cost estimates or quotations', 'url' => APP_URL . '/estimate', 'terms' => ['estimate', 'estimates', 'quotations', 'quotes']],
                 ['title' => 'Territories', 'subtitle' => 'Set up sales territories and MCAs', 'url' => APP_URL . '/territory', 'terms' => ['territory', 'territories', 'areas', 'mca']],
-                ['title' => 'HRM & Employee Directory', 'subtitle' => 'Manage personnel records, payroll, job designations', 'url' => APP_URL . '/hrm', 'terms' => ['employee', 'employees', 'staff', 'hr', 'payroll', 'directory']],
+                ['title' => 'HRM & Employee Directory', 'subtitle' => 'Manage personnel records, payroll, job designations', 'url' => APP_URL . '/user', 'terms' => ['employee', 'employees', 'staff', 'hr', 'payroll', 'directory']],
                 ['title' => 'Cheques Registry', 'subtitle' => 'Registry of issued/received cheques and clear/bounce status', 'url' => APP_URL . '/cheque', 'terms' => ['cheque', 'cheques', 'bank cheques']],
                 ['title' => 'Goods Receipt Notes (GRN)', 'subtitle' => 'Receive vendor supplies and auto-allocate stock', 'url' => APP_URL . '/grn', 'terms' => ['grn', 'goods receipt note', 'goods receipt notes', 'receiving']],
                 ['title' => 'System Settings', 'subtitle' => 'Company profile, taxation, payment terms, permissions', 'url' => APP_URL . '/settings', 'terms' => ['settings', 'config', 'setup', 'users', 'permissions']]

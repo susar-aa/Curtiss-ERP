@@ -59,7 +59,7 @@
 <!-- Quick Navigation Links -->
 <div class="quick-links">
     <span style="font-size: 11px; color: #888; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Related:</span>
-    <a href="<?= APP_URL ?>/hrm" class="btn-quick">👤 Employee Directory</a>
+    <a href="<?= APP_URL ?>/user" class="btn-quick">👤 Employee Directory</a>
     <a href="<?= APP_URL ?>/RepTracking/index" class="btn-quick">📍 Route Tracking</a>
     <a href="<?= APP_URL ?>/vehicle" class="btn-quick active">🚚 Vehicle Management</a>
 </div>

@@ -74,122 +74,260 @@ class UserController extends Controller {
      * Display users list
      */
     public function index() {
-        $users = $this->userModel->getAllUsers();
+        $staff = $this->userModel->getUnifiedStaffList();
         
-        // Load roles and permissions for each user
-        foreach ($users as $u) {
-            $u->roles = $this->userModel->getUserRoles($u->id);
-            $u->permissions = $this->userModel->getUserPermissions($u->id);
+        // Load roles and permissions for each staff member who has a user account
+        foreach ($staff as $s) {
+            if ($s->user_id) {
+                $s->roles = $this->userModel->getUserRoles($s->user_id);
+                $s->permissions = $this->userModel->getUserPermissions($s->user_id);
+            } else {
+                $s->roles = [];
+                $s->permissions = [];
+            }
         }
 
+        // Fetch all system users (excluding current user) for the data transfer option
+        $allUsers = $this->userModel->getAllUsers();
+
         $data = [
-            'title' => 'User Management',
+            'title' => 'User & Employee Directory',
             'content_view' => 'users/index',
-            'users' => $users,
-            'employees' => $this->employeeModel->getAllEmployees()
+            'staff' => $staff,
+            'users' => $allUsers,
+            'roles' => $this->userModel->getAllRoles()
         ];
+
+        // Handle success/error flash messages
+        if (isset($_SESSION['flash_success'])) {
+            $data['success'] = $_SESSION['flash_success'];
+            unset($_SESSION['flash_success']);
+        }
+        if (isset($_SESSION['flash_error'])) {
+            $data['error'] = $_SESSION['flash_error'];
+            unset($_SESSION['flash_error']);
+        }
 
         $this->view('layouts/main', $data);
     }
 
     /**
-     * Create user account and define permissions
+     * Create / Add a Staff Member (Employee + Optional User Account)
      */
     public function create() {
         $this->checkPermission('user', 'create_edit');
 
-        $data = [
-            'title' => 'Create User Account',
-            'content_view' => 'users/create',
-            'employees' => $this->employeeModel->getAllEmployees(),
-            'roles' => $this->userModel->getAllRoles(),
-            'modules' => $this->modules,
-            'error' => '',
-            'success' => ''
-        ];
-
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Retrieve inputs
-            $username = trim($_POST['username'] ?? '');
-            $email = trim($_POST['email'] ?? '');
-            $password = $_POST['password'] ?? '';
-            $selectedRoleIds = $_POST['roles'] ?? []; // Array of role IDs
-            $employeeId = !empty($_POST['employee_id']) ? intval($_POST['employee_id']) : null;
+            // Retrieve Employee inputs
+            $empData = [
+                'first_name' => trim($_POST['first_name'] ?? ''),
+                'last_name' => trim($_POST['last_name'] ?? ''),
+                'email' => trim($_POST['email'] ?? ''),
+                'phone' => trim($_POST['phone'] ?? ''),
+                'department' => trim($_POST['department'] ?? ''),
+                'job_title' => trim($_POST['job_title'] ?? ''),
+                'base_salary' => floatval($_POST['base_salary'] ?? 0),
+                'hire_date' => $_POST['hire_date'] ?? date('Y-m-d'),
+                'status' => $_POST['status'] ?? 'Active'
+            ];
 
-            // Determine primary role name to keep backward compatibility
-            $primaryRoleName = 'office';
-            if (!empty($selectedRoleIds)) {
-                $firstRole = $this->userModel->findRoleById($selectedRoleIds[0]);
-                if ($firstRole) {
-                    $primaryRoleName = $firstRole->name;
-                }
-            }
+            $createLogin = isset($_POST['create_login']) && $_POST['create_login'] == '1';
+            $userData = null;
 
-            // Handle Signature Upload
-            $signaturePath = null;
-            if (isset($_FILES['signature']) && $_FILES['signature']['error'] === UPLOAD_ERR_OK) {
-                $ext = strtolower(pathinfo($_FILES['signature']['name'], PATHINFO_EXTENSION));
-                if (in_array($ext, ['png', 'jpg', 'jpeg'])) {
-                    $signaturePath = 'sig_' . time() . '_' . rand(100, 999) . '.' . $ext;
-                    if (!file_exists('../public/uploads')) {
-                        @mkdir('../public/uploads', 0777, true);
+            if ($createLogin) {
+                $username = trim($_POST['username'] ?? '');
+                $password = $_POST['password'] ?? '';
+                $selectedRoleIds = $_POST['roles'] ?? []; // Array of role IDs
+                $appsArray = $_POST['accessible_apps'] ?? ['ERP System'];
+                $accessibleApps = implode(',', $appsArray);
+
+                // Determine primary role name to keep backward compatibility
+                $primaryRoleName = 'office';
+                if (!empty($selectedRoleIds)) {
+                    $firstRole = $this->userModel->findRoleById($selectedRoleIds[0]);
+                    if ($firstRole) {
+                        $primaryRoleName = $firstRole->name;
                     }
-                    move_uploaded_file($_FILES['signature']['tmp_name'], '../public/uploads/' . $signaturePath);
                 }
-            }
 
-            if (empty($username) || empty($password)) {
-                $data['error'] = 'Username and Password are required.';
-            } elseif ($this->userModel->findUserByUsername($username)) {
-                $data['error'] = 'Username is already taken.';
-            } else {
+                // Handle Signature Upload
+                $signaturePath = null;
+                if (isset($_FILES['signature']) && $_FILES['signature']['error'] === UPLOAD_ERR_OK) {
+                    $ext = strtolower(pathinfo($_FILES['signature']['name'], PATHINFO_EXTENSION));
+                    if (in_array($ext, ['png', 'jpg', 'jpeg'])) {
+                        $signaturePath = 'sig_' . time() . '_' . rand(100, 999) . '.' . $ext;
+                        if (!file_exists('../public/uploads')) {
+                            @mkdir('../public/uploads', 0777, true);
+                        }
+                        move_uploaded_file($_FILES['signature']['tmp_name'], '../public/uploads/' . $signaturePath);
+                    }
+                }
+
+                if (empty($username) || empty($password)) {
+                    $_SESSION['flash_error'] = 'Username and Password are required when enabling system login.';
+                    header('Location: ' . APP_URL . '/user');
+                    exit;
+                }
+
+                if ($this->userModel->findUserByUsername($username)) {
+                    $_SESSION['flash_error'] = 'Username is already taken.';
+                    header('Location: ' . APP_URL . '/user');
+                    exit;
+                }
+
                 $userData = [
                     'username' => $username,
-                    'email' => $email,
+                    'email' => $empData['email'],
                     'password' => $password,
                     'role' => $primaryRoleName,
                     'signature_path' => $signaturePath,
-                    'employee_id' => $employeeId,
-                    'status' => $_POST['status'] ?? 'Active'
+                    'status' => 'Active',
+                    'accessible_apps' => $accessibleApps
                 ];
+            }
 
-                if ($this->userModel->createUser($userData)) {
-                    $newUser = $this->userModel->findUserByUsername($username);
-                    if ($newUser) {
-                        // Save assigned roles in user_roles
-                        $this->userModel->saveUserRoles($newUser->id, $selectedRoleIds);
+            try {
+                // Save employee (and base user details if provided)
+                if ($this->employeeModel->addEmployee($empData, $userData)) {
+                    // Fetch the newly created user to link roles
+                    if ($createLogin && !empty($username)) {
+                        $newUser = $this->userModel->findUserByUsername($username);
+                        if ($newUser && !empty($selectedRoleIds)) {
+                            $this->userModel->saveUserRoles($newUser->id, $selectedRoleIds);
+                        }
                     }
 
-                    $cleanUserData = $userData;
-                    unset($cleanUserData['password']);
-
-                    $this->logActivity(
-                        'User Created', 
-                        'Security', 
-                        "User account '{$username}' created and assigned to selected roles successfully.", 
-                        $newUser ? $newUser->id : null, 
-                        null, 
-                        $cleanUserData
-                    );
-
-                    $_SESSION['flash_success'] = 'User account and roles created successfully!';
-                    header('Location: ' . APP_URL . '/user');
-                    exit;
+                    $_SESSION['flash_success'] = $createLogin 
+                        ? 'Staff member and system login created successfully.' 
+                        : 'Staff member added successfully.';
                 } else {
-                    $data['error'] = 'Failed to create user account.';
+                    $_SESSION['flash_error'] = 'Failed to save staff member.';
                 }
+            } catch (Exception $e) {
+                $_SESSION['flash_error'] = 'Database Error: ' . $e->getMessage();
             }
+
+            header('Location: ' . APP_URL . '/user');
+            exit;
         }
 
-        $this->view('layouts/main', $data);
+        header('Location: ' . APP_URL . '/user');
+        exit;
     }
 
     /**
-     * Edit user account and modify permissions
+     * Edit / Update a Staff Member (Employee and/or User Account)
      */
     public function edit($id) {
         $this->checkPermission('user', 'create_edit');
 
+        $db = new Database();
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Determine if we are editing an existing user or a pure employee
+            $isUser = false;
+            $db->query("SELECT * FROM users WHERE id = :id");
+            $db->bind(':id', $id);
+            $userObj = $db->single();
+            if ($userObj) {
+                $isUser = true;
+                $employeeId = $userObj->employee_id;
+            } else {
+                $employeeId = intval($id);
+            }
+
+            // Retrieve Employee inputs
+            $empData = [
+                'id' => $employeeId,
+                'first_name' => trim($_POST['first_name'] ?? ''),
+                'last_name' => trim($_POST['last_name'] ?? ''),
+                'email' => trim($_POST['email'] ?? ''),
+                'phone' => trim($_POST['phone'] ?? ''),
+                'department' => trim($_POST['department'] ?? ''),
+                'job_title' => trim($_POST['job_title'] ?? ''),
+                'base_salary' => floatval($_POST['base_salary'] ?? 0),
+                'hire_date' => $_POST['hire_date'] ?? date('Y-m-d'),
+                'status' => $_POST['status'] ?? 'Active'
+            ];
+
+            $createLogin = isset($_POST['create_login']) && $_POST['create_login'] == '1';
+            $userData = null;
+
+            if ($createLogin) {
+                $username = trim($_POST['username'] ?? '');
+                $password = $_POST['password'] ?? '';
+                $selectedRoleIds = $_POST['roles'] ?? [];
+                $appsArray = $_POST['accessible_apps'] ?? ['ERP System'];
+                $accessibleApps = implode(',', $appsArray);
+
+                // Determine primary role name to keep backward compatibility
+                $primaryRoleName = 'office';
+                if (!empty($selectedRoleIds)) {
+                    $firstRole = $this->userModel->findRoleById($selectedRoleIds[0]);
+                    if ($firstRole) {
+                        $primaryRoleName = $firstRole->name;
+                    }
+                }
+
+                // Check username conflict
+                $existing = $this->userModel->findUserByUsername($username);
+                if ($existing && (!$isUser || $existing->id != $id) && ($existing->employee_id != $employeeId)) {
+                    $_SESSION['flash_error'] = 'Failed to update: Username is already taken by another account.';
+                    header('Location: ' . APP_URL . '/user');
+                    exit;
+                }
+
+                // Handle signature delete/upload
+                $signaturePath = $isUser ? $userObj->signature_path : null;
+                if (isset($_POST['delete_signature']) && $_POST['delete_signature'] == '1') {
+                    $signaturePath = null;
+                }
+                if (isset($_FILES['signature']) && $_FILES['signature']['error'] === UPLOAD_ERR_OK) {
+                    $ext = strtolower(pathinfo($_FILES['signature']['name'], PATHINFO_EXTENSION));
+                    if (in_array($ext, ['png', 'jpg', 'jpeg'])) {
+                        $signaturePath = 'sig_' . time() . '_' . rand(100, 999) . '.' . $ext;
+                        if (!file_exists('../public/uploads')) {
+                            @mkdir('../public/uploads', 0777, true);
+                        }
+                        move_uploaded_file($_FILES['signature']['tmp_name'], '../public/uploads/' . $signaturePath);
+                    }
+                }
+
+                $userData = [
+                    'username' => $username,
+                    'email' => $empData['email'],
+                    'password' => $password, // empty password handled inside updateEmployee
+                    'role' => $primaryRoleName,
+                    'signature_path' => $signaturePath,
+                    'status' => $_POST['user_status'] ?? 'Active',
+                    'accessible_apps' => $accessibleApps
+                ];
+            }
+
+            try {
+                // Update employee and user
+                if ($this->employeeModel->updateEmployee($empData, $userData)) {
+                    // If login was created/updated, save roles in user_roles
+                    if ($createLogin) {
+                        $userToRole = $this->userModel->findUserByUsername($username);
+                        if ($userToRole && !empty($selectedRoleIds)) {
+                            $this->userModel->saveUserRoles($userToRole->id, $selectedRoleIds);
+                        }
+                    }
+
+                    $_SESSION['flash_success'] = 'Staff details updated successfully.';
+                } else {
+                    $_SESSION['flash_error'] = 'Failed to update staff details.';
+                }
+            } catch (Exception $e) {
+                $_SESSION['flash_error'] = 'Error: ' . $e->getMessage();
+            }
+
+            header('Location: ' . APP_URL . '/user');
+            exit;
+        }
+
+        // GET request: load user for editing (to keep backward compatibility for direct URL access)
         $user = $this->userModel->findUserByUsername($this->getUsernameById($id));
         if (!$user) {
             die("User not found.");
@@ -209,96 +347,6 @@ class UserController extends Controller {
             'success' => ''
         ];
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $username = trim($_POST['username'] ?? '');
-            $email = trim($_POST['email'] ?? '');
-            $selectedRoleIds = $_POST['roles'] ?? []; // Array of role IDs
-            $employeeId = !empty($_POST['employee_id']) ? intval($_POST['employee_id']) : null;
-            $password = $_POST['password'] ?? '';
-
-            // Determine primary role name to keep backward compatibility
-            $primaryRoleName = 'office';
-            if (!empty($selectedRoleIds)) {
-                $firstRole = $this->userModel->findRoleById($selectedRoleIds[0]);
-                if ($firstRole) {
-                    $primaryRoleName = $firstRole->name;
-                }
-            }
-
-            // Handle signature delete/upload
-            $signaturePath = $user->signature_path;
-            if (isset($_POST['delete_signature']) && $_POST['delete_signature'] == '1') {
-                $signaturePath = null;
-            }
-
-            if (isset($_FILES['signature']) && $_FILES['signature']['error'] === UPLOAD_ERR_OK) {
-                $ext = strtolower(pathinfo($_FILES['signature']['name'], PATHINFO_EXTENSION));
-                if (in_array($ext, ['png', 'jpg', 'jpeg'])) {
-                    $signaturePath = 'sig_' . time() . '_' . rand(100, 999) . '.' . $ext;
-                    if (!file_exists('../public/uploads')) {
-                        @mkdir('../public/uploads', 0777, true);
-                    }
-                    move_uploaded_file($_FILES['signature']['tmp_name'], '../public/uploads/' . $signaturePath);
-                }
-            }
-
-            // Check if username changed and is already taken
-            $usernameConflict = false;
-            if (strtolower($username) !== strtolower($user->username)) {
-                if ($this->userModel->findUserByUsername($username)) {
-                    $usernameConflict = true;
-                }
-            }
-
-            if (empty($username)) {
-                $data['error'] = 'Username is required.';
-            } elseif ($usernameConflict) {
-                $data['error'] = 'Username is already taken.';
-            } else {
-                $updateData = [
-                    'id' => $id,
-                    'username' => $username,
-                    'email' => $email,
-                    'role' => $primaryRoleName,
-                    'employee_id' => $employeeId,
-                    'signature_path' => $signaturePath,
-                    'status' => $_POST['status'] ?? 'Active'
-                ];
-
-                if ($this->userModel->updateUser($updateData)) {
-                    // Update password if typed
-                    if (!empty($password)) {
-                        $this->userModel->updatePassword($username, $password);
-                    }
-
-                    // Save roles
-                    $this->userModel->saveUserRoles($id, $selectedRoleIds);
-
-                    // If currently logged in user edited themselves, refresh their session permissions immediately
-                    if ($_SESSION['user_id'] == $id) {
-                        $_SESSION['username'] = $username;
-                        $_SESSION['role'] = $primaryRoleName;
-                        $_SESSION['permissions'] = $this->userModel->getUserPermissions($id);
-                    }
-
-                    $this->logActivity(
-                        'User Updated', 
-                        'Security', 
-                        "User account '{$username}' updated successfully and assigned to selected roles.", 
-                        $id, 
-                        null, 
-                        $updateData
-                    );
-
-                    $_SESSION['flash_success'] = 'User account and roles updated successfully!';
-                    header('Location: ' . APP_URL . '/user');
-                    exit;
-                } else {
-                    $data['error'] = 'Failed to update user account.';
-                }
-            }
-        }
-
         $this->view('layouts/main', $data);
     }
 
@@ -314,24 +362,126 @@ class UserController extends Controller {
             exit;
         }
 
-        $db = new Database();
-        $db->query("SELECT role, username FROM users WHERE id = :id");
-        $db->bind(':id', $id);
-        $userRow = $db->single();
-
-        if ($userRow) {
-            if (strtolower($userRow->role) === 'rep') {
-                $_SESSION['flash_error'] = 'Representative accounts cannot be deleted to preserve the route and audit trails. Please block this user by setting their status to Blocked/Inactive instead.';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $transferToId = !empty($_POST['transfer_to']) ? intval($_POST['transfer_to']) : null;
+            
+            if (!$transferToId) {
+                $_SESSION['flash_error'] = 'You must select a user to transfer data to.';
                 header('Location: ' . APP_URL . '/user');
                 exit;
             }
 
-            if ($this->userModel->deleteUser($id)) {
-                $this->logActivity('User Deleted', 'Security', "User account '{$userRow->username}' deleted successfully.", $id);
-                $_SESSION['flash_success'] = "User account '{$userRow->username}' deleted successfully.";
-            } else {
-                $_SESSION['flash_error'] = 'Failed to delete user account.';
+            $db = new Database();
+            try {
+                $db->beginTransaction();
+
+                // Get employee_id and username of the user being deleted
+                $db->query("SELECT employee_id, username FROM users WHERE id = :id");
+                $db->bind(':id', $id);
+                $deletedUser = $db->single();
+                
+                if (!$deletedUser) {
+                    throw new Exception("User not found.");
+                }
+
+                $employeeId = $deletedUser->employee_id;
+                $deletedUsername = $deletedUser->username;
+
+                // List of tables and columns to transfer
+                $transfers = [
+                    ['table' => 'invoices', 'column' => 'created_by'],
+                    ['table' => 'pending_collections', 'column' => 'created_by'],
+                    ['table' => 'pending_collections', 'column' => 'mobile_rep_id'],
+                    ['table' => 'rep_daily_routes', 'column' => 'user_id'],
+                    ['table' => 'cheques', 'column' => 'created_by'],
+                    ['table' => 'credit_notes', 'column' => 'created_by'],
+                    ['table' => 'customer_payments', 'column' => 'created_by'],
+                    ['table' => 'estimates', 'column' => 'created_by'],
+                    ['table' => 'expenses', 'column' => 'created_by'],
+                    ['table' => 'goods_receipt_notes', 'column' => 'created_by'],
+                    ['table' => 'journal_entries', 'column' => 'created_by'],
+                    ['table' => 'notifications', 'column' => 'user_id'],
+                    ['table' => 'product_substitutions', 'column' => 'user_id'],
+                    ['table' => 'purchase_orders', 'column' => 'created_by'],
+                    ['table' => 'route_bindings', 'column' => 'created_by'],
+                    ['table' => 'saved_reports', 'column' => 'user_id'],
+                    ['table' => 'scheduled_reports', 'column' => 'user_id'],
+                    ['table' => 'stock_ledger', 'column' => 'user_id'],
+                    ['table' => 'supplier_payments', 'column' => 'created_by'],
+                    ['table' => 'supplier_returns', 'column' => 'created_by'],
+                    ['table' => 'warehouse_transfers', 'column' => 'created_by'],
+                    ['table' => 'audit_logs', 'column' => 'user_id']
+                ];
+
+                foreach ($transfers as $t) {
+                    $table = $t['table'];
+                    $column = $t['column'];
+                    
+                    // First check if the table exists to avoid SQL errors
+                    $db->query("SHOW TABLES LIKE :table_name");
+                    $db->bind(':table_name', $table);
+                    if ($db->single()) {
+                        // Run update query
+                        $db->query("UPDATE `{$table}` SET `{$column}` = :new_id WHERE `{$column}` = :old_id");
+                        $db->bind(':new_id', $transferToId);
+                        $db->bind(':old_id', $id);
+                        $db->execute();
+                    }
+                }
+
+                // Delete user roles
+                $db->query("DELETE FROM user_roles WHERE user_id = :id");
+                $db->bind(':id', $id);
+                $db->execute();
+
+                // Delete user permissions
+                $db->query("DELETE FROM user_permissions WHERE user_id = :id");
+                $db->bind(':id', $id);
+                $db->execute();
+
+                // Delete user
+                $db->query("DELETE FROM users WHERE id = :id");
+                $db->bind(':id', $id);
+                $db->execute();
+
+                // Delete linked employee if exists
+                if ($employeeId) {
+                    $db->query("DELETE FROM employees WHERE id = :emp_id");
+                    $db->bind(':emp_id', $employeeId);
+                    $db->execute();
+                }
+
+                $db->commit();
+                
+                $_SESSION['flash_success'] = "User '{$deletedUsername}' and their linked employee record were successfully deleted. All associated sales/route data has been transferred.";
+            } catch (Exception $e) {
+                $db->rollBack();
+                $_SESSION['flash_error'] = "Failed to delete user and transfer data: " . $e->getMessage();
             }
+
+            header('Location: ' . APP_URL . '/user');
+            exit;
+        }
+
+        $_SESSION['flash_error'] = 'Invalid request method for user deletion.';
+        header('Location: ' . APP_URL . '/user');
+        exit;
+    }
+
+    /**
+     * Delete employee account directly (since it has no user/login and no sales data)
+     */
+    public function delete_employee($id) {
+        $this->checkPermission('hrm', 'delete');
+
+        try {
+            if ($this->employeeModel->deleteEmployee($id)) {
+                $_SESSION['flash_success'] = 'Employee deleted successfully.';
+            } else {
+                $_SESSION['flash_error'] = 'Failed to delete employee.';
+            }
+        } catch (Exception $e) {
+            $_SESSION['flash_error'] = 'Database Error: ' . $e->getMessage();
         }
 
         header('Location: ' . APP_URL . '/user');

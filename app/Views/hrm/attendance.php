@@ -232,7 +232,7 @@
                 <p>Monitor daily attendance logs, work durations, and shift statuses.</p>
             </div>
             <div style="display: flex; gap: 10px;">
-                <a href="<?= APP_URL ?>/hrm" class="btn btn-outline"><i class="ph ph-arrow-left"></i> Employee Directory</a>
+                <a href="<?= APP_URL ?>/user" class="btn btn-outline"><i class="ph ph-arrow-left"></i> Employee Directory</a>
                 <button class="btn" onclick="document.getElementById('manualAttendanceModal').style.display='flex'"><i class="ph ph-plus-circle"></i> Log Manual Attendance</button>
             </div>
         </div>

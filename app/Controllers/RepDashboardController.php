@@ -683,23 +683,108 @@ class RepDashboardController extends Controller {
                     // Idempotency: Check if an invoice with the same uuid or invoice_number already exists
                     $existingInv = null;
                     if (!empty($inv['uuid'])) {
-                        $this->db->query("SELECT id, invoice_number, invoice_date FROM invoices WHERE uuid = :uuid LIMIT 1");
+                        $this->db->query("SELECT id, invoice_number, invoice_date, stock_status FROM invoices WHERE uuid = :uuid LIMIT 1");
                         $this->db->bind(':uuid', $inv['uuid']);
                         $existingInv = $this->db->single();
                     }
                     if (!$existingInv) {
-                        $this->db->query("SELECT id, invoice_number, invoice_date FROM invoices WHERE invoice_number = :invoice_number LIMIT 1");
+                        $this->db->query("SELECT id, invoice_number, invoice_date, stock_status FROM invoices WHERE invoice_number = :invoice_number LIMIT 1");
                         $this->db->bind(':invoice_number', $invNo);
                         $existingInv = $this->db->single();
                     }
                     if ($existingInv) {
-                        $mappings['invoices'][] = [
-                            'local_id' => $localId,
-                            'server_id' => intval($existingInv->id),
-                            'invoice_number' => $existingInv->invoice_number,
-                            'server_timestamp' => $existingInv->invoice_date
-                        ];
-                        continue;
+                        $isReserved = (isset($existingInv->stock_status) && $existingInv->stock_status === 'reserved');
+                        if ($isReserved) {
+                            // Invoice exists but is not finalized, allow updating it
+                            $itemsPayload = [];
+                            if (isset($inv['items']) && is_array($inv['items'])) {
+                                foreach ($inv['items'] as $item) {
+                                    $prodId = intval($item['product_id']);
+                                    $prodName = $item['product_name'];
+                                    
+                                    // Check if product ID exists on the server
+                                    $this->db->query("SELECT id FROM items WHERE id = :id");
+                                    $this->db->bind(':id', $prodId);
+                                    $pRow = $this->db->single();
+                                    if (!$pRow) {
+                                        $this->db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
+                                        $this->db->bind(':name', $prodName);
+                                        $pByName = $this->db->single();
+                                        if ($pByName) {
+                                            $prodId = intval($pByName->id);
+                                        } else {
+                                            $this->db->query("SELECT id FROM items LIMIT 1");
+                                            $firstProd = $this->db->single();
+                                            $prodId = $firstProd ? intval($firstProd->id) : 1;
+                                        }
+                                    }
+
+                                    $itemsPayload[] = [
+                                        'item_selection' => $prodId . '|0',
+                                        'description' => $prodName,
+                                        'quantity' => intval($item['quantity']),
+                                        'unit_price' => floatval($item['unit_price']),
+                                        'discount_value' => floatval($item['discount_val'] ?? 0.0),
+                                        'discount_type' => 'Rs',
+                                        'total' => floatval($item['total'])
+                                    ];
+                                }
+                            }
+
+                            $invoiceData = [
+                                'customer_id' => $custServerId,
+                                'invoice_number' => $invNo,
+                                'uuid' => $inv['uuid'] ?? null,
+                                'invoice_date' => $inv['invoice_date'],
+                                'due_date' => $inv['due_date'],
+                                'payment_term_id' => !empty($inv['payment_term_id']) ? intval($inv['payment_term_id']) : null,
+                                'subtotal' => floatval($inv['subtotal']),
+                                'global_discount_val' => floatval($inv['discount'] ?? 0.00),
+                                'global_discount_type' => 'Rs',
+                                'notes' => 'Updated via Mobile App Sync',
+                                'rep_route_id' => $routeServerId ?: null,
+                                'grand_total' => floatval($inv['grand_total'])
+                            ];
+
+                            $updateOk = $this->invoiceModel->updateInvoiceWithAccounting(
+                                intval($existingInv->id),
+                                $invoiceData,
+                                $itemsPayload,
+                                $arAccountId,
+                                $revenueAccountId,
+                                $userId
+                            );
+
+                            if ($updateOk) {
+                                $this->logActivity('Update Invoice', 'Billing', "Updated Invoice {$invNo} via mobile sync", $existingInv->id);
+                                
+                                $this->db->query("SELECT invoice_date FROM invoices WHERE id = :id");
+                                $this->db->bind(':id', $existingInv->id);
+                                $invRow = $this->db->single();
+                                $serverTime = $invRow ? $invRow->invoice_date : date('Y-m-d H:i:s');
+
+                                $mappings['invoices'][] = [
+                                    'local_id' => $localId,
+                                    'server_id' => intval($existingInv->id),
+                                    'invoice_number' => $invNo,
+                                    'server_timestamp' => $serverTime
+                                ];
+                                continue;
+                            } else {
+                                $err = isset($_SESSION['invoice_error']) ? $_SESSION['invoice_error'] : 'Unknown edit error';
+                                unset($_SESSION['invoice_error']);
+                                throw new Exception("Invoice update failed for invoice number {$invNo}: " . $err);
+                            }
+                        } else {
+                            // Already finalized, treat as synced and skip
+                            $mappings['invoices'][] = [
+                                'local_id' => $localId,
+                                'server_id' => intval($existingInv->id),
+                                'invoice_number' => $existingInv->invoice_number,
+                                'server_timestamp' => $existingInv->invoice_date
+                            ];
+                            continue;
+                        }
                     }
 
                     // Format invoice items for createInvoiceWithAccounting method

@@ -1437,7 +1437,7 @@ if (!function_exists('hasPermission')) {
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Human Resources</div>
                         <?php if (hasPermission('hrm')): ?>
-                        <a href="<?= APP_URL ?>/hrm" class="mega-list-item">
+                        <a href="<?= APP_URL ?>/user" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-user-circle-gear"></i></div>
                             <div class="mega-list-item-content">
                                 <div class="title">Employee Directory</div>
@@ -1819,8 +1819,8 @@ if (!function_exists('hasPermission')) {
                     <div class="fs-section-label">Operations</div>
                     <div class="fs-row">
                         <?php if (hasPermission('hrm')): ?>
-                            <a href="<?= APP_URL ?>/hrm" class="fs-link"><i class="ph ph-user-circle-gear"></i> HRM &amp; Employees</a>
-                            <a href="<?= APP_URL ?>/hrm/payroll" class="fs-link"><i class="ph ph-bank"></i> Run Payroll</a>
+                            <a href="<?= APP_URL ?>/user" class="fs-link"><i class="ph ph-user-circle-gear"></i> HRM &amp; Employees</a>
+                            <a href="<?= APP_URL ?>/payroll" class="fs-link"><i class="ph ph-bank"></i> Run Payroll</a>
                         <?php endif; ?>
                         <?php if (hasPermission('project')): ?><a href="<?= APP_URL ?>/project" class="fs-link"><i class="ph ph-clipboard-text"></i> Projects</a><?php endif; ?>
                         <?php if (hasPermission('vehicle')): ?><a href="<?= APP_URL ?>/vehicle" class="fs-link"><i class="ph ph-car-profile"></i> Vehicles</a><?php endif; ?>

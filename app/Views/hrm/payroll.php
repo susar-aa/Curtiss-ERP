@@ -15,7 +15,7 @@
 <div class="card">
     <div class="header-actions">
         <h2>Payroll Processing</h2>
-        <a href="<?= APP_URL ?>/hrm" style="color: #666; text-decoration:none;">&larr; Back to Directory</a>
+        <a href="<?= APP_URL ?>/user" style="color: #666; text-decoration:none;">&larr; Back to Directory</a>
     </div>
 
     <?php if(!empty($data['error'])): ?>
