@@ -189,30 +189,45 @@ if ($inv && isset($inv->id)) {
     /* Full-Screen App Layout CSS */
     html, body { overflow: hidden; height: 100%; margin: 0; }
     
+    :root {
+        --bg-success: #e6f9ec;
+        --text-success: #1e7e34;
+        --text-danger: #d9534f;
+        --border: #d1d1d6;
+        --border-strong: #8e8e93;
+        --surface-1: #f2f2f7;
+        --surface-2: #ffffff;
+        --text-primary: #1c1c1e;
+        --text-secondary: #8e8e93;
+        --text-accent: #007aff;
+        --text-muted: #8e8e93;
+    }
+    
     .qb-wrapper {
-        background-color: #f2f5f8;
-        font-family: Arial, Helvetica, sans-serif;
-        font-size: 12px;
-        color: #000;
-        height: calc(100vh - 30px); /* Account for Mac top bar */
+        background-color: #f5f5f7;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-size: 13px;
+        color: var(--text-primary);
+        height: 100vh;
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        padding: 10px;
+        padding: 12px;
         box-sizing: border-box;
     }
     
     .qb-container {
         background: #fff;
         width: 100%;
-        max-width: 1300px;
+        max-width: 1400px;
         margin: 0 auto;
         flex: 1;
         display: flex;
         flex-direction: column;
-        border: 1px solid #b0c4de;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        padding: 10px 15px;
+        border: 0.5px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+        padding: 12px 16px;
         box-sizing: border-box;
         overflow: hidden;
     }
@@ -222,69 +237,206 @@ if ($inv && isset($inv->id)) {
         flex-direction: column;
         height: 100%;
         overflow: hidden;
+        gap: 10px;
     }
 
-    .qb-title { font-size: 26px; color: #7994b5; font-weight: bold; margin: 0 0 10px 0; letter-spacing: -1px; }
+    .qb-title { font-size: 17px; color: var(--text-primary); font-weight: 600; margin: 0; }
 
-    .qb-input { border: 1px solid #999; padding: 4px; font-size: 12px; font-family: Arial, sans-serif; box-sizing: border-box; }
-    .qb-input:focus { border-color: #0066cc; outline: none; background: #f0f8ff;}
+    .qb-input-field {
+        width: 100%;
+        height: 26px;
+        border: 0.5px solid var(--border);
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 12px;
+        font-family: inherit;
+        box-sizing: border-box;
+        background: #fff;
+        color: var(--text-primary);
+        font-weight: 500;
+        margin-top: 4px;
+    }
+    .qb-input-field:focus {
+        border-color: var(--text-accent);
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.15);
+    }
+    .qb-input-field[readonly] {
+        background: #f5f5f7;
+        color: var(--text-secondary);
+        cursor: not-allowed;
+    }
 
-    .qb-box { border: 1px solid #999; background: #fff; }
-    .qb-box-header { background: #7a7a7a; color: #fff; font-weight: bold; padding: 3px 6px; font-size: 11px; }
+    .qb-btn-header {
+        height: 28px;
+        padding: 0 10px;
+        font-size: 12px;
+        font-weight: 550;
+        border: 0.5px solid var(--border);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--text-primary);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        text-decoration: none;
+        transition: background 0.15s;
+        box-sizing: border-box;
+    }
+    .qb-btn-header:hover:not(:disabled) {
+        background: #f5f5f7;
+    }
+    .qb-btn-header:disabled {
+        color: var(--text-muted);
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
 
-    .qb-grid-top { display: flex; justify-content: space-between; margin-bottom: 10px; flex-shrink: 0;}
-    .qb-grid-mid { display: flex; border: 1px solid #999; margin-bottom: 10px; background:#fff; flex-shrink: 0;}
-    .qb-mid-col { flex: 1; border-right: 1px solid #999; display: flex; flex-direction: column; }
-    .qb-mid-col:last-child { border-right: none; }
-    .qb-mid-header { background: #7a7a7a; color: #fff; padding: 3px; text-align: center; font-size: 11px; font-weight: bold;}
-    .qb-mid-body { padding: 4px; }
-    .qb-mid-body input, .qb-mid-body select { width: 100%; border: none; text-align: center; background: transparent; font-size: 12px;}
+    .qb-btn-header-success {
+        height: 28px;
+        padding: 0 14px;
+        font-size: 12px;
+        font-weight: 600;
+        background: var(--bg-success);
+        border: none;
+        border-radius: 6px;
+        color: var(--text-success);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: opacity 0.15s;
+        box-sizing: border-box;
+    }
+    .qb-btn-header-success:hover {
+        opacity: 0.95;
+    }
 
-    .search-wrapper { position: relative; margin-bottom: 10px; flex-shrink: 0;}
-    .item-search-bar { width: 100%; padding: 8px; border: 2px solid #7994b5; font-size: 13px; font-weight: bold; border-radius: 4px; box-sizing: border-box; background: #f0f8ff;}
-    
-    .search-results { position: absolute; top: 100%; left: 0; width: 100%; background: #fff; border: 1px solid #999; border-top: none; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .search-results li { padding: 8px 10px; cursor: pointer; list-style: none; border-bottom: 1px solid #eee; font-size: 13px; display: flex; justify-content: space-between;}
-    .search-results li:hover { background: #0066cc; color: #fff; }
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: #fff;
+        border: 0.5px solid var(--border);
+        border-radius: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        padding: 0;
+        margin: 4px 0 0 0;
+        list-style: none;
+    }
+    .search-results li {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 0.5px solid var(--border);
+        font-size: 12px;
+    }
+    .search-results li:last-child {
+        border-bottom: none;
+    }
+    .search-results li:hover, .search-results li.active {
+        background: #f2f2f7;
+    }
 
-    /* The Scrollable Table Container */
+    /* Scrollable Table Container */
     .table-scroll-container {
         flex: 1;
         overflow-y: auto;
-        border: 1px solid #999;
-        margin-bottom: 10px;
-        background: #fff;
+        background: var(--surface-2);
+        border: 0.5px solid var(--border);
+        border-radius: 10px;
     }
 
-    /* CRITICAL FIX: Fixed table-layout ensures strict obedience to percentage widths and prevents horizontal squishing of Rate */
-    .qb-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    .qb-table thead th { position: sticky; top: 0; background: #7a7a7a; color: #fff; padding: 4px; text-align: left; font-size: 11px; font-weight: bold; border-right: 1px solid #999; border-bottom: 1px solid #555; z-index: 10;}
-    .qb-table td { padding: 2px; border-bottom: 1px solid #ccc; border-right: 1px solid #ccc; vertical-align: top;}
-    .qb-table input { width: 100%; border: none; background: transparent; padding: 4px; font-size: 12px; font-family: Arial; box-sizing: border-box;}
-    .qb-table input:focus { background: #f0f8ff; outline: 1px solid #0066cc; }
-    .qb-table .num { text-align: right; }
+    /* Fixed table-layout ensures strict obedience to percentage widths */
+    .qb-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+    .qb-table thead th {
+        position: sticky;
+        top: 0;
+        background: var(--surface-1);
+        color: var(--text-secondary);
+        padding: 8px 6px;
+        text-align: left;
+        font-size: 11px;
+        font-weight: 550;
+        border-bottom: 0.5px solid var(--border);
+        z-index: 10;
+    }
+    .qb-table td {
+        padding: 6px;
+        border-bottom: 0.5px solid var(--border);
+        vertical-align: middle;
+        color: var(--text-primary);
+        font-size: 12px;
+    }
+    .qb-table tr:hover {
+        background-color: #fafafa;
+    }
+    .qb-table input {
+        width: 100%;
+        border: none;
+        background: transparent;
+        padding: 2px 4px;
+        font-size: 12px;
+        font-family: inherit;
+        box-sizing: border-box;
+    }
+    .qb-table input:focus {
+        background: #fff;
+        outline: none;
+        border-radius: 4px;
+        box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+    }
+    .qb-table .num {
+        text-align: right;
+    }
     
-    .discount-cell { display: flex; border: 1px solid transparent; border-radius: 2px; background: #fff; overflow: hidden; }
-    .discount-cell:focus-within { border-color: #0066cc; outline: 1px solid #0066cc;}
-    .discount-cell input { border: none; width: 60%; }
-    .discount-cell select { border: none; border-left: 1px solid #ccc; width: 40%; padding: 2px; background: #f9f9f9; font-size: 12px;}
+    .discount-cell {
+        display: flex;
+        border: 0.5px solid var(--border);
+        border-radius: 6px;
+        background: #fff;
+        overflow: hidden;
+        height: 24px;
+        align-items: center;
+        box-sizing: border-box;
+    }
+    .discount-cell:focus-within {
+        border-color: var(--text-accent);
+        box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.15);
+    }
+    .discount-cell input {
+        border: none;
+        width: 60%;
+        text-align: right;
+        padding: 0 4px;
+        height: 100%;
+    }
+    .discount-cell select {
+        border: none;
+        border-left: 0.5px solid var(--border);
+        width: 40%;
+        padding: 0;
+        background: #f9f9f9;
+        font-size: 11px;
+        height: 100%;
+        cursor: pointer;
+    }
+    .discount-cell select:focus {
+        outline: none;
+    }
 
-    .qb-footer { display: flex; justify-content: space-between; align-items: flex-end; flex-shrink: 0;}
-    .qb-totals { text-align: right; font-size: 13px;}
-    .qb-totals-row { display: flex; justify-content: flex-end; margin-bottom: 5px; gap: 15px;}
-    .qb-totals-row strong { width: 120px; text-align: left; }
-    .qb-totals-row span { width: 100px; text-align: right; font-family: Tahoma, sans-serif;}
-
-    .qb-action-bar { background: #e8ecf0; padding: 10px; border-top: 1px solid #b0c4de; display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-shrink: 0;}
-    .qb-btn { background: #f0f0f0; border: 1px solid #999; padding: 5px 15px; cursor: pointer; font-size: 12px; border-radius: 2px; font-weight: bold;}
-    .qb-btn:hover { background: #e0e0e0; }
-    .qb-btn-primary { background: #e0eaf5; border-color: #7994b5; }
-    
-    .wa-btn { background: #25D366; color: #fff; border-color: #1da851; }
-    .wa-btn:hover { background: #20ba56; }
     .acc-settings { display: none; } 
 
-    /* PREVENT WHEEL SPINNER OVERLAP CLIPPING ON RIGHT-ALIGNED RATE FIELDS */
+    /* Prevent number wheel spinners */
     .qb-wrapper input::-webkit-outer-spin-button,
     .qb-wrapper input::-webkit-inner-spin-button {
         -webkit-appearance: none;
@@ -297,15 +449,15 @@ if ($inv && isset($inv->id)) {
 
 <div class="qb-wrapper">
     <?php if(!empty($data['error'])): ?>
-        <div style="padding: 10px; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; margin-bottom:5px; font-weight:bold; flex-shrink:0;"><?= $data['error'] ?></div>
+        <div style="padding: 10px; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; margin-bottom:5px; font-weight:bold; flex-shrink:0; border-radius: 6px;"><?= $data['error'] ?></div>
     <?php endif; ?>
     <?php if(isset($_SESSION['flash_success'])): ?>
-        <div style="padding: 10px; background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; margin-bottom:5px; font-weight:bold; flex-shrink:0;">
+        <div style="padding: 10px; background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; margin-bottom:5px; font-weight:bold; flex-shrink:0; border-radius: 6px;">
             <?= $_SESSION['flash_success']; unset($_SESSION['flash_success']); ?>
         </div>
     <?php endif; ?>
     <?php if(isset($_SESSION['flash_error'])): ?>
-        <div style="padding: 10px; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; margin-bottom:5px; font-weight:bold; flex-shrink:0;">
+        <div style="padding: 10px; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; margin-bottom:5px; font-weight:bold; flex-shrink:0; border-radius: 6px;">
             <?= $_SESSION['flash_error']; unset($_SESSION['flash_error']); ?>
         </div>
     <?php endif; ?>
@@ -329,7 +481,7 @@ if ($inv && isset($inv->id)) {
     ?>
 
     <?php if (!empty($rep_route_name)): ?>
-        <div style="padding: 10px; background:#e0f7fa; color:#006064; border:1px solid #b2ebf2; margin-bottom:10px; font-weight:bold; border-radius: 4px; display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+        <div style="padding: 8px 12px; background:#e0f7fa; color:#006064; border:1px solid #b2ebf2; margin-bottom:10px; font-weight:bold; border-radius: 6px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; font-size: 12px;">
             <span><i class="ph ph-map-pin"></i> Adding Invoice to Rep Route: <strong><?= htmlspecialchars($rep_route_name) ?></strong></span>
         </div>
     <?php endif; ?>
@@ -345,74 +497,121 @@ if ($inv && isset($inv->id)) {
                 <input type="hidden" name="editing_invoice_id" value="<?= isset($inv->id) ? $inv->id : '' ?>">
             <?php endif; ?>
             
-            <!-- macOS Style Navigation Title Bar -->
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #e2e8f0; padding-bottom:10px; flex-shrink:0;">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <a href="<?= htmlspecialchars($backUrl) ?>" class="qb-btn" style="padding: 6px 12px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px; color:#555; background:#fff; border:1px solid #d1d1d6; text-decoration:none;"><i class="ph ph-arrow-left"></i> Back</a>
-                    <div class="qb-title" style="margin:0; font-size:20px; font-weight:700; color:#1d1d1f;"><?= htmlspecialchars($data['title'] ?? ($inv ? 'Edit Invoice' : 'New Invoice')) ?></div>
+            <!-- macOS Style Navigation Header Bar -->
+            <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:8px; border-bottom:0.5px solid var(--border); flex-shrink:0;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <a href="<?= htmlspecialchars($backUrl) ?>" style="height:28px; padding:0 10px; font-size:12px; border:0.5px solid var(--border); border-radius:6px; background:#fff; color:var(--text-primary); text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:555;"><i class="ph ph-arrow-left" style="font-size:13px;"></i> Back</a>
+                    <h1 class="qb-title"><?= htmlspecialchars($data['title'] ?? ($inv ? 'Edit Invoice' : 'New Invoice')) ?></h1>
                 </div>
                 
                 <div style="display:flex; gap:6px;">
                     <?php if ($prevId): ?>
-                        <a href="<?= APP_URL ?>/sales/edit/<?= $prevId ?>?type=<?= $type ?><?= !empty($rep_route_id) ? '&route_id='.$rep_route_id : '' ?>&back_url=<?= urlencode($backUrl) ?>" class="qb-btn" style="padding:6px 12px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px; border:1px solid #d1d1d6; background:#fff; text-decoration:none; color:#1d1d1f;"><i class="ph ph-caret-left"></i> Previous</a>
+                        <a href="<?= APP_URL ?>/sales/edit/<?= $prevId ?>?type=<?= $type ?><?= !empty($rep_route_id) ? '&route_id='.$rep_route_id : '' ?>&back_url=<?= urlencode($backUrl) ?>" class="qb-btn-header">Previous</a>
                     <?php else: ?>
-                        <button type="button" class="qb-btn" style="padding:6px 12px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px; border:1px solid #e2e8f0; background:#f5f5f7; color:#a1a1a6; cursor:not-allowed;" disabled><i class="ph ph-caret-left"></i> Previous</button>
+                        <button type="button" class="qb-btn-header" disabled>Previous</button>
                     <?php endif; ?>
 
                     <?php if ($nextId): ?>
-                        <a href="<?= APP_URL ?>/sales/edit/<?= $nextId ?>?type=<?= $type ?><?= !empty($rep_route_id) ? '&route_id='.$rep_route_id : '' ?>&back_url=<?= urlencode($backUrl) ?>" class="qb-btn" style="padding:6px 12px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px; border:1px solid #d1d1d6; background:#fff; text-decoration:none; color:#1d1d1f;">Next <i class="ph ph-caret-right"></i></a>
+                        <a href="<?= APP_URL ?>/sales/edit/<?= $nextId ?>?type=<?= $type ?><?= !empty($rep_route_id) ? '&route_id='.$rep_route_id : '' ?>&back_url=<?= urlencode($backUrl) ?>" class="qb-btn-header">Next</a>
                     <?php else: ?>
-                        <button type="button" class="qb-btn" style="padding:6px 12px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px; border:1px solid #e2e8f0; background:#f5f5f7; color:#a1a1a6; cursor:not-allowed;" disabled>Next <i class="ph ph-caret-right"></i></button>
+                        <button type="button" class="qb-btn-header" disabled>Next</button>
                     <?php endif; ?>
 
-                    <a href="<?= APP_URL ?>/sales/create?type=<?= $type ?><?= !empty($rep_route_id) ? '&route_id='.$rep_route_id : '' ?>&back_url=<?= urlencode($backUrl) ?>" class="qb-btn" style="padding:6px 12px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:6px; border:1px solid #d1d1d6; background:#fff; text-decoration:none; color:#1d1d1f;"><i class="ph ph-plus"></i> New</a>
+                    <a href="<?= APP_URL ?>/sales/create?type=<?= $type ?><?= !empty($rep_route_id) ? '&route_id='.$rep_route_id : '' ?>&back_url=<?= urlencode($backUrl) ?>" class="qb-btn-header"><i class="ph ph-plus" style="font-size:12px;"></i> New</a>
+                    
+                    <button type="submit" name="save_action" value="close" class="qb-btn-header-success"><i class="ph ph-check" style="font-size:13px;"></i> Save and close</button>
+                    
+                    <?php if (!$inv): ?>
+                        <button type="submit" name="save_action" value="new" class="qb-btn-header">Save & New</button>
+                        <button type="submit" name="save_action" value="print" class="qb-btn-header">Save & Print</button>
+                        <button type="submit" name="save_action" value="whatsapp" class="qb-btn-header" style="color:#25d366; border-color:#25d366;"><i class="ph ph-whatsapp-logo"></i> WhatsApp</button>
+                    <?php endif; ?>
+                    
+                    <button type="button" class="qb-btn-header" onclick="window.location.href='<?= htmlspecialchars($backUrl) ?>'">Cancel</button>
                 </div>
             </div>
 
-            <div class="qb-grid-top">
-                <div style="width: 300px;">
-                    <div class="qb-box" style="position: relative;">
-                        <div class="qb-box-header" style="display: flex; justify-content: space-between; align-items: center; padding: 3px 6px;">
-                            <span>Bill To</span>
-                            <button type="button" onclick="openNewCustomerModal()" style="background: #2e7d32; border: none; color: #fff; border-radius: 3px; font-weight: bold; cursor: pointer; font-size: 10px; padding: 2px 6px; line-height: 1;">+ New Customer</button>
-                        </div>
-                        <input type="hidden" name="customer_id" id="customerIdInput" required>
-                        <input type="text" id="customerSearch" class="qb-input" style="width: 100%; border:none; border-bottom:1px solid #ccc; font-weight:bold; padding: 6px;" placeholder="Search Customer by Name, Route, Address..." onkeyup="filterCustomerSearch(event)" autocomplete="off" required>
-                        <ul id="customerSearchResults" class="search-results" style="width: 100%;"></ul>
-                        <textarea id="billToAddress" class="qb-input" style="width: 100%; height: 60px; border:none; resize:none;" readonly placeholder="Customer address will appear here..."></textarea>
+            <!-- Metadata Cards Grid -->
+            <div style="display:grid; grid-template-columns: 1.1fr 0.7fr 0.7fr 0.7fr 0.9fr; gap:10px; flex-shrink:0; margin-top: 5px;">
+
+                <!-- Card 1: Bill To -->
+                <div style="background:var(--surface-2); border:0.5px solid var(--border); border-radius:10px; padding:10px 12px; min-height: 120px; display: flex; flex-direction: column; justify-content: space-between; position: relative; box-sizing: border-box;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+                        <span style="color:var(--text-secondary); font-size:11px; font-weight:550;">Bill to</span>
+                        <button type="button" onclick="openNewCustomerModal()" style="height:20px; padding:0 8px; font-size:11px; background:var(--bg-success); border:none; color:var(--text-success); border-radius:4px; cursor: pointer; display: flex; align-items: center; gap: 2px; font-weight: 550;"><i class="ph ph-plus" style="font-size:11px;"></i> New</button>
                     </div>
                     
-                    <!-- Customer Edit and Invoice History Buttons -->
-                    <div id="customerOptionsContainer" style="display: none; gap: 8px; margin-top: 6px;">
-                        <button type="button" onclick="openCustomerEdit()" class="qb-btn" style="flex:1; font-size: 11px; padding: 4px 6px; display:inline-flex; align-items:center; justify-content:center; gap:4px; border-radius:4px;"><i class="ph ph-pencil-simple"></i> Edit Profile</button>
-                        <button type="button" onclick="openCustomerHistory()" class="qb-btn" style="flex:1; font-size: 11px; padding: 4px 6px; display:inline-flex; align-items:center; justify-content:center; gap:4px; border-radius:4px;"><i class="ph ph-clock-counter-clockwise"></i> View History</button>
+                    <input type="hidden" name="customer_id" id="customerIdInput" required>
+                    
+                    <!-- State A: Search (visible when no customer is selected) -->
+                    <div id="customerSearchContainer" style="display: block; position: relative; width: 100%;">
+                        <input type="text" id="customerSearch" class="qb-input-field" style="width: 100%; margin-top:0;" placeholder="Search Customer..." onkeyup="filterCustomerSearch(event)" autocomplete="off" required>
+                        <ul id="customerSearchResults" class="search-results" style="width: 100%; top: 100%;"></ul>
                     </div>
-
-                    <!-- Real-time outstanding balance indicator -->
-                    <div id="customerOutstanding" style="font-size: 11px; padding: 5px; border-radius: 4px; margin-top: 5px; display: none;"></div>
+                    
+                    <!-- State B: Selected Customer Info (hidden by default) -->
+                    <div id="customerDetailsContainer" style="display: none; flex: 1; flex-direction: column; justify-content: space-between; width: 100%;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                            <div style="overflow: hidden;">
+                                <p id="selectedCustomerName" style="font-weight:600; font-size:13px; margin:0 0 2px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></p>
+                                <p id="selectedCustomerAddress" style="color:var(--text-secondary); margin:0; font-size:11px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;"></p>
+                            </div>
+                            <button type="button" onclick="clearSelectedCustomer()" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; font-size: 14px; padding: 2px; flex-shrink: 0;" title="Change Customer"><i class="ph ph-x-circle"></i></button>
+                        </div>
+                        
+                        <!-- Customer Edit and Invoice History Buttons -->
+                        <div id="customerOptionsContainer" style="display: none; gap: 6px; margin-top: auto; padding-top: 4px;">
+                            <button type="button" onclick="openCustomerEdit()" class="qb-btn" style="flex:1; height:22px; font-size:11px; padding:0; display:inline-flex; align-items:center; justify-content:center; gap:4px; border-radius:6px; border: 0.5px solid var(--border); background: #fff; cursor: pointer; color: var(--text-primary); font-weight: 550;"><i class="ph ph-pencil-simple" style="font-size:12px;"></i> Edit</button>
+                            <button type="button" onclick="openCustomerHistory()" class="qb-btn" style="flex:1; height:22px; font-size:11px; padding:0; display:inline-flex; align-items:center; justify-content:center; gap:4px; border-radius:6px; border: 0.5px solid var(--border); background: #fff; cursor: pointer; color: var(--text-primary); font-weight: 550;"><i class="ph ph-clock-counter-clockwise" style="font-size:12px;"></i> History</button>
+                        </div>
+                    </div>
+                    
+                    <textarea id="billToAddress" style="display:none;" readonly></textarea>
                 </div>
 
-                <div style="display: flex; gap: 10px; align-items: flex-start;">
-                    <div class="qb-box" style="width: 120px;">
-                        <div class="qb-box-header">Date</div>
-                        <input type="date" name="invoice_date" class="qb-input" style="width: 100%; border:none; text-align:center;" value="<?= ($inv && isset($inv->invoice_date)) ? $inv->invoice_date : date('Y-m-d') ?>" required>
+                <!-- Card 2: Credit Limit & Outstanding -->
+                <div style="background:var(--surface-2); border:0.5px solid var(--border); border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; justify-content:center; min-height: 120px; box-sizing: border-box;">
+                    <!-- Placeholder when no customer is selected -->
+                    <div id="customerOutstandingPlaceholder" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; height: 100%; color: var(--text-secondary); gap: 4px;">
+                        <i class="ph ph-user-focus" style="font-size: 20px;"></i>
+                        <span style="font-size: 11px;">Select customer to view credit info</span>
                     </div>
-                    <div class="qb-box" style="width: 120px;">
-                        <div class="qb-box-header">Invoice #</div>
-                        <input type="text" name="invoice_number" class="qb-input" style="width: 100%; border:none; text-align:center;" value="<?= htmlspecialchars((string)($data['invoice_number'] ?? '')) ?>" <?= $inv ? 'readonly style="background:#eee;"' : '' ?> required>
+                    
+                    <!-- Active outstanding container -->
+                    <div id="customerOutstanding" style="display: none; flex-direction: column; justify-content: center; gap: 4px; height: 100%;">
+                        <!-- Populated via Javascript -->
                     </div>
                 </div>
-            </div>
 
-            <div class="qb-grid-mid">
-                <div class="qb-mid-col">
-                    <div class="qb-mid-header">P.O. No.</div>
-                    <div class="qb-mid-body"><input type="text" name="po_number" value="<?= ($inv && isset($inv->po_number)) ? htmlspecialchars((string)$inv->po_number) : '' ?>" placeholder="Optional"></div>
+                <!-- Card 3: Date & Invoice # -->
+                <div style="background:var(--surface-2); border:0.5px solid var(--border); border-radius:10px; padding:10px 12px; display: flex; flex-direction: column; justify-content: space-between; min-height: 120px; box-sizing: border-box;">
+                    <div>
+                        <span style="color:var(--text-secondary); font-size:11px; font-weight: 550;">Date</span>
+                        <input type="date" name="invoice_date" class="qb-input-field" value="<?= ($inv && isset($inv->invoice_date)) ? $inv->invoice_date : date('Y-m-d') ?>" required>
+                    </div>
+                    <div>
+                        <span style="color:var(--text-secondary); font-size:11px; font-weight: 550;">Invoice #</span>
+                        <input type="text" name="invoice_number" class="qb-input-field" value="<?= htmlspecialchars((string)($data['invoice_number'] ?? '')) ?>" <?= $inv ? 'readonly' : '' ?> required>
+                    </div>
                 </div>
-                <div class="qb-mid-col">
-                    <div class="qb-mid-header">Terms</div>
-                    <div class="qb-mid-body">
-                        <select name="payment_term_id" id="paymentTermSelect" onchange="calculateDueDateOffset()" style="width: 100%; border: none; text-align: center; background: transparent; font-size: 12px;">
+
+                <!-- Card 4: P.O. No & Rep TP # -->
+                <div style="background:var(--surface-2); border:0.5px solid var(--border); border-radius:10px; padding:10px 12px; display: flex; flex-direction: column; justify-content: space-between; min-height: 120px; box-sizing: border-box;">
+                    <div>
+                        <span style="color:var(--text-secondary); font-size:11px; font-weight: 550;">P.O. no.</span>
+                        <input type="text" name="po_number" class="qb-input-field" value="<?= ($inv && isset($inv->po_number)) ? htmlspecialchars((string)$inv->po_number) : '' ?>" placeholder="Optional">
+                    </div>
+                    <div>
+                        <span style="color:var(--text-secondary); font-size:11px; font-weight: 550;">Rep TP #</span>
+                        <input type="text" name="rep_tp" id="displayPhone" class="qb-input-field" value="<?= ($inv && isset($inv->rep_tp)) ? htmlspecialchars((string)$inv->rep_tp) : '' ?>" placeholder="Phone #">
+                    </div>
+                </div>
+
+                <!-- Card 5: Terms & Due Date -->
+                <div style="background:var(--surface-2); border:0.5px solid var(--border); border-radius:10px; padding:10px 12px; display: flex; flex-direction: column; justify-content: space-between; min-height: 120px; box-sizing: border-box;">
+                    <div>
+                        <span style="color:var(--text-secondary); font-size:11px; font-weight: 550;">Terms</span>
+                        <select name="payment_term_id" id="paymentTermSelect" onchange="calculateDueDateOffset()" class="qb-input-field">
                             <option value="">Select Term...</option>
                             <?php foreach($data['payment_terms'] as $term): ?>
                                 <option value="<?= $term->id ?>" data-days="<?= $term->days_due ?>" <?= ($inv && isset($inv->payment_term_id) && $inv->payment_term_id == $term->id) ? 'selected' : '' ?>>
@@ -421,96 +620,113 @@ if ($inv && isset($inv->id)) {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                </div>
-                <div class="qb-mid-col">
-                    <div class="qb-mid-header">Due Date</div>
-                    <div class="qb-mid-body"><input type="date" name="due_date" id="dueDate" value="<?= ($inv && isset($inv->due_date)) ? $inv->due_date : date('Y-m-d') ?>" required></div>
-                </div>
-                <div class="qb-mid-col">
-                    <div class="qb-mid-header">Rep</div>
-                    <div class="qb-mid-body">
-                        <select name="rep_name">
-                            <option value="">Select Rep...</option>
-                            <?php foreach($reps as $rep): ?>
-                                <option value="<?= htmlspecialchars((string)($rep->first_name . ' ' . $rep->last_name)) ?>" <?= ($inv && isset($inv->rep_name) && trim((string)$inv->rep_name) == trim((string)($rep->first_name . ' ' . $rep->last_name))) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars((string)($rep->first_name . ' ' . $rep->last_name)) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                    <div>
+                        <span style="color:var(--text-secondary); font-size:11px; font-weight: 550;">Due date</span>
+                        <input type="date" name="due_date" id="dueDate" class="qb-input-field" value="<?= ($inv && isset($inv->due_date)) ? $inv->due_date : date('Y-m-d') ?>" required>
                     </div>
                 </div>
-                <div class="qb-mid-col">
-                    <div class="qb-mid-header">Rep TP#</div>
-                    <div class="qb-mid-body"><input type="text" name="rep_tp" id="displayPhone" value="<?= ($inv && isset($inv->rep_tp)) ? htmlspecialchars((string)$inv->rep_tp) : '' ?>" placeholder="Phone #"></div>
+
+            </div>
+
+            <!-- Search and Rep Selection Bar -->
+            <div style="display:flex; gap:10px; align-items:center; flex-shrink:0; margin-top: 5px;">
+                <div style="position:relative; flex:1;">
+                    <i class="ph ph-magnifying-glass" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:14px; color:var(--text-muted);" aria-hidden="true"></i>
+                    <input type="text" id="itemSearch" placeholder="Search catalog by item code or name, SKU, category, sample code..." style="width:100%; height:32px; padding-left:32px; font-size:12px; border:0.5px solid var(--border); border-radius:6px; box-sizing:border-box; font-weight: 550;" autocomplete="off" />
+                    <ul id="searchResults" class="search-results" style="width: 100%; top: 100%;"></ul>
+                </div>
+                <div style="width:220px;">
+                    <select name="rep_name" class="qb-input-field" style="height:32px; margin-top:0; font-weight: 550;">
+                        <option value="">Select Rep...</option>
+                        <?php foreach($reps as $rep): ?>
+                            <option value="<?= htmlspecialchars((string)($rep->first_name . ' ' . $rep->last_name)) ?>" <?= ($inv && isset($inv->rep_name) && trim((string)$inv->rep_name) == trim((string)($rep->first_name . ' ' . $rep->last_name))) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars((string)($rep->first_name . ' ' . $rep->last_name)) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
             </div>
 
-            <div class="search-wrapper">
-                <input type="text" id="itemSearch" class="item-search-bar" placeholder="Search Catalog by Item Code or Name, SKU, Category, Sample Code..." autocomplete="off">
-                <ul id="searchResults" class="search-results"></ul>
-            </div>
-
+            <!-- Cart Table Area -->
             <div class="table-scroll-container">
                 <table class="qb-table">
+                    <colgroup>
+                        <col style="width:35px">
+                        <col style="width:12%">
+                        <col style="width:8%">
+                        <col>
+                        <col style="width:12%">
+                        <col style="width:14%">
+                        <col style="width:14%">
+                        <col style="width:60px">
+                        <col style="width:35px">
+                    </colgroup>
                     <thead>
                         <tr>
-                            <th style="width: 30px; text-align:center;">#</th>
-                            <th style="width: 12%;">Item Code</th>
-                            <th style="width: 7%;">Qty</th>
-                            <th style="width: 32%;">Description</th>
-                            <th style="width: 13%; text-align:right;">Rate (Rs:)</th>
-                            <th style="width: 14%; text-align:right;">Discount</th>
-                            <th style="width: 14%; text-align:right;">Amount (Rs:)</th>
-                            <th style="width: 28px; background:#c62828;"></th>
+                            <th style="text-align:left; padding:8px 6px;">#</th>
+                            <th style="text-align:left; padding:8px 6px;">Item code</th>
+                            <th style="text-align:right; padding:8px 6px;">Qty</th>
+                            <th style="text-align:left; padding:8px 6px;">Description</th>
+                            <th style="text-align:right; padding:8px 6px;">Rate</th>
+                            <th style="text-align:right; padding:8px 6px;">Discount</th>
+                            <th style="text-align:right; padding:8px 6px;">Amount</th>
+                            <th style="text-align:left; padding:8px 6px;">Stock</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody id="invoiceBody">
-                        <!-- Javascript will prepend rows here -->
+                        <!-- Placeholder empty row initially shown -->
+                        <tr id="emptyPlaceholderRow" style="border-top:0.5px solid var(--border);">
+                            <td style="padding:8px 6px; color:var(--text-muted); text-align:left;">—</td>
+                            <td style="padding:8px 6px; color:var(--text-muted);">—</td>
+                            <td style="padding:8px 6px; text-align:right; color:var(--text-muted);">—</td>
+                            <td style="padding:8px 6px; color:var(--text-muted);">Add item from search above</td>
+                            <td style="padding:8px 6px; text-align:right; color:var(--text-muted);">—</td>
+                            <td style="padding:8px 6px; text-align:right; color:var(--text-muted);">—</td>
+                            <td style="padding:8px 6px; text-align:right; color:var(--text-muted);">—</td>
+                            <td style="padding:8px 6px; color:var(--text-muted);">—</td>
+                            <td style="padding:8px 6px;"></td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
 
-            <div class="qb-footer">
-                <div style="width: 350px;">
-                    <div style="margin-bottom: 5px;">
-                        <label style="font-weight:bold; display:block; margin-bottom:2px; font-size:11px;">Customer Message</label>
-                        <select class="qb-input" style="width:100%; margin-bottom:5px;">
-                            <option value="">Thank you for your business.</option>
-                            <option value="">Please remit payment at your earliest convenience.</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="font-weight:bold; display:block; margin-bottom:2px; font-size:11px;">Memo</label>
-                        <input type="text" name="notes" value="<?= ($inv && isset($inv->notes)) ? htmlspecialchars((string)$inv->notes) : '' ?>" class="qb-input" style="width:100%;">
-                    </div>
+            <!-- Footer Area: message, memo, and totals panel -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1.2fr; gap:12px; align-items:start; flex-shrink: 0;">
+                <div>
+                    <span style="color:var(--text-secondary); font-size:11px; font-weight: 550; display: block; margin-bottom: 4px;">Customer message</span>
+                    <select name="customer_message" style="width:100%; height:28px; font-size:12px; border:0.5px solid var(--border); border-radius:6px; padding:0 8px; background:#fff; font-weight: 500;">
+                        <option value="">Thank you for your business.</option>
+                        <option value="">Please remit payment at your earliest convenience.</option>
+                    </select>
+                </div>
+                <div>
+                    <span style="color:var(--text-secondary); font-size:11px; font-weight: 550; display: block; margin-bottom: 4px;">Memo</span>
+                    <input type="text" name="notes" value="<?= ($inv && isset($inv->notes)) ? htmlspecialchars((string)$inv->notes) : '' ?>" style="width:100%; height:28px; font-size:12px; border:0.5px solid var(--border); border-radius:6px; padding:0 8px; box-sizing:border-box; font-weight: 500;" />
                 </div>
 
-                <div class="qb-totals">
-                    <div class="qb-totals-row">
-                        <strong>Subtotal LKR</strong>
-                        <span id="subTotal">0.00</span>
+                <div style="background:var(--surface-1); border-radius:10px; padding:10px 14px; display:grid; grid-template-columns: 1fr auto; gap:6px 12px; align-items:center;">
+                    <span style="color:var(--text-secondary); font-size:12px; font-weight: 500;">Subtotal LKR</span>
+                    <span id="subTotal" style="font-weight:550; text-align:right; font-size:13px; font-family: monospace;">0.00</span>
+                    
+                    <span style="color:var(--text-secondary); font-size:12px; font-weight: 500;">Bill discount</span>
+                    <div style="display:flex; gap:4px; justify-self:end; align-items: center;">
+                        <input type="number" name="global_discount_val" id="globalDiscVal" value="<?= ($inv && isset($inv->global_discount_val)) ? floatval($inv->global_discount_val) : '0' ?>" oninput="calcTotals()" style="width:60px; height:24px; text-align:right; font-size:12px; border:0.5px solid var(--border); border-radius:4px; padding: 0 4px; font-weight: 550;" />
+                        <select name="global_discount_type" id="globalDiscType" onchange="calcTotals()" style="width:46px; height:24px; font-size:12px; border:0.5px solid var(--border); border-radius:4px; background:#fff; font-weight: 550;">
+                            <option value="Rs" <?= ($inv && isset($inv->global_discount_type) && $inv->global_discount_type == 'Rs') ? 'selected' : '' ?>>Rs</option>
+                            <option value="%" <?= ($inv && isset($inv->global_discount_type) && $inv->global_discount_type == '%') ? 'selected' : '' ?>>%</option>
+                        </select>
                     </div>
-                    <div class="qb-totals-row" style="align-items: center;">
-                        <strong>Bill Discount</strong>
-                        <div class="discount-cell" style="width: 100px; border-color:#ccc;">
-                            <input type="number" name="global_discount_val" id="globalDiscVal" value="<?= ($inv && isset($inv->global_discount_val)) ? floatval($inv->global_discount_val) : '0' ?>" class="qb-input num" style="width:60px; border:none;" oninput="calcTotals()">
-                            <select name="global_discount_type" id="globalDiscType" class="qb-input" style="width:40px; padding:0; border:none; border-left:1px solid #ccc; background:#f9f9f9;" onchange="calcTotals()">
-                                <option value="Rs" <?= ($inv && isset($inv->global_discount_type) && $inv->global_discount_type == 'Rs') ? 'selected' : '' ?>>Rs</option>
-                                <option value="%" <?= ($inv && isset($inv->global_discount_type) && $inv->global_discount_type == '%') ? 'selected' : '' ?>>%</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="qb-totals-row" style="font-size: 14px; margin-top: 5px;">
-                        <strong>Total LKR</strong>
-                        <span id="grandTotal" style="font-weight: bold;">0.00</span>
-                    </div>
-                    <div class="qb-totals-row" style="font-size: 14px; margin-top: 5px;">
-                        <strong style="color:#0066cc;">Balance Due LKR</strong>
-                        <span id="balanceDue" style="font-weight: bold; color:#0066cc;">0.00</span>
-                    </div>
+                    
+                    <span style="font-weight:550; font-size:13px; border-top:0.5px solid var(--border); padding-top:6px;">Total LKR</span>
+                    <span id="grandTotal" style="font-weight:600; font-size:15px; text-align:right; border-top:0.5px solid var(--border); padding-top:6px; font-family: monospace;">0.00</span>
+                    
+                    <span style="color:var(--text-accent); font-weight:550; font-size:13px;">Balance due LKR</span>
+                    <span id="balanceDue" style="color:var(--text-accent); font-weight:600; font-size:15px; text-align:right; font-family: monospace;">0.00</span>
                 </div>
             </div>
 
+            <!-- Accounting setup (hidden receivables/revenue accounts) -->
             <div class="acc-settings">
                 <select name="ar_account" required>
                     <?php foreach($assets ?? [] as $acc): ?>
@@ -524,19 +740,9 @@ if ($inv && isset($inv->id)) {
                 </select>
             </div>
 
-            <div class="qb-action-bar">
-                <div style="display:flex; gap: 10px; align-items:center;">
-                    <span style="color:#2e7d32; font-weight:bold;">● System Ready</span>
-                </div>
-                <div style="display:flex; gap: 10px;">
-                    <button type="submit" name="save_action" value="close" class="qb-btn qb-btn-primary">Save & Close</button>
-                    <?php if (!$inv): ?>
-                        <button type="submit" name="save_action" value="new" class="qb-btn">Save & New</button>
-                        <button type="submit" name="save_action" value="print" class="qb-btn">Save & Print</button>
-                        <button type="submit" name="save_action" value="whatsapp" class="qb-btn wa-btn">Save & WhatsApp</button>
-                    <?php endif; ?>
-                    <button type="button" class="qb-btn" onclick="window.location.href='<?= htmlspecialchars($backUrl) ?>'">Cancel</button>
-                </div>
+            <!-- System ready status bar -->
+            <div style="display:flex; align-items:center; gap:6px; color:var(--text-success); font-size:11px; padding-top:8px; border-top:0.5px solid var(--border); margin-top:5px; flex-shrink: 0; font-weight: 550;">
+                <i class="ph ph-circle-fill" style="font-size:6px; vertical-align: middle;"></i> System ready
             </div>
 
         </form>
@@ -821,10 +1027,12 @@ if ($inv && isset($inv->id)) {
         
         const outBal = parseFloat(selectedCustomerObj.outstanding) || 0;
         const limit = parseFloat(selectedCustomerObj.credit_limit) || 0;
+        
         const outDiv = document.getElementById('customerOutstanding');
+        const outPlaceholder = document.getElementById('customerOutstandingPlaceholder');
         if (!outDiv) return;
 
-        const subTotalText = document.getElementById('grandTotal').innerText.replace(/,/g, '');
+        const subTotalText = document.getElementById('grandTotal').innerText.replace(/,/g, '').replace('Rs. ', '');
         const newTotal = parseFloat(subTotalText) || 0;
         
         let oldInvoiceTotal = 0;
@@ -838,42 +1046,42 @@ if ($inv && isset($inv->id)) {
         
         const projected = outBal - oldInvoiceTotal + newTotal;
 
-        outDiv.style.display = 'block';
-        let html = '';
+        if (outPlaceholder) outPlaceholder.style.display = 'none';
+        outDiv.style.display = 'flex';
+        
+        let limitHtml = '';
         if (limit > 0) {
-            html += `<div style="margin-bottom: 4px;"><strong>Credit Limit:</strong> Rs. ${limit.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
+            limitHtml = `<span style="color:var(--text-primary); font-weight:550; font-size:13.5px;">Rs. ${limit.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`;
         } else {
-            html += `<div style="margin-bottom: 4px;"><strong>Credit Limit:</strong> <span style="color:#2e7d32; font-weight:bold;">No Limit</span></div>`;
+            limitHtml = `<span style="color:var(--text-success); font-weight:550; font-size:13.5px;">No limit</span>`;
         }
 
+        let outHtml = '';
         if (outBal > 0.01) {
-            html += `<div style="color:#c62828;"><i class="ph ph-warning" style="font-size:11px;"></i> Current Outstanding: Rs. ${outBal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
+            outHtml = `<span style="color:var(--text-danger); font-weight:550; font-size:13.5px;">Rs. ${outBal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`;
         } else if (outBal < -0.01) {
-            html += `<div style="color:#2e7d32;"><i class="ph ph-check" style="font-size:11px;"></i> Available Credit (Overpaid): Rs. ${Math.abs(outBal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
+            outHtml = `<span style="color:var(--text-success); font-weight:550; font-size:13.5px;">Rs. ${Math.abs(outBal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (Overpaid)</span>`;
         } else {
-            html += `<div style="color:#666;">No Outstanding Balance</div>`;
+            outHtml = `<span style="color:var(--text-secondary); font-size:13.5px;">Rs. 0.00</span>`;
         }
 
+        let remainingHtml = '';
         if (limit > 0) {
             const remaining = limit - projected;
             if (remaining >= 0) {
-                html += `<div style="color:#2e7d32; font-weight:bold; margin-top:4px; padding-top:4px; border-top:1px solid #d2dbe4;">Projected Remaining Credit: Rs. ${remaining.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
-                outDiv.style.background = '#f0f4f8';
-                outDiv.style.color = '#333';
-                outDiv.style.border = '1px solid #d2dbe4';
+                remainingHtml = `<span style="color:var(--text-success); font-size:11px; font-weight:550; margin-top:2px;"><i class="ph ph-check-circle" style="font-size:11px;"></i> Remaining: Rs. ${remaining.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`;
             } else {
-                html += `<div style="color:#c62828; font-weight:bold; margin-top:4px; padding-top:4px; border-top:1px solid #ef9a9a;"><i class="ph ph-x-circle" style="font-size:11px;"></i> Exceeded Credit Limit by: Rs. ${Math.abs(remaining).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>`;
-                outDiv.style.background = '#ffebee';
-                outDiv.style.color = '#c62828';
-                outDiv.style.border = '1px solid #ef9a9a';
+                remainingHtml = `<span style="color:var(--text-danger); font-size:11px; font-weight:600; margin-top:2px;"><i class="ph ph-warning-circle" style="font-size:11px;"></i> Over limit by: Rs. ${Math.abs(remaining).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`;
             }
-        } else {
-            outDiv.style.background = '#f0f4f8';
-            outDiv.style.color = '#333';
-            outDiv.style.border = '1px solid #d2dbe4';
         }
 
-        outDiv.innerHTML = html;
+        outDiv.innerHTML = `
+            <span style="color:var(--text-secondary); font-size:11px; font-weight:550;">Credit limit</span>
+            ${limitHtml}
+            <span style="color:var(--text-secondary); font-size:11px; margin-top:4px; font-weight:550;">Outstanding</span>
+            ${outHtml}
+            ${remainingHtml}
+        `;
     }
 
     function selectCustomer(cust) {
@@ -894,12 +1102,47 @@ if ($inv && isset($inv->id)) {
             phoneInput.value = cust.phone || '';
         }
 
+        // Show customer details and hide search container in Card 1
+        const searchContainer = document.getElementById('customerSearchContainer');
+        const detailsContainer = document.getElementById('customerDetailsContainer');
+        if (searchContainer) searchContainer.style.display = 'none';
+        if (detailsContainer) {
+            detailsContainer.style.display = 'flex';
+            document.getElementById('selectedCustomerName').textContent = cust.name;
+            document.getElementById('selectedCustomerAddress').textContent = cust.address || 'No address provided';
+        }
+
         const optsContainer = document.getElementById('customerOptionsContainer');
         if(optsContainer) {
             optsContainer.style.display = 'flex';
         }
 
         updateProjectedOutstandingIndicator();
+    }
+
+    function clearSelectedCustomer() {
+        selectedCustomerObj = null;
+        document.getElementById('customerIdInput').value = '';
+        document.getElementById('customerSearch').value = '';
+        document.getElementById('billToAddress').value = '';
+        
+        const searchContainer = document.getElementById('customerSearchContainer');
+        const detailsContainer = document.getElementById('customerDetailsContainer');
+        if (searchContainer) searchContainer.style.display = 'block';
+        if (detailsContainer) detailsContainer.style.display = 'none';
+        
+        const mcaInput = document.getElementById('displayMca');
+        if(mcaInput) mcaInput.value = '';
+        
+        const phoneInput = document.getElementById('displayPhone');
+        if(phoneInput) phoneInput.value = '';
+        
+        const outDiv = document.getElementById('customerOutstanding');
+        const outPlaceholder = document.getElementById('customerOutstandingPlaceholder');
+        if (outDiv) outDiv.style.display = 'none';
+        if (outPlaceholder) outPlaceholder.style.display = 'flex';
+        
+        calcTotals();
     }
 
     function openCustomerEdit() {
@@ -1093,10 +1336,17 @@ if ($inv && isset($inv->id)) {
     }
 
     function renumberInvoiceRows() {
-        document.querySelectorAll('#invoiceBody tr').forEach((tr, i) => {
-            const cell = tr.querySelector('.line-row-num');
-            if (cell) cell.textContent = i + 1;
-        });
+        const rows = document.querySelectorAll('#invoiceBody tr:not(#emptyPlaceholderRow)');
+        const placeholder = document.getElementById('emptyPlaceholderRow');
+        if (rows.length === 0) {
+            if (placeholder) placeholder.style.display = '';
+        } else {
+            if (placeholder) placeholder.style.display = 'none';
+            rows.forEach((tr, i) => {
+                const cell = tr.querySelector('.line-row-num');
+                if (cell) cell.textContent = i + 1;
+            });
+        }
     }
 
     function addItemRow(itemOrId, code = null, qty = 1, desc = null, price = null, discVal = 0, discType = 'Rs') {
@@ -1132,8 +1382,8 @@ if ($inv && isset($inv->id)) {
 
         const tbody = document.getElementById('invoiceBody');
         const tr = document.createElement('tr');
+        tr.style.borderTop = '0.5px solid var(--border)';
         
-        let stockHtml = item.type === 'Service' ? '' : `<br><span style="font-size: 10px; color: #888;">Stock: ${item.stock}</span>`;
         let maxAttr = item.type === 'Service' ? '' : `max="${item.stock}"`;
 
         // Diagnostic Console Trace Log
@@ -1148,18 +1398,17 @@ if ($inv && isset($inv->id)) {
         });
 
         tr.innerHTML = `
-            <td class="line-row-num" style="text-align:center; color:#888; font-weight:bold; vertical-align:middle;"></td>
-            <td>
-                <input type="text" value="${item.code || 'ITEM'}" readonly style="color:#666; font-size:12px; width: 100%; border:none; background:transparent;">
+            <td class="line-row-num" style="padding:6px; color:var(--text-muted); text-align:left; vertical-align:middle;"></td>
+            <td style="padding:6px; vertical-align:middle;">
+                <input type="text" value="${item.code || 'ITEM'}" readonly style="color:var(--text-primary); font-size:12px; width: 100%; border:none; background:transparent;">
                 <input type="hidden" name="item_selection[]" value="${item.id}">
             </td>
-            <td style="text-align: center;">
-                <input type="number" class="num" name="qty[]" value="${qty}" min="0.01" step="0.01" ${maxAttr} oninput="validateQty(this, ${item.type === 'Service' ? 'null' : item.stock}); calcTotals()" onkeydown="handleQtyKeydown(event, this)" required style="width: 60px; margin-bottom: 2px;">
-                ${stockHtml}
+            <td style="padding:6px; text-align: right; vertical-align:middle;">
+                <input type="number" class="num" name="qty[]" value="${qty}" min="0.01" step="0.01" ${maxAttr} oninput="validateQty(this, ${item.type === 'Service' ? 'null' : item.stock}); calcTotals()" onkeydown="handleQtyKeydown(event, this)" required style="width: 100%; text-align: right; border: none; background: transparent; font-size: 12px;">
             </td>
-            <td><input type="text" name="desc[]" value="${desc}" required style="width: 100%; border:none; background:transparent;"></td>
-            <td><input type="number" class="num" name="price[]" value="${parseFloat(price).toFixed(2)}" step="0.01" min="0" oninput="calcTotals()" required style="width: 100%; text-align: right; box-sizing: border-box; padding-right: 4px;"></td>
-            <td>
+            <td style="padding:6px; vertical-align:middle;"><input type="text" name="desc[]" value="${desc}" required style="width: 100%; border:none; background:transparent; font-size: 12px;"></td>
+            <td style="padding:6px; text-align: right; vertical-align:middle;"><input type="number" class="num" name="price[]" value="${parseFloat(price).toFixed(2)}" step="0.01" min="0" oninput="calcTotals()" required style="width: 100%; text-align: right; border:none; background:transparent; font-size: 12px;"></td>
+            <td style="padding:6px; vertical-align:middle;">
                 <div class="discount-cell">
                     <input type="number" class="num" name="item_discount_val[]" value="${parseFloat(discVal).toFixed(2)}" step="0.01" oninput="calcTotals()">
                     <select name="item_discount_type[]" onchange="calcTotals()">
@@ -1168,8 +1417,9 @@ if ($inv && isset($inv->id)) {
                     </select>
                 </div>
             </td>
-            <td><input type="text" class="num line-total" value="0.00" readonly style="font-weight:bold; background: transparent; border: none; width: 100%; text-align: right; padding-right: 4px;"></td>
-            <td style="text-align:center;"><button type="button" tabindex="-1" style="background:transparent; color:#c62828; border:none; cursor:pointer; font-weight:bold; font-size: 16px; padding: 4px;" onclick="this.closest('tr').remove(); renumberInvoiceRows(); calcTotals();">&times;</button></td>
+            <td style="padding:6px; text-align: right; vertical-align:middle;"><input type="text" class="num line-total" value="0.00" readonly style="font-weight:550; background: transparent; border: none; width: 100%; text-align: right; font-size: 12px; color: var(--text-primary);"></td>
+            <td style="padding:6px; color:var(--text-muted); font-size:11px; vertical-align:middle;">${item.type === 'Service' ? '—' : item.stock}</td>
+            <td style="padding:6px; text-align:center; vertical-align:middle;"><button type="button" tabindex="-1" style="background:transparent; color:var(--text-danger); border:none; cursor:pointer; font-size: 14px; padding: 4px;" onclick="this.closest('tr').remove(); renumberInvoiceRows(); calcTotals();"><i class="ph ph-trash"></i></button></td>
         `;
         tbody.insertAdjacentElement('afterbegin', tr);
         renumberInvoiceRows();

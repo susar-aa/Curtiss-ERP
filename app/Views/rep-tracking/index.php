@@ -4768,7 +4768,7 @@
 
     function redirectToAddInvoice() {
         if (currentRouteId) {
-            window.location.href = '<?= APP_URL ?>/sales/create?type=sales_order&route_id=' + currentRouteId;
+            window.location.href = '<?= APP_URL ?>/sales/create?type=sales_order&route_id=' + currentRouteId + '&back_url=' + encodeURIComponent(window.location.href);
         }
     }
 
@@ -5297,7 +5297,7 @@
     }
 
     function editSalesOrder(id) {
-        window.open('<?= APP_URL ?>/sales/edit/' + id + '?type=sales_order', '_blank');
+        window.open('<?= APP_URL ?>/sales/edit/' + id + '?type=sales_order&back_url=' + encodeURIComponent(window.location.href), '_blank');
     }
 
     function printInvoice(id) {
