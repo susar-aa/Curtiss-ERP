@@ -1,214 +1,641 @@
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <style>
+    /* ============================================================
+       SF PRO + APPLE DESIGN LANGUAGE — REP TRACKING MODULE
+       ============================================================ */
+
+    :root {
+        --c-bg:           #f2f2f7;
+        --c-surface:      #ffffff;
+        --c-surface2:     #f9f9fb;
+        --c-fill:         rgba(120,120,128,0.08);
+        --c-fill2:        rgba(120,120,128,0.12);
+        --c-separator:    rgba(60,60,67,0.12);
+        --c-separator2:   rgba(60,60,67,0.06);
+
+        --c-blue:         #007aff;
+        --c-blue-light:   #e5f2ff;
+        --c-blue-mid:     #b3d6ff;
+        --c-green:        #34c759;
+        --c-green-light:  #e6f9ec;
+        --c-orange:       #ff9500;
+        --c-orange-light: #fff4e5;
+        --c-red:          #ff3b30;
+        --c-red-light:    #fff0ef;
+
+        --f-system: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', sans-serif;
+        --f-mono:   ui-monospace, 'SF Mono', 'Menlo', 'Monaco', monospace;
+
+        --t-primary:   #1c1c1e;
+        --t-secondary: #636366;
+        --t-tertiary:  #aeaeb2;
+        --t-label:     #8e8e93;
+
+        --shadow-xs:  0 1px 2px rgba(0,0,0,0.04);
+        --shadow-sm:  0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+        --shadow-md:  0 8px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+        --shadow-xl:  0 24px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.06);
+
+        --r-xs: 6px;
+        --r-sm: 10px;
+        --r-md: 14px;
+        --r-xl: 20px;
+        --r-xl2: 26px;
+        --r-pill: 999px;
+
+        --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+        --ease-ios:    cubic-bezier(0.25, 0.1, 0.25, 1);
+        --dur-fast:    0.18s;
+        --dur-mid:     0.28s;
+        --dur-slow:    0.42s;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --c-bg:           #121212;
+            --c-surface:      #1e1e2e;
+            --c-surface2:     #161622;
+            --c-fill:         rgba(255,255,255,0.08);
+            --c-fill2:        rgba(255,255,255,0.12);
+            --c-separator:    rgba(255,255,255,0.15);
+            --c-separator2:   rgba(255,255,255,0.08);
+            --t-primary:   #f5f5f7;
+            --t-secondary: #a1a1aa;
+            --t-tertiary:  #71717a;
+            --t-label:     #52525b;
+        }
+    }
+
     /* 3-Pane Layout System */
-    .app-workspace { display: flex; height: calc(100vh - 80px); background: #f4f5f7; border-radius: 8px; overflow: hidden; border: 1px solid var(--mac-border); position: relative;}
-    @media (prefers-color-scheme: dark) { .app-workspace { background: #121212; } }
+    .app-workspace {
+        display: flex;
+        height: calc(100vh - 120px);
+        background: var(--c-bg);
+        border-radius: var(--r-xl);
+        overflow: hidden;
+        border: 0.5px solid var(--c-separator);
+        position: relative;
+        font-family: var(--f-system);
+        color: var(--t-primary);
+    }
 
     /* Left Pane: Route List */
-    .pane-left { width: 350px; background: rgba(0,0,0,0.02); border-right: 1px solid var(--mac-border); display: flex; flex-direction: column; z-index: 10;}
-    @media (prefers-color-scheme: dark) { .pane-left { background: #1e1e2d; } }
-    .route-item { padding: 15px; border-bottom: 1px solid var(--mac-border); cursor: pointer; user-select: none; transition: 0.2s;}
-    .route-item:hover { background: rgba(0,102,204,0.05); }
-    .route-item.active { background: #0066cc; color: #fff; border-color: #0066cc; }
-    .route-item.active .r-sub, .route-item.active .r-meta { color: rgba(255,255,255,0.8); }
-    
-    .r-title { font-weight: bold; font-size: 14px; margin-bottom: 5px; }
-    .r-sub { font-size: 11px; color: #666; font-weight: bold; text-transform: uppercase; margin-bottom: 5px;}
-    .r-meta { font-size: 12px; color: #888; display: flex; justify-content: space-between; }
-    
-    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px;}
-    .status-Active { background: #ef6c00; box-shadow: 0 0 5px #ef6c00;}
-    .status-Completed { background: #2e7d32; }
+    .pane-left {
+        width: 360px;
+        background: var(--c-surface);
+        border-right: 0.5px solid var(--c-separator);
+        display: flex;
+        flex-direction: column;
+        z-index: 10;
+        flex-shrink: 0;
+    }
 
-    /* Middle Pane: Unified Wizard Workspace */
-    .pane-middle { flex: 1; display: flex; flex-direction: column; background: #fff; position: relative;}
-    @media (prefers-color-scheme: dark) { .pane-middle { background: #1a1a2e; } }
-    .mid-header { padding: 20px 25px; border-bottom: 1px solid var(--mac-border); background: var(--surface); display: flex; justify-content: space-between; align-items: flex-end;}
+    .route-item {
+        padding: 16px;
+        border-bottom: 0.5px solid var(--c-separator2);
+        cursor: pointer;
+        user-select: none;
+        transition: background var(--dur-fast), transform var(--dur-fast);
+        display: flex;
+        flex-direction: column;
+        background: var(--c-surface);
+        border: 0.5px solid var(--c-separator);
+        border-radius: var(--r-md);
+        margin: 12px 12px 0 12px;
+        box-shadow: var(--shadow-xs);
+    }
+    .route-item:hover {
+        background: var(--c-surface2);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    .route-item.active {
+        background: var(--c-surface);
+        border-color: var(--c-blue);
+        box-shadow: 0 0 0 1.5px var(--c-blue), var(--shadow-md);
+    }
     
-    .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    .data-table th, .data-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--mac-border); font-size: 13px;}
-    .data-table th { color: #888; font-weight: 600; font-size: 11px; text-transform: uppercase; background: rgba(0,0,0,0.02); position: sticky; top: 0;}
+    .r-title {
+        font-weight: 700;
+        font-size: 15px;
+        color: var(--t-primary);
+        margin-bottom: 4px;
+        line-height: 1.25;
+    }
+    .r-sub {
+        font-size: 11px;
+        color: var(--t-secondary);
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+        letter-spacing: 0.04em;
+    }
+    .r-meta {
+        font-size: 12.5px;
+        color: var(--t-secondary);
+        display: flex;
+        justify-content: space-between;
+    }
     
-    .bill-row { cursor: pointer; transition: 0.1s; user-select: none;}
-    .bill-row:hover { background: rgba(0,102,204,0.05); }
+    .status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 6px;
+    }
+    .status-Active { background: var(--c-orange); }
+    .status-Completed { background: var(--c-green); }
 
-    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); }
-    .empty-state span { font-size: 50px; margin-bottom: 15px; opacity: 0.5;}
+    /* Middle Pane: Workspace */
+    .pane-middle {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: var(--c-surface2);
+        position: relative;
+        min-width: 0;
+    }
+    .mid-header {
+        padding: 20px 24px;
+        border-bottom: 0.5px solid var(--c-separator);
+        background: var(--c-surface);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        background: var(--c-surface);
+        border-radius: var(--r-md);
+        overflow: hidden;
+        border: 0.5px solid var(--c-separator);
+    }
+    .data-table th {
+        padding: 12px 16px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--t-label);
+        background: var(--c-surface2);
+        border-bottom: 0.5px solid var(--c-separator);
+        white-space: nowrap;
+        text-align: left;
+    }
+    .data-table td {
+        padding: 12px 16px;
+        font-size: 13.5px;
+        color: var(--t-primary);
+        border-bottom: 0.5px solid var(--c-separator2);
+        vertical-align: middle;
+    }
+    .data-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .data-table tbody tr {
+        transition: background var(--dur-fast);
+    }
+    .data-table tbody tr:hover {
+        background: var(--c-fill);
+    }
+    
+    .bill-row { cursor: pointer; transition: 0.1s; user-select: none; }
+    .bill-row:hover { background: var(--c-fill2); }
+
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: var(--t-tertiary);
+    }
+    .empty-state span { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
 
     /* Right Pane: Slide-out Invoice Mini-View */
     .pane-right-slider { 
         position: absolute; top: 0; right: 0; bottom: 0; width: 50%; 
-        background: var(--surface); border-left: 1px solid var(--mac-border); 
-        box-shadow: -10px 0 35px rgba(0,0,0,0.15); transform: translateX(100%); 
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 150;
+        background: var(--c-surface); border-left: 0.5px solid var(--c-separator); 
+        box-shadow: var(--shadow-xl); transform: translateX(100%); 
+        transition: transform var(--dur-mid) var(--ease-ios); z-index: 150;
         display: flex; flex-direction: column;
     }
     .pane-right-slider.open { transform: translateX(0); }
     
-    .slider-header { padding: 15px 20px; background: #333; color: #fff; display: flex; justify-content: space-between; align-items: center; font-weight: bold;}
-    .close-slider { background: transparent; border: none; color: #fff; font-size: 20px; cursor: pointer; padding: 0;}
+    .slider-header {
+        padding: 16px 20px;
+        background: var(--c-surface2);
+        border-bottom: 0.5px solid var(--c-separator);
+        color: var(--t-primary);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 700;
+        font-size: 15px;
+    }
+    .slider-header button {
+        cursor: pointer;
+    }
     
     #invoiceIframe { width: 100%; flex: 1; border: none; background: #525659; }
 
-    /* Highlights */
-    .stat-box { background: rgba(0,0,0,0.02); border: 1px solid var(--border); padding: 10px 15px; border-radius: 6px; text-align: center;}
-    .stat-box span { display: block; font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: bold; margin-bottom: 3px;}
-    .stat-box strong { font-size: 16px; color: var(--text-dark); }
+    /* Highlights & Stats */
+    .stat-box {
+        background: var(--c-surface2);
+        border: 0.5px solid var(--c-separator);
+        padding: 10px 16px;
+        border-radius: var(--r-md);
+        text-align: center;
+        box-shadow: var(--shadow-xs);
+    }
+    .stat-box span {
+        display: block;
+        font-size: 10px;
+        color: var(--t-label);
+        text-transform: uppercase;
+        font-weight: 700;
+        margin-bottom: 4px;
+        letter-spacing: 0.04em;
+    }
+    .stat-box strong {
+        font-size: 18px;
+        color: var(--t-primary);
+        font-weight: 700;
+    }
 
     /* Modal styles */
-    .modal-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 2000; align-items: center; justify-content: center; }
-    .modal-panel { background: #fff; width: 100%; max-width: 450px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); border: 1px solid #ccc; overflow: hidden; display: flex; flex-direction: column; }
-    .modal-header { padding: 15px 20px; background: #0066cc; color: #fff; font-weight: bold; font-size: 15px; display: flex; justify-content: space-between; align-items: center;}
-    .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-    .modal-body label { font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; margin-bottom: 4px; display: block;}
-    .modal-body input { width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 13px;}
-    .modal-body input:focus { border-color: #0066cc; outline: none; }
-    .modal-footer { padding: 15px 20px; background: #f5f5f5; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 10px;}
-
-    /* 8-Stage Wizard Style */
-    .workflow-wizard {
+    .modal-backdrop {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-panel {
+        background: var(--c-surface);
+        width: 100%;
+        max-width: 480px;
+        border-radius: var(--r-xl);
+        box-shadow: var(--shadow-xl);
+        border: 0.5px solid var(--c-separator);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    .modal-header {
+        padding: 16px 20px;
+        background: var(--c-surface2) !important;
+        border-bottom: 0.5px solid var(--c-separator) !important;
+        color: var(--t-primary) !important;
+        font-weight: 700;
+        font-size: 15px;
         display: flex;
         justify-content: space-between;
-        background: var(--surface);
-        border-bottom: 1px solid var(--mac-border);
-        padding: 10px 15px;
-        overflow-x: auto;
-        gap: 5px;
-        flex-shrink: 0;
+        align-items: center;
     }
-    .wizard-step {
-        flex: 1;
-        text-align: center;
-        padding: 8px 6px;
-        font-size: 10px;
-        font-weight: 700;
-        border-radius: 6px;
-        background: rgba(0, 0, 0, 0.03);
-        color: var(--text-muted);
-        white-space: nowrap;
-        border: 1px solid transparent;
-        transition: all 0.2s ease;
+    .modal-header button {
+        background: var(--c-fill) !important;
+        border: none !important;
+        color: var(--t-secondary) !important;
+        width: 26px !important;
+        height: 26px !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 11px !important;
+        cursor: pointer !important;
+        font-weight: 700 !important;
+        transition: background var(--dur-fast), color var(--dur-fast) !important;
     }
-    @media (prefers-color-scheme: dark) {
-        .wizard-step { background: rgba(255, 255, 255, 0.03); }
+    .modal-header button:hover {
+        background: var(--c-fill2) !important;
+        color: var(--t-primary) !important;
     }
-    .wizard-step.active {
-        background: #0066cc;
-        color: #fff;
-        border-color: #0066cc;
-        box-shadow: 0 2px 5px rgba(0, 102, 204, 0.3);
+    .modal-body {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
     }
-    .wizard-step.completed {
-        background: rgba(46, 125, 50, 0.1);
-        color: #2e7d32;
-        border-color: rgba(46, 125, 50, 0.2);
+    .modal-body label {
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+        color: var(--t-label);
+        margin-bottom: 6px;
+        display: block;
+        letter-spacing: 0.04em;
+    }
+    .modal-body input, .modal-body select, .modal-body textarea {
+        width: 100%;
+        padding: 8px 12px;
+        border: 0.5px solid var(--c-separator);
+        border-radius: var(--r-xs);
+        box-sizing: border-box;
+        font-size: 13.5px;
+        background: var(--c-surface);
+        color: var(--t-primary);
+        outline: none;
+        transition: border-color var(--dur-fast);
+    }
+    .modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus {
+        border-color: var(--c-blue);
+    }
+    .modal-footer {
+        padding: 16px 20px;
+        background: var(--c-surface2);
+        border-top: 0.5px solid var(--c-separator);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
     }
 
     /* GPS path map overlay */
-    .map-empty-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.85); color: #666; font-size: 13px; font-weight: 600; text-align: center; padding: 20px; z-index: 500; pointer-events: none; }
-    @media (prefers-color-scheme: dark) { .map-empty-overlay { background: rgba(18,18,18,0.9); color: #aaa; } }
+    .map-empty-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,0.8);
+        color: var(--t-secondary);
+        font-size: 13.5px;
+        font-weight: 600;
+        text-align: center;
+        padding: 20px;
+        z-index: 500;
+        pointer-events: none;
+    }
+    @media (prefers-color-scheme: dark) {
+        .map-empty-overlay { background: rgba(30,30,46,0.85); color: var(--t-secondary); }
+    }
     
-    .path-step-list { max-height: 120px; overflow-y: auto; padding: 12px 20px; font-size: 11px; color: #555; background: var(--surface); border-top: 1px solid var(--mac-border); flex-shrink: 0; }
+    .path-step-list {
+        max-height: 120px;
+        overflow-y: auto;
+        padding: 12px 20px;
+        font-size: 11px;
+        color: var(--t-secondary);
+        background: var(--c-surface);
+        border-top: 0.5px solid var(--c-separator);
+        flex-shrink: 0;
+    }
     .path-step-list ol { margin: 0; padding-left: 18px; }
     .path-step-list li { margin-bottom: 2px; }
-    .path-step-start { color: #2e7d32; font-weight: bold; }
-    .path-step-invoice { color: #0066cc; }
-    .path-step-end { color: #c62828; font-weight: bold; }
+    .path-step-start { color: var(--c-green); font-weight: 700; }
+    .path-step-invoice { color: var(--c-blue); }
+    .path-step-end { color: var(--c-red); font-weight: 700; }
 
     /* Left side Tabs styling */
     .left-tab-btn {
-        flex: 1; padding: 8px 2px; font-size: 11px; font-weight: bold; border-radius: 6px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; white-space: nowrap; transition: 0.2s;
+        flex: 1;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: var(--r-sm);
+        border: 0.5px solid var(--c-separator);
+        background: var(--c-surface);
+        color: var(--t-secondary);
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all var(--dur-fast);
     }
     .left-tab-btn.active {
-        background: #0066cc; color: white;
+        background: var(--c-blue);
+        color: white;
+        border-color: var(--c-blue);
+        box-shadow: var(--shadow-xs);
     }
 
     /* Binding panel */
-    .rb-slot-column { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
-    .rb-slot-box { border: 2px dashed #cbd5e1; border-radius: 6px; padding: 20px; text-align: center; background: #ffffff; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80px; }
-    .rb-slot-box:hover { border-color: #3f51b5; background: #f5f7ff; }
-    .rb-slot-select { width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; background: #fff; color: #333; margin-top: 5px; }
-    .rb-bill-list { max-height: 180px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; padding: 8px; font-size: 12px; display: none; }
-    .rb-bill-item { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #f1f5f9; align-items: center; }
-    .rb-bill-item:last-child { border-bottom: none; }
-    .rb-bound-tag { margin-top: 5px; font-size: 11px; background: #e8eaf6; color: #3f51b5; padding: 2px 6px; border-radius: 4px; display: inline-block; font-weight: bold; }
-    @media (prefers-color-scheme: dark) {
-        .rb-slot-column { background: #1e1e2d; border-color: #2d2d3d; }
-        .rb-slot-box { background: #12121a; border-color: #3f3f46; }
-        .rb-slot-box:hover { background: #181824; }
-        .rb-slot-select { background: #1e1e2d; color: #f1f5f9; border-color: #3f3f46; }
-        .rb-bill-list { background: #12121a; border-color: #2d2d3d; }
-        .rb-bill-item { border-bottom-color: #1e1e2d; }
-        .rb-bound-tag { background: #1c2438 !important; color: #7986cb !important; }
+    .rb-slot-column {
+        background: var(--c-surface2);
+        border: 0.5px solid var(--c-separator);
+        border-radius: var(--r-md);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        box-shadow: var(--shadow-xs);
+    }
+    .rb-slot-box {
+        border: 1.5px dashed var(--c-separator);
+        border-radius: var(--r-sm);
+        padding: 20px;
+        text-align: center;
+        background: var(--c-surface);
+        cursor: pointer;
+        transition: all var(--dur-fast) var(--ease-ios);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 80px;
+    }
+    .rb-slot-box:hover {
+        border-color: var(--c-blue);
+        background: var(--c-blue-light);
+    }
+    .rb-slot-select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 0.5px solid var(--c-separator);
+        border-radius: var(--r-xs);
+        font-size: 13px;
+        background: var(--c-surface);
+        color: var(--t-primary);
+        margin-top: 5px;
+    }
+    .rb-bill-list {
+        max-height: 180px;
+        overflow-y: auto;
+        border: 0.5px solid var(--c-separator);
+        border-radius: var(--r-sm);
+        background: var(--c-surface);
+        padding: 8px;
+        font-size: 12px;
+        display: none;
+    }
+    .rb-bill-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 8px;
+        border-bottom: 0.5px solid var(--c-separator2);
+        align-items: center;
+    }
+    .rb-bill-item:last-child {
+        border-bottom: none;
+    }
+    .rb-bound-tag {
+        margin-top: 6px;
+        font-size: 11px;
+        background: var(--c-blue-light);
+        color: var(--c-blue);
+        padding: 3px 8px;
+        border-radius: var(--r-xs);
+        display: inline-block;
+        font-weight: 700;
+        border: 0.5px solid var(--c-blue-mid);
     }
 
-    /* Scrollable Stage Tab styling */
+    /* Scrollable Stage Tab styling (deprecated/hidden for sidebar, kept for JS compatibility) */
     .scroll-tabs {
-        display: flex;
-        overflow-x: auto;
-        gap: 6px;
-        padding: 8px 12px;
-        background: #f8fafc;
-        border-bottom: 1px solid var(--mac-border);
-        flex-shrink: 0;
-        scrollbar-width: none; /* Firefox */
+        display: none !important;
     }
-    .scroll-tabs::-webkit-scrollbar {
-        display: none; /* Safari and Chrome */
-    }
-    .scroll-tab-btn {
-        flex: 0 0 auto;
-        padding: 6px 12px;
-        border: 1px solid #cbd5e1;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 700;
-        background: #fff;
-        color: #64748b;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        outline: none;
-    }
-    .scroll-tab-btn:hover {
-        background: #f1f5f9;
-        color: #1e293b;
-    }
-    .scroll-tab-btn.active {
-        background: #3f51b5;
-        color: #fff;
-        border-color: #3f51b5;
-        box-shadow: 0 2px 4px rgba(63, 81, 181, 0.2);
-    }
+    
     .global-filter-btn {
         padding: 6px 14px;
-        background: #f8fafc;
-        border: 1px solid #cbd5e1;
-        border-radius: 20px;
-        color: #475569;
-        font-size: 12px;
+        background: var(--c-surface2);
+        border: 0.5px solid var(--c-separator);
+        border-radius: var(--r-pill);
+        color: var(--t-secondary);
+        font-size: 12.5px;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all var(--dur-fast);
         white-space: nowrap;
     }
     .global-filter-btn:hover {
-        background: #f1f5f9;
-        color: #0f172a;
-        border-color: #94a3b8;
+        background: var(--c-fill);
+        color: var(--t-primary);
     }
     .global-filter-btn.active {
-        background: #3f51b5;
-        color: #fff;
-        border-color: #3f51b5;
-        box-shadow: 0 2px 4px rgba(63, 81, 181, 0.2);
+        background: var(--c-blue-light);
+        color: var(--c-blue);
+        border-color: var(--c-blue-mid);
+        box-shadow: var(--shadow-xs);
     }
-    @media (prefers-color-scheme: dark) {
-        .global-status-filter-bar { background: #1a1a2e !important; border-color: #3f3f46 !important; }
-        .global-filter-btn { background: #1e1e2d; color: #94a3b8; border-color: #3f3f46; }
-        .global-filter-btn:hover { background: #2d2d3d; color: #f1f5f9; }
-        .global-filter-btn.active { background: #3f51b5; color: #fff; border-color: #3f51b5; }
+
+    /* Premium Workflow Sidebar Styling */
+    .workflow-sidebar {
+        width: 280px;
+        background: var(--c-surface);
+        border-right: 0.5px solid var(--c-separator);
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        padding: 20px 12px;
+        flex-shrink: 0;
+    }
+    
+    .workflow-sidebar-steps {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .workflow-sidebar-steps::before {
+        content: '';
+        position: absolute;
+        left: 27px; /* Align with center of 26px step-dot */
+        top: 24px;
+        bottom: 24px;
+        width: 1.5px;
+        background: var(--c-separator);
+        z-index: 0;
+    }
+    .sidebar-step-item {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 10px 14px;
+        border-radius: var(--r-md);
+        cursor: pointer;
+        user-select: none;
+        transition: background var(--dur-fast), transform var(--dur-fast);
+        border: 0.5px solid transparent;
+        background: transparent;
+    }
+    .sidebar-step-item:hover {
+        background: var(--c-fill);
+    }
+    .sidebar-step-item.active {
+        background: var(--c-blue-light);
+        border-color: var(--c-blue-mid);
+    }
+    .sidebar-step-item.locked {
+        opacity: 0.45;
+    }
+    
+    .step-dot {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        flex-shrink: 0;
+        background: var(--c-surface);
+        color: var(--t-secondary);
+        transition: background var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast);
+        border: 1px solid var(--c-separator);
+        z-index: 2;
+    }
+    .sidebar-step-item.active .step-dot {
+        background: var(--c-blue);
+        color: #fff;
+        border-color: var(--c-blue);
+        box-shadow: 0 0 0 3.5px rgba(0, 122, 255, 0.15);
+    }
+    .sidebar-step-item.completed .step-dot {
+        background: var(--c-green-light);
+        color: var(--c-green);
+        border-color: var(--c-green);
+    }
+    .sidebar-step-item.locked .step-dot {
+        background: var(--c-fill);
+        color: var(--t-tertiary);
+        border-color: transparent;
+    }
+
+    .step-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1;
+        min-width: 0;
+    }
+    .step-title {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: var(--t-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .sidebar-step-item.active .step-title {
+        color: var(--c-blue);
+        font-weight: 700;
+    }
+    .sidebar-step-item.completed .step-title {
+        color: var(--t-primary);
+    }
+    .step-desc {
+        font-size: 11px;
+        color: var(--t-label);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .sidebar-step-item.active .step-desc {
+        color: rgba(0, 122, 255, 0.85);
     }
 
     /* Modern Dashboard Navigation flow toggles */
@@ -240,28 +667,29 @@
     .global-filter-scroll::-webkit-scrollbar {
         display: none; /* Safari and Chrome */
     }
+    
     .app-workspace:not(.workspace-active) .route-item {
-        background: #fff !important;
-        border: 1px solid var(--mac-border) !important;
-        border-radius: 8px !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+        background: var(--c-surface) !important;
+        border: 0.5px solid var(--c-separator) !important;
+        border-radius: var(--r-md) !important;
+        box-shadow: var(--shadow-sm) !important;
         display: flex !important;
         flex-direction: column !important;
-        transition: all 0.2s ease-in-out !important;
+        transition: all var(--dur-fast) var(--ease-ios) !important;
         padding: 18px !important;
         margin: 0 !important;
     }
     .app-workspace:not(.workspace-active) .route-item:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
-        border-color: #3f51b5 !important;
-        background: #fff !important;
+        box-shadow: var(--shadow-md) !important;
+        border-color: var(--c-blue) !important;
+        background: var(--c-surface) !important;
     }
     .app-workspace:not(.workspace-active) .route-item.active {
-        background: #fff !important;
+        background: var(--c-surface) !important;
         color: inherit !important;
-        border-color: #3f51b5 !important;
-        box-shadow: 0 4px 12px rgba(63, 81, 181, 0.1) !important;
+        border-color: var(--c-blue) !important;
+        box-shadow: 0 0 0 1.5px var(--c-blue), var(--shadow-md) !important;
     }
     .app-workspace:not(.workspace-active) .pane-middle {
         display: none !important;
@@ -273,13 +701,89 @@
 
     @media (prefers-color-scheme: dark) {
         .app-workspace:not(.workspace-active) .route-item {
-            background: #1e1e2d !important;
-            border-color: #3f3f46 !important;
+            background: var(--c-surface) !important;
+            border-color: var(--c-separator) !important;
         }
         .app-workspace:not(.workspace-active) .route-item:hover {
-            background: #242436 !important;
+            background: var(--c-surface2) !important;
         }
     }
+
+    /* Premium Button Stylings inside Workspace */
+    .workspace-tab-panel button, 
+    .mid-header button, 
+    .header-actions button,
+    #boundRouteSummaryContainer button,
+    #completedArchiveBanner button {
+        padding: 8px 16px !important;
+        border-radius: var(--r-md) !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        border: 0.5px solid transparent !important;
+        cursor: pointer !important;
+        transition: transform var(--dur-fast) var(--ease-spring), filter var(--dur-fast), background var(--dur-fast) !important;
+        box-shadow: var(--shadow-xs) !important;
+    }
+    
+    .workspace-tab-panel button:active, 
+    .mid-header button:active, 
+    .header-actions button:active,
+    #boundRouteSummaryContainer button:active,
+    #completedArchiveBanner button:active {
+        transform: scale(0.97) !important;
+    }
+    
+    /* Auto-assign theme colors based on original background colors */
+    button[style*="#2e7d32"], button[style*="background:#2e7d32"], button[style*="background: #2e7d32"] {
+        background: var(--c-green) !important;
+        color: #fff !important;
+    }
+    button[style*="#3f51b5"], button[style*="background:#3f51b5"], button[style*="background: #3f51b5"],
+    button[style*="#0066cc"], button[style*="background:#0066cc"], button[style*="background: #0066cc"] {
+        background: var(--c-blue) !important;
+        color: #fff !important;
+    }
+    button[style*="#ef4444"], button[style*="background:#ef4444"], button[style*="background: #ef4444"],
+    button[style*="#c62828"], button[style*="background:#c62828"], button[style*="background: #c62828"] {
+        background: var(--c-red) !important;
+        color: #fff !important;
+    }
+    button[style*="#e2e8f0"], button[style*="background:#e2e8f0"], button[style*="background: #e2e8f0"] {
+        background: var(--c-surface) !important;
+        color: var(--t-primary) !important;
+        border-color: var(--c-separator) !important;
+    }
+    button[style*="#e2e8f0"]:hover, button[style*="background:#e2e8f0"]:hover, button[style*="background: #e2e8f0"]:hover {
+        background: var(--c-surface2) !important;
+    }
+
+    /* Input elements style inside workspace tabs */
+    .workspace-tab-panel input, 
+    .workspace-tab-panel select, 
+    .workspace-tab-panel textarea {
+        padding: 8px 12px;
+        border: 0.5px solid var(--c-separator);
+        border-radius: var(--r-xs);
+        font-size: 13.5px;
+        background: var(--c-surface);
+        color: var(--t-primary);
+        outline: none;
+        transition: border-color var(--dur-fast);
+    }
+    .workspace-tab-panel input:focus, 
+    .workspace-tab-panel select:focus, 
+    .workspace-tab-panel textarea:focus {
+        border-color: var(--c-blue);
+    }
+
+    /* Header styling customization */
+    .header-actions h2 i {
+        color: var(--c-blue) !important;
+    }
+</style>
 </style>
 
 <?php if (isset($_SESSION['flash_success'])): ?>
@@ -505,20 +1009,93 @@
             <button class="scroll-tab-btn" onclick="switchRouteTab(10, this)"><i class="ph ph-briefcase"></i> 10. Accounting</button>
         </div>
 
-        <!-- Content Area -->
-        <div style="flex:1; overflow-y:auto; position:relative; background:#fff;" id="workspaceBody">
-            <div class="empty-state" id="midEmptyState">
-                <span><i class="ph ph-map-pin"></i></span>
-                Please select a route from the left to view details.
+        <!-- Workspace Layout Container (Sidebar + Content Body) -->
+        <div id="workspaceLayoutWrapper" style="display: none; flex: 1; flex-direction: row; min-height: 0; width: 100%;">
+            <!-- Left Side: Workflow Sidebar -->
+            <div class="workflow-sidebar" id="workflowSidebar">
+                <div class="workflow-sidebar-steps">
+                    <div class="sidebar-step-item active" id="sb-step-1" onclick="switchRouteTab(1)">
+                        <div class="step-dot">1</div>
+                        <div class="step-info">
+                            <span class="step-title">Route Details</span>
+                            <span class="step-desc">Representative & Odo</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-step-item" id="sb-step-2" onclick="switchRouteTab(2)">
+                        <div class="step-dot">2</div>
+                        <div class="step-info">
+                            <span class="step-title">Credit Collections</span>
+                            <span class="step-desc">Audit credit payments</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-step-item" id="sb-step-3" onclick="switchRouteTab(3)">
+                        <div class="step-dot">3</div>
+                        <div class="step-info">
+                            <span class="step-title">Bill Adjustments</span>
+                            <span class="step-desc">Attach/detach SOs</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-step-item" id="sb-step-4" onclick="switchRouteTab(4)">
+                        <div class="step-dot">4</div>
+                        <div class="step-info">
+                            <span class="step-title">Loading Checklist</span>
+                            <span class="step-desc">Verify loaded stock</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-step-item" id="sb-step-5" onclick="switchRouteTab(5)">
+                        <div class="step-dot">5</div>
+                        <div class="step-info">
+                            <span class="step-title">Variance Audit</span>
+                            <span class="step-desc">Confirm product variances</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-step-item" id="sb-step-6" onclick="switchRouteTab(6)">
+                        <div class="step-dot">6</div>
+                        <div class="step-info">
+                            <span class="step-title">Delivery Arrange</span>
+                            <span class="step-desc">Assign driver & vehicle</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-step-item" id="sb-step-7" onclick="switchRouteTab(7)">
+                        <div class="step-dot">7</div>
+                        <div class="step-info">
+                            <span class="step-title">Delivery Execution</span>
+                            <span class="step-desc">Track live status</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-step-item" id="sb-step-8" onclick="switchRouteTab(8)">
+                        <div class="step-dot">8</div>
+                        <div class="step-info">
+                            <span class="step-title">Reconciliation</span>
+                            <span class="step-desc">Discrepancies & cash</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-step-item" id="sb-step-9" onclick="switchRouteTab(9)">
+                        <div class="step-dot">9</div>
+                        <div class="step-info">
+                            <span class="step-title">Return Stock</span>
+                            <span class="step-desc">Verify returned items</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-step-item" id="sb-step-10" onclick="switchRouteTab(10)">
+                        <div class="step-dot">10</div>
+                        <div class="step-info">
+                            <span class="step-title">Accounting</span>
+                            <span class="step-desc">Double-entry GL posting</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Loading Indicator -->
-            <div id="midLoader" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; font-weight:bold; color:var(--primary);">
-                Loading Workspace Information... <i class="ph-bold ph-spinner ph-spin"></i>
-            </div>
+            <!-- Right Side: Content Area (previously #workspaceBody) -->
+            <div style="flex:1; overflow-y:auto; position:relative; background:var(--c-bg);" id="workspaceBody">
+                <!-- Loading Indicator -->
+                <div id="midLoader" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; font-weight:bold; color:var(--c-blue); z-index: 10;">
+                    Loading Workspace Information... <i class="fa-solid fa-spinner fa-spin"></i>
+                </div>
 
-            <!-- Dynamic Stage Containers -->
-            <div id="stageContentWrapper" style="display:none; padding:20px 25px;">
+                <!-- Dynamic Stage Containers -->
+                <div id="stageContentWrapper" style="display:none; padding: 24px;">
                 
                 <!-- Bound Route Summary Card -->
                 <div id="boundRouteSummaryContainer" style="display:none; background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:15px; margin-bottom:20px; color:#0369a1; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
@@ -970,9 +1547,16 @@
                     <div id="completedVariancesTab" style="display:none;"></div>
                 </div>
 
-            </div>
+                </div> <!-- closes #stageContentWrapper -->
+            </div> <!-- closes #workspaceBody -->
+        </div> <!-- closes #workspaceLayoutWrapper -->
+
+        <!-- Empty State (when no route selected) -->
+        <div class="empty-state" id="midEmptyState" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--t-tertiary);">
+            <span style="font-size: 50px; margin-bottom: 15px; opacity: 0.5;"><i class="ph ph-map-pin"></i></span>
+            Please select a route from the left to view details.
         </div>
-    </div>
+    </div> <!-- closes .pane-middle -->
 
     <!-- Right Pane: Invoice Slide-Out Viewer -->
     <div class="pane-right-slider" id="invoiceSlider">
@@ -1441,28 +2025,82 @@
         loadVarianceAdjustmentStage(currentRouteId);
     }
 
-    function updateWizardProgress(status) {
-        const wizard = document.getElementById('workflowWizard');
-        if (!wizard) return;
-        wizard.style.display = 'flex';
-        const steps = ['Active', 'PendingGL', 'Adjustments', 'Loading', 'VarianceAdjustment', 'Finalizing'];
-        
-        let statusIndex = steps.indexOf(status.replace(' ', ''));
-        if (status === 'Completed' || status === 'Finalized') {
-            statusIndex = 99; // All completed
-        }
+    function updateSidebarProgress() {
+        const steps = [
+            { id: 1, name: 'Route Details', statusKey: 'Active' },
+            { id: 2, name: 'Credit Collections', statusKey: 'Pending GL' },
+            { id: 3, name: 'Bill Adjustments', statusKey: 'Adjustments' },
+            { id: 4, name: 'Loading', statusKey: 'Loading' },
+            { id: 5, name: 'Variance Audit', statusKey: 'Variance Adjustment' },
+            { id: 6, name: 'Delivery Arrange', statusKey: 'Finalizing' },
+            { id: 7, name: 'Delivery Execution', statusKey: 'Finalizing' },
+            { id: 8, name: 'Reconciliation', statusKey: 'Finalizing' },
+            { id: 9, name: 'Return Stock', statusKey: 'Finalizing' },
+            { id: 10, name: 'Accounting', statusKey: 'Finalizing' }
+        ];
 
-        steps.forEach((step, idx) => {
-            const el = document.getElementById('wstep-' + step);
-            if (el) {
-                el.classList.remove('active', 'completed');
-                if (idx === statusIndex) {
-                    el.classList.add('active');
-                } else if (idx < statusIndex) {
-                    el.classList.add('completed');
+        const statusSequence = ['Active', 'Pending GL', 'Adjustments', 'Loading', 'Variance Adjustment', 'Finalizing', 'Completed', 'Finalized'];
+        const currentRouteStatusIndex = statusSequence.indexOf(currentRouteStatus);
+
+        steps.forEach(step => {
+            const el = document.getElementById('sb-step-' + step.id);
+            if (!el) return;
+
+            // Remove all states
+            el.classList.remove('active', 'completed', 'pending', 'locked');
+            
+            // Step dot element
+            const dot = el.querySelector('.step-dot');
+            dot.innerHTML = step.id; // Default back to step number
+
+            // Determine active tab
+            if (step.id === currentTabIndex) {
+                el.classList.add('active');
+            }
+
+            let stepRequiredStatusIndex = statusSequence.indexOf(step.statusKey);
+            let isStepCompleted = false;
+
+            // Mark as completed if the route's current status is past the step's required status
+            if (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized') {
+                isStepCompleted = true;
+            } else if (currentRouteStatusIndex > stepRequiredStatusIndex) {
+                isStepCompleted = true;
+            } else if (currentRouteStatus === 'Finalizing') {
+                // Inside Finalizing, sub-stages can have completion heuristics:
+                const d = document.getElementById('route_data_' + currentRouteId);
+                const delId = d ? d.getAttribute('data-delivery-id') : null;
+                const delStatus = d ? d.getAttribute('data-delivery-status') : null;
+
+                if (step.id === 6 && delId && delId !== '0' && delId !== '') {
+                    isStepCompleted = true; // Arranged is completed if delivery ID exists
+                } else if (step.id === 7 && delStatus === 'Completed') {
+                    isStepCompleted = true; // Delivery is completed if delivery status is completed
+                } else if (step.id === 8) {
+                    // Check if reconciliation draft was saved
+                    const cashVal = parseFloat(document.getElementById('reconActualCash')?.value || 0);
+                    if (cashVal > 0) isStepCompleted = true;
+                } else if (step.id === 9) {
+                    // Check if stock verified checkbox is checked
+                    if (document.getElementById('settleVerifyStock')?.checked) {
+                        isStepCompleted = true;
+                    }
                 }
             }
+
+            if (isStepCompleted) {
+                el.classList.add('completed');
+                dot.innerHTML = '<i class="fa-solid fa-check"></i>';
+            } else if (stepRequiredStatusIndex > currentRouteStatusIndex) {
+                el.classList.add('locked');
+            } else {
+                el.classList.add('pending');
+            }
         });
+    }
+
+    function updateWizardProgress(status) {
+        updateSidebarProgress();
     }
 
     function loadRouteDetails(routeId, el) {
@@ -1526,6 +2164,7 @@
 
         document.getElementById('midHeader').style.visibility = 'visible';
         document.getElementById('midEmptyState').style.display = 'none';
+        document.getElementById('workspaceLayoutWrapper').style.display = 'flex';
         document.getElementById('btnViewMap').style.display = 'inline-flex';
 
         const btnUnbind = document.getElementById('btnUnbindRoute');
@@ -1585,6 +2224,7 @@
             activePanel.style.display = 'block';
         }
         
+        updateSidebarProgress();
         if (!currentRouteId) return;
         
         // Dynamically load tab data
