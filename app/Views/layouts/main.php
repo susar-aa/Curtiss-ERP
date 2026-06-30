@@ -1662,15 +1662,6 @@ if (!function_exists('hasPermission')) {
                                 </div>
                             </a>
                             <?php endif; ?>
-                            <?php if (hasPermission('user')): ?>
-                            <a href="<?= APP_URL ?>/user" class="mega-card">
-                                <div class="icon"><i class="ph ph-lock-key"></i></div>
-                                <div class="mega-card-text">
-                                    <div class="title">Users</div>
-                                    <div class="desc">Roles & access</div>
-                                </div>
-                            </a>
-                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="mega-menu-col">
