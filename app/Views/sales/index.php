@@ -1206,7 +1206,7 @@ if ($inv && isset($inv->id)) {
                             <input type="text" id="customerSearch" class="customer-search-input"
                                    placeholder="Search by name, route, phone, address..."
                                    autocomplete="off" required>
-                            <ul id="customerSearchResults" class="search-results" style="width:100%;"></ul>
+                            <ul id="customerSearchResults" class="search-results"></ul>
                             <textarea id="billToAddress" class="customer-address-area"
                                       readonly placeholder="Customer address will appear here..."></textarea>
                         </div>
