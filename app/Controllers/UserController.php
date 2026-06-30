@@ -232,6 +232,39 @@ class UserController extends Controller {
             if ($userObj) {
                 $isUser = true;
                 $employeeId = $userObj->employee_id;
+                
+                // If it is a System Account Only user (no linked employee record yet)
+                if (empty($employeeId)) {
+                    // Create the employee record first so we have an ID to link
+                    $db->query("INSERT INTO employees (first_name, last_name, email, phone, department, job_title, base_salary, hire_date, status) 
+                                VALUES (:fname, :lname, :email, :phone, :dept, :title, :salary, :hdate, :status)");
+                    
+                    $email = !empty($_POST['email']) ? trim($_POST['email']) : null;
+                    $phone = !empty($_POST['phone']) ? trim($_POST['phone']) : null;
+                    $dept = !empty($_POST['department']) ? trim($_POST['department']) : null;
+
+                    $db->bind(':fname', trim($_POST['first_name'] ?? ''));
+                    $db->bind(':lname', trim($_POST['last_name'] ?? ''));
+                    $db->bind(':email', $email);
+                    $db->bind(':phone', $phone);
+                    $db->bind(':dept', $dept);
+                    $db->bind(':title', trim($_POST['job_title'] ?? 'Office'));
+                    $db->bind(':salary', floatval($_POST['base_salary'] ?? 0));
+                    $db->bind(':hdate', $_POST['hire_date'] ?? date('Y-m-d'));
+                    $db->bind(':status', $_POST['status'] ?? 'Active');
+                    
+                    $db->execute();
+                    $employeeId = $db->lastInsertId();
+                    
+                    // Link user to this new employee
+                    $db->query("UPDATE users SET employee_id = :emp_id WHERE id = :user_id");
+                    $db->bind(':emp_id', $employeeId);
+                    $db->bind(':user_id', $id);
+                    $db->execute();
+                    
+                    // Update userObj with new employee_id for any subsequent logic
+                    $userObj->employee_id = $employeeId;
+                }
             } else {
                 $employeeId = intval($id);
             }
