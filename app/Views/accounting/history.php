@@ -209,25 +209,7 @@
 
 <div class="history-root">
 
-    <div class="ledger-header">
-        <a href="<?= APP_URL ?>/accounting/coa" class="sf-btn neutral">
-            <i class="fa-solid fa-arrow-left"></i> Back to Chart of Accounts
-        </a>
-    </div>
 
-    <!-- Account Selector -->
-    <div class="table-panel" style="padding: 16px 20px; border-left: 4px solid var(--c-blue);">
-        <div style="display:flex; flex-wrap:wrap; gap:15px; align-items:center; width: 100%;">
-            <label style="font-weight: 700; font-size: 12px; color: var(--t-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin:0; min-width:200px;">Select Active Account Ledger:</label>
-            <select onchange="window.location.href='<?= APP_URL ?>/accounting/history/' + this.value" class="sf-input" style="max-width: 400px; font-weight: 600; border-color: var(--c-blue);">
-                <?php foreach($data['all_accounts'] as $acc): ?>
-                    <option value="<?= $acc->id ?>" <?= $acc->id == $data['selected_id'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($acc->account_code) ?> - <?= htmlspecialchars($acc->account_name) ?> (<?= $acc->account_type ?>)
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-    </div>
 
     <?php if ($data['selected_account']): ?>
         <?php $acc = $data['selected_account']; ?>
