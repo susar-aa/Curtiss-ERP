@@ -2883,7 +2883,7 @@
                             <button class="dots-dropdown-item" onclick="event.stopPropagation(); printInvoice(${bill.id})">
                                 <i class="ph ph-printer"></i> Print
                             </button>
-                            <button class="dots-dropdown-item" onclick="event.stopPropagation(); viewCustomerProfile('${bill.customer_name.replace("'", "\\'")}')">
+                            <button class="dots-dropdown-item" data-customer="${bill.customer_name.replace(/"/g, '&quot;')}" onclick="event.stopPropagation(); viewCustomerProfile(this.getAttribute('data-customer'))">
                                 <i class="ph ph-user"></i> View Customer
                             </button>
                             <button class="dots-dropdown-item" onclick="event.stopPropagation(); downloadInvoicePdf(${bill.id})">
@@ -3199,53 +3199,9 @@
             if (variance === 0) {
                 allocatedSum = item.final_loaded_qty;
             } else {
-                item.                invoices.forEach(inv => {
-                    let dColor = '#d05d00';
-                    if (inv.delivery_status === 'Delivered') dColor = '#2e7d32';
-                    else if (inv.delivery_status === 'Cancelled') dColor = '#ef4444';
-                    else if (inv.delivery_status === 'Postponed') dColor = '#6b7280';
-
-                    let pColor = inv.status === 'Paid' ? '#2e7d32' : '#d05d00';
-                    
-                    let actionHtml = '';
-                    if (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized') {
-                        actionHtml = `<span style="color:#888; font-size:11px; font-weight:bold;">Closed</span>`;
-                    } else {
-                        actionHtml = `
-                            <button onclick="openServerDeliveryProcessModal(${inv.id}, ${inv.customer_id}, '${inv.invoice_number}', '${inv.customer_name.replace(/'/g, "\\'")}', ${inv.true_grand_total})" 
-                                    class="btn-premium primary" 
-                                    style="padding:4px 8px; font-size:11px; display:inline-flex; align-items:center; gap:4px; font-weight:bold; cursor:pointer;">
-                                ⚙️ Process Visit
-                            </button>
-                        `;
-                    }
-
-                    let statusSelectHtml = '';
-                    const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
-                    if (isReadOnly) {
-                        statusSelectHtml = `<span style="color:${dColor}; font-weight:bold;">${inv.delivery_status || 'Pending'}</span>`;
-                    } else {
-                        statusSelectHtml = `
-                            <select onchange="updateSingleInvoiceDeliveryStatus(${inv.id}, ${inv.customer_id}, this.value)" 
-                                    style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; font-weight: bold; color: ${dColor}; background: #fff; outline: none; cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow-xs);">
-                                <option value="Pending" ${inv.delivery_status === 'Pending' ? 'selected' : ''} style="color:#d05d00;">Pending</option>
-                                <option value="Delivered" ${inv.delivery_status === 'Delivered' ? 'selected' : ''} style="color:#2e7d32;">Delivered</option>
-                                <option value="Cancelled" ${inv.delivery_status === 'Cancelled' ? 'selected' : ''} style="color:#ef4444;">Cancelled</option>
-                                <option value="Postponed" ${inv.delivery_status === 'Postponed' ? 'selected' : ''} style="color:#6b7280;">Postponed</option>
-                            </select>
-                        `;
-                    }
-
-                    tbody.innerHTML += `
-                        <tr>
-                            <td><strong>${inv.customer_name}</strong></td>
-                            <td style="font-weight:bold; color:var(--primary);">${inv.invoice_number}</td>
-                            <td style="text-align:right; font-family:monospace; font-weight:bold;">Rs ${parseFloat(inv.true_grand_total).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-                            <td style="text-align:center;">${statusSelectHtml}</td>
-                            <td style="text-align:center; color:${pColor}; font-weight:bold;">${inv.status}</td>
-                            <td style="text-align:center;">${actionHtml}</td>
-                        </tr>
-                    `;
+                item.invoices.forEach(inv => {
+                    allocatedSum += inv.quantity;
+                });
             }
 
             const isItemBalanced = (item.invoices.length === 0 || Math.abs(allocatedSum - item.final_loaded_qty) < 0.01);
@@ -3749,7 +3705,11 @@
                 }
 
                 invoices.forEach(inv => {
-                    let dColor = inv.delivery_status === 'Delivered' ? '#2e7d32' : '#d05d00';
+                    let dColor = '#d05d00';
+                    if (inv.delivery_status === 'Delivered') dColor = '#2e7d32';
+                    else if (inv.delivery_status === 'Cancelled') dColor = '#ef4444';
+                    else if (inv.delivery_status === 'Postponed') dColor = '#6b7280';
+
                     let pColor = inv.status === 'Paid' ? '#2e7d32' : '#d05d00';
                     
                     let actionHtml = '';
@@ -3765,12 +3725,28 @@
                         `;
                     }
 
+                    let statusSelectHtml = '';
+                    const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+                    if (isReadOnly) {
+                        statusSelectHtml = `<span style="color:${dColor}; font-weight:bold;">${inv.delivery_status || 'Pending'}</span>`;
+                    } else {
+                        statusSelectHtml = `
+                            <select onchange="updateSingleInvoiceDeliveryStatus(${inv.id}, ${inv.customer_id}, this.value)" 
+                                    style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; font-weight: bold; color: ${dColor}; background: #fff; outline: none; cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow-xs);">
+                                <option value="Pending" ${inv.delivery_status === 'Pending' ? 'selected' : ''} style="color:#d05d00;">Pending</option>
+                                <option value="Delivered" ${inv.delivery_status === 'Delivered' ? 'selected' : ''} style="color:#2e7d32;">Delivered</option>
+                                <option value="Cancelled" ${inv.delivery_status === 'Cancelled' ? 'selected' : ''} style="color:#ef4444;">Cancelled</option>
+                                <option value="Postponed" ${inv.delivery_status === 'Postponed' ? 'selected' : ''} style="color:#6b7280;">Postponed</option>
+                            </select>
+                        `;
+                    }
+
                     tbody.innerHTML += `
                         <tr>
                             <td><strong>${inv.customer_name}</strong></td>
                             <td style="font-weight:bold; color:var(--primary);">${inv.invoice_number}</td>
                             <td style="text-align:right; font-family:monospace; font-weight:bold;">Rs ${parseFloat(inv.true_grand_total).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-                            <td style="text-align:center; color:${dColor}; font-weight:bold;">${inv.delivery_status || 'Pending'}</td>
+                            <td style="text-align:center;">${statusSelectHtml}</td>
                             <td style="text-align:center; color:${pColor}; font-weight:bold;">${inv.status}</td>
                             <td style="text-align:center;">${actionHtml}</td>
                         </tr>
