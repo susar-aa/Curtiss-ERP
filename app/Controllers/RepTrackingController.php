@@ -98,6 +98,86 @@ class RepTrackingController extends Controller {
         $this->view('layouts/main', $data);
     }
 
+    public function history() {
+        $vehicleModel = $this->model('Vehicle');
+        $employeeModel = $this->model('Employee');
+
+        $vehicles = $vehicleModel->getAllVehicles();
+        $allEmployees = $employeeModel->getAllEmployees();
+
+        $drivers = array_filter($allEmployees, function($emp) {
+            return strtolower($emp->job_title) === 'driver' && $emp->status === 'Active';
+        });
+
+        $db = new Database();
+        $db->query("SELECT id, username, email, employee_id FROM users WHERE LOWER(role) = 'driver' AND (status = 'Active' OR status IS NULL)");
+        $driverUsers = $db->resultSet() ?: [];
+
+        foreach ($driverUsers as $du) {
+            $alreadyExists = false;
+            foreach ($drivers as $d) {
+                if ((!empty($du->employee_id) && $d->id == $du->employee_id) || 
+                    (!empty($du->email) && strtolower($d->email) === strtolower($du->email))) {
+                    $alreadyExists = true;
+                    break;
+                }
+            }
+            if (!$alreadyExists) {
+                $virtualDriver = new stdClass();
+                $virtualDriver->id = null;
+                $virtualDriver->employee_id = $du->employee_id;
+                $virtualDriver->username = $du->username;
+                $parts = explode('.', str_replace('@', '.', $du->username));
+                $virtualDriver->first_name = ucfirst($parts[0]);
+                $virtualDriver->last_name = isset($parts[1]) ? ucfirst($parts[1]) : '';
+                $virtualDriver->email = $du->email;
+                $virtualDriver->job_title = 'Driver';
+                $virtualDriver->status = 'Active';
+                
+                $drivers[] = $virtualDriver;
+            }
+        }
+
+        $db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1600'");
+        $parent = $db->single();
+        $parentId = $parent ? $parent->id : 0;
+        
+        $db->query("SELECT * FROM chart_of_accounts WHERE parent_id = :pid ORDER BY account_code ASC");
+        $db->bind(':pid', $parentId);
+        $bankAccounts = $db->resultSet() ?: [];
+
+        $db->query("SELECT id, account_code, account_name FROM chart_of_accounts ORDER BY account_code ASC");
+        $allAccounts = $db->resultSet() ?: [];
+
+        // Fetch active reps (users with role = 'rep')
+        $db->query("SELECT u.id, u.username, e.first_name, e.last_name 
+                    FROM users u 
+                    LEFT JOIN employees e ON u.employee_id = e.id 
+                    WHERE u.role = 'rep' AND (u.status IS NULL OR u.status = 'Active') 
+                    ORDER BY e.first_name ASC, u.username ASC");
+        $repsList = $db->resultSet() ?: [];
+
+        // Fetch active MCA areas (territories)
+        $db->query("SELECT id, name FROM mca_areas WHERE status = 'active' OR status IS NULL ORDER BY name ASC");
+        $mcaAreas = $db->resultSet() ?: [];
+
+        $data = [
+            'title' => 'Route History',
+            'content_view' => 'rep-tracking/index',
+            'routes' => $this->getCompletedRoutes(),
+            'vehicles' => $vehicles,
+            'drivers' => $drivers,
+            'employees' => $allEmployees,
+            'bank_accounts' => $bankAccounts,
+            'all_accounts' => $allAccounts,
+            'reps' => $repsList,
+            'mca_areas' => $mcaAreas,
+            'is_history' => true
+        ];
+        
+        $this->view('layouts/main', $data);
+    }
+
     private function getUnifiedRoutes() {
         $db = new Database();
         $db->query("
@@ -118,10 +198,41 @@ class RepTrackingController extends Controller {
             LEFT JOIN route_bindings rb ON r.route_binding_id = rb.id
             LEFT JOIN deliveries d ON d.rep_route_id = r.id OR d.secondary_rep_route_id = r.id
             WHERE r.status != 'Bound' AND r.status != 'Bound Into Route'
+              AND r.status != 'Completed' AND r.status != 'Finalized'
             ORDER BY r.start_time DESC
         ");
         $rawRoutes = $db->resultSet() ?: [];
-        
+        return $this->processUnifiedRoutes($rawRoutes);
+    }
+
+    private function getCompletedRoutes() {
+        $db = new Database();
+        $db->query("
+            SELECT r.*, COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name,
+                (SELECT COUNT(*) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as bill_count,
+                (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) 
+                 FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales,
+                (SELECT COUNT(*) FROM pending_collections WHERE route_id = r.id AND status = 'Pending') as unfinalized_count,
+                (SELECT COUNT(DISTINCT customer_id) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as customer_count,
+                rb.name as binding_name,
+                d.id as delivery_id, d.vehicle_number, d.driver_name, d.partner_name, d.status as delivery_status,
+                (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id) as total_items,
+                (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_picked = 1) as picked_items,
+                (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_verified = 1) as verified_items
+            FROM rep_daily_routes r
+            LEFT JOIN users u ON r.user_id = u.id
+            LEFT JOIN employees e ON u.email = e.email
+            LEFT JOIN route_bindings rb ON r.route_binding_id = rb.id
+            LEFT JOIN deliveries d ON d.rep_route_id = r.id OR d.secondary_rep_route_id = r.id
+            WHERE r.status != 'Bound' AND r.status != 'Bound Into Route'
+              AND (r.status = 'Completed' OR r.status = 'Finalized')
+            ORDER BY r.start_time DESC
+        ");
+        $rawRoutes = $db->resultSet() ?: [];
+        return $this->processUnifiedRoutes($rawRoutes);
+    }
+
+    private function processUnifiedRoutes($rawRoutes) {
         $grouped = [];
         $unbound = [];
         

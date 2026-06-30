@@ -1,4 +1,4 @@
-
+<?php $isHistory = $data['is_history'] ?? false; ?>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -785,7 +785,56 @@
     .header-actions h2 i {
         color: var(--c-blue) !important;
     }
-</style>
+
+    /* ---- Command Bar (Dynamic Island style) ---- */
+    .cmd-bar {
+        position: fixed;
+        bottom: 28px; left: 50%;
+        transform: translateX(-50%);
+        background: rgba(28, 28, 30, 0.92);
+        backdrop-filter: saturate(180%) blur(28px);
+        -webkit-backdrop-filter: saturate(180%) blur(28px);
+        border: 0.5px solid rgba(255,255,255,0.12);
+        border-radius: var(--r-pill);
+        padding: 7px 10px;
+        display: flex; align-items: center; gap: 4px;
+        box-shadow: var(--shadow-xl), 0 0 0 0.5px rgba(0,0,0,0.3);
+        z-index: 1000;
+    }
+    .cmd-search {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        background: rgba(255,255,255,0.1);
+        border-radius: var(--r-pill);
+        padding: 8px 14px;
+        width: 196px;
+        transition: width var(--dur-slow) var(--ease-ios),
+                    background var(--dur-mid);
+    }
+    .cmd-search:focus-within {
+        width: 300px;
+        background: rgba(255,255,255,0.18);
+    }
+    .cmd-search i { color: rgba(255,255,255,0.55); font-size: 14px; flex-shrink: 0; }
+    .cmd-search input {
+        background: transparent; border: none; outline: none;
+        color: #fff; font-size: 14px; font-weight: 500;
+        font-family: var(--f-system); width: 100%;
+    }
+    .cmd-search input::placeholder { color: rgba(255,255,255,0.45); }
+    .cmd-divider { width: 0.5px; height: 22px; background: rgba(255,255,255,0.15); margin: 0 3px; }
+    .cmd-icon {
+        width: 38px; height: 38px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        color: rgba(255,255,255,0.8); font-size: 15px;
+        background: transparent; border: none; cursor: pointer; text-decoration: none;
+        transition: background var(--dur-fast);
+    }
+    .cmd-icon:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    body.workspace-showing .cmd-bar {
+        display: none !important;
+    }
 </style>
 
 <?php if (isset($_SESSION['flash_success'])): ?>
@@ -802,55 +851,79 @@
     <?php unset($_SESSION['flash_error']); ?>
 <?php endif; ?>
 
-<div class="header-actions" style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-    <div>
-        <h2 style="margin: 0; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-            <i class="ph-fill ph-map-trifold" style="color: #0066cc;"></i> Master Route Control Panel
-        </h2>
-        <p style="margin: 5px 0 0 0; color: #666; font-size: 13px;">Manage route status updates, arrange dispatches, verify picking, and settle General Ledger postings.</p>
-    </div>
-    <div style="display: flex; gap: 10px;">
-        <button onclick="openCreateRouteModal()" style="padding: 10px 18px; border: none; background: #2e7d32; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(46, 125, 50, 0.2); transition: all 0.2s ease;">
-            <i class="ph-bold ph-plus-circle"></i> Create Route Manually
-        </button>
-        <button id="btnOpenRouteBinding" onclick="openRouteBindingModal()" style="padding: 10px 18px; border: none; background: #3f51b5; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(63, 81, 181, 0.2); transition: all 0.2s ease;">
-            <i class="ph-bold ph-link"></i> Route Binding Panel
-        </button>
-    </div>
+<div class="header-actions" style="margin-bottom: 15px; display: flex; justify-content: <?= $isHistory ? 'flex-start' : 'flex-end' ?>; align-items: center; flex-wrap: wrap; gap: 10px;">
+    <?php if ($isHistory): ?>
+        <div>
+            <a href="<?= APP_URL ?>/RepTracking/index" style="padding: 10px 18px; border: none; background: #64748b; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(100, 116, 139, 0.2); transition: all 0.2s ease; text-decoration: none;">
+                <i class="ph-bold ph-arrow-left"></i> Back to Control Panel
+            </a>
+        </div>
+    <?php else: ?>
+        <div style="display: flex; gap: 10px;">
+            <a href="<?= APP_URL ?>/RepTracking/history" style="padding: 10px 18px; border: none; background: #64748b; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(100, 116, 139, 0.2); transition: all 0.2s ease; text-decoration: none;">
+                <i class="ph-bold ph-clock-counter-clockwise"></i> Route History
+            </a>
+            <button onclick="openCreateRouteModal()" style="padding: 10px 18px; border: none; background: #2e7d32; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(46, 125, 50, 0.2); transition: all 0.2s ease;">
+                <i class="ph-bold ph-plus-circle"></i> Create Route Manually
+            </button>
+            <button id="btnOpenRouteBinding" onclick="openRouteBindingModal()" style="padding: 10px 18px; border: none; background: #3f51b5; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(63, 81, 181, 0.2); transition: all 0.2s ease;">
+                <i class="ph-bold ph-link"></i> Route Binding Panel
+            </button>
+        </div>
+    <?php endif; ?>
 </div>
 
-<!-- TOP GLOBAL STATUS FILTER BAR AND SEARCH -->
-<div class="global-status-filter-bar" style="display: flex; gap: 12px; background: #fff; border: 1px solid var(--mac-border); border-radius: 8px; padding: 12px 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); align-items: center; justify-content: space-between; flex-wrap: wrap;">
-    <div class="global-filter-scroll" style="display: flex; gap: 8px; align-items: center; overflow-x: auto; flex: 1; min-width: 300px;">
-        <span style="font-weight: bold; font-size: 11px; text-transform: uppercase; color: #64748b; margin-right: 10px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
-            <i class="ph-bold ph-funnel" style="color: #0066cc;"></i> Status Filter:
-        </span>
-        <button type="button" class="global-filter-btn active" onclick="filterLeftPane('all', this)">All</button>
-        <button type="button" class="global-filter-btn" onclick="filterLeftPane('active', this)" style="display: inline-flex; align-items: center; gap: 6px;">
-            <i class="ph-fill ph-circle" style="color: #22c55e; font-size: 10px;"></i> Active Rep Routes
-        </button>
-        <button type="button" class="global-filter-btn" onclick="filterLeftPane('pending_gl', this)" style="display: inline-flex; align-items: center; gap: 6px;">
-            <i class="ph-bold ph-coins" style="color: #eab308; font-size: 12px;"></i> Credit Collections
-        </button>
-        <button type="button" class="global-filter-btn" onclick="filterLeftPane('adjustments', this)" style="display: inline-flex; align-items: center; gap: 6px;">
-            <i class="ph-bold ph-gear" style="color: #64748b; font-size: 12px;"></i> Adjustments
-        </button>
-        <button type="button" class="global-filter-btn" onclick="filterLeftPane('loading', this)" style="display: inline-flex; align-items: center; gap: 6px;">
-            <i class="ph-bold ph-truck" style="color: #06b6d4; font-size: 12px;"></i> Loading
-        </button>
-        <button type="button" class="global-filter-btn" onclick="filterLeftPane('variance', this)" style="display: inline-flex; align-items: center; gap: 6px;">
-            <i class="ph-bold ph-scales" style="color: #ef4444; font-size: 12px;"></i> Variance Audit
-        </button>
-        <button type="button" class="global-filter-btn" onclick="filterLeftPane('finalizing', this)" style="display: inline-flex; align-items: center; gap: 6px;">
-            <i class="ph-bold ph-lock" style="color: #a855f7; font-size: 12px;"></i> Finalizing
-        </button>
-        <button type="button" class="global-filter-btn" onclick="filterLeftPane('completed', this)" style="display: inline-flex; align-items: center; gap: 6px;">
-            <i class="ph-bold ph-flag-checkered" style="color: #10b981; font-size: 12px;"></i> Completed
-        </button>
+<!-- TOP GLOBAL MULTI-FACETED FILTERS BAR -->
+<div class="global-status-filter-bar" style="display: flex; gap: 12px; background: var(--c-surface); border: 0.5px solid var(--c-separator); border-radius: var(--r-md); padding: 12px 20px; margin-bottom: 20px; box-shadow: var(--shadow-sm); align-items: center; justify-content: space-between; flex-wrap: wrap;">
+    <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; flex: 1;">
+        <!-- Rep-wise filter -->
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 10px; font-weight: 700; color: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em;">Representative</label>
+            <select id="filterRepSelect" onchange="searchRouteList()" style="padding: 6px 12px; border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); font-size: 13px; background: var(--c-surface2); color: var(--t-primary); min-width: 160px; outline: none;">
+                <option value="">All Representatives</option>
+                <?php foreach ($data['reps'] as $r): ?>
+                    <option value="<?= htmlspecialchars($r->first_name . ' ' . $r->last_name) ?>"><?= htmlspecialchars($r->first_name . ' ' . $r->last_name) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <!-- Route-wise filter -->
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 10px; font-weight: 700; color: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em;">Route</label>
+            <select id="filterRouteSelect" onchange="searchRouteList()" style="padding: 6px 12px; border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); font-size: 13px; background: var(--c-surface2); color: var(--t-primary); min-width: 160px; outline: none;">
+                <option value="">All Routes</option>
+                <?php 
+                $uniqueRouteNames = [];
+                foreach ($data['routes'] as $r) {
+                    if (!in_array($r->route_name, $uniqueRouteNames)) {
+                        $uniqueRouteNames[] = $r->route_name;
+                    }
+                }
+                sort($uniqueRouteNames);
+                foreach ($uniqueRouteNames as $name): ?>
+                    <option value="<?= htmlspecialchars($name) ?>"><?= htmlspecialchars($name) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <!-- Date-wise filter -->
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 10px; font-weight: 700; color: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em;">Date</label>
+            <input type="date" id="filterDateInput" onchange="searchRouteList()" style="padding: 5px 12px; border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); font-size: 13px; background: var(--c-surface2); color: var(--t-primary); min-width: 140px; outline: none;">
+        </div>
+        <!-- Territory-wise filter -->
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 10px; font-weight: 700; color: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em;">Territory</label>
+            <select id="filterTerritorySelect" onchange="searchRouteList()" style="padding: 6px 12px; border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); font-size: 13px; background: var(--c-surface2); color: var(--t-primary); min-width: 160px; outline: none;">
+                <option value="">All Territories</option>
+                <?php foreach ($data['mca_areas'] as $area): ?>
+                    <option value="<?= htmlspecialchars($area->name) ?>"><?= htmlspecialchars($area->name) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
     </div>
-    <div style="min-width: 320px; display: flex; align-items: center; position: relative;">
-        <i class="ph ph-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #888; font-size: 16px; z-index: 1;"></i>
-        <input type="text" id="routeListSearchInput" placeholder="Search routes by name, rep, or ID..." style="width: 100%; padding: 8px 12px 8px 32px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px;" oninput="searchRouteList()" />
+    <div style="display: flex; align-items: flex-end; align-self: flex-end;">
+        <button type="button" onclick="clearFilters()" style="padding: 7px 14px; border: 0.5px solid var(--c-separator); background: var(--c-surface2); color: var(--t-secondary); border-radius: var(--r-xs); font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all var(--dur-fast);" onmouseover="this.style.background='var(--c-fill)'; this.style.color='var(--t-primary)';" onmouseout="this.style.background='var(--c-surface2)'; this.style.color='var(--t-secondary)';">
+            <i class="ph ph-arrow-counter-clockwise"></i> Clear Filters
+        </button>
     </div>
 </div>
 
@@ -933,6 +1006,9 @@
                 <div id="route_data_<?= $route->id ?>" style="display:none;" 
                      data-rep="<?= htmlspecialchars($route->first_name . ' ' . $route->last_name) ?>"
                      data-rname="<?= htmlspecialchars($route->route_name) ?>"
+                     data-date="<?= date('Y-m-d', strtotime($route->start_time)) ?>"
+                     data-territory="<?= htmlspecialchars($route->route_name) ?>"
+                     data-constituent="<?= htmlspecialchars($route->constituent_routes_info ?? '') ?>"
                      data-start="<?= $route->start_meter ?>"
                      data-end="<?= $route->end_meter ?: 'Active' ?>"
                      data-sales="<?= number_format($route->total_sales, 2) ?>"
@@ -1793,6 +1869,18 @@
     </div>
 </div>
 
+<!-- FLOATING COMMAND BAR -->
+<div class="cmd-bar">
+    <div class="cmd-search" onclick="document.getElementById('floatingSearchInput').focus()">
+        <i class="ph ph-magnifying-glass"></i>
+        <input type="text" id="floatingSearchInput" oninput="searchRouteList()" placeholder="Search routes...">
+    </div>
+    <div class="cmd-divider"></div>
+    <button type="button" onclick="window.location.reload()" class="cmd-icon" title="Refresh page">
+        <i class="ph ph-arrows-clockwise"></i>
+    </button>
+</div>
+
 <script>
     const globalBankAccounts = <?php echo json_encode($data['bank_accounts'] ?? []); ?>;
     const globalAllAccounts = <?php echo json_encode($data['all_accounts'] ?? []); ?>;
@@ -1822,28 +1910,12 @@
     window.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
         const routeId = urlParams.get('route_id');
-        const filterType = urlParams.get('filter');
 
-        if (filterType) {
-            const filterBtns = document.querySelectorAll('.global-filter-btn');
-            let matchedBtn = null;
-            filterBtns.forEach(btn => {
-                const onclickAttr = btn.getAttribute('onclick') || '';
-                if (onclickAttr.includes(`'${filterType}'`)) {
-                    matchedBtn = btn;
-                }
-            });
-            filterLeftPane(filterType, matchedBtn || filterBtns[0]);
-        } else {
-            filterLeftPane('all', document.querySelector('.global-filter-btn'));
-        }
+        searchRouteList();
 
         if (routeId) {
             const routeEl = document.getElementById('route_' + routeId);
             if (routeEl) {
-                if (filterType === 'adjustments') {
-                    currentTabIndex = 3;
-                }
                 loadRouteDetails(routeId, routeEl);
                 routeEl.scrollIntoView({ block: 'nearest' });
             }
@@ -1851,49 +1923,66 @@
     });
 
     function filterLeftPane(type, btn) {
-        document.querySelectorAll('.global-filter-btn').forEach(b => {
-            b.classList.remove('active');
-        });
-        if (btn) btn.classList.add('active');
-        
-        searchRouteList();
+        // Backwards compatibility stub
     }
 
     function searchRouteList() {
-        const query = document.getElementById('routeListSearchInput').value.toLowerCase().trim();
-        const activeFilterBtn = document.querySelector('.global-filter-btn.active');
-        let filterType = 'all';
-        if (activeFilterBtn) {
-            const onclickAttr = activeFilterBtn.getAttribute('onclick') || '';
-            const match = onclickAttr.match(/'([^']+)'/);
-            if (match) filterType = match[1];
-        }
+        const query = document.getElementById('floatingSearchInput').value.toLowerCase().trim();
+        const selectedRep = document.getElementById('filterRepSelect').value.toLowerCase().trim();
+        const selectedRoute = document.getElementById('filterRouteSelect').value.toLowerCase().trim();
+        const selectedDate = document.getElementById('filterDateInput').value;
+        const selectedTerritory = document.getElementById('filterTerritorySelect').value.toLowerCase().trim();
 
         document.querySelectorAll('.route-item').forEach(item => {
-            const routeName = item.querySelector('.r-title').textContent.toLowerCase();
-            const repName = item.querySelector('.r-sub').textContent.toLowerCase();
-            const routeId = item.id.replace('route_', '').toLowerCase();
+            const routeId = item.id.replace('route_', '');
+            const dataEl = document.getElementById('route_data_' + routeId);
+            if (!dataEl) return;
+
+            const repName = dataEl.getAttribute('data-rep').toLowerCase();
+            const routeName = dataEl.getAttribute('data-rname').toLowerCase();
+            const routeDate = dataEl.getAttribute('data-date');
+            const routeTerritory = dataEl.getAttribute('data-territory').toLowerCase();
+            const constituent = dataEl.getAttribute('data-constituent').toLowerCase();
+            
             const routeNo = '#rt-' + routeId.padStart(5, '0');
-            
-            const matchesQuery = routeName.includes(query) || repName.includes(query) || routeId.includes(query) || routeNo.includes(query);
-            
-            const rType = item.getAttribute('data-route-type');
-            let matchesFilter = false;
-            
-            if (filterType === 'all') {
-                matchesFilter = true;
-            } else if (filterType === 'pending_loading') {
-                matchesFilter = (rType === 'pending_delivery' || rType === 'arrangement');
-            } else {
-                matchesFilter = (rType === filterType);
-            }
-            
-            if (matchesQuery && matchesFilter) {
+
+            // 1. Matches query (search bar)
+            const matchesQuery = !query || 
+                routeName.includes(query) || 
+                repName.includes(query) || 
+                routeId.includes(query) || 
+                routeNo.includes(query) ||
+                constituent.includes(query);
+
+            // 2. Matches Rep
+            const matchesRep = !selectedRep || repName === selectedRep;
+
+            // 3. Matches Route Name
+            const matchesRoute = !selectedRoute || routeName === selectedRoute;
+
+            // 4. Matches Date
+            const matchesDate = !selectedDate || routeDate === selectedDate;
+
+            // 5. Matches Territory
+            const matchesTerritory = !selectedTerritory || 
+                routeTerritory === selectedTerritory || 
+                constituent.includes(selectedTerritory);
+
+            if (matchesQuery && matchesRep && matchesRoute && matchesDate && matchesTerritory) {
                 item.style.display = 'block';
             } else {
                 item.style.display = 'none';
             }
         });
+    }
+
+    function clearFilters() {
+        document.getElementById('filterRepSelect').value = '';
+        document.getElementById('filterRouteSelect').value = '';
+        document.getElementById('filterDateInput').value = '';
+        document.getElementById('filterTerritorySelect').value = '';
+        document.getElementById('floatingSearchInput').value = '';
+        searchRouteList();
     }
 
     function openRouteSwitcherModal() {
