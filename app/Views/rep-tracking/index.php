@@ -73,7 +73,7 @@
     /* 3-Pane Layout System */
     .app-workspace {
         display: flex;
-        height: calc(100vh - 85px);
+        height: calc(100vh - 55px);
         background: var(--c-bg);
         border-radius: var(--r-xl);
         overflow: hidden;
@@ -161,11 +161,13 @@
         min-width: 0;
     }
     .mid-header {
-        padding: 20px 24px;
+        padding: 12px 20px;
         border-bottom: 0.5px solid var(--c-separator);
         background: var(--c-surface);
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
         gap: 16px;
     }
     
@@ -179,7 +181,7 @@
         border: 0.5px solid var(--c-separator);
     }
     .data-table th {
-        padding: 12px 16px;
+        padding: 8px 12px;
         font-size: 11px;
         font-weight: 700;
         letter-spacing: 0.06em;
@@ -191,7 +193,7 @@
         text-align: left;
     }
     .data-table td {
-        padding: 12px 16px;
+        padding: 8px 12px;
         font-size: 13.5px;
         color: var(--t-primary);
         border-bottom: 0.5px solid var(--c-separator2);
@@ -521,13 +523,13 @@
 
     /* Premium Workflow Sidebar Styling */
     .workflow-sidebar {
-        width: 280px;
+        width: 260px;
         background: var(--c-surface);
         border-right: 0.5px solid var(--c-separator);
         display: flex;
         flex-direction: column;
         overflow-y: auto;
-        padding: 20px 12px;
+        padding: 16px 8px;
         flex-shrink: 0;
     }
     
@@ -535,14 +537,14 @@
         position: relative;
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 4px;
     }
     .workflow-sidebar-steps::before {
         content: '';
         position: absolute;
-        left: 27px; /* Align with center of 26px step-dot */
-        top: 24px;
-        bottom: 24px;
+        left: 25px; /* Align with center of 26px step-dot */
+        top: 20px;
+        bottom: 20px;
         width: 1.5px;
         background: var(--c-separator);
         z-index: 0;
@@ -552,8 +554,8 @@
         z-index: 1;
         display: flex;
         align-items: center;
-        gap: 14px;
-        padding: 10px 14px;
+        gap: 12px;
+        padding: 8px 12px;
         border-radius: var(--r-md);
         cursor: pointer;
         user-select: none;
@@ -1094,7 +1096,7 @@
                 </div>
 
                 <!-- Dynamic Stage Containers -->
-                <div id="stageContentWrapper" style="display:none; padding: 24px;">
+                <div id="stageContentWrapper" style="display:none; padding: 16px 20px;">
                 
                 <!-- Bound Route Summary Card -->
                 <div id="boundRouteSummaryContainer" style="display:none; background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:15px; margin-bottom:20px; color:#0369a1; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
