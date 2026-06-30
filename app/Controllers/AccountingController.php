@@ -188,18 +188,32 @@ class AccountingController extends Controller {
             if (empty($lines)) { $data['error'] = 'You must enter at least one transaction line.'; } 
             elseif (round($totalDebit, 2) !== round($totalCredit, 2)) { $data['error'] = 'Accounting Error: Total Debits must equal Total Credits.'; } 
             else {
-                // Check if date falls in a locked/closed financial year
                 $db = new Database();
-                $db->query("SELECT COUNT(*) as cnt FROM financial_years WHERE end_date >= :entry_date");
-                $db->bind(':entry_date', $date);
-                $res = $db->single();
-                if ($res && $res->cnt > 0) {
-                    $data['error'] = 'Accounting Error: The period containing date ' . $date . ' is closed and locked.';
+                $isDuplicate = false;
+                if (!empty($reference)) {
+                    $db->query("SELECT COUNT(*) as cnt FROM journal_entries WHERE reference = :ref");
+                    $db->bind(':ref', $reference);
+                    $dupRes = $db->single();
+                    if ($dupRes && $dupRes->cnt > 0) {
+                        $isDuplicate = true;
+                    }
+                }
+
+                if ($isDuplicate) {
+                    $data['error'] = 'Accounting Error: Journal Entry Reference "' . htmlspecialchars($reference) . '" already exists.';
                 } else {
-                    if ($this->journalModel->postEntry($date, $reference, $description, $lines, $_SESSION['user_id'])) {
-                        $data['success'] = 'Journal Entry successfully posted.';
-                        $data['entries'] = $this->journalModel->getAllEntries();
-                    } else { $data['error'] = 'Database Error: Failed to post entry.'; }
+                    // Check if date falls in a locked/closed financial year
+                    $db->query("SELECT COUNT(*) as cnt FROM financial_years WHERE end_date >= :entry_date");
+                    $db->bind(':entry_date', $date);
+                    $res = $db->single();
+                    if ($res && $res->cnt > 0) {
+                        $data['error'] = 'Accounting Error: The period containing date ' . $date . ' is closed and locked.';
+                    } else {
+                        if ($this->journalModel->postEntry($date, $reference, $description, $lines, $_SESSION['user_id'])) {
+                            $data['success'] = 'Journal Entry successfully posted.';
+                            $data['entries'] = $this->journalModel->getAllEntries();
+                        } else { $data['error'] = 'Database Error: Failed to post entry.'; }
+                    }
                 }
             }
         }
@@ -210,6 +224,8 @@ class AccountingController extends Controller {
         if ($_SESSION['role'] !== 'Admin' && $_SESSION['role'] !== 'Accountant') {
             die("Access Denied: Only Administrators or Accountants can perform Year-End Closing.");
         }
+
+        $this->generateCsrfToken();
 
         $allAccounts = $this->coaModel->getAccounts();
         $equityAccounts = array_filter($allAccounts, function($a) { return $a->account_type == 'Equity'; });
@@ -223,15 +239,25 @@ class AccountingController extends Controller {
         ];
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'close_books') {
+            $this->validateCsrfOrDie();
+
             $endDate = $_POST['end_date'];
             $retainedEarningsId = $_POST['retained_earnings_id'];
+            $confirmPassword = $_POST['confirm_password'] ?? '';
 
-            $result = $this->journalModel->closeFinancialYear($endDate, $_SESSION['user_id'], $retainedEarningsId);
+            $userModel = $this->model('User');
+            $user = $userModel->login($_SESSION['username'], $confirmPassword);
 
-            if ($result === true) {
-                $data['success'] = "Financial Year closed successfully! Net Income transferred to Retained Earnings and past ledgers are now locked.";
+            if (!$user) {
+                $data['error'] = "Accounting Security Error: Invalid password confirmation. Year-End closing aborted.";
             } else {
-                $data['error'] = $result; 
+                $result = $this->journalModel->closeFinancialYear($endDate, $_SESSION['user_id'], $retainedEarningsId);
+
+                if ($result === true) {
+                    $data['success'] = "Financial Year closed successfully! Net Income transferred to Retained Earnings and past ledgers are now locked.";
+                } else {
+                    $data['error'] = $result; 
+                }
             }
         }
 

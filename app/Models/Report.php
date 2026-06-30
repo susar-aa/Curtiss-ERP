@@ -22,19 +22,72 @@ class Report {
         return [$start, $end];
     }
 
-    public function getTrialBalanceData() {
-        $this->db->query("SELECT * FROM chart_of_accounts WHERE balance != 0 ORDER BY account_code ASC");
-        return $this->db->resultSet();
+    public function getTrialBalanceData($endDate = null) {
+        if ($endDate) {
+            $this->db->query("SELECT c.id, c.account_code, c.account_name, c.account_type,
+                                     SUM(COALESCE(t.debit, 0)) as debit_sum,
+                                     SUM(COALESCE(t.credit, 0)) as credit_sum,
+                                     SUM(CASE WHEN c.account_type IN ('Asset', 'Expense') THEN (COALESCE(t.debit, 0) - COALESCE(t.credit, 0))
+                                              ELSE (COALESCE(t.credit, 0) - COALESCE(t.debit, 0)) END) as balance
+                              FROM chart_of_accounts c
+                              LEFT JOIN transactions t ON c.id = t.account_id
+                              LEFT JOIN journal_entries je ON t.journal_entry_id = je.id AND je.status = 'Posted' AND je.entry_date <= :end_date AND je.reference NOT LIKE 'YE-CLOSE-%'
+                              GROUP BY c.id, c.account_code, c.account_name, c.account_type
+                              HAVING balance != 0
+                              ORDER BY c.account_code ASC");
+            $this->db->bind(':end_date', $endDate);
+            return $this->db->resultSet();
+        } else {
+            $this->db->query("SELECT * FROM chart_of_accounts WHERE balance != 0 ORDER BY account_code ASC");
+            return $this->db->resultSet();
+        }
     }
 
-    public function getAccountsByTypes($types) {
+    public function getAccountsByTypes($types, $endDate = null, $startDate = null) {
         $placeholders = str_repeat('?,', count($types) - 1) . '?';
-        $sql = "SELECT * FROM chart_of_accounts 
-                WHERE account_type IN ($placeholders) AND balance != 0 
-                ORDER BY FIELD(account_type, 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense'), account_code ASC";
-        $this->db->query($sql);
-        $this->db->stmt->execute($types);
-        return $this->db->stmt->fetchAll(PDO::FETCH_OBJ);
+        if ($endDate) {
+            $hasStart = ($startDate && (in_array('Revenue', $types) || in_array('Expense', $types)));
+            if ($hasStart) {
+                $sql = "SELECT c.id, c.account_code, c.account_name, c.account_type, c.parent_id,
+                               SUM(CASE WHEN c.account_type IN ('Asset', 'Expense') THEN (COALESCE(t.debit, 0) - COALESCE(t.credit, 0))
+                                        ELSE (COALESCE(t.credit, 0) - COALESCE(t.debit, 0)) END) as balance
+                        FROM chart_of_accounts c
+                        LEFT JOIN transactions t ON c.id = t.account_id
+                        LEFT JOIN journal_entries je ON t.journal_entry_id = je.id AND je.status = 'Posted' 
+                            AND je.entry_date BETWEEN ? AND ? AND je.reference NOT LIKE 'YE-CLOSE-%'
+                        WHERE c.account_type IN ($placeholders)
+                        GROUP BY c.id, c.account_code, c.account_name, c.account_type, c.parent_id
+                        HAVING balance != 0
+                        ORDER BY FIELD(c.account_type, 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense'), c.account_code ASC";
+                
+                $params = array_merge([$startDate, $endDate], $types);
+            } else {
+                $sql = "SELECT c.id, c.account_code, c.account_name, c.account_type, c.parent_id,
+                               SUM(CASE WHEN c.account_type IN ('Asset', 'Expense') THEN (COALESCE(t.debit, 0) - COALESCE(t.credit, 0))
+                                        ELSE (COALESCE(t.credit, 0) - COALESCE(t.debit, 0)) END) as balance
+                        FROM chart_of_accounts c
+                        LEFT JOIN transactions t ON c.id = t.account_id
+                        LEFT JOIN journal_entries je ON t.journal_entry_id = je.id AND je.status = 'Posted' 
+                            AND je.entry_date <= ? AND je.reference NOT LIKE 'YE-CLOSE-%'
+                        WHERE c.account_type IN ($placeholders)
+                        GROUP BY c.id, c.account_code, c.account_name, c.account_type, c.parent_id
+                        HAVING balance != 0
+                        ORDER BY FIELD(c.account_type, 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense'), c.account_code ASC";
+                
+                $params = array_merge([$endDate], $types);
+            }
+            
+            $this->db->query($sql);
+            $this->db->stmt->execute($params);
+            return $this->db->stmt->fetchAll(PDO::FETCH_OBJ);
+        } else {
+            $sql = "SELECT * FROM chart_of_accounts 
+                    WHERE account_type IN ($placeholders) AND balance != 0 
+                    ORDER BY FIELD(account_type, 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense'), account_code ASC";
+            $this->db->query($sql);
+            $this->db->stmt->execute($types);
+            return $this->db->stmt->fetchAll(PDO::FETCH_OBJ);
+        }
     }
 
     public function getARAging() {
@@ -323,6 +376,8 @@ class Report {
             JOIN journal_entries je ON t.journal_entry_id = je.id
             JOIN chart_of_accounts c ON t.account_id = c.id
             WHERE je.entry_date BETWEEN :start AND :end
+              AND je.status = 'Posted'
+              AND je.reference NOT LIKE 'YE-CLOSE-%'
               AND c.account_type IN ('Revenue', 'Expense')
             GROUP BY c.id, c.account_code, c.account_name, c.account_type
             ORDER BY FIELD(c.account_type, 'Revenue', 'Expense'), c.account_code ASC

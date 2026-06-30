@@ -101,6 +101,11 @@
 <div class="report-container">
     <div class="actions-bar">
         <a href="<?= APP_URL ?>/report" class="btn" style="background:#64748b;">&larr; Back to Hub</a>
+        <form method="GET" action="" style="display: inline-flex; align-items: center; gap: 10px; margin: 0;">
+            <label style="font-weight: 600; font-size: 14px;">As of Date:</label>
+            <input type="date" name="end_date" value="<?= htmlspecialchars($data['end_date'] ?? date('Y-m-d')) ?>" style="padding: 6px 12px; border: 1px solid var(--mac-border, #e2e8f0); border-radius: 6px; background: transparent; color: inherit; font-size: 14px;">
+            <button type="submit" class="btn" style="padding: 6px 15px; font-size: 14px;">Update</button>
+        </form>
         <button onclick="window.print()" class="btn">🖨️ Print Statement</button>
     </div>
 
@@ -108,7 +113,7 @@
         <div class="report-header">
             <div class="company-name"><?= htmlspecialchars($data['company']->company_name) ?></div>
             <h2 class="report-title">Balance Sheet</h2>
-            <p class="report-date">As of <?= date('F j, Y') ?></p>
+            <p class="report-date">As of <?= date('F j, Y', strtotime($data['end_date'] ?? date('Y-m-d'))) ?></p>
         </div>
 
         <table class="report-table">

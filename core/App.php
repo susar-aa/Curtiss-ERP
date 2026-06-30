@@ -108,6 +108,9 @@ class App {
 
             if (isset($url[0])) {
                 $cleanControllerName = str_replace('-', '', ucwords($url[0], '-'));
+                if (strtolower($cleanControllerName) === 'reports') {
+                    $cleanControllerName = 'Report';
+                }
                 
                 // Case-insensitive controller file matching for cross-platform compatibility (Linux / Plesk)
                 $matchedController = null;

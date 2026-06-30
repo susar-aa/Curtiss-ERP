@@ -39,6 +39,17 @@
     <?php endif; ?>
 
     <form action="<?= APP_URL ?>/accounting/journal" method="POST" id="journalForm" style="background: rgba(0,0,0,0.02); padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid var(--mac-border);">
+        <div class="form-group" style="margin-bottom: 20px; max-width: 400px;">
+            <label style="font-weight: 600; font-size: 13px;">Load Journal Template</label>
+            <select id="templateSelector" class="form-control" onchange="loadTemplate(this.value)">
+                <option value="">-- Select Template --</option>
+                <option value="rent">Record Rent Expense (Debit Rent Expense, Credit Cash/Bank)</option>
+                <option value="utility">Record Utility Bill (Debit Utilities Expense, Credit Cash/Bank)</option>
+                <option value="revenue">Record Customer Payment (Debit Cash/Bank, Credit Account Receivable)</option>
+                <option value="payroll">Record Payroll (Debit Salaries Expense, Credit Cash/Bank)</option>
+            </select>
+        </div>
+        
         <div style="display: flex; gap: 20px;">
             <div class="form-group" style="flex: 1;">
                 <label>Date</label>
@@ -192,6 +203,60 @@
             btnSubmit.style.opacity = '0.5';
             warning.style.display = 'inline-block';
         }
+    }
+    
+    function loadTemplate(type) {
+        if (!type) return;
+
+        // Clear existing lines to start fresh
+        const tbody = document.getElementById('journalBody');
+        tbody.innerHTML = '';
+
+        // Add 2 lines
+        addRow();
+        addRow();
+
+        const selects = tbody.querySelectorAll('select');
+        const debits = tbody.querySelectorAll('.debit-input');
+
+        const options1 = Array.from(selects[0].options);
+        const options2 = Array.from(selects[1].options);
+
+        let memo = "";
+        let match1 = null;
+        let match2 = null;
+
+        if (type === 'rent') {
+            memo = "Rent Expense for current month";
+            match1 = options1.find(opt => opt.text.toLowerCase().includes('rent'));
+            match2 = options2.find(opt => opt.text.toLowerCase().includes('cash') || opt.text.toLowerCase().includes('bank'));
+        } else if (type === 'utility') {
+            memo = "Utility Bill payment";
+            match1 = options1.find(opt => opt.text.toLowerCase().includes('utilit') || opt.text.toLowerCase().includes('electricity') || opt.text.toLowerCase().includes('water'));
+            match2 = options2.find(opt => opt.text.toLowerCase().includes('cash') || opt.text.toLowerCase().includes('bank'));
+        } else if (type === 'revenue') {
+            memo = "Record customer payment receipt";
+            match1 = options1.find(opt => opt.text.toLowerCase().includes('cash') || opt.text.toLowerCase().includes('bank'));
+            match2 = options2.find(opt => opt.text.toLowerCase().includes('receivable') || opt.text.toLowerCase().includes('debtor'));
+        } else if (type === 'payroll') {
+            memo = "Monthly salary disbursement";
+            match1 = options1.find(opt => opt.text.toLowerCase().includes('salari') || opt.text.toLowerCase().includes('salary') || opt.text.toLowerCase().includes('wage') || opt.text.toLowerCase().includes('payroll'));
+            match2 = options2.find(opt => opt.text.toLowerCase().includes('cash') || opt.text.toLowerCase().includes('bank'));
+        }
+
+        if (match1) selects[0].value = match1.value;
+        if (match2) selects[1].value = match2.value;
+
+        // Set memo
+        document.querySelector('input[name="description"]').value = memo;
+
+        // Pre-fill placeholder/focus
+        debits[0].focus();
+        
+        // Reset selector
+        document.getElementById('templateSelector').value = '';
+
+        calcTotals();
     }
     
     // Run once on load to disable button initially

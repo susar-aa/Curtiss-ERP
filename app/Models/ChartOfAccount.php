@@ -43,7 +43,33 @@ class ChartOfAccount {
         $this->db->bind(':pid', !empty($data['parent_id']) ? $data['parent_id'] : null);
         $this->db->bind(':status', $data['is_active']);
         
-        try { return $this->db->execute(); } catch (PDOException $e) { return false; }
+        try {
+            $res = $this->db->execute();
+            if ($res) {
+                $this->cascadeAccountType($data['id'], $data['account_type']);
+            }
+            return $res;
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    public function cascadeAccountType($parentId, $type) {
+        $tempDb = new Database();
+        $tempDb->query("SELECT id FROM chart_of_accounts WHERE parent_id = :parent_id");
+        $tempDb->bind(':parent_id', $parentId);
+        $children = $tempDb->resultSet();
+
+        if (!empty($children)) {
+            $tempDb->query("UPDATE chart_of_accounts SET account_type = :type WHERE parent_id = :parent_id");
+            $tempDb->bind(':type', $type);
+            $tempDb->bind(':parent_id', $parentId);
+            $tempDb->execute();
+
+            foreach ($children as $child) {
+                $this->cascadeAccountType($child->id, $type);
+            }
+        }
     }
 
     public function deleteAccount($id) {
@@ -59,7 +85,7 @@ class ChartOfAccount {
         $this->db->query("SELECT SUM(t.debit) as total_debit, SUM(t.credit) as total_credit 
                           FROM transactions t 
                           JOIN journal_entries je ON t.journal_entry_id = je.id 
-                          WHERE t.account_id = :account_id AND je.entry_date < :start_date");
+                          WHERE t.account_id = :account_id AND je.entry_date < :start_date AND je.status = 'Posted'");
         $this->db->bind(':account_id', $accountId);
         $this->db->bind(':start_date', $startDate);
         $row = $this->db->single();
@@ -74,7 +100,7 @@ class ChartOfAccount {
                 FROM transactions t 
                 JOIN journal_entries je ON t.journal_entry_id = je.id 
                 LEFT JOIN invoices inv ON je.id = inv.journal_entry_id 
-                WHERE t.account_id = :account_id";
+                WHERE t.account_id = :account_id AND je.status = 'Posted'";
         
         $params = [':account_id' => $accountId];
 

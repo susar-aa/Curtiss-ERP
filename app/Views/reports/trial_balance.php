@@ -16,15 +16,25 @@
         th { background: #f8f9fa; font-weight: bold; }
         .num { text-align: right; }
         .grand-total td { font-weight: bold; font-size: 16px; border-top: 2px solid #333; border-bottom: 4px double #333; }
-        @media print { body { padding: 0; background: #fff; } .report-box { box-shadow: none; padding: 0; } }
+        @media print { body { padding: 0; background: #fff; } .report-box { box-shadow: none; padding: 0; } .no-print { display: none !important; } }
     </style>
 </head>
 <body>
+    <div class="no-print" style="max-width: 800px; margin: 0 auto 20px auto; display: flex; justify-content: space-between; align-items: center; font-family: sans-serif;">
+        <a href="<?= APP_URL ?>/report" style="padding: 8px 16px; background: #64748b; color: #fff; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 14px;">&larr; Back to Hub</a>
+        
+        <form method="GET" action="" style="display: flex; align-items: center; gap: 10px; margin: 0;">
+            <label style="font-weight: bold; font-size: 14px;">As of Date:</label>
+            <input type="date" name="end_date" value="<?= htmlspecialchars($data['end_date'] ?? date('Y-m-d')) ?>" style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+            <button type="submit" style="padding: 6px 12px; background: #0066cc; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px;">Update</button>
+        </form>
+    </div>
+
     <div class="report-box">
         <div class="text-center">
             <div class="company-name"><?= htmlspecialchars($data['company']->company_name) ?></div>
             <h2>Trial Balance</h2>
-            <p>As of <?= date('F j, Y') ?></p>
+            <p>As of <?= date('F j, Y', strtotime($data['end_date'] ?? date('Y-m-d'))) ?></p>
         </div>
 
         <table>

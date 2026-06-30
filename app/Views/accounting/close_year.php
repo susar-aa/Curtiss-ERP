@@ -40,6 +40,7 @@
 
 <form action="<?= APP_URL ?>/accounting/close_year" method="POST" style="background: rgba(0,0,0,0.02); padding: 25px; border-radius: 8px; border: 1px solid var(--mac-border); max-width: 600px;">
     <input type="hidden" name="action" value="close_books">
+    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
     
     <div class="form-group">
         <label>Financial Year End Date (Cutoff Date)</label>
@@ -55,6 +56,11 @@
                 </option>
             <?php endforeach; ?>
         </select>
+    </div>
+
+    <div class="form-group">
+        <label>Confirm Account Password (Security Verification)</label>
+        <input type="password" name="confirm_password" class="form-control" placeholder="Enter your password to verify closing" required>
     </div>
 
     <div style="margin-top: 30px; text-align: right;">

@@ -48,9 +48,16 @@
     <div class="reconciliation-dashboard">
         <!-- Left Column: Transactions List -->
         <div>
-            <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px; border: 1px solid var(--mac-border);">
-                <label style="font-weight: bold;">Ending Balance from Bank Statement:</label>
-                <div>Rs: <input type="number" name="statement_balance" id="statementBalance" step="0.01" class="form-control" value="<?= $data['statement_balance'] ?>" oninput="calculateDifference()"></div>
+            <div style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 8px; border: 1px solid var(--mac-border); flex-wrap: wrap; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label style="font-weight: bold; font-size: 13px;">Ending Balance from Statement:</label>
+                    <div>Rs: <input type="number" name="statement_balance" id="statementBalance" step="0.01" class="form-control" value="<?= $data['statement_balance'] ?>" oninput="calculateDifference()"></div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="handleCSVImport(this)">
+                    <button type="button" class="btn" style="background:#0f172a; color:#fff;" onclick="document.getElementById('csvFileInput').click()">📥 Import CSV Statement</button>
+                    <button type="button" class="btn" style="background:#475569; color:#fff;" onclick="exportToCSV()">📤 Export Unreconciled CSV</button>
+                </div>
             </div>
 
             <table class="recon-table">
@@ -175,6 +182,191 @@
             saveBtn.disabled = true; 
             saveBtn.innerText = 'Check transactions to balance';
         }
+    }
+
+    function exportToCSV() {
+        const rows = [
+            ["ID", "Date", "Description", "Reference", "Amount"]
+        ];
+        
+        const tbodyRows = document.querySelectorAll('.recon-table tbody tr');
+        tbodyRows.forEach(tr => {
+            const cb = tr.querySelector('.tx-checkbox');
+            if (!cb) return;
+
+            const id = cb.value;
+            const date = tr.cells[1].innerText.trim();
+            const descAndRef = tr.cells[2].innerText.split('\n');
+            const desc = descAndRef[0].trim();
+            
+            const deposit = tr.cells[3].innerText.trim().replace(/,/g, '');
+            const payment = tr.cells[4].innerText.trim().replace(/,/g, '');
+            
+            const amount = deposit ? parseFloat(deposit) : -parseFloat(payment);
+            
+            rows.push([id, date, desc, descAndRef[1] ? descAndRef[1].trim() : "", amount]);
+        });
+        
+        let csvContent = "data:text/csv;charset=utf-8,";
+        rows.forEach(rowArray => {
+            let row = rowArray.map(val => `"${String(val).replace(/"/g, '""')}"`).join(",");
+            csvContent += row + "\r\n";
+        });
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "unreconciled_transactions.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function handleCSVImport(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split(/\r?\n/);
+            if (lines.length < 2) {
+                alert("CSV file is empty or invalid.");
+                return;
+            }
+
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
+            
+            let dateIdx = headers.findIndex(h => h.includes('date'));
+            let amountIdx = headers.findIndex(h => h.includes('amount'));
+            let depositIdx = headers.findIndex(h => h.includes('deposit'));
+            let paymentIdx = headers.findIndex(h => h.includes('payment'));
+            let descIdx = headers.findIndex(h => h.includes('desc') || h.includes('memo') || h.includes('ref'));
+
+            if (dateIdx === -1) {
+                dateIdx = 0;
+                descIdx = 1;
+                amountIdx = 2;
+            }
+
+            const statementTxs = [];
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const cells = [];
+                let current = '';
+                let inQuotes = false;
+                for (let c = 0; c < line.length; c++) {
+                    const char = line[c];
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        cells.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                cells.push(current.trim());
+
+                if (cells.length <= Math.max(dateIdx, amountIdx, depositIdx, paymentIdx)) continue;
+
+                const dateStr = cells[dateIdx];
+                const parsedDate = new Date(dateStr);
+                if (isNaN(parsedDate.getTime())) continue;
+
+                let amt = 0;
+                if (amountIdx !== -1 && cells[amountIdx]) {
+                    amt = parseFloat(cells[amountIdx].replace(/[^\d.-]/g, '')) || 0;
+                } else {
+                    const dep = depositIdx !== -1 && cells[depositIdx] ? parseFloat(cells[depositIdx].replace(/[^\d.-]/g, '')) : 0;
+                    const pay = paymentIdx !== -1 && cells[paymentIdx] ? parseFloat(cells[paymentIdx].replace(/[^\d.-]/g, '')) : 0;
+                    amt = dep > 0 ? dep : -pay;
+                }
+
+                statementTxs.push({
+                    date: parsedDate,
+                    amount: amt,
+                    desc: descIdx !== -1 ? cells[descIdx] : ''
+                });
+            }
+
+            if (statementTxs.length === 0) {
+                alert("No valid transactions found in CSV.");
+                return;
+            }
+
+            autoMatchTransactions(statementTxs);
+        };
+        reader.readAsText(file);
+        input.value = '';
+    }
+
+    function autoMatchTransactions(statementTxs) {
+        const checkboxes = Array.from(document.querySelectorAll('.tx-checkbox'));
+        
+        checkboxes.forEach(cb => {
+            cb.checked = false;
+            const tr = cb.closest('tr');
+            tr.style.background = '';
+            const badge = tr.querySelector('.match-badge');
+            if (badge) badge.remove();
+        });
+
+        let matchCount = 0;
+        
+        const systemCandidates = checkboxes.map(cb => {
+            const tr = cb.closest('tr');
+            const dateText = tr.cells[1].innerText.trim();
+            const sysDate = new Date(dateText);
+            const impact = parseFloat(cb.getAttribute('data-impact'));
+            return {
+                cb: cb,
+                tr: tr,
+                date: sysDate,
+                impact: impact,
+                matched: false
+            };
+        });
+
+        statementTxs.forEach(st => {
+            const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+            
+            const match = systemCandidates.find(sys => {
+                if (sys.matched) return false;
+                
+                const amtDiff = Math.abs(sys.impact - st.amount);
+                const timeDiff = Math.abs(sys.date.getTime() - st.date.getTime());
+                
+                return (amtDiff < 0.01 && timeDiff <= threeDaysMs);
+            });
+
+            if (match) {
+                match.matched = true;
+                match.cb.checked = true;
+                matchCount++;
+
+                match.tr.style.background = 'rgba(46, 125, 50, 0.08)';
+                
+                const descCell = match.tr.cells[2];
+                const badge = document.createElement('span');
+                badge.className = 'match-badge';
+                badge.style.display = 'inline-block';
+                badge.style.padding = '2px 6px';
+                badge.style.background = '#2e7d32';
+                badge.style.color = '#fff';
+                badge.style.borderRadius = '4px';
+                badge.style.fontSize = '10px';
+                badge.style.fontWeight = 'bold';
+                badge.style.marginLeft = '8px';
+                badge.innerText = 'Auto-Matched ✓';
+                descCell.appendChild(badge);
+            }
+        });
+
+        calculateDifference();
+        alert(`Successfully imported statement! Auto-matched ${matchCount} out of ${statementTxs.length} statement transactions.`);
     }
 
     // Run on page load to set initial state

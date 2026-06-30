@@ -574,7 +574,7 @@ class ReportEngine {
                                  SUM(COALESCE(t.credit, 0)) as credit
                           FROM chart_of_accounts c
                           LEFT JOIN transactions t ON c.id = t.account_id
-                          LEFT JOIN journal_entries je ON t.journal_entry_id = je.id AND je.status = 'Posted'
+                          LEFT JOIN journal_entries je ON t.journal_entry_id = je.id AND je.status = 'Posted' AND je.reference NOT LIKE 'YE-CLOSE-%'
                           WHERE 1=1
                           GROUP BY c.id, c.account_code, c.account_name, c.account_type"
             ],
@@ -594,7 +594,7 @@ class ReportEngine {
                                           ELSE 0 END) as balance
                           FROM chart_of_accounts c
                           LEFT JOIN transactions t ON c.id = t.account_id
-                          LEFT JOIN journal_entries je ON t.journal_entry_id = je.id AND je.status = 'Posted'
+                          LEFT JOIN journal_entries je ON t.journal_entry_id = je.id AND je.status = 'Posted' AND je.reference NOT LIKE 'YE-CLOSE-%'
                           WHERE c.account_type IN ('Revenue', 'Expense')
                           GROUP BY c.id, c.account_name, c.account_type"
             ],
