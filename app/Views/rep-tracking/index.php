@@ -73,7 +73,7 @@
     /* 3-Pane Layout System */
     .app-workspace {
         display: flex;
-        height: calc(100vh - 120px);
+        height: calc(100vh - 85px);
         background: var(--c-bg);
         border-radius: var(--r-xl);
         overflow: hidden;
@@ -569,7 +569,7 @@
         border-color: var(--c-blue-mid);
     }
     .sidebar-step-item.locked {
-        opacity: 0.45;
+        opacity: 1;
     }
     
     .step-dot {
@@ -600,9 +600,9 @@
         border-color: var(--c-green);
     }
     .sidebar-step-item.locked .step-dot {
-        background: var(--c-fill);
-        color: var(--t-tertiary);
-        border-color: transparent;
+        background: var(--c-surface);
+        color: var(--t-secondary);
+        border-color: var(--c-separator);
     }
 
     .step-info {
@@ -950,47 +950,46 @@
     <!-- Middle Pane: Workspace -->
     <div class="pane-middle">
         <!-- Header -->
-        <div class="mid-header" id="midHeader" style="visibility: hidden; padding: 15px 25px; display: flex; flex-direction: column; align-items: flex-start; gap: 15px; background: #fff; border-bottom: 1px solid var(--mac-border);">
+        <div class="mid-header" id="midHeader" style="visibility: hidden; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 20px; background: var(--c-surface); border-bottom: 1px solid var(--c-separator);">
             
-            <!-- Top Row: Back button on the left, right actions: Switch Route, View Map, Undo Bind -->
-            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-                <button type="button" onclick="goBackToRoutes()" style="background: none; border: none; color: #3f51b5; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 0;">
-                    <i class="ph-bold ph-arrow-left"></i> Back to Routes
+            <!-- Left Side: Back button + Route Name + Status Badge -->
+            <div style="display: flex; align-items: center; gap: 16px; min-width: 0;">
+                <button type="button" onclick="goBackToRoutes()" style="background: var(--c-fill); border: none; color: var(--c-blue); font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: var(--r-sm);">
+                    <i class="ph-bold ph-arrow-left"></i> Back
                 </button>
-                
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button type="button" onclick="openRouteSwitcherModal()" style="padding: 8px 14px; border: 1px solid #3f51b5; background: #fff; color: #3f51b5; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-                        <i class="ph ph-swap"></i> Switch Route
-                    </button>
-                    
-                    <button type="button" id="btnViewMap" onclick="openMapModal()" style="padding: 8px 14px; border: none; background: #ef6c00; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: none; align-items: center; gap: 4px;"><i class="ph ph-map-pin"></i> View Map</button>
-                    <button type="button" id="btnUnbindRoute" onclick="unbindActiveRoute()" style="padding: 8px 14px; border: none; background: #c62828; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; display: none; align-items: center; gap: 4px;"><i class="ph ph-link-break"></i> Undo Bind</button>
+                <div style="min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                        <span id="mhRouteNumber" style="font-family: var(--f-mono); font-weight: 700; background: var(--c-blue-light); color: var(--c-blue); padding: 2px 6px; border-radius: var(--r-xs); font-size: 11px;">Route #RT-00000</span>
+                        <span id="mhRouteStatusBadge" style="font-size: 10px; font-weight: 700; padding: 1.5px 6px; border-radius: var(--r-pill); background: var(--c-orange-light); color: var(--c-orange); border: 0.5px solid var(--c-orange);">Active</span>
+                    </div>
+                    <h2 style="margin:0; color:var(--t-primary); font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px;" id="mhRouteName">Route Name</h2>
                 </div>
             </div>
 
-            <!-- Route Info Area -->
-            <div style="display: flex; justify-content: space-between; width: 100%; align-items: flex-start; flex-wrap: wrap; gap: 15px;">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
-                        <span id="mhRouteNumber" style="font-family: monospace; font-weight: bold; background: rgba(0, 102, 204, 0.1); color: #0066cc; padding: 3px 8px; border-radius: 4px; font-size: 12px;">Route #RT-00000</span>
-                        <span id="mhRouteStatusBadge" style="font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 12px; background: #fff3cd; color: #d97706; border: 1px solid #d97706;">Active</span>
-                    </div>
-                    <h2 style="margin:0 0 5px 0; color:var(--primary); font-weight: 700;" id="mhRouteName">Route Name</h2>
-                    <div style="font-size: 13px; color: var(--text-muted); font-weight: 500;">
-                        Representative: <strong id="mhRepName" style="color: #1e293b;"></strong> &nbsp;|&nbsp; 
-                        ODO Start: <strong id="mhStart"></strong> &nbsp;|&nbsp; ODO End: <strong id="mhEnd"></strong>
-                    </div>
+            <!-- Middle: Metadata details (Representative & Odometer) -->
+            <div style="display: flex; align-items: center; gap: 15px; font-size: 12px; color: var(--t-secondary); background: var(--c-surface2); padding: 8px 14px; border-radius: var(--r-md); border: 0.5px solid var(--c-separator);">
+                <div>Rep: <strong id="mhRepName" style="color: var(--t-primary);"></strong></div>
+                <div style="width: 1px; height: 12px; background: var(--c-separator);"></div>
+                <div>ODO: <strong id="mhStart"></strong> - <strong id="mhEnd"></strong></div>
+            </div>
+
+            <!-- Right Side: Stats + Global Action Buttons -->
+            <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+                <div class="stat-box" style="padding: 6px 12px; border: 0.5px solid var(--c-separator); border-radius: var(--r-sm); text-align: left; display: flex; flex-direction: column;">
+                    <span style="font-size: 9px; color: var(--t-label); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Sales Value</span>
+                    <strong style="color: var(--c-green); font-size: 14px; font-weight: 700; font-family: var(--f-mono);">Rs <span id="mhSales"></span></strong>
                 </div>
-                
-                <div style="display: flex; gap: 15px;">
-                    <div class="stat-box" style="padding: 8px 15px; border: 1px solid var(--mac-border); border-radius: 6px; display: flex; flex-direction: column;">
-                        <span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">Total Sales</span>
-                        <strong style="color:#2e7d32; font-size: 18px;">Rs <span id="mhSales"></span></strong>
-                    </div>
-                    <div class="stat-box" style="padding: 8px 15px; border: 1px solid var(--mac-border); border-radius: 6px; display: flex; flex-direction: column;">
-                        <span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">Bills</span>
-                        <strong id="mhBills" style="font-size: 18px;"></strong>
-                    </div>
+                <div class="stat-box" style="padding: 6px 12px; border: 0.5px solid var(--c-separator); border-radius: var(--r-sm); text-align: left; display: flex; flex-direction: column;">
+                    <span style="font-size: 9px; color: var(--t-label); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Bills</span>
+                    <strong id="mhBills" style="font-size: 14px; font-weight: 700; font-family: var(--f-mono);"></strong>
+                </div>
+
+                <div style="display: flex; gap: 6px; align-items: center; border-left: 1px solid var(--c-separator); padding-left: 12px;">
+                    <button type="button" onclick="openRouteSwitcherModal()" style="padding: 8px 12px; border: 0.5px solid var(--c-blue-mid); background: var(--c-surface); color: var(--c-blue); border-radius: var(--r-sm); font-weight: 600; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px; box-shadow: var(--shadow-xs);">
+                        <i class="ph ph-swap"></i> Switch
+                    </button>
+                    <button type="button" id="btnViewMap" onclick="openMapModal()" style="padding: 8px 12px; border: none; background: var(--c-orange); color: #fff; border-radius: var(--r-sm); font-weight: 600; cursor: pointer; font-size: 12px; display: none; align-items: center; gap: 4px; box-shadow: var(--shadow-xs);"><i class="ph ph-map-pin"></i> Map</button>
+                    <button type="button" id="btnUnbindRoute" onclick="unbindActiveRoute()" style="padding: 8px 12px; border: none; background: var(--c-red); color: #fff; border-radius: var(--r-sm); font-weight: 600; cursor: pointer; font-size: 12px; display: none; align-items: center; gap: 4px; box-shadow: var(--shadow-xs);"><i class="ph ph-link-break"></i> Undo Bind</button>
                 </div>
             </div>
         </div>
@@ -1169,36 +1168,38 @@
 
                 <!-- TAB 2: CREDIT COLLECTIONS -->
                 <div class="workspace-tab-panel" id="tabpanel-2" style="display:none;">
-                    <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:15px; margin-bottom:20px; color:#78350f;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-file-text"></i> General Ledger Audit & Verification</h4>
-                        <p style="margin:0; font-size:12px;">Audit all credit collections. Verify debit/credit accounts and approve collections.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div>
+                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Credit Collections Audit</h3>
+                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Verify debit/credit accounts and approve representative collections.</p>
+                        </div>
                     </div>
                     <!-- Collections Verification Table Card -->
-                    <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02); display:flex; flex-direction:column; justify-content:space-between; margin-bottom:20px;">
+                    <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); display:flex; flex-direction:column; justify-content:space-between; margin-bottom:20px;">
                         <div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                                <h5 style="margin:0; font-size:13px; font-weight:bold; color:#1e293b;"><i class="ph ph-coins"></i> Credit Collections & Verification</h5>
-                                <button id="btnSaveCollectionsVerification2" onclick="saveCollectionsVerificationStage2()" style="padding:6px 14px; background:#2e7d32; color:#fff; border:none; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; transition:0.2s;"><i class="ph ph-floppy-disk"></i> Save Verification</button>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                                <h5 style="margin:0; font-size:14px; font-weight:700; color:var(--t-primary);"><i class="ph ph-coins"></i> Credit Collections & Verification</h5>
+                                <button id="btnSaveCollectionsVerification2" onclick="saveCollectionsVerificationStage2()" style="padding:8px 16px; background:var(--c-green); color:#fff; border:none; border-radius:var(--r-sm); font-size:12px; font-weight:bold; cursor:pointer; transition:0.2s;"><i class="ph ph-floppy-disk"></i> Save Verification</button>
                             </div>
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
-                                <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:8px; border-radius:6px; font-size:11px; text-align:center;">
-                                    Cash: <strong id="glTotalCash" style="font-family:monospace; color:#2e7d32;">Rs 0.00</strong>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                                <div style="background:var(--c-bg); border:0.5px solid var(--c-separator); padding:12px; border-radius:var(--r-md); font-size:13px; text-align:center; font-weight:500;">
+                                    Cash: <strong id="glTotalCash" style="font-family:var(--f-mono); color:var(--c-green); font-size:16px; margin-left:6px;">Rs 0.00</strong>
                                 </div>
-                                <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:8px; border-radius:6px; font-size:11px; text-align:center;">
-                                    Cheque: <strong id="glTotalCheque" style="font-family:monospace; color:#0066cc;">Rs 0.00</strong>
+                                <div style="background:var(--c-bg); border:0.5px solid var(--c-separator); padding:12px; border-radius:var(--r-md); font-size:13px; text-align:center; font-weight:500;">
+                                    Cheque: <strong id="glTotalCheque" style="font-family:var(--f-mono); color:var(--c-blue); font-size:16px; margin-left:6px;">Rs 0.00</strong>
                                 </div>
                             </div>
-                            <div style="max-height: 350px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
-                                <table class="data-table" style="font-size:11px; margin-top:0;">
-                                    <thead style="position: sticky; top: 0; z-index: 10;">
-                                        <tr style="background:#f8fafc;">
-                                            <th style="text-align:left; padding:8px 4px; font-size:10px; width:20%;">Customer / Pay</th>
-                                            <th style="text-align:right; padding:8px 4px; font-size:10px; width:12%;">Collected</th>
-                                            <th style="text-align:center; padding:8px 4px; font-size:10px; width:8%;">Approve</th>
-                                            <th style="text-align:left; padding:8px 4px; font-size:10px; width:20%;">Debit Account</th>
-                                            <th style="text-align:left; padding:8px 4px; font-size:10px; width:20%;">Credit Account</th>
-                                            <th style="text-align:right; padding:8px 4px; font-size:10px; width:10%;">Adjusted</th>
-                                            <th style="text-align:left; padding:8px 4px; font-size:10px; width:10%;">Notes</th>
+                            <div style="border: 0.5px solid var(--c-separator); border-radius: var(--r-md); background: var(--c-surface); overflow: hidden;">
+                                <table class="data-table" style="margin-top:0;">
+                                    <thead>
+                                        <tr style="background:var(--c-surface2);">
+                                            <th style="text-align:left; width:20%;">Customer / Pay</th>
+                                            <th style="text-align:right; width:12%;">Collected</th>
+                                            <th style="text-align:center; width:8%;">Approve</th>
+                                            <th style="text-align:left; width:20%;">Debit Account</th>
+                                            <th style="text-align:left; width:20%;">Credit Account</th>
+                                            <th style="text-align:right; width:10%;">Adjusted</th>
+                                            <th style="text-align:left; width:10%;">Notes</th>
                                         </tr>
                                     </thead>
                                     <tbody id="glCollectionsTableBody"></tbody>
@@ -1210,11 +1211,13 @@
 
                 <!-- TAB 3: ADJUSTMENTS -->
                 <div class="workspace-tab-panel" id="tabpanel-3" style="display:none;">
-                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-gear"></i> Route Adjustments & Sales Orders</h4>
-                        <p style="margin:0; font-size:12px;">Add, attach or remove Sales Orders from this route to update the manifest before delivery.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div>
+                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Route Adjustments & Sales Orders</h3>
+                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Attach, detach, or create Sales Orders before the route dispatch.</p>
+                        </div>
                     </div>
-                    <div style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.02); margin-bottom:20px;">
+                    <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); margin-bottom:20px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                             <h4 style="margin:0; font-size:14px; font-weight:bold;">Sales Order Operations</h4>
                             <div style="display:flex; gap:10px;">
@@ -1242,9 +1245,11 @@
 
                 <!-- TAB 4: LOADING -->
                 <div class="workspace-tab-panel" id="tabpanel-4" style="display:none;">
-                    <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:15px; margin-bottom:20px; color:#78350f;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-truck"></i> Loading Verification Checklist</h4>
-                        <p style="margin:0; font-size:12px;">Perform physical count checks before the vehicle dispatches.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div>
+                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Loading Verification Checklist</h3>
+                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Verify and audit the loaded product physical counts before vehicle dispatch.</p>
+                        </div>
                     </div>
                     <div id="loadingBox" style="margin-bottom:20px;"></div>
                     <div style="text-align:right;">
@@ -1255,9 +1260,11 @@
 
                 <!-- TAB 5: VARIANCE -->
                 <div class="workspace-tab-panel" id="tabpanel-5" style="display:none;">
-                    <div style="background:#fee2e2; border:1px solid #fca5a5; border-radius:8px; padding:15px; margin-bottom:20px; color:#991b1b;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-warning-octagon" style="color: #ef4444;"></i> Variance Adjustment Approval</h4>
-                        <p style="margin:0; font-size:12px;">Review shortages and overages identified from final picking. Confirm variances before proceeding.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div>
+                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Variance Adjustment Approval</h3>
+                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Review shortages and overages identified from final picking. Confirm variances before proceeding.</p>
+                        </div>
                     </div>
                     <div id="varianceAuditBox" style="margin-bottom:20px;"></div>
 
@@ -1265,14 +1272,16 @@
 
                 <!-- TAB 6: DISPATCH -->
                 <div class="workspace-tab-panel" id="tabpanel-6" style="display:none;">
-                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-truck"></i> Delivery / Logistics Binding & Dispatch</h4>
-                        <p style="margin:0; font-size:12px;">Assign driver, vehicle, helper and select outstanding credit bills to dispatch with this delivery manifest.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div>
+                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Logistics Binding & Dispatch</h3>
+                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Assign driver, vehicle, helper and select outstanding credit bills to dispatch with this delivery manifest.</p>
+                        </div>
                     </div>
                     
                     <!-- Form View -->
                     <div id="adjDeliveryFormView" style="display:none;">
-                        <form id="adjDeliveryArrangeForm" style="display:flex; flex-direction:column; gap:15px; max-width:650px; background:#fafafa; border:1px solid #e2e8f0; padding:20px; border-radius:8px; margin:0 auto;">
+                        <form id="adjDeliveryArrangeForm" style="display:flex; flex-direction:column; gap:20px; max-width:650px; background:var(--c-surface); border:0.5px solid var(--c-separator); padding:30px; border-radius:var(--r-lg); margin:0 auto; box-shadow:var(--shadow-md);">
                             <div>
                                 <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:#555; display:block; margin-bottom:4px;">Delivery Date</label>
                                 <input type="date" id="adjDaDate" value="<?= date('Y-m-d') ?>" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
@@ -1337,17 +1346,18 @@
 
                 <!-- TAB 7: DELIVERY (LIVE MONITORING) -->
                 <div class="workspace-tab-panel" id="tabpanel-7" style="display:none;">
-                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:15px; margin-bottom:20px; color:#166534;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-steering-wheel"></i> Delivery Live Execution Status</h4>
-                        <p style="margin:0; font-size:12px;">Track live progress of customer dispatches and collections on the route.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div>
+                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Delivery Live Execution Status</h3>
+                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Track live progress of customer dispatches and collections on the route.</p>
+                        </div>
                     </div>
-                    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
+                    <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); margin-bottom:20px;">
                         <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-chart-bar"></i> Delivery Performance Summary</h4>
                         <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:15px;" id="deliveryTabSummaryCards">
                             <!-- Populated dynamically -->
-                        </div>
                     </div>
-                    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff;">
+                    <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm);">
                         <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-map-pin"></i> Customer Visit & Dispatch Status</h4>
                         <table class="data-table">
                             <thead>
@@ -1369,15 +1379,17 @@
 
                 <!-- TAB 8: RECONCILIATION -->
                 <div class="workspace-tab-panel" id="tabpanel-8" style="display:none;">
-                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-currency-dollar"></i> Route Collections & Variance Reconciliation</h4>
-                        <p style="margin:0; font-size:12px;">Count cash, verify cheques and document financial variances. Save draft or submit for final settlement.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div>
+                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Route Collections & Variance Reconciliation</h3>
+                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Count cash, verify cheques and document financial variances. Save draft or submit for final settlement.</p>
+                        </div>
                     </div>
                     
                     <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:20px;">
                         <div>
                             <!-- Cash Reconciliation Card -->
-                            <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
+                            <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); margin-bottom:20px;">
                                 <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-coins"></i> Cash Collections Counter</h4>
                                 <table style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom:15px;">
                                     <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Expected Cash Sales</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right;" id="reconExpectedCash">Rs 0.00</td></tr>
@@ -1409,7 +1421,7 @@
 
                         <div>
                             <!-- Notes & Save Draft Card -->
-                            <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; height:100%; display:flex; flex-direction:column; justify-content:space-between;">
+                            <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); height:100%; display:flex; flex-direction:column; justify-content:space-between;">
                                 <div>
                                     <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-note"></i> Audit Remarks</h4>
                                     <textarea id="reconAuditNotes" style="width:100%; height:180px; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; resize:none;" placeholder="Write any audit notes regarding cash discrepancy, bank transfer receipts verified, etc..."></textarea>
@@ -1424,11 +1436,13 @@
 
                 <!-- TAB 9: RETURN STOCK VERIFICATION -->
                 <div class="workspace-tab-panel" id="tabpanel-9" style="display:none;">
-                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:15px; margin-bottom:20px; color:#1e3a8a;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-package"></i> Return Stock Verification</h4>
-                        <p style="margin:0; font-size:12px;">Confirm physical return counts. Mark return verification complete to finalize stock updates.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div>
+                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Return Stock Verification</h3>
+                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Verify returned physical stocks and confirm route inventory updates.</p>
+                        </div>
                     </div>
-                    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
+                    <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); margin-bottom:20px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                             <h4 style="margin:0; color:var(--primary); font-size:15px; font-weight:bold;">Returned Stock Settle Verification</h4>
                             <label style="font-weight:bold; font-size:12px; display:flex; align-items:center; gap:6px; cursor:pointer;">
@@ -1436,7 +1450,7 @@
                                 I have physically verified all returned inventory and confirm quantities are correct.
                             </label>
                         </div>
-                        <table class="data-table" style="font-size:11px;">
+                        <table class="data-table">
                             <thead>
                                 <tr>
                                     <th>Product Name</th>
@@ -1458,9 +1472,11 @@
 
                 <!-- TAB 10: ACCOUNTING -->
                 <div class="workspace-tab-panel" id="tabpanel-10" style="display:none;">
-                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:15px; margin-bottom:20px; color:#166534;">
-                        <h4 style="margin:0 0 5px 0; font-size:14px; font-weight:bold;"><i class="ph ph-briefcase"></i> General Ledger Double Entry Postings</h4>
-                        <p style="margin:0; font-size:12px;">Map the transactions of this route to appropriate general ledger accounts. Make manual overrides if needed and finalize the route.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div>
+                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">General Ledger Postings</h3>
+                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Map route transactions to general ledger double-entries and finalize settlement.</p>
+                        </div>
                     </div>
 
                     <!-- Dispatch Assignment Section inside Accounting final tab (Hidden to streamline interface) -->
@@ -1484,13 +1500,13 @@
                             <?php foreach($data['employees'] as $e): ?>
                                 <?php if($e->status === 'Active'): ?>
                                     <option value="<?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?>"><?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?> (<?= htmlspecialchars($e->job_title) ?>)</option>
-                                <?php endif; ?>
+                                 <?php endif; ?>
                             <?php endforeach; ?>
                         </select>
                     </div>
 
                     <!-- General Ledger account double entry mappings card -->
-                    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
+                    <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); margin-bottom:20px;">
                         <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-briefcase"></i> Account Mappings</h4>
                         <div style="display: flex; gap: 10px; border-bottom: 1px solid #eee; margin-bottom: 15px;">
                             <button type="button" class="left-tab-btn active" id="settleDeTabCollectionsBtn" onclick="switchSettleDeTab('collections')"><i class="ph ph-coins"></i> Cash/Cheques Posting</button>
@@ -1504,7 +1520,7 @@
                     </div>
 
                     <!-- Settle Actions -->
-                    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); display:flex; justify-content:space-between; align-items:center;">
                         <div id="settleStatusText" style="font-size:12px; color:#c62828; font-weight:bold;">
                             Please verify Cash, Cheques, and Return stock counts under Reconciliation & Return Stock tabs to unlock Finalization.
                         </div>
@@ -2091,8 +2107,6 @@
             if (isStepCompleted) {
                 el.classList.add('completed');
                 dot.innerHTML = '<i class="fa-solid fa-check"></i>';
-            } else if (stepRequiredStatusIndex > currentRouteStatusIndex) {
-                el.classList.add('locked');
             } else {
                 el.classList.add('pending');
             }
