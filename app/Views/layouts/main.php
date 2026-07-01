@@ -1611,23 +1611,96 @@ if (!function_exists('hasPermission')) {
             <div class="glass-menu-container align-right">
                 <div class="glass-nav-item">E-Commerce</div>
                 <div class="mega-menu">
-                    <div class="mega-menu-col">
-                        <div class="mega-menu-header">Wholesaler Management</div>
-                        <a href="<?= APP_URL ?>/ecommerce/requests" class="mega-list-item">
-                            <div class="icon-wrapper text-primary"><i class="ph ph-handshake"></i></div>
+                    <div class="mega-menu-col" style="min-width: 260px;">
+                        <div class="mega-menu-header">Store Settings & Setup</div>
+                        <a href="<?= APP_URL ?>/ecommerce" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-squares-four"></i></div>
                             <div class="mega-list-item-content">
-                                <div class="title text-primary">Wholesaler Requests</div>
-                                <div class="desc">Approve, decline and link requests</div>
+                                <div class="title">E-Commerce Dashboard</div>
+                                <div class="desc">Key sales metrics & statistics</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/ecommerce/settings" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-gear"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Website Settings</div>
+                                <div class="desc">Store name, policies, SEO</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/ecommerce/homepage_builder" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-layout"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Homepage Builder</div>
+                                <div class="desc">Drag-and-drop homepage sections</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/ecommerce/banners" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-image"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Banner Management</div>
+                                <div class="desc">Desktop, mobile and popup banners</div>
                             </div>
                         </a>
                     </div>
-                    <div class="mega-menu-col">
-                        <div class="mega-menu-header">Retail Directory</div>
+                    <div class="mega-menu-col" style="min-width: 260px;">
+                        <div class="mega-menu-header">Catalogue & Marketing</div>
+                        <a href="<?= APP_URL ?>/ecommerce/products" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-package"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Product Catalogue</div>
+                                <div class="desc">Publish, feature and price items</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/ecommerce/categories" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-tag"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Categories Structure</div>
+                                <div class="desc">Parent/Child and custom icons</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/ecommerce/coupons" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-ticket"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Discount Coupons</div>
+                                <div class="desc">Manage promotion discount codes</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/ecommerce/blog" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-article"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Blog & Content</div>
+                                <div class="desc">Write articles & news updates</div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="mega-menu-col" style="min-width: 260px;">
+                        <div class="mega-menu-header">Operations & Reporting</div>
+                        <a href="<?= APP_URL ?>/ecommerce/requests" class="mega-list-item text-primary">
+                            <div class="icon-wrapper text-primary"><i class="ph ph-handshake"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title text-primary">Wholesaler Requests</div>
+                                <div class="desc">Approve and link wholesale profiles</div>
+                            </div>
+                        </a>
                         <a href="<?= APP_URL ?>/ecommerce/retail" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-users"></i></div>
                             <div class="mega-list-item-content">
-                                <div class="title">Retail Customers</div>
-                                <div class="desc">View e-commerce retail accounts</div>
+                                <div class="title">Retail Directory</div>
+                                <div class="desc">Manage registered retail buyers</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/ecommerce/reviews" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-chats-teardrop"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Customer Reviews</div>
+                                <div class="desc">Moderate product ratings & reviews</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/ecommerce/reports" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-chart-line-up"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Analytics Reports</div>
+                                <div class="desc">Online sales, cart conversions</div>
                             </div>
                         </a>
                     </div>
@@ -1854,10 +1927,20 @@ if (!function_exists('hasPermission')) {
                 <!-- 6. E-Commerce -->
                 <?php if (hasPermission('ecommerce')): ?>
                 <div class="fs-section">
-                    <div class="fs-section-label">E-Commerce</div>
+                    <div class="fs-section-label">E-Commerce Management</div>
                     <div class="fs-row">
+                        <a href="<?= APP_URL ?>/ecommerce" class="fs-link"><i class="ph ph-squares-four"></i> Dashboard</a>
+                        <a href="<?= APP_URL ?>/ecommerce/settings" class="fs-link"><i class="ph ph-gear"></i> Settings</a>
+                        <a href="<?= APP_URL ?>/ecommerce/homepage_builder" class="fs-link"><i class="ph ph-layout"></i> Homepage Builder</a>
+                        <a href="<?= APP_URL ?>/ecommerce/banners" class="fs-link"><i class="ph ph-image"></i> Banners</a>
+                        <a href="<?= APP_URL ?>/ecommerce/products" class="fs-link"><i class="ph ph-package"></i> Products</a>
+                        <a href="<?= APP_URL ?>/ecommerce/categories" class="fs-link"><i class="ph ph-tag"></i> Categories</a>
+                        <a href="<?= APP_URL ?>/ecommerce/coupons" class="fs-link"><i class="ph ph-ticket"></i> Coupons</a>
+                        <a href="<?= APP_URL ?>/ecommerce/blog" class="fs-link"><i class="ph ph-article"></i> Blog &amp; News</a>
                         <a href="<?= APP_URL ?>/ecommerce/requests" class="fs-link"><i class="ph ph-handshake"></i> Wholesaler Requests</a>
                         <a href="<?= APP_URL ?>/ecommerce/retail" class="fs-link"><i class="ph ph-users"></i> Retail Customers</a>
+                        <a href="<?= APP_URL ?>/ecommerce/reviews" class="fs-link"><i class="ph ph-chats-teardrop"></i> Reviews</a>
+                        <a href="<?= APP_URL ?>/ecommerce/reports" class="fs-link"><i class="ph ph-chart-line-up"></i> Reports</a>
                     </div>
                 </div>
                 <?php endif; ?>

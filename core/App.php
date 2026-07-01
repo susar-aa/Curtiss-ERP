@@ -80,8 +80,13 @@ class App {
             $isPublicInvoice = true;
         }
 
-        // Check if user is logged in. If not, force routing to AuthController (unless it is auth controller, an API sync request, or a public invoice view)
-        if (!isset($_SESSION['user_id']) && !$isMobileSync && !$isPublicInvoice && (isset($url[0]) ? strtolower($url[0]) !== 'auth' : true)) {
+        // Identify if current controller is public (doesn't require ERP Employee login)
+        $publicControllers = ['auth', 'shop', 'portal'];
+        $currentController = isset($url[0]) ? strtolower($url[0]) : '';
+        $isPublicController = in_array($currentController, $publicControllers);
+
+        // Check if user is logged in. If not, force routing to AuthController (unless it is auth controller, public controllers, an API sync request, or a public invoice view)
+        if (!isset($_SESSION['user_id']) && !$isMobileSync && !$isPublicInvoice && !$isPublicController) {
             $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
                       (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
                       (strpos($_SERVER['REQUEST_URI'], '/fetch_data') !== false) ||
