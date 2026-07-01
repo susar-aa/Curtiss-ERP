@@ -985,8 +985,8 @@ if ($inv && isset($inv->id)) {
         margin-bottom: 6px;
     }
 
-    /* ── New Customer Modal ── */
-    .modal-backdrop-custom {
+    /* ── macOS Theme Customer Modal ── */
+    .mac-backdrop-custom {
         display: none;
         align-items: center;
         justify-content: center;
@@ -994,88 +994,175 @@ if ($inv && isset($inv->id)) {
         position: fixed;
         top: 0; left: 0;
         width: 100%; height: 100%;
-        background: rgba(15,23,42,0.55);
-        backdrop-filter: blur(3px);
+        background: rgba(30, 30, 45, 0.4);
+        backdrop-filter: blur(12px) saturate(180%);
+        -webkit-backdrop-filter: blur(12px) saturate(180%);
     }
-    .modal-panel-custom {
-        max-width: 500px;
+    .mac-panel-custom {
+        max-width: 520px;
         width: 92%;
-        background: var(--white);
-        border-radius: var(--radius-lg);
+        background: rgba(255, 255, 255, 0.86);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border-radius: 12px;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.06);
+        border: 1px solid rgba(255, 255, 255, 0.45);
         overflow: hidden;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.2);
-        border: 1px solid var(--slate-200);
-        animation: modalIn 0.2s ease;
+        animation: macModalIn 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+        color: #1d1d1f;
     }
-    @keyframes modalIn {
-        from { opacity: 0; transform: translateY(-10px) scale(0.98); }
-        to   { opacity: 1; transform: translateY(0) scale(1); }
+    @keyframes macModalIn {
+        from { opacity: 0; transform: scale(0.94) translateY(10px); }
+        to   { opacity: 1; transform: scale(1) translateY(0); }
     }
-    .modal-header-custom {
-        background: var(--slate-800);
-        color: var(--white);
+    .mac-header-custom {
         padding: 14px 18px;
-        font-weight: 700;
-        font-size: 14px;
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        position: relative;
+        border-bottom: 1px solid rgba(0,0,0,0.08);
     }
-    .modal-close-btn {
-        background: transparent;
-        border: none;
-        color: var(--slate-400);
-        font-size: 20px;
-        cursor: pointer;
-        padding: 0;
-        line-height: 1;
-        transition: color 0.15s;
+    .mac-traffic-lights {
+        display: flex;
+        gap: 6px;
+        position: absolute;
+        left: 18px;
     }
-    .modal-close-btn:hover { color: var(--white); }
-    .modal-body-custom {
-        padding: 18px;
+    .mac-light {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .mac-light.red { background: #ff5f56; border: 0.5px solid #e0443e; cursor: pointer; }
+    .mac-light.yellow { background: #ffbd2e; border: 0.5px solid #dfa123; }
+    .mac-light.green { background: #27c93f; border: 0.5px solid #1aab29; }
+    .mac-title-custom {
+        width: 100%;
+        text-align: center;
+        font-weight: 600;
+        font-size: 14px;
+        color: #1d1d1f;
+    }
+    .mac-body-custom {
+        padding: 20px 24px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        max-height: 420px;
-        overflow-y: auto;
+        gap: 14px;
     }
-    .modal-field-label {
-        display: block;
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--slate-600);
-        margin-bottom: 5px;
+    .mac-field-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
     }
-    .modal-input {
+    .mac-field-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #515154;
+    }
+    .mac-input {
         width: 100%;
-        padding: 7px 11px;
-        border: 1px solid var(--slate-300);
-        border-radius: var(--radius-sm);
-        font-family: var(--font);
+        padding: 6px 10px;
+        border: 1px solid rgba(0,0,0,0.15);
+        border-radius: 6px;
         font-size: 13px;
-        color: var(--slate-800);
-        box-sizing: border-box;
+        background: rgba(255, 255, 255, 0.6);
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
         outline: none;
-        background: var(--slate-50);
-        transition: border-color 0.15s, box-shadow 0.15s;
+        box-sizing: border-box;
+        transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
     }
-    .modal-input:focus {
-        border-color: var(--primary);
-        background: var(--white);
-        box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    .mac-input:focus {
+        border-color: #007aff;
+        background: #ffffff;
+        box-shadow: 0 0 0 3px rgba(0,122,255,0.25);
     }
-    .modal-footer-custom {
-        padding: 12px 18px;
-        background: var(--slate-50);
-        border-top: 1px solid var(--slate-200);
+    .mac-footer-custom {
+        padding: 16px 24px;
         display: flex;
         justify-content: flex-end;
-        gap: 8px;
+        gap: 12px;
+        border-top: 1px solid rgba(0,0,0,0.08);
+        background: rgba(0,0,0,0.02);
+    }
+    .mac-btn {
+        padding: 6px 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        outline: none;
+        border: 1px solid rgba(0,0,0,0.15);
+        background: #ffffff;
+        color: #1d1d1f;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
+    }
+    .mac-btn:hover {
+        background: #f5f5f7;
+    }
+    .mac-btn.primary {
+        background: #007aff;
+        border-color: #0066cc;
+        color: #ffffff;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    }
+    .mac-btn.primary:hover {
+        background: #0068d6;
     }
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    @media (prefers-color-scheme: dark) {
+        .mac-backdrop-custom {
+            background: rgba(10, 10, 15, 0.5);
+        }
+        .mac-panel-custom {
+            background: rgba(30, 30, 30, 0.85);
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 25px 60px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.08);
+            color: #f5f5f7;
+        }
+        .mac-header-custom {
+            border-bottom-color: rgba(255,255,255,0.1);
+        }
+        .mac-title-custom {
+            color: #f5f5f7;
+        }
+        .mac-field-label {
+            color: #a1a1a6;
+        }
+        .mac-input {
+            border-color: rgba(255,255,255,0.18);
+            background: rgba(0, 0, 0, 0.25);
+            color: #f5f5f7;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
+        }
+        .mac-input:focus {
+            background: rgba(0, 0, 0, 0.4);
+            border-color: #0a84ff;
+            box-shadow: 0 0 0 3px rgba(10,132,255,0.3);
+        }
+        .mac-footer-custom {
+            border-top-color: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.02);
+        }
+        .mac-btn {
+            border-color: rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.1);
+            color: #f5f5f7;
+        }
+        .mac-btn:hover {
+            background: rgba(255,255,255,0.15);
+        }
+        .mac-btn.primary {
+            background: #0a84ff;
+            border-color: #0076eb;
+            color: #ffffff;
+        }
+        .mac-btn.primary:hover {
+            background: #0070e3;
+        }
+    }
 </style>
 
 <div class="qb-wrapper">
@@ -1397,38 +1484,41 @@ if ($inv && isset($inv->id)) {
 </div>
 
 <!-- ═══ NEW CUSTOMER MODAL ═══ -->
-<div class="modal-backdrop-custom" id="newCustomerModal">
-    <div class="modal-panel-custom">
-        <div class="modal-header-custom">
-            <span><i class="ph ph-user-plus" style="margin-right:8px;"></i>Register New Customer</span>
-            <button type="button" class="modal-close-btn" onclick="closeNewCustomerModal()">
-                <i class="ph ph-x"></i>
-            </button>
+<div class="mac-backdrop-custom" id="newCustomerModal">
+    <div class="mac-panel-custom">
+        <div class="mac-header-custom">
+            <div class="mac-traffic-lights">
+                <div class="mac-light red" onclick="closeNewCustomerModal()"></div>
+                <div class="mac-light yellow"></div>
+                <div class="mac-light green"></div>
+            </div>
+            <span class="mac-title-custom">Register New Customer</span>
         </div>
         <form id="ajaxNewCustomerForm" onsubmit="submitAjaxNewCustomer(event)" style="margin:0;">
-            <div class="modal-body-custom">
-                <div>
-                    <label class="modal-field-label">Customer / Company Name <span style="color:#dc2626;">*</span></label>
-                    <input type="text" name="name" required class="modal-input" placeholder="e.g. ABC Enterprises">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+            <div class="mac-body-custom">
+                <div class="mac-field-group">
+                    <label class="mac-field-label">Customer / Company Name <span style="color:#ff3b30;">*</span></label>
+                    <input type="text" name="name" required class="mac-input" placeholder="e.g. ABC Enterprises">
                 </div>
                 <div class="two-col">
-                    <div>
-                        <label class="modal-field-label">Phone Number</label>
-                        <input type="text" name="phone" class="modal-input" placeholder="+94 77 000 0000">
+                    <div class="mac-field-group">
+                        <label class="mac-field-label">Phone Number</label>
+                        <input type="text" name="phone" class="mac-input" placeholder="+94 77 000 0000">
                     </div>
-                    <div>
-                        <label class="modal-field-label">WhatsApp Number</label>
-                        <input type="text" name="whatsapp" class="modal-input" placeholder="+94 77 000 0000">
+                    <div class="mac-field-group">
+                        <label class="mac-field-label">WhatsApp Number</label>
+                        <input type="text" name="whatsapp" class="mac-input" placeholder="+94 77 000 0000">
                     </div>
                 </div>
                 <div class="two-col">
-                    <div>
-                        <label class="modal-field-label">Email Address</label>
-                        <input type="email" name="email" class="modal-input" placeholder="name@company.com">
+                    <div class="mac-field-group">
+                        <label class="mac-field-label">Email Address</label>
+                        <input type="email" name="email" class="mac-input" placeholder="name@company.com">
                     </div>
-                    <div>
-                        <label class="modal-field-label">Route / Area (MCA)</label>
-                        <select name="mca_id" class="modal-input" style="cursor:pointer;">
+                    <div class="mac-field-group">
+                        <label class="mac-field-label">Route / Area (MCA)</label>
+                        <select name="mca_id" class="mac-input" style="cursor:pointer;">
                             <option value="">Select Area...</option>
                             <?php foreach($mcaAreas as $area): ?>
                                 <option value="<?= $area->id ?>"><?= htmlspecialchars($area->name) ?></option>
@@ -1436,16 +1526,16 @@ if ($inv && isset($inv->id)) {
                         </select>
                     </div>
                 </div>
-                <div>
-                    <label class="modal-field-label">Billing Address</label>
-                    <textarea name="address" class="modal-input" style="height:64px; resize:none;" placeholder="Street, City..."></textarea>
+                <div class="mac-field-group">
+                    <label class="mac-field-label">Billing Address</label>
+                    <textarea name="address" class="mac-input" style="height:64px; resize:none;" placeholder="Street, City..."></textarea>
                 </div>
                 <input type="hidden" name="latitude" value="">
                 <input type="hidden" name="longitude" value="">
             </div>
-            <div class="modal-footer-custom">
-                <button type="button" class="btn" onclick="closeNewCustomerModal()">Cancel</button>
-                <button type="submit" class="btn btn-success">
+            <div class="mac-footer-custom">
+                <button type="button" class="mac-btn" onclick="closeNewCustomerModal()">Cancel</button>
+                <button type="submit" class="mac-btn primary">
                     <i class="ph ph-user-plus"></i> Add Customer
                 </button>
             </div>
@@ -1903,8 +1993,28 @@ if ($inv && isset($inv->id)) {
         const form = e.target;
         const formData = new FormData(form);
 
-        fetch('<?= APP_URL ?>/customer/api_add_customer', { method: 'POST', body: formData })
-        .then(response => response.json())
+        // Ensure CSRF token is set in FormData if not present
+        if (!formData.has('csrf_token')) {
+            const csrfInput = form.querySelector('input[name="csrf_token"]');
+            if (csrfInput) {
+                formData.append('csrf_token', csrfInput.value);
+            }
+        }
+
+        fetch('<?= APP_URL ?>/customer/api_add_customer', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("HTTP error " + response.status);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.status === 'success') {
                 const newCust = {
