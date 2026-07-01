@@ -15,5 +15,5 @@ class Database {
     }
 }
 $db = new Database();
-$db->query("SHOW TABLES");
+$db->query("SHOW COLUMNS FROM expenses");
 print_r($db->resultSet());

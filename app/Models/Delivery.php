@@ -71,7 +71,76 @@ class Delivery {
             WHERE d.id = :id
         ");
         $this->db->bind(':id', $id);
-        return $this->db->single();
+        $delivery = $this->db->single();
+        if ($delivery) {
+            $dynDebit = [];
+            $dynCredit = [];
+            
+            $rids = [intval($delivery->rep_route_id)];
+            if (!empty($delivery->secondary_rep_route_id)) {
+                $rids[] = intval($delivery->secondary_rep_route_id);
+            }
+            $rids = $this->resolveAllBoundRouteIds($rids);
+            $ridsStr = !empty($rids) ? implode(',', $rids) : '0';
+            
+            // 1. Fetch invoice draft JEs
+            $this->db->query("SELECT id FROM invoices WHERE rep_route_id IN ($ridsStr) AND status != 'Voided'");
+            $routeInvoices = $this->db->resultSet() ?: [];
+            foreach ($routeInvoices as $inv) {
+                $ref = "INV-SALES-DRAFT-" . $inv->id;
+                $this->db->query("SELECT id FROM journal_entries WHERE reference = :ref AND status = 'Draft' LIMIT 1");
+                $this->db->bind(':ref', $ref);
+                $je = $this->db->single();
+                if ($je) {
+                    $this->db->query("SELECT account_id FROM transactions WHERE journal_entry_id = :jid AND debit > 0 LIMIT 1");
+                    $this->db->bind(':jid', $je->id);
+                    $tDeb = $this->db->single();
+                    if ($tDeb) {
+                        $dynDebit["inv_" . $inv->id] = intval($tDeb->account_id);
+                    }
+                    
+                    $this->db->query("SELECT account_id FROM transactions WHERE journal_entry_id = :jid AND credit > 0 LIMIT 1");
+                    $this->db->bind(':jid', $je->id);
+                    $tCred = $this->db->single();
+                    if ($tCred) {
+                        $dynCredit["inv_" . $inv->id] = intval($tCred->account_id);
+                    }
+                }
+            }
+            
+            // 2. Fetch payment draft JEs
+            $this->db->query("SELECT id FROM customer_payments WHERE rep_route_id IN ($ridsStr)");
+            $routePayments = $this->db->resultSet() ?: [];
+            foreach ($routePayments as $pay) {
+                $ref = "PMT-BAL-DRAFT-" . $pay->id;
+                $this->db->query("SELECT id FROM journal_entries WHERE reference = :ref AND status = 'Draft' LIMIT 1");
+                $this->db->bind(':ref', $ref);
+                $je = $this->db->single();
+                if ($je) {
+                    $this->db->query("SELECT account_id FROM transactions WHERE journal_entry_id = :jid AND debit > 0 LIMIT 1");
+                    $this->db->bind(':jid', $je->id);
+                    $tDeb = $this->db->single();
+                    if ($tDeb) {
+                        $dynDebit["pay_" . $pay->id] = intval($tDeb->account_id);
+                    }
+                    
+                    $this->db->query("SELECT account_id FROM transactions WHERE journal_entry_id = :jid AND credit > 0 LIMIT 1");
+                    $this->db->bind(':jid', $je->id);
+                    $tCred = $this->db->single();
+                    if ($tCred) {
+                        $dynCredit["pay_" . $pay->id] = intval($tCred->account_id);
+                    }
+                }
+            }
+
+            if (!empty($dynDebit) || !empty($dynCredit)) {
+                $delivery->accounting_entries_json = json_encode([
+                    'debit' => $dynDebit,
+                    'credit' => $dynCredit
+                ]);
+            }
+        }
+        return $delivery;
     }
 
     public function getDeliveryInvoices($routeId, $secondaryRouteId = null) {
@@ -324,6 +393,25 @@ class Delivery {
             if (!$delivery) {
                 throw new Exception("Delivery not found");
             }
+            
+            // Merge draft mappings from deliveries.accounting_entries_json if empty
+            if (empty($debitAccounts) || empty($creditAccounts)) {
+                $this->db->query("SELECT accounting_entries_json FROM deliveries WHERE id = :id");
+                $this->db->bind(':id', $deliveryId);
+                $delRow = $this->db->single();
+                if ($delRow && !empty($delRow->accounting_entries_json)) {
+                    $draft = json_decode($delRow->accounting_entries_json, true);
+                    if (is_array($draft)) {
+                        if (empty($debitAccounts) && isset($draft['debit']) && is_array($draft['debit'])) {
+                            $debitAccounts = $draft['debit'];
+                        }
+                        if (empty($creditAccounts) && isset($draft['credit']) && is_array($draft['credit'])) {
+                            $creditAccounts = $draft['credit'];
+                        }
+                    }
+                }
+            }
+
             if ($delivery->status === 'Finalized') {
                 throw new Exception("Delivery is already finalized");
             }
@@ -551,17 +639,38 @@ class Delivery {
                         continue;
                     }
 
-                    $invDebAcc = isset($debitAccounts["inv_" . $invId]) ? intval($debitAccounts["inv_" . $invId]) : $defaultArAcc;
-                    $invCredAcc = isset($creditAccounts["inv_" . $invId]) ? intval($creditAccounts["inv_" . $invId]) : $defaultSalesAcc;
+                    $invDebAcc = isset($debitAccounts["inv_" . $invId]) ? intval($debitAccounts["inv_" . $invId]) : (isset($debitAccounts[$invId]) ? intval($debitAccounts[$invId]) : $defaultArAcc);
+                    $invCredAcc = isset($creditAccounts["inv_" . $invId]) ? intval($creditAccounts["inv_" . $invId]) : (isset($creditAccounts[$invId]) ? intval($creditAccounts[$invId]) : $defaultSalesAcc);
 
                     if ($invDebAcc && $invCredAcc) {
-                        $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
-                                          VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
-                        $this->db->bind(':ref', "INV-SALES-" . $invId);
-                        $this->db->bind(':desc', "Sales Invoice Delivery Revenue Posting (" . $invoice->invoice_number . ")");
-                        $this->db->bind(':uid', $adminUserId);
-                        $this->db->execute();
-                        $invJid = $this->db->lastInsertId();
+                        // Check if draft exists
+                        $this->db->query("SELECT id FROM journal_entries WHERE reference = :ref AND status = 'Draft' LIMIT 1");
+                        $this->db->bind(':ref', "INV-SALES-DRAFT-" . $invId);
+                        $draftRow = $this->db->single();
+
+                        if ($draftRow) {
+                            $invJid = $draftRow->id;
+                            
+                            // Update journal entry
+                            $this->db->query("UPDATE journal_entries SET reference = :ref, description = :desc, entry_date = CURDATE(), status = 'Posted' WHERE id = :id");
+                            $this->db->bind(':ref', "INV-SALES-" . $invId);
+                            $this->db->bind(':desc', "Sales Invoice Delivery Revenue Posting (" . $invoice->invoice_number . ")");
+                            $this->db->bind(':id', $invJid);
+                            $this->db->execute();
+
+                            // Clean up old draft transactions
+                            $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
+                            $this->db->bind(':jid', $invJid);
+                            $this->db->execute();
+                        } else {
+                            $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
+                                              VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
+                            $this->db->bind(':ref', "INV-SALES-" . $invId);
+                            $this->db->bind(':desc', "Sales Invoice Delivery Revenue Posting (" . $invoice->invoice_number . ")");
+                            $this->db->bind(':uid', $adminUserId);
+                            $this->db->execute();
+                            $invJid = $this->db->lastInsertId();
+                        }
 
                         // Debit Accounts Receivable
                         $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, 0)");
@@ -620,7 +729,7 @@ class Delivery {
                     $amount = floatval($pay->amount);
                     if ($amount <= 0) continue;
 
-                    $debAccId = isset($debitAccounts[$payId]) ? intval($debitAccounts[$payId]) : null;
+                    $debAccId = isset($debitAccounts["pay_" . $payId]) ? intval($debitAccounts["pay_" . $payId]) : (isset($debitAccounts[$payId]) ? intval($debitAccounts[$payId]) : null);
                     if (!$debAccId) {
                         $method = $pay->payment_method;
                         if ($method === 'Cash') {
@@ -633,18 +742,49 @@ class Delivery {
                     }
                     if (!$debAccId) continue;
 
-                    $credAccId = isset($creditAccounts[$payId]) ? intval($creditAccounts[$payId]) : ($transitAcc ?: $arAcc);
+                    $credAccId = isset($creditAccounts["pay_" . $payId]) ? intval($creditAccounts["pay_" . $payId]) : (isset($creditAccounts[$payId]) ? intval($creditAccounts[$payId]) : ($transitAcc ?: $arAcc));
 
                     $refCode = "PMT-BAL-" . time() . rand(10,99);
 
-                    // Insert Journal Entry
-                    $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
-                                      VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
-                    $this->db->bind(':ref', $refCode);
-                    $this->db->bind(':desc', "Finalized Delivery Collection (" . $pay->payment_method . ")");
-                    $this->db->bind(':uid', $adminUserId);
-                    $this->db->execute();
-                    $payJid = $this->db->lastInsertId();
+                    // Check if draft exists
+                    $draftJid = null;
+                    if ($pay->journal_entry_id) {
+                        $this->db->query("SELECT id FROM journal_entries WHERE id = :id AND status = 'Draft' LIMIT 1");
+                        $this->db->bind(':id', $pay->journal_entry_id);
+                        $row = $this->db->single();
+                        if ($row) $draftJid = $row->id;
+                    }
+                    if (!$draftJid) {
+                        $this->db->query("SELECT id FROM journal_entries WHERE reference = :ref AND status = 'Draft' LIMIT 1");
+                        $this->db->bind(':ref', "PMT-BAL-DRAFT-" . $payId);
+                        $row = $this->db->single();
+                        if ($row) $draftJid = $row->id;
+                    }
+
+                    if ($draftJid) {
+                        $payJid = $draftJid;
+
+                        // Update journal entry
+                        $this->db->query("UPDATE journal_entries SET reference = :ref, description = :desc, entry_date = CURDATE(), status = 'Posted' WHERE id = :id");
+                        $this->db->bind(':ref', $refCode);
+                        $this->db->bind(':desc', "Finalized Delivery Collection (" . $pay->payment_method . ")");
+                        $this->db->bind(':id', $payJid);
+                        $this->db->execute();
+
+                        // Clean up old draft transactions
+                        $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
+                        $this->db->bind(':jid', $payJid);
+                        $this->db->execute();
+                    } else {
+                        // Insert Journal Entry
+                        $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
+                                          VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
+                        $this->db->bind(':ref', $refCode);
+                        $this->db->bind(':desc', "Finalized Delivery Collection (" . $pay->payment_method . ")");
+                        $this->db->bind(':uid', $adminUserId);
+                        $this->db->execute();
+                        $payJid = $this->db->lastInsertId();
+                    }
 
                     // Update payment record to associate with this journal entry
                     $this->db->query("UPDATE customer_payments SET journal_entry_id = :jid WHERE id = :pid");
@@ -698,6 +838,46 @@ class Delivery {
                         } else {
                             break;
                         }
+                    }
+                }
+            }
+
+            // Clean up any remaining DRAFT journal entries and transactions for this route
+            foreach ($invoices as $invoice) {
+                $dbRef = "INV-SALES-DRAFT-" . $invoice->id;
+                $this->db->query("SELECT id FROM journal_entries WHERE reference = :ref AND status = 'Draft'");
+                $this->db->bind(':ref', $dbRef);
+                $oldRows = $this->db->resultSet();
+                foreach ($oldRows as $oldRow) {
+                    $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
+                    $this->db->bind(':jid', $oldRow->id);
+                    $this->db->execute();
+
+                    $this->db->query("DELETE FROM journal_entries WHERE id = :id");
+                    $this->db->bind(':id', $oldRow->id);
+                    $this->db->execute();
+                }
+            }
+            if (!empty($routePayments)) {
+                foreach ($routePayments as $pay) {
+                    $dbRef = "PMT-BAL-DRAFT-" . $pay->id;
+                    $this->db->query("SELECT id FROM journal_entries WHERE reference = :ref AND status = 'Draft'");
+                    $this->db->bind(':ref', $dbRef);
+                    $oldRows = $this->db->resultSet();
+                    foreach ($oldRows as $oldRow) {
+                        $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
+                        $this->db->bind(':jid', $oldRow->id);
+                        $this->db->execute();
+
+                        $this->db->query("DELETE FROM journal_entries WHERE id = :id");
+                        $this->db->bind(':id', $oldRow->id);
+                        $this->db->execute();
+                    }
+
+                    if (!in_array(intval($pay->id), $selectedPaymentIds)) {
+                        $this->db->query("UPDATE customer_payments SET journal_entry_id = NULL WHERE id = :pid AND journal_entry_id IN (SELECT id FROM journal_entries WHERE status = 'Draft')");
+                        $this->db->bind(':pid', $pay->id);
+                        $this->db->execute();
                     }
                 }
             }

@@ -328,7 +328,7 @@
                                             </a>
                                         <?php endif; ?>
                                     </td>
-                                    <td><?= htmlspecialchars($tx->description) ?></td>
+                                    <td><?= htmlspecialchars(!empty($tx->description) ? $tx->description : $tx->entry_description) ?></td>
                                     <td style="text-align: right;" class="<?= $tx->debit > 0 ? 'amount-debit' : 'amount-neutral' ?>">
                                         <?= $tx->debit > 0 ? 'Rs. ' . number_format($tx->debit, 2) : '-' ?>
                                     </td>

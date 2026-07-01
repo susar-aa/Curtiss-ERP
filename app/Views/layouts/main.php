@@ -1534,6 +1534,20 @@ if (!function_exists('hasPermission')) {
                                     <div class="desc">Manual adjustments</div>
                                 </div>
                             </a>
+                            <a href="<?= APP_URL ?>/accounting/recurring" class="mega-card">
+                                <div class="icon"><i class="ph ph-arrows-clockwise"></i></div>
+                                <div class="mega-card-text">
+                                    <div class="title">Recurring Entries</div>
+                                    <div class="desc">Automated templates</div>
+                                </div>
+                            </a>
+                            <a href="<?= APP_URL ?>/accounting/close_year" class="mega-card">
+                                <div class="icon"><i class="ph ph-lock"></i></div>
+                                <div class="mega-card-text">
+                                    <div class="title">Close Fin. Year</div>
+                                    <div class="desc">Lock ledger period</div>
+                                </div>
+                            </a>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -1831,6 +1845,8 @@ if (!function_exists('hasPermission')) {
                         <?php if (hasPermission('accounting')): ?>
                             <a href="<?= APP_URL ?>/accounting/coa" class="fs-link"><i class="ph ph-notebook"></i> Chart of Accts</a>
                             <a href="<?= APP_URL ?>/accounting/journal" class="fs-link"><i class="ph ph-pen-nib"></i> Journal Entries</a>
+                            <a href="<?= APP_URL ?>/accounting/recurring" class="fs-link"><i class="ph ph-arrows-clockwise"></i> Recurring Entries</a>
+                            <a href="<?= APP_URL ?>/accounting/close_year" class="fs-link"><i class="ph ph-lock"></i> Close Financial Year</a>
                             <a href="<?= APP_URL ?>/banking" class="fs-link"><i class="ph ph-bank"></i> Banking</a>
                         <?php endif; ?>
                         <?php if (hasPermission('customerpayment')): ?><a href="<?= APP_URL ?>/customerpayment" class="fs-link"><i class="ph ph-hand-coins"></i> Customer Payments</a><?php endif; ?>

@@ -2587,7 +2587,12 @@ class RepTrackingController extends Controller {
 
     public function api_save_accounting_entries() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
-        $this->validateCsrf();
+        if (!$this->validateCsrf()) {
+            header('Content-Type: application/json');
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'CSRF validation failed.']);
+            exit;
+        }
         $payload = json_decode(file_get_contents('php://input'), true);
         $deliveryId = intval($payload['delivery_id'] ?? 0);
         $accountingEntries = $payload['accounting_entries'] ?? $payload['accounting_entries_json'] ?? null;
@@ -2600,15 +2605,184 @@ class RepTrackingController extends Controller {
         
         try {
             $db = new Database();
+            $db->beginTransaction();
+
+            // Save the raw JSON mapping to the delivery as cache/fallback
             $db->query("UPDATE deliveries SET accounting_entries_json = :acc WHERE id = :id");
             $db->bind(':acc', json_encode($accountingEntries));
             $db->bind(':id', $deliveryId);
             $db->execute();
-            
+
+            // If there are accounting entries draft, parse and insert them as Draft Journal Entries and Transactions
+            if (is_array($accountingEntries)) {
+                $debits = $accountingEntries['debit'] ?? [];
+                $credits = $accountingEntries['credit'] ?? [];
+
+                // Gather all unique keys from debits and credits
+                $allKeys = array_unique(array_merge(array_keys($debits), array_keys($credits)));
+
+                // Default accounts for fallback
+                $db->query("SELECT id, account_code FROM chart_of_accounts WHERE account_code IN ('1200', '4000', '1000', '1010', '1605', '1600', '1090')");
+                $defaultAccs = $db->resultSet();
+                $accMap = [];
+                foreach ($defaultAccs as $a) {
+                    $accMap[$a->account_code] = $a->id;
+                }
+                $defaultArAcc = $accMap['1200'] ?? null;
+                $defaultSalesAcc = $accMap['4000'] ?? null;
+                $defaultCashAcc = $accMap['1000'] ?? null;
+                $defaultChequeAcc = $accMap['1010'] ?? null;
+                $defaultTempBankAcc = $accMap['1605'] ?? ($accMap['1600'] ?? null);
+                $transitAcc = $accMap['1090'] ?? null;
+
+                foreach ($allKeys as $key) {
+                    $debAcc = isset($debits[$key]) ? intval($debits[$key]) : null;
+                    $credAcc = isset($credits[$key]) ? intval($credits[$key]) : null;
+
+                    if (strpos($key, 'inv_') === 0) {
+                        $invId = intval(substr($key, 4));
+                        if ($invId <= 0) continue;
+
+                        // Fetch invoice
+                        $db->query("SELECT * FROM invoices WHERE id = :id AND status != 'Voided'");
+                        $db->bind(':id', $invId);
+                        $invoice = $db->single();
+                        if (!$invoice) continue;
+
+                        // Get true grand total
+                        $subTotal = floatval($invoice->total_amount ?? 0);
+                        $globalDiscVal = floatval($invoice->global_discount_val ?? 0);
+                        $globalDiscType = $invoice->global_discount_type ?? 'Rs';
+                        $globalDisc = ($globalDiscType === '%') ? ($subTotal * $globalDiscVal / 100) : $globalDiscVal;
+                        $gTotal = max(0, $subTotal - $globalDisc) + floatval($invoice->tax_amount ?? 0);
+
+                        if ($gTotal <= 0) continue;
+
+                        // Use defaults if not set
+                        if (!$debAcc) $debAcc = $defaultArAcc;
+                        if (!$credAcc) $credAcc = $defaultSalesAcc;
+
+                        if ($debAcc && $credAcc) {
+                            // Find and clean up any existing draft JEs for this invoice
+                            $db->query("SELECT id FROM journal_entries WHERE reference = :ref AND status = 'Draft'");
+                            $db->bind(':ref', "INV-SALES-DRAFT-" . $invId);
+                            $oldJEs = $db->resultSet();
+                            foreach ($oldJEs as $oldJE) {
+                                $db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
+                                $db->bind(':jid', $oldJE->id);
+                                $db->execute();
+
+                                $db->query("DELETE FROM journal_entries WHERE id = :id");
+                                $db->bind(':id', $oldJE->id);
+                                $db->execute();
+                            }
+
+                            // Insert new Draft Journal Entry
+                            $db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
+                                              VALUES (CURDATE(), :ref, :desc, :uid, 'Draft')");
+                            $db->bind(':ref', "INV-SALES-DRAFT-" . $invId);
+                            $db->bind(':desc', "Sales Invoice Delivery Revenue Posting (" . $invoice->invoice_number . ") [Draft]");
+                            $db->bind(':uid', $_SESSION['user_id']);
+                            $db->execute();
+                            $jid = $db->lastInsertId();
+
+                            // Debit transaction
+                            $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, 0)");
+                            $db->bind(':jid', $jid);
+                            $db->bind(':aid', $debAcc);
+                            $db->bind(':deb', $gTotal);
+                            $db->execute();
+
+                            // Credit transaction
+                            $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :cred)");
+                            $db->bind(':jid', $jid);
+                            $db->bind(':aid', $credAcc);
+                            $db->bind(':cred', $gTotal);
+                            $db->execute();
+                        }
+                    } elseif (strpos($key, 'pay_') === 0) {
+                        $payId = intval(substr($key, 4));
+                        if ($payId <= 0) continue;
+
+                        // Fetch payment
+                        $db->query("SELECT * FROM customer_payments WHERE id = :id");
+                        $db->bind(':id', $payId);
+                        $payment = $db->single();
+                        if (!$payment) continue;
+
+                        $amount = floatval($payment->amount);
+                        if ($amount <= 0) continue;
+
+                        // Use defaults if not set
+                        if (!$debAcc) {
+                            if ($payment->payment_method === 'Cash') {
+                                $debAcc = $defaultCashAcc;
+                            } elseif ($payment->payment_method === 'Cheque') {
+                                $debAcc = $defaultChequeAcc;
+                            } else {
+                                $debAcc = $defaultTempBankAcc;
+                            }
+                        }
+                        if (!$credAcc) {
+                            $credAcc = $transitAcc ?: $defaultArAcc;
+                        }
+
+                        if ($debAcc && $credAcc) {
+                            // Find and clean up any existing draft JEs for this payment
+                            $db->query("SELECT id FROM journal_entries WHERE reference = :ref AND status = 'Draft'");
+                            $db->bind(':ref', "PMT-BAL-DRAFT-" . $payId);
+                            $oldJEs = $db->resultSet();
+                            foreach ($oldJEs as $oldJE) {
+                                $db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
+                                $db->bind(':jid', $oldJE->id);
+                                $db->execute();
+
+                                $db->query("DELETE FROM journal_entries WHERE id = :id");
+                                $db->bind(':id', $oldJE->id);
+                                $db->execute();
+                            }
+
+                            // Insert new Draft Journal Entry
+                            $db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
+                                              VALUES (CURDATE(), :ref, :desc, :uid, 'Draft')");
+                            $db->bind(':ref', "PMT-BAL-DRAFT-" . $payId);
+                            $db->bind(':desc', "Finalized Delivery Collection (" . $payment->payment_method . ") [Draft]");
+                            $db->bind(':uid', $_SESSION['user_id']);
+                            $db->execute();
+                            $jid = $db->lastInsertId();
+
+                            // Update customer_payments
+                            $db->query("UPDATE customer_payments SET journal_entry_id = :jid WHERE id = :pid");
+                            $db->bind(':jid', $jid);
+                            $db->bind(':pid', $payId);
+                            $db->execute();
+
+                            // Debit transaction
+                            $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, 0)");
+                            $db->bind(':jid', $jid);
+                            $db->bind(':aid', $debAcc);
+                            $db->bind(':deb', $amount);
+                            $db->execute();
+
+                            // Credit transaction
+                            $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :cred)");
+                            $db->bind(':jid', $jid);
+                            $db->bind(':aid', $credAcc);
+                            $db->bind(':cred', $amount);
+                            $db->execute();
+                        }
+                    }
+                }
+            }
+
+            $db->commit();
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'success', 'message' => 'Suggested double-entries accounting mappings saved successfully!']);
+            echo json_encode(['status' => 'success', 'message' => 'Suggested double-entries accounting mappings and draft ledger entries saved successfully!']);
             exit;
         } catch (Exception $e) {
+            if (isset($db)) {
+                $db->rollBack();
+            }
             header('Content-Type: application/json');
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
             exit;

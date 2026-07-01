@@ -58,3 +58,17 @@ define('APP_NAME', 'CURTISS ERP');
 
 // Brevo API Configuration
 define('BREVO_API_KEY', getenv('BREVO_API_KEY') ?: '');
+
+// System Financial Account Code Mappings
+define('COA_CODE_CASH_PARENT', '1600');
+define('COA_CODE_CASH_TEMP', '1605');
+define('COA_CODE_AR', '1200');
+define('COA_CODE_SALES', '4000');
+define('COA_CODE_CASH_HAND', '1100');
+
+// System Financial Account Types
+define('COA_TYPE_ASSET', 'Asset');
+define('COA_TYPE_LIABILITY', 'Liability');
+define('COA_TYPE_EQUITY', 'Equity');
+define('COA_TYPE_REVENUE', 'Revenue');
+define('COA_TYPE_EXPENSE', 'Expense');

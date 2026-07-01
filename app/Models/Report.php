@@ -386,4 +386,597 @@ class Report {
         $this->db->bind(':end', $end);
         return $this->db->resultSet();
     }
+
+    public function getComparativeBalances($start, $end) {
+        $this->db->query("SELECT c.id, c.account_code, c.account_name, c.account_type,
+                                 SUM(CASE WHEN c.account_type IN ('Asset', 'Expense') THEN (COALESCE(t.debit, 0) - COALESCE(t.credit, 0))
+                                          ELSE (COALESCE(t.credit, 0) - COALESCE(t.debit, 0)) END) as balance
+                          FROM chart_of_accounts c
+                          LEFT JOIN transactions t ON c.id = t.account_id
+                          LEFT JOIN journal_entries je ON t.journal_entry_id = je.id AND je.status = 'Posted'
+                              AND je.entry_date BETWEEN :start AND :end
+                          GROUP BY c.id, c.account_code, c.account_name, c.account_type
+                          ORDER BY c.account_code ASC");
+        $this->db->bind(':start', $start);
+        $this->db->bind(':end', $end);
+        return $this->db->resultSet() ?: [];
+    }
+
+    public function getComparativeBalancesById($start, $end) {
+        $this->db->query("SELECT c.id,
+                                 SUM(CASE WHEN c.account_type IN ('Asset', 'Expense') THEN (COALESCE(t.debit, 0) - COALESCE(t.credit, 0))
+                                          ELSE (COALESCE(t.credit, 0) - COALESCE(t.debit, 0)) END) as balance
+                          FROM chart_of_accounts c
+                          LEFT JOIN transactions t ON c.id = t.account_id
+                          LEFT JOIN journal_entries je ON t.journal_entry_id = je.id AND je.status = 'Posted'
+                              AND je.entry_date BETWEEN :start AND :end
+                          GROUP BY c.id");
+        $this->db->bind(':start', $start);
+        $this->db->bind(':end', $end);
+        return $this->db->resultSet() ?: [];
+    }
+
+    public function getCompanySettings() {
+        $this->db->query("SELECT * FROM company_settings LIMIT 1");
+        return $this->db->single() ?: (object)[
+            'company_name' => 'Falcon Stationary (Pvt) Ltd',
+            'phone' => '', 'email' => '', 'address' => ''
+        ];
+    }
+
+    public function resolveEntityName($type, $id) {
+        switch ($type) {
+            case 'customer':
+                $this->db->query("SELECT name FROM customers WHERE id = :id");
+                break;
+            case 'supplier':
+                $this->db->query("SELECT name FROM vendors WHERE id = :id");
+                break;
+            case 'product':
+                $this->db->query("SELECT name, item_code FROM items WHERE id = :id");
+                $this->db->bind(':id', $id);
+                $row = $this->db->single();
+                return $row ? ($row->item_code . ' - ' . $row->name) : null;
+            case 'warehouse':
+                $this->db->query("SELECT name FROM warehouses WHERE id = :id");
+                break;
+            case 'category':
+                $this->db->query("SELECT name FROM item_categories WHERE id = :id");
+                break;
+            case 'route':
+                $this->db->query("SELECT route_name as name FROM rep_daily_routes WHERE id = :id");
+                break;
+            case 'rep':
+                $this->db->query("SELECT username as name FROM users WHERE id = :id");
+                break;
+            case 'driver':
+                $this->db->query("SELECT CONCAT(first_name, ' ', last_name) as name FROM employees WHERE id = :id");
+                break;
+            default:
+                return null;
+        }
+        $this->db->bind(':id', $id);
+        $row = $this->db->single();
+        return $row ? $row->name : null;
+    }
+
+    public function getReportFiltersData() {
+        $data = [];
+        
+        $this->db->query("SELECT id, name FROM customers ORDER BY name ASC");
+        $data['customers'] = $this->db->resultSet() ?: [];
+
+        $this->db->query("SELECT id, name FROM vendors ORDER BY name ASC");
+        $data['suppliers'] = $this->db->resultSet() ?: [];
+
+        $this->db->query("SELECT id, name FROM items ORDER BY name ASC");
+        $data['products'] = $this->db->resultSet() ?: [];
+
+        $this->db->query("SELECT id, name FROM warehouses ORDER BY name ASC");
+        $data['warehouses'] = $this->db->resultSet() ?: [];
+
+        $this->db->query("SELECT id, route_name FROM rep_daily_routes ORDER BY route_name ASC");
+        $data['routes'] = $this->db->resultSet() ?: [];
+
+        $this->db->query("SELECT id, name FROM item_categories ORDER BY name ASC");
+        $data['categories'] = $this->db->resultSet() ?: [];
+
+        $this->db->query("SELECT DISTINCT brand FROM items WHERE brand IS NOT NULL AND brand != '' ORDER BY brand ASC");
+        $data['brands'] = $this->db->resultSet() ?: [];
+
+        $this->db->query("SELECT DISTINCT customer_type as name FROM customers WHERE customer_type IS NOT NULL AND customer_type != '' ORDER BY customer_type ASC");
+        $data['groups'] = $this->db->resultSet() ?: [];
+
+        $this->db->query("SELECT id, vehicle_number FROM vehicles WHERE status = 'Active' ORDER BY vehicle_number ASC");
+        $data['vehicles'] = $this->db->resultSet() ?: [];
+
+        $this->db->query("SELECT id, CONCAT(first_name, ' ', last_name) as name FROM employees WHERE job_title = 'Driver' AND status = 'Active' ORDER BY first_name ASC");
+        $data['drivers'] = $this->db->resultSet() ?: [];
+
+        $this->db->query("SELECT DISTINCT partner_name as name FROM deliveries WHERE partner_name IS NOT NULL AND partner_name != '' ORDER BY partner_name ASC");
+        $data['partners'] = $this->db->resultSet() ?: [];
+
+        $this->db->query("SELECT DISTINCT territory FROM customers WHERE territory IS NOT NULL AND territory != '' ORDER BY territory ASC");
+        $data['territories'] = $this->db->resultSet() ?: [];
+
+        $this->db->query("SELECT id, username as name FROM users WHERE role = 'rep' ORDER BY username ASC");
+        $data['reps'] = $this->db->resultSet() ?: [];
+
+        return $data;
+    }
+
+    public function getQuickViewData($type, $id = null, $number = null) {
+        $result = ['success' => false];
+        switch ($type) {
+            case 'customer':
+                if ($id) {
+                    $this->db->query("SELECT * FROM customers WHERE id = :id");
+                    $this->db->bind(':id', $id);
+                } else {
+                    $this->db->query("SELECT * FROM customers WHERE name = :name LIMIT 1");
+                    $this->db->bind(':name', $number);
+                }
+                $customer = $this->db->single();
+                if (!$customer) {
+                    $result['message'] = 'Customer not found.';
+                    return $result;
+                }
+
+                $this->db->query("
+                    SELECT 
+                        (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = :cid1 AND status != 'Voided') - 
+                        (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE customer_id = :cid2 AND status = 'Active') - 
+                        (SELECT COALESCE(SUM(total_amount), 0) FROM credit_notes WHERE customer_id = :cid3)
+                        AS outstanding_balance
+                ");
+                $this->db->bind(':cid1', $customer->id);
+                $this->db->bind(':cid2', $customer->id);
+                $this->db->bind(':cid3', $customer->id);
+                $balanceRow = $this->db->single();
+                $outstanding = $balanceRow ? floatval($balanceRow->outstanding_balance) : 0.00;
+
+                $this->db->query("
+                    SELECT id, invoice_number, invoice_date, status, 
+                           (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_amount 
+                    FROM invoices 
+                    WHERE customer_id = :cid 
+                    ORDER BY invoice_date DESC, id DESC LIMIT 5
+                ");
+                $this->db->bind(':cid', $customer->id);
+                $invoices = $this->db->resultSet() ?: [];
+
+                $this->db->query("
+                    SELECT id, payment_date, payment_method, reference, amount, status 
+                    FROM customer_payments 
+                    WHERE customer_id = :cid AND status = 'Active'
+                    ORDER BY payment_date DESC, id DESC LIMIT 5
+                ");
+                $this->db->bind(':cid', $customer->id);
+                $payments = $this->db->resultSet() ?: [];
+
+                return [
+                    'success' => true,
+                    'entity' => [
+                        'id' => $customer->id,
+                        'name' => $customer->name,
+                        'phone' => $customer->phone,
+                        'email' => $customer->email,
+                        'address' => $customer->address,
+                        'territory' => $customer->territory,
+                        'customer_type' => $customer->customer_type ?? 'Standard',
+                        'outstanding_balance' => $outstanding
+                    ],
+                    'invoices' => $invoices,
+                    'payments' => $payments
+                ];
+
+            case 'product':
+                if ($id) {
+                    $this->db->query("SELECT * FROM items WHERE id = :id");
+                    $this->db->bind(':id', $id);
+                } else {
+                    $this->db->query("SELECT * FROM items WHERE name = :name OR item_code = :code LIMIT 1");
+                    $this->db->bind(':name', $number);
+                    $this->db->bind(':code', $number);
+                }
+                $product = $this->db->single();
+                if (!$product) {
+                    $result['message'] = 'Product not found.';
+                    return $result;
+                }
+
+                $this->db->query("
+                    SELECT w.name as warehouse_name, COALESCE(SUM(sl.quantity_in - sl.quantity_out), 0) as quantity 
+                    FROM stock_ledger sl 
+                    JOIN warehouses w ON sl.warehouse_id = w.id 
+                    WHERE sl.item_id = :id 
+                    GROUP BY w.id, w.name
+                ");
+                $this->db->bind(':id', $product->id);
+                $warehouseStock = $this->db->resultSet() ?: [];
+
+                $this->db->query("
+                    SELECT sl.transaction_date as date, sl.reference_number as ref, sl.quantity_out as qty, sl.unit_cost, sl.total_value 
+                    FROM stock_ledger sl 
+                    WHERE sl.item_id = :id AND sl.quantity_out > 0 
+                    ORDER BY sl.transaction_date DESC, sl.id DESC LIMIT 5
+                ");
+                $this->db->bind(':id', $product->id);
+                $recentSales = $this->db->resultSet() ?: [];
+
+                return [
+                    'success' => true,
+                    'entity' => [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'item_code' => $product->item_code,
+                        'brand' => $product->brand ?? 'N/A',
+                        'price' => $product->selling_price ?? $product->price ?? 0.00,
+                        'cost' => $product->cost ?? $product->cost_price ?? 0.00,
+                        'qty_on_hand' => $product->quantity_on_hand
+                    ],
+                    'stock' => $warehouseStock,
+                    'sales' => $recentSales
+                ];
+
+            case 'invoice':
+                if ($id) {
+                    $this->db->query("SELECT i.*, c.name as customer_name FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.id = :id");
+                    $this->db->bind(':id', $id);
+                } else {
+                    $this->db->query("SELECT i.*, c.name as customer_name FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.invoice_number = :num LIMIT 1");
+                    $this->db->bind(':num', $number);
+                }
+                $invoice = $this->db->single();
+                if (!$invoice) {
+                    $result['message'] = 'Invoice not found.';
+                    return $result;
+                }
+
+                $this->db->query("
+                    SELECT ii.*, item.name as item_name, item.item_code 
+                    FROM invoice_items ii 
+                    JOIN items item ON ii.item_id = item.id 
+                    WHERE ii.invoice_id = :id
+                ");
+                $this->db->bind(':id', $invoice->id);
+                $items = $this->db->resultSet() ?: [];
+
+                $this->db->query("
+                    SELECT pa.amount, cp.payment_date, cp.payment_method, cp.reference 
+                    FROM customer_payment_allocations pa 
+                    JOIN customer_payments cp ON pa.customer_payment_id = cp.id 
+                    WHERE pa.invoice_id = :id AND pa.is_reversed = 0
+                ");
+                $this->db->bind(':id', $invoice->id);
+                $allocations = $this->db->resultSet() ?: [];
+
+                return [
+                    'success' => true,
+                    'entity' => [
+                        'id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'invoice_date' => $invoice->invoice_date,
+                        'due_date' => $invoice->due_date,
+                        'customer_name' => $invoice->customer_name,
+                        'status' => $invoice->status,
+                        'total' => $invoice->total_amount,
+                        'discount' => $invoice->global_discount_val,
+                        'tax' => $invoice->tax_amount,
+                        'net_total' => ($invoice->total_amount - ($invoice->global_discount_type === '%' ? ($invoice->total_amount * $invoice->global_discount_val / 100) : $invoice->global_discount_val) + $invoice->tax_amount)
+                    ],
+                    'items' => $items,
+                    'allocations' => $allocations
+                ];
+
+            case 'route':
+                if ($id) {
+                    $this->db->query("SELECT * FROM rep_daily_routes WHERE id = :id");
+                    $this->db->bind(':id', $id);
+                } else {
+                    $this->db->query("SELECT * FROM rep_daily_routes WHERE route_name = :name LIMIT 1");
+                    $this->db->bind(':name', $number);
+                }
+                $route = $this->db->single();
+                if (!$route) {
+                    $result['message'] = 'Route not found.';
+                    return $result;
+                }
+
+                $this->db->query("SELECT COUNT(*) as cust_count FROM customers WHERE route_id = :rid OR territory = :route_name");
+                $this->db->bind(':rid', $route->id);
+                $this->db->bind(':route_name', $route->route_name);
+                $custCountRow = $this->db->single();
+                $custCount = $custCountRow ? intval($custCountRow->cust_count) : 0;
+
+                $this->db->query("
+                    SELECT COUNT(*) as inv_count, COALESCE(SUM(total_amount),0) as total_sales 
+                    FROM invoices i 
+                    JOIN customers c ON i.customer_id = c.id 
+                    WHERE c.route_id = :rid OR c.territory = :route_name
+                ");
+                $this->db->bind(':rid', $route->id);
+                $this->db->bind(':route_name', $route->route_name);
+                $invStats = $this->db->single();
+                $invCount = $invStats ? intval($invStats->inv_count) : 0;
+                $totalSales = $invStats ? floatval($invStats->total_sales) : 0.00;
+
+                $this->db->query("
+                    SELECT COALESCE(SUM(cp.amount),0) as total_collections 
+                    FROM customer_payments cp 
+                    JOIN customers c ON cp.customer_id = c.id 
+                    WHERE (c.route_id = :rid OR c.territory = :route_name) AND cp.status = 'Active'
+                ");
+                $this->db->bind(':rid', $route->id);
+                $this->db->bind(':route_name', $route->route_name);
+                $collRow = $this->db->single();
+                $totalCollections = $collRow ? floatval($collRow->total_collections) : 0.00;
+
+                return [
+                    'success' => true,
+                    'entity' => [
+                        'id' => $route->id,
+                        'route_name' => $route->route_name,
+                        'description' => $route->description ?? 'N/A',
+                        'cust_count' => $custCount,
+                        'inv_count' => $invCount,
+                        'total_sales' => $totalSales,
+                        'total_collections' => $totalCollections,
+                        'outstanding' => $totalSales - $totalCollections
+                    ]
+                ];
+
+            case 'supplier':
+                if ($id) {
+                    $this->db->query("SELECT * FROM vendors WHERE id = :id");
+                    $this->db->bind(':id', $id);
+                } else {
+                    $this->db->query("SELECT * FROM vendors WHERE name = :name LIMIT 1");
+                    $this->db->bind(':name', $number);
+                }
+                $supplier = $this->db->single();
+                if (!$supplier) {
+                    $result['message'] = 'Supplier not found.';
+                    return $result;
+                }
+
+                $this->db->query("
+                    SELECT 
+                        (SELECT COALESCE(SUM(gri.total), 0) FROM grn_items gri JOIN goods_receipt_notes grn ON gri.grn_id = grn.id WHERE grn.vendor_id = :vid1 AND grn.is_approved = 1) - 
+                        (SELECT COALESCE(SUM(amount), 0) FROM supplier_payments WHERE vendor_id = :vid2 AND status = 'Active') - 
+                        (SELECT COALESCE(SUM(total_amount), 0) FROM supplier_returns WHERE vendor_id = :vid3) 
+                        AS outstanding_balance
+                ");
+                $this->db->bind(':vid1', $supplier->id);
+                $this->db->bind(':vid2', $supplier->id);
+                $this->db->bind(':vid3', $supplier->id);
+                $balanceRow = $this->db->single();
+                $outstanding = $balanceRow ? floatval($balanceRow->outstanding_balance) : 0.00;
+
+                $this->db->query("
+                    SELECT grn.id, grn.grn_number, grn.grn_date, COALESCE(SUM(gri.total), 0) as total 
+                    FROM goods_receipt_notes grn 
+                    LEFT JOIN grn_items gri ON gri.grn_id = grn.id 
+                    WHERE grn.vendor_id = :vid AND grn.is_approved = 1 
+                    GROUP BY grn.id, grn.grn_number, grn.grn_date 
+                    ORDER BY grn.grn_date DESC LIMIT 5
+                ");
+                $this->db->bind(':vid', $supplier->id);
+                $grns = $this->db->resultSet() ?: [];
+
+                return [
+                    'success' => true,
+                    'entity' => [
+                        'id' => $supplier->id,
+                        'name' => $supplier->name,
+                        'phone' => $supplier->phone,
+                        'email' => $supplier->email,
+                        'address' => $supplier->address,
+                        'outstanding_balance' => $outstanding
+                    ],
+                    'grns' => $grns
+                ];
+
+            case 'po':
+                if ($id) {
+                    $this->db->query("SELECT p.*, v.name as supplier_name FROM purchase_orders p JOIN vendors v ON p.vendor_id = v.id WHERE p.id = :id");
+                    $this->db->bind(':id', $id);
+                } else {
+                    $this->db->query("SELECT p.*, v.name as supplier_name FROM purchase_orders p JOIN vendors v ON p.vendor_id = v.id WHERE p.po_number = :num LIMIT 1");
+                    $this->db->bind(':num', $number);
+                }
+                $po = $this->db->single();
+                if (!$po) {
+                    $result['message'] = 'PO not found.';
+                    return $result;
+                }
+                return [
+                    'success' => true,
+                    'entity' => [
+                        'id' => $po->id,
+                        'po_number' => $po->po_number,
+                        'po_date' => $po->po_date ?? $po->created_at,
+                        'supplier_name' => $po->supplier_name,
+                        'status' => $po->status ?? 'Pending',
+                        'total' => $po->total_amount ?? 0.00
+                    ]
+                ];
+
+            case 'grn':
+                if ($id) {
+                    $this->db->query("SELECT g.*, v.name as supplier_name FROM goods_receipt_notes g JOIN vendors v ON g.vendor_id = v.id WHERE g.id = :id");
+                    $this->db->bind(':id', $id);
+                } else {
+                    $this->db->query("SELECT g.*, v.name as supplier_name FROM goods_receipt_notes g JOIN vendors v ON g.vendor_id = v.id WHERE g.grn_number = :num LIMIT 1");
+                    $this->db->bind(':num', $number);
+                }
+                $grn = $this->db->single();
+                if (!$grn) {
+                    $result['message'] = 'GRN not found.';
+                    return $result;
+                }
+                $this->db->query("SELECT COALESCE(SUM(total), 0) as total FROM grn_items WHERE grn_id = :id");
+                $this->db->bind(':id', $grn->id);
+                $totRow = $this->db->single();
+                $total = $totRow ? floatval($totRow->total) : 0.00;
+
+                return [
+                    'success' => true,
+                    'entity' => [
+                        'id' => $grn->id,
+                        'grn_number' => $grn->grn_number,
+                        'grn_date' => $grn->grn_date,
+                        'supplier_name' => $grn->supplier_name,
+                        'is_approved' => $grn->is_approved,
+                        'total' => $total
+                    ]
+                ];
+
+            case 'payment':
+                if ($id) {
+                    $this->db->query("SELECT p.*, c.name as customer_name FROM customer_payments p JOIN customers c ON p.customer_id = c.id WHERE p.id = :id");
+                    $this->db->bind(':id', $id);
+                } else {
+                    $this->db->query("SELECT p.*, c.name as customer_name FROM customer_payments p JOIN customers c ON p.customer_id = c.id WHERE p.reference = :ref LIMIT 1");
+                    $this->db->bind(':ref', $number);
+                }
+                $payment = $this->db->single();
+                if (!$payment) {
+                    $result['message'] = 'Payment not found.';
+                    return $result;
+                }
+                return [
+                    'success' => true,
+                    'entity' => [
+                        'id' => $payment->id,
+                        'reference' => $payment->reference,
+                        'payment_date' => $payment->payment_date,
+                        'payment_method' => $payment->payment_method,
+                        'amount' => $payment->amount,
+                        'customer_name' => $payment->customer_name,
+                        'status' => $payment->status
+                    ]
+                ];
+
+            case 'cheque':
+                if ($id) {
+                    $this->db->query("SELECT ch.*, c.name as customer_name FROM cheques ch LEFT JOIN customers c ON ch.customer_id = c.id WHERE ch.id = :id");
+                    $this->db->bind(':id', $id);
+                } else {
+                    $this->db->query("SELECT ch.*, c.name as customer_name FROM cheques ch LEFT JOIN customers c ON ch.customer_id = c.id WHERE ch.cheque_number = :num LIMIT 1");
+                    $this->db->bind(':num', $number);
+                }
+                $cheque = $this->db->single();
+                if (!$cheque) {
+                    $result['message'] = 'Cheque not found.';
+                    return $result;
+                }
+                return [
+                    'success' => true,
+                    'entity' => [
+                        'id' => $cheque->id,
+                        'cheque_number' => $cheque->cheque_number,
+                        'bank_name' => $cheque->bank_name,
+                        'amount' => $cheque->amount,
+                        'banking_date' => $cheque->banking_date,
+                        'customer_name' => $cheque->customer_name ?? 'N/A',
+                        'status' => $cheque->status
+                    ]
+                ];
+
+            case 'driver':
+                if ($id) {
+                    $this->db->query("SELECT id, CONCAT(first_name, ' ', last_name) as name, email, phone FROM employees WHERE id = :id");
+                    $this->db->bind(':id', $id);
+                } else {
+                    $this->db->query("SELECT id, CONCAT(first_name, ' ', last_name) as name, email, phone FROM employees WHERE CONCAT(first_name, ' ', last_name) = :name LIMIT 1");
+                    $this->db->bind(':name', $number);
+                }
+                $driver = $this->db->single();
+                if (!$driver) {
+                    $result['message'] = 'Driver not found.';
+                    return $result;
+                }
+                return [
+                    'success' => true,
+                    'entity' => [
+                        'id' => $driver->id,
+                        'name' => $driver->name,
+                        'email' => $driver->email ?? 'N/A',
+                        'phone' => $driver->phone ?? 'N/A',
+                        'role' => 'Driver'
+                    ]
+                ];
+
+            case 'vehicle':
+                if ($id) {
+                    $this->db->query("SELECT * FROM vehicles WHERE id = :id");
+                    $this->db->bind(':id', $id);
+                } else {
+                    $this->db->query("SELECT * FROM vehicles WHERE vehicle_number = :num LIMIT 1");
+                    $this->db->bind(':num', $number);
+                }
+                $vehicle = $this->db->single();
+                if (!$vehicle) {
+                    $result['message'] = 'Vehicle not found.';
+                    return $result;
+                }
+                return [
+                    'success' => true,
+                    'entity' => [
+                        'id' => $vehicle->id,
+                        'vehicle_number' => $vehicle->vehicle_number,
+                        'vehicle_type' => $vehicle->vehicle_type ?? 'N/A',
+                        'status' => $vehicle->status
+                    ]
+                ];
+
+            case 'rep':
+                if ($id) {
+                    $this->db->query("SELECT id, username, email FROM users WHERE id = :id");
+                    $this->db->bind(':id', $id);
+                } else {
+                    $this->db->query("SELECT id, username, email FROM users WHERE username = :name LIMIT 1");
+                    $this->db->bind(':name', $number);
+                }
+                $rep = $this->db->single();
+                if (!$rep) {
+                    $result['message'] = 'Sales Rep not found.';
+                    return $result;
+                }
+                return [
+                    'success' => true,
+                    'entity' => [
+                        'id' => $rep->id,
+                        'name' => $rep->username,
+                        'email' => $rep->email ?? 'N/A',
+                        'role' => 'Sales Representative'
+                    ]
+                ];
+
+            case 'warehouse':
+                if ($id) {
+                    $this->db->query("SELECT * FROM warehouses WHERE id = :id");
+                    $this->db->bind(':id', $id);
+                } else {
+                    $this->db->query("SELECT * FROM warehouses WHERE name = :name LIMIT 1");
+                    $this->db->bind(':name', $number);
+                }
+                $warehouse = $this->db->single();
+                if (!$warehouse) {
+                    $result['message'] = 'Warehouse not found.';
+                    return $result;
+                }
+                return [
+                    'success' => true,
+                    'entity' => [
+                        'id' => $warehouse->id,
+                        'name' => $warehouse->name,
+                        'code' => $warehouse->code ?? 'N/A',
+                        'address' => $warehouse->address ?? 'N/A'
+                    ]
+                ];
+        }
+        return $result;
+    }
 }

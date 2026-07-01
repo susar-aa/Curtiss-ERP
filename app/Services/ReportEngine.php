@@ -559,9 +559,50 @@ class ReportEngine {
             ],
 
             // 6. Finance & Accounts Reports
+            'budget_vs_actual' => [
+                'title' => 'Budget vs Actual Spending',
+                'category' => 'finance',
+                'columns' => [
+                    'account_code' => ['label' => 'Account Code', 'type' => 'text', 'sortable' => true],
+                    'account_name' => ['label' => 'Account Name', 'type' => 'text', 'sortable' => true],
+                    'budget_amount' => ['label' => 'Budget Limit', 'type' => 'currency', 'align' => 'right', 'total' => 'sum', 'sortable' => true],
+                    'actual_spent' => ['label' => 'Actual Spent', 'type' => 'currency', 'align' => 'right', 'total' => 'sum', 'sortable' => true],
+                    'variance' => ['label' => 'Remaining Budget', 'type' => 'currency', 'align' => 'right', 'total' => 'sum', 'sortable' => true],
+                    'usage_percent' => ['label' => 'Usage %', 'type' => 'text', 'align' => 'right']
+                ],
+                'sql' => "SELECT c.id, c.account_code, c.account_name,
+                                 COALESCE(b.budget_amount, 0) as budget_amount,
+                                 COALESCE((
+                                     SELECT SUM(t.debit - t.credit)
+                                     FROM transactions t
+                                     JOIN journal_entries je ON t.journal_entry_id = je.id
+                                     WHERE t.account_id = c.id AND je.status = 'Posted'
+                                 ), 0) as actual_spent,
+                                 (COALESCE(b.budget_amount, 0) - COALESCE((
+                                     SELECT SUM(t.debit - t.credit)
+                                     FROM transactions t
+                                     JOIN journal_entries je ON t.journal_entry_id = je.id
+                                     WHERE t.account_id = c.id AND je.status = 'Posted'
+                                 ), 0)) as variance,
+                                 CONCAT(FORMAT(CASE 
+                                     WHEN COALESCE(b.budget_amount, 0) > 0 
+                                     THEN (COALESCE((
+                                         SELECT SUM(t.debit - t.credit)
+                                         FROM transactions t
+                                         JOIN journal_entries je ON t.journal_entry_id = je.id
+                                         WHERE t.account_id = c.id AND je.status = 'Posted'
+                                     ), 0) / b.budget_amount) * 100
+                                     ELSE 0 
+                                 END, 1), '%') as usage_percent
+                          FROM chart_of_accounts c
+                          LEFT JOIN budgets b ON c.id = b.account_id AND b.fiscal_year = YEAR(NOW())
+                          WHERE c.account_type = 'Expense'"
+            ],
             'trial_balance' => [
                 'title' => 'Trial Balance',
                 'category' => 'finance',
+                'filters' => ['date_range', 'tb_type'],
+                'date_column' => 'je.entry_date',
                 'columns' => [
                     'account_code' => ['label' => 'Account Code', 'type' => 'text'],
                     'account_name' => ['label' => 'Account Name', 'type' => 'text'],
@@ -574,7 +615,7 @@ class ReportEngine {
                                  SUM(COALESCE(t.credit, 0)) as credit
                           FROM chart_of_accounts c
                           LEFT JOIN transactions t ON c.id = t.account_id
-                          LEFT JOIN journal_entries je ON t.journal_entry_id = je.id AND je.status = 'Posted' AND je.reference NOT LIKE 'YE-CLOSE-%'
+                          LEFT JOIN journal_entries je ON t.journal_entry_id = je.id AND je.status = 'Posted' AND (:include_closing = 1 OR je.reference NOT LIKE 'YE-CLOSE-%')
                           WHERE 1=1
                           GROUP BY c.id, c.account_code, c.account_name, c.account_type"
             ],
@@ -962,6 +1003,12 @@ class ReportEngine {
                 }
                 $params[':territory'] = $filters['territory'];
             }
+        }
+
+        // 16. Trial Balance Type Filter (Pre-Closing vs Post-Closing)
+        if (strpos($baseSql, ':include_closing') !== false) {
+            $includeClosing = (isset($filters['tb_type']) && $filters['tb_type'] === 'post_closing') ? 1 : 0;
+            $params[':include_closing'] = $includeClosing;
         }
 
         // Inject clauses prior to GROUP BY if present

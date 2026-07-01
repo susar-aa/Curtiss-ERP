@@ -356,20 +356,21 @@ foreach($data['accounts'] as $acc) {
         <table class="cust-table">
             <thead>
                 <tr>
-                    <th style="width: 40%;">Account Code & Name</th>
-                    <th style="width: 15%;">Type</th>
-                    <th style="width: 20%; text-align: right;">Current Balance</th>
-                    <th style="width: 13%; text-align: center;">Status</th>
-                    <th style="width: 12%; text-align: center;">Actions</th>
+                    <th style="width: 35%;">Account Code & Name</th>
+                    <th style="width: 12%;">Type</th>
+                    <th style="width: 18%;">Category</th>
+                    <th style="width: 15%; text-align: right;">Current Balance</th>
+                    <th style="width: 10%; text-align: center;">Status</th>
+                    <th style="width: 10%; text-align: center;">Actions</th>
                 </tr>
             </thead>
             <tbody id="tableBody">
                 <?php if(empty($tree)): ?>
-                    <tr><td colspan="5" style="text-align: center; color: var(--t-secondary); padding: 40px;"><i class="fa-solid fa-folder-open" style="font-size: 24px; margin-bottom: 8px;"></i><br>No accounts found.</td></tr>
+                    <tr><td colspan="6" style="text-align: center; color: var(--t-secondary); padding: 40px;"><i class="fa-solid fa-folder-open" style="font-size: 24px; margin-bottom: 8px;"></i><br>No accounts found.</td></tr>
                 <?php else: foreach($tree as $parent): ?>
                     
                     <!-- PARENT ROW (Level 1) -->
-                    <tr class="coa-row">
+                    <tr class="coa-row" data-id="<?= $parent->id ?>" data-parent-id="">
                         <td>
                             <i class="fa-solid fa-folder" style="color: var(--c-blue); margin-right: 8px;"></i>
                             <a href="<?= APP_URL ?>/accounting/history/<?= $parent->id ?>" style="text-decoration:none; color: var(--c-blue); font-weight:700;">
@@ -377,6 +378,7 @@ foreach($data['accounts'] as $acc) {
                             </a>
                         </td>
                         <td><span class="sf-badge type-<?= $parent->account_type ?>"><?= $parent->account_type ?></span></td>
+                        <td><span class="sf-badge" style="background: rgba(0,0,0,0.05); color: var(--t-primary); font-weight: 500;"><?= htmlspecialchars($parent->account_category ?? 'N/A') ?></span></td>
                         <td style="text-align: right; font-family: var(--f-mono); font-weight: 600; font-size: 14.5px;">Rs: <?= number_format($parent->balance, 2) ?></td>
                         <td style="text-align: center;">
                             <?php if($parent->is_active): ?>
@@ -386,7 +388,7 @@ foreach($data['accounts'] as $acc) {
                             <?php endif; ?>
                         </td>
                         <td style="text-align: center;">
-                            <button type="button" class="btn-small" onclick="openModal('edit', '<?= $parent->id ?>', '<?= addslashes($parent->account_code) ?>', '<?= addslashes($parent->account_name) ?>', '<?= $parent->account_type ?>', '', <?= $parent->is_active ?>)">
+                            <button type="button" class="btn-small" onclick="openModal('edit', '<?= $parent->id ?>', '<?= addslashes($parent->account_code) ?>', '<?= addslashes($parent->account_name) ?>', '<?= $parent->account_type ?>', '', <?= $parent->is_active ?>, '<?= addslashes($parent->account_category ?? '') ?>')">
                                 <i class="fa-solid fa-pen-to-square"></i> Edit
                             </button>
                         </td>
@@ -394,7 +396,7 @@ foreach($data['accounts'] as $acc) {
 
                     <!-- SUB-ACCOUNT ROWS (Level 2) -->
                     <?php foreach($parent->children as $child): ?>
-                    <tr class="coa-row">
+                    <tr class="coa-row" data-id="<?= $child->id ?>" data-parent-id="<?= $parent->id ?>">
                         <td style="padding-left: 36px;">
                             <i class="fa-solid fa-chevron-right" style="font-size: 9px; color: var(--t-tertiary); margin-right: 8px; vertical-align: middle;"></i>
                             <i class="fa-solid fa-folder-open" style="color: var(--t-secondary); margin-right: 8px;"></i>
@@ -403,6 +405,7 @@ foreach($data['accounts'] as $acc) {
                             </a>
                         </td>
                         <td><span class="sf-badge type-<?= $child->account_type ?>"><?= $child->account_type ?></span></td>
+                        <td><span class="sf-badge" style="background: rgba(0,0,0,0.05); color: var(--t-secondary); font-size: 11px;"><?= htmlspecialchars($child->account_category ?? 'N/A') ?></span></td>
                         <td style="text-align: right; font-family: var(--f-mono); font-weight: 500; font-size: 14px;">Rs: <?= number_format($child->balance, 2) ?></td>
                         <td style="text-align: center;">
                             <?php if($child->is_active): ?>
@@ -412,7 +415,7 @@ foreach($data['accounts'] as $acc) {
                             <?php endif; ?>
                         </td>
                         <td style="text-align: center;">
-                            <button type="button" class="btn-small" onclick="openModal('edit', '<?= $child->id ?>', '<?= addslashes($child->account_code) ?>', '<?= addslashes($child->account_name) ?>', '<?= $child->account_type ?>', '<?= $child->parent_id ?>', <?= $child->is_active ?>)">
+                            <button type="button" class="btn-small" onclick="openModal('edit', '<?= $child->id ?>', '<?= addslashes($child->account_code) ?>', '<?= addslashes($child->account_name) ?>', '<?= $child->account_type ?>', '<?= $child->parent_id ?>', <?= $child->is_active ?>, '<?= addslashes($child->account_category ?? '') ?>')">
                                 <i class="fa-solid fa-pen-to-square"></i> Edit
                             </button>
                         </td>
@@ -420,7 +423,7 @@ foreach($data['accounts'] as $acc) {
 
                     <!-- SUB-SUB-ACCOUNT ROWS (Level 3) -->
                     <?php foreach($child->children as $subsub): ?>
-                    <tr class="coa-row" style="background: rgba(0,0,0,0.01);">
+                    <tr class="coa-row" style="background: rgba(0,0,0,0.01);" data-id="<?= $subsub->id ?>" data-parent-id="<?= $child->id ?>">
                         <td style="padding-left: 64px;">
                             <i class="fa-solid fa-circle" style="font-size: 5px; color: var(--t-tertiary); margin-right: 8px; vertical-align: middle;"></i>
                             <i class="fa-solid fa-file-invoice-dollar" style="color: var(--t-tertiary); margin-right: 8px;"></i>
@@ -429,6 +432,7 @@ foreach($data['accounts'] as $acc) {
                             </a>
                         </td>
                         <td><span class="sf-badge type-<?= $subsub->account_type ?>" style="opacity: 0.85;"><?= $subsub->account_type ?></span></td>
+                        <td><span class="sf-badge" style="background: rgba(0,0,0,0.03); color: var(--t-tertiary); font-size: 11px;"><?= htmlspecialchars($subsub->account_category ?? 'N/A') ?></span></td>
                         <td style="text-align: right; font-family: var(--f-mono); font-size: 13.5px; color: var(--t-secondary);">Rs: <?= number_format($subsub->balance, 2) ?></td>
                         <td style="text-align: center;">
                             <?php if($subsub->is_active): ?>
@@ -438,7 +442,7 @@ foreach($data['accounts'] as $acc) {
                             <?php endif; ?>
                         </td>
                         <td style="text-align: center;">
-                            <button type="button" class="btn-small" onclick="openModal('edit', '<?= $subsub->id ?>', '<?= addslashes($subsub->account_code) ?>', '<?= addslashes($subsub->account_name) ?>', '<?= $subsub->account_type ?>', '<?= $subsub->parent_id ?>', <?= $subsub->is_active ?>)">
+                            <button type="button" class="btn-small" onclick="openModal('edit', '<?= $subsub->id ?>', '<?= addslashes($subsub->account_code) ?>', '<?= addslashes($subsub->account_name) ?>', '<?= $subsub->account_type ?>', '<?= $subsub->parent_id ?>', <?= $subsub->is_active ?>, '<?= addslashes($subsub->account_category ?? '') ?>')">
                                 <i class="fa-solid fa-pen-to-square"></i> Edit
                             </button>
                         </td>
@@ -446,26 +450,33 @@ foreach($data['accounts'] as $acc) {
                     <?php endforeach; ?>
 
                     <!-- CUSTOMER ACCOUNTS UNDER AR (Virtual sub-sub accounts) -->
-                    <?php if (($child->account_code == '1200' || stripos($child->account_name, 'Receivable') !== false) && !empty($data['customers'])): ?>
-                        <?php foreach($data['customers'] as $cust): ?>
-                            <?php if (floatval($cust->outstanding_balance) != 0): ?>
-                            <tr class="coa-row" style="background: rgba(0, 122, 255, 0.02);">
-                                <td style="padding-left: 64px;">
-                                    <i class="fa-solid fa-user-tag" style="color: var(--c-blue); margin-right: 8px;"></i>
-                                    <span style="font-weight: 600; color: var(--c-blue);"><?= htmlspecialchars($cust->name) ?></span>
-                                    <span style="font-size: 11px; color: var(--t-secondary); font-style: italic; margin-left: 6px;">(Customer Ledger)</span>
-                                </td>
-                                <td><span class="sf-badge" style="background: var(--c-blue-light); color: var(--c-blue);">Customer AR</span></td>
-                                <td style="text-align: right; font-family: var(--f-mono); font-size: 13.5px; color: var(--c-blue); font-weight: 700;">Rs: <?= number_format($cust->outstanding_balance, 2) ?></td>
-                                <td style="text-align: center;"><span class="sf-badge badge-owed"><span class="dot"></span>Outstanding</span></td>
-                                <td style="text-align: center;">
-                                    <a href="<?= APP_URL ?>/customer/edit/<?= $cust->id ?>" class="btn-small" style="text-decoration: none;">
-                                        <i class="fa-solid fa-address-card"></i> View Profile
-                                    </a>
-                                </td>
-                            </tr>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
+                    <?php if (($child->account_code == COA_CODE_AR || stripos($child->account_name, 'Receivable') !== false) && !empty($data['customers'])): ?>
+                        <?php 
+                            $outstandingCustCount = 0;
+                            foreach($data['customers'] as $cust) {
+                                if (floatval($cust->outstanding_balance) != 0) {
+                                    $outstandingCustCount++;
+                                }
+                            }
+                        ?>
+                        <?php if ($outstandingCustCount > 0): ?>
+                        <tr class="coa-row" style="background: rgba(0, 122, 255, 0.02);" data-id="cust-summary-<?= $child->id ?>" data-parent-id="<?= $child->id ?>">
+                            <td style="padding-left: 64px;">
+                                <i class="fa-solid fa-user-tag" style="color: var(--c-blue); margin-right: 8px;"></i>
+                                <span style="font-weight: 600; color: var(--c-blue);">Customer Accounts Receivable Breakdown</span>
+                                <span style="font-size: 11px; color: var(--t-secondary); font-style: italic; margin-left: 6px;">(<?= $outstandingCustCount ?> active customers)</span>
+                            </td>
+                            <td><span class="sf-badge" style="background: var(--c-blue-light); color: var(--c-blue);">Customer AR</span></td>
+                            <td><span class="sf-badge" style="background: var(--c-blue-light); color: var(--c-blue);">Current Asset</span></td>
+                            <td style="text-align: right; font-family: var(--f-mono); font-size: 13.5px; color: var(--c-blue); font-weight: 700;">Rs: <?= number_format($child->balance, 2) ?></td>
+                            <td style="text-align: center;"><span class="sf-badge badge-owed"><span class="dot"></span>Outstanding</span></td>
+                            <td style="text-align: center;">
+                                <button type="button" class="btn-small" onclick="openCustomerArModal()">
+                                    <i class="fa-solid fa-list-ul"></i> View Details
+                                </button>
+                            </td>
+                        </tr>
+                        <?php endif; ?>
                     <?php endif; ?>
 
                     <?php endforeach; ?>
@@ -483,6 +494,7 @@ foreach($data['accounts'] as $acc) {
             <button type="button" class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <form action="<?= APP_URL ?>/accounting/coa" method="POST">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
             <div class="modal-body">
                 <input type="hidden" name="action" id="formAction" value="add_main">
                 <input type="hidden" name="account_id" id="formId" value="">
@@ -511,12 +523,19 @@ foreach($data['accounts'] as $acc) {
 
                 <div class="sf-group" id="typeGroup">
                     <label>Financial Type *</label>
-                    <select name="account_type" id="formType" class="sf-input" required>
+                    <select name="account_type" id="formType" class="sf-input" required onchange="filterCategories(this.value)">
                         <option value="Asset">Asset (Cash, Receivables, Property)</option>
                         <option value="Liability">Liability (Payables, Loans, Tax)</option>
                         <option value="Equity">Equity (Capital, Retained Earnings)</option>
                         <option value="Revenue">Revenue (Income, Sales)</option>
                         <option value="Expense">Expense (COGS, Rent, Salaries)</option>
+                    </select>
+                </div>
+
+                <div class="sf-group" id="categoryGroup">
+                    <label>Account Category *</label>
+                    <select name="account_category" id="formCategory" class="sf-input" required>
+                        <option value="">-- Select Category --</option>
                     </select>
                 </div>
 
@@ -535,6 +554,54 @@ foreach($data['accounts'] as $acc) {
     </div>
 </div>
 
+<!-- Modal: Customer AR Breakdown -->
+<div class="modal-veil hidden" id="customerArModal">
+    <div class="sf-modal" style="width: 650px;">
+        <div class="modal-head">
+            <h3 class="modal-title">Customer AR Breakdown</h3>
+            <button type="button" class="modal-close" onclick="closeCustomerArModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div style="padding: 15px 24px; border-bottom: 0.5px solid var(--c-separator); display: flex; gap: 10px;">
+            <div class="cmd-search" style="width: 100%; background: var(--c-fill2); display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: var(--r-pill);">
+                <i class="fa-solid fa-magnifying-glass" style="color: var(--t-secondary); margin-top: 2px;"></i>
+                <input type="text" id="custSearchInput" placeholder="Search customers..." onkeyup="filterCustomerArTable()" style="background:transparent; border:none; outline:none; width:100%; color:var(--t-primary);">
+            </div>
+        </div>
+        <div class="modal-body" style="max-height: 400px; overflow-y: auto; padding: 0;">
+            <table class="cust-table" id="customerArTable">
+                <thead>
+                    <tr>
+                        <th style="padding: 10px 18px;">Customer Name</th>
+                        <th style="padding: 10px 18px; text-align: right;">Outstanding Balance</th>
+                        <th style="padding: 10px 18px; text-align: center;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach($data['customers'] as $cust): ?>
+                        <?php if (floatval($cust->outstanding_balance) != 0): ?>
+                        <tr class="cust-ar-row">
+                            <td style="padding: 10px 18px;">
+                                <i class="fa-solid fa-user" style="color: var(--t-secondary); margin-right: 8px;"></i>
+                                <span class="cust-name" style="font-weight: 500;"><?= htmlspecialchars($cust->name) ?></span>
+                            </td>
+                            <td style="padding: 10px 18px; text-align: right; font-family: var(--f-mono);">Rs: <?= number_format($cust->outstanding_balance, 2) ?></td>
+                            <td style="padding: 10px 18px; text-align: center;">
+                                <a href="<?= APP_URL ?>/customer/edit/<?= $cust->id ?>" class="btn-small" style="text-decoration: none;">
+                                    <i class="fa-solid fa-address-card"></i> Profile
+                                </a>
+                            </td>
+                        </tr>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="sf-btn neutral" onclick="closeCustomerArModal()">Close</button>
+        </div>
+    </div>
+</div>
+
 <!-- Floating Command Bar -->
 <div class="cmd-bar">
     <div class="cmd-search" onclick="document.getElementById('searchInput').focus()">
@@ -547,7 +614,31 @@ foreach($data['accounts'] as $acc) {
 </div>
 
 <script>
-    function openModal(mode, id = '', code = '', name = '', type = '', parentId = '', status = 1) {
+    const categoriesByType = {
+        'Asset': ['Current Asset', 'Fixed Asset', 'Non-current Asset'],
+        'Liability': ['Current Liability', 'Long-term Liability'],
+        'Equity': ['Equity'],
+        'Revenue': ['Revenue'],
+        'Expense': ['Cost of Goods Sold', 'Operating Expense', 'Non-operating Expense']
+    };
+
+    function filterCategories(type, selectedCategory = '') {
+        const formCategory = document.getElementById('formCategory');
+        formCategory.innerHTML = '<option value="">-- Select Category --</option>';
+        
+        const categories = categoriesByType[type] || [];
+        categories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            if (cat === selectedCategory) {
+                opt.selected = true;
+            }
+            formCategory.appendChild(opt);
+        });
+    }
+
+    function openModal(mode, id = '', code = '', name = '', type = '', parentId = '', status = 1, category = '') {
         const modal = document.getElementById('coaModal');
         modal.classList.remove('hidden');
         modal.style.opacity = '1';
@@ -556,6 +647,8 @@ foreach($data['accounts'] as $acc) {
         const titleInput = document.getElementById('modalTitle');
         const parentGroup = document.getElementById('parentGroup');
         const typeGroup = document.getElementById('typeGroup');
+        const categoryGroup = document.getElementById('categoryGroup');
+        const formCategory = document.getElementById('formCategory');
         const statusGroup = document.getElementById('statusGroup');
         const btn = document.getElementById('submitBtn');
 
@@ -572,26 +665,41 @@ foreach($data['accounts'] as $acc) {
             actionInput.value = 'add_main';
             parentGroup.style.display = 'none';
             typeGroup.style.display = 'block';
+            categoryGroup.style.display = 'block';
             statusGroup.style.display = 'none';
             btn.innerText = 'Save Main Account';
             document.getElementById('formType').required = true;
+            formCategory.required = true;
             document.getElementById('formParent').required = false;
+            filterCategories(document.getElementById('formType').value, category);
         } 
         else if (mode === 'add_sub') {
             titleInput.innerText = 'Create Sub-Account';
             actionInput.value = 'add_sub';
             parentGroup.style.display = 'block';
             typeGroup.style.display = 'none';
+            categoryGroup.style.display = 'none';
             statusGroup.style.display = 'none';
             btn.innerText = 'Save Sub-Account';
             document.getElementById('formParent').required = true;
             document.getElementById('formType').required = false; // Inherited
+            formCategory.required = false; // Inherited
         } 
         else if (mode === 'edit') {
             titleInput.innerText = 'Edit Ledger Account';
             actionInput.value = 'edit_account';
             parentGroup.style.display = 'block';
             typeGroup.style.display = 'block';
+            
+            if (!parentId) {
+                categoryGroup.style.display = 'block';
+                formCategory.required = true;
+                filterCategories(type || 'Asset', category);
+            } else {
+                categoryGroup.style.display = 'none';
+                formCategory.required = false;
+            }
+            
             statusGroup.style.display = 'block';
             btn.innerText = 'Update Account';
             document.getElementById('formType').required = true;
@@ -608,12 +716,94 @@ foreach($data['accounts'] as $acc) {
     }
 
     function filterTable() {
-        const query = document.getElementById('searchInput').value.toLowerCase();
+        const query = document.getElementById('searchInput').value.trim().toLowerCase();
         const rows = document.querySelectorAll('.coa-row');
         
+        if (!query) {
+            rows.forEach(row => row.style.display = '');
+            return;
+        }
+
+        // 1. Identify which rows directly match the query
+        const directMatches = new Set();
+        const rowMap = new Map();
+        
         rows.forEach(row => {
+            const id = row.getAttribute('data-id');
+            rowMap.set(id, row);
+            
             const text = row.innerText.toLowerCase();
             if (text.includes(query)) {
+                directMatches.add(id);
+            }
+        });
+
+        // 2. Compute visibility set
+        const visibleIds = new Set();
+
+        // Helper to mark a node and all its ancestors visible
+        function showAncestors(id) {
+            if (!id || visibleIds.has(id)) return;
+            visibleIds.add(id);
+            const row = rowMap.get(id);
+            if (row) {
+                const parentId = row.getAttribute('data-parent-id');
+                if (parentId) {
+                    showAncestors(parentId);
+                }
+            }
+        }
+
+        // Helper to mark all descendants visible
+        function showDescendants(parentId) {
+            rows.forEach(row => {
+                const pId = row.getAttribute('data-parent-id');
+                const cId = row.getAttribute('data-id');
+                if (pId === parentId && !visibleIds.has(cId)) {
+                    visibleIds.add(cId);
+                    showDescendants(cId);
+                }
+            });
+        }
+
+        // Traverse for all direct matches
+        directMatches.forEach(id => {
+            showAncestors(id);
+            showDescendants(id);
+        });
+
+        // 3. Update DOM display
+        rows.forEach(row => {
+            const id = row.getAttribute('data-id');
+            if (visibleIds.has(id)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+    function openCustomerArModal() {
+        const modal = document.getElementById('customerArModal');
+        modal.classList.remove('hidden');
+        modal.style.opacity = '1';
+        document.getElementById('custSearchInput').focus();
+    }
+
+    function closeCustomerArModal() {
+        const modal = document.getElementById('customerArModal');
+        modal.style.opacity = '0';
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 150);
+    }
+
+    function filterCustomerArTable() {
+        const query = document.getElementById('custSearchInput').value.trim().toLowerCase();
+        const rows = document.querySelectorAll('.cust-ar-row');
+        
+        rows.forEach(row => {
+            const name = row.querySelector('.cust-name').innerText.toLowerCase();
+            if (name.includes(query)) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';

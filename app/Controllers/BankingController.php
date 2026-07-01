@@ -11,32 +11,7 @@ class BankingController extends Controller {
 
     // Displays the list of all Bank/Cash accounts
     public function index() {
-        $db = new Database();
-        
-        // Self-heal: Ensure 1600 parent exists
-        $db->query("SELECT * FROM chart_of_accounts WHERE account_code = '1600'");
-        $parent = $db->single();
-        if (!$parent) {
-            $db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, parent_id, balance) 
-                        VALUES ('1600', 'Bank Current Account', 'Asset', NULL, 0)");
-            $db->execute();
-            $parentId = $db->lastInsertId();
-        } else {
-            $parentId = $parent->id;
-        }
-
-        // Self-heal: Ensure 1605 temporary bank account exists under 1600 parent
-        $db->query("SELECT * FROM chart_of_accounts WHERE account_code = '1605'");
-        $tempAcc = $db->single();
-        if (!$tempAcc) {
-            $db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, parent_id, balance) 
-                        VALUES ('1605', 'Temporary Bank Account', 'Asset', :pid, 0)");
-            $db->bind(':pid', $parentId);
-            $db->execute();
-            $tempAccId = $db->lastInsertId();
-        } else {
-            $tempAccId = $tempAcc->id;
-        }
+        $parentId = $this->coaModel->selfHealBankAccounts();
 
         $data = [
             'title' => 'Banking & Cash',
@@ -56,20 +31,9 @@ class BankingController extends Controller {
                 if (empty($name)) {
                     $data['error'] = 'Bank Account Name is required.';
                 } else {
-                    $db->query("SELECT MAX(CAST(account_code AS UNSIGNED)) as max_code FROM chart_of_accounts WHERE account_code LIKE '16%' AND account_code != '1600'");
-                    $row = $db->single();
-                    $nextCode = $row && $row->max_code ? intval($row->max_code) + 1 : 1601;
-                    if ($nextCode == 1605) {
-                        $nextCode = 1606; // skip reserved 1605
-                    }
+                    $nextCode = $this->coaModel->getNextBankCode();
                     
-                    $db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, parent_id, balance, is_active) 
-                                VALUES (:code, :name, 'Asset', :pid, 0, 1)");
-                    $db->bind(':code', (string)$nextCode);
-                    $db->bind(':name', $name);
-                    $db->bind(':pid', $parentId);
-                    
-                    if ($db->execute()) {
+                    if ($this->coaModel->addBankAccount($nextCode, $name, $parentId)) {
                         header('Location: ' . APP_URL . '/banking?success=bank_added');
                         exit;
                     } else {
@@ -83,10 +47,7 @@ class BankingController extends Controller {
                 if (empty($name)) {
                     $data['error'] = 'Bank Account Name is required.';
                 } else {
-                    $db->query("UPDATE chart_of_accounts SET account_name = :name WHERE id = :id");
-                    $db->bind(':name', $name);
-                    $db->bind(':id', $id);
-                    if ($db->execute()) {
+                    if ($this->coaModel->editBankAccountName($id, $name)) {
                         header('Location: ' . APP_URL . '/banking?success=bank_edited');
                         exit;
                     } else {
@@ -96,16 +57,12 @@ class BankingController extends Controller {
             }
             elseif ($action == 'delete_bank') {
                 $id = intval($_POST['bank_id']);
+                $txCount = $this->coaModel->getAccountTransactionCount($id);
                 
-                $db->query("SELECT COUNT(*) as tx_count FROM transactions WHERE account_id = :id");
-                $txCheck = $db->single();
-                
-                if ($txCheck && $txCheck->tx_count > 0) {
+                if ($txCount > 0) {
                     $data['error'] = 'Audit Protection: Bank accounts with transaction history cannot be deleted to preserve financial audit history.';
                 } else {
-                    $db->query("DELETE FROM chart_of_accounts WHERE id = :id");
-                    $db->bind(':id', $id);
-                    if ($db->execute()) {
+                    if ($this->coaModel->deleteAccount($id)) {
                         header('Location: ' . APP_URL . '/banking?success=bank_deleted');
                         exit;
                     } else {
@@ -175,14 +132,10 @@ class BankingController extends Controller {
         }
 
         // Fetch bank accounts (sub-accounts of parent 1600)
-        $db->query("SELECT * FROM chart_of_accounts WHERE parent_id = :pid ORDER BY account_code ASC");
-        $db->bind(':pid', $parentId);
-        $data['bank_accounts'] = $db->resultSet() ?: [];
+        $data['bank_accounts'] = $this->coaModel->getBankAccounts($parentId);
 
         // Fetch cash accounts (other assets)
-        $db->query("SELECT * FROM chart_of_accounts WHERE account_type = 'Asset' AND (parent_id IS NULL OR parent_id != :pid) AND id != :pid ORDER BY account_code ASC");
-        $db->bind(':pid', $parentId);
-        $data['cash_accounts'] = $db->resultSet() ?: [];
+        $data['cash_accounts'] = $this->coaModel->getCashAccounts($parentId);
 
         $this->view('layouts/main', $data);
     }
@@ -197,14 +150,7 @@ class BankingController extends Controller {
         $account = $this->coaModel->getAccountById($accountId);
         if (!$account) { die("Account not found."); }
 
-        $db = new Database();
-        $db->query("SELECT t.*, je.entry_date, je.reference, je.description 
-                    FROM transactions t 
-                    JOIN journal_entries je ON t.journal_entry_id = je.id 
-                    WHERE t.account_id = :aid 
-                    ORDER BY je.entry_date DESC, je.id DESC");
-        $db->bind(':aid', $accountId);
-        $transactions = $db->resultSet();
+        $transactions = $this->coaModel->getBankLedger($accountId);
 
         $data = [
             'title' => 'Account Ledger: ' . $account->account_name,

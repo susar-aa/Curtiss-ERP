@@ -24,7 +24,17 @@
 <div class="card">
     <div class="header-actions">
         <h2>Fixed Assets Register</h2>
-        <button class="btn" onclick="document.getElementById('assetModal').style.display='flex'">+ Register Asset</button>
+        <div style="display: flex; gap: 10px;">
+            <?php if (!empty($data['pending_depreciations'])): ?>
+                <form action="<?= APP_URL ?>/asset" method="POST" style="display: inline;">
+                    <input type="hidden" name="action" value="run_pending_depreciations">
+                    <button type="submit" class="btn" style="background: #34c759;" onclick="return confirm('Are you sure you want to run all pending monthly depreciations (<?= count($data['pending_depreciations']) ?> runs)?');">
+                        Run All Pending Monthly Dep. (<?= count($data['pending_depreciations']) ?>)
+                    </button>
+                </form>
+            <?php endif; ?>
+            <button class="btn" onclick="document.getElementById('assetModal').style.display='flex'">+ Register Asset</button>
+        </div>
     </div>
 
     <?php if(!empty($data['error'])): ?>
@@ -142,7 +152,7 @@
             <div class="form-group">
                 <label>Depreciation Amount (Rs:)</label>
                 <input type="number" name="amount" id="depAmount" step="0.01" min="0.01" class="form-control" required style="font-size: 18px; font-weight:bold;">
-                <span style="font-size: 11px; color:#888;">Pre-filled with Straight-Line Annual Calculation</span>
+                <span style="font-size: 11px; color:#888;">Pre-filled with Straight-Line Monthly Calculation</span>
             </div>
             
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
@@ -158,6 +168,8 @@
         document.getElementById('depModal').style.display = 'flex';
         document.getElementById('depAssetId').value = id;
         document.getElementById('depAssetName').innerText = name;
-        document.getElementById('depAmount').value = annualAmount.toFixed(2);
+        // Pre-fill with monthly depreciation (annualAmount / 12)
+        const monthlyAmount = annualAmount / 12;
+        document.getElementById('depAmount').value = monthlyAmount.toFixed(2);
     }
 </script>

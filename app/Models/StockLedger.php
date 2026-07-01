@@ -78,7 +78,13 @@ class StockLedger {
      * Record a new stock movement
      */
     public function logMovement($itemId, $varOptId, $qtyIn, $qtyOut, $type, $ref, $warehouseId, $userId, $remarks, $unitCost = 0.00) {
+        $ownsTransaction = false;
         try {
+            if (!$this->db->inTransaction()) {
+                $this->db->beginTransaction();
+                $ownsTransaction = true;
+            }
+
             // Find current stock/running balance for this item
             $this->db->query("SELECT running_balance FROM stock_ledger 
                               WHERE item_id = :iid AND (variation_option_id = :vid OR (variation_option_id IS NULL AND :vid IS NULL))
@@ -94,8 +100,107 @@ class StockLedger {
             $unitCost = floatval($unitCost);
             $totalVal = ($qtyIn > 0 ? $qtyIn : $qtyOut) * $unitCost;
 
-            $this->db->query("INSERT INTO stock_ledger (item_id, variation_option_id, transaction_type, reference_number, warehouse_id, quantity_in, quantity_out, running_balance, unit_cost, total_value, user_id, remarks)
-                              VALUES (:iid, :vid, :type, :ref, :whid, :qin, :qout, :bal, :cost, :val, :uid, :remarks)");
+            // Fetch account IDs for double entry
+            $inventoryAccId = null;
+            $cogsAccId = null;
+            $apAccId = null;
+
+            $this->db->query("SELECT id, account_code FROM chart_of_accounts WHERE account_code IN ('1300', '5000', '2000')");
+            $rows = $this->db->resultSet() ?: [];
+            foreach ($rows as $r) {
+                if ($r->account_code === '1300') $inventoryAccId = $r->id;
+                if ($r->account_code === '5000') $cogsAccId = $r->id;
+                if ($r->account_code === '2000') $apAccId = $r->id;
+            }
+
+            $journalId = null;
+            if ($totalVal > 0.00 && $inventoryAccId && $cogsAccId && $apAccId) {
+                $debitAccId = null;
+                $creditAccId = null;
+
+                $isStockIncrease = ($qtyIn > 0);
+
+                if ($type === 'GRN') {
+                    $debitAccId = $inventoryAccId;
+                    $creditAccId = $apAccId;
+                } elseif (in_array($type, ['Purchase Return', 'Supplier Return'])) {
+                    $debitAccId = $apAccId;
+                    $creditAccId = $inventoryAccId;
+                } elseif (in_array($type, ['Sales Invoice', 'Sales Invoice Variance Increase', 'Sales Invoice Substitution Supply', 'Delivery Finalized - Stock Deducted'])) {
+                    $debitAccId = $cogsAccId;
+                    $creditAccId = $inventoryAccId;
+                } elseif (in_array($type, ['Sales Invoice Reversion', 'Invoice Deleted - Stock Reverted', 'Sales Invoice Variance Decrease', 'Sales Invoice Substitution Return', 'Sales Return'])) {
+                    $debitAccId = $inventoryAccId;
+                    $creditAccId = $cogsAccId;
+                } else {
+                    if ($isStockIncrease) {
+                        $debitAccId = $inventoryAccId;
+                        $creditAccId = $cogsAccId;
+                    } else {
+                        $debitAccId = $cogsAccId;
+                        $creditAccId = $inventoryAccId;
+                    }
+                }
+
+                if ($debitAccId && $creditAccId) {
+                    $journalRef = 'STK-' . $ref;
+                    
+                    // Check if period is closed
+                    $date = date('Y-m-d');
+                    $this->db->query("SELECT COUNT(*) as cnt FROM financial_years WHERE :entry_date BETWEEN start_date AND end_date");
+                    $this->db->bind(':entry_date', $date);
+                    $res = $this->db->single();
+                    
+                    if (!($res && $res->cnt > 0)) {
+                        $desc = "Stock Movement: " . $type . " - Ref: " . $ref . " (Item ID: " . $itemId . ")";
+                        $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
+                                           VALUES (:date, :ref, :desc, :user, 'Posted')");
+                        $this->db->bind(':date', $date);
+                        $this->db->bind(':ref', $journalRef);
+                        $this->db->bind(':desc', $desc);
+                        $this->db->bind(':user', $userId);
+                        $this->db->execute();
+                        $journalId = $this->db->lastInsertId();
+
+                        $lines = [
+                            ['account_id' => $debitAccId, 'debit' => $totalVal, 'credit' => 0],
+                            ['account_id' => $creditAccId, 'debit' => 0, 'credit' => $totalVal]
+                        ];
+
+                        foreach ($lines as $line) {
+                            $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit, description) 
+                                              VALUES (:jid, :aid, :deb, :cred, :desc)");
+                            $this->db->bind(':jid', $journalId);
+                            $this->db->bind(':aid', $line['account_id']);
+                            $this->db->bind(':deb', $line['debit']);
+                            $this->db->bind(':cred', $line['credit']);
+                            $this->db->bind(':desc', $remarks);
+                            $this->db->execute();
+
+                            $this->db->query("SELECT account_type FROM chart_of_accounts WHERE id = :id");
+                            $this->db->bind(':id', $line['account_id']);
+                            $accRow = $this->db->single();
+                            if ($accRow) {
+                                $sql = "UPDATE chart_of_accounts SET balance = balance ";
+                                if (in_array($accRow->account_type, ['Asset', 'Expense'])) {
+                                    $sql .= "+ :debit - :credit ";
+                                } else {
+                                    $sql .= "- :debit + :credit ";
+                                }
+                                $sql .= "WHERE id = :id";
+                                $this->db->query($sql);
+                                $this->db->bind(':debit', $line['debit']);
+                                $this->db->bind(':credit', $line['credit']);
+                                $this->db->bind(':id', $line['account_id']);
+                                $this->db->execute();
+                            }
+                        }
+                    }
+                }
+            }
+
+            $this->db->query("INSERT INTO stock_ledger (item_id, variation_option_id, transaction_type, reference_number, warehouse_id, quantity_in, quantity_out, running_balance, unit_cost, total_value, user_id, remarks, journal_entry_id)
+                              VALUES (:iid, :vid, :type, :ref, :whid, :qin, :qout, :bal, :cost, :val, :uid, :remarks, :jid)");
             $this->db->bind(':iid', $itemId);
             $this->db->bind(':vid', $varOptId ? $varOptId : null);
             $this->db->bind(':type', $type);
@@ -108,8 +213,16 @@ class StockLedger {
             $this->db->bind(':val', $totalVal);
             $this->db->bind(':uid', $userId);
             $this->db->bind(':remarks', $remarks);
+            $this->db->bind(':jid', $journalId);
             $this->db->execute();
+
+            if ($ownsTransaction) {
+                $this->db->commit();
+            }
         } catch (Throwable $e) {
+            if ($ownsTransaction && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             // Prevent ledger failures from crashing main transactions
             error_log("StockLedger Log Fail: " . $e->getMessage());
         }

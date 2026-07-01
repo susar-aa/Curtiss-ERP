@@ -1034,6 +1034,16 @@ $statuses = $data['statuses'] ?? [];
                     </div>
                 <?php endif; ?>
 
+                <?php if (in_array('tb_type', $metadata['filters'] ?? [])): ?>
+                    <div class="form-group">
+                        <label>Trial Balance Type</label>
+                        <select class="form-control" name="tb_type" id="filter_tb_type">
+                            <option value="pre_closing">Pre-Closing</option>
+                            <option value="post_closing">Post-Closing (Include Year-End)</option>
+                        </select>
+                    </div>
+                <?php endif; ?>
+
                 <button type="button" class="btn btn-primary" onclick="loadReportData(1)" style="margin-top: 15px;">
                     <i class="ph ph-arrow-clockwise"></i> Generate Report
                 </button>

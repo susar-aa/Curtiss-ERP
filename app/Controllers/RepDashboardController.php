@@ -641,11 +641,16 @@ class RepDashboardController extends Controller {
             };
 
             // Resolve AR and Revenue accounting accounts
-            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' AND (account_name LIKE '%Receivable%' OR account_code LIKE '1100%' OR account_code = '1200') LIMIT 1");
+            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = :type_asset AND (account_name LIKE '%Receivable%' OR account_code LIKE :cash_hand OR account_code = :ar) LIMIT 1");
+            $this->db->bind(':type_asset', COA_TYPE_ASSET);
+            $this->db->bind(':cash_hand', COA_CODE_CASH_HAND . '%');
+            $this->db->bind(':ar', COA_CODE_AR);
             $arRow = $this->db->single();
             $arAccountId = $arRow ? $arRow->id : null;
 
-            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' AND (account_name LIKE '%Sales%' OR account_name LIKE '%Revenue%' OR account_code LIKE '4000%') LIMIT 1");
+            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = :type_revenue AND (account_name LIKE '%Sales%' OR account_name LIKE '%Revenue%' OR account_code LIKE :sales) LIMIT 1");
+            $this->db->bind(':type_revenue', COA_TYPE_REVENUE);
+            $this->db->bind(':sales', COA_CODE_SALES . '%');
             $revRow = $this->db->single();
             $revenueAccountId = $revRow ? $revRow->id : null;
 

@@ -63,6 +63,24 @@ class AssetController extends Controller {
                     }
                 }
             }
+            elseif ($_POST['action'] == 'run_pending_depreciations') {
+                $pending = $this->assetModel->getPendingDepreciations();
+                if (empty($pending)) {
+                    $data['error'] = 'No pending monthly depreciations to run.';
+                } else {
+                    $successCount = 0;
+                    foreach ($pending as $p) {
+                        if ($this->assetModel->postDepreciation($p['asset_id'], $p['amount'], $p['run_date'], $_SESSION['user_id'])) {
+                            $successCount++;
+                        }
+                    }
+                    if ($successCount > 0) {
+                        $data['success'] = "Successfully generated and posted {$successCount} monthly depreciation entries to ledger.";
+                    } else {
+                        $data['error'] = 'Failed to run pending depreciations.';
+                    }
+                }
+            }
         }
 
         // Calculate current accumulated depreciation for display
@@ -76,6 +94,8 @@ class AssetController extends Controller {
             // Straight-line annual calc
             $asset->annual_dep = ($asset->purchase_price - $asset->salvage_value) / ($asset->useful_life_years > 0 ? $asset->useful_life_years : 1);
         }
+
+        $data['pending_depreciations'] = $this->assetModel->getPendingDepreciations();
 
         $this->view('layouts/main', $data);
     }

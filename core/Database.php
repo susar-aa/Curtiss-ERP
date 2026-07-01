@@ -78,14 +78,14 @@ class Database {
             }
 
             $manualRef = '';
-            if (isset($this->boundParams[':ref']) && !empty($this->boundParams[':ref'])) {
-                $manualRef = trim($this->boundParams[':ref']);
-            } elseif (isset($this->boundParams[':reference']) && !empty($this->boundParams[':reference'])) {
-                $manualRef = trim($this->boundParams[':reference']);
+            if (isset($this->boundParams[':ref']) && !is_null($this->boundParams[':ref'])) {
+                $manualRef = trim((string)$this->boundParams[':ref']);
+            } elseif (isset($this->boundParams[':reference']) && !is_null($this->boundParams[':reference'])) {
+                $manualRef = trim((string)$this->boundParams[':reference']);
             }
 
-            // Exclude special system references like YE-CLOSE from override
-            if (empty($manualRef) || strpos($manualRef, 'YE-CLOSE-') !== 0) {
+            // Only auto-generate when no reference is provided
+            if (empty($manualRef)) {
                 $ref = $this->generateJournalReference($date);
                 
                 if (isset($this->boundParams[':ref'])) {
@@ -95,20 +95,6 @@ class Database {
                 if (isset($this->boundParams[':reference'])) {
                     $this->stmt->bindValue(':reference', $ref, PDO::PARAM_STR);
                     $this->boundParams[':reference'] = $ref;
-                }
-
-                // If a manual ref was provided, preserve it in the description/memo
-                if (!empty($manualRef) && $manualRef !== $ref) {
-                    if (isset($this->boundParams[':desc'])) {
-                        $newDesc = '[' . $manualRef . '] ' . $this->boundParams[':desc'];
-                        $this->stmt->bindValue(':desc', $newDesc, PDO::PARAM_STR);
-                        $this->boundParams[':desc'] = $newDesc;
-                    }
-                    if (isset($this->boundParams[':description'])) {
-                        $newDesc = '[' . $manualRef . '] ' . $this->boundParams[':description'];
-                        $this->stmt->bindValue(':description', $newDesc, PDO::PARAM_STR);
-                        $this->boundParams[':description'] = $newDesc;
-                    }
                 }
             }
         }

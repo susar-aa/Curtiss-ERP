@@ -82,7 +82,7 @@
                             </td>
                             <td><?= date('M d, y', strtotime($t->entry_date)) ?></td>
                             <td>
-                                <?= htmlspecialchars($t->description) ?><br>
+                                <?= htmlspecialchars(!empty($t->description) ? $t->description : $t->entry_description) ?><br>
                                 <span style="font-size:11px; color:#888;"><?= htmlspecialchars($t->reference) ?></span>
                             </td>
                             <td class="num-col debit"><?= $t->debit > 0 ? number_format($t->debit, 2) : '' ?></td>

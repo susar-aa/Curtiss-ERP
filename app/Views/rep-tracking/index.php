@@ -4444,8 +4444,17 @@
                         document.querySelectorAll('.settle-de-select').forEach(sel => {
                             const id = sel.getAttribute('data-id');
                             const type = sel.getAttribute('data-type');
-                            if (accEntries[type] && accEntries[type][id]) {
-                                sel.value = accEntries[type][id];
+                            let val = null;
+                            if (accEntries[type]) {
+                                if (accEntries[type][id]) {
+                                    val = accEntries[type][id];
+                                } else {
+                                    const rawId = id.replace(/^(pay_|inv_)/, '');
+                                    val = accEntries[type][rawId];
+                                }
+                            }
+                            if (val) {
+                                sel.value = val;
                             }
                         });
                     } catch(e) {}
@@ -4595,11 +4604,11 @@
                         <div style="display:flex; gap:10px; flex:2;">
                             <div style="flex:1;">
                                 <span style="font-size:9px; color:#666;">Debit Account</span>
-                                ${renderSettleDeAccountSelect(p.id, 'debit', defaultDebitCode)}
+                                ${renderSettleDeAccountSelect('pay_' + p.id, 'debit', defaultDebitCode)}
                             </div>
                             <div style="flex:1;">
                                 <span style="font-size:9px; color:#666;">Credit Account</span>
-                                ${renderSettleDeAccountSelect(p.id, 'credit', '1090')}
+                                ${renderSettleDeAccountSelect('pay_' + p.id, 'credit', '1090')}
                             </div>
                         </div>
                     </div>
@@ -4625,11 +4634,11 @@
                         <div style="display:flex; gap:10px; flex:2;">
                             <div style="flex:1;">
                                 <span style="font-size:9px; color:#666;">Debit Account (AR)</span>
-                                ${renderSettleDeAccountSelect(inv.id, 'debit', '1090')}
+                                ${renderSettleDeAccountSelect('inv_' + inv.id, 'debit', '1090')}
                             </div>
                             <div style="flex:1;">
                                 <span style="font-size:9px; color:#666;">Credit Account (Sales)</span>
-                                ${renderSettleDeAccountSelect(inv.id, 'credit', '3000')}
+                                ${renderSettleDeAccountSelect('inv_' + inv.id, 'credit', '3000')}
                             </div>
                         </div>
                     </div>

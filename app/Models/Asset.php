@@ -110,4 +110,73 @@ class Asset {
             return false;
         }
     }
+
+    public function getPendingDepreciations() {
+        $assets = $this->getAllAssets();
+        $pending = [];
+
+        foreach ($assets as $asset) {
+            $purchaseTime = strtotime($asset->purchase_date);
+            $usefulLifeMonths = $asset->useful_life_years * 12;
+            if ($usefulLifeMonths <= 0) continue;
+
+            $monthlyDep = ($asset->purchase_price - $asset->salvage_value) / $usefulLifeMonths;
+            if ($monthlyDep <= 0) continue;
+
+            // Get total depreciated so far
+            $this->db->query("SELECT SUM(amount) as total FROM depreciation_runs WHERE asset_id = :aid");
+            $this->db->bind(':aid', $asset->id);
+            $sumRes = $this->db->single();
+            $accumulated = floatval($sumRes->total ?? 0);
+            $maxDepreciable = $asset->purchase_price - $asset->salvage_value;
+
+            if ($accumulated >= $maxDepreciable) {
+                continue; // Fully depreciated
+            }
+
+            // Loop from purchase month to current month
+            $currentMonthStart = strtotime(date('Y-m-01'));
+            $loopTime = strtotime(date('Y-m-01', $purchaseTime));
+
+            $monthsCount = 0;
+            while ($loopTime <= $currentMonthStart && $monthsCount < $usefulLifeMonths) {
+                $year = date('Y', $loopTime);
+                $month = date('m', $loopTime);
+
+                // Check if already depreciated in this calendar month
+                $this->db->query("SELECT COUNT(*) as cnt FROM depreciation_runs WHERE asset_id = :aid AND YEAR(run_date) = :yr AND MONTH(run_date) = :mon");
+                $this->db->bind(':aid', $asset->id);
+                $this->db->bind(':yr', $year);
+                $this->db->bind(':mon', $month);
+                $runCount = $this->db->single()->cnt;
+
+                if ($runCount == 0) {
+                    $runDate = date('Y-m-t', $loopTime); // last day of that month
+                    
+                    // Determine exact amount to post (prevent exceeding depreciable limit)
+                    $amount = $monthlyDep;
+                    if ($accumulated + $amount > $maxDepreciable) {
+                        $amount = $maxDepreciable - $accumulated;
+                    }
+
+                    if ($amount > 0.01) {
+                        $pending[] = [
+                            'asset_id' => $asset->id,
+                            'asset_name' => $asset->asset_name,
+                            'run_date' => $runDate,
+                            'amount' => round($amount, 2),
+                            'month_label' => date('F Y', $loopTime)
+                        ];
+                        $accumulated += $amount;
+                    }
+                }
+
+                // Move to next month
+                $loopTime = strtotime("+1 month", $loopTime);
+                $monthsCount++;
+            }
+        }
+
+        return $pending;
+    }
 }

@@ -82,6 +82,55 @@ class MigrationManager {
             'goods_receipt_notes_receipt_number' => "ALTER TABLE goods_receipt_notes ADD COLUMN receipt_number VARCHAR(100) NULL AFTER grn_number",
             'goods_receipt_notes_is_approved' => "ALTER TABLE goods_receipt_notes ADD COLUMN is_approved TINYINT(1) DEFAULT 0 AFTER notes",
             'goods_receipt_notes_approved_by' => "ALTER TABLE goods_receipt_notes ADD COLUMN approved_by INT NULL AFTER is_approved",
+            'coa_account_category' => "ALTER TABLE chart_of_accounts ADD COLUMN account_category VARCHAR(50) NULL DEFAULT NULL AFTER account_type",
+            'coa_account_category_seed' => function(PDO $dbh) {
+                $dbh->exec("UPDATE chart_of_accounts SET account_category = 'Current Asset' WHERE account_type = 'Asset' AND (account_code < '1500' OR account_code >= '1600')");
+                $dbh->exec("UPDATE chart_of_accounts SET account_category = 'Fixed Asset' WHERE account_type = 'Asset' AND account_code >= '1500' AND account_code < '1600'");
+                $dbh->exec("UPDATE chart_of_accounts SET account_category = 'Current Liability' WHERE account_type = 'Liability' AND account_code < '2500'");
+                $dbh->exec("UPDATE chart_of_accounts SET account_category = 'Long-term Liability' WHERE account_type = 'Liability' AND account_code >= '2500'");
+                $dbh->exec("UPDATE chart_of_accounts SET account_category = 'Equity' WHERE account_type = 'Equity'");
+                $dbh->exec("UPDATE chart_of_accounts SET account_category = 'Revenue' WHERE account_type = 'Revenue'");
+                $dbh->exec("UPDATE chart_of_accounts SET account_category = 'Cost of Goods Sold' WHERE account_type = 'Expense' AND account_code = '5000'");
+                $dbh->exec("UPDATE chart_of_accounts SET account_category = 'Operating Expense' WHERE account_type = 'Expense' AND account_code != '5000'");
+                return true;
+            },
+            'transactions_description' => "ALTER TABLE transactions ADD COLUMN description VARCHAR(255) NULL DEFAULT NULL AFTER credit",
+            'fy_start_date' => function(PDO $dbh) {
+                try {
+                    $q = $dbh->query("SHOW COLUMNS FROM financial_years LIKE 'start_date'");
+                    if ($q->rowCount() == 0) {
+                        $dbh->exec("ALTER TABLE financial_years ADD COLUMN start_date DATE NULL AFTER year_name");
+                        $dbh->exec("UPDATE financial_years SET start_date = DATE_SUB(end_date, INTERVAL 1 YEAR) WHERE start_date IS NULL");
+                        $dbh->exec("ALTER TABLE financial_years MODIFY COLUMN start_date DATE NOT NULL");
+                    }
+                } catch (PDOException $e) {
+                    return false;
+                }
+                return true;
+            },
+            'accounting_indexes' => function(PDO $dbh) {
+                try {
+                    $q1 = $dbh->query("SHOW INDEX FROM transactions WHERE Key_name = 'idx_account_journal'");
+                    if ($q1->rowCount() == 0) {
+                        $dbh->exec("CREATE INDEX idx_account_journal ON transactions (account_id, journal_entry_id)");
+                    }
+
+                    $q2 = $dbh->query("SHOW INDEX FROM journal_entries WHERE Key_name = 'idx_date_closed'");
+                    if ($q2->rowCount() == 0) {
+                        $dbh->exec("CREATE INDEX idx_date_closed ON journal_entries (entry_date, is_closed)");
+                    }
+
+                    $dbh->exec("UPDATE transactions SET debit = 0.00 WHERE debit IS NULL");
+                    $dbh->exec("UPDATE transactions SET credit = 0.00 WHERE credit IS NULL");
+                    
+                    $dbh->exec("ALTER TABLE transactions MODIFY COLUMN debit DECIMAL(15,2) NOT NULL DEFAULT 0.00");
+                    $dbh->exec("ALTER TABLE transactions MODIFY COLUMN credit DECIMAL(15,2) NOT NULL DEFAULT 0.00");
+                } catch (PDOException $e) {
+                    return false;
+                }
+                return true;
+            },
+            'drop_journal_lines' => "DROP TABLE IF EXISTS journal_lines",
             
             // Item model self-healing columns
             'items_variations_json' => "ALTER TABLE items ADD COLUMN variations_json TEXT NULL",
@@ -307,7 +356,31 @@ class MigrationManager {
                     }
                 }
                 return true;
-            }
+            },
+            'create_recurring_journal_tables' => "
+                CREATE TABLE IF NOT EXISTS recurring_journal_templates (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    template_name VARCHAR(150) NOT NULL,
+                    frequency VARCHAR(50) NOT NULL,
+                    day_of_month INT NOT NULL DEFAULT 1,
+                    description TEXT,
+                    is_active TINYINT(1) DEFAULT 1,
+                    last_posted_date DATE DEFAULT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ",
+            'create_recurring_journal_lines' => "
+                CREATE TABLE IF NOT EXISTS recurring_journal_lines (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    template_id INT NOT NULL,
+                    account_id INT NOT NULL,
+                    debit DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                    credit DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                    description VARCHAR(255) NULL,
+                    FOREIGN KEY (template_id) REFERENCES recurring_journal_templates(id) ON DELETE CASCADE,
+                    FOREIGN KEY (account_id) REFERENCES chart_of_accounts(id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            "
         ];
     }
 
