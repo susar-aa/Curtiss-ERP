@@ -34,7 +34,19 @@ class RepDashboardController extends Controller {
         
         $user = $this->userModel->login($username, $password);
         if ($user) {
-            if (strtolower($user->role) !== 'rep') {
+            // Check if user has representative role (either directly in users.role or via user_roles table)
+            $isRep = (strtolower($user->role) === 'rep' || strpos(strtolower($user->role), 'rep') !== false);
+            if (!$isRep) {
+                $userRoles = $this->userModel->getUserRoles($user->id);
+                foreach ($userRoles as $r) {
+                    if (strpos(strtolower($r->name), 'rep') !== false) {
+                        $isRep = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!$isRep) {
                 echo json_encode(['success' => false, 'message' => 'Access denied: not a representative account.']);
                 exit;
             }

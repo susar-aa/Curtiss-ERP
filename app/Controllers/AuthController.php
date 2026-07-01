@@ -234,7 +234,19 @@ class AuthController extends Controller {
         
         $user = $this->userModel->login($username, $password);
         if ($user) {
-            if (strtolower($user->role) !== 'driver') {
+            // Check if user has driver role (either directly in users.role or via user_roles table)
+            $isDriver = (strtolower($user->role) === 'driver' || strpos(strtolower($user->role), 'driver') !== false);
+            if (!$isDriver) {
+                $userRoles = $this->userModel->getUserRoles($user->id);
+                foreach ($userRoles as $r) {
+                    if (strpos(strtolower($r->name), 'driver') !== false) {
+                        $isDriver = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!$isDriver) {
                 echo json_encode(['success' => false, 'message' => 'Access denied: not a driver account.']);
                 exit;
             }
