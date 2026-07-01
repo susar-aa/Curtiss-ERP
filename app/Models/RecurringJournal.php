@@ -103,7 +103,7 @@ class RecurringJournal {
 
         // Use JournalEntry model to post
         if (!class_exists('JournalEntry')) {
-            require_once 'c:/xampp/htdocs/CURTISS/Curtiss-ERP/app/Models/JournalEntry.php';
+            require_once __DIR__ . '/JournalEntry.php';
         }
         $journalModel = new JournalEntry();
         

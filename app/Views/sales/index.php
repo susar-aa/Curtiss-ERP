@@ -1544,31 +1544,34 @@ if ($inv && isset($inv->id)) {
 </div>
 
 <!-- ═══ DELETE INVOICE MODAL ═══ -->
-<div class="modal-backdrop-custom" id="deleteInvoiceModal">
-    <div class="modal-panel-custom" style="max-width: 400px;">
-        <div class="modal-header-custom" style="background: var(--danger); color: var(--white); display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; border-top-left-radius: inherit; border-top-right-radius: inherit;">
-            <span style="font-weight: 600;"><i class="ph ph-warning-octagon" style="margin-right:5px;"></i>Delete Invoice</span>
-            <button type="button" class="modal-close-btn" onclick="closeDeleteInvoiceModal()" style="color: var(--white); opacity: 0.8; border: none; background: transparent; cursor: pointer; font-size: 16px;">
-                <i class="ph ph-x"></i>
-            </button>
+<div class="mac-backdrop-custom" id="deleteInvoiceModal">
+    <div class="mac-panel-custom" style="max-width: 420px;">
+        <div class="mac-header-custom">
+            <div class="mac-traffic-lights">
+                <div class="mac-light red" onclick="closeDeleteInvoiceModal()"></div>
+                <div class="mac-light yellow"></div>
+                <div class="mac-light green"></div>
+            </div>
+            <span class="mac-title-custom">Delete Invoice</span>
         </div>
         <form id="deleteInvoiceForm" method="POST" style="margin:0;">
-            <div class="modal-body-custom" style="padding: 18px;">
-                <p style="font-size: 13px; color: var(--slate-700); margin-bottom: 12px; line-height: 1.5;">
-                    Are you sure you want to delete this invoice? This will reverse all stock and ledger entries. <strong>This action cannot be undone.</strong>
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+            <div class="mac-body-custom">
+                <p style="font-size: 13px; line-height: 1.5; margin-bottom: 4px; color: #ff3b30; font-weight: 500;">
+                    <i class="ph ph-warning-circle"></i> Warning: This action will reverse all stock and ledger entries. This cannot be undone.
                 </p>
-                <div style="margin-bottom: 10px;">
-                    <label class="modal-field-label" style="display: block; font-size: 11px; font-weight: 600; color: var(--slate-500); margin-bottom: 4px; text-transform: uppercase;">Admin Password</label>
-                    <input type="password" name="password" id="deletePasswordInput" required class="modal-input" placeholder="Enter password to confirm">
+                <div class="mac-field-group">
+                    <label class="mac-field-label">Admin Password</label>
+                    <input type="password" name="password" id="deletePasswordInput" required class="mac-input" placeholder="Enter password to confirm">
                 </div>
-                <div style="margin-bottom: 0;">
-                    <label class="modal-field-label" style="display: block; font-size: 11px; font-weight: 600; color: var(--slate-500); margin-bottom: 4px; text-transform: uppercase;">Reason for Deletion</label>
-                    <input type="text" name="delete_reason" id="deleteReasonInput" required class="modal-input" placeholder="e.g. Incorrect items or quantity">
+                <div class="mac-field-group">
+                    <label class="mac-field-label">Reason for Deletion</label>
+                    <input type="text" name="delete_reason" id="deleteReasonInput" required class="mac-input" placeholder="e.g. Incorrect items or quantity">
                 </div>
             </div>
-            <div class="modal-footer-custom" style="display: flex; gap: 8px; justify-content: flex-end; padding: 12px 18px; background: var(--slate-50); border-bottom-left-radius: inherit; border-bottom-right-radius: inherit;">
-                <button type="button" class="btn" onclick="closeDeleteInvoiceModal()">Cancel</button>
-                <button type="button" class="btn btn-danger" onclick="submitDeleteInvoice()">Confirm Delete</button>
+            <div class="mac-footer-custom">
+                <button type="button" class="mac-btn" onclick="closeDeleteInvoiceModal()">Cancel</button>
+                <button type="button" class="mac-btn primary" style="background: #ff3b30; border-color: #e03b30;" onclick="submitDeleteInvoice()">Confirm Delete</button>
             </div>
         </form>
     </div>

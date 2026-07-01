@@ -496,10 +496,7 @@ class AccountingController extends Controller {
 
         $this->generateCsrfToken();
         
-        if (!class_exists('RecurringJournal')) {
-            require_once 'c:/xampp/htdocs/CURTISS/Curtiss-ERP/app/Models/RecurringJournal.php';
-        }
-        $recurringModel = new RecurringJournal();
+        $recurringModel = $this->model('RecurringJournal');
 
         $data = [
             'title' => 'Recurring Journal Templates',
