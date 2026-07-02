@@ -1043,6 +1043,26 @@
     .macos-btn-primary:active {
         background: #0051a8;
     }
+    .macos-btn-secondary {
+        background: #f5f5f7;
+        color: #1d1d1f;
+        border: 1px solid #d2d2d7;
+        border-radius: 6px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .macos-btn-secondary:hover {
+        background: #e8e8ed;
+    }
+    .macos-btn-secondary:active {
+        background: #dcdce0;
+    }
     .macos-checkbox-list {
         border: 1px solid #d1d1d6;
         border-radius: 6px;
@@ -1522,7 +1542,6 @@
                         <div style="display:flex; gap:10px;">
                             <button id="btnTab3CreateSO" onclick="redirectToAddInvoice()" style="padding:8px 16px; background:#0066cc; border:none; color:#fff; border-radius:var(--r-sm); font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-plus-circle"></i> Create Sales Order</button>
                             <button id="btnTab3AttachSO" onclick="openAttachInvoiceModal()" style="padding:8px 16px; background:#5c6bc0; border:none; color:#fff; border-radius:var(--r-sm); font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-link"></i> Attach Sales Order</button>
-                            <button id="btnTab3PrintInvoices" onclick="printRouteInvoices()" style="padding:8px 16px; background:#1e293b; border:none; color:#fff; border-radius:var(--r-sm); font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-printer"></i> Print All Invoices</button>
                         </div>
                     </div>
                     <div style="padding: 16px 20px; background: var(--c-surface);">
@@ -1558,11 +1577,9 @@
                             <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Logistics Binding & Dispatch</h3>
                             <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Assign driver, vehicle, helper and select outstanding credit bills to dispatch with this delivery manifest.</p>
                         </div>
-                        <div style="display: flex; gap: 10px;">
-                            <button type="button" onclick="printLoadingSheet('summary')" style="background: var(--c-fill); border: 0.5px solid var(--c-separator); color: var(--c-blue); font-weight: 600; font-size: 13px; border-radius: var(--r-md); padding: 8px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s;">
-                                <i class="ph ph-printer"></i> Print Summary
-                            </button>
-                        </div>
+                        <button id="btnTab6PrintSummary" onclick="printRouteInvoices()" class="macos-btn-secondary">
+                            <i class="ph ph-printer"></i> Print Route Summary
+                        </button>
                     </div>
                     
                     <!-- Global Status Banner -->
@@ -3165,6 +3182,7 @@
                 let printButtonsHtml = `
                     <div style="margin-bottom: 15px; text-align: right; display: flex; justify-content: flex-end; gap: 10px;">
                         <button class="btn btn-primary" onclick="printLoadingSheet('final')" style="padding:8px 16px; background:#3f51b5; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-printer"></i> Print Loading Sheet</button>
+                        <button class="btn btn-secondary" onclick="printLoadingSheet('summary')" style="padding:8px 16px; background:#673ab7; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-printer"></i> Print Loading Summary</button>
                     </div>
                 `;
 
