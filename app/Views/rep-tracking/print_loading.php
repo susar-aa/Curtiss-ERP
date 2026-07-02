@@ -257,7 +257,6 @@
             </div>
 
         <?php elseif ($data['type'] === 'summary'): ?>
-        <?php elseif ($data['type'] === 'summary'): ?>
             <!-- REVAMPED COLLECTION SUMMARY REPORT (LANDSCAPE DUAL COLUMN) -->
             <div style="text-align: center; margin-bottom: 15px;">
                 <h2 style="margin: 0; font-size: 16px; text-transform: uppercase; font-weight: bold;">
