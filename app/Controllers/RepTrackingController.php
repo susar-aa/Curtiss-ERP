@@ -980,7 +980,8 @@ class RepTrackingController extends Controller {
             'type' => $type,
             'route' => $this->trackingModel->getRouteById($routeId),
             'items' => $items,
-            'bills' => $this->trackingModel->getRouteBills($routeId)
+            'bills' => $this->trackingModel->getRouteBills($routeId),
+            'credit_bills' => $this->deliveryModel->getDeliveryCreditInvoices($routeId)
         ];
         $this->view('rep-tracking/print_loading', $data);
     }

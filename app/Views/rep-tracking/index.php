@@ -1558,6 +1558,11 @@
                             <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Logistics Binding & Dispatch</h3>
                             <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Assign driver, vehicle, helper and select outstanding credit bills to dispatch with this delivery manifest.</p>
                         </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="button" onclick="printLoadingSheet('summary')" style="background: var(--c-fill); border: 0.5px solid var(--c-separator); color: var(--c-blue); font-weight: 600; font-size: 13px; border-radius: var(--r-md); padding: 8px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s;">
+                                <i class="ph ph-printer"></i> Print Summary
+                            </button>
+                        </div>
                     </div>
                     
                     <!-- Global Status Banner -->
@@ -3160,7 +3165,6 @@
                 let printButtonsHtml = `
                     <div style="margin-bottom: 15px; text-align: right; display: flex; justify-content: flex-end; gap: 10px;">
                         <button class="btn btn-primary" onclick="printLoadingSheet('final')" style="padding:8px 16px; background:#3f51b5; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-printer"></i> Print Loading Sheet</button>
-                        <button class="btn btn-secondary" onclick="printLoadingSheet('summary')" style="padding:8px 16px; background:#673ab7; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-printer"></i> Print Loading Summary</button>
                     </div>
                 `;
 
