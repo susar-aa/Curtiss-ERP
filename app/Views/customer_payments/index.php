@@ -568,6 +568,8 @@
             </div>
         </div>
     </div>
+<?php endif; ?>
+
 <!-- Dynamic Receipt & Ledger Detail Modal -->
 <div id="dynamic-receipt-modal" class="modal-overlay" style="display: none; z-index: 2000;">
     <div class="modal-card" style="width: 480px; max-width: 90%;">
