@@ -595,6 +595,12 @@
 
             // Rebuild options
             assetSelect.innerHTML = '';
+            if (method === 'Bank Transfer') {
+                const emptyOpt = document.createElement('option');
+                emptyOpt.value = '';
+                emptyOpt.text = '-- Select Bank Account --';
+                assetSelect.appendChild(emptyOpt);
+            }
             filtered.forEach(acc => {
                 const opt = document.createElement('option');
                 opt.value = acc.value;
@@ -604,8 +610,10 @@
                 assetSelect.appendChild(opt);
             });
 
-            // Auto-select the first available filtered option
-            if (filtered.length > 0) {
+            // Auto-select the first available filtered option or empty for bank transfer
+            if (method === 'Bank Transfer') {
+                assetSelect.value = '';
+            } else if (filtered.length > 0) {
                 assetSelect.selectedIndex = 0;
             }
         }
@@ -761,6 +769,14 @@
         if (form) {
             form.addEventListener('submit', function(e) {
                 const method = document.getElementById('cust-method-select').value;
+                const assetSelect = document.getElementById('cust-asset-account');
+                
+                if (method === 'Bank Transfer' && (!assetSelect || assetSelect.value === '')) {
+                    e.preventDefault();
+                    alert('Please select a bank account for the bank transfer.');
+                    return false;
+                }
+
                 if (method === 'Cheque') {
                     const chkNum = document.getElementById('cust-chk-num-input').value;
                     const chkDate = document.getElementById('cust-chk-date-input').value;
