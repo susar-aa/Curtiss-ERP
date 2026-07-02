@@ -858,6 +858,58 @@ class Report {
                     ]
                 ];
 
+            case 'supplier_payment':
+                if ($id) {
+                    $this->db->query("SELECT p.*, v.name as supplier_name, v.email as supplier_email, v.phone as supplier_phone, v.address as supplier_address FROM supplier_payments p JOIN vendors v ON p.vendor_id = v.id WHERE p.id = :id");
+                    $this->db->bind(':id', $id);
+                } else {
+                    $cleanRef = $number;
+                    if (strpos($cleanRef, 'Pay: ') === 0) {
+                        $cleanRef = substr($cleanRef, 5);
+                    }
+                    if (preg_match('/\((.*?)\)/', $cleanRef, $matches)) {
+                        $cleanRef = $matches[1];
+                    }
+                    $this->db->query("SELECT p.*, v.name as supplier_name, v.email as supplier_email, v.phone as supplier_phone, v.address as supplier_address FROM supplier_payments p JOIN vendors v ON p.vendor_id = v.id WHERE p.reference = :ref OR p.id = :refId LIMIT 1");
+                    $this->db->bind(':ref', $cleanRef);
+                    $this->db->bind(':refId', intval($cleanRef));
+                }
+                $payment = $this->db->single();
+                if (!$payment && is_numeric($number)) {
+                    $this->db->query("SELECT p.*, v.name as supplier_name, v.email as supplier_email, v.phone as supplier_phone, v.address as supplier_address FROM supplier_payments p JOIN vendors v ON p.vendor_id = v.id WHERE p.id = :id LIMIT 1");
+                    $this->db->bind(':id', intval($number));
+                    $payment = $this->db->single();
+                }
+                if (!$payment) {
+                    $result['message'] = 'Payment not found.';
+                    return $result;
+                }
+                
+                $cheque = null;
+                if ($payment->payment_method === 'Cheque') {
+                    $this->db->query("SELECT * FROM cheques WHERE vendor_id = :vid AND amount = :amt ORDER BY id DESC LIMIT 1");
+                    $this->db->bind(':vid', $payment->vendor_id);
+                    $this->db->bind(':amt', $payment->amount);
+                    $cheque = $this->db->single();
+                }
+
+                return [
+                    'success' => true,
+                    'entity' => [
+                        'id' => $payment->id,
+                        'reference' => $payment->reference,
+                        'payment_date' => $payment->payment_date,
+                        'payment_method' => $payment->payment_method,
+                        'amount' => $payment->amount,
+                        'supplier_name' => $payment->supplier_name,
+                        'status' => $payment->status,
+                        'notes' => $payment->notes,
+                        'cheque_number' => $cheque ? $cheque->cheque_number : null,
+                        'cheque_bank' => $cheque ? $cheque->bank_name : null,
+                        'cheque_date' => $cheque ? $cheque->banking_date : null
+                    ]
+                ];
+
             case 'cheque':
                 if ($id) {
                     $this->db->query("SELECT ch.*, c.name as customer_name FROM cheques ch LEFT JOIN customers c ON ch.customer_id = c.id WHERE ch.id = :id");

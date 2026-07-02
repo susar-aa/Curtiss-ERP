@@ -1568,16 +1568,25 @@ $statuses = $data['statuses'] ?? [];
                 id = row.vehicle_id || row.id || '';
             } else if (keyLower === 'payment_ref' || keyLower === 'reference' || keyLower === 'ref_doc' || keyLower === 'ref') {
                 const valStr = String(val);
+                const rowType = String(row.type || '').toLowerCase();
                 if (valStr.startsWith('INV-')) {
                     type = 'invoice';
-                } else if (valStr.startsWith('GRN-')) {
+                } else if (valStr.startsWith('GRN-') || rowType === 'grn') {
                     type = 'grn';
-                } else if (valStr.startsWith('PO-')) {
+                } else if (valStr.startsWith('PO-') || rowType === 'po') {
                     type = 'po';
-                } else if (valStr.startsWith('PAY-') || valStr.startsWith('REC-')) {
-                    type = 'payment';
+                } else if (valStr.startsWith('PAY-') || valStr.startsWith('REC-') || valStr.startsWith('Pay:') || rowType === 'payment') {
+                    if (reportKey === 'supplier_statement') {
+                        type = 'supplier_payment';
+                    } else {
+                        type = 'payment';
+                    }
                 } else {
-                    type = 'payment';
+                    if (reportKey === 'supplier_statement') {
+                        type = 'supplier_payment';
+                    } else {
+                        type = 'payment';
+                    }
                 }
                 id = row.id || '';
             }
@@ -1625,9 +1634,11 @@ $statuses = $data['statuses'] ?? [];
             case 'po':
                 return `<?= APP_URL ?>/purchase/show/${id}`;
             case 'grn':
-                return `<?= APP_URL ?>/grn/show/${id}`;
+                return `<?= APP_URL ?>/grn?search=${val}`;
             case 'payment':
-                return `<?= APP_URL ?>/payment/show/${id}`;
+                return `<?= APP_URL ?>/customerpayment/receipt/${id}`;
+            case 'supplier_payment':
+                return `<?= APP_URL ?>/supplierpayment/receipt/${id}`;
             case 'cheque':
                 return `<?= APP_URL ?>/cheque/show/${id}`;
             default:
@@ -2026,7 +2037,7 @@ $statuses = $data['statuses'] ?? [];
                     </div>
 
                     <div class="qv-action-bar">
-                        <a href="<?= APP_URL ?>/grn/show/${ent.id}" target="_blank" class="qv-btn qv-btn-primary"><i class="ph ph-printer"></i> Print GRN</a>
+                        <a href="${getDrilldownUrl('grn', ent.id, ent.grn_number)}" target="_blank" class="qv-btn qv-btn-primary"><i class="ph ph-arrow-square-out"></i> Open in New Tab</a>
                         <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary">Close</button>
                     </div>
                 `;
@@ -2073,7 +2084,45 @@ $statuses = $data['statuses'] ?? [];
                     </div>
 
                     <div class="qv-action-bar">
-                        <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary" style="width:100%;">Close</button>
+                        <a href="${getDrilldownUrl('payment', ent.id, ent.reference)}" target="_blank" class="qv-btn qv-btn-primary"><i class="ph ph-printer"></i> Open Receipt</a>
+                        <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary">Close</button>
+                    </div>
+                `;
+                break;
+
+            case 'supplier_payment':
+                html += `
+                    <div class="qv-card">
+                        <div class="qv-title">Supplier Payment Info</div>
+                        <div class="qv-grid">
+                            <div class="qv-field"><label>Reference</label><strong>${ent.reference || 'N/A'}</strong></div>
+                            <div class="qv-field"><label>Date</label><span>${ent.payment_date}</span></div>
+                            <div class="qv-field" style="grid-column: span 2;"><label>Supplier</label><span>${ent.supplier_name}</span></div>
+                            <div class="qv-field"><label>Method</label><span>${ent.payment_method}</span></div>
+                            <div class="qv-field"><label>Status</label><span class="${ent.status === 'Active' ? 'badge-completed' : 'badge-pending'}">${ent.status}</span></div>
+                        </div>
+                        ${ent.payment_method === 'Cheque' ? `
+                            <div style="margin-top: 12px; padding: 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; font-size: 13px; text-align: left;">
+                                <div style="font-weight: 600; color: #b45309; margin-bottom: 4px;">Cheque Details</div>
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <div><strong>Cheque Number:</strong> ${ent.cheque_number || 'N/A'}</div>
+                                    <div><strong>Bank Name:</strong> ${ent.cheque_bank || 'N/A'}</div>
+                                    <div><strong>Banking Date:</strong> ${ent.cheque_date || 'N/A'}</div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <div class="qv-card" style="text-align: center;">
+                        <div class="qv-title">Paid Amount</div>
+                        <div class="qv-badge-stat">
+                            <strong style="font-size: 16px;">${formatCurrency(ent.amount)}</strong>
+                        </div>
+                    </div>
+
+                    <div class="qv-action-bar">
+                        <a href="${getDrilldownUrl('supplier_payment', ent.id, ent.reference)}" target="_blank" class="qv-btn qv-btn-primary"><i class="ph ph-printer"></i> Open Voucher</a>
+                        <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary">Close</button>
                     </div>
                 `;
                 break;

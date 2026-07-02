@@ -546,31 +546,37 @@ class ReportEngine {
                     'credit' => ['label' => 'Credit (GRNs)', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
                     'balance' => ['label' => 'Running Balance', 'type' => 'currency', 'align' => 'right']
                 ],
-                'sql' => "SELECT i.date, i.type, i.ref, i.debit, i.credit,
+                'sql' => "SELECT i.id, i.date, i.type, i.ref, i.debit, i.credit,
                                  SUM(i.credit - i.debit) OVER (ORDER BY i.date, i.ref) as balance,
                                  i.vendor_id
                           FROM (
-                              SELECT grn.grn_date as date, 'GRN' as type, grn.grn_number as ref,
+                              SELECT grn.id, grn.grn_date as date, 'GRN' as type, grn.grn_number as ref,
                                      0 as debit,
                                      (SELECT COALESCE(SUM(total), 0) FROM grn_items WHERE grn_id = grn.id) as credit,
                                      grn.vendor_id
                               FROM goods_receipt_notes grn
                               WHERE grn.is_approved = 1
                               UNION ALL
-                              SELECT sp.payment_date as date, 'Payment' as type, CONCAT('Pay: ', sp.payment_method, IF(sp.reference != '', CONCAT(' (', sp.reference, ')'), '')) as ref,
+                              SELECT sp.id, sp.payment_date as date, 'Payment' as type, 
+                                     CONCAT('Pay: ', sp.payment_method, 
+                                            IF(sp.payment_method = 'Cheque', 
+                                               COALESCE((SELECT CONCAT(' #', c.cheque_number) FROM cheques c WHERE c.vendor_id = sp.vendor_id AND c.amount = sp.amount AND ABS(TIMESTAMPDIFF(SECOND, c.created_at, sp.created_at)) < 10 ORDER BY c.id DESC LIMIT 1), ''),
+                                               IF(sp.reference != '', CONCAT(' (', sp.reference, ')'), '')
+                                            )
+                                     ) as ref,
                                      sp.amount as debit,
                                      0 as credit,
                                      sp.vendor_id
                               FROM supplier_payments sp
                               WHERE sp.status = 'Active'
                               UNION ALL
-                              SELECT sr.return_date as date, 'Supplier Return' as type, sr.return_number as ref,
+                              SELECT sr.id, sr.return_date as date, 'Supplier Return' as type, sr.return_number as ref,
                                      sr.total_amount as debit,
                                      0 as credit,
                                      sr.vendor_id
                               FROM supplier_returns sr
                               UNION ALL
-                              SELECT e.expense_date as date, 'Expense' as type, CONCAT(e.reference, ' - ', e.description) as ref,
+                              SELECT e.id, e.expense_date as date, 'Expense' as type, CONCAT(e.reference, ' - ', e.description) as ref,
                                      e.amount as debit,
                                      0 as credit,
                                      e.vendor_id

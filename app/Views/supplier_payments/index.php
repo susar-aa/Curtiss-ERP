@@ -511,7 +511,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Banking Date *</label>
-                                <input type="date" name="cheque_date" id="supp-chk-date-input" class="form-control" min="<?= date('Y-m-d') ?>">
+                                <input type="date" name="cheque_date" id="supp-chk-date-input" class="form-control">
                             </div>
                         </div>
                     </div>
@@ -1254,22 +1254,10 @@
 
                 if (method === 'Cheque') {
                     const chkNum = document.getElementById('supp-chk-num-input').value;
-                    const chkDate = document.getElementById('supp-chk-date-input').value;
                     
                     if (!/^\d{6}$/.test(chkNum)) {
                         e.preventDefault();
                         alert('Cheque number must be exactly 6 numeric digits.');
-                        return false;
-                    }
-                    
-                    const today = new Date();
-                    today.setHours(0,0,0,0);
-                    const selectDate = new Date(chkDate);
-                    selectDate.setHours(0,0,0,0);
-                    
-                    if (selectDate < today) {
-                        e.preventDefault();
-                        alert('Cheque date cannot be in the past.');
                         return false;
                     }
                 }

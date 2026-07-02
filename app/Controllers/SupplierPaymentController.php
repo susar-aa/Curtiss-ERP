@@ -175,10 +175,6 @@ class SupplierPaymentController extends Controller {
                 header('Location: ' . APP_URL . '/supplierpayment?error=Cheque number must be exactly 6 numeric digits.');
                 exit;
             }
-            if (strtotime($paymentData['cheque_date']) < strtotime(date('Y-m-d'))) {
-                header('Location: ' . APP_URL . '/supplierpayment?error=Cheque date cannot be in the past.');
-                exit;
-            }
         }
 
         $paymentId = $this->paymentModel->recordSupplierPayment($paymentData, $_SESSION['user_id']);
