@@ -133,12 +133,10 @@
         <div class="header-section">
             <h1>
                 <?php 
-                if ($data['type'] === 'final') {
-                    echo 'Final Loading Verification Sheet';
-                } elseif ($data['type'] === 'summary') {
+                if ($data['type'] === 'summary') {
                     echo 'Route Loading Summary & Dispatch Report';
                 } else {
-                    echo 'Pre-Loading Picking Sheet';
+                    echo 'Route Loading Sheet';
                 }
                 ?>
             </h1>
@@ -162,8 +160,8 @@
             </div>
         </div>
 
-        <?php if ($data['type'] === 'final'): ?>
-            <!-- FINAL LOADING TABLE -->
+        <?php if ($data['type'] === 'loading'): ?>
+            <!-- LOADING SHEET TABLE -->
             <table>
                 <thead>
                     <tr>
@@ -176,18 +174,31 @@
                 </thead>
                 <tbody>
                     <?php 
-                    $counter = 1;
                     if (empty($data['items'])): 
                     ?>
                         <tr>
-                            <td colspan="5" style="text-align:center; padding: 15px; color: #555;">No picking items verified for final loading.</td>
+                            <td colspan="5" style="text-align:center; padding: 15px; color: #555;">No items found for loading on this route.</td>
                         </tr>
                     <?php else: ?>
-                        <?php foreach ($data['items'] as $item): ?>
+                        <?php 
+                        $currentCategory = null;
+                        $counter = 1;
+                        foreach ($data['items'] as $item): 
+                            if ($item->category_name !== $currentCategory):
+                                $currentCategory = $item->category_name;
+                        ?>
+                            <tr class="category-header-row">
+                                <td colspan="5" style="background-color: #f1f3f9; font-weight: bold; padding: 6px 8px; font-size: 10px; border: 1px solid #000; text-transform: uppercase;">
+                                    <?= htmlspecialchars($currentCategory) ?>
+                                </td>
+                            </tr>
+                        <?php 
+                            endif; 
+                        ?>
                             <tr>
                                 <td style="text-align:center;"><?= $counter++ ?></td>
                                 <td style="font-weight: 500;"><?= htmlspecialchars($item->item_name) ?></td>
-                                <td style="text-align:center; font-family: monospace; font-size:11px; font-weight:bold;"><?= $item->final_loaded_qty !== null ? floatval($item->final_loaded_qty) : floatval($item->required_qty) ?></td>
+                                <td style="text-align:center; font-family: monospace; font-size:11px; font-weight:bold;"><?= floatval($item->final_loaded_qty) ?></td>
                                 <td style="text-align:right; font-family: monospace; font-size:11px;"><?= number_format($item->unit_price, 2) ?></td>
                                 <td style="text-align:center;"><span class="tick-box-placeholder"></span></td>
                             </tr>
@@ -297,40 +308,6 @@
                     </div>
                 </div>
             </div>
-
-        <?php else: ?>
-            <!-- PRE LOADING TABLE -->
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width:5%; text-align:center;">No</th>
-                        <th style="text-align:left; width:50%;">Product Name</th>
-                        <th style="text-align:center; width:15%;">Qty</th>
-                        <th style="text-align:right; width:15%;">Unit Price</th>
-                        <th style="width:15%;"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php 
-                    $counter = 1;
-                    if (empty($data['items'])): 
-                    ?>
-                        <tr>
-                            <td colspan="5" style="text-align:center; padding: 15px; color: #555;">No items found for pre-loading on this route.</td>
-                        </tr>
-                    <?php else: ?>
-                        <?php foreach ($data['items'] as $item): ?>
-                            <tr>
-                                <td style="text-align:center;"><?= $counter++ ?></td>
-                                <td style="font-weight: 500;"><?= htmlspecialchars($item->item_name) ?></td>
-                                <td style="text-align:center; font-family: monospace; font-size:12px; font-weight:bold;"><?= floatval($item->total_qty) ?></td>
-                                <td style="text-align:right; font-family: monospace; font-size:11px;"><?= number_format($item->unit_price, 2) ?></td>
-                                <td style="text-align:center;"><span class="tick-box-placeholder"></span></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
         <?php endif; ?>
 
         <!-- Signature Block -->

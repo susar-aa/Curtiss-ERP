@@ -970,14 +970,39 @@ class RepTrackingController extends Controller {
     }
 
     public function print_loading($routeId) {
-        $type = $_GET['type'] ?? 'pre';
-        if ($type === 'final') {
-            $items = $this->trackingModel->getRouteFinalLoadingItems($routeId);
+        $type = $_GET['type'] ?? 'final';
+        
+        // Always try to fetch final loading items first (from delivery verification)
+        $items = $this->trackingModel->getRouteFinalLoadingItems($routeId);
+        
+        // If empty (e.g. delivery is not yet arranged), fall back to invoice-based loading items
+        if (empty($items)) {
+            $rawItems = $this->trackingModel->getRouteLoadingItems($routeId);
+            $items = [];
+            foreach ($rawItems as $ri) {
+                $item = new stdClass();
+                $item->item_id = null;
+                $item->item_name = $ri->item_name;
+                $item->required_qty = floatval($ri->total_qty);
+                $item->pre_loaded_qty = floatval($ri->total_qty);
+                $item->final_loaded_qty = floatval($ri->total_qty);
+                $item->variance = 0.0;
+                $item->category_name = $ri->category_name;
+                $item->unit_price = floatval($ri->unit_price);
+                $items[] = $item;
+            }
         } else {
-            $items = $this->trackingModel->getRouteLoadingItems($routeId);
+            foreach ($items as $item) {
+                $item->required_qty = floatval($item->required_qty);
+                $item->pre_loaded_qty = floatval($item->pre_loaded_qty);
+                $item->final_loaded_qty = $item->final_loaded_qty !== null ? floatval($item->final_loaded_qty) : floatval($item->required_qty);
+                $item->variance = floatval($item->variance);
+                $item->unit_price = floatval($item->unit_price);
+            }
         }
+
         $data = [
-            'type' => $type,
+            'type' => $type === 'summary' ? 'summary' : 'loading',
             'route' => $this->trackingModel->getRouteById($routeId),
             'items' => $items,
             'bills' => $this->trackingModel->getRouteBills($routeId)
