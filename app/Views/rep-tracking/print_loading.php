@@ -291,13 +291,12 @@
                         <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
                             <thead>
                                 <tr style="background-color: #f1f3f9;">
-                                    <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 50%;">Customer Name</th>
-                                    <th style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold; width: 16%;">Sales Amount</th>
-                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 12%;">Payment Term</th>
-                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 10%;">ACY Value</th>
-                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 6%;">Cash</th>
-                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 6%;">Credit</th>
-                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 6%;">CHQ</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 35%;">Customer Name</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold; width: 15%;">Sales Amount</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 14%;">Payment Term</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 12%;">Cash</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 12%;">Credit</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 12%;">CHQ</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -306,7 +305,7 @@
                                 if (empty($data['bills'])):
                                 ?>
                                     <tr style="background: none;">
-                                        <td colspan="7" style="text-align: center; padding: 8px; border: 1px solid #000;">No bills found for this route.</td>
+                                        <td colspan="6" style="text-align: center; padding: 8px; border: 1px solid #000;">No bills found for this route.</td>
                                     </tr>
                                 <?php else: ?>
                                     <?php foreach ($data['bills'] as $bill): 
@@ -323,13 +322,12 @@
                                             <td style="border: 1px solid #000; padding: 4px;"></td>
                                             <td style="border: 1px solid #000; padding: 4px;"></td>
                                             <td style="border: 1px solid #000; padding: 4px;"></td>
-                                            <td style="border: 1px solid #000; padding: 4px;"></td>
                                         </tr>
                                     <?php endforeach; ?>
                                     <tr style="background-color: #eaeaea; font-weight: bold;">
                                         <td style="border: 1px solid #000; padding: 4px; text-align: right; text-transform: uppercase;">Total</td>
                                         <td style="border: 1px solid #000; padding: 4px; text-align: right; font-family: monospace; font-size: 11px;"><?= number_format($grandTotal, 2) ?></td>
-                                        <td colspan="5" style="border: 1px solid #000; padding: 4px;"></td>
+                                        <td colspan="4" style="border: 1px solid #000; padding: 4px;"></td>
                                     </tr>
                                 <?php endif; ?>
                             </tbody>
@@ -342,10 +340,10 @@
                         <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
                             <thead>
                                 <tr style="background-color: #f1f3f9;">
-                                    <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 56%;">Customer Name</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 40%;">Customer Name</th>
                                     <th style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold; width: 20%;">Credit Bill Value</th>
-                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 12%;">Cash</th>
-                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 12%;">CHQ</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 20%;">Cash</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 20%;">CHQ</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -368,7 +366,7 @@
                 </div>
 
                 <!-- Right Side: Cash Collection & Odometer Details Sidebar -->
-                <div style="flex: 0.6; display: flex; flex-direction: column;">
+                <div style="flex: 0.6; display: flex; flex-direction: column; gap: 15px;">
                     <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
                         <tbody>
                             <tr style="background: none;">
@@ -432,18 +430,17 @@
                             </tr>
                         </tbody>
                     </table>
-                </div>
-            </div>
 
-            <!-- Signature Block -->
-            <div style="margin-top: 25px; display: flex; justify-content: space-between; font-size: 10px; padding: 0 15px;">
-                <div style="text-align: center; width: 40%;">
-                    <p style="margin-bottom: 25px;">....................................................................</p>
-                    <p style="font-weight: bold;">Signature</p>
-                </div>
-                <div style="text-align: center; width: 40%;">
-                    <p style="margin-bottom: 25px;">....................................................................</p>
-                    <p style="font-weight: bold;">Account Department Signature</p>
+                    <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 20px; font-size: 10px;">
+                        <div style="text-align: center;">
+                            <p style="margin: 0 0 4px 0;">....................................................................</p>
+                            <p style="margin: 0; font-weight: bold;">Driver's Signature</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <p style="margin: 0 0 4px 0;">....................................................................</p>
+                            <p style="margin: 0; font-weight: bold;">Partner's Signature</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         <?php endif; ?>
