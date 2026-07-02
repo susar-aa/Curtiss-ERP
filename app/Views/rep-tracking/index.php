@@ -1043,6 +1043,26 @@
     .macos-btn-primary:active {
         background: #0051a8;
     }
+    .macos-btn-secondary {
+        background: #f2f2f7;
+        color: #007aff;
+        border: 1px solid #d1d1d6;
+        border-radius: 6px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .macos-btn-secondary:hover {
+        background: #e5e5ea;
+    }
+    .macos-btn-secondary:active {
+        background: #d1d1d6;
+    }
     .macos-checkbox-list {
         border: 1px solid #d1d1d6;
         border-radius: 6px;
@@ -1557,6 +1577,11 @@
                         <div>
                             <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Logistics Binding & Dispatch</h3>
                             <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Assign driver, vehicle, helper and select outstanding credit bills to dispatch with this delivery manifest.</p>
+                        </div>
+                        <div>
+                            <button type="button" onclick="printLoadingSheet('summary')" class="macos-btn-secondary">
+                                <i class="ph ph-printer"></i> Print Loading Summary
+                            </button>
                         </div>
                     </div>
                     
@@ -3160,7 +3185,6 @@
                 let printButtonsHtml = `
                     <div style="margin-bottom: 15px; text-align: right; display: flex; justify-content: flex-end; gap: 10px;">
                         <button class="btn btn-primary" onclick="printLoadingSheet('final')" style="padding:8px 16px; background:#3f51b5; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-printer"></i> Print Loading Sheet</button>
-                        <button class="btn btn-secondary" onclick="printLoadingSheet('summary')" style="padding:8px 16px; background:#673ab7; border:none; color:#fff; border-radius:4px; font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-printer"></i> Print Loading Summary</button>
                     </div>
                 `;
 
