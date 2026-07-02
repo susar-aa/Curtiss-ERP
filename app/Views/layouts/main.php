@@ -1311,6 +1311,13 @@ if (!function_exists('hasPermission')) {
                                     <div class="desc">Manage suppliers</div>
                                 </div>
                             </a>
+                            <a href="<?= APP_URL ?>/serviceprovider" class="mega-card">
+                                <div class="icon"><i class="ph ph-lightning"></i></div>
+                                <div class="mega-card-text">
+                                    <div class="title">Service Provider Center</div>
+                                    <div class="desc">Manage service providers</div>
+                                </div>
+                            </a>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -1572,11 +1579,11 @@ if (!function_exists('hasPermission')) {
                         </a>
                         <?php endif; ?>
                         <?php if (hasPermission('supplierpayment')): ?>
-                        <a href="<?= APP_URL ?>/supplierpayment" class="mega-list-item">
+                        <a href="<?= APP_URL ?>/payment" class="mega-list-item">
                             <div class="icon-wrapper text-warning"><i class="ph ph-hand-deposit"></i></div>
                             <div class="mega-list-item-content">
-                                <div class="title text-warning">Supplier Payments</div>
-                                <div class="desc">AP Payouts & GRN Allocations</div>
+                                <div class="title text-warning">Payments</div>
+                                <div class="desc">AP Payouts & Allocations</div>
                             </div>
                         </a>
                         <?php endif; ?>
@@ -1795,7 +1802,10 @@ if (!function_exists('hasPermission')) {
                     <div class="fs-section-label">Supply Chain</div>
                     <div class="fs-row">
                         <?php if (hasPermission('inventory')): ?><a href="<?= APP_URL ?>/inventory" class="fs-link"><i class="ph ph-package"></i> Products</a><?php endif; ?>
-                        <?php if (hasPermission('supplier')): ?><a href="<?= APP_URL ?>/supplier" class="fs-link"><i class="ph ph-factory"></i> Suppliers</a><?php endif; ?>
+                        <?php if (hasPermission('supplier')): ?>
+                            <a href="<?= APP_URL ?>/supplier" class="fs-link"><i class="ph ph-factory"></i> Suppliers</a>
+                            <a href="<?= APP_URL ?>/serviceprovider" class="fs-link"><i class="ph ph-lightning"></i> Service Providers</a>
+                        <?php endif; ?>
                         <?php if (hasPermission('category')): ?><a href="<?= APP_URL ?>/category" class="fs-link"><i class="ph ph-tag"></i> Categories</a><?php endif; ?>
                         <?php if (hasPermission('variation')): ?><a href="<?= APP_URL ?>/variation" class="fs-link"><i class="ph ph-sparkle"></i> Variations</a><?php endif; ?>
                         <?php if (hasPermission('warehouse')): ?>
@@ -1850,7 +1860,7 @@ if (!function_exists('hasPermission')) {
                             <a href="<?= APP_URL ?>/banking" class="fs-link"><i class="ph ph-bank"></i> Banking</a>
                         <?php endif; ?>
                         <?php if (hasPermission('customerpayment')): ?><a href="<?= APP_URL ?>/customerpayment" class="fs-link"><i class="ph ph-hand-coins"></i> Customer Payments</a><?php endif; ?>
-                        <?php if (hasPermission('supplierpayment')): ?><a href="<?= APP_URL ?>/supplierpayment" class="fs-link"><i class="ph ph-hand-deposit"></i> Supplier Payments</a><?php endif; ?>
+                        <?php if (hasPermission('supplierpayment')): ?><a href="<?= APP_URL ?>/payment" class="fs-link"><i class="ph ph-hand-deposit"></i> Payments</a><?php endif; ?>
                         <?php if (hasPermission('asset')): ?><a href="<?= APP_URL ?>/asset" class="fs-link"><i class="ph ph-buildings"></i> Fixed Assets</a><?php endif; ?>
                     </div>
                 </div>

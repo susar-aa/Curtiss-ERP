@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Supplier Account Statement - Curtiss ERP</title>
+    <title><?= htmlspecialchars(($data['entity_type'] ?? 'supplier') === 'service_provider' ? 'Service Provider' : 'Supplier') ?> Account Statement - Curtiss ERP</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -144,7 +144,7 @@
                 Filter
             </button>
             <?php if ($data['start_date'] || $data['end_date']): ?>
-                <a href="<?= APP_URL ?>/supplierpayment/statement/<?= $data['supplier']->id ?>" style="color: #ef6c00; text-decoration: none; font-size: 13px; font-weight: 600; margin-left: 10px;">Clear</a>
+                <a href="<?= APP_URL ?>/payment/statement/<?= $data['supplier']->id ?>?type=<?= htmlspecialchars($data['entity_type'] ?? 'supplier') ?>" style="color: #ef6c00; text-decoration: none; font-size: 13px; font-weight: 600; margin-left: 10px;">Clear</a>
             <?php endif; ?>
         </form>
         <button onclick="window.print()" style="padding: 8px 16px; background: #10b981; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer;">
@@ -158,7 +158,7 @@
             <p>123 Business Avenue, Colombo, Sri Lanka<br>Phone: +94 11 2345678 | Email: finance@curtiss.com</p>
         </div>
         <div class="statement-title">
-            <h1>Supplier Statement</h1>
+            <h1><?= htmlspecialchars(($data['entity_type'] ?? 'supplier') === 'service_provider' ? 'Service Provider' : 'Supplier') ?> Statement</h1>
             <p style="margin: 3px 0 0 0; font-size: 13px; color:#555;">Generated: <?= date('Y-m-d H:i') ?></p>
             <?php if ($data['start_date'] || $data['end_date']): ?>
                 <p style="margin: 3px 0 0 0; font-size: 11px; font-weight: 700; color: #f59e0b;">

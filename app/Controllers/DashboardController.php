@@ -207,11 +207,15 @@ class DashboardController extends Controller {
                     }
                     $rows = $db->resultSet() ?: [];
                     foreach ($rows as $row) {
+                        $url = APP_URL . '/' . strtolower($row->pay_type) . 'payment';
+                        if ($row->pay_type === 'Supplier') {
+                            $url = APP_URL . '/payment';
+                        }
                         $results[] = [
                             'id' => $row->id,
                             'title' => 'Payment Ref: ' . ($row->reference ?: 'N/A'),
                             'subtitle' => 'Type: ' . $row->pay_type . ' | Method: ' . $row->payment_method . ' | Amount: Rs. ' . number_format($row->amount, 2) . ' | Date: ' . $row->payment_date,
-                            'url' => APP_URL . '/' . strtolower($row->pay_type) . 'payment',
+                            'url' => $url,
                             'tag' => $tag
                         ];
                     }
@@ -573,7 +577,7 @@ class DashboardController extends Controller {
                 ['title' => 'Route Control', 'subtitle' => 'Sales representative route scheduling, GPS tracks, and distribution', 'url' => APP_URL . '/reptracking', 'terms' => ['route', 'routes', 'rep tracking', 'tracking', 'gps', 'sales rep']],
                 ['title' => 'Procurement & PO', 'subtitle' => 'Create and track vendor purchase orders', 'url' => APP_URL . '/purchase', 'terms' => ['procurement', 'purchases', 'po', 'purchase order', 'purchase orders']],
                 ['title' => 'Customer Payments', 'subtitle' => 'Collect customer cash/cheque payments and reconcile AR', 'url' => APP_URL . '/customerpayment', 'terms' => ['payment', 'payments', 'receipts', 'collections', 'customer payments']],
-                ['title' => 'Supplier Payments', 'subtitle' => 'Record AP payments to vendors and allocate to GRNs', 'url' => APP_URL . '/supplierpayment', 'terms' => ['payment', 'payments', 'supplier payments', 'vendor payments', 'ap']],
+                ['title' => 'Payments', 'subtitle' => 'Record AP payments to vendors/service providers and allocate to GRNs', 'url' => APP_URL . '/payment', 'terms' => ['payment', 'payments', 'supplier payments', 'vendor payments', 'service provider payments', 'ap']],
                 ['title' => 'Warehouse & Transfers', 'subtitle' => 'Inventory location management and stock transfers', 'url' => APP_URL . '/warehouse', 'terms' => ['warehouse', 'warehouses', 'locations', 'transfers']],
                 ['title' => 'General Journal', 'subtitle' => 'Manual double-entry accounting transactions', 'url' => APP_URL . '/accounting/journal', 'terms' => ['journal', 'general journal', 'entries', 'accounting']],
                 ['title' => 'Chart of Accounts', 'subtitle' => 'Structure financial ledgers, assets, liabilities, equities', 'url' => APP_URL . '/accounting', 'terms' => ['chart of accounts', 'accounts', 'coa', 'ledgers']],

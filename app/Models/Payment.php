@@ -63,6 +63,43 @@ class Payment {
     }
 
     /**
+     * Get list of service providers with their outstanding payables
+     */
+    public function getServiceProviderOutstandingList() {
+        $this->db->query("
+            SELECT sp.id, sp.name, sp.phone, sp.email,
+                   (SELECT COALESCE(SUM(gri.total), 0) 
+                    FROM grn_items gri 
+                    JOIN goods_receipt_notes grn ON gri.grn_id = grn.id 
+                    WHERE grn.service_provider_id = sp.id) as total_billed,
+                   (SELECT COALESCE(SUM(amount), 0) 
+                    FROM expenses 
+                    WHERE service_provider_id = sp.id) 
+                   + 
+                   (SELECT COALESCE(SUM(amount), 0) 
+                    FROM supplier_payments 
+                    WHERE service_provider_id = sp.id AND status = 'Active') as total_paid,
+                   (SELECT COALESCE(SUM(total_amount), 0) 
+                    FROM supplier_returns 
+                    WHERE service_provider_id = sp.id) as total_returned,
+                   (SELECT MAX(payment_date) FROM supplier_payments WHERE service_provider_id = sp.id AND status = 'Active') as last_payment_date
+            FROM service_providers sp
+            ORDER BY sp.name ASC
+        ");
+        $serviceProviders = $this->db->resultSet();
+        foreach ($serviceProviders as $s) {
+            $s->outstanding_balance = $s->total_billed - $s->total_paid - $s->total_returned;
+        }
+        
+        // Sort by outstanding balance desc
+        usort($serviceProviders, function($a, $b) {
+            return $b->outstanding_balance <=> $a->outstanding_balance;
+        });
+
+        return $serviceProviders;
+    }
+
+    /**
      * Get unpaid or partially paid invoices for a customer
      */
     public function getCustomerUnpaidInvoices($customerId) {
@@ -100,6 +137,31 @@ class Payment {
             ORDER BY g.grn_date ASC
         ");
         $this->db->bind(':vid', $vendorId);
+        $grns = $this->db->resultSet();
+        
+        foreach ($grns as $g) {
+            $g->balance_due = $g->total_amount - $g->amount_paid;
+        }
+        
+        // Return only GRNs that have a remaining balance > 0
+        return array_filter($grns, function($g) {
+            return $g->balance_due > 0.01;
+        });
+    }
+
+    /**
+     * Get unpaid or partially paid GRNs for a service provider
+     */
+    public function getServiceProviderUnpaidGRNs($spId) {
+        $this->db->query("
+            SELECT g.id, g.grn_number, g.receipt_number, g.grn_date,
+                   COALESCE((SELECT SUM(total) FROM grn_items WHERE grn_id = g.id), 0) as total_amount,
+                   COALESCE((SELECT SUM(amount) FROM supplier_payment_allocations WHERE grn_id = g.id AND is_reversed = 0), 0) as amount_paid
+            FROM goods_receipt_notes g
+            WHERE g.service_provider_id = :spid AND g.is_approved = 1
+            ORDER BY g.grn_date ASC
+        ");
+        $this->db->bind(':spid', $spId);
         $grns = $this->db->resultSet();
         
         foreach ($grns as $g) {
@@ -278,7 +340,8 @@ class Payment {
             $this->db->beginTransaction();
 
             // 1. Post Journal Entry
-            $desc = "Supplier Payment: " . $data['method'] . " to Supplier ID " . $data['supplier_id'];
+            $entityName = !empty($data['supplier_id']) ? "Supplier ID " . $data['supplier_id'] : "Service Provider ID " . $data['service_provider_id'];
+            $desc = "Payment: " . $data['method'] . " to " . $entityName;
             $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) VALUES (:date, :ref, :desc, :uid, 'Posted')");
             $this->db->bind(':date', $data['date']);
             $this->db->bind(':ref', $data['reference']);
@@ -316,9 +379,10 @@ class Payment {
             }
 
             // 3. Save to supplier_payments
-            $this->db->query("INSERT INTO supplier_payments (vendor_id, amount, unallocated_amount, payment_date, payment_method, reference, notes, journal_entry_id, created_by, status) 
-                              VALUES (:vid, :amt, :uamt, :date, :method, :ref, :notes, :jid, :uid, 'Active')");
-            $this->db->bind(':vid', $data['supplier_id']);
+            $this->db->query("INSERT INTO supplier_payments (vendor_id, service_provider_id, amount, unallocated_amount, payment_date, payment_method, reference, notes, journal_entry_id, created_by, status) 
+                              VALUES (:vid, :spid, :amt, :uamt, :date, :method, :ref, :notes, :jid, :uid, 'Active')");
+            $this->db->bind(':vid', !empty($data['supplier_id']) ? $data['supplier_id'] : null);
+            $this->db->bind(':spid', !empty($data['service_provider_id']) ? $data['service_provider_id'] : null);
             $this->db->bind(':amt', $data['amount']);
             $this->db->bind(':uamt', $data['amount']);
             $this->db->bind(':date', $data['date']);
@@ -332,9 +396,10 @@ class Payment {
 
             // 4. Save Cheque details if applicable
             if ($data['method'] === 'Cheque') {
-                $this->db->query("INSERT INTO cheques (vendor_id, customer_id, bank_name, cheque_number, amount, banking_date, status, created_by) 
-                                  VALUES (:vid, NULL, :bn, :cn, :amt, :bdate, 'Pending', :uid)");
-                $this->db->bind(':vid', $data['supplier_id']);
+                $this->db->query("INSERT INTO cheques (vendor_id, service_provider_id, customer_id, bank_name, cheque_number, amount, banking_date, status, created_by) 
+                                  VALUES (:vid, :spid, NULL, :bn, :cn, :amt, :bdate, 'Pending', :uid)");
+                $this->db->bind(':vid', !empty($data['supplier_id']) ? $data['supplier_id'] : null);
+                $this->db->bind(':spid', !empty($data['service_provider_id']) ? $data['service_provider_id'] : null);
                 $this->db->bind(':bn', $data['cheque_bank']);
                 $this->db->bind(':cn', $data['cheque_number']);
                 $this->db->bind(':amt', $data['amount']);
@@ -346,7 +411,7 @@ class Payment {
             // 5. Handle Allocations
             $allocatedAmount = 0;
             if ($data['allocation_type'] === 'auto') {
-                $unpaid = $this->getSupplierUnpaidGRNs($data['supplier_id']);
+                $unpaid = !empty($data['supplier_id']) ? $this->getSupplierUnpaidGRNs($data['supplier_id']) : $this->getServiceProviderUnpaidGRNs($data['service_provider_id']);
                 $remaining = $data['amount'];
                 foreach ($unpaid as $g) {
                     if ($remaining <= 0.01) break;
@@ -575,16 +640,29 @@ class Payment {
 
             // 5. If it was a cheque payment, find and mark cheque as Bounced / Voided
             if ($payment->payment_method === 'Cheque') {
-                $this->db->query("UPDATE cheques SET status = 'Bounced' WHERE vendor_id = :vid AND amount = :amt AND cheque_number = (
-                    SELECT cheque_number FROM (
-                        SELECT cheque_number FROM cheques WHERE vendor_id = :vid2 AND amount = :amt2 ORDER BY id DESC LIMIT 1
-                    ) as tmp
-                )");
-                $this->db->bind(':vid', $payment->vendor_id);
-                $this->db->bind(':amt', $payment->amount);
-                $this->db->bind(':vid2', $payment->vendor_id);
-                $this->db->bind(':amt2', $payment->amount);
-                $this->db->execute();
+                if (!empty($payment->vendor_id)) {
+                    $this->db->query("UPDATE cheques SET status = 'Bounced' WHERE vendor_id = :vid AND amount = :amt AND cheque_number = (
+                        SELECT cheque_number FROM (
+                            SELECT cheque_number FROM cheques WHERE vendor_id = :vid2 AND amount = :amt2 ORDER BY id DESC LIMIT 1
+                        ) as tmp
+                    )");
+                    $this->db->bind(':vid', $payment->vendor_id);
+                    $this->db->bind(':amt', $payment->amount);
+                    $this->db->bind(':vid2', $payment->vendor_id);
+                    $this->db->bind(':amt2', $payment->amount);
+                    $this->db->execute();
+                } elseif (!empty($payment->service_provider_id)) {
+                    $this->db->query("UPDATE cheques SET status = 'Bounced' WHERE service_provider_id = :spid AND amount = :amt AND cheque_number = (
+                        SELECT cheque_number FROM (
+                            SELECT cheque_number FROM cheques WHERE service_provider_id = :spid2 AND amount = :amt2 ORDER BY id DESC LIMIT 1
+                        ) as tmp
+                    )");
+                    $this->db->bind(':spid', $payment->service_provider_id);
+                    $this->db->bind(':amt', $payment->amount);
+                    $this->db->bind(':spid2', $payment->service_provider_id);
+                    $this->db->bind(':amt2', $payment->amount);
+                    $this->db->execute();
+                }
             }
 
             // 6. Reverse Allocations
@@ -625,13 +703,14 @@ class Payment {
      */
     public function getSupplierPaymentById($id) {
         $this->db->query("
-            SELECT p.*, v.name as supplier_name, v.email as supplier_email, v.phone as supplier_phone, v.address as supplier_address, u.username as creator_name, ur.username as reverser_name,
+            SELECT p.*, COALESCE(v.name, sp.name) as supplier_name, COALESCE(v.email, sp.email) as supplier_email, COALESCE(v.phone, sp.phone) as supplier_phone, COALESCE(v.address, sp.address) as supplier_address, u.username as creator_name, ur.username as reverser_name,
                    ch.bank_name as cheque_bank, ch.cheque_number, ch.banking_date as cheque_date
             FROM supplier_payments p
-            JOIN vendors v ON p.vendor_id = v.id
+            LEFT JOIN vendors v ON p.vendor_id = v.id
+            LEFT JOIN service_providers sp ON p.service_provider_id = sp.id
             LEFT JOIN users u ON p.created_by = u.id
             LEFT JOIN users ur ON p.reversed_by = ur.id
-            LEFT JOIN cheques ch ON ch.vendor_id = p.vendor_id AND ch.amount = p.amount AND ABS(TIMESTAMPDIFF(SECOND, ch.created_at, p.created_at)) < 60
+            LEFT JOIN cheques ch ON (ch.vendor_id = p.vendor_id OR ch.service_provider_id = p.service_provider_id) AND ch.amount = p.amount AND ABS(TIMESTAMPDIFF(SECOND, ch.created_at, p.created_at)) < 60
             WHERE p.id = :id
         ");
         $this->db->bind(':id', $id);
@@ -763,6 +842,60 @@ class Payment {
     }
 
     /**
+     * Get Service Provider Statement
+     */
+    public function getServiceProviderStatement($spId, $startDate = '', $endDate = '') {
+        $sql = "
+            SELECT 'GRN' as type, grn.id, grn.grn_number as ref, grn.grn_date as date,
+                   0 as debit, 
+                   (SELECT COALESCE(SUM(total), 0) FROM grn_items WHERE grn_id = grn.id) as credit, 
+                   grn.created_at
+            FROM goods_receipt_notes grn 
+            WHERE grn.service_provider_id = :spid1 AND grn.is_approved = 1
+            UNION ALL
+            SELECT 'Expense' as type, id, CONCAT('Exp: ', IF(reference != '', reference, 'No Ref')) as ref, expense_date as date,
+                   amount as debit, 0 as credit, created_at
+            FROM expenses 
+            WHERE service_provider_id = :spid2
+            UNION ALL
+            SELECT 'Payment' as type, id, CONCAT('Pay: ', payment_method, IF(reference != '', CONCAT(' (', reference, ')'), '')) as ref, payment_date as date,
+                   amount as debit, 0 as credit, created_at
+            FROM supplier_payments 
+            WHERE service_provider_id = :spid3 AND status = 'Active'
+            UNION ALL
+            SELECT 'Supplier Return' as type, id, credit_note_number as ref, note_date as date,
+                   total_amount as debit, 0 as credit, created_at
+            FROM supplier_returns 
+            WHERE service_provider_id = :spid4
+            ORDER BY date ASC, created_at ASC
+        ";
+        $this->db->query($sql);
+        $this->db->bind(':spid1', $spId);
+        $this->db->bind(':spid2', $spId);
+        $this->db->bind(':spid3', $spId);
+        $this->db->bind(':spid4', $spId);
+        $ledger = $this->db->resultSet();
+
+        $balance = 0;
+        $filteredLedger = [];
+
+        foreach ($ledger as $row) {
+            $balance += $row->credit;
+            $balance -= $row->debit;
+            $row->balance = $balance;
+
+            // Apply date filters after computing running balance to keep running balance accurate
+            $rowDate = $row->date;
+            if (!empty($startDate) && $rowDate < $startDate) continue;
+            if (!empty($endDate) && $rowDate > $endDate) continue;
+
+            $filteredLedger[] = $row;
+        }
+
+        return array_reverse($filteredLedger);
+    }
+
+    /**
      * Get Unified Payment History
      */
     public function getUnifiedPaymentHistory($filters = []) {
@@ -777,9 +910,10 @@ class Payment {
         
         // Supplier payments query
         $sqlSupplier = "
-            SELECT 'Supplier' as type, p.id, p.payment_date, p.payment_method, p.reference, p.amount, p.status, v.name as counterparty_name, u.username as creator_name
+            SELECT 'Supplier' as type, p.id, p.payment_date, p.payment_method, p.reference, p.amount, p.status, COALESCE(v.name, sp.name) as counterparty_name, u.username as creator_name
             FROM supplier_payments p
-            JOIN vendors v ON p.vendor_id = v.id
+            LEFT JOIN vendors v ON p.vendor_id = v.id
+            LEFT JOIN service_providers sp ON p.service_provider_id = sp.id
             LEFT JOIN users u ON p.created_by = u.id
             WHERE 1=1
         ";
@@ -870,9 +1004,10 @@ class Payment {
      */
     public function getSupplierPaymentHistory($filters = []) {
         $sql = "
-            SELECT 'Supplier' as type, p.id, p.payment_date, p.payment_method, p.reference, p.amount, p.status, v.name as counterparty_name, u.username as creator_name
+            SELECT 'Supplier' as type, p.id, p.payment_date, p.payment_method, p.reference, p.amount, p.status, COALESCE(v.name, sp.name) as counterparty_name, u.username as creator_name
             FROM supplier_payments p
-            JOIN vendors v ON p.vendor_id = v.id
+            LEFT JOIN vendors v ON p.vendor_id = v.id
+            LEFT JOIN service_providers sp ON p.service_provider_id = sp.id
             LEFT JOIN users u ON p.created_by = u.id
             WHERE 1=1
         ";
@@ -1031,6 +1166,66 @@ class Payment {
         } catch (Throwable $e) {
             $this->db->rollBack();
             error_log("settleSupplierGRNsWithCredit Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Settle Service Provider unpaid GRNs using their available advance credit balance
+     */
+    public function settleServiceProviderGRNsWithCredit($spId, $userId) {
+        try {
+            $this->db->beginTransaction();
+
+            // 1. Get available active service provider payments with unallocated_amount > 0
+            $this->db->query("SELECT * FROM supplier_payments WHERE service_provider_id = :spid AND status = 'Active' AND unallocated_amount > 0 ORDER BY payment_date ASC");
+            $this->db->bind(':spid', $spId);
+            $credits = $this->db->resultSet();
+
+            if (empty($credits)) {
+                throw new Exception("No available service provider credit found.");
+            }
+
+            // 2. Get unpaid GRNs
+            $unpaid = $this->getServiceProviderUnpaidGRNs($spId);
+            if (empty($unpaid)) {
+                throw new Exception("No unpaid GRNs found for this service provider.");
+            }
+
+            foreach ($credits as $cred) {
+                $remainingCredit = $cred->unallocated_amount;
+
+                foreach ($unpaid as &$g) {
+                    if ($remainingCredit <= 0.01) break;
+                    if ($g->balance_due <= 0.01) continue;
+
+                    $allocAmt = min($remainingCredit, $g->balance_due);
+
+                    // Create allocation record
+                    $this->db->query("INSERT INTO supplier_payment_allocations (supplier_payment_id, grn_id, amount) 
+                                      VALUES (:pid, :grn_id, :amt)");
+                    $this->db->bind(':pid', $cred->id);
+                    $this->db->bind(':grn_id', $g->id);
+                    $this->db->bind(':amt', $allocAmt);
+                    $this->db->execute();
+
+                    $g->amount_paid += $allocAmt;
+                    $g->balance_due -= $allocAmt;
+                    $remainingCredit -= $allocAmt;
+                }
+
+                // Update unallocated amount on the payment
+                $this->db->query("UPDATE supplier_payments SET unallocated_amount = :uamt WHERE id = :pid");
+                $this->db->bind(':uamt', $remainingCredit);
+                $this->db->bind(':pid', $cred->id);
+                $this->db->execute();
+            }
+
+            $this->db->commit();
+            return true;
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            error_log("settleServiceProviderGRNsWithCredit Error: " . $e->getMessage());
             return false;
         }
     }

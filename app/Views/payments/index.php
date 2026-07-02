@@ -429,25 +429,32 @@
     </div>
 
     <div style="display: grid; grid-template-columns: 1.45fr 0.55fr; gap: 20px; align-items: stretch; margin-top: 15px; height: 650px;">
-        <form action="<?= APP_URL ?>/supplierpayment/recordSupplierPayment" method="POST" id="supplierPayForm" style="margin: 0; display: flex; flex-direction: column; height: 100%;">
+        <form action="<?= APP_URL ?>/payment/recordSupplierPayment" method="POST" id="supplierPayForm" style="margin: 0; display: flex; flex-direction: column; height: 100%;">
             <div class="payment-panel" style="flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden;">
                 <div class="payment-panel-header">
-                    <span>Record Supplier Payment</span>
+                    <span>Record Payment</span>
                 </div>
             
             <div class="payment-panel-body" style="flex: 1; overflow-y: auto;">
-                <!-- Row 1: Supplier Search & Status details -->
-                <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr; gap: 15px;">
+                <!-- Row 1: Entity Type & Search & Contact & Balance -->
+                <div style="display: grid; grid-template-columns: 1fr 2fr 1.5fr 1.2fr; gap: 15px;">
                     <div class="form-group">
-                        <label>Search Supplier *</label>
-                        <input type="hidden" name="supplier_id" id="form-supp-id" required>
+                        <label>Entity Type *</label>
+                        <select name="entity_type" id="form-entity-type" class="form-control" style="background: var(--white);" onchange="handleEntityTypeChange()">
+                            <option value="supplier" selected>Supplier</option>
+                            <option value="service_provider">Service Provider</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label id="search-label">Search Supplier *</label>
+                        <input type="hidden" name="entity_id" id="form-supp-id" required>
                         <input type="text" id="supplierSearch" class="form-control"
                                placeholder="Type to search supplier by name, phone, address..."
                                autocomplete="off" required>
                         <ul id="supplierSearchResults" class="search-results"></ul>
                     </div>
                     <div class="form-group">
-                        <label>Supplier Contact Info</label>
+                        <label id="contact-label">Supplier Contact Info</label>
                         <input type="text" id="supplierDetailsArea" class="form-control" readonly placeholder="Supplier details will appear here...">
                     </div>
                     <div class="form-group">
@@ -588,10 +595,10 @@
         </div>
     </form>
 
-    <!-- Right Panel: Supplier History Card -->
+    <!-- Right Panel: History Card -->
     <div class="payment-panel" id="supplier-history-panel" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
         <div class="payment-panel-header" style="background: var(--slate-700); display: flex; justify-content: space-between; align-items: center;">
-            <span>Supplier History</span>
+            <span id="history-panel-title">History</span>
             <div style="display: flex; gap: 8px;">
                 <a href="#" id="btn-view-profile" target="_blank" class="btn" style="padding: 4px 10px; font-size: 11px; background: rgba(255,255,255,0.15); color: var(--white); border-color: rgba(255,255,255,0.25); display: inline-flex; align-items: center; gap: 4px; pointer-events: none; opacity: 0.5; text-decoration: none;">
                     <i class="ph ph-user"></i> View Profile
@@ -603,7 +610,7 @@
         </div>
         <div class="payment-panel-body" id="supplier-history-body" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--slate-400); padding: 15px; box-sizing: border-box; width: 100%;">
             <i class="ph ph-clock-counter-clockwise" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;"></i>
-            <span style="font-size: 12px;">Select a supplier to view history.</span>
+            <span style="font-size: 12px;">Select an entity to view history.</span>
         </div>
     </div>
 </div>
@@ -628,10 +635,55 @@
         <?php endforeach; ?>
     ];
 
+    // Service Providers list injected from PHP
+    const serviceProviders = [
+        <?php foreach($data['service_providers'] as $sp): ?>
+        {
+            id: "<?= $sp->id ?>",
+            name: <?= json_encode((string)($sp->name ?? '')) ?>,
+            phone: <?= json_encode((string)($sp->phone ?? '')) ?>,
+            address: <?= json_encode((string)($sp->address ?? '')) ?>,
+            outstanding: <?= floatval($sp->outstanding_balance ?? 0) ?>
+        },
+        <?php endforeach; ?>
+    ];
+
     // Helper for HTML escaping
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // Handle entity type toggle
+    function handleEntityTypeChange() {
+        const type = document.getElementById('form-entity-type').value;
+        const searchLabel = document.getElementById('search-label');
+        const contactLabel = document.getElementById('contact-label');
+        const searchInput = document.getElementById('supplierSearch');
+        const welcomeText = document.querySelector('#ap-welcome h3');
+        const welcomeIcon = document.querySelector('#ap-welcome i');
+        
+        clearSupplierSelection();
+        
+        if (type === 'service_provider') {
+            searchLabel.innerText = 'Search Service Provider *';
+            contactLabel.innerText = 'Provider Contact Info';
+            searchInput.placeholder = 'Type to search service provider by name, phone, address...';
+            if (welcomeText) welcomeText.innerText = 'Select a service provider above to load GRN balances.';
+            if (welcomeIcon) {
+                welcomeIcon.className = 'ph ph-truck';
+                welcomeIcon.style.color = 'var(--primary)';
+            }
+        } else {
+            searchLabel.innerText = 'Search Supplier *';
+            contactLabel.innerText = 'Supplier Contact Info';
+            searchInput.placeholder = 'Type to search supplier by name, phone, address...';
+            if (welcomeText) welcomeText.innerText = 'Select a supplier above to load GRN balances.';
+            if (welcomeIcon) {
+                welcomeIcon.className = 'ph ph-factory';
+                welcomeIcon.style.color = 'var(--warning)';
+            }
+        }
     }
 
     // Autocomplete Supplier Search
@@ -641,7 +693,10 @@
         resList.innerHTML = '';
         if(!val) { resList.style.display = 'none'; return; }
 
-        const filtered = suppliers.filter(s =>
+        const type = document.getElementById('form-entity-type').value;
+        const listToSearch = (type === 'service_provider') ? serviceProviders : suppliers;
+
+        const filtered = listToSearch.filter(s =>
             (s.name && s.name.toLowerCase().includes(val)) ||
             (s.phone && s.phone.toLowerCase().includes(val)) ||
             (s.address && s.address.toLowerCase().includes(val))
@@ -652,7 +707,7 @@
             li.className = 'no-results';
             li.style.padding = '10px 14px';
             li.style.color = '#94a3b8';
-            li.innerText = 'No suppliers found';
+            li.innerText = type === 'service_provider' ? 'No service providers found' : 'No suppliers found';
             resList.appendChild(li);
             resList.style.display = 'block';
             return;
@@ -717,12 +772,16 @@
         btnStatement.style.opacity = '0.5';
 
         // Reset history body
+        const histTitle = document.getElementById('history-panel-title');
+        if (histTitle) {
+            histTitle.innerText = 'History';
+        }
         const histBody = document.getElementById('supplier-history-body');
         histBody.style.justifyContent = 'center';
         histBody.style.alignItems = 'center';
         histBody.innerHTML = `
             <i class="ph ph-clock-counter-clockwise" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;"></i>
-            <span style="font-size: 12px;">Select a supplier to view history.</span>
+            <span style="font-size: 12px;">Select an entity to view history.</span>
         `;
     }
 
@@ -752,24 +811,35 @@
         }
         outDiv.innerText = balText;
 
+        const type = document.getElementById('form-entity-type').value;
+
         // Enable buttons
         const btnProfile = document.getElementById('btn-view-profile');
-        btnProfile.href = '<?= APP_URL ?>/supplier/index/' + supp.id;
+        if (type === 'service_provider') {
+            btnProfile.href = '<?= APP_URL ?>/serviceprovider/profile/' + supp.id;
+        } else {
+            btnProfile.href = '<?= APP_URL ?>/supplier/index/' + supp.id;
+        }
         btnProfile.style.pointerEvents = 'auto';
         btnProfile.style.opacity = '1';
 
         const btnStatement = document.getElementById('btn-view-statement');
-        btnStatement.href = '<?= APP_URL ?>/report/viewer/supplier_statement?supplier=' + supp.id + '&start_date=&end_date=';
+        btnStatement.href = '<?= APP_URL ?>/payment/statement/' + supp.id + '?type=' + type + '&start_date=&end_date=';
         btnStatement.style.pointerEvents = 'auto';
         btnStatement.style.opacity = '1';
 
+        const histTitle = document.getElementById('history-panel-title');
+        if (histTitle) {
+            histTitle.innerText = (type === 'service_provider' ? 'Service Provider' : 'Supplier') + ' History';
+        }
+
         // Fetch history
-        fetchSupplierHistory(supp.id);
+        fetchSupplierHistory(supp.id, type);
 
         const tbody = document.getElementById('supp-grns-tbody');
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading unpaid GRNs...</td></tr>';
         
-        fetch('<?= APP_URL ?>/supplierpayment/getSupplierGRNsJson/' + supp.id)
+        fetch('<?= APP_URL ?>/payment/getSupplierGRNsJson/' + supp.id + '?type=' + type)
             .then(res => res.json())
             .then(data => {
                 activeSupplierGRNs = data;
@@ -789,7 +859,7 @@
             });
     }
 
-    function fetchSupplierHistory(supplierId) {
+    function fetchSupplierHistory(supplierId, type) {
         const historyBody = document.getElementById('supplier-history-body');
         historyBody.innerHTML = `
             <div style="text-align: center; padding: 40px 0; color: var(--slate-400);">
@@ -798,7 +868,7 @@
             </div>
         `;
         
-        fetch('<?= APP_URL ?>/supplierpayment/getSupplierHistoryJson/' + supplierId)
+        fetch('<?= APP_URL ?>/payment/getSupplierHistoryJson/' + supplierId + '?type=' + type)
             .then(res => res.json())
             .then(data => {
                 activeSupplierHistory = data;
@@ -907,7 +977,7 @@
             icon.className = 'modal-icon success';
             title.innerText = 'Payment Receipt Details';
             
-            fetch('<?= APP_URL ?>/supplierpayment/getPaymentDetailsJson/' + id)
+            fetch('<?= APP_URL ?>/payment/getPaymentDetailsJson/' + id)
                 .then(res => res.json())
                 .then(data => {
                     if (!data.success) {
@@ -1325,7 +1395,7 @@
     }
 
     function printFullReceipt(id) {
-        const printWindow = window.open('<?= APP_URL ?>/supplierpayment/receipt/' + id, '_blank');
+        const printWindow = window.open('<?= APP_URL ?>/payment/receipt/' + id, '_blank');
         printWindow.onload = function() {
             printWindow.print();
         };

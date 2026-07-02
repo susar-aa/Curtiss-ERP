@@ -1,8 +1,9 @@
 <?php
-class SupplierPaymentController extends Controller {
+class PaymentController extends Controller {
     private $paymentModel;
     private $supplierModel;
     private $coaModel;
+    private $serviceProviderModel;
 
     public function __construct() {
         if (!isset($_SESSION['user_id'])) {
@@ -12,10 +13,14 @@ class SupplierPaymentController extends Controller {
         $this->paymentModel = $this->model('Payment');
         $this->supplierModel = $this->model('Supplier');
         $this->coaModel = $this->model('ChartOfAccount');
+        $this->serviceProviderModel = $this->model('ServiceProvider');
     }
 
     public function index() {
+        $this->checkPermission('supplierpayment', 'view');
+
         $suppliers = $this->paymentModel->getSupplierOutstandingList();
+        $serviceProviders = $this->paymentModel->getServiceProviderOutstandingList();
         $accounts = $this->coaModel->getAccounts() ?: [];
 
         // Filter Asset accounts (e.g. Cash/Bank)
@@ -43,9 +48,10 @@ class SupplierPaymentController extends Controller {
         $paymentsHistory = $this->paymentModel->getSupplierPaymentHistory($filters);
 
         $data = [
-            'title' => 'Supplier Payments (AP)',
-            'content_view' => 'supplier_payments/index',
+            'title' => 'Payments (AP)',
+            'content_view' => 'payments/index',
             'suppliers' => $suppliers,
+            'service_providers' => $serviceProviders,
             'assets' => $assets,
             'ap_account' => $apAccount,
             'payments_history' => $paymentsHistory,
@@ -58,7 +64,7 @@ class SupplierPaymentController extends Controller {
 
         if (isset($_GET['success'])) {
             if ($_GET['success'] === 'supplier_payment') {
-                $data['success'] = 'Supplier payment recorded successfully!';
+                $data['success'] = 'Payment recorded successfully!';
             } elseif ($_GET['success'] === 'reversed') {
                 $data['success'] = 'Payment reversed successfully and ledger updated!';
             } elseif ($_GET['success'] === 'credit_applied') {
@@ -79,27 +85,37 @@ class SupplierPaymentController extends Controller {
     }
 
     /**
-     * API to fetch supplier unpaid GRNs in JSON
+     * API to fetch supplier or service provider unpaid GRNs in JSON
      */
-    public function getSupplierGRNsJson($supplierId) {
+    public function getSupplierGRNsJson($id) {
         header('Content-Type: application/json');
-        $grns = $this->paymentModel->getSupplierUnpaidGRNs(intval($supplierId));
+        $type = $_GET['type'] ?? 'supplier';
+        if ($type === 'service_provider') {
+            $grns = $this->paymentModel->getServiceProviderUnpaidGRNs(intval($id));
+        } else {
+            $grns = $this->paymentModel->getSupplierUnpaidGRNs(intval($id));
+        }
         echo json_encode(array_values($grns));
         exit;
     }
 
     /**
-     * API to fetch supplier transaction/ledger history in JSON
+     * API to fetch supplier or service provider transaction/ledger history in JSON
      */
-    public function getSupplierHistoryJson($supplierId) {
+    public function getSupplierHistoryJson($id) {
         header('Content-Type: application/json');
-        $history = $this->supplierModel->getActivityLedger(intval($supplierId));
+        $type = $_GET['type'] ?? 'supplier';
+        if ($type === 'service_provider') {
+            $history = $this->serviceProviderModel->getActivityLedger(intval($id));
+        } else {
+            $history = $this->supplierModel->getActivityLedger(intval($id));
+        }
         echo json_encode($history);
         exit;
     }
 
     /**
-     * API to fetch supplier payment details and allocations by ID
+     * API to fetch payment details and allocations by ID
      */
     public function getPaymentDetailsJson($id) {
         header('Content-Type: application/json');
@@ -118,11 +134,11 @@ class SupplierPaymentController extends Controller {
     }
 
     /**
-     * Record supplier payment
+     * Record payment
      */
     public function recordSupplierPayment() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: ' . APP_URL . '/supplierpayment');
+            header('Location: ' . APP_URL . '/payment');
             exit;
         }
 
@@ -135,8 +151,12 @@ class SupplierPaymentController extends Controller {
             $reference = 'PV-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
         }
 
+        $entityType = $_POST['entity_type'] ?? 'supplier';
+        $entityId = intval($_POST['entity_id'] ?? 0);
+
         $paymentData = [
-            'supplier_id' => intval($_POST['supplier_id'] ?? 0),
+            'supplier_id' => $entityType === 'supplier' ? $entityId : 0,
+            'service_provider_id' => $entityType === 'service_provider' ? $entityId : 0,
             'amount' => floatval($_POST['amount'] ?? 0),
             'date' => $_POST['payment_date'] ?? date('Y-m-d'),
             'method' => $_POST['payment_method'] ?? 'Cash',
@@ -153,69 +173,79 @@ class SupplierPaymentController extends Controller {
         ];
 
         if ($paymentData['amount'] <= 0) {
-            header('Location: ' . APP_URL . '/supplierpayment?error=Payment amount must be greater than zero.');
+            header('Location: ' . APP_URL . '/payment?error=Payment amount must be greater than zero.');
             exit;
         }
 
-        if (empty($paymentData['supplier_id'])) {
-            header('Location: ' . APP_URL . '/supplierpayment?error=Please select a supplier.');
+        if (empty($paymentData['supplier_id']) && empty($paymentData['service_provider_id'])) {
+            header('Location: ' . APP_URL . '/payment?error=Please select a supplier or service provider.');
             exit;
         }
 
         if (empty($paymentData['asset_account_id']) || empty($paymentData['ap_account_id'])) {
-            header('Location: ' . APP_URL . '/supplierpayment?error=Ledger accounts must be specified.');
+            header('Location: ' . APP_URL . '/payment?error=Ledger accounts must be specified.');
             exit;
         }
 
         if ($paymentData['method'] === 'Cheque') {
             if (empty($paymentData['cheque_bank']) || empty($paymentData['cheque_number']) || empty($paymentData['cheque_date'])) {
-                header('Location: ' . APP_URL . '/supplierpayment?error=Cheque details are required.');
+                header('Location: ' . APP_URL . '/payment?error=Cheque details are required.');
                 exit;
             }
             if (!preg_match('/^\d{6}$/', $paymentData['cheque_number'])) {
-                header('Location: ' . APP_URL . '/supplierpayment?error=Cheque number must be exactly 6 numeric digits.');
+                header('Location: ' . APP_URL . '/payment?error=Cheque number must be exactly 6 numeric digits.');
                 exit;
             }
         }
 
         $paymentId = $this->paymentModel->recordSupplierPayment($paymentData, $_SESSION['user_id']);
         if ($paymentId) {
-            $this->logActivity('Record Supplier Payment', 'Payments', "Recorded supplier payment of Rs: " . number_format($paymentData['amount'], 2) . " for Supplier ID {$paymentData['supplier_id']} via {$paymentData['method']}");
-            header('Location: ' . APP_URL . '/supplierpayment?success=supplier_payment&payment_id=' . $paymentId);
+            $logEntity = $entityType === 'supplier' ? "Supplier ID {$paymentData['supplier_id']}" : "Service Provider ID {$paymentData['service_provider_id']}";
+            $this->logActivity('Record Payment', 'Payments', "Recorded payment of Rs: " . number_format($paymentData['amount'], 2) . " for {$logEntity} via {$paymentData['method']}");
+            header('Location: ' . APP_URL . '/payment?success=supplier_payment&payment_id=' . $paymentId);
         } else {
-            header('Location: ' . APP_URL . '/supplierpayment?error=Failed to record payment and update ledger.');
+            header('Location: ' . APP_URL . '/payment?error=Failed to record payment and update ledger.');
         }
         exit;
     }
 
     /**
-     * Reverse Supplier Payment
+     * Reverse Payment
      */
     public function reverseSupplierPayment($id) {
         if ($this->paymentModel->reverseSupplierPayment(intval($id), $_SESSION['user_id'])) {
-            $this->logActivity('Reverse Supplier Payment', 'Payments', "Reversed supplier payment ID: {$id}");
-            header('Location: ' . APP_URL . '/supplierpayment?success=reversed');
+            $this->logActivity('Reverse Payment', 'Payments', "Reversed payment ID: {$id}");
+            header('Location: ' . APP_URL . '/payment?success=reversed');
         } else {
-            header('Location: ' . APP_URL . '/supplierpayment?error=Failed to reverse supplier payment.');
+            header('Location: ' . APP_URL . '/payment?error=Failed to reverse payment.');
         }
         exit;
     }
 
     /**
-     * Apply Supplier Credit to unpaid GRNs
+     * Apply Credit to unpaid GRNs
      */
-    public function applyCredit($supplierId) {
-        if ($this->paymentModel->settleSupplierGRNsWithCredit(intval($supplierId), $_SESSION['user_id'])) {
-            $this->logActivity('Apply Supplier Credit', 'Payments', "Applied advance credit balance for Supplier ID: {$supplierId}");
-            header('Location: ' . APP_URL . '/supplierpayment?success=credit_applied');
+    public function applyCredit($id) {
+        $type = $_GET['type'] ?? 'supplier';
+        if ($type === 'service_provider') {
+            $success = $this->paymentModel->settleServiceProviderGRNsWithCredit(intval($id), $_SESSION['user_id']);
+            $logEntity = "Service Provider ID: {$id}";
         } else {
-            header('Location: ' . APP_URL . '/supplierpayment?error=Failed to apply credit or no outstanding balance exists.');
+            $success = $this->paymentModel->settleSupplierGRNsWithCredit(intval($id), $_SESSION['user_id']);
+            $logEntity = "Supplier ID: {$id}";
+        }
+
+        if ($success) {
+            $this->logActivity('Apply Credit', 'Payments', "Applied advance credit balance for {$logEntity}");
+            header('Location: ' . APP_URL . '/payment?success=credit_applied');
+        } else {
+            header('Location: ' . APP_URL . '/payment?error=Failed to apply credit or no outstanding balance exists.');
         }
         exit;
     }
 
     /**
-     * Generate Supplier Receipt/Voucher print view
+     * Generate Receipt/Voucher print view
      */
     public function receipt($id) {
         $payment = $this->paymentModel->getSupplierPaymentById(intval($id));
@@ -225,7 +255,7 @@ class SupplierPaymentController extends Controller {
         $allocations = $this->paymentModel->getSupplierPaymentAllocations(intval($id));
 
         $data = [
-            'title' => 'Supplier Voucher - ' . $payment->reference,
+            'title' => 'Payment Voucher - ' . $payment->reference,
             'payment' => $payment,
             'allocations' => $allocations
         ];
@@ -233,25 +263,42 @@ class SupplierPaymentController extends Controller {
     }
 
     /**
-     * Generate Supplier Statement print view
+     * Generate Statement print view
      */
-    public function statement($supplierId) {
-        $supplier = $this->supplierModel->getSupplierById(intval($supplierId));
-        if (!$supplier) {
-            die('Supplier not found.');
+    public function statement($id) {
+        $type = $_GET['type'] ?? 'supplier';
+        if ($type === 'service_provider') {
+            $counterparty = $this->serviceProviderModel->getServiceProviderById(intval($id));
+            if (!$counterparty) {
+                die('Service Provider not found.');
+            }
+            $title = 'Service Provider Statement - ' . $counterparty->name;
+            $statement = $this->paymentModel->getServiceProviderStatement(intval($id), $_GET['start_date'] ?? '', $_GET['end_date'] ?? '');
+            $statsObj = $this->serviceProviderModel->getServiceProviderStats(intval($id));
+        } else {
+            $counterparty = $this->supplierModel->getSupplierById(intval($id));
+            if (!$counterparty) {
+                die('Supplier not found.');
+            }
+            $title = 'Supplier Statement - ' . $counterparty->name;
+            $statement = $this->paymentModel->getSupplierStatement(intval($id), $_GET['start_date'] ?? '', $_GET['end_date'] ?? '');
+            $statsObj = $this->supplierModel->getSupplierStats(intval($id));
         }
 
-        $startDate = $_GET['start_date'] ?? '';
-        $endDate = $_GET['end_date'] ?? '';
-
-        $statement = $this->paymentModel->getSupplierStatement(intval($supplierId), $startDate, $endDate);
+        $stats = (object) [
+            'total_invoiced' => $statsObj->total_billed,
+            'total_paid' => $statsObj->total_paid + $statsObj->total_returned,
+            'outstanding' => $statsObj->outstanding
+        ];
 
         $data = [
-            'title' => 'Supplier Statement - ' . $supplier->name,
-            'supplier' => $supplier,
-            'statement' => $statement,
-            'start_date' => $startDate,
-            'end_date' => $endDate
+            'title' => $title,
+            'supplier' => $counterparty,
+            'ledger' => $statement,
+            'stats' => $stats,
+            'entity_type' => $type,
+            'start_date' => $_GET['start_date'] ?? '',
+            'end_date' => $_GET['end_date'] ?? ''
         ];
         $this->view('payments/supplier_statement', $data);
     }

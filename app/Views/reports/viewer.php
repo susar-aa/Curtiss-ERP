@@ -1638,7 +1638,7 @@ $statuses = $data['statuses'] ?? [];
             case 'payment':
                 return `<?= APP_URL ?>/customerpayment?payment_id=${id}`;
             case 'supplier_payment':
-                return `<?= APP_URL ?>/supplierpayment?payment_id=${id}`;
+                return `<?= APP_URL ?>/payment?payment_id=${id}`;
             case 'cheque':
                 return `<?= APP_URL ?>/cheque/show/${id}`;
             default:
