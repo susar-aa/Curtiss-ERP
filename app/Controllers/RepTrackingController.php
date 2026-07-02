@@ -991,169 +991,65 @@ class RepTrackingController extends Controller {
             die("Route not found.");
         }
         
-        $db = new Database();
+        $bills = $this->trackingModel->getRouteBills($routeId);
         
-        // Resolve merged routes if any
-        $routeIds = [$routeId];
-        $db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
-        $db->bind(':rid', $routeId);
-        $routeRow = $db->single();
-        if ($routeRow && $routeRow->route_binding_id) {
-            $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
-            $db->bind(':bid', $routeRow->route_binding_id);
-            $boundRoutes = $db->resultSet();
-            foreach ($boundRoutes as $br) {
-                $routeIds[] = intval($br->id);
-            }
-        }
-        $routeIds = array_unique($routeIds);
-        $routeIdsStr = implode(',', $routeIds);
-
-        // Fetch bills on route
-        $db->query("
-            SELECT i.*, c.name as customer_name, pt.name as term_name,
-            (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total
-            FROM invoices i
-            JOIN customers c ON i.customer_id = c.id
-            LEFT JOIN payment_terms pt ON i.payment_term_id = pt.id
-            WHERE i.rep_route_id IN ($routeIdsStr) AND i.status != 'Voided'
-            ORDER BY i.created_at ASC
-        ");
-        $bills = $db->resultSet() ?: [];
-
-        // Fetch collections for this route
-        $collections = $this->trackingModel->getRouteCollections($routeId);
-
-        // Fetch attached credit invoices
-        $credit_invoices = $this->deliveryModel->getDeliveryCreditInvoices($routeId);
-
-        // Fetch delivery details (vehicle, driver, helper)
-        $db->query("SELECT * FROM deliveries WHERE rep_route_id = :rid LIMIT 1");
-        $db->bind(':rid', $routeId);
-        $delivery = $db->single() ?: null;
-        
+        $invoiceModel = $this->model('Invoice');
         $companyModel = $this->model('Company');
         $company = $companyModel->getSettings();
-
-        // 1. Process Bills on Route (newly created invoices)
-        $bills_on_route = [];
-        $customer_collections = [];
-        foreach ($collections as $col) {
-            $colCopy = clone $col;
-            $customer_collections[$col->customer_id][] = $colCopy;
-        }
-
+        
+        $invoicesData = [];
         foreach ($bills as $bill) {
-            $cid = $bill->customer_id;
-            $grand_total = floatval($bill->true_grand_total);
+            if ($bill->status === 'Voided') continue;
             
-            $allocated_cash = 0.0;
-            $allocated_chq = 0.0;
-            $chq_numbers = [];
+            // Get full invoice details (includes customer address, phone, tax details)
+            $fullInvoice = $invoiceModel->getInvoiceById($bill->id);
+            if (!$fullInvoice) continue;
             
-            if (isset($customer_collections[$cid]) && !empty($customer_collections[$cid])) {
-                foreach ($customer_collections[$cid] as &$col) {
-                    if ($col->amount <= 0.001) continue;
-                    
-                    $remaining_bill = $grand_total - ($allocated_cash + $allocated_chq);
-                    if ($remaining_bill <= 0.001) break;
-                    
-                    $alloc_amt = min(floatval($col->amount), $remaining_bill);
-                    if ($col->payment_method === 'Cash' || $col->payment_method === 'Bank Transfer') {
-                        $allocated_cash += $alloc_amt;
-                    } elseif ($col->payment_method === 'Cheque') {
-                        $allocated_chq += $alloc_amt;
-                        if (!empty($col->cheque_number)) {
-                            $chq_numbers[] = $col->cheque_number;
-                        }
-                    }
-                    $col->amount -= $alloc_amt;
+            $invoicePaid = 0;
+            try {
+                $db = new Database();
+                $db->query("SELECT COALESCE(SUM(amount), 0) as paid FROM customer_payments WHERE invoice_id = :id");
+                $db->bind(':id', $bill->id);
+                $row = $db->single();
+                if ($row) {
+                    $invoicePaid = floatval($row->paid);
                 }
+            } catch (Exception $e) {
+                $invoicePaid = 0;
             }
             
-            // If the term is cash/COD and there's still a balance due, and we didn't explicitly collect it as cash,
-            // we default it to cash sales. If term is credit/net, the remaining goes to credit.
-            $unallocated_bill = $grand_total - ($allocated_cash + $allocated_chq);
-            if ($unallocated_bill > 0.01) {
-                if (strpos(strtolower($bill->term_name ?? ''), 'cash') !== false) {
-                    $allocated_cash += $unallocated_bill;
-                    $unallocated_bill = 0;
-                }
-            }
+            // Calculate customer outstanding balance
+            $db = new Database();
+            $db->query("
+                SELECT 
+                    COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) as total_billed
+                FROM invoices WHERE customer_id = :id AND status != 'Voided'
+            ");
+            $db->bind(':id', $fullInvoice->customer_id);
+            $billed = $db->single()->total_billed ?? 0;
+
+            $db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :id");
+            $db->bind(':id', $fullInvoice->customer_id);
+            $paid = $db->single()->total_paid ?? 0;
+
+            $db->query("SELECT COALESCE(SUM(total_amount), 0) as total_credited FROM credit_notes WHERE customer_id = :id");
+            $db->bind(':id', $fullInvoice->customer_id);
+            $credited = $db->single()->total_credited ?? 0;
+
+            $totalOutstanding = $billed - $paid - $credited;
             
-            $bills_on_route[] = [
-                'invoice_number' => $bill->invoice_number,
-                'customer_name' => $bill->customer_name,
-                'sales_amount' => $grand_total,
-                'term_name' => $bill->term_name ?: 'Cash',
-                'cash' => $allocated_cash,
-                'chq' => $allocated_chq,
-                'chq_number' => implode(', ', array_unique($chq_numbers)),
-                'credit' => $unallocated_bill
+            $invoicesData[] = [
+                'invoice' => $fullInvoice,
+                'items' => $invoiceModel->getInvoiceItems($bill->id),
+                'invoice_paid' => $invoicePaid,
+                'total_outstanding' => $totalOutstanding
             ];
         }
-
-        // 2. Process Credit Collections (older credit invoices attached)
-        $credit_collections = [];
-        $credit_invoices_by_customer = [];
-        foreach ($credit_invoices as $ci) {
-            $credit_invoices_by_customer[$ci->customer_id][] = $ci;
-        }
-
-        foreach ($customer_collections as $cid => $cols) {
-            foreach ($cols as $col) {
-                $rem_amt = floatval($col->amount);
-                if ($rem_amt <= 0.01) continue;
-                
-                $allocated = false;
-                if (isset($credit_invoices_by_customer[$cid]) && !empty($credit_invoices_by_customer[$cid])) {
-                    foreach ($credit_invoices_by_customer[$cid] as $ci) {
-                        if (!isset($credit_collections[$ci->id])) {
-                            $credit_collections[$ci->id] = [
-                                'invoice_number' => $ci->invoice_number,
-                                'customer_name' => $ci->customer_name,
-                                'credit_bill_value' => floatval($ci->true_grand_total),
-                                'invoice_date' => $ci->invoice_date,
-                                'cash' => 0.0,
-                                'chq' => 0.0,
-                                'chq_number' => '',
-                                'collector' => $route->first_name . ' ' . $route->last_name
-                            ];
-                        }
-                        
-                        if ($col->payment_method === 'Cash' || $col->payment_method === 'Bank Transfer') {
-                            $credit_collections[$ci->id]['cash'] += $rem_amt;
-                        } elseif ($col->payment_method === 'Cheque') {
-                            $credit_collections[$ci->id]['chq'] += $rem_amt;
-                            $credit_collections[$ci->id]['chq_number'] = $col->cheque_number;
-                        }
-                        $allocated = true;
-                        break;
-                    }
-                }
-                
-                if (!$allocated) {
-                    $key = 'gen_' . $col->id;
-                    $credit_collections[$key] = [
-                        'invoice_number' => $col->payment_method === 'Cheque' ? 'Cheque Collection' : 'Cash Collection',
-                        'customer_name' => $col->customer_name,
-                        'credit_bill_value' => $rem_amt,
-                        'invoice_date' => date('Y-m-d', strtotime($col->created_at)),
-                        'cash' => ($col->payment_method === 'Cash' || $col->payment_method === 'Bank Transfer') ? $rem_amt : 0,
-                        'chq' => ($col->payment_method === 'Cheque') ? $rem_amt : 0,
-                        'chq_number' => $col->cheque_number ?: '',
-                        'collector' => $route->first_name . ' ' . $route->last_name
-                    ];
-                }
-            }
-        }
-
+        
         $data = [
             'route' => $route,
             'company' => $company,
-            'delivery' => $delivery,
-            'bills_on_route' => $bills_on_route,
-            'credit_collections' => array_values($credit_collections)
+            'invoices' => $invoicesData
         ];
         
         $this->view('rep-tracking/print_route_invoices', $data);
