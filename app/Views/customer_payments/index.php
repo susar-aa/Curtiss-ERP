@@ -1,18 +1,48 @@
 <style>
-    /* Design Tokens & Theme integration */
+    /* =====================================================
+       UNIFIED AR PAYMENTS PANEL — MODERN UI
+       ===================================================== */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
     :root {
-        --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
-        --success-gradient: linear-gradient(135deg, #10b981 0%, #065f46 100%);
-        --warning-gradient: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
-        --danger-gradient: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
-        --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-        --hover-shadow: 0 20px 40px rgba(79, 70, 229, 0.15);
+        --primary:       #2563eb;
+        --primary-hover: #1d4ed8;
+        --primary-light: #eff6ff;
+        --success:       #16a34a;
+        --success-light: #f0fdf4;
+        --danger:        #dc2626;
+        --danger-light:  #fef2f2;
+        --warning:       #d97706;
+        --warning-light: #fffbeb;
+        --slate-900:     #0f172a;
+        --slate-800:     #1e293b;
+        --slate-700:     #334155;
+        --slate-600:     #475569;
+        --slate-500:     #64748b;
+        --slate-400:     #94a3b8;
+        --slate-300:     #cbd5e1;
+        --slate-200:     #e2e8f0;
+        --slate-100:     #f1f5f9;
+        --slate-50:      #f8fafc;
+        --white:         #ffffff;
+        --radius-sm:     6px;
+        --radius-md:     10px;
+        --radius-lg:     14px;
+        --shadow-sm:     0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+        --shadow-md:     0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+        --font:          'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    .ar-wrapper {
+        font-family: var(--font);
+        color: var(--slate-800);
+        box-sizing: border-box;
     }
 
     /* Tabs Layout */
     .payment-center-tabs {
         display: flex;
-        border-bottom: 2px solid var(--mac-border);
+        border-bottom: 2px solid var(--slate-200);
         margin-bottom: 25px;
         gap: 5px;
     }
@@ -23,29 +53,21 @@
         padding: 12px 24px;
         font-size: 14px;
         font-weight: 600;
-        color: var(--text-muted);
+        color: var(--slate-500);
         cursor: pointer;
         transition: all 0.3s ease;
         display: flex;
         align-items: center;
         gap: 8px;
+        font-family: var(--font);
     }
     .payment-tab-btn:hover {
-        color: var(--text-main);
-        background: rgba(0,0,0,0.02);
+        color: var(--slate-900);
+        background: var(--slate-50);
     }
     .payment-tab-btn.active {
-        color: #4f46e5;
-        border-bottom-color: #4f46e5;
-    }
-    @media (prefers-color-scheme: dark) {
-        .payment-tab-btn:hover {
-            background: rgba(255, 255, 255, 0.02);
-        }
-        .payment-tab-btn.active {
-            color: #818cf8;
-            border-bottom-color: #818cf8;
-        }
+        color: var(--primary);
+        border-bottom-color: var(--primary);
     }
 
     /* KPI Row */
@@ -56,18 +78,18 @@
         margin-bottom: 25px;
     }
     .stat-card {
-        background: var(--mac-bg);
-        border: 1px solid var(--mac-border);
-        border-radius: 16px;
+        background: var(--white);
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-lg);
         padding: 20px;
-        box-shadow: var(--card-shadow);
+        box-shadow: var(--shadow-sm);
         position: relative;
         overflow: hidden;
         transition: all 0.3s;
     }
     .stat-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+        box-shadow: var(--shadow-md);
     }
     .stat-card::before {
         content: '';
@@ -77,251 +99,31 @@
         width: 4px;
         height: 100%;
     }
-    .stat-card.receivable::before { background: #4f46e5; }
-    .stat-card.general::before { background: #10b981; }
+    .stat-card.receivable::before { background: var(--primary); }
+    .stat-card.general::before { background: var(--success); }
 
     .stat-title {
         font-size: 11px;
         text-transform: uppercase;
         font-weight: 700;
-        color: var(--text-muted);
+        color: var(--slate-500);
         letter-spacing: 1px;
         margin-bottom: 8px;
     }
     .stat-val {
         font-size: 26px;
         font-weight: 800;
-        color: var(--text-main);
+        color: var(--slate-900);
         font-family: monospace;
     }
 
     /* Split Panes */
-    .pane-row {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 25px;
-    }
-    @media (min-width: 1024px) {
-        .pane-row {
-            grid-template-columns: 350px 1fr;
-        }
-    }
-
-    .pane-sidebar {
-        background: var(--mac-bg);
-        border: 1px solid var(--mac-border);
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: var(--card-shadow);
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-        max-height: 75vh;
-        overflow-y: auto;
-    }
     .pane-main {
-        background: var(--mac-bg);
-        border: 1px solid var(--mac-border);
-        border-radius: 16px;
+        background: var(--white);
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-lg);
         padding: 24px;
-        box-shadow: var(--card-shadow);
-    }
-
-    /* Entity selector item */
-    .entity-item {
-        padding: 12px 16px;
-        border-radius: 10px;
-        border: 1px solid var(--mac-border);
-        cursor: pointer;
-        transition: all 0.2s;
-        background: rgba(0,0,0,0.01);
-    }
-    .entity-item:hover {
-        background: rgba(79, 70, 229, 0.05);
-        border-color: rgba(79, 70, 229, 0.2);
-    }
-    .entity-item.active {
-        background: rgba(79, 70, 229, 0.1);
-        border-color: #4f46e5;
-    }
-    .entity-title {
-        font-weight: 600;
-        font-size: 13px;
-        color: var(--text-main);
-        margin-bottom: 4px;
-    }
-    .entity-desc {
-        font-size: 11px;
-        color: var(--text-muted);
-        display: flex;
-        justify-content: space-between;
-    }
-
-    /* Forms and allocation grid */
-    .allocation-box {
-        border: 1px solid var(--mac-border);
-        border-radius: 12px;
-        padding: 20px;
-        background: rgba(0,0,0,0.01);
-        margin-top: 15px;
-    }
-    .allocations-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-        font-size: 12px;
-    }
-    .allocations-table th, .allocations-table td {
-        padding: 8px 10px;
-        border-bottom: 1px solid var(--mac-border);
-        text-align: left;
-    }
-    .allocations-table th {
-        font-weight: 600;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        font-size: 10px;
-    }
-
-    /* Reversal badge */
-    .status-badge {
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-    }
-    .status-Active { background: #d1fae5; color: #065f46; }
-    .status-Reversed { background: #fee2e2; color: #991b1b; }
-
-    /* Action Buttons */
-    .btn-action-small {
-        padding: 5px 10px;
-        font-size: 11px;
-        font-weight: 600;
-        border-radius: 6px;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        border: 1px solid var(--mac-border);
-        background: var(--mac-bg);
-        color: var(--text-main);
-        transition: all 0.2s;
-        text-decoration: none;
-    }
-    .btn-action-small:hover {
-        background: rgba(0,0,0,0.05);
-    }
-    .btn-action-small.btn-danger {
-        border-color: #f87171;
-        color: #ef4444;
-    }
-    .btn-action-small.btn-danger:hover {
-        background: #fef2f2;
-    }
-
-    /* Hide helper */
-    .hidden {
-        display: none !important;
-    }
-
-    /* Modal Popups Overlay & Cards */
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(4px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        animation: fadeIn 0.2s ease-out;
-    }
-    .modal-card {
-        border-radius: 14px;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        width: 100%;
-        max-width: 400px;
-        padding: 24px;
-        text-align: center;
-        animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .modal-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        font-weight: bold;
-        margin: 0 auto 16px auto;
-    }
-    .modal-icon.success {
-        background: #f0fdf4;
-        color: #16a34a;
-        border: 2px solid #16a34a;
-    }
-    .modal-icon.error {
-        background: #fef2f2;
-        color: #dc2626;
-        border: 2px solid #dc2626;
-    }
-    .modal-title {
-        font-size: 16px;
-        font-weight: 700;
-        margin: 0 0 10px 0;
-    }
-    .modal-text {
-        font-size: 13px;
-        margin: 0 0 20px 0;
-        line-height: 1.5;
-    }
-    .receipt-summary-box {
-        border-radius: 10px;
-        padding: 16px;
-        margin-bottom: 20px;
-        text-align: left;
-        border: 1px dashed;
-    }
-    .receipt-row {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 8px;
-        font-size: 12px;
-    }
-    .receipt-row:last-child {
-        margin-bottom: 0;
-    }
-    .receipt-row.total-row {
-        border-top: 1.5px dashed;
-        padding-top: 8px;
-        margin-top: 8px;
-        font-weight: 700;
-        font-size: 14px;
-    }
-    .receipt-label {
-        opacity: 0.7;
-    }
-    .receipt-value {
-        font-weight: 600;
-    }
-    .modal-actions {
-        display: flex;
-        gap: 12px;
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    @keyframes scaleIn {
-        from { transform: scale(0.95); opacity: 0; }
-        to { transform: scale(1); opacity: 1; }
+        box-shadow: var(--shadow-sm);
     }
 
     /* ── Unified Payment Panel Card ── */
@@ -356,7 +158,38 @@
         flex-direction: column;
         gap: 15px;
     }
-    
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        position: relative;
+    }
+    .form-group label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--slate-600);
+    }
+    .form-control {
+        padding: 8px 12px;
+        border: 1px solid var(--slate-300);
+        border-radius: var(--radius-sm);
+        font-family: var(--font);
+        font-size: 12px;
+        color: var(--slate-800);
+        background: var(--slate-50);
+        box-sizing: border-box;
+        outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-control:focus {
+        border-color: var(--primary);
+        background: var(--white);
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    }
+
     /* Autocomplete Dropdown list styling */
     .search-results {
         position: absolute;
@@ -395,6 +228,53 @@
         color: var(--white) !important;
     }
 
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 8px 16px;
+        font-family: var(--font);
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--slate-300);
+        background: var(--white);
+        color: var(--slate-700);
+        cursor: pointer;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .btn:hover { background: var(--slate-100); border-color: var(--slate-400); }
+    .btn-primary { background: var(--primary); color: var(--white); border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-hover); }
+
+    /* Allocation Box & Tables */
+    .allocation-box {
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        background: var(--slate-50);
+        margin-top: 15px;
+    }
+    .allocations-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 12px;
+    }
+    .allocations-table th, .allocations-table td {
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--slate-200);
+        text-align: left;
+    }
+    .allocations-table th {
+        font-weight: 700;
+        color: var(--slate-600);
+        text-transform: uppercase;
+        font-size: 10px;
+    }
+
     .cheque-details-box {
         border: 1.5px solid #f59e0b;
         border-radius: var(--radius-md);
@@ -402,7 +282,130 @@
         background: #fffbeb;
         margin-top: 15px;
     }
+
+    .hidden {
+        display: none !important;
+    }
+
+    /* Modal Popups Overlay & Cards */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        animation: fadeIn 0.2s ease-out;
+    }
+    .modal-card {
+        background: var(--white);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        width: 100%;
+        max-width: 400px;
+        padding: 24px;
+        text-align: center;
+        animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        border: 1px solid var(--slate-200);
+    }
+    .modal-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: bold;
+        margin: 0 auto 16px auto;
+    }
+    .modal-icon.success {
+        background: var(--success-light);
+        color: var(--success);
+        border: 2px solid var(--success);
+    }
+    .modal-icon.error {
+        background: var(--danger-light);
+        color: var(--danger);
+        border: 2px solid var(--danger);
+    }
+    .modal-icon.warning {
+        background: var(--warning-light);
+        color: var(--warning);
+        border: 2px solid var(--warning);
+    }
+    .modal-icon.primary {
+        background: var(--primary-light);
+        color: var(--primary);
+        border: 2px solid var(--primary);
+    }
+    .modal-icon.danger {
+        background: var(--danger-light);
+        color: var(--danger);
+        border: 2px solid var(--danger);
+    }
+    .modal-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--slate-900);
+        margin: 0 0 10px 0;
+    }
+    .modal-text {
+        font-size: 13px;
+        color: var(--slate-600);
+        margin: 0 0 20px 0;
+        line-height: 1.5;
+    }
+    .receipt-summary-box {
+        background: var(--slate-50);
+        border: 1px dashed var(--slate-300);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        margin-bottom: 20px;
+        text-align: left;
+    }
+    .receipt-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 12px;
+    }
+    .receipt-row:last-child {
+        margin-bottom: 0;
+    }
+    .receipt-row.total-row {
+        border-top: 1.5px solid var(--slate-300);
+        padding-top: 8px;
+        margin-top: 8px;
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--slate-900);
+    }
+    .receipt-label {
+        color: var(--slate-500);
+    }
+    .receipt-value {
+        color: var(--slate-800);
+        font-weight: 600;
+    }
+    .modal-actions {
+        display: flex;
+        gap: 12px;
+    }
     
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes scaleIn {
+        from { transform: scale(0.95); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
     .animate-spin {
         animation: spin 1s linear infinite;
     }
@@ -410,7 +413,81 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
+
+    /* History Data Table */
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        font-size: 13px;
+    }
+    .data-table th, .data-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--slate-200);
+        text-align: left;
+    }
+    .data-table th {
+        font-weight: 700;
+        color: var(--slate-600);
+        background: var(--slate-50);
+        text-transform: uppercase;
+        font-size: 11px;
+    }
+    .data-table tbody tr:hover {
+        background: var(--slate-50);
+    }
+
+    /* Status & Method Badges */
+    .badge-method {
+        padding: 4px 8px;
+        border-radius: var(--radius-sm);
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .method-Cash { background: #fef3c7; color: #d97706; }
+    .method-BankTransfer { background: #dbeafe; color: #1e40af; }
+    .method-Cheque { background: #e0f2fe; color: #0369a1; }
+
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: var(--radius-sm);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    .status-Active { background: var(--success-light); color: var(--success); }
+    .status-Reversed { background: var(--danger-light); color: var(--danger); }
+
+    .btn-action-small {
+        padding: 5px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border: 1px solid var(--slate-300);
+        background: var(--white);
+        color: var(--slate-700);
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+    .btn-action-small:hover {
+        background: var(--slate-100);
+        border-color: var(--slate-400);
+    }
+    .btn-action-small.btn-danger {
+        border-color: var(--danger);
+        color: var(--danger);
+        background: var(--white);
+    }
+    .btn-action-small.btn-danger:hover {
+        background: var(--danger-light);
+    }
 </style>
+
+<div class="ar-wrapper">
 
 <div style="margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
     <div>
@@ -422,12 +499,12 @@
 <!-- Notifications & Receipt Modal Popups -->
 <?php if (!empty($data['error'])): ?>
     <div id="error-modal" class="modal-overlay">
-        <div class="modal-card" style="background: var(--mac-bg, #ffffff); border-color: var(--mac-border, #cbd5e1);">
+        <div class="modal-card">
             <div class="modal-icon error">⚠</div>
-            <h3 class="modal-title" style="color: #dc2626;">Error</h3>
-            <p class="modal-text" style="color: var(--text-muted, #475569);"><?= htmlspecialchars($data['error']) ?></p>
+            <h3 class="modal-title" style="color: var(--danger);">Error</h3>
+            <p class="modal-text"><?= htmlspecialchars($data['error']) ?></p>
             <div class="modal-actions" style="justify-content: center;">
-                <button type="button" onclick="closeModal('error-modal')" class="btn-action-small btn-danger" style="min-width: 120px; justify-content: center; height: 32px;">
+                <button type="button" onclick="closeModal('error-modal')" class="btn btn-danger" style="min-width: 120px; justify-content: center; background: var(--danger); color: var(--white); border-color: var(--danger);">
                     Dismiss
                 </button>
             </div>
@@ -439,26 +516,26 @@
     $payment = $data['payment_details'];
 ?>
     <div id="receipt-modal" class="modal-overlay">
-        <div class="modal-card" style="background: var(--mac-bg, #ffffff); border-color: var(--mac-border, #cbd5e1); width: 420px;">
+        <div class="modal-card" style="width: 420px;">
             <div class="modal-icon success">✓</div>
-            <h3 class="modal-title" style="color: var(--text-main, #0f172a);"><?= !empty($data['success']) ? 'Collection Recorded Successfully!' : 'Collection Details' ?></h3>
+            <h3 class="modal-title"><?= !empty($data['success']) ? 'Collection Recorded Successfully!' : 'Collection Details' ?></h3>
             
-            <div class="receipt-summary-box" style="background: rgba(0,0,0,0.02); border-color: var(--mac-border, #cbd5e1); color: var(--text-main); margin-bottom: 20px;">
+            <div class="receipt-summary-box" style="margin-bottom: 20px;">
                 <div class="receipt-row">
                     <span class="receipt-label">Receipt / Ref #</span>
-                    <span class="receipt-value" style="font-weight: 700; color: var(--text-main);"><?= htmlspecialchars($payment->reference) ?></span>
+                    <span class="receipt-value" style="font-weight: 700;"><?= htmlspecialchars($payment->reference) ?></span>
                 </div>
                 <div class="receipt-row">
                     <span class="receipt-label">Date</span>
-                    <span class="receipt-value" style="color: var(--text-main);"><?= htmlspecialchars($payment->payment_date) ?></span>
+                    <span class="receipt-value"><?= htmlspecialchars($payment->payment_date) ?></span>
                 </div>
                 <div class="receipt-row">
                     <span class="receipt-label">Customer</span>
-                    <span class="receipt-value" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-main);"><?= htmlspecialchars($payment->customer_name) ?></span>
+                    <span class="receipt-value" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><?= htmlspecialchars($payment->customer_name) ?></span>
                 </div>
                 <div class="receipt-row">
                     <span class="receipt-label">Method</span>
-                    <span class="receipt-value" style="color: var(--text-main);"><?= htmlspecialchars($payment->payment_method) ?></span>
+                    <span class="receipt-value"><?= htmlspecialchars($payment->payment_method) ?></span>
                 </div>
                 <?php if ($payment->payment_method === 'Cheque'): ?>
                     <div class="receipt-row" style="background: var(--warning-light, #fffbeb); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--warning, #d97706); margin-top: 5px; flex-direction: column; align-items: flex-start; gap: 4px;">
@@ -468,17 +545,17 @@
                         </span>
                     </div>
                 <?php endif; ?>
-                <div class="receipt-row total-row" style="border-top-color: var(--mac-border, #cbd5e1); margin-top: 10px; padding-top: 10px;">
+                <div class="receipt-row total-row" style="margin-top: 10px; padding-top: 10px;">
                     <span class="receipt-label">Amount Paid</span>
                     <span class="receipt-value" style="color: #10b981; font-weight: 700;">Rs <?= number_format($payment->amount, 2) ?></span>
                 </div>
             </div>
             
             <div class="modal-actions" style="display: flex; gap: 8px;">
-                <button type="button" onclick="printFullReceipt(<?= $payment->id ?>)" class="btn-action-small" style="flex: 1; justify-content: center; height: 32px; border-color: #4f46e5; color: #4f46e5;">
+                <button type="button" onclick="printFullReceipt(<?= $payment->id ?>)" class="btn btn-primary" style="flex: 1; justify-content: center;">
                     <i class="ph ph-printer"></i> Print Receipt
                 </button>
-                <button type="button" onclick="closeModal('receipt-modal')" class="btn-action-small" style="flex: 1; justify-content: center; height: 32px;">
+                <button type="button" onclick="closeModal('receipt-modal')" class="btn" style="flex: 1; justify-content: center;">
                     Close
                 </button>
             </div>
@@ -486,12 +563,12 @@
     </div>
 <?php elseif (!empty($data['success'])): ?>
     <div id="general-success-modal" class="modal-overlay">
-        <div class="modal-card" style="background: var(--mac-bg, #ffffff); border-color: var(--mac-border, #cbd5e1);">
+        <div class="modal-card">
             <div class="modal-icon success">✓</div>
-            <h3 class="modal-title" style="color: var(--text-main, #0f172a);">Success</h3>
-            <p class="modal-text" style="color: var(--text-muted, #475569);"><?= htmlspecialchars($data['success']) ?></p>
+            <h3 class="modal-title">Success</h3>
+            <p class="modal-text"><?= htmlspecialchars($data['success']) ?></p>
             <div class="modal-actions" style="justify-content: center;">
-                <button type="button" onclick="closeModal('general-success-modal')" class="btn-action-small" style="min-width: 120px; justify-content: center; height: 32px; border-color: #4f46e5; color: #4f46e5;">
+                <button type="button" onclick="closeModal('general-success-modal')" class="btn btn-primary" style="min-width: 120px; justify-content: center;">
                     OK
                 </button>
             </div>
@@ -533,51 +610,23 @@
 
 <!-- Dynamic Receipt & Ledger Detail Modal -->
 <div id="dynamic-receipt-modal" class="modal-overlay" style="display: none; z-index: 2000;">
-    <div class="modal-card" style="width: 480px; max-width: 90%; background: var(--white); border-color: var(--slate-200);">
+    <div class="modal-card" style="width: 480px; max-width: 90%;">
         <div id="dynamic-receipt-icon" class="modal-icon success">✓</div>
-        <h3 id="dynamic-receipt-title" class="modal-title" style="color: var(--slate-900); font-weight: 800;">Receipt Details</h3>
+        <h3 id="dynamic-receipt-title" class="modal-title" style="font-weight: 800;">Receipt Details</h3>
         
-        <div id="dynamic-receipt-content" class="receipt-summary-box" style="background: var(--slate-50); border: 1px solid var(--slate-200); color: var(--slate-800); text-align: left; max-height: 400px; overflow-y: auto;">
+        <div id="dynamic-receipt-content" class="receipt-summary-box" style="max-height: 400px; overflow-y: auto;">
             <!-- Loaded via AJAX -->
         </div>
         
         <div class="modal-actions" style="margin-top: 15px; display: flex; gap: 10px;">
-            <button type="button" id="dynamic-receipt-print-btn" class="btn btn-primary" style="flex: 1; justify-content: center; height: 36px; border-color: #4f46e5; color: #4f46e5; background: transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+            <button type="button" id="dynamic-receipt-print-btn" class="btn btn-primary" style="flex: 1; justify-content: center;">
                 <i class="ph ph-printer"></i> Print Full Document
             </button>
-            <button type="button" onclick="closeModal('dynamic-receipt-modal')" class="btn" style="flex: 1; justify-content: center; height: 36px; border-color: var(--slate-300); background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">
+            <button type="button" onclick="closeModal('dynamic-receipt-modal')" class="btn" style="flex: 1; justify-content: center;">
                 Close
             </button>
         </div>
     </div>
-</div>
-
-<!-- Stats Row -->
-<div class="stats-grid">
-    <div class="stat-card receivable">
-        <div class="stat-title">Total Accounts Receivable (Outstanding)</div>
-        <div class="stat-val">
-            Rs <?= number_format(array_sum(array_column($data['customers'], 'outstanding_balance')), 2) ?>
-        </div>
-    </div>
-    <div class="stat-card general">
-        <div class="stat-title">GL Cash & Bank Accounts</div>
-        <div class="stat-val" style="font-size: 13px; font-family: inherit; font-weight: 600; line-height: 1.5; margin-top: 10px;">
-            <?php foreach (array_slice($data['assets'], 0, 3) as $asset): ?>
-                • <?= htmlspecialchars($asset->account_name) ?>: <strong>Rs <?= number_format($asset->balance, 2) ?></strong><br>
-            <?php endforeach; ?>
-        </div>
-    </div>
-</div>
-
-<!-- Tabs -->
-<div class="payment-center-tabs">
-    <button class="payment-tab-btn active" id="tab-ar-btn" onclick="switchMainTab('ar')">
-        💵 Record Customer Payment
-    </button>
-    <button class="payment-tab-btn" id="tab-history-btn" onclick="switchMainTab('history')">
-        📜 Collections History & Reversals
-    </button>
 </div>
 
 <!-- ========================================== -->
@@ -811,15 +860,15 @@
                             </td>
                             <td style="font-size: 11px; color: var(--text-muted);"><?= htmlspecialchars($ph->creator_name ?: 'System') ?></td>
                             <td style="text-align: center; white-space: nowrap; display: flex; gap: 4px; justify-content: center;">
-                                <button onclick="viewLedgerItem('Payment', <?= $ph->id ?>)" class="btn-action-small" style="background:transparent; border:1px solid var(--slate-300); color:var(--slate-600); cursor:pointer;">
-                                    👁 View
+                                <button onclick="viewLedgerItem('Payment', <?= $ph->id ?>)" class="btn-action-small">
+                                    <i class="ph ph-eye"></i> View
                                 </button>
-                                <button onclick="printLedgerItem('Payment', <?= $ph->id ?>)" class="btn-action-small" style="background:transparent; border:1px solid var(--slate-300); color:var(--slate-600); cursor:pointer;">
-                                    🖨 Print
+                                <button onclick="printLedgerItem('Payment', <?= $ph->id ?>)" class="btn-action-small">
+                                    <i class="ph ph-printer"></i> Print
                                 </button>
                                 <?php if ($ph->status === 'Active'): ?>
-                                    <button onclick="triggerReversal(<?= $ph->id ?>, <?= $ph->amount ?>)" class="btn-action-small btn-danger" style="background:transparent; border:1px solid #f87171; color:#ef4444; border-radius:6px; padding:4px 8px; cursor:pointer;">
-                                        ↩ Reverse
+                                    <button onclick="triggerReversal(<?= $ph->id ?>, <?= $ph->amount ?>)" class="btn-action-small btn-danger">
+                                        <i class="ph ph-arrow-counter-clockwise"></i> Reverse
                                     </button>
                                 <?php endif; ?>
                             </td>
@@ -830,6 +879,8 @@
         </div>
     </div>
 </div>
+
+</div> <!-- /ar-wrapper -->
 
 <script>
     // Global states
