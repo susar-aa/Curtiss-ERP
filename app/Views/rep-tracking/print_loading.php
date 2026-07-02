@@ -130,46 +130,39 @@
             <button class="btn-close" onclick="window.close()">Close Window</button>
         </div>
 
-        <div class="header-section">
-            <h1>
-                <?php 
-                if ($data['type'] === 'summary') {
-                    echo 'Route Loading Summary & Dispatch Report';
-                } else {
-                    echo 'Route Loading Sheet';
-                }
-                ?>
-            </h1>
-            <div class="meta-grid">
-                <div class="meta-group">
-                    <p><strong>Route Name:</strong> <?= htmlspecialchars($data['route']->route_name) ?></p>
-                    <p><strong>Assigned Rep:</strong> <?= htmlspecialchars($data['route']->first_name . ' ' . $data['route']->last_name) ?></p>
-                    <p><strong>Printed On:</strong> <?= date('Y-m-d g:i A') ?></p>
-                </div>
-                <div class="stats-summary">
-                    <div class="stat-item">
-                        <span>Active Bills</span>
-                        <strong><?= $data['route']->bill_count ?></strong>
+        <?php if ($data['type'] === 'loading'): ?>
+            <div class="header-section">
+                <h1>Route Loading Sheet</h1>
+                <div class="meta-grid">
+                    <div class="meta-group">
+                        <p><strong>Route Name:</strong> <?= htmlspecialchars($data['route']->route_name) ?></p>
+                        <p><strong>Assigned Rep:</strong> <?= htmlspecialchars($data['route']->first_name . ' ' . $data['route']->last_name) ?></p>
+                        <p><strong>Printed On:</strong> <?= date('Y-m-d g:i A') ?></p>
                     </div>
-                    <div style="width: 1px; height: 20px; background: #ccc;"></div>
-                    <div class="stat-item">
-                        <span>Total Route Value</span>
-                        <strong>Rs. <?= number_format($data['route']->total_sales, 2) ?></strong>
+                    <div class="stats-summary">
+                        <div class="stat-item">
+                            <span>Active Bills</span>
+                            <strong><?= $data['route']->bill_count ?></strong>
+                        </div>
+                        <div style="width: 1px; height: 20px; background: #ccc;"></div>
+                        <div class="stat-item">
+                            <span>Total Route Value</span>
+                            <strong>Rs. <?= number_format($data['route']->total_sales, 2) ?></strong>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <?php if ($data['type'] === 'loading'): ?>
             <!-- LOADING SHEET TABLE -->
             <table>
                 <thead>
                     <tr>
                         <th style="width:5%; text-align:center;">No</th>
-                        <th style="text-align:left; width:50%;">Product Name</th>
-                        <th style="text-align:center; width:15%;">Qty</th>
-                        <th style="text-align:right; width:15%;">Unit Price</th>
-                        <th style="width:15%;"></th>
+                        <th style="text-align:left; width:45%;">Product Name</th>
+                        <th style="text-align:center; width:10%;">Qty</th>
+                        <th style="text-align:right; width:13%;">Unit Price</th>
+                        <th style="text-align:right; width:15%;">Total</th>
+                        <th style="width:12%;"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -177,7 +170,7 @@
                     if (empty($data['items'])): 
                     ?>
                         <tr>
-                            <td colspan="5" style="text-align:center; padding: 15px; color: #555;">No items found for loading on this route.</td>
+                            <td colspan="6" style="text-align:center; padding: 15px; color: #555;">No items found for loading on this route.</td>
                         </tr>
                     <?php else: ?>
                         <?php 
@@ -188,19 +181,21 @@
                                 $currentCategory = $item->category_name;
                         ?>
                             <tr class="category-header-row">
-                                <td colspan="5" style="background-color: #f1f3f9; font-weight: bold; padding: 6px 8px; font-size: 10px; border: 1px solid #000; text-transform: uppercase;">
+                                <td colspan="6" style="background-color: #f1f3f9; font-weight: bold; padding: 6px 8px; font-size: 10px; border: 1px solid #000; text-transform: uppercase;">
                                     <?= htmlspecialchars($currentCategory) ?>
                                 </td>
                             </tr>
                         <?php 
                             endif; 
+                            $itemTotal = floatval($item->final_loaded_qty) * floatval($item->unit_price);
                         ?>
                             <tr>
                                 <td style="text-align:center;"><?= $counter++ ?></td>
                                 <td style="font-weight: 500;"><?= htmlspecialchars($item->item_name) ?></td>
                                 <td style="text-align:center; font-family: monospace; font-size:11px; font-weight:bold;"><?= floatval($item->final_loaded_qty) ?></td>
                                 <td style="text-align:right; font-family: monospace; font-size:11px;"><?= number_format($item->unit_price, 2) ?></td>
-                                <td style="text-align:center;"><span class="tick-box-placeholder"></span></td>
+                                <td style="text-align:right; font-family: monospace; font-size:11px; font-weight:bold;"><?= number_format($itemTotal, 2) ?></td>
+                                <td style="text-align:right; padding-right: 15px;"><span class="tick-box-placeholder"></span></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -242,92 +237,219 @@
                 </div>
             </div>
 
+            <!-- Signature Block -->
+            <div style="margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; text-align: center; font-size: 10px;">
+                <div>
+                    <p style="margin-bottom: 25px;">Prepared By:</p>
+                    <p>___________________________</p>
+                    <p style="color: #666;">Logistics / Admin</p>
+                </div>
+                <div>
+                    <p style="margin-bottom: 25px;">Verified By (OIC):</p>
+                    <p>___________________________</p>
+                    <p style="color: #666;">Warehouse Keeper</p>
+                </div>
+                <div>
+                    <p style="margin-bottom: 25px;">Acknowledged By:</p>
+                    <p>___________________________</p>
+                    <p style="color: #666;">Driver / Representative</p>
+                </div>
+            </div>
+
         <?php elseif ($data['type'] === 'summary'): ?>
-            <!-- LOADING SUMMARY: ORDER GROUPING & CUSTOMER BREAKDOWN -->
-            <h3 style="margin-top: 15px; margin-bottom: 5px; font-size: 12px; text-transform: uppercase;">1. Sales Orders Grouping (Customer-wise)</h3>
-            <table>
+            <!-- REVAMPED COLLECTION SUMMARY REPORT -->
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; font-size: 18px; text-transform: uppercase; font-weight: bold;">
+                    <?= htmlspecialchars($data['company']->company_name ?? 'Falcon Stationary (Pvt) Ltd') ?>
+                </h2>
+                <h3 style="margin: 5px 0 0 0; font-size: 14px; font-weight: bold; text-transform: uppercase;">Collection Report</h3>
+            </div>
+
+            <table style="width: 100%; border: none; margin-bottom: 15px; font-size: 11px;">
+                <tr style="background: none;">
+                    <td style="border: none; padding: 2px 0; width: 50%; line-height: 1.6;">
+                        <strong>Customer:</strong> -<br>
+                        <strong>Sales rep:</strong> <?= htmlspecialchars($data['route']->first_name . ' ' . $data['route']->last_name) ?><br>
+                        <strong>Location:</strong> _<br>
+                        <strong>Route:</strong> <?= htmlspecialchars($data['route']->route_name) ?>
+                    </td>
+                    <td style="border: none; padding: 2px 0; width: 50%; text-align: right; vertical-align: top; line-height: 1.6;">
+                        <strong>From Date:</strong> <?= date('d/m/Y', strtotime($data['route']->start_time ?? 'now')) ?><br>
+                        <strong>To Date:</strong> <?= date('d/m/Y') ?>
+                    </td>
+                </tr>
+            </table>
+
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10px;">
                 <thead>
-                    <tr>
-                        <th style="width: 5%; text-align: center;">#</th>
-                        <th style="width: 25%; text-align: left;">Customer Name</th>
-                        <th style="width: 25%; text-align: left;">Invoice / Sales Order No</th>
-                        <th style="width: 20%; text-align: center;">Date & Time</th>
-                        <th style="width: 15%; text-align: right;">Grand Total (Rs)</th>
-                        <th style="width: 10%; text-align: center;">Status</th>
+                    <tr style="background-color: #f1f3f9;">
+                        <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 10%;">SO No</th>
+                        <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 25%;">Customer Name</th>
+                        <th style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold; width: 12%;">Sales Amount</th>
+                        <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 10%;">Payment Term</th>
+                        <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 8%;">Bill Value</th>
+                        <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 8%;">ACY Value</th>
+                        <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 7%;">Cash</th>
+                        <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 7%;">Credit</th>
+                        <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 6%;">CHQ</th>
+                        <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 7%;">CHQ Number</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php 
-                    $counter = 1;
                     $grandTotal = 0;
                     if (empty($data['bills'])):
                     ?>
-                        <tr>
-                            <td colspan="6" style="text-align:center; padding: 15px; color: #555;">No orders bound to this route.</td>
+                        <tr style="background: none;">
+                            <td colspan="10" style="text-align: center; padding: 10px; border: 1px solid #000;">No bills found for this route.</td>
                         </tr>
                     <?php else: ?>
-                        <?php foreach ($data['bills'] as $bill): ?>
-                            <?php $grandTotal += floatval($bill->true_grand_total); ?>
-                            <tr>
-                                <td style="text-align: center;"><?= $counter++ ?></td>
-                                <td style="font-weight: bold;"><?= htmlspecialchars($bill->customer_name) ?></td>
-                                <td style="font-family: monospace; font-weight: bold;"><?= htmlspecialchars($bill->invoice_number) ?></td>
-                                <td style="text-align: center;"><?= date('Y-m-d g:i A', strtotime($bill->created_at)) ?></td>
-                                <td style="text-align: right; font-family: monospace; font-weight: bold;">Rs. <?= number_format($bill->true_grand_total, 2) ?></td>
-                                <td style="text-align: center; text-transform: uppercase; font-weight: bold; color: <?= $bill->status === 'Paid' ? '#2e7d32' : '#ef6c00' ?>;"><?= htmlspecialchars($bill->status) ?></td>
+                        <?php foreach ($data['bills'] as $bill): 
+                            $grandTotal += floatval($bill->true_grand_total);
+                            $term = 'Credit';
+                            if ($bill->payment_term_id == 1 || strtolower($bill->status) === 'paid') {
+                                $term = 'Cash';
+                            }
+                        ?>
+                            <tr style="background: none;">
+                                <td style="border: 1px solid #000; padding: 4px; text-align: center; font-family: monospace; font-weight: bold;"><?= htmlspecialchars($bill->invoice_number) ?></td>
+                                <td style="border: 1px solid #000; padding: 4px; font-weight: bold;"><?= htmlspecialchars($bill->customer_name) ?></td>
+                                <td style="border: 1px solid #000; padding: 4px; text-align: right; font-family: monospace; font-weight: bold;"><?= number_format($bill->true_grand_total, 2) ?></td>
+                                <td style="border: 1px solid #000; padding: 4px; text-align: center;"><?= $term ?></td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
                             </tr>
                         <?php endforeach; ?>
                         <tr style="background-color: #eaeaea; font-weight: bold;">
-                            <td colspan="4" style="text-align: right; text-transform: uppercase;">Route Dispatch Grand Total:</td>
-                            <td style="text-align: right; font-family: monospace; font-size: 12px;">Rs. <?= number_format($grandTotal, 2) ?></td>
-                            <td></td>
+                            <td colspan="2" style="border: 1px solid #000; padding: 4px; text-align: right; text-transform: uppercase;">Total</td>
+                            <td style="border: 1px solid #000; padding: 4px; text-align: right; font-family: monospace; font-size: 11px;"><?= number_format($grandTotal, 2) ?></td>
+                            <td colspan="7" style="border: 1px solid #000; padding: 4px;"></td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
 
-            <h3 style="margin-top: 25px; margin-bottom: 5px; font-size: 12px; text-transform: uppercase;">2. Customer Dispatch breakdown</h3>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 5px;">
-                <div style="border: 1px solid #ccc; border-radius: 4px; padding: 10px; background: #fafafa;">
-                    <h4 style="margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase;">Delivery Checklist</h4>
-                    <ul style="margin: 0; padding-left: 15px; line-height: 1.6;">
-                        <li>Ensure all physical collections are registered</li>
-                        <li>Match invoice counts with warehouse loading sheets</li>
-                        <li>Have rep sign off on vehicle loading verification</li>
-                        <li>Record dispatch vehicle departure odometer reading</li>
-                    </ul>
+            <div style="display: flex; gap: 15px; margin-top: 20px; align-items: flex-start; font-size: 10px;">
+                <!-- Left side: Credit Collection Table -->
+                <div style="flex: 1.2;">
+                    <h4 style="margin: 0 0 5px 0; font-size: 11px; text-transform: uppercase; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 3px;">Credit Collection</h4>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background-color: #f1f3f9;">
+                                <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 18%;">Invoice No</th>
+                                <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 35%;">Customer Name</th>
+                                <th style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold; width: 17%;">Credit Bill Value</th>
+                                <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 15%;">Date of Invoice</th>
+                                <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 7%;">Cash</th>
+                                <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 7%;">CHQ</th>
+                                <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 10%;">CHQ No</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php for($i=1; $i<=10; $i++): ?>
+                                <tr style="background: none; height: 20px;">
+                                    <td style="border: 1px solid #000; padding: 4px;"></td>
+                                    <td style="border: 1px solid #000; padding: 4px;"></td>
+                                    <td style="border: 1px solid #000; padding: 4px;"></td>
+                                    <td style="border: 1px solid #000; padding: 4px;"></td>
+                                    <td style="border: 1px solid #000; padding: 4px;"></td>
+                                    <td style="border: 1px solid #000; padding: 4px;"></td>
+                                    <td style="border: 1px solid #000; padding: 4px;"></td>
+                                </tr>
+                            <?php endfor; ?>
+                            <tr style="background-color: #eaeaea; font-weight: bold;">
+                                <td colspan="2" style="border: 1px solid #000; padding: 4px; text-align: right; text-transform: uppercase;">Total</td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                                <td colspan="4" style="border: 1px solid #000; padding: 4px;"></td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-                <div style="border: 1px solid #ccc; border-radius: 4px; padding: 10px; background: #fafafa; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <h4 style="margin: 0 0 5px 0; font-size: 11px; text-transform: uppercase;">Odometer Verification</h4>
-                        <p style="margin: 2px 0;">Departure Odometer: ___________________ km</p>
-                        <p style="margin: 2px 0;">Arrival Odometer: _____________________ km</p>
-                    </div>
-                    <div>
-                        <p style="margin: 0; font-size: 9px; color: #555;">Verify helper/partner crew status prior to gate pass approval.</p>
-                    </div>
+
+                <!-- Right side: Cash Collection & Odometer Details Sidebar -->
+                <div style="flex: 0.8;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tbody>
+                            <tr style="background: none;">
+                                <td style="border: 1px solid #000; padding: 4px; font-weight: bold; width: 40%;">Cash Collector</td>
+                                <td style="border: 1px solid #000; padding: 4px; width: 60%;"></td>
+                            </tr>
+                            <tr style="background: none;">
+                                <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">Driver</td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                            </tr>
+                            <tr style="background: none;">
+                                <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">Start KM</td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                            </tr>
+                            <tr style="background: none;">
+                                <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">End KM</td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                            </tr>
+                            <tr style="background: none;">
+                                <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">Vehicle No</td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                            </tr>
+                            <tr style="background: none;">
+                                <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">Date</td>
+                                <td style="border: 1px solid #000; padding: 4px;"><?= date('d/m/Y') ?></td>
+                            </tr>
+                            <tr style="background-color: #f1f3f9;">
+                                <td colspan="2" style="border: 1px solid #000; padding: 4px; font-weight: bold; text-align: center; text-transform: uppercase;">Cash Collection</td>
+                            </tr>
+                            <tr style="background: none;">
+                                <td style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold;">5000 X</td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                            </tr>
+                            <tr style="background: none;">
+                                <td style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold;">1000 X</td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                            </tr>
+                            <tr style="background: none;">
+                                <td style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold;">500 X</td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                            </tr>
+                            <tr style="background: none;">
+                                <td style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold;">100 X</td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                            </tr>
+                            <tr style="background: none;">
+                                <td style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold;">50 X</td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                            </tr>
+                            <tr style="background: none;">
+                                <td style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold;">20 X</td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                            </tr>
+                            <tr style="background: none;">
+                                <td style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold;">Coins X</td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                            </tr>
+                            <tr style="background-color: #eaeaea; font-weight: bold;">
+                                <td style="border: 1px solid #000; padding: 4px; text-align: right; text-transform: uppercase;">Total</td>
+                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Signature Block -->
+            <div style="margin-top: 40px; display: flex; justify-content: space-between; font-size: 10px; padding: 0 15px;">
+                <div style="text-align: center; width: 40%;">
+                    <p style="margin-bottom: 30px;">....................................................................</p>
+                    <p style="font-weight: bold;">Signature</p>
+                </div>
+                <div style="text-align: center; width: 40%;">
+                    <p style="margin-bottom: 30px;">....................................................................</p>
+                    <p style="font-weight: bold;">Account Department Signature</p>
                 </div>
             </div>
         <?php endif; ?>
-
-        <!-- Signature Block -->
-        <div style="margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; text-align: center; font-size: 10px;">
-            <div>
-                <p style="margin-bottom: 25px;">Prepared By:</p>
-                <p>___________________________</p>
-                <p style="color: #666;">Logistics / Admin</p>
-            </div>
-            <div>
-                <p style="margin-bottom: 25px;">Verified By (OIC):</p>
-                <p>___________________________</p>
-                <p style="color: #666;">Warehouse Keeper</p>
-            </div>
-            <div>
-                <p style="margin-bottom: 25px;">Acknowledged By:</p>
-                <p>___________________________</p>
-                <p style="color: #666;">Driver / Representative</p>
-            </div>
-        </div>
     </div>
 </body>
 </html>

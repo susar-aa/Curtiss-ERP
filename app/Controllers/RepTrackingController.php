@@ -1001,11 +1001,15 @@ class RepTrackingController extends Controller {
             }
         }
 
+        $companyModel = $this->model('Company');
+        $company = $companyModel->getSettings();
+
         $data = [
             'type' => $type === 'summary' ? 'summary' : 'loading',
             'route' => $this->trackingModel->getRouteById($routeId),
             'items' => $items,
-            'bills' => $this->trackingModel->getRouteBills($routeId)
+            'bills' => $this->trackingModel->getRouteBills($routeId),
+            'company' => $company
         ];
         $this->view('rep-tracking/print_loading', $data);
     }
