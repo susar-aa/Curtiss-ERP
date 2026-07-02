@@ -435,62 +435,68 @@
     </div>
 <?php endif; ?>
 
-<?php if (!empty($data['success'])): ?>
-    <?php if ($data['success'] === 'Customer payment recorded successfully!' && !empty($data['payment_details'])): 
-        $payment = $data['payment_details'];
-    ?>
-        <div id="receipt-modal" class="modal-overlay">
-            <div class="modal-card" style="background: var(--mac-bg, #ffffff); border-color: var(--mac-border, #cbd5e1);">
-                <div class="modal-icon success">✓</div>
-                <h3 class="modal-title" style="color: var(--text-main, #0f172a);">Collection Recorded Successfully!</h3>
-                
-                <div class="receipt-summary-box" style="background: rgba(0,0,0,0.02); border-color: var(--mac-border, #cbd5e1); color: var(--text-main);">
-                    <div class="receipt-row">
-                        <span class="receipt-label">Receipt / Ref #</span>
-                        <span class="receipt-value" style="font-weight: 700; color: var(--text-main);"><?= htmlspecialchars($payment->reference) ?></span>
-                    </div>
-                    <div class="receipt-row">
-                        <span class="receipt-label">Date</span>
-                        <span class="receipt-value" style="color: var(--text-main);"><?= htmlspecialchars($payment->payment_date) ?></span>
-                    </div>
-                    <div class="receipt-row">
-                        <span class="receipt-label">Customer</span>
-                        <span class="receipt-value" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-main);"><?= htmlspecialchars($payment->customer_name) ?></span>
-                    </div>
-                    <div class="receipt-row">
-                        <span class="receipt-label">Method</span>
-                        <span class="receipt-value" style="color: var(--text-main);"><?= htmlspecialchars($payment->payment_method) ?></span>
-                    </div>
-                    <div class="receipt-row total-row" style="border-top-color: var(--mac-border, #cbd5e1);">
-                        <span class="receipt-label">Amount Paid</span>
-                        <span class="receipt-value" style="color: #10b981; font-weight: 700;">Rs <?= number_format($payment->amount, 2) ?></span>
-                    </div>
+<?php if (!empty($data['payment_details'])): 
+    $payment = $data['payment_details'];
+?>
+    <div id="receipt-modal" class="modal-overlay">
+        <div class="modal-card" style="background: var(--mac-bg, #ffffff); border-color: var(--mac-border, #cbd5e1); width: 420px;">
+            <div class="modal-icon success">✓</div>
+            <h3 class="modal-title" style="color: var(--text-main, #0f172a);"><?= !empty($data['success']) ? 'Collection Recorded Successfully!' : 'Collection Details' ?></h3>
+            
+            <div class="receipt-summary-box" style="background: rgba(0,0,0,0.02); border-color: var(--mac-border, #cbd5e1); color: var(--text-main); margin-bottom: 20px;">
+                <div class="receipt-row">
+                    <span class="receipt-label">Receipt / Ref #</span>
+                    <span class="receipt-value" style="font-weight: 700; color: var(--text-main);"><?= htmlspecialchars($payment->reference) ?></span>
                 </div>
-                
-                <div class="modal-actions">
-                    <button type="button" onclick="printFullReceipt(<?= $payment->id ?>)" class="btn-action-small" style="flex: 1; justify-content: center; height: 32px; border-color: #4f46e5; color: #4f46e5;">
-                        <i class="ph ph-printer"></i> Print Receipt
-                    </button>
-                    <button type="button" onclick="closeModal('receipt-modal')" class="btn-action-small" style="flex: 1; justify-content: center; height: 32px;">
-                        Close
-                    </button>
+                <div class="receipt-row">
+                    <span class="receipt-label">Date</span>
+                    <span class="receipt-value" style="color: var(--text-main);"><?= htmlspecialchars($payment->payment_date) ?></span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Customer</span>
+                    <span class="receipt-value" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-main);"><?= htmlspecialchars($payment->customer_name) ?></span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Method</span>
+                    <span class="receipt-value" style="color: var(--text-main);"><?= htmlspecialchars($payment->payment_method) ?></span>
+                </div>
+                <?php if ($payment->payment_method === 'Cheque'): ?>
+                    <div class="receipt-row" style="background: var(--warning-light, #fffbeb); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--warning, #d97706); margin-top: 5px; flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span class="receipt-label" style="color: var(--warning, #d97706); font-weight: 700;">Cheque Info</span>
+                        <span class="receipt-value" style="color: var(--warning, #d97706); font-weight: 600; font-size: 11px;">
+                            <?= htmlspecialchars($payment->cheque_bank) ?> - <?= htmlspecialchars($payment->cheque_number) ?> (<?= htmlspecialchars($payment->cheque_date) ?>)
+                        </span>
+                    </div>
+                <?php endif; ?>
+                <div class="receipt-row total-row" style="border-top-color: var(--mac-border, #cbd5e1); margin-top: 10px; padding-top: 10px;">
+                    <span class="receipt-label">Amount Paid</span>
+                    <span class="receipt-value" style="color: #10b981; font-weight: 700;">Rs <?= number_format($payment->amount, 2) ?></span>
                 </div>
             </div>
-        </div>
-    <?php else: ?>
-        <div id="general-success-modal" class="modal-overlay">
-            <div class="modal-card" style="background: var(--mac-bg, #ffffff); border-color: var(--mac-border, #cbd5e1);">
-                <div class="modal-icon success">✓</div>
-                <h3 class="modal-title" style="color: var(--text-main, #0f172a);">Success</h3>
-                <p class="modal-text" style="color: var(--text-muted, #475569);"><?= htmlspecialchars($data['success']) ?></p>
-                <div class="modal-actions" style="justify-content: center;">
-                    <button type="button" onclick="closeModal('general-success-modal')" class="btn-action-small" style="min-width: 120px; justify-content: center; height: 32px; border-color: #4f46e5; color: #4f46e5;">
-                        OK
-                    </button>
-                </div>
+            
+            <div class="modal-actions" style="display: flex; gap: 8px;">
+                <button type="button" onclick="printFullReceipt(<?= $payment->id ?>)" class="btn-action-small" style="flex: 1; justify-content: center; height: 32px; border-color: #4f46e5; color: #4f46e5;">
+                    <i class="ph ph-printer"></i> Print Receipt
+                </button>
+                <button type="button" onclick="closeModal('receipt-modal')" class="btn-action-small" style="flex: 1; justify-content: center; height: 32px;">
+                    Close
+                </button>
             </div>
         </div>
-    <?php endif; ?>
+    </div>
+<?php elseif (!empty($data['success'])): ?>
+    <div id="general-success-modal" class="modal-overlay">
+        <div class="modal-card" style="background: var(--mac-bg, #ffffff); border-color: var(--mac-border, #cbd5e1);">
+            <div class="modal-icon success">✓</div>
+            <h3 class="modal-title" style="color: var(--text-main, #0f172a);">Success</h3>
+            <p class="modal-text" style="color: var(--text-muted, #475569);"><?= htmlspecialchars($data['success']) ?></p>
+            <div class="modal-actions" style="justify-content: center;">
+                <button type="button" onclick="closeModal('general-success-modal')" class="btn-action-small" style="min-width: 120px; justify-content: center; height: 32px; border-color: #4f46e5; color: #4f46e5;">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
 <?php endif; ?>
 
 <!-- Stats Row -->
@@ -861,12 +867,12 @@
 
     // Filter history
     function filterHistory() {
-        const query = document.getElementById('history-search').value.toLowerCase();
+        const query = document.getElementById('history-search').value.toLowerCase().trim();
         const rows = document.querySelectorAll('.history-row-el');
         rows.forEach(row => {
             const name = row.querySelector('.history-name-col').textContent.toLowerCase();
-            const ref = row.querySelector('.history-ref-col').textContent.toLowerCase();
-            if (name.includes(query) || ref.includes(query)) {
+            const ref = row.querySelector('.history-ref-col').textContent.toLowerCase().trim();
+            if (name.includes(query) || ref.includes(query) || (ref && query.includes(ref))) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
@@ -1552,6 +1558,53 @@
                 if (resList) resList.style.display = 'none';
             }
         });
+
+        // URL Search & payment_id navigation parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchParam = urlParams.get('search');
+        if (searchParam) {
+            switchMainTab('history');
+            const searchInput = document.getElementById('history-search');
+            if (searchInput) {
+                // Clean up string like "Pay: Cash (REC-2026-0001)" -> "REC-2026-0001"
+                let cleanQuery = searchParam;
+                if (cleanQuery.startsWith('Pay: ')) {
+                    cleanQuery = cleanQuery.substring(5);
+                }
+                const match = cleanQuery.match(/\((.*?)\)/);
+                if (match) {
+                    cleanQuery = match[1];
+                } else {
+                    const chkMatch = cleanQuery.match(/#(\d+)/);
+                    if (chkMatch) {
+                        cleanQuery = chkMatch[1];
+                    }
+                }
+                searchInput.value = cleanQuery;
+                filterHistory();
+            }
+        }
+
+        const paymentIdParam = urlParams.get('payment_id');
+        if (paymentIdParam) {
+            switchMainTab('history');
+            const rows = document.querySelectorAll('.history-row-el');
+            let foundRow = null;
+            rows.forEach(row => {
+                const btn = row.querySelector('button[onclick*="viewLedgerItem"]');
+                if (btn && btn.getAttribute('onclick').includes(paymentIdParam)) {
+                    foundRow = row;
+                }
+            });
+            if (foundRow) {
+                foundRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                foundRow.style.backgroundColor = 'var(--warning-light, #fffbeb)';
+                setTimeout(() => {
+                    foundRow.style.transition = 'background-color 2s';
+                    foundRow.style.backgroundColor = '';
+                }, 3000);
+            }
+        }
     });
 
     function closeModal(id) {

@@ -1636,9 +1636,9 @@ $statuses = $data['statuses'] ?? [];
             case 'grn':
                 return `<?= APP_URL ?>/grn?search=${val}`;
             case 'payment':
-                return `<?= APP_URL ?>/customerpayment/receipt/${id}`;
+                return `<?= APP_URL ?>/customerpayment?payment_id=${id}`;
             case 'supplier_payment':
-                return `<?= APP_URL ?>/supplierpayment/receipt/${id}`;
+                return `<?= APP_URL ?>/supplierpayment?payment_id=${id}`;
             case 'cheque':
                 return `<?= APP_URL ?>/cheque/show/${id}`;
             default:
@@ -2074,6 +2074,16 @@ $statuses = $data['statuses'] ?? [];
                             <div class="qv-field"><label>Method</label><span>${ent.payment_method}</span></div>
                             <div class="qv-field"><label>Status</label><span class="badge-completed">${ent.status}</span></div>
                         </div>
+                        ${ent.payment_method === 'Cheque' ? `
+                            <div style="margin-top: 12px; padding: 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; font-size: 13px; text-align: left;">
+                                <div style="font-weight: 600; color: #b45309; margin-bottom: 4px;">Cheque Details</div>
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <div><strong>Cheque Number:</strong> ${ent.cheque_number || 'N/A'}</div>
+                                    <div><strong>Bank Name:</strong> ${ent.cheque_bank || 'N/A'}</div>
+                                    <div><strong>Banking Date:</strong> ${ent.cheque_date || 'N/A'}</div>
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
 
                     <div class="qv-card" style="text-align: center;">
@@ -2084,7 +2094,7 @@ $statuses = $data['statuses'] ?? [];
                     </div>
 
                     <div class="qv-action-bar">
-                        <a href="${getDrilldownUrl('payment', ent.id, ent.reference)}" target="_blank" class="qv-btn qv-btn-primary"><i class="ph ph-printer"></i> Open Receipt</a>
+                        <a href="${getDrilldownUrl('payment', ent.id, ent.reference)}" target="_blank" class="qv-btn qv-btn-primary"><i class="ph ph-arrow-square-out"></i> Open in New Tab</a>
                         <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary">Close</button>
                     </div>
                 `;
@@ -2121,7 +2131,7 @@ $statuses = $data['statuses'] ?? [];
                     </div>
 
                     <div class="qv-action-bar">
-                        <a href="${getDrilldownUrl('supplier_payment', ent.id, ent.reference)}" target="_blank" class="qv-btn qv-btn-primary"><i class="ph ph-printer"></i> Open Voucher</a>
+                        <a href="${getDrilldownUrl('supplier_payment', ent.id, ent.reference)}" target="_blank" class="qv-btn qv-btn-primary"><i class="ph ph-arrow-square-out"></i> Open in New Tab</a>
                         <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary">Close</button>
                     </div>
                 `;

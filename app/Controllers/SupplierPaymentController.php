@@ -59,15 +59,16 @@ class SupplierPaymentController extends Controller {
         if (isset($_GET['success'])) {
             if ($_GET['success'] === 'supplier_payment') {
                 $data['success'] = 'Supplier payment recorded successfully!';
-                if (isset($_GET['payment_id'])) {
-                    $data['payment_id'] = intval($_GET['payment_id']);
-                    $data['payment_details'] = $this->paymentModel->getSupplierPaymentById($data['payment_id']);
-                }
             } elseif ($_GET['success'] === 'reversed') {
                 $data['success'] = 'Payment reversed successfully and ledger updated!';
             } elseif ($_GET['success'] === 'credit_applied') {
                 $data['success'] = 'Available credit balance successfully applied to unpaid GRNs!';
             }
+        }
+
+        if (isset($_GET['payment_id'])) {
+            $data['payment_id'] = intval($_GET['payment_id']);
+            $data['payment_details'] = $this->paymentModel->getSupplierPaymentById($data['payment_id']);
         }
 
         if (isset($_GET['error'])) {

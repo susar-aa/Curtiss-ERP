@@ -834,13 +834,26 @@ class Report {
 
             case 'payment':
                 if ($id) {
-                    $this->db->query("SELECT p.*, c.name as customer_name FROM customer_payments p JOIN customers c ON p.customer_id = c.id WHERE p.id = :id");
+                    $this->db->query("SELECT p.*, c.name as customer_name, ch.cheque_number, ch.bank_name as cheque_bank, ch.banking_date as cheque_date FROM customer_payments p JOIN customers c ON p.customer_id = c.id LEFT JOIN cheques ch ON ch.customer_id = p.customer_id AND ch.amount = p.amount AND ABS(TIMESTAMPDIFF(SECOND, ch.created_at, p.created_at)) < 60 WHERE p.id = :id");
                     $this->db->bind(':id', $id);
                 } else {
-                    $this->db->query("SELECT p.*, c.name as customer_name FROM customer_payments p JOIN customers c ON p.customer_id = c.id WHERE p.reference = :ref LIMIT 1");
-                    $this->db->bind(':ref', $number);
+                    $cleanRef = $number;
+                    if (strpos($cleanRef, 'Pay: ') === 0) {
+                        $cleanRef = substr($cleanRef, 5);
+                    }
+                    if (preg_match('/\((.*?)\)/', $cleanRef, $matches)) {
+                        $cleanRef = $matches[1];
+                    }
+                    $this->db->query("SELECT p.*, c.name as customer_name, ch.cheque_number, ch.bank_name as cheque_bank, ch.banking_date as cheque_date FROM customer_payments p JOIN customers c ON p.customer_id = c.id LEFT JOIN cheques ch ON ch.customer_id = p.customer_id AND ch.amount = p.amount AND ABS(TIMESTAMPDIFF(SECOND, ch.created_at, p.created_at)) < 60 WHERE p.reference = :ref OR p.id = :refId LIMIT 1");
+                    $this->db->bind(':ref', $cleanRef);
+                    $this->db->bind(':refId', intval($cleanRef));
                 }
                 $payment = $this->db->single();
+                if (!$payment && is_numeric($number)) {
+                    $this->db->query("SELECT p.*, c.name as customer_name, ch.cheque_number, ch.bank_name as cheque_bank, ch.banking_date as cheque_date FROM customer_payments p JOIN customers c ON p.customer_id = c.id LEFT JOIN cheques ch ON ch.customer_id = p.customer_id AND ch.amount = p.amount AND ABS(TIMESTAMPDIFF(SECOND, ch.created_at, p.created_at)) < 60 WHERE p.id = :id LIMIT 1");
+                    $this->db->bind(':id', intval($number));
+                    $payment = $this->db->single();
+                }
                 if (!$payment) {
                     $result['message'] = 'Payment not found.';
                     return $result;
@@ -854,7 +867,11 @@ class Report {
                         'payment_method' => $payment->payment_method,
                         'amount' => $payment->amount,
                         'customer_name' => $payment->customer_name,
-                        'status' => $payment->status
+                        'status' => $payment->status,
+                        'notes' => $payment->notes ?? null,
+                        'cheque_number' => $payment->cheque_number,
+                        'cheque_bank' => $payment->cheque_bank,
+                        'cheque_date' => $payment->cheque_date
                     ]
                 ];
 

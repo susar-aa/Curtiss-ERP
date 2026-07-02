@@ -343,62 +343,68 @@
         </div>
     <?php endif; ?>
 
-    <?php if (!empty($data['success'])): ?>
-        <?php if ($data['success'] === 'Supplier payment recorded successfully!' && !empty($data['payment_details'])): 
-            $payment = $data['payment_details'];
-        ?>
-            <div id="receipt-modal" class="modal-overlay">
-                <div class="modal-card">
-                    <div class="modal-icon success">✓</div>
-                    <h3 class="modal-title">Payment Recorded Successfully!</h3>
-                    
-                    <div class="receipt-summary-box">
-                        <div class="receipt-row">
-                            <span class="receipt-label">Voucher / Ref #</span>
-                            <span class="receipt-value" style="font-weight: 700;"><?= htmlspecialchars($payment->reference) ?></span>
-                        </div>
-                        <div class="receipt-row">
-                            <span class="receipt-label">Date</span>
-                            <span class="receipt-value"><?= htmlspecialchars($payment->payment_date) ?></span>
-                        </div>
-                        <div class="receipt-row">
-                            <span class="receipt-label">Paid To</span>
-                            <span class="receipt-value" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><?= htmlspecialchars($payment->supplier_name) ?></span>
-                        </div>
-                        <div class="receipt-row">
-                            <span class="receipt-label">Method</span>
-                            <span class="receipt-value"><?= htmlspecialchars($payment->payment_method) ?></span>
-                        </div>
-                        <div class="receipt-row total-row">
-                            <span class="receipt-label">Amount Paid</span>
-                            <span class="receipt-value">Rs <?= number_format($payment->amount, 2) ?></span>
-                        </div>
+    <?php if (!empty($data['payment_details'])): 
+        $payment = $data['payment_details'];
+    ?>
+        <div id="receipt-modal" class="modal-overlay">
+            <div class="modal-card" style="width: 420px;">
+                <div class="modal-icon success">✓</div>
+                <h3 class="modal-title"><?= !empty($data['success']) ? 'Payment Recorded Successfully!' : 'Payment Details' ?></h3>
+                
+                <div class="receipt-summary-box" style="margin-bottom: 20px;">
+                    <div class="receipt-row">
+                        <span class="receipt-label">Voucher / Ref #</span>
+                        <span class="receipt-value" style="font-weight: 700;"><?= htmlspecialchars($payment->reference) ?></span>
                     </div>
-                    
-                    <div class="modal-actions">
-                        <button type="button" onclick="printFullReceipt(<?= $payment->id ?>)" class="btn btn-primary" style="flex: 1; justify-content: center;">
-                            <i class="ph ph-printer"></i> Print Receipt
-                        </button>
-                        <button type="button" onclick="closeModal('receipt-modal')" class="btn" style="flex: 1; justify-content: center;">
-                            Close
-                        </button>
+                    <div class="receipt-row">
+                        <span class="receipt-label">Date</span>
+                        <span class="receipt-value"><?= htmlspecialchars($payment->payment_date) ?></span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-label">Paid To</span>
+                        <span class="receipt-value" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><?= htmlspecialchars($payment->supplier_name) ?></span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-label">Method</span>
+                        <span class="receipt-value"><?= htmlspecialchars($payment->payment_method) ?></span>
+                    </div>
+                    <?php if ($payment->payment_method === 'Cheque'): ?>
+                        <div class="receipt-row" style="background: var(--warning-light, #fffbeb); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--warning, #d97706); margin-top: 5px; flex-direction: column; align-items: flex-start; gap: 4px;">
+                            <span class="receipt-label" style="color: var(--warning, #d97706); font-weight: 700;">Cheque Info</span>
+                            <span class="receipt-value" style="color: var(--warning, #d97706); font-weight: 600; font-size: 11px;">
+                                <?= htmlspecialchars($payment->cheque_bank) ?> - <?= htmlspecialchars($payment->cheque_number) ?> (<?= htmlspecialchars($payment->cheque_date) ?>)
+                            </span>
+                        </div>
+                    <?php endif; ?>
+                    <div class="receipt-row total-row" style="margin-top: 10px; padding-top: 10px;">
+                        <span class="receipt-label">Amount Paid</span>
+                        <span class="receipt-value" style="color: #10b981; font-weight: 700;">Rs <?= number_format($payment->amount, 2) ?></span>
                     </div>
                 </div>
-            </div>
-        <?php else: ?>
-            <div id="general-success-modal" class="modal-overlay">
-                <div class="modal-card">
-                    <div class="modal-icon success">✓</div>
-                    <h3 class="modal-title">Success</h3>
-                    <p class="modal-text"><?= htmlspecialchars($data['success']) ?></p>
-                    <div class="modal-actions" style="justify-content: center;">
-                        <button type="button" onclick="closeModal('general-success-modal')" class="btn btn-primary" style="min-width: 120px; justify-content: center;">
-                            OK
-                        </button>
-                    </div>
+                
+                <div class="modal-actions" style="display: flex; gap: 8px;">
+                    <button type="button" onclick="printFullReceipt(<?= $payment->id ?>)" class="btn btn-primary" style="flex: 1; justify-content: center;">
+                        <i class="ph ph-printer"></i> Print Receipt
+                    </button>
+                    <button type="button" onclick="closeModal('receipt-modal')" class="btn" style="flex: 1; justify-content: center;">
+                        Close
+                    </button>
                 </div>
             </div>
-        <?php endif; ?>
+        </div>
+    <?php elseif (!empty($data['success'])): ?>
+        <div id="general-success-modal" class="modal-overlay">
+            <div class="modal-card">
+                <div class="modal-icon success">✓</div>
+                <h3 class="modal-title">Success</h3>
+                <p class="modal-text"><?= htmlspecialchars($data['success']) ?></p>
+                <div class="modal-actions" style="justify-content: center;">
+                    <button type="button" onclick="closeModal('general-success-modal')" class="btn btn-primary" style="min-width: 120px; justify-content: center;">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
     <?php endif; ?>
 
     <!-- Reusable Dynamic Transaction Details Modal (View/Print Receipt) -->

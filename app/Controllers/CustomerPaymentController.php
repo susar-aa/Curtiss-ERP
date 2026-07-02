@@ -59,15 +59,16 @@ class CustomerPaymentController extends Controller {
         if (isset($_GET['success'])) {
             if ($_GET['success'] === 'customer_payment') {
                 $data['success'] = 'Customer payment recorded successfully!';
-                if (isset($_GET['payment_id'])) {
-                    $data['payment_id'] = intval($_GET['payment_id']);
-                    $data['payment_details'] = $this->paymentModel->getCustomerPaymentById($data['payment_id']);
-                }
             } elseif ($_GET['success'] === 'reversed') {
                 $data['success'] = 'Payment reversed successfully and ledger updated!';
             } elseif ($_GET['success'] === 'credit_applied') {
                 $data['success'] = 'Available credit balance successfully applied to unpaid invoices!';
             }
+        }
+
+        if (isset($_GET['payment_id'])) {
+            $data['payment_id'] = intval($_GET['payment_id']);
+            $data['payment_details'] = $this->paymentModel->getCustomerPaymentById($data['payment_id']);
         }
 
         if (isset($_GET['error'])) {

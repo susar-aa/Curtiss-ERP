@@ -511,18 +511,24 @@ class ReportEngine {
                     'credit' => ['label' => 'Credit (Payments)', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
                     'balance' => ['label' => 'Running Balance', 'type' => 'currency', 'align' => 'right']
                 ],
-                'sql' => "SELECT i.date, i.type, i.ref, i.debit, i.credit,
+                'sql' => "SELECT i.id, i.date, i.type, i.ref, i.debit, i.credit,
                                  SUM(i.debit - i.credit) OVER (ORDER BY i.date, i.ref) as balance,
                                  i.customer_id
                           FROM (
-                              SELECT i2.invoice_date as date, 'Invoice' as type, i2.invoice_number as ref, 
+                              SELECT i2.id, i2.invoice_date as date, 'Invoice' as type, i2.invoice_number as ref, 
                                      (i2.total_amount - COALESCE(CASE WHEN i2.global_discount_type = '%' THEN (i2.total_amount * i2.global_discount_val / 100) ELSE i2.global_discount_val END, 0) + COALESCE(i2.tax_amount, 0)) as debit,
                                      0 as credit,
                                      i2.customer_id
                               FROM invoices i2
                               WHERE i2.status != 'Voided'
                               UNION ALL
-                              SELECT cp.payment_date as date, 'Payment' as type, COALESCE(cp.reference, 'Collection') as ref,
+                              SELECT cp.id, cp.payment_date as date, 'Payment' as type, 
+                                     CONCAT('Pay: ', cp.payment_method, 
+                                            IF(cp.payment_method = 'Cheque', 
+                                               COALESCE((SELECT CONCAT(' #', c.cheque_number) FROM cheques c WHERE c.customer_id = cp.customer_id AND c.amount = cp.amount AND ABS(TIMESTAMPDIFF(SECOND, c.created_at, cp.created_at)) < 60 ORDER BY c.id DESC LIMIT 1), ''),
+                                               IF(cp.reference != '', CONCAT(' (', cp.reference, ')'), '')
+                                            )
+                                     ) as ref,
                                      0 as debit,
                                      cp.amount as credit,
                                      cp.customer_id
