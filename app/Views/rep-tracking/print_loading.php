@@ -257,120 +257,120 @@
             </div>
 
         <?php elseif ($data['type'] === 'summary'): ?>
-            <!-- REVAMPED COLLECTION SUMMARY REPORT -->
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h2 style="margin: 0; font-size: 18px; text-transform: uppercase; font-weight: bold;">
+        <?php elseif ($data['type'] === 'summary'): ?>
+            <!-- REVAMPED COLLECTION SUMMARY REPORT (LANDSCAPE DUAL COLUMN) -->
+            <div style="text-align: center; margin-bottom: 15px;">
+                <h2 style="margin: 0; font-size: 16px; text-transform: uppercase; font-weight: bold;">
                     <?= htmlspecialchars($data['company']->company_name ?? 'Falcon Stationary (Pvt) Ltd') ?>
                 </h2>
-                <h3 style="margin: 5px 0 0 0; font-size: 14px; font-weight: bold; text-transform: uppercase;">Collection Report</h3>
+                <h3 style="margin: 3px 0 0 0; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Collection Report</h3>
             </div>
 
-            <table style="width: 100%; border: none; margin-bottom: 15px; font-size: 11px;">
+            <!-- Meta Header (Customer/Location removed) -->
+            <table style="width: 100%; border: none; margin-bottom: 12px; font-size: 10px;">
                 <tr style="background: none;">
-                    <td style="border: none; padding: 2px 0; width: 50%; line-height: 1.6;">
+                    <td style="border: none; padding: 2px 0; width: 50%; line-height: 1.4;">
                         <strong>Sales rep:</strong> <?= htmlspecialchars($data['route']->first_name . ' ' . $data['route']->last_name) ?><br>
                         <strong>Route:</strong> <?= htmlspecialchars($data['route']->route_name) ?>
                     </td>
-                    <td style="border: none; padding: 2px 0; width: 50%; text-align: right; vertical-align: top; line-height: 1.6;">
+                    <td style="border: none; padding: 2px 0; width: 50%; text-align: right; vertical-align: top; line-height: 1.4;">
                         <strong>From Date:</strong> <?= date('d/m/Y', strtotime($data['route']->start_time ?? 'now')) ?><br>
                         <strong>To Date:</strong> <?= date('d/m/Y') ?>
                     </td>
                 </tr>
             </table>
 
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10px;">
-                <thead>
-                    <tr style="background-color: #f1f3f9;">
-                        <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 10%;">SO No</th>
-                        <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 25%;">Customer Name</th>
-                        <th style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold; width: 12%;">Sales Amount</th>
-                        <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 10%;">Payment Term</th>
-                        <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 8%;">Bill Value</th>
-                        <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 8%;">ACY Value</th>
-                        <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 7%;">Cash</th>
-                        <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 7%;">Credit</th>
-                        <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 6%;">CHQ</th>
-                        <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 7%;">CHQ Number</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php 
-                    $grandTotal = 0;
-                    if (empty($data['bills'])):
-                    ?>
-                        <tr style="background: none;">
-                            <td colspan="10" style="text-align: center; padding: 10px; border: 1px solid #000;">No bills found for this route.</td>
-                        </tr>
-                    <?php else: ?>
-                        <?php foreach ($data['bills'] as $bill): 
-                            $grandTotal += floatval($bill->true_grand_total);
-                            $term = 'Credit';
-                            if ($bill->payment_term_id == 1 || strtolower($bill->status) === 'paid') {
-                                $term = 'Cash';
-                            }
-                        ?>
-                            <tr style="background: none;">
-                                <td style="border: 1px solid #000; padding: 4px; text-align: center; font-family: monospace; font-weight: bold;"><?= htmlspecialchars($bill->invoice_number) ?></td>
-                                <td style="border: 1px solid #000; padding: 4px; font-weight: bold;"><?= htmlspecialchars($bill->customer_name) ?></td>
-                                <td style="border: 1px solid #000; padding: 4px; text-align: right; font-family: monospace; font-weight: bold;"><?= number_format($bill->true_grand_total, 2) ?></td>
-                                <td style="border: 1px solid #000; padding: 4px; text-align: center;"><?= $term ?></td>
-                                <td style="border: 1px solid #000; padding: 4px;"></td>
-                                <td style="border: 1px solid #000; padding: 4px;"></td>
-                                <td style="border: 1px solid #000; padding: 4px;"></td>
-                                <td style="border: 1px solid #000; padding: 4px;"></td>
-                                <td style="border: 1px solid #000; padding: 4px;"></td>
-                                <td style="border: 1px solid #000; padding: 4px;"></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        <tr style="background-color: #eaeaea; font-weight: bold;">
-                            <td colspan="2" style="border: 1px solid #000; padding: 4px; text-align: right; text-transform: uppercase;">Total</td>
-                            <td style="border: 1px solid #000; padding: 4px; text-align: right; font-family: monospace; font-size: 11px;"><?= number_format($grandTotal, 2) ?></td>
-                            <td colspan="7" style="border: 1px solid #000; padding: 4px;"></td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-
-            <div style="display: flex; gap: 20px; margin-top: 20px; align-items: flex-start; font-size: 10px;">
-                <!-- Left side: Credit Collection Table -->
-                <div style="flex: 1.4;">
-                    <h4 style="margin: 0 0 5px 0; font-size: 11px; text-transform: uppercase; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 3px;">Credit Collection</h4>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="background-color: #f1f3f9;">
-                                <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 12%;">Invoice No</th>
-                                <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 35%;">Customer Name</th>
-                                <th style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold; width: 15%;">Credit Bill Value</th>
-                                <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 12%;">Date of Invoice</th>
-                                <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 8%;">Cash</th>
-                                <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 8%;">CHQ</th>
-                                <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 10%;">CHQ No</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php for($i=1; $i<=10; $i++): ?>
-                                <tr style="background: none; height: 20px;">
-                                    <td style="border: 1px solid #000; padding: 4px;"></td>
-                                    <td style="border: 1px solid #000; padding: 4px;"></td>
-                                    <td style="border: 1px solid #000; padding: 4px;"></td>
-                                    <td style="border: 1px solid #000; padding: 4px;"></td>
-                                    <td style="border: 1px solid #000; padding: 4px;"></td>
-                                    <td style="border: 1px solid #000; padding: 4px;"></td>
-                                    <td style="border: 1px solid #000; padding: 4px;"></td>
+            <!-- Main Dual Column Layout -->
+            <div style="display: flex; gap: 20px; align-items: flex-start; font-size: 10px;">
+                
+                <!-- Left Side: Table 1 and Table 2 stacked -->
+                <div style="flex: 1.4; display: flex; flex-direction: column; gap: 15px;">
+                    
+                    <!-- Table 1: Sales Orders Grouping -->
+                    <div>
+                        <h4 style="margin: 0 0 5px 0; font-size: 11px; text-transform: uppercase; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 3px;">1. Sales Orders Grouping</h4>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                            <thead>
+                                <tr style="background-color: #f1f3f9;">
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 50%;">Customer Name</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold; width: 16%;">Sales Amount</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 12%;">Payment Term</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 10%;">ACY Value</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 6%;">Cash</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 6%;">Credit</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 6%;">CHQ</th>
                                 </tr>
-                            <?php endfor; ?>
-                            <tr style="background-color: #eaeaea; font-weight: bold;">
-                                <td colspan="2" style="border: 1px solid #000; padding: 4px; text-align: right; text-transform: uppercase;">Total</td>
-                                <td style="border: 1px solid #000; padding: 4px;"></td>
-                                <td colspan="4" style="border: 1px solid #000; padding: 4px;"></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                $grandTotal = 0;
+                                if (empty($data['bills'])):
+                                ?>
+                                    <tr style="background: none;">
+                                        <td colspan="7" style="text-align: center; padding: 8px; border: 1px solid #000;">No bills found for this route.</td>
+                                    </tr>
+                                <?php else: ?>
+                                    <?php foreach ($data['bills'] as $bill): 
+                                        $grandTotal += floatval($bill->true_grand_total);
+                                        $term = 'Credit';
+                                        if ($bill->payment_term_id == 1 || strtolower($bill->status) === 'paid') {
+                                            $term = 'Cash';
+                                        }
+                                    ?>
+                                        <tr style="background: none;">
+                                            <td style="border: 1px solid #000; padding: 4px; font-weight: bold;"><?= htmlspecialchars($bill->customer_name) ?></td>
+                                            <td style="border: 1px solid #000; padding: 4px; text-align: right; font-family: monospace; font-weight: bold;"><?= number_format($bill->true_grand_total, 2) ?></td>
+                                            <td style="border: 1px solid #000; padding: 4px; text-align: center;"><?= $term ?></td>
+                                            <td style="border: 1px solid #000; padding: 4px;"></td>
+                                            <td style="border: 1px solid #000; padding: 4px;"></td>
+                                            <td style="border: 1px solid #000; padding: 4px;"></td>
+                                            <td style="border: 1px solid #000; padding: 4px;"></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    <tr style="background-color: #eaeaea; font-weight: bold;">
+                                        <td style="border: 1px solid #000; padding: 4px; text-align: right; text-transform: uppercase;">Total</td>
+                                        <td style="border: 1px solid #000; padding: 4px; text-align: right; font-family: monospace; font-size: 11px;"><?= number_format($grandTotal, 2) ?></td>
+                                        <td colspan="5" style="border: 1px solid #000; padding: 4px;"></td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Table 2: Credit Collection -->
+                    <div>
+                        <h4 style="margin: 0 0 5px 0; font-size: 11px; text-transform: uppercase; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 3px;">2. Credit Collection</h4>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                            <thead>
+                                <tr style="background-color: #f1f3f9;">
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 56%;">Customer Name</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold; width: 20%;">Credit Bill Value</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 12%;">Cash</th>
+                                    <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 12%;">CHQ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php for($i=1; $i<=8; $i++): ?>
+                                    <tr style="background: none; height: 18px;">
+                                        <td style="border: 1px solid #000; padding: 4px;"></td>
+                                        <td style="border: 1px solid #000; padding: 4px;"></td>
+                                        <td style="border: 1px solid #000; padding: 4px;"></td>
+                                        <td style="border: 1px solid #000; padding: 4px;"></td>
+                                    </tr>
+                                <?php endfor; ?>
+                                <tr style="background-color: #eaeaea; font-weight: bold;">
+                                    <td style="border: 1px solid #000; padding: 4px; text-align: right; text-transform: uppercase;">Total</td>
+                                    <td style="border: 1px solid #000; padding: 4px;"></td>
+                                    <td colspan="2" style="border: 1px solid #000; padding: 4px;"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-                <!-- Right side: Cash Collection & Odometer Details Sidebar -->
-                <div style="flex: 0.6;">
-                    <table style="width: 100%; border-collapse: collapse;">
+                <!-- Right Side: Cash Collection & Odometer Details Sidebar -->
+                <div style="flex: 0.6; display: flex; flex-direction: column;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
                         <tbody>
                             <tr style="background: none;">
                                 <td style="border: 1px solid #000; padding: 4px; font-weight: bold; width: 40%;">Cash Collector</td>
@@ -437,13 +437,13 @@
             </div>
 
             <!-- Signature Block -->
-            <div style="margin-top: 40px; display: flex; justify-content: space-between; font-size: 10px; padding: 0 15px;">
+            <div style="margin-top: 25px; display: flex; justify-content: space-between; font-size: 10px; padding: 0 15px;">
                 <div style="text-align: center; width: 40%;">
-                    <p style="margin-bottom: 30px;">....................................................................</p>
+                    <p style="margin-bottom: 25px;">....................................................................</p>
                     <p style="font-weight: bold;">Signature</p>
                 </div>
                 <div style="text-align: center; width: 40%;">
-                    <p style="margin-bottom: 30px;">....................................................................</p>
+                    <p style="margin-bottom: 25px;">....................................................................</p>
                     <p style="font-weight: bold;">Account Department Signature</p>
                 </div>
             </div>
