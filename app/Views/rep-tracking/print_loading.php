@@ -431,7 +431,7 @@
                         </tbody>
                     </table>
 
-                    <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 20px; font-size: 10px;">
+                    <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 15px; font-size: 10px;">
                         <div style="text-align: center;">
                             <p style="margin: 0 0 4px 0;">....................................................................</p>
                             <p style="margin: 0; font-weight: bold;">Driver's Signature</p>
@@ -439,6 +439,10 @@
                         <div style="text-align: center;">
                             <p style="margin: 0 0 4px 0;">....................................................................</p>
                             <p style="margin: 0; font-weight: bold;">Partner's Signature</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <p style="margin: 0 0 4px 0;">....................................................................</p>
+                            <p style="margin: 0; font-weight: bold;">Office Checked By</p>
                         </div>
                     </div>
                 </div>
