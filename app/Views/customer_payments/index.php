@@ -489,12 +489,6 @@
 
 <div class="ar-wrapper">
 
-<div style="margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
-    <div>
-        <h2 style="margin: 0 0 5px 0; font-weight: 800; color: var(--text-main);">Customer Payments Center</h2>
-        <p style="margin: 0; color: var(--text-muted); font-size: 14px;">Audit-ready accounts receivable (AR) billing collections, credit applications, and ledger adjustments.</p>
-    </div>
-</div>
 
 <!-- Notifications & Receipt Modal Popups -->
 <?php if (!empty($data['error'])): ?>
@@ -574,40 +568,6 @@
             </div>
         </div>
     </div>
-<?php endif; ?>
-
-<!-- Stats Row -->
-<div class="stats-grid">
-    <div class="stat-card receivable">
-        <div class="stat-title">Total Accounts Receivable (Outstanding)</div>
-        <div class="stat-val">
-            Rs <?= number_format(array_sum(array_column($data['customers'], 'outstanding_balance')), 2) ?>
-        </div>
-    </div>
-    <div class="stat-card general">
-        <div class="stat-title">GL Cash & Bank Accounts</div>
-        <div class="stat-val" style="font-size: 13px; font-family: inherit; font-weight: 600; line-height: 1.5; margin-top: 10px;">
-            <?php foreach (array_slice($data['assets'], 0, 3) as $asset): ?>
-                • <?= htmlspecialchars($asset->account_name) ?>: <strong>Rs <?= number_format($asset->balance, 2) ?></strong><br>
-            <?php endforeach; ?>
-        </div>
-    </div>
-</div>
-
-<!-- Tabs -->
-<div class="payment-center-tabs">
-    <button class="payment-tab-btn active" id="tab-ar-btn" onclick="switchMainTab('ar')">
-        💵 Record Customer Payment
-    </button>
-    <button class="payment-tab-btn" id="tab-history-btn" onclick="switchMainTab('history')">
-        📜 Collections History & Reversals
-    </button>
-</div>
-
-<!-- ========================================== -->
-<!-- TAB PANEL: RECORD CUSTOMER PAYMENT         -->
-<!-- ========================================== -->
-
 <!-- Dynamic Receipt & Ledger Detail Modal -->
 <div id="dynamic-receipt-modal" class="modal-overlay" style="display: none; z-index: 2000;">
     <div class="modal-card" style="width: 480px; max-width: 90%;">
@@ -815,70 +775,6 @@
     </div>
 </div>
 
-<!-- ========================================== -->
-<!-- TAB PANEL: COLLECTIONS HISTORY & REVERSALS -->
-<!-- ========================================== -->
-<div id="tab-history" class="payment-tab-panel hidden">
-    <div class="pane-main" style="width: 100%; box-sizing: border-box;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="margin: 0; font-size: 16px; font-weight: 700;">GL Audit-Trail Collections History</h3>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="history-search" class="form-control" style="width: 250px;" placeholder="Search history..." onkeyup="filterHistory()">
-            </div>
-        </div>
-
-        <div style="overflow-x: auto;">
-            <table class="data-table" id="history-table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Customer</th>
-                        <th>Method</th>
-                        <th>Reference</th>
-                        <th style="text-align: right;">Amount</th>
-                        <th>Status</th>
-                        <th>Logged By</th>
-                        <th style="text-align: center; width: 180px;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($data['payments_history'])): ?>
-                        <tr>
-                            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">No collection logs found in current audit timeline.</td>
-                        </tr>
-                    <?php else: foreach ($data['payments_history'] as $ph): ?>
-                        <tr class="history-row-el">
-                            <td style="white-space: nowrap; font-weight: 500;"><?= date('Y-m-d', strtotime($ph->payment_date)) ?></td>
-                            <td class="history-name-col" style="font-weight: 600;"><?= htmlspecialchars($ph->counterparty_name) ?></td>
-                            <td><span class="badge-method method-<?= str_replace(' ', '', $ph->payment_method) ?>"><?= $ph->payment_method ?></span></td>
-                            <td class="history-ref-col"><?= htmlspecialchars($ph->reference ?: '-') ?></td>
-                            <td style="text-align: right; font-weight: 700; font-family: monospace; color: <?= $ph->status === 'Reversed' ? '#991b1b' : 'inherit' ?>">
-                                Rs <?= number_format($ph->amount, 2) ?>
-                            </td>
-                            <td>
-                                <span class="status-badge status-<?= $ph->status ?>"><?= $ph->status ?></span>
-                            </td>
-                            <td style="font-size: 11px; color: var(--text-muted);"><?= htmlspecialchars($ph->creator_name ?: 'System') ?></td>
-                            <td style="text-align: center; white-space: nowrap; display: flex; gap: 4px; justify-content: center;">
-                                <button onclick="viewLedgerItem('Payment', <?= $ph->id ?>)" class="btn-action-small">
-                                    <i class="ph ph-eye"></i> View
-                                </button>
-                                <button onclick="printLedgerItem('Payment', <?= $ph->id ?>)" class="btn-action-small">
-                                    <i class="ph ph-printer"></i> Print
-                                </button>
-                                <?php if ($ph->status === 'Active'): ?>
-                                    <button onclick="triggerReversal(<?= $ph->id ?>, <?= $ph->amount ?>)" class="btn-action-small btn-danger">
-                                        <i class="ph ph-arrow-counter-clockwise"></i> Reverse
-                                    </button>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
 
 </div> <!-- /ar-wrapper -->
 
@@ -905,30 +801,6 @@
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-    }
-
-    // Switch main tabs
-    function switchMainTab(tab) {
-        document.querySelectorAll('.payment-tab-panel').forEach(panel => panel.classList.add('hidden'));
-        document.querySelectorAll('.payment-tab-btn').forEach(btn => btn.classList.remove('active'));
-
-        document.getElementById('tab-' + tab).classList.remove('hidden');
-        document.getElementById('tab-' + tab + '-btn').classList.add('active');
-    }
-
-    // Filter history
-    function filterHistory() {
-        const query = document.getElementById('history-search').value.toLowerCase().trim();
-        const rows = document.querySelectorAll('.history-row-el');
-        rows.forEach(row => {
-            const name = row.querySelector('.history-name-col').textContent.toLowerCase();
-            const ref = row.querySelector('.history-ref-col').textContent.toLowerCase().trim();
-            if (name.includes(query) || ref.includes(query) || (ref && query.includes(ref))) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
     }
 
     // Autocomplete Customer Search
@@ -1610,52 +1482,6 @@
             }
         });
 
-        // URL Search & payment_id navigation parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const searchParam = urlParams.get('search');
-        if (searchParam) {
-            switchMainTab('history');
-            const searchInput = document.getElementById('history-search');
-            if (searchInput) {
-                // Clean up string like "Pay: Cash (REC-2026-0001)" -> "REC-2026-0001"
-                let cleanQuery = searchParam;
-                if (cleanQuery.startsWith('Pay: ')) {
-                    cleanQuery = cleanQuery.substring(5);
-                }
-                const match = cleanQuery.match(/\((.*?)\)/);
-                if (match) {
-                    cleanQuery = match[1];
-                } else {
-                    const chkMatch = cleanQuery.match(/#(\d+)/);
-                    if (chkMatch) {
-                        cleanQuery = chkMatch[1];
-                    }
-                }
-                searchInput.value = cleanQuery;
-                filterHistory();
-            }
-        }
-
-        const paymentIdParam = urlParams.get('payment_id');
-        if (paymentIdParam) {
-            switchMainTab('history');
-            const rows = document.querySelectorAll('.history-row-el');
-            let foundRow = null;
-            rows.forEach(row => {
-                const btn = row.querySelector('button[onclick*="viewLedgerItem"]');
-                if (btn && btn.getAttribute('onclick').includes(paymentIdParam)) {
-                    foundRow = row;
-                }
-            });
-            if (foundRow) {
-                foundRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                foundRow.style.backgroundColor = 'var(--warning-light, #fffbeb)';
-                setTimeout(() => {
-                    foundRow.style.transition = 'background-color 2s';
-                    foundRow.style.backgroundColor = '';
-                }, 3000);
-            }
-        }
     });
 
     function closeModal(id) {
