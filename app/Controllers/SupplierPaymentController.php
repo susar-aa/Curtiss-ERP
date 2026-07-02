@@ -122,9 +122,19 @@ class SupplierPaymentController extends Controller {
             exit;
         }
 
-        if ($paymentData['method'] === 'Cheque' && (empty($paymentData['cheque_bank']) || empty($paymentData['cheque_number']) || empty($paymentData['cheque_date']))) {
-            header('Location: ' . APP_URL . '/supplierpayment?error=Cheque details are required.');
-            exit;
+        if ($paymentData['method'] === 'Cheque') {
+            if (empty($paymentData['cheque_bank']) || empty($paymentData['cheque_number']) || empty($paymentData['cheque_date'])) {
+                header('Location: ' . APP_URL . '/supplierpayment?error=Cheque details are required.');
+                exit;
+            }
+            if (!preg_match('/^\d{6}$/', $paymentData['cheque_number'])) {
+                header('Location: ' . APP_URL . '/supplierpayment?error=Cheque number must be exactly 6 numeric digits.');
+                exit;
+            }
+            if (strtotime($paymentData['cheque_date']) < strtotime(date('Y-m-d'))) {
+                header('Location: ' . APP_URL . '/supplierpayment?error=Cheque date cannot be in the past.');
+                exit;
+            }
         }
 
         $paymentId = $this->paymentModel->recordSupplierPayment($paymentData, $_SESSION['user_id']);

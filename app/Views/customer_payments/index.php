@@ -360,11 +360,11 @@
                             </div>
                             <div class="form-group">
                                 <label>Cheque Number *</label>
-                                <input type="text" name="cheque_number" id="cust-chk-num-input" class="form-control" placeholder="e.g. 123456">
+                                <input type="text" name="cheque_number" id="cust-chk-num-input" class="form-control" placeholder="e.g. 123456" pattern="\d{6}" maxlength="6" minlength="6" title="Cheque number must be exactly 6 digits." oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                             </div>
                             <div class="form-group">
                                 <label>Banking Date *</label>
-                                <input type="date" name="cheque_date" id="cust-chk-date-input" class="form-control">
+                                <input type="date" name="cheque_date" id="cust-chk-date-input" class="form-control" min="<?= date('Y-m-d') ?>">
                             </div>
                         </div>
                     </div>
@@ -374,7 +374,7 @@
                             <label>Debit Ledger Account (Cash/Bank) *</label>
                             <select name="asset_account_id" id="cust-asset-account" class="form-control" required style="background: var(--mac-bg);">
                                 <?php foreach ($data['assets'] as $asset): ?>
-                                    <option value="<?= $asset->id ?>" data-code="<?= $asset->account_code ?>" <?= $asset->account_code === '1000' ? 'selected' : '' ?>>
+                                    <option value="<?= $asset->id ?>" data-code="<?= $asset->account_code ?>" data-parent="<?= $asset->parent_id ?>" <?= $asset->account_code === '1000' ? 'selected' : '' ?>>
                                         <?= $asset->account_code ?> - <?= htmlspecialchars($asset->account_name) ?>
                                     </option>
                                 <?php endforeach; ?>
@@ -572,19 +572,41 @@
 
         // Automatic Account Selection based on Method
         const assetSelect = document.getElementById(prefix + '-asset-account');
-        if (assetSelect) {
-            let targetCode = '1000'; // Default Cash
-            if (method === 'Bank Transfer') {
-                targetCode = '1600'; // Bank account
+        if (assetSelect && typeof allAssetAccounts !== 'undefined' && allAssetAccounts.length > 0) {
+            // Find the ID of the 1600 Bank parent account
+            let bankParentId = '';
+            allAssetAccounts.forEach(acc => {
+                if (acc.code === '1600') {
+                    bankParentId = acc.value;
+                }
+            });
+
+            // Filter accounts based on payment method
+            let filtered = [];
+            if (method === 'Cash') {
+                filtered = allAssetAccounts.filter(acc => acc.code === '1000');
             } else if (method === 'Cheque') {
-                targetCode = '1010'; // Cheque in Hand account
+                filtered = allAssetAccounts.filter(acc => acc.code === '1010');
+            } else if (method === 'Bank Transfer') {
+                filtered = allAssetAccounts.filter(acc => acc.parent === bankParentId);
+            } else {
+                filtered = allAssetAccounts;
             }
 
-            for (let i = 0; i < assetSelect.options.length; i++) {
-                if (assetSelect.options[i].getAttribute('data-code') === targetCode) {
-                    assetSelect.selectedIndex = i;
-                    break;
-                }
+            // Rebuild options
+            assetSelect.innerHTML = '';
+            filtered.forEach(acc => {
+                const opt = document.createElement('option');
+                opt.value = acc.value;
+                opt.text = acc.text;
+                opt.setAttribute('data-code', acc.code);
+                opt.setAttribute('data-parent', acc.parent);
+                assetSelect.appendChild(opt);
+            });
+
+            // Auto-select the first available filtered option
+            if (filtered.length > 0) {
+                assetSelect.selectedIndex = 0;
             }
         }
     }
@@ -719,7 +741,48 @@
     }
 
     // Initial page load bindings
+    let allAssetAccounts = [];
     document.addEventListener('DOMContentLoaded', () => {
+        const assetSelect = document.getElementById('cust-asset-account');
+        if (assetSelect) {
+            for (let i = 0; i < assetSelect.options.length; i++) {
+                const opt = assetSelect.options[i];
+                allAssetAccounts.push({
+                    value: opt.value,
+                    text: opt.text,
+                    code: opt.getAttribute('data-code'),
+                    parent: opt.getAttribute('data-parent')
+                });
+            }
+        }
         toggleChequeFields('cust');
+
+        const form = document.getElementById('customerPayForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const method = document.getElementById('cust-method-select').value;
+                if (method === 'Cheque') {
+                    const chkNum = document.getElementById('cust-chk-num-input').value;
+                    const chkDate = document.getElementById('cust-chk-date-input').value;
+                    
+                    if (!/^\d{6}$/.test(chkNum)) {
+                        e.preventDefault();
+                        alert('Cheque number must be exactly 6 numeric digits.');
+                        return false;
+                    }
+                    
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    const selectDate = new Date(chkDate);
+                    selectDate.setHours(0,0,0,0);
+                    
+                    if (selectDate < today) {
+                        e.preventDefault();
+                        alert('Cheque date cannot be in the past.');
+                        return false;
+                    }
+                }
+            });
+        }
     });
 </script>

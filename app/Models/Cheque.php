@@ -18,8 +18,8 @@ class Cheque {
     public function addCheque($data) {
         $this->db->query("INSERT INTO cheques (customer_id, vendor_id, bank_name, cheque_number, amount, banking_date, created_by) 
                           VALUES (:cid, :vid, :bank, :cnum, :amt, :bdate, :uid)");
-        $this->db->bind(':cid', $data['customer_id']);
-        $this->db->bind(':vid', $data['vendor_id']);
+        $this->db->bind(':cid', !empty($data['customer_id']) ? $data['customer_id'] : null);
+        $this->db->bind(':vid', !empty($data['vendor_id']) ? $data['vendor_id'] : null);
         $this->db->bind(':bank', $data['bank_name']);
         $this->db->bind(':cnum', $data['cheque_number']);
         $this->db->bind(':amt', $data['amount']);
@@ -33,8 +33,8 @@ class Cheque {
                           SET customer_id = :cid, vendor_id = :vid, bank_name = :bank, cheque_number = :cnum, amount = :amt, banking_date = :bdate, status = :status 
                           WHERE id = :id");
         $this->db->bind(':id', $data['id']);
-        $this->db->bind(':cid', $data['customer_id']);
-        $this->db->bind(':vid', $data['vendor_id']);
+        $this->db->bind(':cid', !empty($data['customer_id']) ? $data['customer_id'] : null);
+        $this->db->bind(':vid', !empty($data['vendor_id']) ? $data['vendor_id'] : null);
         $this->db->bind(':bank', $data['bank_name']);
         $this->db->bind(':cnum', $data['cheque_number']);
         $this->db->bind(':amt', $data['amount']);

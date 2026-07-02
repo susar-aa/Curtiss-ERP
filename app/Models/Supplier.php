@@ -125,12 +125,20 @@ class Supplier {
                    sr.created_at
             FROM supplier_returns sr
             WHERE sr.vendor_id = :vid3
+            UNION ALL
+            SELECT 'Payment' as type, sp.id, CONCAT('Pay: ', sp.payment_method, IF(sp.reference != '', CONCAT(' (', sp.reference, ')'), '')) as ref, sp.payment_date as date,
+                   sp.amount as debit, 
+                   0 as credit, 
+                   sp.created_at
+            FROM supplier_payments sp
+            WHERE sp.vendor_id = :vid4 AND sp.status = 'Active'
             ORDER BY date ASC, created_at ASC
         ";
         $this->db->query($sql);
         $this->db->bind(':vid1', $id);
         $this->db->bind(':vid2', $id);
         $this->db->bind(':vid3', $id);
+        $this->db->bind(':vid4', $id);
         $ledger = $this->db->resultSet();
 
         $balance = 0;
