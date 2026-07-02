@@ -7,8 +7,8 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
         @page {
-            size: A4 portrait;
-            margin: 12mm 15mm 12mm 15mm;
+            size: <?= $data['type'] === 'summary' ? 'A4 landscape' : 'A4 portrait' ?>;
+            margin: 10mm 12mm 10mm 12mm;
         }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; 
@@ -22,7 +22,7 @@
         }
         .report-container {
             width: 100%;
-            max-width: 190mm;
+            max-width: <?= $data['type'] === 'summary' ? '273mm' : '186mm' ?>;
             margin: 0 auto;
         }
         .header-section { 
@@ -268,9 +268,7 @@
             <table style="width: 100%; border: none; margin-bottom: 15px; font-size: 11px;">
                 <tr style="background: none;">
                     <td style="border: none; padding: 2px 0; width: 50%; line-height: 1.6;">
-                        <strong>Customer:</strong> -<br>
                         <strong>Sales rep:</strong> <?= htmlspecialchars($data['route']->first_name . ' ' . $data['route']->last_name) ?><br>
-                        <strong>Location:</strong> _<br>
                         <strong>Route:</strong> <?= htmlspecialchars($data['route']->route_name) ?>
                     </td>
                     <td style="border: none; padding: 2px 0; width: 50%; text-align: right; vertical-align: top; line-height: 1.6;">
@@ -333,19 +331,19 @@
                 </tbody>
             </table>
 
-            <div style="display: flex; gap: 15px; margin-top: 20px; align-items: flex-start; font-size: 10px;">
+            <div style="display: flex; gap: 20px; margin-top: 20px; align-items: flex-start; font-size: 10px;">
                 <!-- Left side: Credit Collection Table -->
-                <div style="flex: 1.2;">
+                <div style="flex: 1.4;">
                     <h4 style="margin: 0 0 5px 0; font-size: 11px; text-transform: uppercase; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 3px;">Credit Collection</h4>
                     <table style="width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr style="background-color: #f1f3f9;">
-                                <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 18%;">Invoice No</th>
+                                <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 12%;">Invoice No</th>
                                 <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 35%;">Customer Name</th>
-                                <th style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold; width: 17%;">Credit Bill Value</th>
-                                <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 15%;">Date of Invoice</th>
-                                <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 7%;">Cash</th>
-                                <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 7%;">CHQ</th>
+                                <th style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: bold; width: 15%;">Credit Bill Value</th>
+                                <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 12%;">Date of Invoice</th>
+                                <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 8%;">Cash</th>
+                                <th style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: bold; width: 8%;">CHQ</th>
                                 <th style="border: 1px solid #000; padding: 4px; text-align: left; font-weight: bold; width: 10%;">CHQ No</th>
                             </tr>
                         </thead>
@@ -371,7 +369,7 @@
                 </div>
 
                 <!-- Right side: Cash Collection & Odometer Details Sidebar -->
-                <div style="flex: 0.8;">
+                <div style="flex: 0.6;">
                     <table style="width: 100%; border-collapse: collapse;">
                         <tbody>
                             <tr style="background: none;">
