@@ -1,23 +1,22 @@
 # Curtiss ERP — Accounting Module: Remaining Issues Report
 
-**Report Date:** July 1, 2026  
+**Report Date:** July 2, 2026  
 **Scope:** Open items still requiring attention
 
 ---
 
 ## Summary
 
-All critical bugs and security vulnerabilities have been resolved. The following **18 minor issues remain** requiring attention.
+All critical bugs, security vulnerabilities, and database schema problems have been resolved. The following **14 minor issues remain**.
 
 | Category | Count | Severity |
 |----------|-------|----------|
-| Code Quality | 2 | LOW-MEDIUM |
-| Missing Features | 3 | MEDIUM |
+| Code Quality | 2 | LOW |
+| Missing Features | 2 | LOW-MEDIUM |
 | UX/UI | 3 | LOW |
-| Performance | 2 | LOW-MEDIUM |
-| Integration Gaps | 6 | MEDIUM-HIGH |
-| New Issues | 2 | MEDIUM |
-| **Total** | **18** | |
+| Performance | 2 | LOW |
+| Integration Gaps | 5 | MEDIUM-HIGH |
+| **Total** | **14** | |
 
 ---
 
@@ -27,26 +26,19 @@ All critical bugs and security vulnerabilities have been resolved. The following
 **Severity:** LOW  
 **Files:** `app/Controllers/ReportController.php`, `app/Controllers/RepTrackingController.php`
 
-ReportController contains extensive inline SQL for quick_view, fetch_data, and other AJAX endpoints. RepTrackingController also uses `new Database()` directly. While BankingController was refactored into ChartOfAccount model methods, some controllers still bypass models.
+ReportController contains extensive inline SQL for quick_view, fetch_data, and other AJAX endpoints. RepTrackingController also uses `new Database()` directly. BankingController was already refactored into the ChartOfAccount model.
 
 ---
 
-### CODE-02: Hardcoded Account Category Strings
+### CODE-02: Hardcoded Account Category Validation Arrays
 **Severity:** LOW  
 **Files:** `app/Controllers/AccountingController.php`
 
-Account category validation arrays are inline strings (e.g., `['Current Asset', 'Fixed Asset', 'Non-current Asset']`). These could be extracted to constants or a config file for easier management.
+Account category validation arrays are inline strings (e.g., `['Current Asset', 'Fixed Asset', 'Non-current Asset']`). These could be extracted to constants or a config file.
 
 ---
 
 ## 2. Missing Features
-
-### MISS-08: No Budget vs Actual Report
-**Severity:** MEDIUM
-
-The `budgets` table exists but there is no comparison report showing budget vs actual spending.
-
----
 
 ### MISS-10: No Journal Entry Approval Workflow
 **Severity:** LOW
@@ -124,14 +116,6 @@ Customer payments have `journal_entry_id` in schema but the payment controller h
 
 ---
 
-### INT-03: Expenses GL Posting Unverified
-**Severity:** MEDIUM  
-**File:** `app/Controllers/ExpensesController.php`
-
-Expenses have `journal_entry_id` in schema but posting to GL is not fully verified.
-
----
-
 ### INT-04: Stock Ledger Not Linked to Accounting (COGS)
 **Severity:** HIGH
 
@@ -155,65 +139,22 @@ Accounting entries from the rep mobile app are saved as JSON in `deliveries.acco
 
 ---
 
-## 6. New Issues
-
-### NEW-01: Database.php Overrides User-Entered Journal References
-**Severity:** MEDIUM  
-**File:** `core/Database.php` (lines 72-116)
-
-The `execute()` method auto-generates a sequential reference (e.g., "2026001") for ALL journal entry inserts, overriding user input. The manual reference is preserved only in the description field (e.g., "[INV-1001] Memo"). Users who type "INV-1001" will find "2026001" in the reference column instead.
-
-**Suggested Fix:** Only auto-generate reference when no user reference is provided.
-
----
-
-### NEW-02: Trial Balance Has No Date Range Filter in ReportEngine
-**Severity:** LOW  
-**File:** `app/Services/ReportEngine.php` (lines 562-579)
-
-The ReportEngine's Trial Balance has no `filters` or `date_column` defined, showing ALL transactions regardless of date. The custom Trial Balance view in `ReportController::viewer()` handles this correctly via the `Report` model, but the ReportEngine version does not.
-
----
-
-## 7. Implemented Reports (For Reference)
-
-The following financial reports are **already implemented** in the Report Hub:
-
-| Report | Status |
-|--------|--------|
-| Trial Balance | ✅ |
-| Profit & Loss | ✅ |
-| Balance Sheet | ✅ |
-| Cash Flow | ✅ |
-| General Ledger | ✅ |
-| Multi-Period Comparison (YoY/MoM) | ✅ |
-| Customer Aging (AR) | ✅ |
-| Supplier Aging (AP) | ✅ |
-| Customer Statement | ✅ |
-| Sales Summary, Sales by Customer/Item | ✅ |
-| Stock Summary, Stock Movement | ✅ |
-
----
-
-## 8. Previously Fixed Items
-
-All previously reported issues have been resolved:
+## 6. Previously Fixed Items (For Reference)
 
 | Category | Count | Status |
 |----------|-------|--------|
-| Critical Bugs (CRIT-01 through CRIT-07) | 7 | ✅ FIXED |
-| Security Vulnerabilities (SEC-01 through SEC-04) | 4 | ✅ FIXED |
-| Schema Problems (DB-01 through DB-05) | 5 | ✅ FIXED |
-| Code Quality - Constants (CODE-02/03) | 2 | ✅ FIXED |
-| Code Quality - Type Declarations (CODE-04) | 1 | ✅ FIXED |
-| Missing Features - Recurring JEs (MISS-09) | 1 | ✅ FIXED |
-| Missing Features - Year Reversal (MISS-15) | 1 | ✅ FIXED |
-| Missing Features - Reports (8 reports) | 8 | ✅ FIXED |
-| UX - Close Year Preview (UX-04) | 1 | ✅ FIXED |
-| Performance - Journal Pagination (PERF-03) | 1 | ✅ FIXED |
-| Banking - Model Refactoring | 1 | ✅ FIXED |
-| Auto-Reference on Close Year entries | 1 | ✅ FIXED |
-| **Total Fixed** | **33** | ✅ |
+| Critical Bugs (CRIT-01 through CRIT-07) | 7 | ✅ |
+| Security Vulnerabilities (SEC-01 through SEC-04) | 4 | ✅ |
+| Database Schema Problems (DB-01 through DB-05) | 5 | ✅ |
+| Code Quality - Constants & Type Declarations | 3 | ✅ |
+| Missing Features - Recurring JEs, Year Reversal, Budget vs Actual | 3 | ✅ |
+| Missing Reports (Trial Balance, P&L, Balance Sheet, Cash Flow, GL, AR/AP Aging, Customer Statement, Multi-Period) | 8 | ✅ |
+| UX - Close Year Preview | 1 | ✅ |
+| Performance - Journal Pagination | 1 | ✅ |
+| Banking - Model Refactoring | 1 | ✅ |
+| Database.php Reference Override | 1 | ✅ |
+| Trial Balance Date Range Filter | 1 | ✅ |
+| **Total Fixed** | **35** | ✅ |
 
 ---
 
@@ -224,8 +165,6 @@ All previously reported issues have been resolved:
 | **High** | INT-01: Auto-post invoices to GL | 16 hrs |
 | **High** | INT-04: Inventory-to-GL (COGS) integration | 20 hrs |
 | **High** | INT-06: Post Rep Tracking entries properly | 8 hrs |
-| **Medium** | NEW-01: Fix Database.php reference override | 2 hrs |
-| **Medium** | MISS-08: Budget vs Actual report | 8 hrs |
 | **Medium** | INT-02: Unify customer payment posting | 8 hrs |
 | **Medium** | INT-05: Auto-post payroll to GL | 8 hrs |
 | **Low** | MISS-11: Multi-currency support | 16 hrs |

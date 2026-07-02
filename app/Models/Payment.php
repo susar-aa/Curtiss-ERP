@@ -607,11 +607,13 @@ class Payment {
      */
     public function getCustomerPaymentById($id) {
         $this->db->query("
-            SELECT p.*, c.name as customer_name, c.email as customer_email, c.phone as customer_phone, c.address as customer_address, u.username as creator_name, ur.username as reverser_name
+            SELECT p.*, c.name as customer_name, c.email as customer_email, c.phone as customer_phone, c.address as customer_address, u.username as creator_name, ur.username as reverser_name,
+                   ch.bank_name as cheque_bank, ch.cheque_number, ch.banking_date as cheque_date
             FROM customer_payments p
             JOIN customers c ON p.customer_id = c.id
             LEFT JOIN users u ON p.created_by = u.id
             LEFT JOIN users ur ON p.reversed_by = ur.id
+            LEFT JOIN cheques ch ON ch.customer_id = p.customer_id AND ch.amount = p.amount AND ABS(TIMESTAMPDIFF(SECOND, ch.created_at, p.created_at)) < 60
             WHERE p.id = :id
         ");
         $this->db->bind(':id', $id);
@@ -623,11 +625,13 @@ class Payment {
      */
     public function getSupplierPaymentById($id) {
         $this->db->query("
-            SELECT p.*, v.name as supplier_name, v.email as supplier_email, v.phone as supplier_phone, v.address as supplier_address, u.username as creator_name, ur.username as reverser_name
+            SELECT p.*, v.name as supplier_name, v.email as supplier_email, v.phone as supplier_phone, v.address as supplier_address, u.username as creator_name, ur.username as reverser_name,
+                   ch.bank_name as cheque_bank, ch.cheque_number, ch.banking_date as cheque_date
             FROM supplier_payments p
             JOIN vendors v ON p.vendor_id = v.id
             LEFT JOIN users u ON p.created_by = u.id
             LEFT JOIN users ur ON p.reversed_by = ur.id
+            LEFT JOIN cheques ch ON ch.vendor_id = p.vendor_id AND ch.amount = p.amount AND ABS(TIMESTAMPDIFF(SECOND, ch.created_at, p.created_at)) < 60
             WHERE p.id = :id
         ");
         $this->db->bind(':id', $id);

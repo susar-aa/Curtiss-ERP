@@ -88,6 +88,35 @@ class CustomerPaymentController extends Controller {
     }
 
     /**
+     * API to fetch customer transaction/ledger history in JSON
+     */
+    public function getCustomerHistoryJson($customerId) {
+        header('Content-Type: application/json');
+        $history = $this->customerModel->getActivityLedger(intval($customerId));
+        echo json_encode($history);
+        exit;
+    }
+
+    /**
+     * API to fetch customer payment details and allocations by ID
+     */
+    public function getPaymentDetailsJson($id) {
+        header('Content-Type: application/json');
+        $payment = $this->paymentModel->getCustomerPaymentById(intval($id));
+        if (!$payment) {
+            echo json_encode(['success' => false, 'message' => 'Payment record not found.']);
+            exit;
+        }
+        $allocations = $this->paymentModel->getCustomerPaymentAllocations(intval($id));
+        echo json_encode([
+            'success' => true,
+            'payment' => $payment,
+            'allocations' => $allocations
+        ]);
+        exit;
+    }
+
+    /**
      * Record customer payment
      */
     public function recordCustomerPayment() {
@@ -144,10 +173,6 @@ class CustomerPaymentController extends Controller {
             }
             if (!preg_match('/^\d{6}$/', $paymentData['cheque_number'])) {
                 header('Location: ' . APP_URL . '/customerpayment?error=Cheque number must be exactly 6 numeric digits.');
-                exit;
-            }
-            if (strtotime($paymentData['cheque_date']) < strtotime(date('Y-m-d'))) {
-                header('Location: ' . APP_URL . '/customerpayment?error=Cheque date cannot be in the past.');
                 exit;
             }
         }
