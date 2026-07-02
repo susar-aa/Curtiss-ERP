@@ -302,6 +302,13 @@
         from { transform: scale(0.95); opacity: 0; }
         to { transform: scale(1); opacity: 1; }
     }
+    .animate-spin {
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
 </style>
 
 <div class="ap-wrapper">
@@ -379,11 +386,12 @@
         <?php endif; ?>
     <?php endif; ?>
 
-    <form action="<?= APP_URL ?>/supplierpayment/recordSupplierPayment" method="POST" id="supplierPayForm">
-        <div class="payment-panel">
-            <div class="payment-panel-header">
-                <span>Record Supplier Payment</span>
-            </div>
+    <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; align-items: start; margin-top: 15px;">
+        <form action="<?= APP_URL ?>/supplierpayment/recordSupplierPayment" method="POST" id="supplierPayForm" style="margin: 0;">
+            <div class="payment-panel">
+                <div class="payment-panel-header">
+                    <span>Record Supplier Payment</span>
+                </div>
             
             <div class="payment-panel-body">
                 <!-- Row 1: Supplier Search & Status details -->
@@ -487,7 +495,7 @@
                     </div>
 
                     <!-- Allocation Selection -->
-                    <div class="allocation-box">
+                    <div class="allocation-box" id="supp-allocation-box">
                         <h4 style="margin: 0 0 10px 0; font-size: 13px; font-weight: 700; color: var(--slate-800);">GRN Allocation Workflow</h4>
                         
                         <div id="supp-manual-grid" class="hidden">
@@ -537,6 +545,26 @@
             </div>
         </div>
     </form>
+
+    <!-- Right Panel: Supplier History Card -->
+    <div class="payment-panel" id="supplier-history-panel" style="display: flex; flex-direction: column;">
+        <div class="payment-panel-header" style="background: var(--slate-700); display: flex; justify-content: space-between; align-items: center;">
+            <span>Supplier History</span>
+            <div style="display: flex; gap: 8px;">
+                <a href="#" id="btn-view-profile" target="_blank" class="btn" style="padding: 4px 10px; font-size: 11px; background: rgba(255,255,255,0.15); color: var(--white); border-color: rgba(255,255,255,0.25); display: inline-flex; align-items: center; gap: 4px; pointer-events: none; opacity: 0.5; text-decoration: none;">
+                    <i class="ph ph-user"></i> View Profile
+                </a>
+                <a href="#" id="btn-view-statement" target="_blank" class="btn" style="padding: 4px 10px; font-size: 11px; background: rgba(255,255,255,0.15); color: var(--white); border-color: rgba(255,255,255,0.25); display: inline-flex; align-items: center; gap: 4px; pointer-events: none; opacity: 0.5; text-decoration: none;">
+                    <i class="ph ph-file-text"></i> View Statement
+                </a>
+            </div>
+        </div>
+        <div class="payment-panel-body" id="supplier-history-body" style="flex-grow: 1; overflow-y: auto; max-height: 520px; min-height: 520px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--slate-400); padding: 15px; box-sizing: border-box;">
+            <i class="ph ph-clock-counter-clockwise" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;"></i>
+            <span style="font-size: 12px;">Select a supplier to view history.</span>
+        </div>
+    </div>
+</div>
 </div>
 
 <script>
@@ -633,6 +661,23 @@
         activeSupplierGRNs = [];
         document.getElementById('supp-grns-tbody').innerHTML = '';
         document.getElementById('supp-amount-input').value = '';
+
+        // Disable buttons
+        const btnProfile = document.getElementById('btn-view-profile');
+        btnProfile.removeAttribute('href');
+        btnProfile.style.pointerEvents = 'none';
+        btnProfile.style.opacity = '0.5';
+
+        const btnStatement = document.getElementById('btn-view-statement');
+        btnStatement.removeAttribute('href');
+        btnStatement.style.pointerEvents = 'none';
+        btnStatement.style.opacity = '0.5';
+
+        // Reset history body
+        document.getElementById('supplier-history-body').innerHTML = `
+            <i class="ph ph-clock-counter-clockwise" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;"></i>
+            <span style="font-size: 12px;">Select a supplier to view history.</span>
+        `;
     }
 
     function selectSupplier(supp) {
@@ -661,6 +706,20 @@
         }
         outDiv.innerText = balText;
 
+        // Enable buttons
+        const btnProfile = document.getElementById('btn-view-profile');
+        btnProfile.href = '<?= APP_URL ?>/supplier/index/' + supp.id;
+        btnProfile.style.pointerEvents = 'auto';
+        btnProfile.style.opacity = '1';
+
+        const btnStatement = document.getElementById('btn-view-statement');
+        btnStatement.href = '<?= APP_URL ?>/report/viewer/supplier_statement?supplier=' + supp.id;
+        btnStatement.style.pointerEvents = 'auto';
+        btnStatement.style.opacity = '1';
+
+        // Fetch history
+        fetchSupplierHistory(supp.id);
+
         const tbody = document.getElementById('supp-grns-tbody');
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading unpaid GRNs...</td></tr>';
         
@@ -682,6 +741,86 @@
                 console.error(err);
                 tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Failed to load GRNs.</td></tr>';
             });
+    }
+
+    function fetchSupplierHistory(supplierId) {
+        const historyBody = document.getElementById('supplier-history-body');
+        historyBody.innerHTML = `
+            <div style="text-align: center; padding: 40px 0; color: var(--slate-400);">
+                <i class="ph ph-circle-notch animate-spin" style="font-size: 32px; margin-bottom: 10px; display: inline-block;"></i>
+                <div>Loading transaction history...</div>
+            </div>
+        `;
+        
+        fetch('<?= APP_URL ?>/supplierpayment/getSupplierHistoryJson/' + supplierId)
+            .then(res => res.json())
+            .then(data => {
+                renderSupplierHistory(data);
+            })
+            .catch(err => {
+                console.error(err);
+                historyBody.innerHTML = `
+                    <div style="text-align: center; padding: 40px 0; color: var(--danger);">
+                        <i class="ph ph-x-circle" style="font-size: 32px; margin-bottom: 10px; display: inline-block;"></i>
+                        <div>Failed to load history.</div>
+                    </div>
+                `;
+            });
+    }
+
+    function renderSupplierHistory(history) {
+        const historyBody = document.getElementById('supplier-history-body');
+        if (!history || history.length === 0) {
+            historyBody.innerHTML = `
+                <div style="text-align: center; padding: 80px 20px; color: var(--slate-400);">
+                    <i class="ph ph-clock-counter-clockwise" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px; display: inline-block;"></i>
+                    <div style="font-size: 12px;">No transaction history found for this supplier.</div>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '<div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">';
+        history.forEach(item => {
+            let typeColor = 'var(--slate-600)';
+            let amtColor = 'var(--slate-800)';
+            let amtText = '';
+            
+            if (item.type === 'Payment' || item.type === 'Expense') {
+                typeColor = 'var(--success)';
+                amtColor = 'var(--success)';
+                amtText = '-Rs ' + parseFloat(item.debit).toFixed(2);
+            } else if (item.type === 'Supplier Return') {
+                typeColor = 'var(--primary)';
+                amtColor = 'var(--primary)';
+                amtText = '-Rs ' + parseFloat(item.debit).toFixed(2);
+            } else if (item.type === 'GRN') {
+                typeColor = 'var(--warning)';
+                amtColor = 'var(--slate-800)';
+                amtText = '+Rs ' + parseFloat(item.credit).toFixed(2);
+            }
+
+            const balFormatted = parseFloat(item.balance).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            html += `
+                <div style="background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius-sm); padding: 10px 14px; display: flex; flex-direction: column; gap: 4px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 700; font-size: 10px; text-transform: uppercase; color: ${typeColor}; background: ${typeColor}15; padding: 2px 6px; border-radius: 4px;">${escapeHtml(item.type)}</span>
+                        <span style="font-size: 11px; color: var(--slate-400); font-family: monospace;">${item.date}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <span style="font-size: 12px; font-weight: 500; color: var(--slate-800); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(item.ref)}">${escapeHtml(item.ref)}</span>
+                        <span style="font-size: 12px; font-weight: 700; color: ${amtColor}; font-family: monospace;">${amtText}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--slate-500); border-top: 1px dashed var(--slate-200); padding-top: 4px; margin-top: 2px;">
+                        <span>Running Balance:</span>
+                        <span style="font-weight: 600; font-family: monospace; color: var(--slate-700);">Rs ${balFormatted}</span>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        historyBody.innerHTML = html;
     }
 
     // Render supplier GRNs grid
@@ -716,12 +855,12 @@
     // Toggle allocation strategy grid visibility
     function toggleAllocationGrid(prefix) {
         const type = document.getElementById(prefix + '-allocation-type').value;
-        const grid = document.getElementById(prefix + '-manual-grid');
+        const box = document.getElementById(prefix + '-allocation-box');
         
         if (type === 'manual') {
-            grid.classList.remove('hidden');
+            box.classList.remove('hidden');
         } else {
-            grid.classList.add('hidden');
+            box.classList.add('hidden');
         }
         updateAllocationTotals();
     }

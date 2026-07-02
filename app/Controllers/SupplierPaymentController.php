@@ -88,6 +88,16 @@ class SupplierPaymentController extends Controller {
     }
 
     /**
+     * API to fetch supplier transaction/ledger history in JSON
+     */
+    public function getSupplierHistoryJson($supplierId) {
+        header('Content-Type: application/json');
+        $history = $this->supplierModel->getActivityLedger(intval($supplierId));
+        echo json_encode($history);
+        exit;
+    }
+
+    /**
      * Record supplier payment
      */
     public function recordSupplierPayment() {

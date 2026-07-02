@@ -533,6 +533,52 @@ class ReportEngine {
             ],
 
             // 5. Supplier Reports
+            'supplier_statement' => [
+                'title' => 'Supplier Statement',
+                'category' => 'supplier',
+                'filters' => ['date_range', 'supplier'],
+                'date_column' => 'i.date',
+                'columns' => [
+                    'date' => ['label' => 'Date', 'type' => 'date'],
+                    'type' => ['label' => 'Type', 'type' => 'text'],
+                    'ref' => ['label' => 'Reference', 'type' => 'text'],
+                    'debit' => ['label' => 'Debit (Payments/Returns)', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
+                    'credit' => ['label' => 'Credit (GRNs)', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
+                    'balance' => ['label' => 'Running Balance', 'type' => 'currency', 'align' => 'right']
+                ],
+                'sql' => "SELECT i.date, i.type, i.ref, i.debit, i.credit,
+                                 SUM(i.credit - i.debit) OVER (ORDER BY i.date, i.ref) as balance,
+                                 i.vendor_id
+                          FROM (
+                              SELECT grn.grn_date as date, 'GRN' as type, grn.grn_number as ref,
+                                     0 as debit,
+                                     (SELECT COALESCE(SUM(total), 0) FROM grn_items WHERE grn_id = grn.id) as credit,
+                                     grn.vendor_id
+                              FROM goods_receipt_notes grn
+                              WHERE grn.is_approved = 1
+                              UNION ALL
+                              SELECT sp.payment_date as date, 'Payment' as type, CONCAT('Pay: ', sp.payment_method, IF(sp.reference != '', CONCAT(' (', sp.reference, ')'), '')) as ref,
+                                     sp.amount as debit,
+                                     0 as credit,
+                                     sp.vendor_id
+                              FROM supplier_payments sp
+                              WHERE sp.status = 'Active'
+                              UNION ALL
+                              SELECT sr.return_date as date, 'Supplier Return' as type, sr.return_number as ref,
+                                     sr.total_amount as debit,
+                                     0 as credit,
+                                     sr.vendor_id
+                              FROM supplier_returns sr
+                              UNION ALL
+                              SELECT e.expense_date as date, 'Expense' as type, CONCAT(e.reference, ' - ', e.description) as ref,
+                                     e.amount as debit,
+                                     0 as credit,
+                                     e.vendor_id
+                              FROM expenses e
+                              WHERE e.vendor_id IS NOT NULL
+                          ) as i
+                          WHERE 1=1"
+            ],
             'supplier_aging' => [
                 'title' => 'Supplier Aging Report',
                 'category' => 'supplier',
@@ -801,6 +847,8 @@ class ReportEngine {
                     $clauses[] = "p.vendor_id = :supplier";
                 } elseif (strpos($baseSql, 'g.vendor_id') !== false) {
                     $clauses[] = "g.vendor_id = :supplier";
+                } elseif (strpos($baseSql, 'i.vendor_id') !== false) {
+                    $clauses[] = "i.vendor_id = :supplier";
                 } else {
                     $clauses[] = "vendor_id = :supplier";
                 }

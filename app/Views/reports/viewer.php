@@ -1198,6 +1198,15 @@ $statuses = $data['statuses'] ?? [];
         // Initialize Breadcrumbs
         updateBreadcrumbs();
 
+        // Pre-fill filters from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        for (const [key, value] of urlParams.entries()) {
+            const field = document.querySelector(`[name="${key}"]`);
+            if (field) {
+                field.value = value;
+            }
+        }
+
         // Load initial data
         loadReportData(1);
 
