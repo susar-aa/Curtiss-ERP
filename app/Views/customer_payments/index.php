@@ -225,6 +225,104 @@
     .hidden {
         display: none !important;
     }
+
+    /* Modal Popups Overlay & Cards */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        animation: fadeIn 0.2s ease-out;
+    }
+    .modal-card {
+        border-radius: 14px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        width: 100%;
+        max-width: 400px;
+        padding: 24px;
+        text-align: center;
+        animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .modal-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: bold;
+        margin: 0 auto 16px auto;
+    }
+    .modal-icon.success {
+        background: #f0fdf4;
+        color: #16a34a;
+        border: 2px solid #16a34a;
+    }
+    .modal-icon.error {
+        background: #fef2f2;
+        color: #dc2626;
+        border: 2px solid #dc2626;
+    }
+    .modal-title {
+        font-size: 16px;
+        font-weight: 700;
+        margin: 0 0 10px 0;
+    }
+    .modal-text {
+        font-size: 13px;
+        margin: 0 0 20px 0;
+        line-height: 1.5;
+    }
+    .receipt-summary-box {
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 20px;
+        text-align: left;
+        border: 1px dashed;
+    }
+    .receipt-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 12px;
+    }
+    .receipt-row:last-child {
+        margin-bottom: 0;
+    }
+    .receipt-row.total-row {
+        border-top: 1.5px dashed;
+        padding-top: 8px;
+        margin-top: 8px;
+        font-weight: 700;
+        font-size: 14px;
+    }
+    .receipt-label {
+        opacity: 0.7;
+    }
+    .receipt-value {
+        font-weight: 600;
+    }
+    .modal-actions {
+        display: flex;
+        gap: 12px;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes scaleIn {
+        from { transform: scale(0.95); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
 </style>
 
 <div style="margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
@@ -234,16 +332,78 @@
     </div>
 </div>
 
-<!-- Notifications -->
+<!-- Notifications & Receipt Modal Popups -->
 <?php if (!empty($data['error'])): ?>
-    <div style="padding: 12px 15px; background: #fee2e2; color: #991b1b; border-radius: 8px; border: 1px solid #fca5a5; margin-bottom: 20px; font-size: 13px; font-weight: 500;">
-        ⚠ <?= $data['error'] ?>
+    <div id="error-modal" class="modal-overlay">
+        <div class="modal-card" style="background: var(--mac-bg, #ffffff); border-color: var(--mac-border, #cbd5e1);">
+            <div class="modal-icon error">⚠</div>
+            <h3 class="modal-title" style="color: #dc2626;">Error</h3>
+            <p class="modal-text" style="color: var(--text-muted, #475569);"><?= htmlspecialchars($data['error']) ?></p>
+            <div class="modal-actions" style="justify-content: center;">
+                <button type="button" onclick="closeModal('error-modal')" class="btn-action-small btn-danger" style="min-width: 120px; justify-content: center; height: 32px;">
+                    Dismiss
+                </button>
+            </div>
+        </div>
     </div>
 <?php endif; ?>
+
 <?php if (!empty($data['success'])): ?>
-    <div style="padding: 12px 15px; background: #d1fae5; color: #065f46; border-radius: 8px; border: 1px solid #6ee7b7; margin-bottom: 20px; font-size: 13px; font-weight: 500;">
-        ✓ <?= $data['success'] ?>
-    </div>
+    <?php if ($data['success'] === 'Customer payment recorded successfully!' && !empty($data['payment_details'])): 
+        $payment = $data['payment_details'];
+    ?>
+        <div id="receipt-modal" class="modal-overlay">
+            <div class="modal-card" style="background: var(--mac-bg, #ffffff); border-color: var(--mac-border, #cbd5e1);">
+                <div class="modal-icon success">✓</div>
+                <h3 class="modal-title" style="color: var(--text-main, #0f172a);">Collection Recorded Successfully!</h3>
+                
+                <div class="receipt-summary-box" style="background: rgba(0,0,0,0.02); border-color: var(--mac-border, #cbd5e1); color: var(--text-main);">
+                    <div class="receipt-row">
+                        <span class="receipt-label">Receipt / Ref #</span>
+                        <span class="receipt-value" style="font-weight: 700; color: var(--text-main);"><?= htmlspecialchars($payment->reference) ?></span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-label">Date</span>
+                        <span class="receipt-value" style="color: var(--text-main);"><?= htmlspecialchars($payment->payment_date) ?></span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-label">Customer</span>
+                        <span class="receipt-value" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-main);"><?= htmlspecialchars($payment->customer_name) ?></span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-label">Method</span>
+                        <span class="receipt-value" style="color: var(--text-main);"><?= htmlspecialchars($payment->payment_method) ?></span>
+                    </div>
+                    <div class="receipt-row total-row" style="border-top-color: var(--mac-border, #cbd5e1);">
+                        <span class="receipt-label">Amount Paid</span>
+                        <span class="receipt-value" style="color: #10b981; font-weight: 700;">Rs <?= number_format($payment->amount, 2) ?></span>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" onclick="printFullReceipt(<?= $payment->id ?>)" class="btn-action-small" style="flex: 1; justify-content: center; height: 32px; border-color: #4f46e5; color: #4f46e5;">
+                        <i class="ph ph-printer"></i> Print Receipt
+                    </button>
+                    <button type="button" onclick="closeModal('receipt-modal')" class="btn-action-small" style="flex: 1; justify-content: center; height: 32px;">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    <?php else: ?>
+        <div id="general-success-modal" class="modal-overlay">
+            <div class="modal-card" style="background: var(--mac-bg, #ffffff); border-color: var(--mac-border, #cbd5e1);">
+                <div class="modal-icon success">✓</div>
+                <h3 class="modal-title" style="color: var(--text-main, #0f172a);">Success</h3>
+                <p class="modal-text" style="color: var(--text-muted, #475569);"><?= htmlspecialchars($data['success']) ?></p>
+                <div class="modal-actions" style="justify-content: center;">
+                    <button type="button" onclick="closeModal('general-success-modal')" class="btn-action-small" style="min-width: 120px; justify-content: center; height: 32px; border-color: #4f46e5; color: #4f46e5;">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
 <?php endif; ?>
 
 <!-- Stats Row -->
@@ -801,4 +961,18 @@
             });
         }
     });
+
+    function closeModal(id) {
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    function printFullReceipt(id) {
+        const printWindow = window.open('<?= APP_URL ?>/customerpayment/receipt/' + id, '_blank');
+        printWindow.onload = function() {
+            printWindow.print();
+        };
+    }
 </script>

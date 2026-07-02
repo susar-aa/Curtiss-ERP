@@ -51,12 +51,18 @@ class CustomerPaymentController extends Controller {
             'payments_history' => $paymentsHistory,
             'filters' => $filters,
             'error' => '',
-            'success' => ''
+            'success' => '',
+            'payment_id' => 0,
+            'payment_details' => null
         ];
 
         if (isset($_GET['success'])) {
             if ($_GET['success'] === 'customer_payment') {
                 $data['success'] = 'Customer payment recorded successfully!';
+                if (isset($_GET['payment_id'])) {
+                    $data['payment_id'] = intval($_GET['payment_id']);
+                    $data['payment_details'] = $this->paymentModel->getCustomerPaymentById($data['payment_id']);
+                }
             } elseif ($_GET['success'] === 'reversed') {
                 $data['success'] = 'Payment reversed successfully and ledger updated!';
             } elseif ($_GET['success'] === 'credit_applied') {
@@ -90,12 +96,21 @@ class CustomerPaymentController extends Controller {
             exit;
         }
 
+        $reference = trim($_POST['reference'] ?? '');
+        if (empty($reference)) {
+            $db = new Database();
+            $db->query("SELECT id FROM customer_payments ORDER BY id DESC LIMIT 1");
+            $lastRow = $db->single();
+            $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+            $reference = 'RC-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+        }
+
         $paymentData = [
             'customer_id' => intval($_POST['customer_id'] ?? 0),
             'amount' => floatval($_POST['amount'] ?? 0),
             'date' => $_POST['payment_date'] ?? date('Y-m-d'),
             'method' => $_POST['payment_method'] ?? 'Cash',
-            'reference' => trim($_POST['reference'] ?? ''),
+            'reference' => $reference,
             'notes' => trim($_POST['notes'] ?? ''),
             'asset_account_id' => intval($_POST['asset_account_id'] ?? 0),
             'ar_account_id' => intval($_POST['ar_account_id'] ?? 0),
@@ -140,7 +155,7 @@ class CustomerPaymentController extends Controller {
         $paymentId = $this->paymentModel->recordCustomerPayment($paymentData, $_SESSION['user_id']);
         if ($paymentId) {
             $this->logActivity('Record Customer Payment', 'Payments', "Recorded customer payment of Rs: " . number_format($paymentData['amount'], 2) . " for Customer ID {$paymentData['customer_id']} via {$paymentData['method']}");
-            header('Location: ' . APP_URL . '/customerpayment?success=customer_payment');
+            header('Location: ' . APP_URL . '/customerpayment?success=customer_payment&payment_id=' . $paymentId);
         } else {
             header('Location: ' . APP_URL . '/customerpayment?error=Failed to record payment and update ledger.');
         }
