@@ -1,6 +1,6 @@
 <style>
     /* =====================================================
-       MODERN AP BILLING PANEL — REDESIGNED UI
+       UNIFIED AP PAYMENTS PANEL — MODERN UI
        ===================================================== */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -38,96 +38,10 @@
         box-sizing: border-box;
     }
 
-    /* Tabs Layout */
-    .payment-center-tabs {
-        display: flex;
-        border-bottom: 2px solid var(--slate-200);
-        margin-bottom: 25px;
-        gap: 5px;
-    }
-    .payment-tab-btn {
-        background: transparent;
-        border: none;
-        border-bottom: 3px solid transparent;
-        padding: 12px 24px;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--slate-600);
-        cursor: pointer;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .payment-tab-btn:hover {
-        color: var(--slate-900);
-        background: rgba(0,0,0,0.02);
-    }
-    .payment-tab-btn.active {
-        color: var(--primary);
-        border-bottom-color: var(--primary);
-    }
-
-    /* KPI Row */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 20px;
-        margin-bottom: 25px;
-    }
-    .stat-card {
-        background: var(--white);
+    /* ── Unified Payment Panel Card ── */
+    .payment-panel {
         border: 1px solid var(--slate-200);
         border-radius: var(--radius-lg);
-        padding: 20px;
-        box-shadow: var(--shadow-sm);
-        position: relative;
-        overflow: hidden;
-        transition: all 0.3s;
-    }
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-    }
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 4px;
-        height: 100%;
-    }
-    .stat-card.payable::before { background: var(--warning); }
-    .stat-card.general::before { background: var(--success); }
-
-    .stat-title {
-        font-size: 11px;
-        text-transform: uppercase;
-        font-weight: 700;
-        color: var(--slate-600);
-        letter-spacing: 1px;
-        margin-bottom: 8px;
-    }
-    .stat-val {
-        font-size: 24px;
-        font-weight: 800;
-        color: var(--slate-900);
-        font-family: monospace;
-    }
-
-    /* ── Header row: Supplier + Metadata Cards ── */
-    .inv-header-row {
-        display: flex;
-        gap: 15px;
-        flex-wrap: wrap;
-        margin-bottom: 20px;
-    }
-
-    .customer-card, .inv-meta-card {
-        flex: 1;
-        min-width: 320px;
-        border: 1px solid var(--slate-200);
-        border-radius: var(--radius-md);
         overflow: visible;
         background: var(--white);
         box-shadow: var(--shadow-sm);
@@ -135,82 +49,65 @@
         flex-direction: column;
     }
 
-    .customer-card-header, .inv-meta-card-header {
+    .payment-panel-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 9px 14px;
+        padding: 12px 18px;
         background: var(--slate-800);
         color: var(--white);
-        border-radius: var(--radius-md) var(--radius-md) 0 0;
-        font-size: 11px;
-        font-weight: 600;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        font-size: 14px;
+        font-weight: 700;
         letter-spacing: 0.5px;
         text-transform: uppercase;
     }
 
-    .customer-card-body, .inv-meta-body {
-        padding: 12px;
+    .payment-panel-body {
+        padding: 20px;
         position: relative;
-        flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 15px;
     }
 
-    .customer-search-input {
-        width: 100%;
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        position: relative;
+    }
+    .form-group label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--slate-600);
+    }
+    .form-control {
         padding: 8px 12px;
         border: 1px solid var(--slate-300);
         border-radius: var(--radius-sm);
-        font-size: 12px;
         font-family: var(--font);
-        font-weight: 600;
+        font-size: 12px;
         color: var(--slate-800);
-        box-sizing: border-box;
         background: var(--slate-50);
-        transition: border-color 0.15s, box-shadow 0.15s;
+        box-sizing: border-box;
         outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .customer-search-input:focus {
+    .form-control:focus {
         border-color: var(--primary);
         background: var(--white);
         box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
     }
 
-    .customer-address-area {
-        width: 100%;
-        flex: 1;
-        min-height: 60px;
-        padding: 8px 12px;
-        border: 1px solid var(--slate-200);
-        border-radius: var(--radius-sm);
-        font-size: 11px;
-        font-family: var(--font);
-        color: var(--slate-600);
-        resize: none;
-        box-sizing: border-box;
-        background: var(--slate-50);
-    }
-
-    .customer-outstanding {
-        font-size: 12px;
-        padding: 10px;
-        border-radius: var(--radius-sm);
-        line-height: 1.5;
-    }
-
-    .customer-actions {
-        display: flex;
-        gap: 8px;
-    }
-
     /* Autocomplete Dropdown list styling */
     .search-results {
         position: absolute;
-        top: calc(100% - 2px);
-        left: 12px;
-        width: calc(100% - 24px);
+        top: 100%;
+        left: 0;
+        width: 100%;
         background: var(--white);
         border: 1px solid var(--slate-300);
         border-radius: var(--radius-sm);
@@ -246,9 +143,9 @@
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        padding: 6px 13px;
+        padding: 8px 16px;
         font-family: var(--font);
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 600;
         border-radius: var(--radius-sm);
         border: 1px solid var(--slate-300);
@@ -262,42 +159,8 @@
     .btn:hover { background: var(--slate-100); border-color: var(--slate-400); }
     .btn-primary { background: var(--primary); color: var(--white); border-color: var(--primary); }
     .btn-primary:hover { background: var(--primary-hover); }
-    .btn-success { background: var(--success); color: var(--white); border-color: var(--success); }
-    .btn-success:hover { background: #15803d; }
-    .btn-sm { padding: 4px 10px; font-size: 11px; }
 
-    /* Forms */
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-    .form-group label {
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--slate-600);
-    }
-    .form-control {
-        padding: 8px 12px;
-        border: 1px solid var(--slate-300);
-        border-radius: var(--radius-sm);
-        font-family: var(--font);
-        font-size: 12px;
-        color: var(--slate-800);
-        background: var(--slate-50);
-        box-sizing: border-box;
-        outline: none;
-        transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .form-control:focus {
-        border-color: var(--primary);
-        background: var(--white);
-        box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
-    }
-
-    /* Allocation Workflow Card */
+    /* Allocation Box & Tables */
     .allocation-box {
         border: 1px solid var(--slate-200);
         border-radius: var(--radius-md);
@@ -331,91 +194,12 @@
         margin-top: 15px;
     }
 
-    /* History Audit Table */
-    .data-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 15px;
-        font-size: 12px;
-    }
-    .data-table th, .data-table td {
-        padding: 10px 12px;
-        border-bottom: 1px solid var(--slate-200);
-        text-align: left;
-    }
-    .data-table th {
-        background: var(--slate-800);
-        color: var(--white);
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 10.5px;
-    }
-    .data-table tbody tr:nth-child(even) {
-        background: var(--slate-50);
-    }
-    .data-table tbody tr:hover {
-        background: var(--primary-light);
-    }
-    .badge-method {
-        padding: 3px 8px;
-        border-radius: 99px;
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-    }
-    .badge-method.method-Cash { background: #d1fae5; color: #065f46; }
-    .badge-method.method-Cheque { background: #fef3c7; color: #d97706; }
-    .badge-method.method-BankTransfer { background: #dbeafe; color: #2563eb; }
-
-    .status-badge {
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-    }
-    .status-Active { background: #d1fae5; color: #065f46; }
-    .status-Reversed { background: #fee2e2; color: #991b1b; }
-
-    .btn-action-small {
-        padding: 5px 10px;
-        font-size: 11px;
-        font-weight: 600;
-        border-radius: 6px;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        border: 1px solid var(--slate-200);
-        background: var(--white);
-        color: var(--slate-700);
-        transition: all 0.2s;
-        text-decoration: none;
-    }
-    .btn-action-small:hover {
-        background: var(--slate-100);
-    }
-    .btn-action-small.btn-danger {
-        border-color: #f87171;
-        color: #ef4444;
-    }
-    .btn-action-small.btn-danger:hover {
-        background: #fef2f2;
-    }
-
     .hidden {
         display: none !important;
     }
 </style>
 
 <div class="ap-wrapper">
-    <div style="margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
-        <div>
-            <h2 style="margin: 0 0 5px 0; font-weight: 800; color: var(--slate-900);">Supplier Payments Center</h2>
-            <p style="margin: 0; color: var(--slate-600); font-size: 14px;">Audit-ready accounts payable (AP) billing settlements, credit applications, and ledger adjustments.</p>
-        </div>
-    </div>
-
     <!-- Notifications -->
     <?php if (!empty($data['error'])): ?>
         <div style="padding: 12px 15px; background: #fee2e2; color: #991b1b; border-radius: 8px; border: 1px solid #fca5a5; margin-bottom: 20px; font-size: 13px; font-weight: 500;">
@@ -428,274 +212,164 @@
         </div>
     <?php endif; ?>
 
-    <!-- Stats Row -->
-    <div class="stats-grid">
-        <div class="stat-card payable">
-            <div class="stat-title">Total Accounts Payable (Outstanding)</div>
-            <div class="stat-val">
-                Rs <?= number_format(array_sum(array_column($data['suppliers'], 'outstanding_balance')), 2) ?>
+    <form action="<?= APP_URL ?>/supplierpayment/recordSupplierPayment" method="POST" id="supplierPayForm">
+        <div class="payment-panel">
+            <div class="payment-panel-header">
+                <span>Record Supplier Payment</span>
             </div>
-        </div>
-        <div class="stat-card general">
-            <div class="stat-title">GL Cash & Bank Accounts</div>
-            <div class="stat-val" style="font-size: 13px; font-family: inherit; font-weight: 600; line-height: 1.5; margin-top: 10px;">
-                <?php foreach (array_slice($data['assets'], 0, 3) as $asset): ?>
-                    • <?= htmlspecialchars($asset->account_name) ?>: <strong>Rs <?= number_format($asset->balance, 2) ?></strong><br>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tabs -->
-    <div class="payment-center-tabs">
-        <button class="payment-tab-btn active" id="tab-ap-btn" onclick="switchMainTab('ap')">
-            🏭 Record Supplier Payment
-        </button>
-        <button class="payment-tab-btn" id="tab-history-btn" onclick="switchMainTab('history')">
-            📜 Payouts History & Reversals
-        </button>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- TAB PANEL: RECORD SUPPLIER PAYMENT         -->
-    <!-- ========================================== -->
-    <div id="tab-ap" class="payment-tab-panel">
-        <form action="<?= APP_URL ?>/supplierpayment/recordSupplierPayment" method="POST" id="supplierPayForm">
-            <!-- ── Header Panel Row ── -->
-            <div class="inv-header-row">
-                <!-- Supplier Search Card -->
-                <div class="customer-card">
-                    <div class="customer-card-header">
-                        <span><i class="ph ph-factory" style="margin-right:5px;"></i>Paid To (Supplier)</span>
-                    </div>
-                    <div class="customer-card-body">
+            
+            <div class="payment-panel-body">
+                <!-- Row 1: Supplier Search & Status details -->
+                <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Search Supplier *</label>
                         <input type="hidden" name="supplier_id" id="form-supp-id" required>
-                        <input type="text" id="supplierSearch" class="customer-search-input"
-                               placeholder="Search by name, phone, address..."
+                        <input type="text" id="supplierSearch" class="form-control"
+                               placeholder="Type to search supplier by name, phone, address..."
                                autocomplete="off" required>
                         <ul id="supplierSearchResults" class="search-results"></ul>
-                        <textarea id="supplierDetailsArea" class="customer-address-area"
-                                  readonly placeholder="Supplier address and phone will appear here..."></textarea>
-                    </div>
-                </div>
-
-                <!-- Supplier Account status card -->
-                <div class="customer-card" id="supplierStatusCard" style="display: none; flex-direction: column;">
-                    <div class="customer-card-header">
-                        <span><i class="ph ph-cardholder" style="margin-right:5px;"></i>Supplier Account</span>
-                    </div>
-                    <div class="customer-card-body" style="display: flex; flex-direction: column; gap: 8px; justify-content: space-between; flex: 1;">
-                        <div id="supplierOutstanding" class="customer-outstanding" style="margin-top:0;"></div>
-                        <div id="supplierOptionsContainer" class="customer-actions" style="margin-top:auto; display:none;">
-                            <a href="#" id="selected-supp-statement-btn" target="_blank" class="btn btn-sm" style="flex:1; justify-content:center;">
-                                <i class="ph ph-file-text"></i> Statement
-                            </a>
-                            <a href="#" id="selected-supp-apply-credit" class="btn btn-sm btn-success" style="flex:1; justify-content:center; display:none;">
-                                <i class="ph ph-plus-circle"></i> Apply Credit
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Voucher Details Card -->
-                <div class="inv-meta-card">
-                    <div class="inv-meta-card-header">
-                        <i class="ph ph-receipt" style="margin-right:5px;"></i>Voucher Details
-                    </div>
-                    <div class="inv-meta-body">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                            <div class="form-group">
-                                <label>Payment Date</label>
-                                <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Reference # / Voucher #</label>
-                                <input type="text" name="reference" class="form-control" placeholder="Optional reference">
-                            </div>
-                        </div>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                            <div class="form-group">
-                                <label>Debit Ledger Account (Accounts Payable) *</label>
-                                <select name="ap_account_id" class="form-control" required style="background: var(--white);">
-                                    <option value="<?= $data['ap_account'] ? $data['ap_account']->id : 18 ?>">
-                                        <?= $data['ap_account'] ? $data['ap_account']->account_code . ' - ' . htmlspecialchars($data['ap_account']->account_name) : '2000 - Accounts Payable' ?>
-                                    </option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Credit Ledger Account (Cash/Bank) *</label>
-                                <select name="asset_account_id" id="supp-asset-account" class="form-control" required style="background: var(--white);">
-                                    <?php foreach ($data['assets'] as $asset): ?>
-                                        <option value="<?= $asset->id ?>" data-code="<?= $asset->account_code ?>" data-parent="<?= $asset->parent_id ?>" <?= $asset->account_code === '1000' ? 'selected' : '' ?>>
-                                            <?= $asset->account_code ?> - <?= htmlspecialchars($asset->account_name) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Payment Method *</label>
-                            <select name="payment_method" id="supp-method-select" class="form-control" onchange="toggleChequeFields('supp')" required>
-                                <option value="Cash">Cash</option>
-                                <option value="Bank Transfer">Bank Transfer</option>
-                                <option value="Cheque">Cheque</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Welcome workspace helper -->
-            <div id="ap-welcome" style="text-align: center; padding: 60px 20px; color: var(--slate-400); background: var(--white); border: 1px dashed var(--slate-300); border-radius: var(--radius-lg);">
-                <i class="ph ph-factory" style="font-size: 64px; color: var(--warning); opacity: 0.6; margin-bottom: 15px;"></i>
-                <h3 style="font-size: 16px; font-weight: 700; color: var(--slate-700);">Select a supplier above to load AP invoice balances and record a payout.</h3>
-                <p style="font-size: 13px; max-width: 450px; margin: 10px auto 0 auto;">Dedicated, audit-ready AP module allows auto-clearing GRNs (FIFO), manual line-by-line allocation, and advance payments.</p>
-            </div>
-
-            <!-- Workspace Fields -->
-            <div id="ap-workspace-fields" class="hidden" style="background: var(--white); border: 1px solid var(--slate-200); padding: 20px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
-                
-                <!-- Cheque Details Container -->
-                <div id="supp-cheque-details" class="cheque-details-box hidden" style="margin-bottom: 15px;">
-                    <h4 style="margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: #b45309; font-weight: 700;">Cheque Details</h4>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
-                        <div class="form-group">
-                            <label>Bank Name *</label>
-                            <input type="text" name="cheque_bank" id="supp-chk-bank-input" class="form-control" placeholder="e.g. Commercial Bank">
-                        </div>
-                        <div class="form-group">
-                            <label>Cheque Number *</label>
-                            <input type="text" name="cheque_number" id="supp-chk-num-input" class="form-control" placeholder="e.g. 987654" pattern="\d{6}" maxlength="6" minlength="6" title="Cheque number must be exactly 6 digits." oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-                        </div>
-                        <div class="form-group">
-                            <label>Banking Date *</label>
-                            <input type="date" name="cheque_date" id="supp-chk-date-input" class="form-control" min="<?= date('Y-m-d') ?>">
-                        </div>
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                    <div class="form-group">
-                        <label>Payment Amount (Rs:) *</label>
-                        <input type="number" step="0.01" name="amount" id="supp-amount-input" class="form-control" style="font-size: 16px; font-weight: 700; color: var(--warning);" required min="0.01" oninput="updateAllocationTotals()">
                     </div>
                     <div class="form-group">
-                        <label>GRN Allocation Strategy *</label>
-                        <select name="allocation_type" id="supp-allocation-type" class="form-control" onchange="toggleAllocationGrid('supp')" required>
-                            <option value="auto">Automatic (FIFO Allocation)</option>
-                            <option value="manual">Manual Line-by-Line Allocation</option>
+                        <label>Supplier Contact Info</label>
+                        <input type="text" id="supplierDetailsArea" class="form-control" readonly placeholder="Supplier details will appear here...">
+                    </div>
+                    <div class="form-group">
+                        <label>Outstanding Payable</label>
+                        <div id="supplierOutstanding" class="form-control" style="background: var(--slate-100); font-weight: 700; color: var(--slate-600); display: flex; align-items: center; justify-content: center; height: 35px; border-radius: var(--radius-sm); border: 1px solid var(--slate-300);">
+                            Rs 0.00
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 2: Payment Parameters -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div class="form-group">
+                        <label>Payment Date</label>
+                        <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Reference # / Voucher #</label>
+                        <input type="text" name="reference" class="form-control" placeholder="Optional reference">
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Method *</label>
+                        <select name="payment_method" id="supp-method-select" class="form-control" onchange="toggleChequeFields('supp')" required>
+                            <option value="Cash">Cash</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="Cheque">Cheque</option>
                         </select>
                     </div>
                 </div>
 
-                <!-- Allocation Selection -->
-                <div class="allocation-box">
-                    <h4 style="margin: 0 0 10px 0; font-size: 13px; font-weight: 700; color: var(--slate-800);">GRN Allocation Workflow</h4>
+                <!-- Row 3: Ledger Accounts -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Debit Ledger Account (Accounts Payable) *</label>
+                        <select name="ap_account_id" class="form-control" required style="background: var(--white);">
+                            <option value="<?= $data['ap_account'] ? $data['ap_account']->id : 18 ?>">
+                                <?= $data['ap_account'] ? $data['ap_account']->account_code . ' - ' . htmlspecialchars($data['ap_account']->account_name) : '2000 - Accounts Payable' ?>
+                            </option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Credit Ledger Account (Cash/Bank) *</label>
+                        <select name="asset_account_id" id="supp-asset-account" class="form-control" required style="background: var(--white);">
+                            <?php foreach ($data['assets'] as $asset): ?>
+                                <option value="<?= $asset->id ?>" data-code="<?= $asset->account_code ?>" data-parent="<?= $asset->parent_id ?>" <?= $asset->account_code === '1000' ? 'selected' : '' ?>>
+                                    <?= $asset->account_code ?> - <?= htmlspecialchars($asset->account_name) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Workspace Fields (Shown only when supplier is selected) -->
+                <div id="ap-workspace-fields" class="hidden">
                     
-                    <div id="supp-manual-grid" class="hidden">
-                        <p style="margin: 0; font-size: 11px; color: var(--slate-500);">Unpaid Goods Received Notes (GRN) under accounts payable. Enter the amount to settle for each record manually.</p>
-                        
-                        <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--slate-200); border-radius: 8px; margin-top: 10px;">
-                            <table class="allocations-table">
-                                <thead>
-                                    <tr>
-                                        <th>GRN Number</th>
-                                        <th>GRN Date</th>
-                                        <th style="text-align: right;">Total Amount</th>
-                                        <th style="text-align: right;">Balance Due</th>
-                                        <th style="width: 120px; text-align: right;">Allocation</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="supp-grns-tbody">
-                                    <!-- Injected via JS -->
-                                </tbody>
-                            </table>
+                    <!-- Cheque Details Container -->
+                    <div id="supp-cheque-details" class="cheque-details-box hidden" style="margin-bottom: 15px;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: #b45309; font-weight: 700;">Cheque Details</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+                            <div class="form-group">
+                                <label>Bank Name *</label>
+                                <input type="text" name="cheque_bank" id="supp-chk-bank-input" class="form-control" placeholder="e.g. Commercial Bank">
+                            </div>
+                            <div class="form-group">
+                                <label>Cheque Number *</label>
+                                <input type="text" name="cheque_number" id="supp-chk-num-input" class="form-control" placeholder="e.g. 987654" pattern="\d{6}" maxlength="6" minlength="6" title="Cheque number must be exactly 6 digits." oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            </div>
+                            <div class="form-group">
+                                <label>Banking Date *</label>
+                                <input type="date" name="cheque_date" id="supp-chk-date-input" class="form-control" min="<?= date('Y-m-d') ?>">
+                            </div>
                         </div>
                     </div>
-                    
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 13px; font-weight: 600;">
-                        <span>Unallocated Amount: <span id="supp-unallocated-lbl" style="color: var(--danger); font-family: monospace;">Rs 0.00</span></span>
-                        <span>Total Allocated: <span id="supp-allocated-lbl" style="color: var(--success); font-family: monospace;">Rs 0.00</span></span>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div class="form-group">
+                            <label>Payment Amount (Rs:) *</label>
+                            <input type="number" step="0.01" name="amount" id="supp-amount-input" class="form-control" style="font-size: 16px; font-weight: 700; color: var(--warning);" required min="0.01" oninput="updateAllocationTotals()">
+                        </div>
+                        <div class="form-group">
+                            <label>GRN Allocation Strategy *</label>
+                            <select name="allocation_type" id="supp-allocation-type" class="form-control" onchange="toggleAllocationGrid('supp')" required>
+                                <option value="auto">Automatic (FIFO Allocation)</option>
+                                <option value="manual">Manual Line-by-Line Allocation</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Allocation Selection -->
+                    <div class="allocation-box">
+                        <h4 style="margin: 0 0 10px 0; font-size: 13px; font-weight: 700; color: var(--slate-800);">GRN Allocation Workflow</h4>
+                        
+                        <div id="supp-manual-grid" class="hidden">
+                            <p style="margin: 0; font-size: 11px; color: var(--slate-500);">Unpaid Goods Received Notes (GRN) under accounts payable. Enter the amount to settle for each record manually.</p>
+                            
+                            <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--slate-200); border-radius: 8px; margin-top: 10px;">
+                                <table class="allocations-table">
+                                    <thead>
+                                        <tr>
+                                            <th>GRN Number</th>
+                                            <th>GRN Date</th>
+                                            <th style="text-align: right;">Total Amount</th>
+                                            <th style="text-align: right;">Balance Due</th>
+                                            <th style="width: 120px; text-align: right;">Allocation</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="supp-grns-tbody">
+                                        <!-- Injected via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 13px; font-weight: 600;">
+                            <span>Unallocated Amount: <span id="supp-unallocated-lbl" style="color: var(--danger); font-family: monospace;">Rs 0.00</span></span>
+                            <span>Total Allocated: <span id="supp-allocated-lbl" style="color: var(--success); font-family: monospace;">Rs 0.00</span></span>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Notes / Memo</label>
+                        <textarea name="notes" rows="2" class="form-control" placeholder="Internal audit logs memo..."></textarea>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <button type="submit" class="btn btn-primary" style="font-size: 14px; font-weight: 700; height: 44px; justify-content: center; width: 100%;">
+                            <i class="ph ph-shield-check" style="font-size: 18px;"></i> Post & Allocate Payout
+                        </button>
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-top: 15px;">
-                    <label>Notes / Memo</label>
-                    <textarea name="notes" rows="2" class="form-control" placeholder="Internal audit logs memo..."></textarea>
+                <!-- Welcome helper -->
+                <div id="ap-welcome" style="text-align: center; padding: 60px 20px; color: var(--slate-400); border: 1px dashed var(--slate-300); border-radius: var(--radius-lg); margin-top: 15px;">
+                    <i class="ph ph-factory" style="font-size: 64px; color: var(--warning); opacity: 0.6; margin-bottom: 15px;"></i>
+                    <h3 style="font-size: 16px; font-weight: 700; color: var(--slate-700);">Select a supplier above to load GRN balances.</h3>
                 </div>
-
-                <div style="margin-top: 20px;">
-                    <button type="submit" class="btn btn-primary" style="font-size: 14px; font-weight: 700; height: 44px; justify-content: center; width: 100%;">
-                        <i class="ph ph-shield-check" style="font-size: 18px;"></i> Post & Allocate Payout
-                    </button>
-                </div>
-            </div>
-        </form>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- TAB PANEL: PAYOUTS HISTORY & REVERSALS     -->
-    <!-- ========================================== -->
-    <div id="tab-history" class="payment-tab-panel hidden">
-        <div style="background: var(--white); border: 1px solid var(--slate-200); padding: 24px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="margin: 0; font-size: 16px; font-weight: 700;">GL Audit-Trail Payouts History</h3>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="history-search" class="form-control" style="width: 250px;" placeholder="Search history..." onkeyup="filterHistory()">
-                </div>
-            </div>
-
-            <div style="overflow-x: auto;">
-                <table class="data-table" id="history-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Supplier</th>
-                            <th>Method</th>
-                            <th>Reference</th>
-                            <th style="text-align: right;">Amount</th>
-                            <th>Status</th>
-                            <th>Logged By</th>
-                            <th style="text-align: center; width: 180px;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($data['payments_history'])): ?>
-                            <tr>
-                                <td colspan="8" style="text-align: center; color: var(--slate-400); padding: 30px;">No payout logs found in current audit timeline.</td>
-                            </tr>
-                        <?php else: foreach ($data['payments_history'] as $ph): ?>
-                            <tr class="history-row-el">
-                                <td style="white-space: nowrap; font-weight: 500;"><?= date('Y-m-d', strtotime($ph->payment_date)) ?></td>
-                                <td class="history-name-col" style="font-weight: 600;"><?= htmlspecialchars($ph->counterparty_name) ?></td>
-                                <td><span class="badge-method method-<?= str_replace(' ', '', $ph->payment_method) ?>"><?= $ph->payment_method ?></span></td>
-                                <td class="history-ref-col"><?= htmlspecialchars($ph->reference ?: '-') ?></td>
-                                <td style="text-align: right; font-weight: 700; font-family: monospace; color: <?= $ph->status === 'Reversed' ? 'var(--danger)' : 'inherit' ?>">
-                                    Rs <?= number_format($ph->amount, 2) ?>
-                                </td>
-                                <td>
-                                    <span class="status-badge status-<?= $ph->status ?>"><?= $ph->status ?></span>
-                                </td>
-                                <td><?= htmlspecialchars($ph->creator_name ?: 'System') ?></td>
-                                <td style="text-align: center; white-space: nowrap;">
-                                    <a href="<?= APP_URL ?>/supplierpayment/receipt/<?= $ph->id ?>" target="_blank" class="btn-action-small">
-                                        🖨 Voucher
-                                    </a>
-                                    <?php if ($ph->status === 'Active'): ?>
-                                        <button onclick="triggerReversal(<?= $ph->id ?>, <?= $ph->amount ?>)" class="btn-action-small btn-danger" style="cursor:pointer;">
-                                            ↩ Reverse
-                                        </button>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; endif; ?>
-                    </tbody>
-                </table>
             </div>
         </div>
-    </div>
+    </form>
 </div>
 
 <script>
@@ -715,15 +389,6 @@
         },
         <?php endforeach; ?>
     ];
-
-    // Switch main tabs
-    function switchMainTab(tab) {
-        document.querySelectorAll('.payment-tab-panel').forEach(panel => panel.classList.add('hidden'));
-        document.querySelectorAll('.payment-tab-btn').forEach(btn => btn.classList.remove('active'));
-
-        document.getElementById('tab-' + tab).classList.remove('hidden');
-        document.getElementById('tab-' + tab + '-btn').classList.add('active');
-    }
 
     // Helper for HTML escaping
     function escapeHtml(str) {
@@ -789,9 +454,13 @@
         document.getElementById('supplierSearch').value = '';
         document.getElementById('form-supp-id').value = '';
         document.getElementById('supplierDetailsArea').value = '';
-        document.getElementById('supplierStatusCard').style.display = 'none';
-        document.getElementById('supplierOutstanding').style.display = 'none';
-        document.getElementById('supplierOptionsContainer').style.display = 'none';
+        
+        const outDiv = document.getElementById('supplierOutstanding');
+        outDiv.innerText = 'Rs 0.00';
+        outDiv.style.background = 'var(--slate-100)';
+        outDiv.style.color = 'var(--slate-600)';
+        outDiv.style.borderColor = 'var(--slate-300)';
+
         document.getElementById('ap-welcome').classList.remove('hidden');
         document.getElementById('ap-workspace-fields').classList.add('hidden');
         activeSupplierGRNs = [];
@@ -805,36 +474,25 @@
         document.getElementById('form-supp-id').value = supp.id;
         
         let details = '';
-        if (supp.address) details += "Address: " + supp.address + "\n";
-        if (supp.phone) details += "Phone: " + supp.phone;
-        if (!details) details = "No address/phone details available for this supplier.";
+        if (supp.phone) details += supp.phone;
+        if (supp.address) details += (details ? ', ' : '') + supp.address;
+        if (!details) details = "No contact details available.";
         document.getElementById('supplierDetailsArea').value = details;
 
         const outDiv = document.getElementById('supplierOutstanding');
         const balVal = parseFloat(supp.outstanding) || 0;
         let balText = 'Rs ' + balVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         
-        outDiv.style.display = 'block';
         if (balVal > 0) {
             outDiv.style.background = 'var(--danger-light)';
             outDiv.style.color = 'var(--danger)';
-            outDiv.style.border = '1px solid #fecaca';
-            outDiv.innerHTML = `<div><i class="ph ph-warning"></i> Outstanding Payable:</div><div style="font-size: 18px; font-weight: 800; font-family: monospace; margin-top:4px;">${balText}</div>`;
+            outDiv.style.borderColor = '#fca5a5';
         } else {
             outDiv.style.background = 'var(--success-light)';
             outDiv.style.color = 'var(--success)';
-            outDiv.style.border = '1px solid #bbf7d0';
-            outDiv.innerHTML = `<div><i class="ph ph-check"></i> Account Clear:</div><div style="font-size: 18px; font-weight: 800; font-family: monospace; margin-top:4px;">${balText}</div>`;
+            outDiv.style.borderColor = '#bbf7d0';
         }
-
-        document.getElementById('supplierOptionsContainer').style.display = 'flex';
-        document.getElementById('supplierStatusCard').style.display = 'flex';
-        
-        document.getElementById('selected-supp-statement-btn').href = '<?= APP_URL ?>/supplierpayment/statement/' + supp.id;
-        
-        const creditBtn = document.getElementById('selected-supp-apply-credit');
-        creditBtn.href = '<?= APP_URL ?>/supplierpayment/applyCredit/' + supp.id;
-        creditBtn.style.display = balVal > 0 ? 'inline-flex' : 'none';
+        outDiv.innerText = balText;
 
         const tbody = document.getElementById('supp-grns-tbody');
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading unpaid GRNs...</td></tr>';
@@ -857,21 +515,6 @@
                 console.error(err);
                 tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Failed to load GRNs.</td></tr>';
             });
-    }
-
-    // Filter history
-    function filterHistory() {
-        const query = document.getElementById('history-search').value.toLowerCase();
-        const rows = document.querySelectorAll('.history-row-el');
-        rows.forEach(row => {
-            const name = row.querySelector('.history-name-col').textContent.toLowerCase();
-            const ref = row.querySelector('.history-ref-col').textContent.toLowerCase();
-            if (name.includes(query) || ref.includes(query)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
     }
 
     // Render supplier GRNs grid
@@ -1016,14 +659,6 @@
             } else if (filtered.length > 0) {
                 assetSelect.selectedIndex = 0;
             }
-        }
-    }
-
-    // Trigger reversal action
-    function triggerReversal(id, amount) {
-        const msg = `Are you absolutely sure you want to REVERSE this supplier payment of Rs ${parseFloat(amount).toLocaleString()}?\n\nThis will restore the unpaid balance of the allocated GRNs, bounce associated cheques, and create reversing journal entries in the General Ledger.`;
-        if (confirm(msg)) {
-            window.location.href = `<?= APP_URL ?>/supplierpayment/reverseSupplierPayment/${id}`;
         }
     }
 
