@@ -245,6 +245,21 @@
         color: var(--danger);
         border: 2px solid var(--danger);
     }
+    .modal-icon.warning {
+        background: var(--warning-light);
+        color: var(--warning);
+        border: 2px solid var(--warning);
+    }
+    .modal-icon.primary {
+        background: var(--primary-light);
+        color: var(--primary);
+        border: 2px solid var(--primary);
+    }
+    .modal-icon.danger {
+        background: var(--danger-light);
+        color: var(--danger);
+        border: 2px solid var(--danger);
+    }
     .modal-title {
         font-size: 16px;
         font-weight: 700;
@@ -386,9 +401,30 @@
         <?php endif; ?>
     <?php endif; ?>
 
-    <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; align-items: start; margin-top: 15px;">
-        <form action="<?= APP_URL ?>/supplierpayment/recordSupplierPayment" method="POST" id="supplierPayForm" style="margin: 0;">
-            <div class="payment-panel">
+    <!-- Reusable Dynamic Transaction Details Modal (View/Print Receipt) -->
+    <div id="dynamic-receipt-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-card" style="max-width: 500px;">
+            <div class="modal-icon success" id="dynamic-receipt-icon">✓</div>
+            <h3 class="modal-title" id="dynamic-receipt-title">Transaction Details</h3>
+            
+            <div class="receipt-summary-box" id="dynamic-receipt-content" style="max-height: 380px; overflow-y: auto;">
+                <!-- Content injected dynamically -->
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" id="dynamic-receipt-print-btn" class="btn btn-primary" style="flex: 1; justify-content: center;">
+                    <i class="ph ph-printer"></i> Print Receipt
+                </button>
+                <button type="button" onclick="closeModal('dynamic-receipt-modal')" class="btn" style="flex: 1; justify-content: center;">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 20px; align-items: stretch; margin-top: 15px;">
+        <form action="<?= APP_URL ?>/supplierpayment/recordSupplierPayment" method="POST" id="supplierPayForm" style="margin: 0; display: flex; flex-direction: column; height: 100%;">
+            <div class="payment-panel" style="flex: 1; display: flex; flex-direction: column; min-height: 560px;">
                 <div class="payment-panel-header">
                     <span>Record Supplier Payment</span>
                 </div>
@@ -495,7 +531,7 @@
                     </div>
 
                     <!-- Allocation Selection -->
-                    <div class="allocation-box" id="supp-allocation-box">
+                    <div class="allocation-box hidden" id="supp-allocation-box">
                         <h4 style="margin: 0 0 10px 0; font-size: 13px; font-weight: 700; color: var(--slate-800);">GRN Allocation Workflow</h4>
                         
                         <div id="supp-manual-grid" class="hidden">
@@ -547,7 +583,7 @@
     </form>
 
     <!-- Right Panel: Supplier History Card -->
-    <div class="payment-panel" id="supplier-history-panel" style="display: flex; flex-direction: column;">
+    <div class="payment-panel" id="supplier-history-panel" style="display: flex; flex-direction: column; height: 100%; min-height: 560px;">
         <div class="payment-panel-header" style="background: var(--slate-700); display: flex; justify-content: space-between; align-items: center;">
             <span>Supplier History</span>
             <div style="display: flex; gap: 8px;">
@@ -559,7 +595,7 @@
                 </a>
             </div>
         </div>
-        <div class="payment-panel-body" id="supplier-history-body" style="flex-grow: 1; overflow-y: auto; max-height: 520px; min-height: 520px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--slate-400); padding: 15px; box-sizing: border-box;">
+        <div class="payment-panel-body" id="supplier-history-body" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--slate-400); padding: 15px; box-sizing: border-box;">
             <i class="ph ph-clock-counter-clockwise" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;"></i>
             <span style="font-size: 12px;">Select a supplier to view history.</span>
         </div>
@@ -571,6 +607,7 @@
     // Global states
     let activeSupplierGRNs = [];
     let activeSupplierSearchIndex = -1;
+    let activeSupplierHistory = [];
 
     // Suppliers list injected from PHP
     const suppliers = [
@@ -713,7 +750,7 @@
         btnProfile.style.opacity = '1';
 
         const btnStatement = document.getElementById('btn-view-statement');
-        btnStatement.href = '<?= APP_URL ?>/report/viewer/supplier_statement?supplier=' + supp.id;
+        btnStatement.href = '<?= APP_URL ?>/report/viewer/supplier_statement?supplier=' + supp.id + '&start_date=&end_date=';
         btnStatement.style.pointerEvents = 'auto';
         btnStatement.style.opacity = '1';
 
@@ -755,6 +792,7 @@
         fetch('<?= APP_URL ?>/supplierpayment/getSupplierHistoryJson/' + supplierId)
             .then(res => res.json())
             .then(data => {
+                activeSupplierHistory = data;
                 renderSupplierHistory(data);
             })
             .catch(err => {
@@ -812,15 +850,220 @@
                         <span style="font-size: 12px; font-weight: 500; color: var(--slate-800); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(item.ref)}">${escapeHtml(item.ref)}</span>
                         <span style="font-size: 12px; font-weight: 700; color: ${amtColor}; font-family: monospace;">${amtText}</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--slate-500); border-top: 1px dashed var(--slate-200); padding-top: 4px; margin-top: 2px;">
-                        <span>Running Balance:</span>
-                        <span style="font-weight: 600; font-family: monospace; color: var(--slate-700);">Rs ${balFormatted}</span>
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--slate-500); border-top: 1px dashed var(--slate-200); padding-top: 4px; margin-top: 2px; align-items: center;">
+                        <span>Running Balance: <strong style="font-family: monospace; color: var(--slate-700);">Rs ${balFormatted}</strong></span>
+                        <div style="display: flex; gap: 8px;">
+                            <a href="javascript:void(0)" onclick="viewLedgerItem('${item.type}', ${item.id})" style="color: var(--primary); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 2px;">
+                                <i class="ph ph-eye"></i> View
+                            </a>
+                            <a href="javascript:void(0)" onclick="printLedgerItem('${item.type}', ${item.id})" style="color: var(--slate-600); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 2px;">
+                                <i class="ph ph-printer"></i> Print
+                            </a>
+                        </div>
                     </div>
                 </div>
             `;
         });
         html += '</div>';
         historyBody.innerHTML = html;
+    }
+
+    function viewLedgerItem(type, id) {
+        const item = activeSupplierHistory.find(x => x.type === type && x.id == id);
+        if (!item) return;
+        
+        const modal = document.getElementById('dynamic-receipt-modal');
+        const title = document.getElementById('dynamic-receipt-title');
+        const icon = document.getElementById('dynamic-receipt-icon');
+        const content = document.getElementById('dynamic-receipt-content');
+        const printBtn = document.getElementById('dynamic-receipt-print-btn');
+        
+        // Show loading state
+        content.innerHTML = `
+            <div style="text-align: center; padding: 20px 0; color: var(--slate-400);">
+                <i class="ph ph-circle-notch animate-spin" style="font-size: 24px; margin-bottom: 8px; display: inline-block;"></i>
+                <div>Loading details...</div>
+            </div>
+        `;
+        printBtn.style.display = 'none';
+        modal.style.display = 'flex';
+        
+        if (type === 'Payment') {
+            icon.innerText = '✓';
+            icon.className = 'modal-icon success';
+            title.innerText = 'Payment Receipt Details';
+            
+            fetch('<?= APP_URL ?>/supplierpayment/getPaymentDetailsJson/' + id)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.success) {
+                        content.innerHTML = `<div style="color: var(--danger); font-weight: 600;">${data.message}</div>`;
+                        return;
+                    }
+                    const payment = data.payment;
+                    const allocations = data.allocations;
+                    
+                    let allocHtml = '';
+                    if (allocations && allocations.length > 0) {
+                        allocHtml = `
+                            <div style="margin-top: 15px; border-top: 1px solid var(--slate-200); padding-top: 10px;">
+                                <h4 style="margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase; color: var(--slate-500); font-weight: 700;">GRN Allocations</h4>
+                                <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--slate-200); color: var(--slate-500); text-align: left;">
+                                            <th style="padding: 4px 0;">GRN #</th>
+                                            <th style="padding: 4px 0; text-align: right;">Allocated</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+                        allocations.forEach(a => {
+                            allocHtml += `
+                                <tr style="border-bottom: 1px dotted var(--slate-100);">
+                                    <td style="padding: 6px 0; color: var(--slate-700); font-weight: 500;">${escapeHtml(a.grn_number)}</td>
+                                    <td style="padding: 6px 0; text-align: right; font-family: monospace; font-weight: 600; color: var(--success);">Rs ${parseFloat(a.amount).toFixed(2)}</td>
+                                </tr>
+                            `;
+                        });
+                        allocHtml += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+                    } else {
+                        allocHtml = `
+                            <div style="margin-top: 15px; border-top: 1px solid var(--slate-200); padding-top: 10px; color: var(--slate-400); font-size: 11px; text-align: center;">
+                                No allocations recorded (Advance Payment)
+                            </div>
+                        `;
+                    }
+                    
+                    content.innerHTML = `
+                        <div class="receipt-row">
+                            <span class="receipt-label">Voucher / Ref #</span>
+                            <span class="receipt-value" style="font-weight: 700;">${escapeHtml(payment.reference)}</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Date</span>
+                            <span class="receipt-value">${payment.payment_date}</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Paid To</span>
+                            <span class="receipt-value" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(payment.supplier_name)}</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span class="receipt-label">Method</span>
+                            <span class="receipt-value">${escapeHtml(payment.payment_method)}</span>
+                        </div>
+                        ${payment.payment_method === 'Cheque' ? `
+                            <div class="receipt-row" style="background: var(--warning-light); padding: 4px 8px; border-radius: 4px; margin-top: 4px;">
+                                <span class="receipt-label" style="color: var(--warning);">Cheque Details</span>
+                                <span class="receipt-value" style="color: var(--warning); font-size: 11px;">${escapeHtml(payment.cheque_bank)} - ${escapeHtml(payment.cheque_number)} (${payment.cheque_date})</span>
+                            </div>
+                        ` : ''}
+                        <div class="receipt-row">
+                            <span class="receipt-label">Status</span>
+                            <span class="receipt-value" style="color: ${payment.status === 'Active' ? 'var(--success)' : 'var(--danger)'};">${escapeHtml(payment.status)}</span>
+                        </div>
+                        ${payment.notes ? `
+                            <div class="receipt-row" style="margin-top: 4px;">
+                                <span class="receipt-label">Notes</span>
+                                <span class="receipt-value" style="font-style: italic; font-weight: normal; color: var(--slate-500);">${escapeHtml(payment.notes)}</span>
+                            </div>
+                        ` : ''}
+                        <div class="receipt-row total-row">
+                            <span class="receipt-label">Amount Paid</span>
+                            <span class="receipt-value" style="font-family: monospace;">Rs ${parseFloat(payment.amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                        </div>
+                        ${allocHtml}
+                    `;
+                    
+                    printBtn.style.display = 'flex';
+                    printBtn.onclick = function() { printFullReceipt(payment.id); };
+                })
+                .catch(err => {
+                    console.error(err);
+                    content.innerHTML = `<div style="color: var(--danger);">Failed to load payment details.</div>`;
+                });
+        } else if (type === 'GRN') {
+            icon.innerText = '⛟';
+            icon.className = 'modal-icon warning';
+            title.innerText = 'Goods Receipt Note';
+            content.innerHTML = `
+                <div class="receipt-row">
+                    <span class="receipt-label">GRN Reference</span>
+                    <span class="receipt-value" style="font-weight: 700;">${escapeHtml(item.ref)}</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Date</span>
+                    <span class="receipt-value">${item.date}</span>
+                </div>
+                <div class="receipt-row total-row">
+                    <span class="receipt-label">GRN Total</span>
+                    <span class="receipt-value" style="color: var(--slate-900); font-family: monospace;">Rs ${parseFloat(item.credit).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                </div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <p style="font-size: 11px; color: var(--slate-500); margin-bottom: 10px;">For full line-by-line item details, view the full record.</p>
+                    <a href="<?= APP_URL ?>/grn/show/${id}" target="_blank" class="btn btn-primary" style="display: inline-flex; justify-content: center; width: 100%;">
+                        <i class="ph ph-arrow-square-out"></i> View Full GRN Details
+                    </a>
+                </div>
+            `;
+        } else if (type === 'Supplier Return') {
+            icon.innerText = '↩';
+            icon.className = 'modal-icon primary';
+            title.innerText = 'Supplier Return Note';
+            content.innerHTML = `
+                <div class="receipt-row">
+                    <span class="receipt-label">Return Reference</span>
+                    <span class="receipt-value" style="font-weight: 700;">${escapeHtml(item.ref)}</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Date</span>
+                    <span class="receipt-value">${item.date}</span>
+                </div>
+                <div class="receipt-row total-row">
+                    <span class="receipt-label">Return Total</span>
+                    <span class="receipt-value" style="color: var(--primary); font-family: monospace;">Rs ${parseFloat(item.debit).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                </div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <p style="font-size: 11px; color: var(--slate-500); margin-bottom: 10px;">For line-by-line item returns details, view the full record.</p>
+                    <a href="<?= APP_URL ?>/supplier-return/show/${id}" target="_blank" class="btn btn-primary" style="display: inline-flex; justify-content: center; width: 100%;">
+                        <i class="ph ph-arrow-square-out"></i> View Full Return Details
+                    </a>
+                </div>
+            `;
+        } else if (type === 'Expense') {
+            icon.innerText = '💸';
+            icon.className = 'modal-icon danger';
+            title.innerText = 'Expense Details';
+            content.innerHTML = `
+                <div class="receipt-row">
+                    <span class="receipt-label">Expense Ref / Memo</span>
+                    <span class="receipt-value" style="font-weight: 700;">${escapeHtml(item.ref)}</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Date</span>
+                    <span class="receipt-value">${item.date}</span>
+                </div>
+                <div class="receipt-row total-row">
+                    <span class="receipt-label">Expense Amount</span>
+                    <span class="receipt-value" style="color: var(--danger); font-family: monospace;">Rs ${parseFloat(item.debit).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                </div>
+            `;
+        }
+    }
+
+    function printLedgerItem(type, id) {
+        if (type === 'Payment') {
+            printFullReceipt(id);
+        } else if (type === 'GRN') {
+            window.open('<?= APP_URL ?>/grn/show/' + id, '_blank');
+        } else if (type === 'Supplier Return') {
+            window.open('<?= APP_URL ?>/supplier-return/show/' + id, '_blank');
+        } else {
+            alert('Print option not available for this ledger type.');
+        }
     }
 
     // Render supplier GRNs grid
@@ -856,11 +1099,14 @@
     function toggleAllocationGrid(prefix) {
         const type = document.getElementById(prefix + '-allocation-type').value;
         const box = document.getElementById(prefix + '-allocation-box');
+        const manualGrid = document.getElementById(prefix + '-manual-grid');
         
         if (type === 'manual') {
             box.classList.remove('hidden');
+            if (manualGrid) manualGrid.classList.remove('hidden');
         } else {
             box.classList.add('hidden');
+            if (manualGrid) manualGrid.classList.add('hidden');
         }
         updateAllocationTotals();
     }

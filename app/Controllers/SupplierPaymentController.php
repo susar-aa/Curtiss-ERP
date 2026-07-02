@@ -98,6 +98,25 @@ class SupplierPaymentController extends Controller {
     }
 
     /**
+     * API to fetch supplier payment details and allocations by ID
+     */
+    public function getPaymentDetailsJson($id) {
+        header('Content-Type: application/json');
+        $payment = $this->paymentModel->getSupplierPaymentById(intval($id));
+        if (!$payment) {
+            echo json_encode(['success' => false, 'message' => 'Payment record not found.']);
+            exit;
+        }
+        $allocations = $this->paymentModel->getSupplierPaymentAllocations(intval($id));
+        echo json_encode([
+            'success' => true,
+            'payment' => $payment,
+            'allocations' => $allocations
+        ]);
+        exit;
+    }
+
+    /**
      * Record supplier payment
      */
     public function recordSupplierPayment() {
