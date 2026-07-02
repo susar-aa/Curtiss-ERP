@@ -422,14 +422,14 @@
         </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 20px; align-items: stretch; margin-top: 15px;">
+    <div style="display: grid; grid-template-columns: 1.45fr 0.55fr; gap: 20px; align-items: stretch; margin-top: 15px; height: 650px;">
         <form action="<?= APP_URL ?>/supplierpayment/recordSupplierPayment" method="POST" id="supplierPayForm" style="margin: 0; display: flex; flex-direction: column; height: 100%;">
-            <div class="payment-panel" style="flex: 1; display: flex; flex-direction: column; min-height: 560px;">
+            <div class="payment-panel" style="flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden;">
                 <div class="payment-panel-header">
                     <span>Record Supplier Payment</span>
                 </div>
             
-            <div class="payment-panel-body">
+            <div class="payment-panel-body" style="flex: 1; overflow-y: auto;">
                 <!-- Row 1: Supplier Search & Status details -->
                 <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr; gap: 15px;">
                     <div class="form-group">
@@ -583,7 +583,7 @@
     </form>
 
     <!-- Right Panel: Supplier History Card -->
-    <div class="payment-panel" id="supplier-history-panel" style="display: flex; flex-direction: column; height: 100%; min-height: 560px;">
+    <div class="payment-panel" id="supplier-history-panel" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
         <div class="payment-panel-header" style="background: var(--slate-700); display: flex; justify-content: space-between; align-items: center;">
             <span>Supplier History</span>
             <div style="display: flex; gap: 8px;">
@@ -595,7 +595,7 @@
                 </a>
             </div>
         </div>
-        <div class="payment-panel-body" id="supplier-history-body" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--slate-400); padding: 15px; box-sizing: border-box;">
+        <div class="payment-panel-body" id="supplier-history-body" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--slate-400); padding: 15px; box-sizing: border-box; width: 100%;">
             <i class="ph ph-clock-counter-clockwise" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;"></i>
             <span style="font-size: 12px;">Select a supplier to view history.</span>
         </div>
@@ -711,7 +711,10 @@
         btnStatement.style.opacity = '0.5';
 
         // Reset history body
-        document.getElementById('supplier-history-body').innerHTML = `
+        const histBody = document.getElementById('supplier-history-body');
+        histBody.style.justifyContent = 'center';
+        histBody.style.alignItems = 'center';
+        histBody.innerHTML = `
             <i class="ph ph-clock-counter-clockwise" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;"></i>
             <span style="font-size: 12px;">Select a supplier to view history.</span>
         `;
@@ -809,6 +812,8 @@
     function renderSupplierHistory(history) {
         const historyBody = document.getElementById('supplier-history-body');
         if (!history || history.length === 0) {
+            historyBody.style.justifyContent = 'center';
+            historyBody.style.alignItems = 'center';
             historyBody.innerHTML = `
                 <div style="text-align: center; padding: 80px 20px; color: var(--slate-400);">
                     <i class="ph ph-clock-counter-clockwise" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px; display: inline-block;"></i>
@@ -817,6 +822,9 @@
             `;
             return;
         }
+
+        historyBody.style.justifyContent = 'flex-start';
+        historyBody.style.alignItems = 'stretch';
 
         let html = '<div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">';
         history.forEach(item => {

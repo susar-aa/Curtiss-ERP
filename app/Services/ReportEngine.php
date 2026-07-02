@@ -829,9 +829,9 @@ class ReportEngine {
         // 1. Customer Filter
         if (isset($filters['customer']) && !empty($filters['customer'])) {
             if (strpos($baseSql, 'customer_id') !== false) {
-                if (strpos($baseSql, 'i.customer_id') !== false) {
+                if (preg_match('/\bi\.customer_id\b/', $baseSql)) {
                     $clauses[] = "i.customer_id = :customer";
-                } elseif (strpos($baseSql, 'cp.customer_id') !== false) {
+                } elseif (preg_match('/\bcp\.customer_id\b/', $baseSql)) {
                     $clauses[] = "cp.customer_id = :customer";
                 } else {
                     $clauses[] = "customer_id = :customer";
@@ -843,11 +843,11 @@ class ReportEngine {
         // 2. Supplier Filter
         if (isset($filters['supplier']) && !empty($filters['supplier'])) {
             if (strpos($baseSql, 'vendor_id') !== false) {
-                if (strpos($baseSql, 'p.vendor_id') !== false) {
+                if (preg_match('/\bp\.vendor_id\b/', $baseSql)) {
                     $clauses[] = "p.vendor_id = :supplier";
-                } elseif (strpos($baseSql, 'g.vendor_id') !== false) {
+                } elseif (preg_match('/\bg\.vendor_id\b/', $baseSql)) {
                     $clauses[] = "g.vendor_id = :supplier";
-                } elseif (strpos($baseSql, 'i.vendor_id') !== false) {
+                } elseif (preg_match('/\bi\.vendor_id\b/', $baseSql)) {
                     $clauses[] = "i.vendor_id = :supplier";
                 } else {
                     $clauses[] = "vendor_id = :supplier";
@@ -859,19 +859,19 @@ class ReportEngine {
         // 3. Product Filter
         if (isset($filters['product']) && !empty($filters['product'])) {
             if (strpos($baseSql, 'item_id') !== false) {
-                if (strpos($baseSql, 'sl.item_id') !== false) {
+                if (preg_match('/\bsl\.item_id\b/', $baseSql)) {
                     $clauses[] = "sl.item_id = :product";
-                } elseif (strpos($baseSql, 'ii.item_id') !== false) {
+                } elseif (preg_match('/\bii\.item_id\b/', $baseSql)) {
                     $clauses[] = "ii.item_id = :product";
-                } elseif (strpos($baseSql, 'wt.item_id') !== false) {
+                } elseif (preg_match('/\bwt\.item_id\b/', $baseSql)) {
                     $clauses[] = "wt.item_id = :product";
-                } elseif (strpos($baseSql, 'sb.item_id') !== false) {
+                } elseif (preg_match('/\bsb\.item_id\b/', $baseSql)) {
                     $clauses[] = "sb.item_id = :product";
                 } else {
                     $clauses[] = "item_id = :product";
                 }
                 $params[':product'] = $filters['product'];
-            } elseif (strpos($baseSql, 'i.id') !== false) {
+            } elseif (preg_match('/\bi\.id\b/', $baseSql)) {
                 $clauses[] = "i.id = :product";
                 $params[':product'] = $filters['product'];
             }
@@ -880,15 +880,15 @@ class ReportEngine {
         // 4. Warehouse Filter
         if (isset($filters['warehouse']) && !empty($filters['warehouse'])) {
             if (strpos($baseSql, 'warehouse_id') !== false) {
-                if (strpos($baseSql, 'i.warehouse_id') !== false) {
+                if (preg_match('/\bi\.warehouse_id\b/', $baseSql)) {
                     $clauses[] = "i.warehouse_id = :warehouse";
-                } elseif (strpos($baseSql, 'sl.warehouse_id') !== false) {
+                } elseif (preg_match('/\bsl\.warehouse_id\b/', $baseSql)) {
                     $clauses[] = "sl.warehouse_id = :warehouse";
                 } else {
                     $clauses[] = "warehouse_id = :warehouse";
                 }
                 $params[':warehouse'] = $filters['warehouse'];
-            } elseif (strpos($baseSql, 'wt.from_warehouse_id') !== false) {
+            } elseif (preg_match('/\bwt\.from_warehouse_id\b/', $baseSql)) {
                 $clauses[] = "(wt.from_warehouse_id = :warehouse OR wt.to_warehouse_id = :warehouse)";
                 $params[':warehouse'] = $filters['warehouse'];
             }
@@ -897,9 +897,9 @@ class ReportEngine {
         // 5. Category Filter
         if (isset($filters['category']) && !empty($filters['category'])) {
             if (strpos($baseSql, 'category_id') !== false) {
-                if (strpos($baseSql, 'i.category_id') !== false) {
+                if (preg_match('/\bi\.category_id\b/', $baseSql)) {
                     $clauses[] = "i.category_id = :category";
-                } elseif (strpos($baseSql, 'it.category_id') !== false) {
+                } elseif (preg_match('/\bit\.category_id\b/', $baseSql)) {
                     $clauses[] = "it.category_id = :category";
                 } else {
                     $clauses[] = "category_id = :category";
@@ -911,15 +911,15 @@ class ReportEngine {
         // 6. Route Filter
         if (isset($filters['route']) && !empty($filters['route'])) {
             if (strpos($baseSql, 'rep_route_id') !== false) {
-                if (strpos($baseSql, 'i.rep_route_id') !== false) {
+                if (preg_match('/\bi\.rep_route_id\b/', $baseSql)) {
                     $clauses[] = "i.rep_route_id = :route";
-                } elseif (strpos($baseSql, 'cp.rep_route_id') !== false) {
+                } elseif (preg_match('/\bcp\.rep_route_id\b/', $baseSql)) {
                     $clauses[] = "cp.rep_route_id = :route";
                 } else {
                     $clauses[] = "rep_route_id = :route";
                 }
                 $params[':route'] = $filters['route'];
-            } elseif (strpos($baseSql, 'r.id') !== false) {
+            } elseif (preg_match('/\br\.id\b/', $baseSql)) {
                 $clauses[] = "r.id = :route";
                 $params[':route'] = $filters['route'];
             }
@@ -928,15 +928,15 @@ class ReportEngine {
         // 7. Sales Rep Filter
         if (isset($filters['rep']) && !empty($filters['rep'])) {
             if (strpos($baseSql, 'created_by') !== false) {
-                if (strpos($baseSql, 'i.created_by') !== false) {
+                if (preg_match('/\bi\.created_by\b/', $baseSql)) {
                     $clauses[] = "i.created_by = :rep";
-                } elseif (strpos($baseSql, 'cp.created_by') !== false) {
+                } elseif (preg_match('/\bcp\.created_by\b/', $baseSql)) {
                     $clauses[] = "cp.created_by = :rep";
                 } else {
                     $clauses[] = "created_by = :rep";
                 }
                 $params[':rep'] = $filters['rep'];
-            } elseif (strpos($baseSql, 'r.user_id') !== false) {
+            } elseif (preg_match('/\br\.user_id\b/', $baseSql)) {
                 $clauses[] = "r.user_id = :rep";
                 $params[':rep'] = $filters['rep'];
             }
@@ -945,7 +945,7 @@ class ReportEngine {
         // 8. Payment Method Filter
         if (isset($filters['payment_method']) && !empty($filters['payment_method'])) {
             if (strpos($baseSql, 'payment_method') !== false) {
-                if (strpos($baseSql, 'cp.payment_method') !== false) {
+                if (preg_match('/\bcp\.payment_method\b/', $baseSql)) {
                     $clauses[] = "cp.payment_method = :payment_method";
                 } else {
                     $clauses[] = "payment_method = :payment_method";
@@ -957,11 +957,11 @@ class ReportEngine {
         // 9. Status Filter
         if (isset($filters['status']) && !empty($filters['status'])) {
             if (strpos($baseSql, 'status') !== false) {
-                if (strpos($baseSql, 'i.status') !== false) {
+                if (preg_match('/\bi\.status\b/', $baseSql)) {
                     $clauses[] = "i.status = :status";
-                } elseif (strpos($baseSql, 'p.status') !== false) {
+                } elseif (preg_match('/\bp\.status\b/', $baseSql)) {
                     $clauses[] = "p.status = :status";
-                } elseif (strpos($baseSql, 'g.status') !== false) {
+                } elseif (preg_match('/\bg\.status\b/', $baseSql)) {
                     $clauses[] = "g.status = :status";
                 } else {
                     $clauses[] = "status = :status";
@@ -973,9 +973,9 @@ class ReportEngine {
         // 10. Brand Filter
         if (isset($filters['brand']) && !empty($filters['brand'])) {
             if (strpos($baseSql, 'brand') !== false) {
-                if (strpos($baseSql, 'i.brand') !== false) {
+                if (preg_match('/\bi\.brand\b/', $baseSql)) {
                     $clauses[] = "i.brand = :brand";
-                } elseif (strpos($baseSql, 'it.brand') !== false) {
+                } elseif (preg_match('/\bit\.brand\b/', $baseSql)) {
                     $clauses[] = "it.brand = :brand";
                 } else {
                     $clauses[] = "brand = :brand";
@@ -987,7 +987,7 @@ class ReportEngine {
         // 11. Customer/Supplier Group Filter
         if (isset($filters['group']) && !empty($filters['group'])) {
             if (strpos($baseSql, 'customer_type') !== false) {
-                if (strpos($baseSql, 'c.customer_type') !== false) {
+                if (preg_match('/\bc\.customer_type\b/', $baseSql)) {
                     $clauses[] = "c.customer_type = :group";
                 } else {
                     $clauses[] = "customer_type = :group";
@@ -999,13 +999,13 @@ class ReportEngine {
         // 12. Vehicle Filter
         if (isset($filters['vehicle']) && !empty($filters['vehicle'])) {
             if (strpos($baseSql, 'rep_route_id') !== false) {
-                if (strpos($baseSql, 'i.rep_route_id') !== false) {
+                if (preg_match('/\bi\.rep_route_id\b/', $baseSql)) {
                     $clauses[] = "EXISTS (SELECT 1 FROM deliveries d WHERE d.rep_route_id = i.rep_route_id AND d.vehicle_number = :vehicle)";
                 } else {
                     $clauses[] = "EXISTS (SELECT 1 FROM deliveries d WHERE d.rep_route_id = rep_route_id AND d.vehicle_number = :vehicle)";
                 }
                 $params[':vehicle'] = $filters['vehicle'];
-            } elseif (strpos($baseSql, 'r.id') !== false) {
+            } elseif (preg_match('/\br\.id\b/', $baseSql)) {
                 $clauses[] = "EXISTS (SELECT 1 FROM deliveries d WHERE d.rep_route_id = r.id AND d.vehicle_number = :vehicle)";
                 $params[':vehicle'] = $filters['vehicle'];
             }
@@ -1014,13 +1014,13 @@ class ReportEngine {
         // 13. Driver Filter
         if (isset($filters['driver']) && !empty($filters['driver'])) {
             if (strpos($baseSql, 'rep_route_id') !== false) {
-                if (strpos($baseSql, 'i.rep_route_id') !== false) {
+                if (preg_match('/\bi\.rep_route_id\b/', $baseSql)) {
                     $clauses[] = "EXISTS (SELECT 1 FROM deliveries d WHERE d.rep_route_id = i.rep_route_id AND d.driver_name = :driver)";
                 } else {
                     $clauses[] = "EXISTS (SELECT 1 FROM deliveries d WHERE d.rep_route_id = rep_route_id AND d.driver_name = :driver)";
                 }
                 $params[':driver'] = $filters['driver'];
-            } elseif (strpos($baseSql, 'r.id') !== false) {
+            } elseif (preg_match('/\br\.id\b/', $baseSql)) {
                 $clauses[] = "EXISTS (SELECT 1 FROM deliveries d WHERE d.rep_route_id = r.id AND d.driver_name = :driver)";
                 $params[':driver'] = $filters['driver'];
             }
@@ -1029,13 +1029,13 @@ class ReportEngine {
         // 14. Partner Filter
         if (isset($filters['partner']) && !empty($filters['partner'])) {
             if (strpos($baseSql, 'rep_route_id') !== false) {
-                if (strpos($baseSql, 'i.rep_route_id') !== false) {
+                if (preg_match('/\bi\.rep_route_id\b/', $baseSql)) {
                     $clauses[] = "EXISTS (SELECT 1 FROM deliveries d WHERE d.rep_route_id = i.rep_route_id AND d.partner_name = :partner)";
                 } else {
                     $clauses[] = "EXISTS (SELECT 1 FROM deliveries d WHERE d.rep_route_id = rep_route_id AND d.partner_name = :partner)";
                 }
                 $params[':partner'] = $filters['partner'];
-            } elseif (strpos($baseSql, 'r.id') !== false) {
+            } elseif (preg_match('/\br\.id\b/', $baseSql)) {
                 $clauses[] = "EXISTS (SELECT 1 FROM deliveries d WHERE d.rep_route_id = r.id AND d.partner_name = :partner)";
                 $params[':partner'] = $filters['partner'];
             }
@@ -1044,7 +1044,7 @@ class ReportEngine {
         // 15. Territory Filter
         if (isset($filters['territory']) && !empty($filters['territory'])) {
             if (strpos($baseSql, 'territory') !== false) {
-                if (strpos($baseSql, 'c.territory') !== false) {
+                if (preg_match('/\bc\.territory\b/', $baseSql)) {
                     $clauses[] = "c.territory = :territory";
                 } else {
                     $clauses[] = "territory = :territory";
