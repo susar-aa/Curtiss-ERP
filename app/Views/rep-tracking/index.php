@@ -2339,6 +2339,31 @@
 <script>
     const globalBankAccounts = <?php echo json_encode($data['bank_accounts'] ?? []); ?>;
     const globalAllAccounts = <?php echo json_encode($data['all_accounts'] ?? []); ?>;
+
+    function buildAccountOptions(selectedId, fallbackCode) {
+        let html = '<option value="">-- Select Account --</option>';
+        let hasSelected = false;
+        if (selectedId !== undefined && selectedId !== null && selectedId !== '') {
+            hasSelected = globalAllAccounts.some(acc => String(acc.id) === String(selectedId));
+        }
+        globalAllAccounts.forEach(acc => {
+            let isSel = false;
+            if (hasSelected) {
+                isSel = String(acc.id) === String(selectedId);
+            } else {
+                isSel = acc.account_code === fallbackCode;
+            }
+            html += `<option value="${acc.id}" ${isSel ? 'selected' : ''}>${acc.account_code} - ${acc.account_name}</option>`;
+        });
+        return html;
+    }
+
+    // Helper function to resolve ID by account code
+    function getAccountIdByCode(code) {
+        const acc = globalAllAccounts.find(a => a.account_code === code);
+        return acc ? acc.id : null;
+    }
+
     let currentRouteId = null;
     let routeMap = null;
     let routeMapLayers = [];
