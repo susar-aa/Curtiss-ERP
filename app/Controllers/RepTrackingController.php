@@ -869,7 +869,7 @@ class RepTrackingController extends Controller {
 
         // Automatically create and expose loading task if moving to Loading status
         if ($targetStatus === 'Loading') {
-            $db->query("SELECT id FROM deliveries WHERE rep_route_id = :rid OR secondary_rep_route_id = :rid");
+            $db->query("SELECT id FROM deliveries WHERE rep_route_id = :rid OR secondary_rep_route_id = :rid ORDER BY id DESC LIMIT 1");
             $db->bind(':rid', $routeId);
             $del = $db->single();
             
@@ -1081,7 +1081,7 @@ class RepTrackingController extends Controller {
         $company = $companyModel->getSettings();
 
         $db = new Database();
-        $db->query("SELECT * FROM deliveries WHERE rep_route_id = :rid LIMIT 1");
+        $db->query("SELECT * FROM deliveries WHERE rep_route_id = :rid ORDER BY id DESC LIMIT 1");
         $db->bind(':rid', $routeId);
         $delivery = $db->single();
 

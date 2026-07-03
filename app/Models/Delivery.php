@@ -164,7 +164,7 @@ class Delivery {
 
     public function getDeliveryCreditInvoices($routeId, $secondaryRouteId = null) {
         // Fetch the delivery first to check if there are selected credit invoices
-        $this->db->query("SELECT selected_credit_invoices FROM deliveries WHERE rep_route_id = :rid LIMIT 1");
+        $this->db->query("SELECT selected_credit_invoices FROM deliveries WHERE rep_route_id = :rid ORDER BY id DESC LIMIT 1");
         $this->db->bind(':rid', $routeId);
         $del = $this->db->single();
         
