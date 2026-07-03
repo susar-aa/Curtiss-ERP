@@ -3215,8 +3215,6 @@
         } else {
             selectedCreditBills = selectedCreditBills.filter(id => id !== billId);
         }
-    };
-        }
     }
 
     function loadAdjustmentsStage(routeId) {
