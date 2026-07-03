@@ -4379,8 +4379,8 @@
                 const balancing = data.balancing;
 
                 const expectedCashSales = parseFloat(balancing.cash_sales || 0);
-                const expectedCashColls = parseFloat(balancing.cash_collections || 0);
-                const totalExpectedCash = expectedCashSales + expectedCashColls;
+                const totalExpectedCash = parseFloat(balancing.cash_collections || 0);
+                const expectedCashColls = Math.max(0, totalExpectedCash - expectedCashSales);
 
                 document.getElementById('reconExpectedCash').innerText = 'Rs ' + expectedCashSales.toLocaleString('en-US', {minimumFractionDigits: 2});
                 document.getElementById('reconExpectedCollections').innerText = 'Rs ' + expectedCashColls.toLocaleString('en-US', {minimumFractionDigits: 2});

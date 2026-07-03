@@ -196,7 +196,7 @@ class DriverRoute {
 
             // 1. Update delivery status
             $this->db->query("UPDATE deliveries 
-                              SET status = 'Completed', end_meter = :endMeter, cash_denominations = :cashDenoms, completed_at = NOW() 
+                              SET status = 'Finalizing', end_meter = :endMeter, cash_denominations = :cashDenoms, completed_at = NOW() 
                               WHERE id = :id");
             $this->db->bind(':id', $deliveryId);
             $this->db->bind(':endMeter', $endMeter);
@@ -205,7 +205,7 @@ class DriverRoute {
 
             // 2. Update rep_daily_routes status
             $this->db->query("UPDATE rep_daily_routes 
-                              SET end_meter = :endMeter, end_time = NOW(), status = 'Completed' 
+                              SET end_meter = :endMeter, end_time = NOW(), status = 'Finalizing' 
                               WHERE id = :route_id");
             $this->db->bind(':route_id', $delivery->rep_route_id);
             $this->db->bind(':endMeter', $endMeter);

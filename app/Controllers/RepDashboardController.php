@@ -593,7 +593,7 @@ class RepDashboardController extends Controller {
                         $this->db->bind(':end_time', $r['end_time'] ?? null);
                         $this->db->bind(':end_lat', $r['end_lat'] ?? null);
                         $this->db->bind(':end_lng', $r['end_lng'] ?? null);
-                        $this->db->bind(':status', ($r['status'] ?? 'Active') === 'Completed' ? 'Pending GL' : ($r['status'] ?? 'Active'));
+                        $this->db->bind(':status', ($r['status'] ?? 'Active') === 'Completed' ? 'Finalizing' : ($r['status'] ?? 'Active'));
                         $this->db->bind(':uuid', $r['uuid'] ?? null);
                         $this->db->bind(':id', $serverId);
                         $this->db->execute();
@@ -611,7 +611,7 @@ class RepDashboardController extends Controller {
                         $this->db->bind(':end_time', $r['end_time'] ?? null);
                         $this->db->bind(':end_lat', $r['end_lat'] ?? null);
                         $this->db->bind(':end_lng', $r['end_lng'] ?? null);
-                        $this->db->bind(':status', ($r['status'] ?? 'Active') === 'Completed' ? 'Pending GL' : ($r['status'] ?? 'Active'));
+                        $this->db->bind(':status', ($r['status'] ?? 'Active') === 'Completed' ? 'Finalizing' : ($r['status'] ?? 'Active'));
                         $this->db->bind(':uuid', $r['uuid'] ?? null);
                         $this->db->execute();
                         $serverId = $this->db->lastInsertId();
