@@ -1650,10 +1650,8 @@
                                             <label class="macos-label">Partner / Helper</label>
                                             <select id="adjDaPartner" class="macos-select">
                                                 <option value="">-- None --</option>
-                                                <?php foreach($data['employees'] as $e): ?>
-                                                    <?php if($e->status === 'Active'): ?>
-                                                        <option value="<?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?>"><?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?> (<?= htmlspecialchars($e->job_title) ?>)</option>
-                                                    <?php endif; ?>
+                                                <?php foreach($data['drivers'] as $d): ?>
+                                                    <option value="<?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?>"><?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?></option>
                                                 <?php endforeach; ?>
                                             </select>
                                         </div>
@@ -1856,10 +1854,8 @@
                         </select>
                         <select id="settleDaPartner">
                             <option value="">-- None --</option>
-                            <?php foreach($data['employees'] as $e): ?>
-                                <?php if($e->status === 'Active'): ?>
-                                    <option value="<?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?>"><?= htmlspecialchars($e->first_name . ' ' . $e->last_name) ?> (<?= htmlspecialchars($e->job_title) ?>)</option>
-                                 <?php endif; ?>
+                            <?php foreach($data['drivers'] as $d): ?>
+                                <option value="<?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?>"><?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>

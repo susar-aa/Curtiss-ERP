@@ -1080,11 +1080,18 @@ class RepTrackingController extends Controller {
         $companyModel = $this->model('Company');
         $company = $companyModel->getSettings();
 
+        $db = new Database();
+        $db->query("SELECT * FROM deliveries WHERE rep_route_id = :rid LIMIT 1");
+        $db->bind(':rid', $routeId);
+        $delivery = $db->single();
+
         $data = [
             'type' => $type === 'summary' ? 'summary' : 'loading',
             'route' => $this->trackingModel->getRouteById($routeId),
             'items' => $items,
             'bills' => $this->trackingModel->getRouteBills($routeId),
+            'credit_bills' => $this->deliveryModel->getDeliveryCreditInvoices($routeId),
+            'delivery' => $delivery,
             'company' => $company
         ];
         $this->view('rep-tracking/print_loading', $data);

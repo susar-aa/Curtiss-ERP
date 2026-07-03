@@ -347,7 +347,26 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php for($i=1; $i<=8; $i++): ?>
+                                <?php 
+                                $creditBills = $data['credit_bills'] ?? [];
+                                $totalCreditVal = 0.0;
+                                foreach ($creditBills as $cb): 
+                                    $totalCreditVal += floatval($cb->true_grand_total);
+                                ?>
+                                    <tr style="background: none;">
+                                        <td style="border: 1px solid #000; padding: 4px; font-weight: bold;"><?= htmlspecialchars($cb->customer_name) ?> (<?= htmlspecialchars($cb->invoice_number) ?>)</td>
+                                        <td style="border: 1px solid #000; padding: 4px; text-align: right; font-family: monospace; font-weight: bold;"><?= number_format($cb->true_grand_total, 2) ?></td>
+                                        <td style="border: 1px solid #000; padding: 4px;"></td>
+                                        <td style="border: 1px solid #000; padding: 4px;"></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                
+                                <?php 
+                                // Print some empty rows to pad the table if we have few bills
+                                $printedCount = count($creditBills);
+                                $minRows = 8;
+                                for ($i = $printedCount; $i < $minRows; $i++): 
+                                ?>
                                     <tr style="background: none; height: 18px;">
                                         <td style="border: 1px solid #000; padding: 4px;"></td>
                                         <td style="border: 1px solid #000; padding: 4px;"></td>
@@ -355,9 +374,10 @@
                                         <td style="border: 1px solid #000; padding: 4px;"></td>
                                     </tr>
                                 <?php endfor; ?>
+                                
                                 <tr style="background-color: #eaeaea; font-weight: bold;">
                                     <td style="border: 1px solid #000; padding: 4px; text-align: right; text-transform: uppercase;">Total</td>
-                                    <td style="border: 1px solid #000; padding: 4px;"></td>
+                                    <td style="border: 1px solid #000; padding: 4px; text-align: right; font-family: monospace; font-size: 11px;"><?= $totalCreditVal > 0 ? number_format($totalCreditVal, 2) : '' ?></td>
                                     <td colspan="2" style="border: 1px solid #000; padding: 4px;"></td>
                                 </tr>
                             </tbody>
@@ -371,27 +391,27 @@
                         <tbody>
                             <tr style="background: none;">
                                 <td style="border: 1px solid #000; padding: 4px; font-weight: bold; width: 40%;">Cash Collector</td>
-                                <td style="border: 1px solid #000; padding: 4px; width: 60%;"></td>
+                                <td style="border: 1px solid #000; padding: 4px; width: 60%;"><?= htmlspecialchars($data['route']->first_name . ' ' . $data['route']->last_name) ?></td>
                             </tr>
                             <tr style="background: none;">
                                 <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">Driver</td>
-                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                                <td style="border: 1px solid #000; padding: 4px;"><?= htmlspecialchars($data['delivery']->driver_name ?? '') ?></td>
                             </tr>
                             <tr style="background: none;">
                                 <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">Start KM</td>
-                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                                <td style="border: 1px solid #000; padding: 4px;"><?= htmlspecialchars($data['delivery']->start_meter ?? '') ?></td>
                             </tr>
                             <tr style="background: none;">
                                 <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">End KM</td>
-                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                                <td style="border: 1px solid #000; padding: 4px;"><?= htmlspecialchars($data['delivery']->end_meter ?? '') ?></td>
                             </tr>
                             <tr style="background: none;">
                                 <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">Vehicle No</td>
-                                <td style="border: 1px solid #000; padding: 4px;"></td>
+                                <td style="border: 1px solid #000; padding: 4px;"><?= htmlspecialchars($data['delivery']->vehicle_number ?? '') ?></td>
                             </tr>
                             <tr style="background: none;">
                                 <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">Date</td>
-                                <td style="border: 1px solid #000; padding: 4px;"><?= date('d/m/Y') ?></td>
+                                <td style="border: 1px solid #000; padding: 4px;"><?= !empty($data['delivery']->delivery_date) ? date('d/m/Y', strtotime($data['delivery']->delivery_date)) : date('d/m/Y') ?></td>
                             </tr>
                             <tr style="background-color: #f1f3f9;">
                                 <td colspan="2" style="border: 1px solid #000; padding: 4px; font-weight: bold; text-align: center; text-transform: uppercase;">Cash Collection</td>
