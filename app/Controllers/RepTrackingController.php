@@ -2945,4 +2945,202 @@ class RepTrackingController extends Controller {
         header('Location: ' . APP_URL . '/RepTracking');
         exit;
     }
+
+    public function delete_route() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . APP_URL . '/RepTracking');
+            exit;
+        }
+
+        $this->validateCsrf();
+
+        $password = $_POST['password'] ?? '';
+        $reason = trim($_POST['delete_reason'] ?? '');
+        $routeId = intval($_POST['route_id'] ?? 0);
+        $mode = $_POST['mode'] ?? 'detach'; // 'detach', 'delete_with_so', 'force_delete_all'
+
+        $errorResponse = function($msg) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $msg]);
+            exit;
+        };
+
+        if (!$routeId) {
+            $errorResponse("Route ID is missing!");
+        }
+
+        if (empty($reason)) {
+            $errorResponse("Deletion reason is required!");
+        }
+
+        // Authenticate password
+        $userModel = $this->model('User');
+        $username = $_SESSION['username'] ?? '';
+        $user = $userModel->login($username, $password);
+
+        if (!$user) {
+            $errorResponse("Authentication failed: Incorrect password!");
+        }
+
+        // Verify Delete Permission
+        if (isset($_SESSION['role']) && strtolower($_SESSION['role']) !== 'admin') {
+            $perms = $_SESSION['permissions'] ?? [];
+            if (!($perms['sales']['can_delete'] ?? false)) {
+                $errorResponse("Access denied: You do not have permission to delete daily routes.");
+            }
+        }
+
+        $db = new Database();
+        try {
+            // Fetch Route Details for auditing/logging
+            $db->query("SELECT * FROM rep_daily_routes WHERE id = :id");
+            $db->bind(':id', $routeId);
+            $route = $db->single();
+            if (!$route) {
+                throw new Exception("Route not found.");
+            }
+
+            $invoiceModel = $this->model('Invoice');
+
+            // Handle Invoices first (outside main transaction to avoid nested PDO transaction exception)
+            if ($mode === 'delete_with_so' || $mode === 'force_delete_all') {
+                $db->query("SELECT id, invoice_number, customer_name, total_amount FROM invoices WHERE rep_route_id = :rid");
+                $db->bind(':rid', $routeId);
+                $invoices = $db->resultSet() ?: [];
+
+                foreach ($invoices as $inv) {
+                    $invoiceId = $inv->id;
+                    $invoiceNumber = $inv->invoice_number;
+                    $customerName = $inv->customer_name;
+                    $grandTotal = floatval($inv->total_amount);
+
+                    // Revert stock/ledger entries, delete items & invoice (runs its own transaction)
+                    $success = $invoiceModel->deleteInvoiceWithAccounting($invoiceId, $_SESSION['user_id']);
+                    if ($success) {
+                        // Audit trail write for invoice deletion
+                        $db->query("INSERT INTO deleted_invoices (invoice_number, customer_name, total_amount, deleted_user_name, delete_reason, record_type) 
+                                          VALUES (:inv_num, :cust_name, :total, :deleted_user, :reason, 'Invoice')");
+                        $db->bind(':inv_num', $invoiceNumber);
+                        $db->bind(':cust_name', $customerName);
+                        $db->bind(':total', $grandTotal);
+                        $db->bind(':deleted_user', $_SESSION['username'] ?? 'System');
+                        $db->bind(':reason', $reason . " (via Route Deletion)");
+                        $db->execute();
+                    } else {
+                        throw new Exception("Failed to delete associated invoice: " . $invoiceNumber);
+                    }
+                }
+            }
+
+            // Start main transaction for route deletion and other entity cleaning
+            $db->beginTransaction();
+
+            if ($mode === 'detach') {
+                // Mode 1: Detach Invoices/Payments/Deliveries
+                $db->query("UPDATE invoices SET rep_route_id = NULL WHERE rep_route_id = :rid");
+                $db->bind(':rid', $routeId);
+                $db->execute();
+
+                $db->query("UPDATE deliveries SET rep_route_id = NULL WHERE rep_route_id = :rid");
+                $db->bind(':rid', $routeId);
+                $db->execute();
+
+                $db->query("UPDATE deliveries SET secondary_rep_route_id = NULL WHERE secondary_rep_route_id = :rid");
+                $db->bind(':rid', $routeId);
+                $db->execute();
+
+                $db->query("UPDATE customer_payments SET rep_route_id = NULL WHERE rep_route_id = :rid");
+                $db->bind(':rid', $routeId);
+                $db->execute();
+
+                $db->query("DELETE FROM pending_collections WHERE route_id = :rid");
+                $db->bind(':rid', $routeId);
+                $db->execute();
+            } 
+            elseif ($mode === 'delete_with_so') {
+                // Mode 2: Detach other details
+                $db->query("UPDATE deliveries SET rep_route_id = NULL WHERE rep_route_id = :rid");
+                $db->bind(':rid', $routeId);
+                $db->execute();
+
+                $db->query("UPDATE deliveries SET secondary_rep_route_id = NULL WHERE secondary_rep_route_id = :rid");
+                $db->bind(':rid', $routeId);
+                $db->execute();
+
+                $db->query("UPDATE customer_payments SET rep_route_id = NULL WHERE rep_route_id = :rid");
+                $db->bind(':rid', $routeId);
+                $db->execute();
+
+                $db->query("DELETE FROM pending_collections WHERE route_id = :rid");
+                $db->bind(':rid', $routeId);
+                $db->execute();
+            } 
+            elseif ($mode === 'force_delete_all') {
+                // Mode 3: Delete payments, cheques, deliveries, collections
+                $db->query("SELECT id, payment_method, cheque_number, customer_id FROM customer_payments WHERE rep_route_id = :rid");
+                $db->bind(':rid', $routeId);
+                $payments = $db->resultSet() ?: [];
+
+                foreach ($payments as $pmt) {
+                    $paymentId = $pmt->id;
+                    
+                    if ($pmt->payment_method === 'Cheque' && !empty($pmt->cheque_number)) {
+                        $db->query("DELETE FROM cheques WHERE customer_id = :cid AND cheque_number = :cn");
+                        $db->bind(':cid', $pmt->customer_id);
+                        $db->bind(':cn', $pmt->cheque_number);
+                        $db->execute();
+                    }
+
+                    // Get journal entry and transactions
+                    $db->query("SELECT journal_entry_id FROM customer_payments WHERE id = :id");
+                    $db->bind(':id', $paymentId);
+                    $pmtRow = $db->single();
+                    if ($pmtRow && $pmtRow->journal_entry_id) {
+                        $jid = $pmtRow->journal_entry_id;
+                        
+                        $db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
+                        $db->bind(':jid', $jid);
+                        $db->execute();
+
+                        $db->query("DELETE FROM journal_entries WHERE id = :jid");
+                        $db->bind(':jid', $jid);
+                        $db->execute();
+                    }
+
+                    // Delete payment row
+                    $db->query("DELETE FROM customer_payments WHERE id = :id");
+                    $db->bind(':id', $paymentId);
+                    $db->execute();
+                }
+
+                // Delete deliveries
+                $db->query("DELETE FROM deliveries WHERE rep_route_id = :rid OR secondary_rep_route_id = :rid");
+                $db->bind(':rid', $routeId);
+                $db->execute();
+
+                // Delete pending collections
+                $db->query("DELETE FROM pending_collections WHERE route_id = :rid");
+                $db->bind(':rid', $routeId);
+                $db->execute();
+            }
+
+            // Finally, delete the route itself
+            $db->query("DELETE FROM rep_daily_routes WHERE id = :rid");
+            $db->bind(':rid', $routeId);
+            $db->execute();
+
+            // Log activity
+            $this->logActivity('Delete Route', 'RepTracking', "Deleted Daily Route #RT-{$routeId} - {$route->route_name}. Mode: {$mode}. Reason: {$reason}", $routeId);
+
+            $db->commit();
+
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => "Daily Route #RT-{$routeId} and associated records handled with mode '{$mode}' successfully deleted!"]);
+            exit;
+
+        } catch (Exception $e) {
+            $db->rollBack();
+            $errorResponse('Failed to delete route: ' . $e->getMessage());
+        }
+    }
 }

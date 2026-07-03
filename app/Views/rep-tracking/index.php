@@ -948,6 +948,29 @@
         transition: background var(--dur-fast);
     }
     .cmd-icon:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    .cmd-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255,255,255,0.08);
+        border-radius: var(--r-pill);
+        padding: 6px 12px;
+        color: rgba(255,255,255,0.85);
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        transition: background var(--dur-fast), color var(--dur-fast);
+        height: 38px;
+    }
+    .cmd-btn:hover {
+        background: rgba(255,255,255,0.18);
+        color: #fff;
+    }
+    .cmd-btn i {
+        font-size: 14px;
+    }
     body.workspace-showing .cmd-bar {
         display: none !important;
     }
@@ -1116,18 +1139,6 @@
             <a href="<?= APP_URL ?>/RepTracking/index" style="padding: 10px 18px; border: none; background: #64748b; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(100, 116, 139, 0.2); transition: all 0.2s ease; text-decoration: none;">
                 <i class="ph-bold ph-arrow-left"></i> Back to Control Panel
             </a>
-        </div>
-    <?php else: ?>
-        <div style="display: flex; gap: 10px;">
-            <a href="<?= APP_URL ?>/RepTracking/history" style="padding: 10px 18px; border: none; background: #64748b; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(100, 116, 139, 0.2); transition: all 0.2s ease; text-decoration: none;">
-                <i class="ph-bold ph-clock-counter-clockwise"></i> Route History
-            </a>
-            <button onclick="openCreateRouteModal()" style="padding: 10px 18px; border: none; background: #2e7d32; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(46, 125, 50, 0.2); transition: all 0.2s ease;">
-                <i class="ph-bold ph-plus-circle"></i> Create Route Manually
-            </button>
-            <button id="btnOpenRouteBinding" onclick="openRouteBindingModal()" style="padding: 10px 18px; border: none; background: #3f51b5; color: #fff; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(63, 81, 181, 0.2); transition: all 0.2s ease;">
-                <i class="ph-bold ph-link"></i> Route Binding Panel
-            </button>
         </div>
     <?php endif; ?>
 </div>
@@ -1475,6 +1486,9 @@
                                 </button>
                                 <button type="button" id="btnViewMapDetails" onclick="openMapModal()" style="flex:1; justify-content:center; display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border:none; background:var(--c-orange); color:#fff; border-radius:var(--r-sm); font-weight:600; cursor:pointer; font-size:12px; box-shadow:var(--shadow-xs);">
                                     <i class="ph ph-map-pin"></i> View Map
+                                </button>
+                                <button type="button" onclick="openDeleteRouteModal()" style="flex:1; justify-content:center; display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border:none; background:#dc2626; color:#fff; border-radius:var(--r-sm); font-weight:600; cursor:pointer; font-size:12px; box-shadow:var(--shadow-xs);">
+                                    <i class="ph ph-trash"></i> Delete Route
                                 </button>
                             </div>
                         </div>
@@ -1949,6 +1963,64 @@
         </div>
     </div>
 
+    <!-- Secure Delete Route Confirmation Modal -->
+    <div class="modal-backdrop" id="deleteRouteModal" style="display: none; z-index: 2005;">
+        <div class="modal-panel" style="max-width: 500px; width: 90%;">
+            <div class="modal-header" style="background: var(--c-red-light); color: var(--c-red); border-bottom: 0.5px solid var(--c-separator); padding: 16px 20px;">
+                <h3 style="margin:0; font-size:16px; font-weight:700;"><i class="ph ph-warning-octagon"></i> Secure Route Deletion</h3>
+            </div>
+            <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+                <p style="margin:0; font-size:13px; color:var(--t-secondary);">
+                    You are about to delete Daily Route <strong id="deleteRouteTargetNum" style="color:var(--t-primary);"></strong>. Please choose how you want to handle the associated daily transactions:
+                </p>
+                <div>
+                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:var(--t-secondary); display:block; margin-bottom:8px;">Deletion Mode *</label>
+                    <div style="display:flex; flex-direction:column; gap:10px; font-size:13px;">
+                        <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
+                            <input type="radio" name="deleteRouteMode" value="detach" style="margin-top:3px;" checked>
+                            <div>
+                                <strong>1. Delete Only Route (Preserve Sales Orders)</strong>
+                                <div style="font-size:11px; color:#64748b; margin-top:2px;">
+                                    The route will be deleted, but all invoices/sales orders, payments, cheques, and deliveries will be preserved by detaching them from the route.
+                                </div>
+                            </div>
+                        </label>
+                        <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
+                            <input type="radio" name="deleteRouteMode" value="delete_with_so" style="margin-top:3px;">
+                            <div>
+                                <strong>2. Delete Route and Delete/Void Sales Orders</strong>
+                                <div style="font-size:11px; color:#64748b; margin-top:2px;">
+                                    The route will be deleted, and all associated Sales Orders/Invoices will be permanently deleted (reversing stock and ledger postings). Payments/cheques/deliveries will be detached.
+                                </div>
+                            </div>
+                        </label>
+                        <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
+                            <input type="radio" name="deleteRouteMode" value="force_delete_all" style="margin-top:3px;">
+                            <div>
+                                <strong>3. Force Delete Route & All Associated Records</strong>
+                                <div style="font-size:11px; color:#64748b; margin-top:2px;">
+                                    The route, associated invoices, payments/cheques, deliveries, and collections will be permanently deleted from the database.
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:var(--t-secondary); display:block; margin-bottom:4px;">Administrator Password *</label>
+                    <input type="password" id="deleteRoutePassword" placeholder="Enter password" style="width:100%; padding:10px; border:1px solid var(--c-separator); border-radius:var(--r-md); background:var(--c-bg); color:var(--t-primary); font-size:13px;" required>
+                </div>
+                <div>
+                    <label style="font-weight:bold; font-size:11px; text-transform:uppercase; color:var(--t-secondary); display:block; margin-bottom:4px;">Reason for Deletion *</label>
+                    <textarea id="deleteRouteReason" placeholder="Reason (e.g. Route created by mistake)" style="width:100%; height:70px; padding:10px; border:1px solid var(--c-separator); border-radius:var(--r-md); background:var(--c-bg); color:var(--t-primary); font-size:13px; resize:none;" required></textarea>
+                </div>
+            </div>
+            <div style="padding: 12px 20px; background: var(--c-surface2); border-top: 0.5px solid var(--c-separator); display:flex; justify-content:flex-end; gap:10px;">
+                <button onclick="closeDeleteRouteModal()" style="padding:8px 16px; background:var(--c-fill); border:1px solid var(--c-separator); color:var(--t-secondary); border-radius:var(--r-sm); font-size:12px; font-weight:bold; cursor:pointer;">Cancel</button>
+                <button onclick="submitDeleteRoute()" style="padding:8px 16px; background:var(--c-red); border:none; color:#fff; border-radius:var(--r-sm); font-size:12px; font-weight:bold; cursor:pointer;">Permanently Delete Route</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Move Sales Order Modal -->
     <div class="modal-backdrop" id="moveInvoiceModal" style="display: none; z-index: 2005;">
         <div class="modal-panel">
@@ -2232,6 +2304,23 @@
         <input type="text" id="floatingSearchInput" oninput="searchRouteList()" placeholder="Search routes...">
     </div>
     <div class="cmd-divider"></div>
+    
+    <?php if (!$isHistory): ?>
+        <a href="<?= APP_URL ?>/RepTracking/history" class="cmd-btn" title="Route History">
+            <i class="ph-bold ph-clock-counter-clockwise"></i>
+            <span>Route History</span>
+        </a>
+        <button type="button" onclick="openCreateRouteModal()" class="cmd-btn" title="Create Route Manually">
+            <i class="ph-bold ph-plus-circle"></i>
+            <span>Create Route</span>
+        </button>
+        <button type="button" id="btnOpenRouteBinding" onclick="openRouteBindingModal()" class="cmd-btn" title="Route Binding Panel">
+            <i class="ph-bold ph-link"></i>
+            <span>Binding Panel</span>
+        </button>
+        <div class="cmd-divider"></div>
+    <?php endif; ?>
+    
     <button type="button" onclick="window.location.reload()" class="cmd-icon" title="Refresh page">
         <i class="ph ph-arrows-clockwise"></i>
     </button>
@@ -5416,6 +5505,63 @@
         .catch(err => {
             console.error("[Delete Sales Order] Fetch error:", err);
             alert("Error deleting sales order: " + err.message);
+        });
+    }
+
+    /* Route Deletion Handlers */
+    function openDeleteRouteModal() {
+        if (!currentRouteId) { alert("No route selected!"); return; }
+        const routeNumText = `#RT-${String(currentRouteId).padStart(5, '0')}`;
+        document.getElementById('deleteRouteTargetNum').innerText = routeNumText;
+        document.getElementById('deleteRoutePassword').value = '';
+        document.getElementById('deleteRouteReason').value = '';
+        document.getElementById('deleteRouteModal').style.display = 'flex';
+    }
+
+    function closeDeleteRouteModal() {
+        document.getElementById('deleteRouteModal').style.display = 'none';
+    }
+
+    function submitDeleteRoute() {
+        const password = document.getElementById('deleteRoutePassword').value;
+        const reason = document.getElementById('deleteRouteReason').value.trim();
+        const mode = document.querySelector('input[name="deleteRouteMode"]:checked').value;
+        
+        if (!password) { alert("Please enter the administrator password."); return; }
+        if (!reason) { alert("Please enter a deletion reason."); return; }
+        
+        console.log("[Delete Route] Initiating deletion for Route ID:", currentRouteId, "Mode:", mode);
+        
+        closeDeleteRouteModal();
+        
+        const formData = new URLSearchParams();
+        formData.append('route_id', currentRouteId);
+        formData.append('mode', mode);
+        formData.append('password', password);
+        formData.append('delete_reason', reason);
+        formData.append('is_ajax', '1');
+        
+        fetchSecure('<?= APP_URL ?>/RepTracking/delete_route', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: formData.toString()
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log("[Delete Route] Response data:", data);
+            if (data.status === 'success') {
+                alert(data.message || "Route successfully deleted!");
+                goBackToRoutes();
+                onRouteDataChanged();
+            } else {
+                alert("Error: " + data.message);
+            }
+        })
+        .catch(err => {
+            console.error("[Delete Route] Fetch error:", err);
+            alert("Error deleting route: " + err.message);
         });
     }
 
