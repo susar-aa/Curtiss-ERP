@@ -826,7 +826,7 @@ class RepTrackingController extends Controller {
 
         $allowedStatuses = [
             'Active', 'Pending GL', 'Adjustments', 'Loading', 
-            'Variance Adjustment', 'Finalizing', 'Completed'
+            'Variance Adjustment', 'Finalizing', 'Delivery Arranged', 'Completed'
         ];
 
         header('Content-Type: application/json');
@@ -850,6 +850,7 @@ class RepTrackingController extends Controller {
             'Loading' => 3,
             'Variance Adjustment' => 4,
             'Finalizing' => 5,
+            'Delivery Arranged' => 5,
             'Completed' => 6
         ];
         $targetPriority = $statusPriority[$targetStatus] ?? 0;

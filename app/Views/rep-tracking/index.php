@@ -1214,7 +1214,7 @@
                         $dataType = 'loading';
                     } elseif ($status === 'Variance Adjustment') {
                         $dataType = 'variance';
-                    } elseif ($status === 'Finalizing') {
+                    } elseif ($status === 'Finalizing' || $status === 'Delivery Arranged') {
                         $dataType = 'finalizing';
                     } else {
                         $dataType = 'completed';
@@ -2579,7 +2579,11 @@
         ];
 
         const statusSequence = ['Active', 'Pending GL', 'Adjustments', 'Loading', 'Variance Adjustment', 'Finalizing', 'Completed', 'Finalized'];
-        const currentRouteStatusIndex = statusSequence.indexOf(currentRouteStatus);
+        let checkStatus = currentRouteStatus;
+        if (checkStatus === 'Delivery Arranged') {
+            checkStatus = 'Finalizing';
+        }
+        const currentRouteStatusIndex = statusSequence.indexOf(checkStatus);
 
         steps.forEach(step => {
             const el = document.getElementById('sb-step-' + step.id);
@@ -2605,7 +2609,7 @@
                 isStepCompleted = true;
             } else if (currentRouteStatusIndex > stepRequiredStatusIndex) {
                 isStepCompleted = true;
-            } else if (currentRouteStatus === 'Finalizing') {
+            } else if (currentRouteStatus === 'Finalizing' || currentRouteStatus === 'Delivery Arranged') {
                 // Inside Finalizing, sub-stages can have completion heuristics:
                 const d = document.getElementById('route_data_' + currentRouteId);
                 const delId = d ? d.getAttribute('data-delivery-id') : null;
@@ -5027,7 +5031,7 @@
         if (status === 'Adjustments') return 'adjustments';
         if (status === 'Loading') return 'loading';
         if (status === 'Variance Adjustment') return 'variance';
-        if (status === 'Finalizing') return 'finalizing';
+        if (status === 'Finalizing' || status === 'Delivery Arranged') return 'finalizing';
         return 'completed';
     }
 
