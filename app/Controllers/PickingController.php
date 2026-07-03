@@ -203,7 +203,7 @@ class PickingController extends Controller {
                    (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_picked = 1) as picked_items
             FROM deliveries d
             JOIN rep_daily_routes r ON d.rep_route_id = r.id
-            WHERE r.status NOT IN ('Completed', 'Finalized')
+            WHERE r.status NOT IN ('Completed', 'Finalized') OR d.status NOT IN ('Completed', 'Finalized')
             ORDER BY d.delivery_date DESC, d.id DESC
         ");
         $sheets = $this->db->resultSet() ?: [];
@@ -232,7 +232,9 @@ class PickingController extends Controller {
             }
 
             // Determine picking status based on actual items picking progress
-            if ($sheet->picked_items > 0 && $sheet->picked_items < $sheet->total_items) {
+            if (in_array($sheet->db_status, ['Completed', 'Finalized'])) {
+                $sheet->status = 'Completed';
+            } else if ($sheet->picked_items > 0 && $sheet->picked_items < $sheet->total_items) {
                 $sheet->status = 'In Progress';
             } else if ($sheet->total_items > 0 && $sheet->picked_items == $sheet->total_items) {
                 $sheet->status = 'Ready for Final';

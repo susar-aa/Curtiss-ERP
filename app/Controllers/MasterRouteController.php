@@ -674,12 +674,14 @@ class MasterRouteController extends Controller {
         // Keep deliveries in sync
         $delStatus = 'Arranged';
         if ($targetStatus === 'Completed') {
-            $delStatus = 'Completed';
+            $delStatus = null;
         }
-        $db->query("UPDATE deliveries SET status = :status WHERE rep_route_id = :rid OR secondary_rep_route_id = :rid");
-        $db->bind(':status', $delStatus);
-        $db->bind(':rid', $routeId);
-        $db->execute();
+        if ($delStatus !== null) {
+            $db->query("UPDATE deliveries SET status = :status WHERE (rep_route_id = :rid OR secondary_rep_route_id = :rid) AND status NOT IN ('Completed', 'Finalized')");
+            $db->bind(':status', $delStatus);
+            $db->bind(':rid', $routeId);
+            $db->execute();
+        }
 
         $this->logActivity('Route Status Update', 'RepTracking', "Moved route '{$routeName}' status from '{$oldStatus}' to '{$targetStatus}'", $routeId);
 

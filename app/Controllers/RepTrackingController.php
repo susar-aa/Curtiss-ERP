@@ -961,12 +961,15 @@ class RepTrackingController extends Controller {
                 echo json_encode(['status' => 'error', 'message' => 'Cannot complete route: There are outstanding payment collections that have not been verified and finalized by the accounts department.']);
                 exit;
             }
-            $delStatus = 'Completed';
+            // Decouple delivery status from route completion: do not force delivery to 'Completed' here.
+            $delStatus = null;
         }
-        $db->query("UPDATE deliveries SET status = :status WHERE rep_route_id = :rid OR secondary_rep_route_id = :rid");
-        $db->bind(':status', $delStatus);
-        $db->bind(':rid', $routeId);
-        $db->execute();
+        if ($delStatus !== null) {
+            $db->query("UPDATE deliveries SET status = :status WHERE (rep_route_id = :rid OR secondary_rep_route_id = :rid) AND status NOT IN ('Completed', 'Finalized')");
+            $db->bind(':status', $delStatus);
+            $db->bind(':rid', $routeId);
+            $db->execute();
+        }
 
         $this->logRouteActivity('Route Status Update', 'RepTracking', "Moved route '{$routeName}' status from '{$oldStatus}' to '{$targetStatus}'", $routeId);
 
