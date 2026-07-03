@@ -93,6 +93,11 @@ $provider = $data['provider'];
             <div class="detail-item">
                 <strong>Amount Paid:</strong> Rs: <?= number_format($bill->amount_paid, 2) ?>
             </div>
+            <?php if(!empty($bill->receipt_number) && $bill->receipt_number !== $bill->grn_number): ?>
+            <div class="detail-item" style="grid-column: span 2; border-top: 1px solid #eee; padding-top: 10px; font-size:14px;">
+                <strong>Supplier Invoice Ref:</strong> <?= htmlspecialchars($bill->receipt_number) ?>
+            </div>
+            <?php endif; ?>
             <div class="detail-item" style="grid-column: span 2; border-top: 1px dashed #ddd; padding-top: 10px; margin-top: 5px; font-size:16px;">
                 <strong>Balance Due:</strong> <span style="font-weight:bold; color: <?= $bill->balance_due > 0 ? '#c62828' : '#2e7d32' ?>;">Rs: <?= number_format($bill->balance_due, 2) ?></span>
             </div>

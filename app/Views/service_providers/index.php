@@ -268,9 +268,9 @@
                             <label>Service Category</label>
                             <?php
                             $categories = [
-                                'Telephone', 'Internet', 'Electricity', 'Water', 'Mobile', 'TV / Cable',
+                                'Telephone', 'Internet', 'Electricity', 'Water', 'Mobile',
                                 'Insurance', 'Courier', 'Cloud Services', 'Software Subscription',
-                                'Maintenance', 'Security', 'Fuel', 'Rent'
+                                'Maintenance', 'Security', 'Rent'
                             ];
                             $currentCat = $sup->service_category;
                             $isOther = !empty($currentCat) && !in_array($currentCat, $categories);
@@ -319,13 +319,17 @@
                         
                         <div class="grid-2">
                             <div class="form-group">
-                                <label>Bill Number *</label>
-                                <input type="text" name="bill_number" class="form-control" required placeholder="e.g. INV-12345">
+                                <label>Bill Number (System Generated) *</label>
+                                <input type="text" name="bill_number" class="form-control" value="<?= htmlspecialchars($data['next_bill_number']) ?>" readonly style="background:#e9ecef;">
                             </div>
                             <div class="form-group">
-                                <label>Service Period</label>
-                                <input type="text" name="service_period" class="form-control" placeholder="e.g. July 2026">
+                                <label>Supplier Invoice/Receipt Number (Optional)</label>
+                                <input type="text" name="receipt_number" class="form-control" placeholder="e.g. INV-12345">
                             </div>
+                        </div>
+                        <div class="form-group" style="margin-top: -10px;">
+                            <label>Service Period</label>
+                            <input type="text" name="service_period" class="form-control" placeholder="e.g. July 2026">
                         </div>
                         
                         <div class="grid-2">
@@ -360,7 +364,7 @@
                                 <select name="expense_account_id" class="form-control" required>
                                     <option value="">-- Select Expense --</option>
                                     <?php foreach($data['expenses'] as $acc): ?>
-                                        <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->account_code . ' - ' . $acc->account_name) ?></option>
+                                        <option value="<?= $acc->id ?>" <?= (!empty($sup->expense_account_id) && $sup->expense_account_id == $acc->id) ? 'selected' : '' ?>><?= htmlspecialchars($acc->account_code . ' - ' . $acc->account_name) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -422,14 +426,12 @@
                     <option value="Electricity">Electricity</option>
                     <option value="Water">Water</option>
                     <option value="Mobile">Mobile</option>
-                    <option value="TV / Cable">TV / Cable</option>
                     <option value="Insurance">Insurance</option>
                     <option value="Courier">Courier</option>
                     <option value="Cloud Services">Cloud Services</option>
                     <option value="Software Subscription">Software Subscription</option>
                     <option value="Maintenance">Maintenance</option>
                     <option value="Security">Security</option>
-                    <option value="Fuel">Fuel</option>
                     <option value="Rent">Rent</option>
                     <option value="Other">Other</option>
                 </select>

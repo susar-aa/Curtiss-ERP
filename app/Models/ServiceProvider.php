@@ -44,26 +44,75 @@ class ServiceProvider {
     }
 
     public function addServiceProvider($data) {
-        $this->db->query("INSERT INTO service_providers (name, email, phone, address, service_category, status) VALUES (:name, :email, :phone, :address, :service_category, :status)");
+        $expenseAccountId = $this->getOrCreateCategoryAccount($data['service_category']);
+
+        $this->db->query("INSERT INTO service_providers (name, email, phone, address, service_category, expense_account_id, status) VALUES (:name, :email, :phone, :address, :service_category, :expense_account_id, :status)");
         $this->db->bind(':name', $data['name']);
         $this->db->bind(':email', $data['email']);
         $this->db->bind(':phone', $data['phone']);
         $this->db->bind(':address', $data['address']);
         $this->db->bind(':service_category', $data['service_category']);
+        $this->db->bind(':expense_account_id', $expenseAccountId);
         $this->db->bind(':status', $data['status'] ?? 'Active');
         return $this->db->execute();
     }
 
     public function updateServiceProvider($data) {
-        $this->db->query("UPDATE service_providers SET name = :name, email = :email, phone = :phone, address = :address, service_category = :service_category, status = :status WHERE id = :id");
+        $expenseAccountId = $this->getOrCreateCategoryAccount($data['service_category']);
+
+        $this->db->query("UPDATE service_providers SET name = :name, email = :email, phone = :phone, address = :address, service_category = :service_category, expense_account_id = :expense_account_id, status = :status WHERE id = :id");
         $this->db->bind(':id', $data['id']);
         $this->db->bind(':name', $data['name']);
         $this->db->bind(':email', $data['email']);
         $this->db->bind(':phone', $data['phone']);
         $this->db->bind(':address', $data['address']);
         $this->db->bind(':service_category', $data['service_category']);
+        $this->db->bind(':expense_account_id', $expenseAccountId);
         $this->db->bind(':status', $data['status']);
         return $this->db->execute();
+    }
+
+    public function getOrCreateCategoryAccount($category) {
+        $category = trim($category);
+        if (empty($category)) {
+            return null;
+        }
+
+        // Find parent account 6500
+        $this->db->query("SELECT id, account_type, account_category FROM chart_of_accounts WHERE account_code = '6500' LIMIT 1");
+        $parent = $this->db->single();
+        if (!$parent) {
+            return null; // Safeguard if 6500 doesn't exist
+        }
+
+        $parent_id = $parent->id;
+        $account_name = "Utilities - " . $category;
+
+        // Check if exists
+        $this->db->query("SELECT id FROM chart_of_accounts WHERE parent_id = :parent_id AND account_name = :name LIMIT 1");
+        $this->db->bind(':parent_id', $parent_id);
+        $this->db->bind(':name', $account_name);
+        $existing = $this->db->single();
+        if ($existing) {
+            return $existing->id;
+        }
+
+        // Generate next code starting with 65
+        $this->db->query("SELECT MAX(CAST(account_code AS UNSIGNED)) as max_code FROM chart_of_accounts WHERE account_code LIKE '65%' AND account_code != '6500'");
+        $row = $this->db->single();
+        $nextCode = $row && $row->max_code ? intval($row->max_code) + 1 : 6501;
+
+        // Insert new sub-account
+        $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, parent_id, balance, is_active) 
+                          VALUES (:code, :name, :type, :category, :parent_id, 0.00, 1)");
+        $this->db->bind(':code', (string)$nextCode);
+        $this->db->bind(':name', $account_name);
+        $this->db->bind(':type', $parent->account_type);
+        $this->db->bind(':category', $parent->account_category);
+        $this->db->bind(':parent_id', $parent_id);
+        $this->db->execute();
+
+        return $this->db->lastInsertId();
     }
 
     public function getServiceProviderStats($id) {
@@ -209,7 +258,7 @@ class ServiceProvider {
             $this->db->query("INSERT INTO goods_receipt_notes (grn_number, receipt_number, service_provider_id, grn_date, due_date, service_period, amount, tax, total_amount, notes, attachment, is_approved, status, created_by)
                               VALUES (:bill_num, :receipt_num, :sp_id, :bdate, :ddate, :period, :amt, :tax, :total, :notes, :attachment, 1, 'Unpaid', :uid)");
             $this->db->bind(':bill_num', $data['bill_number']);
-            $this->db->bind(':receipt_num', $data['bill_number']);
+            $this->db->bind(':receipt_num', !empty($data['receipt_number']) ? $data['receipt_number'] : $data['bill_number']);
             $this->db->bind(':sp_id', $data['service_provider_id']);
             $this->db->bind(':bdate', $data['bill_date']);
             $this->db->bind(':ddate', $data['due_date']);

@@ -35,6 +35,7 @@ class ServiceProviderController extends Controller {
         }
 
         $bills = [];
+        $nextBillNumber = '';
 
         if ($id) {
             $selectedServiceProvider = $this->serviceProviderModel->getServiceProviderById($id);
@@ -44,6 +45,13 @@ class ServiceProviderController extends Controller {
                 $pos = $this->serviceProviderModel->getServiceProviderPOs($id);
                 $products = $this->serviceProviderModel->getServiceProviderProducts($id);
                 $bills = $this->serviceProviderModel->getServiceBills($id);
+
+                // Generate next bill number
+                $db = new Database();
+                $db->query("SELECT COUNT(id) as today_count FROM goods_receipt_notes WHERE service_provider_id IS NOT NULL AND DATE(created_at) = CURDATE()");
+                $countRow = $db->single();
+                $nextId = $countRow ? ($countRow->today_count + 1) : 1;
+                $nextBillNumber = 'SB-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
             }
         }
 
@@ -60,6 +68,7 @@ class ServiceProviderController extends Controller {
             'expenses' => $expenseAccounts,
             'assets' => $assets,
             'ap_account' => $apAccount,
+            'next_bill_number' => $nextBillNumber,
             'error' => '',
             'success' => ''
         ];
@@ -114,6 +123,13 @@ class ServiceProviderController extends Controller {
             } elseif ($_POST['action'] == 'add_service_bill') {
                 $spId = intval($_POST['service_provider_id']);
                 $provider = $this->serviceProviderModel->getServiceProviderById($spId);
+
+                // Re-calculate / generate next unique bill number on insert
+                $db = new Database();
+                $db->query("SELECT COUNT(id) as today_count FROM goods_receipt_notes WHERE service_provider_id IS NOT NULL AND DATE(created_at) = CURDATE()");
+                $countRow = $db->single();
+                $nextId = $countRow ? ($countRow->today_count + 1) : 1;
+                $billNumber = 'SB-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
                 
                 $attachmentPath = null;
                 if (!empty($_FILES['attachment']['name'])) {
@@ -131,7 +147,8 @@ class ServiceProviderController extends Controller {
                 $billData = [
                     'service_provider_id' => $spId,
                     'provider_name' => $provider ? $provider->name : 'Service Provider',
-                    'bill_number' => trim($_POST['bill_number'] ?? ''),
+                    'bill_number' => $billNumber,
+                    'receipt_number' => trim($_POST['receipt_number'] ?? ''),
                     'bill_date' => trim($_POST['bill_date'] ?? ''),
                     'due_date' => trim($_POST['due_date'] ?? ''),
                     'service_period' => trim($_POST['service_period'] ?? ''),
