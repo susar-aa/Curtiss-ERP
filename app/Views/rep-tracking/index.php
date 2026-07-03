@@ -5388,6 +5388,7 @@
         const formData = new URLSearchParams();
         formData.append('password', password);
         formData.append('delete_reason', reason);
+        formData.append('is_ajax', '1');
         
         closeDeleteConfirmModal();
         
@@ -5398,10 +5399,15 @@
             },
             body: formData.toString()
         })
-        .then(res => {
-            alert("Sales Order successfully deleted and stock balances reversed!");
-            onRouteDataChanged();
-            loadAdjustmentsStage(currentRouteId);
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message || "Sales Order successfully deleted and stock balances reversed!");
+                onRouteDataChanged();
+                loadAdjustmentsStage(currentRouteId);
+            } else {
+                alert("Error: " + data.message);
+            }
         })
         .catch(err => {
             alert("Error deleting sales order: " + err.message);

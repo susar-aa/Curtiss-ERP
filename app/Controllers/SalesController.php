@@ -1004,19 +1004,29 @@ class SalesController extends Controller {
             exit;
         }
 
+        $isAjax = isset($_POST['is_ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+        
+        $errorResponse = function($msg) use ($isAjax) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => $msg]);
+                exit;
+            } else {
+                $_SESSION['flash_error'] = $msg;
+                header('Location: ' . APP_URL . '/sales');
+                exit;
+            }
+        };
+
         if (!$id) {
-            $_SESSION['flash_error'] = "Record ID is missing!";
-            header('Location: ' . APP_URL . '/sales');
-            exit;
+            $errorResponse("Record ID is missing!");
         }
 
         $password = $_POST['password'] ?? '';
         $reason = trim($_POST['delete_reason'] ?? '');
 
         if (empty($reason)) {
-            $_SESSION['flash_error'] = "Deletion reason is required!";
-            header('Location: ' . APP_URL . '/sales');
-            exit;
+            $errorResponse("Deletion reason is required!");
         }
 
         // Authenticate password
@@ -1025,18 +1035,14 @@ class SalesController extends Controller {
         $user = $userModel->login($username, $password);
 
         if (!$user) {
-            $_SESSION['flash_error'] = "Authentication failed: Incorrect password!";
-            header('Location: ' . APP_URL . '/sales');
-            exit;
+            $errorResponse("Authentication failed: Incorrect password!");
         }
 
         // Verify Delete Permission
         if (isset($_SESSION['role']) && strtolower($_SESSION['role']) !== 'admin') {
             $perms = $_SESSION['permissions'] ?? [];
             if (!($perms['sales']['can_delete'] ?? false)) {
-                $_SESSION['flash_error'] = "Access denied: You do not have permission to delete invoices.";
-                header('Location: ' . APP_URL . '/sales');
-                exit;
+                $errorResponse("Access denied: You do not have permission to delete invoices.");
             }
         }
 
@@ -1044,9 +1050,7 @@ class SalesController extends Controller {
         $inv = $invoiceModel->getInvoiceById($id);
 
         if (!$inv) {
-            $_SESSION['flash_error'] = "Invoice not found!";
-            header('Location: ' . APP_URL . '/sales');
-            exit;
+            $errorResponse("Invoice not found!");
         }
 
         $isRouteSalesOrder = (isset($inv->stock_status) && $inv->stock_status === 'reserved');
@@ -1088,9 +1092,21 @@ class SalesController extends Controller {
             // Log general system activity
             $this->logActivity('Delete ' . $recordType, 'Billing', "Deleted {$recordType} {$inv->invoice_number} for customer {$inv->customer_name} totaling Rs: " . number_format($grandTotal, 2) . ". Reason: {$reason}", $id, $oldValues, null);
 
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'success', 'message' => "{$recordType} {$inv->invoice_number} deleted and stock/ledger balances reversed successfully!"]);
+                exit;
+            }
+
             $_SESSION['flash_success'] = "{$recordType} {$inv->invoice_number} deleted and stock/ledger balances reversed successfully!";
         } else {
-            $_SESSION['flash_error'] = "Failed to delete. " . ($_SESSION['invoice_error'] ?? '');
+            $err = "Failed to delete. " . ($_SESSION['invoice_error'] ?? '');
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => $err]);
+                exit;
+            }
+            $_SESSION['flash_error'] = $err;
         }
 
         $getParams = $_GET;

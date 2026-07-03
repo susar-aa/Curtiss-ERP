@@ -14,7 +14,20 @@ class RepTrackingController extends Controller {
     }
 
     protected function validateCsrf() {
-        $this->validateCsrfOrDie();
+        if (!parent::validateCsrf()) {
+            $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
+                      (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+            if ($isAjax) {
+                header('HTTP/1.1 403 Forbidden');
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'success' => false, 'message' => 'CSRF token validation failed.']);
+                exit;
+            } else {
+                http_response_code(403);
+                die("CSRF validation failed.");
+            }
+        }
+        return true;
     }
 
     public function index() {
