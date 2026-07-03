@@ -1351,8 +1351,8 @@
             <button class="scroll-tab-btn" onclick="switchRouteTab(4, this)"><i class="ph ph-truck"></i> 4. Loading</button>
             <button class="scroll-tab-btn" onclick="switchRouteTab(5, this)"><i class="ph ph-scales"></i> 5. Variance Audit</button>
             <button class="scroll-tab-btn" onclick="switchRouteTab(6, this)"><i class="ph ph-map-trifold"></i> 6. Delivery Arrangement</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(7, this)"><i class="ph ph-steering-wheel"></i> 7. Delivery</button>
-            <button class="scroll-tab-btn" onclick="switchRouteTab(8, this)"><i class="ph ph-currency-dollar"></i> 8. Reconciliation</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(7, this)"><i class="ph ph-currency-dollar"></i> 7. Reconciliation</button>
+            <button class="scroll-tab-btn" onclick="switchRouteTab(8, this)"><i class="ph ph-steering-wheel"></i> 8. Delivery</button>
             <button class="scroll-tab-btn" onclick="switchRouteTab(9, this)"><i class="ph ph-package"></i> 9. Return Stock Verification</button>
             <button class="scroll-tab-btn" onclick="switchRouteTab(10, this)"><i class="ph ph-briefcase"></i> 10. Accounting</button>
         </div>
@@ -1412,15 +1412,15 @@
                     <div class="sidebar-step-item" id="sb-step-7" onclick="switchRouteTab(7)">
                         <div class="step-dot">7</div>
                         <div class="step-info">
-                            <span class="step-title">Delivery Execution</span>
-                            <span class="step-desc">Track live status</span>
+                            <span class="step-title">Reconciliation</span>
+                            <span class="step-desc">Discrepancies & cash</span>
                         </div>
                     </div>
                     <div class="sidebar-step-item" id="sb-step-8" onclick="switchRouteTab(8)">
                         <div class="step-dot">8</div>
                         <div class="step-info">
-                            <span class="step-title">Reconciliation</span>
-                            <span class="step-desc">Discrepancies & cash</span>
+                            <span class="step-title">Delivery Execution</span>
+                            <span class="step-desc">Track live status</span>
                         </div>
                     </div>
                     <div class="sidebar-step-item" id="sb-step-9" onclick="switchRouteTab(9)">
@@ -1697,8 +1697,8 @@
                     </div>
                 </div>
 
-                <!-- TAB 7: DELIVERY (LIVE MONITORING) -->
-                <div class="workspace-tab-panel" id="tabpanel-7" style="display:none;">
+                <!-- TAB 8: DELIVERY (LIVE MONITORING) -->
+                <div class="workspace-tab-panel" id="tabpanel-8" style="display:none;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <div>
                             <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Delivery Live Execution Status</h3>
@@ -1731,8 +1731,8 @@
                     </div>
                 </div>
 
-                <!-- TAB 8: RECONCILIATION -->
-                <div class="workspace-tab-panel" id="tabpanel-8" style="display:none;">
+                <!-- TAB 7: RECONCILIATION -->
+                <div class="workspace-tab-panel" id="tabpanel-7" style="display:none;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <div>
                             <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Route Collections & Variance Reconciliation</h3>
@@ -1740,7 +1740,7 @@
                         </div>
                     </div>
                     
-                    <div id="tab8ContentContainer">
+                    <div id="tab7ContentContainer">
                         <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:20px;">
                             <div>
                                 <!-- Cash Reconciliation Card -->
@@ -1788,7 +1788,7 @@
                             </div>
                         </div>
                     </div>
-                    <div id="tab8GuardContainer" style="display:none;"></div>
+                    <div id="tab7GuardContainer" style="display:none;"></div>
                 </div>
 
                 <!-- TAB 9: RETURN STOCK VERIFICATION -->
@@ -2568,8 +2568,8 @@
             { id: 4, name: 'Loading', statusKey: 'Loading' },
             { id: 5, name: 'Variance Audit', statusKey: 'Variance Adjustment' },
             { id: 6, name: 'Delivery Arrange', statusKey: 'Finalizing' },
-            { id: 7, name: 'Delivery Execution', statusKey: 'Finalizing' },
-            { id: 8, name: 'Reconciliation', statusKey: 'Finalizing' },
+            { id: 7, name: 'Reconciliation', statusKey: 'Finalizing' },
+            { id: 8, name: 'Delivery Execution', statusKey: 'Finalizing' },
             { id: 9, name: 'Return Stock', statusKey: 'Finalizing' },
             { id: 10, name: 'Accounting', statusKey: 'Finalizing' }
         ];
@@ -2613,12 +2613,12 @@
 
                 if (step.id === 6 && delId && delId !== '0' && delId !== '') {
                     isStepCompleted = true; // Arranged is completed if delivery ID exists
-                } else if (step.id === 7 && delStatus === 'Completed') {
-                    isStepCompleted = true; // Delivery is completed if delivery status is completed
-                } else if (step.id === 8) {
+                } else if (step.id === 7) {
                     // Check if reconciliation draft was saved
                     const cashVal = parseFloat(document.getElementById('reconActualCash')?.value || 0);
                     if (cashVal > 0) isStepCompleted = true;
+                } else if (step.id === 8 && (delStatus === 'Finalizing' || delStatus === 'Completed')) {
+                    isStepCompleted = true; // Delivery is completed if delivery status is Completed or Finalizing (meaning driver ended the route)
                 } else if (step.id === 9) {
                     // Check if stock verified checkbox is checked
                     if (document.getElementById('settleVerifyStock')?.checked) {
@@ -2732,6 +2732,11 @@
         // Close slider
         closeInvoiceSlider();
 
+        // Auto-advance active tab if entering a route that is in Finalizing/Completed/Finalized status
+        if ((status === 'Finalizing' || status === 'Completed' || status === 'Finalized') && currentTabIndex < 7) {
+            currentTabIndex = 7; // Land on Reconciliation
+        }
+
         // Switch to the last selected index, default to 1 (Details)
         switchRouteTab(currentTabIndex);
 
@@ -2785,10 +2790,10 @@
                 loadDispatchStage(currentRouteId);
                 break;
             case 7:
-                loadDeliveryLiveStage(currentRouteId);
+                loadTab8Reconciliation(currentRouteId);
                 break;
             case 8:
-                loadTab8Reconciliation(currentRouteId);
+                loadDeliveryLiveStage(currentRouteId);
                 break;
             case 9:
                 loadTab9ReturnStock(currentRouteId);
@@ -4366,10 +4371,10 @@
             isBlocked = true;
             title = 'Delivery Data Incomplete';
             desc = 'Reconciliation and postings are unavailable because delivery has not been arranged for this route yet.';
-        } else if (currentRouteStatus !== 'Completed' && currentRouteStatus !== 'Finalized') {
+        } else if (currentRouteStatus !== 'Finalizing' && currentRouteStatus !== 'Completed' && currentRouteStatus !== 'Finalized') {
             isBlocked = true;
             title = 'Preview Not Available';
-            desc = 'Reconciliation and GL postings can only be performed once the route delivery has completed execution and is marked as Completed or Finalized.';
+            desc = 'Reconciliation and GL postings can only be performed once the route delivery has completed execution.';
         }
 
         if (isBlocked) {
@@ -4396,7 +4401,7 @@
         const rdata = document.getElementById('route_data_' + routeId);
         const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
 
-        if (applyDefensiveGuard(delId, 'tab8GuardContainer', 'tab8ContentContainer')) {
+        if (applyDefensiveGuard(delId, 'tab7GuardContainer', 'tab7ContentContainer')) {
             return;
         }
 
