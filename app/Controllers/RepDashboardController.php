@@ -580,6 +580,40 @@ class RepDashboardController extends Controller {
                         $existingRoute = $this->db->single();
                     }
 
+                    // Determine route status on end-route sync
+                    $routeStatus = $r['status'] ?? 'Active';
+                    if ($routeStatus === 'Completed') {
+                        $hasCollections = false;
+                        
+                        // Check if this route has any collections in the database already
+                        if ($existingRoute) {
+                            $this->db->query("SELECT COUNT(*) as cnt FROM pending_collections WHERE route_id = :rid");
+                            $this->db->bind(':rid', $existingRoute->id);
+                            $dbCountRow = $this->db->single();
+                            if ($dbCountRow && intval($dbCountRow->cnt) > 0) {
+                                $hasCollections = true;
+                            }
+                        }
+                        
+                        // Check if this route has any collections in the sync payload
+                        if (!$hasCollections && isset($payload['payments']) && is_array($payload['payments'])) {
+                            foreach ($payload['payments'] as $p) {
+                                $pLocalRouteId = intval($p['local_route_id'] ?? 0);
+                                $pServerRouteId = intval($p['server_route_id'] ?? 0);
+                                $pRouteUuid = $p['route_uuid'] ?? '';
+                                
+                                if (($pServerRouteId > 0 && $existingRoute && $pServerRouteId === intval($existingRoute->id)) || 
+                                    ($pLocalRouteId > 0 && $pLocalRouteId === $localId) || 
+                                    (!empty($pRouteUuid) && $pRouteUuid === ($r['uuid'] ?? ''))) {
+                                    $hasCollections = true;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        $routeStatus = $hasCollections ? 'Pending GL' : 'Adjustments';
+                    }
+
                     if ($existingRoute) {
                         $serverId = $existingRoute->id;
                         $this->db->query("UPDATE rep_daily_routes SET 
@@ -594,7 +628,7 @@ class RepDashboardController extends Controller {
                         $this->db->bind(':end_time', $r['end_time'] ?? null);
                         $this->db->bind(':end_lat', $r['end_lat'] ?? null);
                         $this->db->bind(':end_lng', $r['end_lng'] ?? null);
-                        $this->db->bind(':status', ($r['status'] ?? 'Active') === 'Completed' ? 'Finalizing' : ($r['status'] ?? 'Active'));
+                        $this->db->bind(':status', $routeStatus);
                         $this->db->bind(':uuid', $r['uuid'] ?? null);
                         $this->db->bind(':id', $serverId);
                         $this->db->execute();
@@ -612,7 +646,7 @@ class RepDashboardController extends Controller {
                         $this->db->bind(':end_time', $r['end_time'] ?? null);
                         $this->db->bind(':end_lat', $r['end_lat'] ?? null);
                         $this->db->bind(':end_lng', $r['end_lng'] ?? null);
-                        $this->db->bind(':status', ($r['status'] ?? 'Active') === 'Completed' ? 'Finalizing' : ($r['status'] ?? 'Active'));
+                        $this->db->bind(':status', $routeStatus);
                         $this->db->bind(':uuid', $r['uuid'] ?? null);
                         $this->db->execute();
                         $serverId = $this->db->lastInsertId();

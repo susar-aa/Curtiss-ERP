@@ -841,6 +841,30 @@ class RepTrackingController extends Controller {
         $oldStatus = $oldRoute ? $oldRoute->status : 'Unknown';
         $routeName = $oldRoute ? $oldRoute->route_name : '';
 
+        // Guard status transitions if there are unverified collections
+        $statusPriority = [
+            'Active' => 0,
+            'Pending GL' => 1,
+            'Adjustments' => 2,
+            'Loading' => 3,
+            'Variance Adjustment' => 4,
+            'Finalizing' => 5,
+            'Completed' => 6
+        ];
+        $targetPriority = $statusPriority[$targetStatus] ?? 0;
+        if ($targetPriority > 1) { // Beyond 'Pending GL'
+            $db->query("SELECT COUNT(*) as pending_count FROM pending_collections 
+                        WHERE (route_id = :rid OR route_id IN (SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid AND route_binding_id IS NOT NULL)) 
+                        AND (status = 'Pending' OR is_verified = 0)");
+            $db->bind(':rid', $routeId);
+            $db->bind(':bid', $oldRoute ? $oldRoute->route_binding_id : 0);
+            $pendingRow = $db->single();
+            if ($pendingRow && intval($pendingRow->pending_count) > 0) {
+                echo json_encode(['status' => 'error', 'message' => 'Cannot advance status: There are outstanding payment collections that have not been verified and finalized by the accounts department.']);
+                exit;
+            }
+        }
+
         // Automatically create and expose loading task if moving to Loading status
         if ($targetStatus === 'Loading') {
             $db->query("SELECT id FROM deliveries WHERE rep_route_id = :rid OR secondary_rep_route_id = :rid");
@@ -929,7 +953,7 @@ class RepTrackingController extends Controller {
         $delStatus = 'Arranged';
         if ($targetStatus === 'Completed') {
             // Check if there are any pending collections for this route
-            $db->query("SELECT COUNT(*) as pending_count FROM pending_collections WHERE (route_id = :rid OR route_id IN (SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid AND route_binding_id IS NOT NULL)) AND status = 'Pending'");
+            $db->query("SELECT COUNT(*) as pending_count FROM pending_collections WHERE (route_id = :rid OR route_id IN (SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid AND route_binding_id IS NOT NULL)) AND (status = 'Pending' OR is_verified = 0)");
             $db->bind(':rid', $routeId);
             $db->bind(':bid', $oldRoute ? $oldRoute->route_binding_id : 0);
             $pendingRow = $db->single();
@@ -1148,6 +1172,8 @@ class RepTrackingController extends Controller {
 
         try {
             $db = new Database();
+            $routeId = 0;
+
             foreach ($updates as $up) {
                 $paymentId = intval($up['id']);
                 $isVerified = isset($up['is_verified']) ? intval($up['is_verified']) : 0;
@@ -1156,6 +1182,13 @@ class RepTrackingController extends Controller {
                 $notes = isset($up['verification_notes']) ? trim($up['verification_notes']) : null;
                 $debitAccId = !empty($up['debit_account_id']) ? intval($up['debit_account_id']) : null;
                 $creditAccId = !empty($up['credit_account_id']) ? intval($up['credit_account_id']) : null;
+
+                if ($routeId === 0) {
+                    $db->query("SELECT route_id FROM pending_collections WHERE id = :id");
+                    $db->bind(':id', $paymentId);
+                    $routeRow = $db->single();
+                    $routeId = $routeRow ? intval($routeRow->route_id) : 0;
+                }
 
                 // Check current status
                 $db->query("SELECT status FROM pending_collections WHERE id = :id");
@@ -1181,8 +1214,64 @@ class RepTrackingController extends Controller {
                     $this->trackingModel->finalizePayments([$paymentId], $userId, [], [$paymentId => $debitAccId], [$paymentId => $creditAccId]);
                 }
             }
+
+            // Transition route status based on pending collections count
+            if ($routeId > 0) {
+                // Get route binding ID and current status
+                $db->query("SELECT route_binding_id, status FROM rep_daily_routes WHERE id = :id");
+                $db->bind(':id', $routeId);
+                $routeInfo = $db->single();
+                $bindingId = $routeInfo ? $routeInfo->route_binding_id : null;
+                $routeStatus = $routeInfo ? $routeInfo->status : '';
+
+                if ($routeStatus === 'Pending GL' || $routeStatus === 'Adjustments') {
+                    if ($bindingId) {
+                        $db->query("SELECT COUNT(*) as pending_count FROM pending_collections 
+                                    WHERE (route_id = :rid OR route_id IN (SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid)) 
+                                    AND is_verified = 0");
+                        $db->bind(':rid', $routeId);
+                        $db->bind(':bid', $bindingId);
+                    } else {
+                        $db->query("SELECT COUNT(*) as pending_count FROM pending_collections WHERE route_id = :rid AND is_verified = 0");
+                        $db->bind(':rid', $routeId);
+                    }
+                    $pendingCountRow = $db->single();
+                    $pendingCount = $pendingCountRow ? intval($pendingCountRow->pending_count) : 0;
+
+                    $newStatus = ($pendingCount > 0) ? 'Pending GL' : 'Adjustments';
+                    if ($newStatus !== $routeStatus) {
+                        $db->query("UPDATE rep_daily_routes SET status = :status WHERE id = :id");
+                        $db->bind(':status', $newStatus);
+                        $db->bind(':id', $routeId);
+                        $db->execute();
+
+                        if ($bindingId) {
+                            $db->query("UPDATE rep_daily_routes SET status = :status WHERE route_binding_id = :bid");
+                            $db->bind(':status', $newStatus);
+                            $db->bind(':bid', $bindingId);
+                            $db->execute();
+                        }
+                    }
+                }
+            }
+
+            // Query final status
+            $finalStatus = 'Pending GL';
+            if ($routeId > 0) {
+                $db->query("SELECT status FROM rep_daily_routes WHERE id = :id");
+                $db->bind(':id', $routeId);
+                $statusRow = $db->single();
+                if ($statusRow) {
+                    $finalStatus = $statusRow->status;
+                }
+            }
+
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'success', 'message' => 'Collections verified successfully!']);
+            echo json_encode([
+                'status' => 'success', 
+                'message' => 'Collections verified successfully!',
+                'route_status' => $finalStatus
+            ]);
             exit;
         } catch (Exception $e) {
             header('Content-Type: application/json');

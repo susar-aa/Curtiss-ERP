@@ -3039,6 +3039,30 @@
         .then(data => {
             if (data.status === 'success') {
                 alert(data.message);
+                
+                // Update the route data status attribute dynamically!
+                const routeDataEl = document.getElementById('route_data_' + currentRouteId);
+                if (routeDataEl && data.route_status) {
+                    routeDataEl.setAttribute('data-status', data.route_status);
+                    currentRouteStatus = data.route_status;
+                }
+
+                // Update the route list badge in the sidebar list too!
+                const routeEl = document.getElementById('route_' + currentRouteId);
+                if (routeEl) {
+                    const listBadge = routeEl.querySelector('span[style*="font-size: 10px"]');
+                    if (listBadge && data.route_status) {
+                        listBadge.innerText = data.route_status;
+                        const isCompleted = (data.route_status === 'Completed' || data.route_status === 'Finalized');
+                        listBadge.style.background = isCompleted ? '#e2f0d9' : '#fff3cd';
+                        listBadge.style.color = isCompleted ? '#2e7d32' : '#d97706';
+                        listBadge.style.borderColor = isCompleted ? '#2e7d32' : '#d97706';
+                    }
+                }
+
+                // Reload route details to refresh status badges, workflow steps and progress
+                loadRouteDetails(currentRouteId, routeEl);
+
                 loadCollectionsVerificationStage2(currentRouteId);
             } else {
                 alert('Error: ' + data.message);
