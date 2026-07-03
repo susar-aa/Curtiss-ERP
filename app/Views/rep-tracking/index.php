@@ -1768,7 +1768,7 @@
                                             </thead>
                                             <tbody>
                                                 <!-- Denominations Row 5000 -->
-                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                <tr style="border-bottom: 1px solid #f1f5f9;" id="denomRow5000">
                                                     <td style="padding:6px 4px; font-weight:500;">Rs 5,000</td>
                                                     <td style="padding:6px 4px; text-align:center; color:#64748b;" id="colQty5000">0</td>
                                                     <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colVal5000">0.00</td>
@@ -1776,7 +1776,7 @@
                                                     <td style="padding:6px 4px; text-align:right; font-weight:bold; font-family:monospace;" id="actVal5000">0.00</td>
                                                 </tr>
                                                 <!-- Denominations Row 2000 -->
-                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                <tr style="border-bottom: 1px solid #f1f5f9;" id="denomRow2000">
                                                     <td style="padding:6px 4px; font-weight:500;">Rs 2,000</td>
                                                     <td style="padding:6px 4px; text-align:center; color:#64748b;" id="colQty2000">0</td>
                                                     <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colVal2000">0.00</td>
@@ -1784,7 +1784,7 @@
                                                     <td style="padding:6px 4px; text-align:right; font-weight:bold; font-family:monospace;" id="actVal2000">0.00</td>
                                                 </tr>
                                                 <!-- Denominations Row 1000 -->
-                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                <tr style="border-bottom: 1px solid #f1f5f9;" id="denomRow1000">
                                                     <td style="padding:6px 4px; font-weight:500;">Rs 1,000</td>
                                                     <td style="padding:6px 4px; text-align:center; color:#64748b;" id="colQty1000">0</td>
                                                     <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colVal1000">0.00</td>
@@ -1792,7 +1792,7 @@
                                                     <td style="padding:6px 4px; text-align:right; font-weight:bold; font-family:monospace;" id="actVal1000">0.00</td>
                                                 </tr>
                                                 <!-- Denominations Row 500 -->
-                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                <tr style="border-bottom: 1px solid #f1f5f9;" id="denomRow500">
                                                     <td style="padding:6px 4px; font-weight:500;">Rs 500</td>
                                                     <td style="padding:6px 4px; text-align:center; color:#64748b;" id="colQty500">0</td>
                                                     <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colVal500">0.00</td>
@@ -1800,7 +1800,7 @@
                                                     <td style="padding:6px 4px; text-align:right; font-weight:bold; font-family:monospace;" id="actVal500">0.00</td>
                                                 </tr>
                                                 <!-- Denominations Row 100 -->
-                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                <tr style="border-bottom: 1px solid #f1f5f9;" id="denomRow100">
                                                     <td style="padding:6px 4px; font-weight:500;">Rs 100</td>
                                                     <td style="padding:6px 4px; text-align:center; color:#64748b;" id="colQty100">0</td>
                                                     <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colVal100">0.00</td>
@@ -1808,7 +1808,7 @@
                                                     <td style="padding:6px 4px; text-align:right; font-weight:bold; font-family:monospace;" id="actVal100">0.00</td>
                                                 </tr>
                                                 <!-- Denominations Row 50 -->
-                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                <tr style="border-bottom: 1px solid #f1f5f9;" id="denomRow50">
                                                     <td style="padding:6px 4px; font-weight:500;">Rs 50</td>
                                                     <td style="padding:6px 4px; text-align:center; color:#64748b;" id="colQty50">0</td>
                                                     <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colVal50">0.00</td>
@@ -1816,7 +1816,7 @@
                                                     <td style="padding:6px 4px; text-align:right; font-weight:bold; font-family:monospace;" id="actVal50">0.00</td>
                                                 </tr>
                                                 <!-- Denominations Row 20 -->
-                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                <tr style="border-bottom: 1px solid #f1f5f9;" id="denomRow20">
                                                     <td style="padding:6px 4px; font-weight:500;">Rs 20</td>
                                                     <td style="padding:6px 4px; text-align:center; color:#64748b;" id="colQty20">0</td>
                                                     <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colVal20">0.00</td>
@@ -1824,7 +1824,7 @@
                                                     <td style="padding:6px 4px; text-align:right; font-weight:bold; font-family:monospace;" id="actVal20">0.00</td>
                                                 </tr>
                                                 <!-- Coins Row -->
-                                                <tr>
+                                                <tr id="denomRowCoins">
                                                     <td style="padding:6px 4px; font-weight:500;">Coins Total</td>
                                                     <td style="padding:6px 4px; text-align:center; color:#888;">-</td>
                                                     <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colValCoins">0.00</td>
@@ -4538,23 +4538,44 @@
                     } catch(e) {}
                 }
 
-                // Parse collector's denominations
+                // Parse collector's denominations safely
                 let colDenoms = {};
                 if (data.delivery && data.delivery.cash_denominations) {
-                    try {
-                        colDenoms = JSON.parse(data.delivery.cash_denominations) || {};
-                    } catch(e) {}
+                    if (typeof data.delivery.cash_denominations === 'string') {
+                        try {
+                            colDenoms = JSON.parse(data.delivery.cash_denominations) || {};
+                        } catch(e) {}
+                    } else if (typeof data.delivery.cash_denominations === 'object') {
+                        colDenoms = data.delivery.cash_denominations || {};
+                    }
                 }
 
-                // Populate collector column UI
+                // Populate collector column UI and show/hide rows dynamically
                 denList.forEach(den => {
                     const qty = parseInt(colDenoms[den] || 0);
                     const val = qty * den;
                     document.getElementById('colQty' + den).innerText = qty;
                     document.getElementById('colVal' + den).innerText = val.toLocaleString('en-US', {minimumFractionDigits: 2});
+                    
+                    const row = document.getElementById('denomRow' + den);
+                    if (row) {
+                        if (qty > 0) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    }
                 });
                 const colCoins = parseFloat(colDenoms.coins || 0);
                 document.getElementById('colValCoins').innerText = colCoins.toLocaleString('en-US', {minimumFractionDigits: 2});
+                const coinsRow = document.getElementById('denomRowCoins');
+                if (coinsRow) {
+                    if (colCoins > 0) {
+                        coinsRow.style.display = '';
+                    } else {
+                        coinsRow.style.display = 'none';
+                    }
+                }
 
                 // Populate actual column UI
                 // If actualDenoms is present, use it. Otherwise, default to collector's denominations.
@@ -4615,6 +4636,7 @@
 
         document.getElementById('reconActualCash').value = total.toFixed(2);
         calculateCashVariance();
+        validateReconciliation();
     }
 
     function calculateCashVariance() {
@@ -4641,15 +4663,65 @@
         if (ch) {
             ch.is_verified = checked ? 1 : 0;
         }
+        validateReconciliation();
+    }
+
+    function validateReconciliation() {
+        if (!currentDeliveryDetails) return;
+        
+        // 1. Check if all cheques are ticked
+        const payments = currentDeliveryDetails.balancing.payments || [];
+        const cheques = payments.filter(p => p.payment_method === 'Cheque');
+        const allChequesTicked = cheques.every(ch => parseInt(ch.is_verified) === 1);
+        
+        // 2. Check if total actual cash matches total expected cash
+        const expectedStr = document.getElementById('reconTotalExpectedCash').innerText.replace('Rs ', '').replace(/,/g, '');
+        const expected = parseFloat(expectedStr) || 0;
+        const actual = parseFloat(document.getElementById('reconActualCash').value) || 0;
+        const cashMatches = Math.abs(actual - expected) < 0.01;
+        
+        const saveBtn = document.getElementById('btnSaveReconciliationDraft');
+        if (saveBtn) {
+            const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+            if (isReadOnly) {
+                saveBtn.disabled = true;
+                saveBtn.style.opacity = '0.5';
+                saveBtn.style.cursor = 'not-allowed';
+            } else {
+                const isValid = allChequesTicked && cashMatches;
+                saveBtn.disabled = !isValid;
+                saveBtn.style.opacity = isValid ? '1' : '0.5';
+                saveBtn.style.cursor = isValid ? 'pointer' : 'not-allowed';
+            }
+        }
     }
 
     function saveReconciliationDraft() {
         if (!currentRouteId || !currentDeliveryDetails) return;
+        
+        // Final guard validation
+        const payments = currentDeliveryDetails.balancing.payments || [];
+        const cheques = payments.filter(p => p.payment_method === 'Cheque');
+        const allChequesTicked = cheques.every(ch => parseInt(ch.is_verified) === 1);
+        
+        const expectedStr = document.getElementById('reconTotalExpectedCash').innerText.replace('Rs ', '').replace(/,/g, '');
+        const expected = parseFloat(expectedStr) || 0;
+        const actual = parseFloat(document.getElementById('reconActualCash').value) || 0;
+        const cashMatches = Math.abs(actual - expected) < 0.01;
+        
+        if (!allChequesTicked) {
+            alert("Cannot save reconciliation draft. All cheques must be verified/ticked.");
+            return;
+        }
+        if (!cashMatches) {
+            alert("Cannot save reconciliation draft. Total Counted Cash (Rs " + actual.toFixed(2) + ") must match Total Expected Cash (Rs " + expected.toFixed(2) + ").");
+            return;
+        }
+
         const actualCash = parseFloat(document.getElementById('reconActualCash').value) || 0;
         const remarks = document.getElementById('reconAuditNotes').value;
 
         const chequeApprovals = {};
-        const payments = currentDeliveryDetails.balancing.payments || [];
         payments.forEach(p => {
             if (p.payment_method === 'Cheque') {
                 chequeApprovals[p.id] = parseInt(p.is_verified) === 1;
