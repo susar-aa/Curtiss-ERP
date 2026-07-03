@@ -137,7 +137,7 @@
             <!-- Tabs -->
             <div class="tabs">
                 <button class="tab-btn active" onclick="switchTab('ledger')" id="btn_ledger">Activity Ledger</button>
-                <button class="tab-btn" onclick="switchTab('pos')" id="btn_pos">Purchase Orders</button>
+                <button class="tab-btn" onclick="switchTab('bills')" id="btn_bills">Service Bills</button>
                 <button class="tab-btn" onclick="switchTab('profile')" id="btn_profile">Profile Details</button>
             </div>
 
@@ -180,7 +180,7 @@
                                 </td>
                                 <td>
                                     <?php if($l->type == 'GRN'): ?>
-                                        <a href="<?= APP_URL ?>/grn/show/<?= $l->id ?>" target="_blank" style="color:#0066cc; font-weight:bold; text-decoration:none;">
+                                        <a href="<?= APP_URL ?>/serviceprovider/bill/<?= $l->id ?>" target="_blank" style="color:#0066cc; font-weight:bold; text-decoration:none;">
                                             <?= htmlspecialchars($l->ref) ?> ↗
                                         </a>
                                     <?php elseif($l->type == 'Supplier Return'): ?>
@@ -200,31 +200,41 @@
                 </table>
             </div>
 
-            <!-- TAB 2: Purchase Orders -->
-            <div class="tab-content" id="tab_pos">
+            <!-- TAB 2: Service Bills -->
+            <div class="tab-content" id="tab_bills">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h3 style="margin:0;">Billing History</h3>
+                    <button class="btn btn-small btn-success" onclick="openModal('addBillModal')">+ Record Service Bill</button>
+                </div>
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>PO Date</th>
-                            <th>Expected Date</th>
-                            <th>PO Number</th>
+                            <th>Bill Date</th>
+                            <th>Bill Number</th>
+                            <th>Service Period</th>
+                            <th>Due Date</th>
                             <th>Status</th>
                             <th class="num-col">Total Amount</th>
+                            <th class="num-col">Balance Due</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if(empty($data['pos'])): ?>
-                            <tr><td colspan="6" style="text-align: center; color: #888; padding: 20px;">No purchase orders issued.</td></tr>
-                        <?php else: foreach($data['pos'] as $po): ?>
+                        <?php if(empty($data['bills'])): ?>
+                            <tr><td colspan="8" style="text-align: center; color: #888; padding: 20px;">No service bills recorded.</td></tr>
+                        <?php else: foreach($data['bills'] as $b): ?>
                             <tr>
-                                <td><?= date('M d, Y', strtotime($po->po_date)) ?></td>
-                                <td><?= $po->expected_date ? date('M d, Y', strtotime($po->expected_date)) : 'N/A' ?></td>
-                                <td><strong><?= htmlspecialchars($po->po_number) ?></strong></td>
-                                <td><span class="status-badge status-<?= $po->status ?>"><?= $po->status ?></span></td>
-                                <td class="num-col" style="font-weight:bold;">Rs: <?= number_format($po->total_amount, 2) ?></td>
+                                <td><?= date('M d, Y', strtotime($b->grn_date)) ?></td>
+                                <td><strong><?= htmlspecialchars($b->grn_number) ?></strong></td>
+                                <td><?= htmlspecialchars($b->service_period ?: 'N/A') ?></td>
+                                <td style="color:#ff3b30;"><?= $b->due_date ? date('M d, Y', strtotime($b->due_date)) : 'N/A' ?></td>
                                 <td>
-                                    <a href="<?= APP_URL ?>/purchase/show/<?= $po->id ?>" target="_blank" class="btn btn-outline btn-small">View ↗</a>
+                                    <span class="status-badge status-<?= $b->status ?: 'Unpaid' ?>"><?= $b->status ?: 'Unpaid' ?></span>
+                                </td>
+                                <td class="num-col" style="font-weight:bold;">Rs: <?= number_format($b->total_amount, 2) ?></td>
+                                <td class="num-col" style="font-weight:bold; color: <?= $b->balance_due > 0 ? '#c62828' : '#2e7d32' ?>;">Rs: <?= number_format($b->balance_due, 2) ?></td>
+                                <td>
+                                    <a href="<?= APP_URL ?>/serviceprovider/bill/<?= $b->id ?>" target="_blank" class="btn btn-outline btn-small">View Details</a>
                                 </td>
                             </tr>
                         <?php endforeach; endif; ?>
@@ -256,7 +266,26 @@
                         </div>
                         <div class="form-group">
                             <label>Service Category</label>
-                            <input type="text" name="service_category" class="form-control" value="<?= htmlspecialchars($sup->service_category) ?>" placeholder="e.g. Internet, Electricity, Insurance">
+                            <?php
+                            $categories = [
+                                'Telephone', 'Internet', 'Electricity', 'Water', 'Mobile', 'TV / Cable',
+                                'Insurance', 'Courier', 'Cloud Services', 'Software Subscription',
+                                'Maintenance', 'Security', 'Fuel', 'Rent'
+                            ];
+                            $currentCat = $sup->service_category;
+                            $isOther = !empty($currentCat) && !in_array($currentCat, $categories);
+                            ?>
+                            <select name="service_category_select" class="form-control" onchange="toggleCustomCategory(this, 'editCustomCategoryContainer')">
+                                <option value="">Select Category</option>
+                                <?php foreach ($categories as $cat): ?>
+                                    <option value="<?= $cat ?>" <?= $currentCat == $cat ? 'selected' : '' ?>><?= $cat ?></option>
+                                <?php endforeach; ?>
+                                <option value="Other" <?= $isOther ? 'selected' : '' ?>>Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="editCustomCategoryContainer" style="display: <?= $isOther ? 'block' : 'none' ?>;">
+                            <label>Custom Category Name *</label>
+                            <input type="text" name="service_category_custom" class="form-control" value="<?= $isOther ? htmlspecialchars($currentCat) : '' ?>">
                         </div>
                     </div>
                     <div class="grid-2">
@@ -277,6 +306,86 @@
                         <button type="submit" class="btn">Save Changes</button>
                     </div>
                 </form>
+            </div>
+
+            <!-- Add Service Bill Modal -->
+            <div class="modal" id="addBillModal">
+                <div class="modal-content" style="width: 500px;">
+                    <h3 style="margin-top:0; margin-bottom: 15px;">Record Service Bill</h3>
+                    <form action="<?= APP_URL ?>/serviceprovider/index/<?= $sup->id ?>" method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="action" value="add_service_bill">
+                        <input type="hidden" name="service_provider_id" value="<?= $sup->id ?>">
+                        <input type="hidden" name="ap_account_id" value="<?= $data['ap_account'] ? $data['ap_account']->id : '' ?>">
+                        
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label>Bill Number *</label>
+                                <input type="text" name="bill_number" class="form-control" required placeholder="e.g. INV-12345">
+                            </div>
+                            <div class="form-group">
+                                <label>Service Period</label>
+                                <input type="text" name="service_period" class="form-control" placeholder="e.g. July 2026">
+                            </div>
+                        </div>
+                        
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label>Bill Date *</label>
+                                <input type="date" name="bill_date" class="form-control" required value="<?= date('Y-m-d') ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Due Date *</label>
+                                <input type="date" name="due_date" class="form-control" required value="<?= date('Y-m-d', strtotime('+14 days')) ?>">
+                            </div>
+                        </div>
+                        
+                        <div class="grid-3">
+                            <div class="form-group">
+                                <label>Subtotal (Rs) *</label>
+                                <input type="number" step="0.01" id="bill_amount" name="amount" class="form-control" required oninput="calculateBillTotal()" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Tax (Rs)</label>
+                                <input type="number" step="0.01" id="bill_tax" name="tax" class="form-control" oninput="calculateBillTotal()" placeholder="0.00" value="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Total Amount</label>
+                                <input type="number" step="0.01" id="bill_total" name="total_amount" class="form-control" readonly placeholder="0.00" style="background:#e9ecef; font-weight:bold; color:var(--text-main);">
+                            </div>
+                        </div>
+                        
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label>Expense Account *</label>
+                                <select name="expense_account_id" class="form-control" required>
+                                    <option value="">-- Select Expense --</option>
+                                    <?php foreach($data['expenses'] as $acc): ?>
+                                        <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->account_code . ' - ' . $acc->account_name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Accounts Payable *</label>
+                                <input type="text" class="form-control" readonly value="<?= $data['ap_account'] ? htmlspecialchars($data['ap_account']->account_code . ' - ' . $data['ap_account']->account_name) : 'Accounts Payable Not Configured' ?>" style="background:#e9ecef;">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Upload Bill / Invoice (Optional)</label>
+                            <input type="file" name="attachment" class="form-control">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Memo / Notes</label>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="Enter notes..."></textarea>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                            <button type="button" class="btn btn-outline" onclick="closeModal('addBillModal')">Cancel</button>
+                            <button type="submit" class="btn">Record Bill</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         <?php endif; ?>
     </div>
@@ -306,7 +415,28 @@
             
             <div class="form-group">
                 <label>Service Category</label>
-                <input type="text" name="service_category" class="form-control" placeholder="e.g. Internet, Electricity, Insurance">
+                <select name="service_category_select" class="form-control" onchange="toggleCustomCategory(this, 'addCustomCategoryContainer')">
+                    <option value="">Select Category</option>
+                    <option value="Telephone">Telephone</option>
+                    <option value="Internet">Internet</option>
+                    <option value="Electricity">Electricity</option>
+                    <option value="Water">Water</option>
+                    <option value="Mobile">Mobile</option>
+                    <option value="TV / Cable">TV / Cable</option>
+                    <option value="Insurance">Insurance</option>
+                    <option value="Courier">Courier</option>
+                    <option value="Cloud Services">Cloud Services</option>
+                    <option value="Software Subscription">Software Subscription</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Security">Security</option>
+                    <option value="Fuel">Fuel</option>
+                    <option value="Rent">Rent</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group" id="addCustomCategoryContainer" style="display: none;">
+                <label>Custom Category Name *</label>
+                <input type="text" name="service_category_custom" class="form-control">
             </div>
 
             <div class="form-group">
@@ -362,5 +492,23 @@
                 item.style.display = 'none';
             }
         });
+    }
+
+    function toggleCustomCategory(selectEl, containerId) {
+        const container = document.getElementById(containerId);
+        if (selectEl.value === 'Other') {
+            container.style.display = 'block';
+            container.querySelector('input').setAttribute('required', 'required');
+        } else {
+            container.style.display = 'none';
+            container.querySelector('input').removeAttribute('required');
+            container.querySelector('input').value = '';
+        }
+    }
+
+    function calculateBillTotal() {
+        const amt = parseFloat(document.getElementById('bill_amount').value) || 0;
+        const tax = parseFloat(document.getElementById('bill_tax').value) || 0;
+        document.getElementById('bill_total').value = (amt + tax).toFixed(2);
     }
 </script>

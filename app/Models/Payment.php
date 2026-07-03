@@ -130,7 +130,7 @@ class Payment {
     public function getSupplierUnpaidGRNs($vendorId) {
         $this->db->query("
             SELECT g.id, g.grn_number, g.receipt_number, g.grn_date,
-                   COALESCE((SELECT SUM(total) FROM grn_items WHERE grn_id = g.id), 0) as total_amount,
+                   COALESCE(g.total_amount, (SELECT SUM(total) FROM grn_items WHERE grn_id = g.id), 0) as total_amount,
                    COALESCE((SELECT SUM(amount) FROM supplier_payment_allocations WHERE grn_id = g.id AND is_reversed = 0), 0) as amount_paid
             FROM goods_receipt_notes g
             WHERE g.vendor_id = :vid AND g.is_approved = 1
@@ -155,7 +155,7 @@ class Payment {
     public function getServiceProviderUnpaidGRNs($spId) {
         $this->db->query("
             SELECT g.id, g.grn_number, g.receipt_number, g.grn_date,
-                   COALESCE((SELECT SUM(total) FROM grn_items WHERE grn_id = g.id), 0) as total_amount,
+                   COALESCE(g.total_amount, (SELECT SUM(total) FROM grn_items WHERE grn_id = g.id), 0) as total_amount,
                    COALESCE((SELECT SUM(amount) FROM supplier_payment_allocations WHERE grn_id = g.id AND is_reversed = 0), 0) as amount_paid
             FROM goods_receipt_notes g
             WHERE g.service_provider_id = :spid AND g.is_approved = 1
@@ -425,6 +425,7 @@ class Payment {
                     $this->db->bind(':grn_id', $g->id);
                     $this->db->bind(':amt', $allocAmt);
                     $this->db->execute();
+                    $this->updateGRNStatus($g->id);
 
                     $allocatedAmount += $allocAmt;
                     $remaining -= $allocAmt;
@@ -444,6 +445,7 @@ class Payment {
                     $this->db->bind(':grn_id', $grnId);
                     $this->db->bind(':amt', $allocAmt);
                     $this->db->execute();
+                    $this->updateGRNStatus($grnId);
 
                     $allocatedAmount += $allocAmt;
                     $remaining -= $allocAmt;
@@ -464,6 +466,44 @@ class Payment {
             error_log("recordSupplierPayment Error: " . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Helper to update status of a GRN / Service Bill
+     */
+    public function updateGRNStatus($grnId) {
+        // Calculate total amount
+        $this->db->query("SELECT total_amount FROM goods_receipt_notes WHERE id = :id");
+        $this->db->bind(':id', $grnId);
+        $grn = $this->db->single();
+        if (!$grn) return;
+        
+        $total = floatval($grn->total_amount);
+        if ($total <= 0) {
+            // For standard GRNs without total_amount column filled, calculate from items
+            $this->db->query("SELECT SUM(total) as total FROM grn_items WHERE grn_id = :id");
+            $this->db->bind(':id', $grnId);
+            $itemsRow = $this->db->single();
+            $total = $itemsRow ? floatval($itemsRow->total) : 0.0;
+        }
+
+        // Calculate amount paid
+        $this->db->query("SELECT COALESCE(SUM(amount), 0) as paid FROM supplier_payment_allocations WHERE grn_id = :id AND is_reversed = 0");
+        $this->db->bind(':id', $grnId);
+        $allocRow = $this->db->single();
+        $paid = $allocRow ? floatval($allocRow->paid) : 0.0;
+
+        $status = 'Unpaid';
+        if ($paid >= $total - 0.01 && $total > 0) {
+            $status = 'Paid';
+        } elseif ($paid > 0.01) {
+            $status = 'Partially Paid';
+        }
+
+        $this->db->query("UPDATE goods_receipt_notes SET status = :status WHERE id = :id");
+        $this->db->bind(':status', $status);
+        $this->db->bind(':id', $grnId);
+        $this->db->execute();
     }
 
     /**
@@ -666,10 +706,18 @@ class Payment {
             }
 
             // 6. Reverse Allocations
+            $this->db->query("SELECT grn_id FROM supplier_payment_allocations WHERE supplier_payment_id = :pid AND is_reversed = 0");
+            $this->db->bind(':pid', $id);
+            $allocs = $this->db->resultSet();
+
             $this->db->query("UPDATE supplier_payment_allocations SET is_reversed = 1, reversed_by = :uid, reversed_at = CURRENT_TIMESTAMP() WHERE supplier_payment_id = :pid");
             $this->db->bind(':uid', $userId);
             $this->db->bind(':pid', $id);
             $this->db->execute();
+
+            foreach ($allocs as $a) {
+                $this->updateGRNStatus($a->grn_id);
+            }
 
             $this->db->commit();
             return true;
@@ -794,7 +842,7 @@ class Payment {
         $sql = "
             SELECT 'GRN' as type, grn.id, grn.grn_number as ref, grn.grn_date as date,
                    0 as debit, 
-                   (SELECT COALESCE(SUM(total), 0) FROM grn_items WHERE grn_id = grn.id) as credit, 
+                   COALESCE(grn.total_amount, (SELECT COALESCE(SUM(total), 0) FROM grn_items WHERE grn_id = grn.id)) as credit, 
                    grn.created_at
             FROM goods_receipt_notes grn 
             WHERE grn.vendor_id = :vid1 AND grn.is_approved = 1
@@ -848,7 +896,7 @@ class Payment {
         $sql = "
             SELECT 'GRN' as type, grn.id, grn.grn_number as ref, grn.grn_date as date,
                    0 as debit, 
-                   (SELECT COALESCE(SUM(total), 0) FROM grn_items WHERE grn_id = grn.id) as credit, 
+                   COALESCE(grn.total_amount, (SELECT COALESCE(SUM(total), 0) FROM grn_items WHERE grn_id = grn.id)) as credit, 
                    grn.created_at
             FROM goods_receipt_notes grn 
             WHERE grn.service_provider_id = :spid1 AND grn.is_approved = 1
