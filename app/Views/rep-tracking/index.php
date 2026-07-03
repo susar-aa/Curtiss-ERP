@@ -1677,8 +1677,18 @@
                                     </div>
                                     <span class="macos-title">Credit Bills Selection</span>
                                 </div>
-                                <div class="macos-content" style="flex: 1; display: flex; flex-direction: column;">
-                                    <label class="macos-label" style="margin-bottom: 10px;">Select Territory Credit Invoices to dispatch with this vehicle</label>
+                                <div class="macos-content" style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
+                                    <label class="macos-label" style="margin-bottom: 0;">Select Territory Credit Invoices to dispatch with this vehicle</label>
+                                    
+                                    <!-- Search & Route Filter controls -->
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 5px;">
+                                        <input type="text" id="creditBillsSearch" placeholder="Search by customer or invoice..." style="flex: 1.5; padding: 6px 10px; border: 1px solid var(--c-separator); border-radius: var(--r-sm); background: var(--c-bg); color: var(--t-primary); font-size: 12px; outline: none;" oninput="filterCreditBillsList()">
+                                        <select id="creditBillsRouteFilter" style="flex: 1; padding: 6px 10px; border: 1px solid var(--c-separator); border-radius: var(--r-sm); background: var(--c-bg); color: var(--t-primary); font-size: 12px; outline: none;" onchange="filterCreditBillsList()">
+                                            <option value="all">All Routes</option>
+                                            <option value="none">No Route / Unassigned</option>
+                                        </select>
+                                    </div>
+
                                     <div id="adjDaBillsContainer" class="macos-checkbox-list" style="flex: 1; min-height: 280px; max-height: none;">
                                         <!-- Outstanding credit bills list -->
                                     </div>
@@ -3042,41 +3052,62 @@
         }
     }
 
+    let cachedOutstandingBills = [];
+    let selectedCreditBills = [];
+
     function loadOutstandingBillsChecklist(routeId, delId) {
         const container = document.getElementById('adjDaBillsContainer');
         if (!container) return;
 
         container.innerHTML = '<p style="text-align:center; color:#888;">Loading credit bills... </p>';
-        const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
-        let selectedInvoices = [];
+        
+        // Reset cached variables
+        cachedOutstandingBills = [];
+        selectedCreditBills = [];
+        
+        // Clear search inputs
+        const searchInput = document.getElementById('creditBillsSearch');
+        if (searchInput) searchInput.value = '';
 
-        const renderBills = (selectedIds) => {
+        const loadBillsData = () => {
             fetchSecure('<?= APP_URL ?>/RepTracking/api_get_outstanding_bills/' + routeId)
                 .then(res => res.json())
                 .then(data => {
-                    if (data.status !== 'success' || !data.bills || data.bills.length === 0) {
-                        container.innerHTML = '<p style="text-align:center; color:#888; margin:10px 0;">No outstanding credit bills found in these territories.</p>';
-                    } else {
-                        let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
-                        data.bills.forEach(cust => {
+                    if (data.status !== 'success' || !data.bills) {
+                        container.innerHTML = '<p style="text-align:center; color:#888; margin:10px 0;">Error loading outstanding credit bills.</p>';
+                        return;
+                    }
+                    cachedOutstandingBills = data.bills;
+                    
+                    // Populate route filter dropdown
+                    const routeFilter = document.getElementById('creditBillsRouteFilter');
+                    if (routeFilter) {
+                        routeFilter.innerHTML = `
+                            <option value="all">All Routes</option>
+                            <option value="none">No Route / Unassigned</option>
+                        `;
+                        
+                        // Extract unique routes
+                        const routeMap = {};
+                        cachedOutstandingBills.forEach(cust => {
                             cust.bills.forEach(b => {
-                                let amtFormatted = parseFloat(b.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2});
-                                const isChecked = selectedIds.includes(parseInt(b.id)) ? 'checked' : '';
-                                html += `
-                                    <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; padding:6px; border-bottom:1px solid #f0f0f0;">
-                                        <input type="checkbox" class="adj-da-bill-checkbox" value="${b.id}" style="width:16px; height:16px;" ${isReadOnly ? 'disabled' : ''} ${isChecked}>
-                                        <div style="flex:1;">
-                                            <div style="font-weight:bold;">${b.invoice_number}</div>
-                                            <div style="font-size:11px; color:#666;">Customer: <strong>${cust.customer_name}</strong> | Date: ${b.invoice_date}</div>
-                                        </div>
-                                        <div style="font-weight:bold; font-family:monospace; color:#c62828;">Rs ${amtFormatted}</div>
-                                    </label>
-                                `;
+                                if (b.rep_route_id && b.route_name) {
+                                    routeMap[b.rep_route_id] = b.route_name;
+                                }
                             });
                         });
-                        html += '</div>';
-                        container.innerHTML = html;
+                        
+                        // Add options to filter
+                        Object.keys(routeMap).forEach(rid => {
+                            const opt = document.createElement('option');
+                            opt.value = rid;
+                            opt.textContent = routeMap[rid];
+                            routeFilter.appendChild(opt);
+                        });
                     }
+
+                    // Run initial filter rendering
+                    filterCreditBillsList();
                 });
         };
 
@@ -3086,13 +3117,105 @@
                 .then(dData => {
                     if (dData.delivery && dData.delivery.selected_credit_invoices) {
                         try {
-                            selectedInvoices = JSON.parse(dData.delivery.selected_credit_invoices).map(id => parseInt(id));
+                            selectedCreditBills = JSON.parse(dData.delivery.selected_credit_invoices).map(id => parseInt(id));
                         } catch (e) {}
                     }
-                    renderBills(selectedInvoices);
+                    loadBillsData();
                 });
         } else {
-            renderBills([]);
+            loadBillsData();
+        }
+    }
+
+    function filterCreditBillsList() {
+        const container = document.getElementById('adjDaBillsContainer');
+        if (!container) return;
+
+        const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+        const searchInput = document.getElementById('creditBillsSearch');
+        const routeFilter = document.getElementById('creditBillsRouteFilter');
+        
+        const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const selectedRoute = routeFilter ? routeFilter.value : 'all';
+
+        let filteredBillsCount = 0;
+        let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+
+        cachedOutstandingBills.forEach(cust => {
+            const customerName = cust.customer_name.toLowerCase();
+            const customerMatches = customerName.includes(searchQuery);
+
+            const matchedBills = cust.bills.filter(b => {
+                const invoiceNumber = b.invoice_number.toLowerCase();
+                const invoiceMatches = invoiceNumber.includes(searchQuery);
+
+                if (searchQuery && !customerMatches && !invoiceMatches) {
+                    return false;
+                }
+
+                if (selectedRoute === 'none') {
+                    if (b.rep_route_id) return false;
+                } else if (selectedRoute !== 'all') {
+                    if (String(b.rep_route_id) !== String(selectedRoute)) return false;
+                }
+
+                return true;
+            });
+
+            if (matchedBills.length > 0) {
+                html += `
+                    <div style="margin-bottom:5px; border-bottom: 0.5px solid var(--c-separator); padding-bottom: 5px;">
+                        <div style="font-weight:700; font-size:12px; color:var(--t-primary); background:var(--c-surface2); padding:4px 8px; border-radius:var(--r-xs); display:flex; justify-content:space-between; align-items:center;">
+                            <span>${cust.customer_name}</span>
+                            <span style="font-weight:normal; font-size:10px; color:#64748b;">${cust.mca_name}</span>
+                        </div>
+                        <div style="padding-left:8px;">
+                `;
+
+                matchedBills.forEach(b => {
+                    filteredBillsCount++;
+                    let amtFormatted = parseFloat(b.true_grand_total).toLocaleString('en-IN', {minimumFractionDigits:2});
+                    const isChecked = selectedCreditBills.includes(parseInt(b.id)) ? 'checked' : '';
+                    const routeTag = b.route_name ? `<span style="font-size:9px; background:#e0f2fe; color:#0369a1; padding:1px 4px; border-radius:3px; margin-left:5px; font-weight:600;">${b.route_name}</span>` : `<span style="font-size:9px; background:#f1f5f9; color:#475569; padding:1px 4px; border-radius:3px; margin-left:5px; font-weight:600;">No Route</span>`;
+                    
+                    html += `
+                        <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; padding:6px; border-bottom:0.5px dashed var(--c-separator);">
+                            <input type="checkbox" class="adj-da-bill-checkbox" value="${b.id}" style="width:16px; height:16px; margin-top:2px;" ${isReadOnly ? 'disabled' : ''} ${isChecked} onchange="toggleCreditBillSelection(this)">
+                            <div style="flex:1;">
+                                <div style="font-weight:bold; font-size:12px; color:var(--t-primary);">${b.invoice_number} ${routeTag}</div>
+                                <div style="font-size:11px; color:var(--t-secondary);">Date: ${b.invoice_date}</div>
+                            </div>
+                            <div style="font-weight:bold; font-family:monospace; color:#c62828; font-size:12px; margin-top:2px;">Rs ${amtFormatted}</div>
+                        </label>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        html += '</div>';
+
+        if (filteredBillsCount === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#888; margin:10px 0; font-size:12px;">No credit bills match the search/filter criteria.</p>';
+        } else {
+            container.innerHTML = html;
+        }
+    }
+
+    function toggleCreditBillSelection(checkbox) {
+        const billId = parseInt(checkbox.value);
+        if (checkbox.checked) {
+            if (!selectedCreditBills.includes(billId)) {
+                selectedCreditBills.push(billId);
+            }
+        } else {
+            selectedCreditBills = selectedCreditBills.filter(id => id !== billId);
+        }
+    };
         }
     }
 
@@ -3213,10 +3336,7 @@
         if (!vehicle) { alert("Please select a Vehicle Number."); return; }
         if (!driver) { alert("Please select a Driver Name."); return; }
 
-        const checkedBills = [];
-        document.querySelectorAll('.adj-da-bill-checkbox:checked').forEach(cb => {
-            checkedBills.push(parseInt(cb.value));
-        });
+        const checkedBills = [...selectedCreditBills];
 
         const payload = {
             rep_route_id: currentRouteId,
