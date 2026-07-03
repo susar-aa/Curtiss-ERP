@@ -25,8 +25,12 @@ class App {
         // Check if this is a stateless Mobile API sync request (bypasses CSRF only when no active web session exists)
         $isMobileSync = ($isMobileApi || isset($_GET['api_sync'])) && !isset($_SESSION['user_id']);
 
+        // Check if this is a Picking PWA API request
+        $isPickingApi = isset($url[0]) && strtolower($url[0]) === 'picking';
+        $isPickingLogin = $isPickingApi && isset($url[1]) && strtolower($url[1]) === 'api_login';
+
         // Global CSRF Protection
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isMobileSync) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isMobileSync && !$isPickingApi) {
             $token = $_POST['csrf_token'] ?? '';
             if (empty($token) && isset($_SERVER['HTTP_X_CSRF_TOKEN'])) {
                 $token = $_SERVER['HTTP_X_CSRF_TOKEN'];
@@ -80,18 +84,19 @@ class App {
             $isPublicInvoice = true;
         }
 
-        // Check if user is logged in. If not, force routing to AuthController (unless it is auth controller, an API sync request, or a public invoice view)
-        if (!isset($_SESSION['user_id']) && !$isMobileSync && !$isPublicInvoice && (isset($url[0]) ? strtolower($url[0]) !== 'auth' : true)) {
+        // Check if user is logged in. If not, force routing to AuthController (unless it is auth controller, an API sync/login request, or a public invoice view)
+        if (!isset($_SESSION['user_id']) && !$isMobileSync && !$isPublicInvoice && !$isPickingLogin && (isset($url[0]) ? strtolower($url[0]) !== 'auth' : true)) {
             $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
                       (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
                       (strpos($_SERVER['REQUEST_URI'], '/fetch_data') !== false) ||
                       (strpos($_SERVER['REQUEST_URI'], '/quick_view') !== false);
 
-            if ($isAjax) {
+            if ($isAjax || $isPickingApi) {
                 header('Content-Type: application/json');
                 http_response_code(401);
                 echo json_encode([
                     'success' => false,
+                    'unauthorized' => true,
                     'session_expired' => true,
                     'message' => 'Session Expired. Please login again.'
                 ]);
