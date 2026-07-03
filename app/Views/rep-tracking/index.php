@@ -45,9 +45,7 @@
     }
     .dots-dropdown {
         display: none;
-        position: absolute;
-        right: 0;
-        top: 100%;
+        position: fixed;
         background: rgba(255, 255, 255, 0.78) !important;
         backdrop-filter: blur(20px) saturate(190%) !important;
         -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
@@ -57,7 +55,7 @@
         z-index: 1001;
         min-width: 190px;
         padding: 6px;
-        margin-top: 6px;
+        margin: 0;
         overflow: hidden;
     }
     .dots-dropdown.show {
@@ -5252,33 +5250,48 @@
         closeAllDotsMenus();
         
         if (!isShowing) {
-            // Determine vertical position to open upwards if near the bottom
             const rect = btn.getBoundingClientRect();
             const windowHeight = window.innerHeight;
+            const windowWidth = window.innerWidth;
             
-            // If the button is in the bottom 40% of the viewport, open upwards
-            if (rect.top > windowHeight * 0.6) {
-                dropdown.style.top = 'auto';
-                dropdown.style.bottom = '100%';
-                dropdown.style.marginTop = '0';
-                dropdown.style.marginBottom = '6px';
+            // Temporarily show to measure dimensions, then hide
+            dropdown.style.visibility = 'hidden';
+            dropdown.style.display = 'block';
+            const dropdownHeight = dropdown.offsetHeight;
+            const dropdownWidth = Math.max(190, dropdown.offsetWidth || 190);
+            dropdown.style.display = '';
+            dropdown.style.visibility = '';
+            
+            // Determine vertical position
+            let top, bottom;
+            const spaceBelow = windowHeight - rect.bottom;
+            const spaceAbove = rect.top;
+            
+            if (spaceBelow < dropdownHeight + 12 && spaceAbove >= dropdownHeight + 12) {
+                // Not enough space below but enough above -> open upward
+                top = 'auto';
+                bottom = (windowHeight - rect.top + 8) + 'px';
             } else {
-                dropdown.style.top = '100%';
-                dropdown.style.bottom = 'auto';
-                dropdown.style.marginTop = '6px';
-                dropdown.style.marginBottom = '0';
+                // Open downward (default)
+                top = (rect.bottom + 8) + 'px';
+                bottom = 'auto';
             }
+            
+            // Determine horizontal position: right-align with button
+            let left = rect.right - dropdownWidth;
+            // Clamp to viewport bounds (with 8px padding)
+            left = Math.max(8, Math.min(left, windowWidth - dropdownWidth - 8));
+            
+            dropdown.style.top = top;
+            dropdown.style.bottom = bottom;
+            dropdown.style.left = left + 'px';
+            dropdown.style.right = 'auto';
+            dropdown.style.margin = '0';
             
             dropdown.classList.add('show');
             
             const backdrop = document.getElementById('menuBackdrop');
             if (backdrop) backdrop.style.display = 'block';
-            
-            // Lift the menu container's z-index above the backdrop
-            const container = btn.closest('.dots-menu-container');
-            if (container) {
-                container.style.zIndex = '1001';
-            }
         }
     }
 
