@@ -5385,14 +5385,17 @@
         if (!password) { alert("Please enter the administrator password."); return; }
         if (!reason) { alert("Please enter a deletion reason."); return; }
         
+        const targetId = deleteTargetId;
+        console.log("[Delete Sales Order] Initiating deletion for ID:", targetId);
+        
+        closeDeleteConfirmModal();
+        
         const formData = new URLSearchParams();
         formData.append('password', password);
         formData.append('delete_reason', reason);
         formData.append('is_ajax', '1');
         
-        closeDeleteConfirmModal();
-        
-        fetchSecure('<?= APP_URL ?>/sales/delete/' + deleteTargetId, {
+        fetchSecure('<?= APP_URL ?>/sales/delete/' + targetId, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
@@ -5401,6 +5404,7 @@
         })
         .then(res => res.json())
         .then(data => {
+            console.log("[Delete Sales Order] Response data:", data);
             if (data.status === 'success') {
                 alert(data.message || "Sales Order successfully deleted and stock balances reversed!");
                 onRouteDataChanged();
@@ -5410,6 +5414,7 @@
             }
         })
         .catch(err => {
+            console.error("[Delete Sales Order] Fetch error:", err);
             alert("Error deleting sales order: " + err.message);
         });
     }
@@ -5452,15 +5457,19 @@
         const targetRouteId = document.getElementById('moveDestinationRouteSelect').value;
         if (!targetRouteId) { alert("Please select a destination route."); return; }
         
+        const targetId = moveTargetId;
+        console.log("[Move Sales Order] Initiating move for ID:", targetId, "to route:", targetRouteId);
+        
         closeMoveInvoiceModal();
         
         fetchSecure('<?= APP_URL ?>/RepTracking/api_attach_invoices', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ route_id: targetRouteId, invoice_ids: ['route:' + moveTargetId] })
+            body: JSON.stringify({ route_id: targetRouteId, invoice_ids: ['route:' + targetId] })
         })
         .then(res => res.json())
         .then(data => {
+            console.log("[Move Sales Order] Response data:", data);
             if (data.status === 'success') {
                 alert("Sales Order successfully moved to the destination route!");
                 onRouteDataChanged();
@@ -5468,6 +5477,10 @@
             } else {
                 alert("Error: " + data.message);
             }
+        })
+        .catch(err => {
+            console.error("[Move Sales Order] Fetch error:", err);
+            alert("Error moving sales order: " + err.message);
         });
     }
 
