@@ -444,7 +444,8 @@ class RepDashboardController extends Controller {
         $mappings = [
             'customers' => [],
             'routes' => [],
-            'invoices' => []
+            'invoices' => [],
+            'payments' => []
         ];
 
         try {
@@ -939,35 +940,48 @@ class RepDashboardController extends Controller {
                     // Idempotency: Check if this payment was already synced via UUID or mobile_local_id and mobile_rep_id
                     $existingPmt = null;
                     if (!empty($p['uuid'])) {
-                        $this->db->query("SELECT id FROM pending_collections WHERE uuid = :uuid LIMIT 1");
+                        $this->db->query("SELECT id, uuid FROM pending_collections WHERE uuid = :uuid LIMIT 1");
                         $this->db->bind(':uuid', $p['uuid']);
                         $existingPmt = $this->db->single();
                     }
                     if (!$existingPmt && $localId > 0) {
-                        $this->db->query("SELECT id FROM pending_collections WHERE mobile_local_id = :mlid AND mobile_rep_id = :mrepid LIMIT 1");
+                        $this->db->query("SELECT id, uuid FROM pending_collections WHERE mobile_local_id = :mlid AND mobile_rep_id = :mrepid LIMIT 1");
                         $this->db->bind(':mlid', $localId);
                         $this->db->bind(':mrepid', $userId);
                         $existingPmt = $this->db->single();
                     }
-                    if ($existingPmt) {
-                        continue; // Already processed, skip creating duplicate
-                    }
-
-                    $this->db->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, status, notes, mobile_local_id, mobile_rep_id, uuid) 
-                                      VALUES (:customer_id, :route_id, :payment_method, :amount, :bank_name, :cheque_number, :cheque_date, 'Pending', 'Synced from mobile app', :mobile_local_id, :mobile_rep_id, :uuid)");
-                    $this->db->bind(':customer_id', $custServerId);
-                    $this->db->bind(':route_id', $routeServerId ?: null);
-                    $this->db->bind(':payment_method', $p['payment_method']);
-                    $this->db->bind(':amount', floatval($p['amount']));
-                    $this->db->bind(':bank_name', $p['bank_name'] ?? null);
-                    $this->db->bind(':cheque_number', $p['cheque_number'] ?? null);
-                    $this->db->bind(':cheque_date', !empty($p['cheque_date']) ? $p['cheque_date'] : null);
-                    $this->db->bind(':mobile_local_id', $localId > 0 ? $localId : null);
-                    $this->db->bind(':mobile_rep_id', $userId);
-                    $this->db->bind(':uuid', $p['uuid'] ?? null);
-                    $this->db->execute();
                     
-                    $this->logActivity('Record Collection', 'Billing', "Recorded payment collection Rs: " . number_format(floatval($p['amount']), 2) . " for Customer ID {$custServerId} via mobile sync");
+                    $serverId = 0;
+                    $paymentUuid = $p['uuid'] ?? ($existingPmt ? $existingPmt->uuid : '');
+                    
+                    if ($existingPmt) {
+                        $serverId = intval($existingPmt->id);
+                    } else {
+                        $this->db->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, status, notes, mobile_local_id, mobile_rep_id, uuid, latitude, longitude) 
+                                          VALUES (:customer_id, :route_id, :payment_method, :amount, :bank_name, :cheque_number, :cheque_date, 'Pending', 'Synced from mobile app', :mobile_local_id, :mobile_rep_id, :uuid, :latitude, :longitude)");
+                        $this->db->bind(':customer_id', $custServerId);
+                        $this->db->bind(':route_id', $routeServerId ?: null);
+                        $this->db->bind(':payment_method', $p['payment_method']);
+                        $this->db->bind(':amount', floatval($p['amount']));
+                        $this->db->bind(':bank_name', $p['bank_name'] ?? null);
+                        $this->db->bind(':cheque_number', $p['cheque_number'] ?? null);
+                        $this->db->bind(':cheque_date', !empty($p['cheque_date']) ? $p['cheque_date'] : null);
+                        $this->db->bind(':mobile_local_id', $localId > 0 ? $localId : null);
+                        $this->db->bind(':mobile_rep_id', $userId);
+                        $this->db->bind(':uuid', $p['uuid'] ?? null);
+                        $this->db->bind(':latitude', isset($p['latitude']) ? floatval($p['latitude']) : null);
+                        $this->db->bind(':longitude', isset($p['longitude']) ? floatval($p['longitude']) : null);
+                        $this->db->execute();
+                        
+                        $serverId = intval($this->db->lastInsertId());
+                        $this->logActivity('Record Collection', 'Billing', "Recorded payment collection Rs: " . number_format(floatval($p['amount']), 2) . " for Customer ID {$custServerId} via mobile sync");
+                    }
+                    
+                    $mappings['payments'][] = [
+                        'local_id' => $localId,
+                        'server_id' => $serverId,
+                        'uuid' => $paymentUuid
+                    ];
                 }
             }
 

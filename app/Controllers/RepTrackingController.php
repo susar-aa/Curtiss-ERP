@@ -734,6 +734,31 @@ class RepTrackingController extends Controller {
         }
 
         try {
+            $db = new Database();
+            // Get route ID associated with this delivery
+            $db->query("SELECT rep_route_id FROM deliveries WHERE id = :did");
+            $db->bind(':did', $deliveryId);
+            $deliveryRow = $db->single();
+            $repRouteId = $deliveryRow ? intval($deliveryRow->rep_route_id) : 0;
+            
+            if ($repRouteId > 0) {
+                // Get the route's binding ID to check bound routes as well
+                $db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid");
+                $db->bind(':rid', $repRouteId);
+                $routeRow = $db->single();
+                $bindingId = $routeRow ? $routeRow->route_binding_id : 0;
+
+                // Check for pending collections
+                $db->query("SELECT COUNT(*) as pending_count FROM pending_collections WHERE (route_id = :rid OR route_id IN (SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid AND route_binding_id IS NOT NULL)) AND status = 'Pending'");
+                $db->bind(':rid', $repRouteId);
+                $db->bind(':bid', $bindingId);
+                $pendingRow = $db->single();
+                
+                if ($pendingRow && intval($pendingRow->pending_count) > 0) {
+                    throw new Exception("Cannot finalize dispatch: There are outstanding payment collections that have not been verified and finalized by the accounts department.");
+                }
+            }
+
             $adminUserId = $_SESSION['user_id'];
             $selectedPaymentIds = isset($postData['selected_payment_ids']) ? array_map('intval', $postData['selected_payment_ids']) : [];
             $selectedInvoiceIds = isset($postData['selected_invoice_ids']) ? array_map('intval', $postData['selected_invoice_ids']) : [];
@@ -903,6 +928,15 @@ class RepTrackingController extends Controller {
         // Keep deliveries in sync
         $delStatus = 'Arranged';
         if ($targetStatus === 'Completed') {
+            // Check if there are any pending collections for this route
+            $db->query("SELECT COUNT(*) as pending_count FROM pending_collections WHERE (route_id = :rid OR route_id IN (SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid AND route_binding_id IS NOT NULL)) AND status = 'Pending'");
+            $db->bind(':rid', $routeId);
+            $db->bind(':bid', $oldRoute ? $oldRoute->route_binding_id : 0);
+            $pendingRow = $db->single();
+            if ($pendingRow && intval($pendingRow->pending_count) > 0) {
+                echo json_encode(['status' => 'error', 'message' => 'Cannot complete route: There are outstanding payment collections that have not been verified and finalized by the accounts department.']);
+                exit;
+            }
             $delStatus = 'Completed';
         }
         $db->query("UPDATE deliveries SET status = :status WHERE rep_route_id = :rid OR secondary_rep_route_id = :rid");
