@@ -3744,8 +3744,7 @@
                 invoiceRows += `
                     <div style="display:grid; grid-template-columns:1.5fr 1fr 1fr 1.2fr; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9;">
                         <div style="font-size:12px; font-weight:500;">
-                            <i class="ph ph-file-text"></i> <strong>${inv.invoice_number}</strong><br>
-                            <span style="font-size:10px; color:#64748b;">${inv.customer_name}</span>
+                            <span style="font-size:12px; color:#0f172a; font-weight:bold;">${inv.customer_name}</span>
                             ${actionSelect}
                         </div>
                         <div style="text-align:center; font-family:monospace;">
@@ -3840,7 +3839,7 @@
                 </div>
             </div>
             
-            ${substitutionHtml}
+
             
             <h5 style="margin:0 0 10px 0; font-size:13px; color:#475569; text-transform:uppercase; font-weight:bold; display:flex; align-items:center; gap:6px;"><i class="ph ph-package"></i> Product Loading Variances</h5>
             <table class="data-table" style="margin-bottom:25px; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden;">

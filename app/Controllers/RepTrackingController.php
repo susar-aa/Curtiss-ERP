@@ -455,6 +455,7 @@ class RepTrackingController extends Controller {
 
     public function api_get_route_variances($routeId) {
         $db = new Database();
+        $this->auto_apply_route_substitutions($db, $routeId, $_SESSION['user_id'] ?? 1);
 
         // Fetch route details first
         $db->query("SELECT status, route_name, route_binding_id FROM rep_daily_routes WHERE id = :id");
@@ -1378,15 +1379,8 @@ class RepTrackingController extends Controller {
         try {
             $db = new Database();
 
-            // 1. Check for unresolved product substitutions
-            $db->query("SELECT COUNT(*) as cnt FROM product_substitutions WHERE route_id = :rid AND status = 'Pending Bill Update'");
-            $db->bind(':rid', $routeId);
-            $pendingSubsRow = $db->single();
-            if ($pendingSubsRow && intval($pendingSubsRow->cnt) > 0) {
-                header('Content-Type: application/json');
-                echo json_encode(['status' => 'error', 'message' => 'Cannot complete Variance Audit. You have unresolved product substitutions. Please apply or resolve them first.']);
-                exit;
-            }
+            // 1. Auto-apply any remaining pending product substitutions
+            $this->auto_apply_route_substitutions($db, $routeId, $userId);
 
             // 2. No action selection check needed since zero-quantity items are always completely removed.
             
@@ -1680,6 +1674,285 @@ class RepTrackingController extends Controller {
         exit;
     }
 
+    private function execute_apply_substitution($db, $subId, $pricingChoice, $userId) {
+        // Fetch substitution details
+        $db->query("SELECT * FROM product_substitutions WHERE id = :id AND status = 'Pending Bill Update'");
+        $db->bind(':id', $subId);
+        $sub = $db->single();
+
+        if (!$sub) {
+            throw new Exception("Pending substitution not found or already applied");
+        }
+
+        // Find affected invoices on this route that contain the original product
+        $routeIds = [$sub->route_id];
+        $db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
+        $db->bind(':rid', $sub->route_id);
+        $routeRow = $db->single();
+        if ($routeRow && $routeRow->route_binding_id) {
+            $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
+            $db->bind(':bid', $routeRow->route_binding_id);
+            $boundRoutes = $db->resultSet();
+            foreach ($boundRoutes as $br) {
+                $routeIds[] = intval($br->id);
+            }
+        }
+        $routeIds = array_unique($routeIds);
+        $routeIdsStr = implode(',', $routeIds);
+
+        // Fetch affected invoices
+        $db->query("
+            SELECT DISTINCT i.id, i.invoice_number, i.total_amount
+            FROM invoices i
+            JOIN invoice_items ii ON i.id = ii.invoice_id
+            WHERE i.rep_route_id IN ($routeIdsStr) AND ii.item_id = :oid AND i.status != 'Voided'
+        ");
+        $db->bind(':oid', $sub->original_item_id);
+        $invoices = $db->resultSet() ?: [];
+
+        if (empty($invoices)) {
+            throw new Exception("No active invoices on this route contain the original product.");
+        }
+
+        // Fetch original and replacement items
+        $db->query("SELECT name, price AS selling_price FROM items WHERE id = :id");
+        $db->bind(':id', $sub->original_item_id);
+        $origProduct = $db->single();
+
+        if (!$origProduct) {
+            $db->query("SELECT description as name FROM invoice_items WHERE item_id = :oid LIMIT 1");
+            $db->bind(':oid', $sub->original_item_id);
+            $iiRow = $db->single();
+            
+            $origName = $iiRow ? $iiRow->name : 'Deleted Product';
+            $origProduct = (object)[
+                'name' => $origName,
+                'selling_price' => 0.00
+            ];
+        }
+
+        $db->query("SELECT name, price AS selling_price FROM items WHERE id = :id");
+        $db->bind(':id', $sub->replacement_item_id);
+        $replProduct = $db->single();
+
+        if (!$origProduct || !$replProduct) {
+            throw new Exception("Original or replacement product not found in database.");
+        }
+
+        // Calculate total original bill value of affected invoices before applying
+        $originalBillValue = 0.0;
+        foreach ($invoices as $invIdRow) {
+            $db->query("SELECT total_amount, tax_amount, global_discount_val, global_discount_type FROM invoices WHERE id = :id");
+            $db->bind(':id', $invIdRow->id);
+            $invRow = $db->single();
+            if ($invRow) {
+                $subTotal = floatval($invRow->total_amount);
+                $disc = ($invRow->global_discount_type === '%') ? ($subTotal * floatval($invRow->global_discount_val) / 100) : floatval($invRow->global_discount_val);
+                $originalBillValue += ($subTotal - $disc) + floatval($invRow->tax_amount);
+            }
+        }
+
+        $db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1200' OR account_name LIKE '%Receivable%' LIMIT 1");
+        $arAccRow = $db->single();
+        $arAccId = $arAccRow ? intval($arAccRow->id) : null;
+
+        $db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' LIMIT 1");
+        $revAccRow = $db->single();
+        $revAccId = $revAccRow ? intval($revAccRow->id) : null;
+
+        $modifiedInvoices = [];
+
+        foreach ($invoices as $inv) {
+            $db->query("SELECT * FROM invoice_items WHERE invoice_id = :iid AND item_id = :item_id");
+            $db->bind(':iid', $inv->id);
+            $db->bind(':item_id', $sub->original_item_id);
+            $line = $db->single();
+
+            if (!$line) continue;
+
+            $qty = floatval($line->quantity);
+            
+            $priceToUse = floatval($replProduct->selling_price);
+            if ($pricingChoice === 'original') {
+                $priceToUse = floatval($line->unit_price);
+            }
+
+            $discVal = floatval($line->discount_value);
+            $discType = $line->discount_type;
+
+            $newLineTotal = $qty * $priceToUse;
+            if ($discType === '%') {
+                $newLineTotal -= ($newLineTotal * $discVal / 100);
+            } else {
+                $newLineTotal -= ($discVal * $qty);
+            }
+
+            // Delete original line
+            $db->query("DELETE FROM invoice_items WHERE id = :id");
+            $db->bind(':id', $line->id);
+            $db->execute();
+
+            // Insert replacement line
+            $db->query("INSERT INTO invoice_items (invoice_id, item_id, description, quantity, unit_price, discount_value, discount_type, total)
+                        VALUES (:iid, :item_id, :desc, :qty, :unit_price, :disc_val, :disc_type, :total)");
+            $db->bind(':iid', $inv->id);
+            $db->bind(':item_id', $sub->replacement_item_id);
+            $db->bind(':desc', $replProduct->name);
+            $db->bind(':qty', $qty);
+            $db->bind(':unit_price', $priceToUse);
+            $db->bind(':disc_val', $discVal);
+            $db->bind(':disc_type', $discType);
+            $db->bind(':total', $newLineTotal);
+            $db->execute();
+
+            // Inventory Update
+            require_once '../app/Models/Item.php';
+            $itemModel = new Item();
+            $itemModel->updateStockDelta($sub->original_item_id, $qty);
+            $itemModel->updateStockDelta($sub->replacement_item_id, -$qty);
+
+            // Log Stock Movements
+            require_once '../app/Models/StockLedger.php';
+            $ledger = new StockLedger();
+
+            $db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+            $db->bind(':id', $sub->original_item_id);
+            $origItemRow = $db->single();
+            $origWh = $origItemRow ? $origItemRow->warehouse_id : null;
+            $origCost = $origItemRow ? floatval($origItemRow->cost > 0 ? $origItemRow->cost : ($origItemRow->cost_price > 0 ? $origItemRow->cost_price : 0.00)) : 0.00;
+            $ledger->logMovement($sub->original_item_id, null, $qty, 0, 'Sales Invoice Substitution Return', $inv->invoice_number, $origWh, $userId, 'Substitution Apply', $origCost);
+
+            $db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+            $db->bind(':id', $sub->replacement_item_id);
+            $replItemRow = $db->single();
+            $replWh = $replItemRow ? $replItemRow->warehouse_id : null;
+            $replCost = $replItemRow ? floatval($replItemRow->cost > 0 ? $replItemRow->cost : ($replItemRow->cost_price > 0 ? $replItemRow->cost_price : 0.00)) : 0.00;
+            $ledger->logMovement($sub->replacement_item_id, null, 0, $qty, 'Sales Invoice Substitution Supply', $inv->invoice_number, $replWh, $userId, 'Substitution Apply', $replCost);
+
+            $modifiedInvoices[] = $inv->id;
+        }
+
+        // Recalculate bill totals, taxes, and discounts for modified invoices
+        foreach ($modifiedInvoices as $invId) {
+            $db->query("SELECT SUM(total) as subtotal FROM invoice_items WHERE invoice_id = :id");
+            $db->bind(':id', $invId);
+            $subrow = $db->single();
+            $subtotal = $subrow ? floatval($subrow->subtotal) : 0.0;
+
+            $db->query("SELECT total_amount, global_discount_val, global_discount_type, tax_rate_id, tax_amount, journal_entry_id FROM invoices WHERE id = :id");
+            $db->bind(':id', $invId);
+            $invRow = $db->single();
+
+            if ($invRow) {
+                $oldSub = floatval($invRow->total_amount);
+                $oldDiscVal = floatval($invRow->global_discount_val);
+                $oldDiscType = $invRow->global_discount_type;
+                $oldDisc = ($oldDiscType === '%') ? ($oldSub * $oldDiscVal / 100) : $oldDiscVal;
+                $oldGrand = ($oldSub - $oldDisc) + floatval($invRow->tax_amount);
+
+                $disc = ($oldDiscType === '%') ? ($subtotal * $oldDiscVal / 100) : $oldDiscVal;
+                $taxVal = 0.0;
+
+                if ($invRow->tax_rate_id) {
+                    $db->query("SELECT rate_percentage FROM tax_rates WHERE id = :tid");
+                    $db->bind(':tid', $invRow->tax_rate_id);
+                    $taxRateRow = $db->single();
+                    if ($taxRateRow) {
+                        $taxVal = ($subtotal - $disc) * floatval($taxRateRow->rate_percentage) / 100;
+                    }
+                }
+
+                $grandTotal = max(0.0, ($subtotal - $disc) + $taxVal);
+
+                $db->query("UPDATE invoices SET total_amount = :sub, tax_amount = :tax WHERE id = :id");
+                $db->bind(':sub', $subtotal);
+                $db->bind(':tax', $taxVal);
+                $db->bind(':id', $invId);
+                $db->execute();
+
+                $jid = $invRow->journal_entry_id;
+                if ($jid) {
+                    if ($arAccId) {
+                        $db->query("UPDATE transactions SET debit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
+                        $db->bind(':grand', $grandTotal);
+                        $db->bind(':jid', $jid);
+                        $db->bind(':aid', $arAccId);
+                        $db->execute();
+                    }
+                    if ($revAccId) {
+                        $db->query("UPDATE transactions SET credit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
+                        $db->bind(':grand', $grandTotal);
+                        $db->bind(':jid', $jid);
+                        $db->bind(':aid', $revAccId);
+                        $db->execute();
+                    }
+
+                    $diffGrand = $grandTotal - $oldGrand;
+                    if ($diffGrand !== 0.0) {
+                        if ($arAccId) {
+                            $db->query("UPDATE chart_of_accounts SET balance = balance + :diff WHERE id = :id");
+                            $db->bind(':diff', $diffGrand);
+                            $db->bind(':id', $arAccId);
+                            $db->execute();
+                        }
+                        if ($revAccId) {
+                            $db->query("UPDATE chart_of_accounts SET balance = balance + :diff WHERE id = :id");
+                            $db->bind(':diff', $diffGrand);
+                            $db->bind(':id', $revAccId);
+                            $db->execute();
+                        }
+                    }
+                }
+            }
+        }
+
+        // Calculate updated bill value of affected invoices
+        $updatedBillValue = 0.0;
+        foreach ($modifiedInvoices as $invId) {
+            $db->query("SELECT total_amount, tax_amount, global_discount_val, global_discount_type FROM invoices WHERE id = :id");
+            $db->bind(':id', $invId);
+            $invRow = $db->single();
+            if ($invRow) {
+                $sub = floatval($invRow->total_amount);
+                $disc = ($invRow->global_discount_type === '%') ? ($sub * floatval($invRow->global_discount_val) / 100) : floatval($invRow->global_discount_val);
+                $updatedBillValue += ($sub - $disc) + floatval($invRow->tax_amount);
+            }
+        }
+
+        // Update substitution record: mark as Applied and fill audit info
+        $db->query("UPDATE product_substitutions 
+                    SET status = 'Applied', 
+                        pricing_choice = :pricing_choice,
+                        original_bill_value = :orig_val,
+                        updated_bill_value = :upd_val,
+                        applied_by = :uid,
+                        applied_at = NOW()
+                    WHERE id = :id");
+        $db->bind(':pricing_choice', $pricingChoice);
+        $db->bind(':orig_val', $originalBillValue);
+        $db->bind(':upd_val', $updatedBillValue);
+        $db->bind(':uid', $userId);
+        $db->bind(':id', $subId);
+        $db->execute();
+    }
+
+    private function auto_apply_route_substitutions($db, $routeId, $userId) {
+        $db->query("SELECT id FROM product_substitutions WHERE route_id = :rid AND status = 'Pending Bill Update'");
+        $db->bind(':rid', $routeId);
+        $subs = $db->resultSet() ?: [];
+        
+        foreach ($subs as $sub) {
+            $db->beginTransaction();
+            try {
+                $this->execute_apply_substitution($db, intval($sub->id), 'replacement', $userId);
+                $db->commit();
+            } catch (Exception $e) {
+                $db->rollBack();
+                error_log("Failed to auto-apply product substitution ID {$sub->id}: " . $e->getMessage());
+            }
+        }
+    }
+
     public function api_apply_substitution() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
         $this->validateCsrf();
@@ -1695,272 +1968,9 @@ class RepTrackingController extends Controller {
         }
 
         $db = new Database();
-        
-        // Fetch substitution details
-        $db->query("SELECT * FROM product_substitutions WHERE id = :id AND status = 'Pending Bill Update'");
-        $db->bind(':id', $subId);
-        $sub = $db->single();
-
-        if (!$sub) {
-            header('Content-Type: application/json');
-            echo json_encode(['status' => 'error', 'message' => 'Pending substitution not found or already applied']);
-            exit;
-        }
-
         $db->beginTransaction();
         try {
-            // Find affected invoices on this route that contain the original product
-            $routeIds = [$sub->route_id];
-            $db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
-            $db->bind(':rid', $sub->route_id);
-            $routeRow = $db->single();
-            if ($routeRow && $routeRow->route_binding_id) {
-                $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
-                $db->bind(':bid', $routeRow->route_binding_id);
-                $boundRoutes = $db->resultSet();
-                foreach ($boundRoutes as $br) {
-                    $routeIds[] = intval($br->id);
-                }
-            }
-            $routeIds = array_unique($routeIds);
-            $routeIdsStr = implode(',', $routeIds);
-
-            // Fetch affected invoices
-            $db->query("
-                SELECT DISTINCT i.id, i.invoice_number, i.total_amount
-                FROM invoices i
-                JOIN invoice_items ii ON i.id = ii.invoice_id
-                WHERE i.rep_route_id IN ($routeIdsStr) AND ii.item_id = :oid AND i.status != 'Voided'
-            ");
-            $db->bind(':oid', $sub->original_item_id);
-            $invoices = $db->resultSet() ?: [];
-
-            if (empty($invoices)) {
-                throw new Exception("No active invoices on this route contain the original product.");
-            }
-
-            // Fetch original and replacement items
-            $db->query("SELECT name, price AS selling_price FROM items WHERE id = :id");
-            $db->bind(':id', $sub->original_item_id);
-            $origProduct = $db->single();
-
-            if (!$origProduct) {
-                $db->query("SELECT description as name FROM invoice_items WHERE item_id = :oid LIMIT 1");
-                $db->bind(':oid', $sub->original_item_id);
-                $iiRow = $db->single();
-                
-                $origName = $iiRow ? $iiRow->name : 'Deleted Product';
-                $origProduct = (object)[
-                    'name' => $origName,
-                    'selling_price' => 0.00
-                ];
-            }
-
-            $db->query("SELECT name, price AS selling_price FROM items WHERE id = :id");
-            $db->bind(':id', $sub->replacement_item_id);
-            $replProduct = $db->single();
-
-            if (!$origProduct || !$replProduct) {
-                throw new Exception("Original or replacement product not found in database.");
-            }
-
-            // Calculate total original bill value of affected invoices before applying
-            // Grand total calculation takes global discount and tax into account
-            $originalBillValue = 0.0;
-            foreach ($invoices as $invIdRow) {
-                $db->query("SELECT total_amount, tax_amount, global_discount_val, global_discount_type FROM invoices WHERE id = :id");
-                $db->bind(':id', $invIdRow->id);
-                $invRow = $db->single();
-                if ($invRow) {
-                    $subTotal = floatval($invRow->total_amount);
-                    $disc = ($invRow->global_discount_type === '%') ? ($subTotal * floatval($invRow->global_discount_val) / 100) : floatval($invRow->global_discount_val);
-                    $originalBillValue += ($subTotal - $disc) + floatval($invRow->tax_amount);
-                }
-            }
-
-            $db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1200' OR account_name LIKE '%Receivable%' LIMIT 1");
-            $arAccRow = $db->single();
-            $arAccId = $arAccRow ? intval($arAccRow->id) : null;
-
-            $db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' LIMIT 1");
-            $revAccRow = $db->single();
-            $revAccId = $revAccRow ? intval($revAccRow->id) : null;
-
-            $modifiedInvoices = [];
-
-            foreach ($invoices as $inv) {
-                $db->query("SELECT * FROM invoice_items WHERE invoice_id = :iid AND item_id = :item_id");
-                $db->bind(':iid', $inv->id);
-                $db->bind(':item_id', $sub->original_item_id);
-                $line = $db->single();
-
-                if (!$line) continue;
-
-                $qty = floatval($line->quantity);
-                
-                $priceToUse = floatval($replProduct->selling_price);
-                if ($pricingChoice === 'original') {
-                    $priceToUse = floatval($line->unit_price);
-                }
-
-                $discVal = floatval($line->discount_value);
-                $discType = $line->discount_type;
-
-                $newLineTotal = $qty * $priceToUse;
-                if ($discType === '%') {
-                    $newLineTotal -= ($newLineTotal * $discVal / 100);
-                } else {
-                    $newLineTotal -= ($discVal * $qty);
-                }
-
-                // Delete original line
-                $db->query("DELETE FROM invoice_items WHERE id = :id");
-                $db->bind(':id', $line->id);
-                $db->execute();
-
-                // Insert replacement line
-                $db->query("INSERT INTO invoice_items (invoice_id, item_id, description, quantity, unit_price, discount_value, discount_type, total)
-                            VALUES (:iid, :item_id, :desc, :qty, :unit_price, :disc_val, :disc_type, :total)");
-                $db->bind(':iid', $inv->id);
-                $db->bind(':item_id', $sub->replacement_item_id);
-                $db->bind(':desc', $replProduct->name);
-                $db->bind(':qty', $qty);
-                $db->bind(':unit_price', $priceToUse);
-                $db->bind(':disc_val', $discVal);
-                $db->bind(':disc_type', $discType);
-                $db->bind(':total', $newLineTotal);
-                $db->execute();
-
-                // Inventory Update
-                require_once '../app/Models/Item.php';
-                $itemModel = new Item();
-                $itemModel->updateStockDelta($sub->original_item_id, $qty);
-                $itemModel->updateStockDelta($sub->replacement_item_id, -$qty);
-
-                // Log Stock Movements
-                require_once '../app/Models/StockLedger.php';
-                $ledger = new StockLedger();
-
-                $db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
-                $db->bind(':id', $sub->original_item_id);
-                $origItemRow = $db->single();
-                $origWh = $origItemRow ? $origItemRow->warehouse_id : null;
-                $origCost = $origItemRow ? floatval($origItemRow->cost > 0 ? $origItemRow->cost : ($origItemRow->cost_price > 0 ? $origItemRow->cost_price : 0.00)) : 0.00;
-                $ledger->logMovement($sub->original_item_id, null, $qty, 0, 'Sales Invoice Substitution Return', $inv->invoice_number, $origWh, $userId, 'Substitution Apply', $origCost);
-
-                $db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
-                $db->bind(':id', $sub->replacement_item_id);
-                $replItemRow = $db->single();
-                $replWh = $replItemRow ? $replItemRow->warehouse_id : null;
-                $replCost = $replItemRow ? floatval($replItemRow->cost > 0 ? $replItemRow->cost : ($replItemRow->cost_price > 0 ? $replItemRow->cost_price : 0.00)) : 0.00;
-                $ledger->logMovement($sub->replacement_item_id, null, 0, $qty, 'Sales Invoice Substitution Supply', $inv->invoice_number, $replWh, $userId, 'Substitution Apply', $replCost);
-
-                $modifiedInvoices[] = $inv->id;
-            }
-
-            // Recalculate bill totals, taxes, and discounts for modified invoices
-            foreach ($modifiedInvoices as $invId) {
-                $db->query("SELECT SUM(total) as subtotal FROM invoice_items WHERE invoice_id = :id");
-                $db->bind(':id', $invId);
-                $subrow = $db->single();
-                $subtotal = $subrow ? floatval($subrow->subtotal) : 0.0;
-
-                $db->query("SELECT total_amount, global_discount_val, global_discount_type, tax_rate_id, tax_amount, journal_entry_id FROM invoices WHERE id = :id");
-                $db->bind(':id', $invId);
-                $invRow = $db->single();
-
-                if ($invRow) {
-                    $oldSub = floatval($invRow->total_amount);
-                    $oldDiscVal = floatval($invRow->global_discount_val);
-                    $oldDiscType = $invRow->global_discount_type;
-                    $oldDisc = ($oldDiscType === '%') ? ($oldSub * $oldDiscVal / 100) : $oldDiscVal;
-                    $oldGrand = ($oldSub - $oldDisc) + floatval($invRow->tax_amount);
-
-                    $disc = ($oldDiscType === '%') ? ($subtotal * $oldDiscVal / 100) : $oldDiscVal;
-                    $taxVal = 0.0;
-
-                    if ($invRow->tax_rate_id) {
-                        $db->query("SELECT rate_percentage FROM tax_rates WHERE id = :tid");
-                        $db->bind(':tid', $invRow->tax_rate_id);
-                        $taxRateRow = $db->single();
-                        if ($taxRateRow) {
-                            $taxVal = ($subtotal - $disc) * floatval($taxRateRow->rate_percentage) / 100;
-                        }
-                    }
-
-                    $grandTotal = max(0.0, ($subtotal - $disc) + $taxVal);
-
-                    $db->query("UPDATE invoices SET total_amount = :sub, tax_amount = :tax WHERE id = :id");
-                    $db->bind(':sub', $subtotal);
-                    $db->bind(':tax', $taxVal);
-                    $db->bind(':id', $invId);
-                    $db->execute();
-
-                    $jid = $invRow->journal_entry_id;
-                    if ($jid) {
-                        if ($arAccId) {
-                            $db->query("UPDATE transactions SET debit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
-                            $db->bind(':grand', $grandTotal);
-                            $db->bind(':jid', $jid);
-                            $db->bind(':aid', $arAccId);
-                            $db->execute();
-                        }
-                        if ($revAccId) {
-                            $db->query("UPDATE transactions SET credit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
-                            $db->bind(':grand', $grandTotal);
-                            $db->bind(':jid', $jid);
-                            $db->bind(':aid', $revAccId);
-                            $db->execute();
-                        }
-
-                        $diffGrand = $grandTotal - $oldGrand;
-                        if ($diffGrand !== 0.0) {
-                            if ($arAccId) {
-                                $db->query("UPDATE chart_of_accounts SET balance = balance + :diff WHERE id = :id");
-                                $db->bind(':diff', $diffGrand);
-                                $db->bind(':id', $arAccId);
-                                $db->execute();
-                            }
-                            if ($revAccId) {
-                                $db->query("UPDATE chart_of_accounts SET balance = balance + :diff WHERE id = :id");
-                                $db->bind(':diff', $diffGrand);
-                                $db->bind(':id', $revAccId);
-                                $db->execute();
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Calculate updated bill value of affected invoices
-            $updatedBillValue = 0.0;
-            foreach ($modifiedInvoices as $invId) {
-                $db->query("SELECT total_amount, tax_amount, global_discount_val, global_discount_type FROM invoices WHERE id = :id");
-                $db->bind(':id', $invId);
-                $invRow = $db->single();
-                if ($invRow) {
-                    $sub = floatval($invRow->total_amount);
-                    $disc = ($invRow->global_discount_type === '%') ? ($sub * floatval($invRow->global_discount_val) / 100) : floatval($invRow->global_discount_val);
-                    $updatedBillValue += ($sub - $disc) + floatval($invRow->tax_amount);
-                }
-            }
-
-            // Update substitution record: mark as Applied and fill audit info
-            $db->query("UPDATE product_substitutions 
-                        SET status = 'Applied', 
-                            pricing_choice = :pricing_choice,
-                            original_bill_value = :orig_val,
-                            updated_bill_value = :upd_val,
-                            applied_by = :uid,
-                            applied_at = NOW()
-                        WHERE id = :id");
-            $db->bind(':pricing_choice', $pricingChoice);
-            $db->bind(':orig_val', $originalBillValue);
-            $db->bind(':upd_val', $updatedBillValue);
-            $db->bind(':uid', $userId);
-            $db->bind(':id', $subId);
-            $db->execute();
-
+            $this->execute_apply_substitution($db, $subId, $pricingChoice, $userId);
             $db->commit();
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'message' => 'Product substitution applied to bills successfully!']);
