@@ -1750,9 +1750,90 @@
                                         <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Expected Cash Sales</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right;" id="reconExpectedCash">Rs 0.00</td></tr>
                                         <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Expected Cash Collections</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right;" id="reconExpectedCollections">Rs 0.00</td></tr>
                                         <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Total Expected Cash</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right; color:#2e7d32;" id="reconTotalExpectedCash">Rs 0.00</td></tr>
-                                        <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Actual Counted Cash</td><td style="padding:10px 0; text-align:right;"><input type="number" step="0.01" min="0" id="reconActualCash" oninput="calculateCashVariance()" style="padding:6px; border:1px solid #ccc; border-radius:4px; width:150px; text-align:right; font-weight:bold; font-family:monospace;" value="0.00"></td></tr>
+                                        <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Actual Counted Cash</td><td style="padding:10px 0; text-align:right;"><input type="number" step="0.01" min="0" id="reconActualCash" readonly style="padding:6px; border:1px solid #ccc; border-radius:4px; width:150px; text-align:right; font-weight:bold; font-family:monospace; background:#f8fafc;" value="0.00"></td></tr>
                                         <tr><td style="padding:10px 0; color:#64748b; font-weight:bold;">Cash Variance</td><td style="padding:10px 0; font-weight:bold; font-family:monospace; text-align:right;" id="reconCashVariance">Rs 0.00</td></tr>
                                     </table>
+                                    
+                                    <div style="margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+                                        <h5 style="margin: 0 0 10px 0; color:#334155; font-size:13px; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px;">Denomination Breakdown</h5>
+                                        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                                            <thead>
+                                                <tr style="border-bottom: 2px solid #cbd5e1; text-align:left; color:#475569;">
+                                                    <th style="padding:6px 4px;">Denom</th>
+                                                    <th style="padding:6px 4px; text-align:center;">Collector Qty</th>
+                                                    <th style="padding:6px 4px; text-align:right;">Collector Value</th>
+                                                    <th style="padding:6px 4px; text-align:center; width: 90px;">Actual Qty</th>
+                                                    <th style="padding:6px 4px; text-align:right;">Actual Value</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Denominations Row 5000 -->
+                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                    <td style="padding:6px 4px; font-weight:500;">Rs 5,000</td>
+                                                    <td style="padding:6px 4px; text-align:center; color:#64748b;" id="colQty5000">0</td>
+                                                    <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colVal5000">0.00</td>
+                                                    <td style="padding:6px 4px; text-align:center;"><input type="number" min="0" id="actQty5000" oninput="recalculateDenominations()" style="width:70px; padding:4px; text-align:center; border:1px solid #cbd5e1; border-radius:4px;"></td>
+                                                    <td style="padding:6px 4px; text-align:right; font-weight:bold; font-family:monospace;" id="actVal5000">0.00</td>
+                                                </tr>
+                                                <!-- Denominations Row 2000 -->
+                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                    <td style="padding:6px 4px; font-weight:500;">Rs 2,000</td>
+                                                    <td style="padding:6px 4px; text-align:center; color:#64748b;" id="colQty2000">0</td>
+                                                    <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colVal2000">0.00</td>
+                                                    <td style="padding:6px 4px; text-align:center;"><input type="number" min="0" id="actQty2000" oninput="recalculateDenominations()" style="width:70px; padding:4px; text-align:center; border:1px solid #cbd5e1; border-radius:4px;"></td>
+                                                    <td style="padding:6px 4px; text-align:right; font-weight:bold; font-family:monospace;" id="actVal2000">0.00</td>
+                                                </tr>
+                                                <!-- Denominations Row 1000 -->
+                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                    <td style="padding:6px 4px; font-weight:500;">Rs 1,000</td>
+                                                    <td style="padding:6px 4px; text-align:center; color:#64748b;" id="colQty1000">0</td>
+                                                    <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colVal1000">0.00</td>
+                                                    <td style="padding:6px 4px; text-align:center;"><input type="number" min="0" id="actQty1000" oninput="recalculateDenominations()" style="width:70px; padding:4px; text-align:center; border:1px solid #cbd5e1; border-radius:4px;"></td>
+                                                    <td style="padding:6px 4px; text-align:right; font-weight:bold; font-family:monospace;" id="actVal1000">0.00</td>
+                                                </tr>
+                                                <!-- Denominations Row 500 -->
+                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                    <td style="padding:6px 4px; font-weight:500;">Rs 500</td>
+                                                    <td style="padding:6px 4px; text-align:center; color:#64748b;" id="colQty500">0</td>
+                                                    <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colVal500">0.00</td>
+                                                    <td style="padding:6px 4px; text-align:center;"><input type="number" min="0" id="actQty500" oninput="recalculateDenominations()" style="width:70px; padding:4px; text-align:center; border:1px solid #cbd5e1; border-radius:4px;"></td>
+                                                    <td style="padding:6px 4px; text-align:right; font-weight:bold; font-family:monospace;" id="actVal500">0.00</td>
+                                                </tr>
+                                                <!-- Denominations Row 100 -->
+                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                    <td style="padding:6px 4px; font-weight:500;">Rs 100</td>
+                                                    <td style="padding:6px 4px; text-align:center; color:#64748b;" id="colQty100">0</td>
+                                                    <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colVal100">0.00</td>
+                                                    <td style="padding:6px 4px; text-align:center;"><input type="number" min="0" id="actQty100" oninput="recalculateDenominations()" style="width:70px; padding:4px; text-align:center; border:1px solid #cbd5e1; border-radius:4px;"></td>
+                                                    <td style="padding:6px 4px; text-align:right; font-weight:bold; font-family:monospace;" id="actVal100">0.00</td>
+                                                </tr>
+                                                <!-- Denominations Row 50 -->
+                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                    <td style="padding:6px 4px; font-weight:500;">Rs 50</td>
+                                                    <td style="padding:6px 4px; text-align:center; color:#64748b;" id="colQty50">0</td>
+                                                    <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colVal50">0.00</td>
+                                                    <td style="padding:6px 4px; text-align:center;"><input type="number" min="0" id="actQty50" oninput="recalculateDenominations()" style="width:70px; padding:4px; text-align:center; border:1px solid #cbd5e1; border-radius:4px;"></td>
+                                                    <td style="padding:6px 4px; text-align:right; font-weight:bold; font-family:monospace;" id="actVal50">0.00</td>
+                                                </tr>
+                                                <!-- Denominations Row 20 -->
+                                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                    <td style="padding:6px 4px; font-weight:500;">Rs 20</td>
+                                                    <td style="padding:6px 4px; text-align:center; color:#64748b;" id="colQty20">0</td>
+                                                    <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colVal20">0.00</td>
+                                                    <td style="padding:6px 4px; text-align:center;"><input type="number" min="0" id="actQty20" oninput="recalculateDenominations()" style="width:70px; padding:4px; text-align:center; border:1px solid #cbd5e1; border-radius:4px;"></td>
+                                                    <td style="padding:6px 4px; text-align:right; font-weight:bold; font-family:monospace;" id="actVal20">0.00</td>
+                                                </tr>
+                                                <!-- Coins Row -->
+                                                <tr>
+                                                    <td style="padding:6px 4px; font-weight:500;">Coins Total</td>
+                                                    <td style="padding:6px 4px; text-align:center; color:#888;">-</td>
+                                                    <td style="padding:6px 4px; text-align:right; color:#64748b; font-family:monospace;" id="colValCoins">0.00</td>
+                                                    <td style="padding:6px 4px; text-align:center;"><input type="number" step="0.01" min="0" id="actValCoins" oninput="recalculateDenominations()" style="width:70px; padding:4px; text-align:center; border:1px solid #cbd5e1; border-radius:4px;"></td>
+                                                    <td style="padding:6px 4px; text-align:right; font-weight:bold; font-family:monospace;" id="actValCoinsTotal">0.00</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
 
                                 <!-- Cheque Reconciliation Card -->
@@ -4423,6 +4504,12 @@
         document.getElementById('reconActualCash').disabled = isReadOnly;
         document.getElementById('reconAuditNotes').disabled = isReadOnly;
 
+        const denList = [5000, 2000, 1000, 500, 100, 50, 20];
+        denList.forEach(den => {
+            document.getElementById('actQty' + den).disabled = isReadOnly;
+        });
+        document.getElementById('actValCoins').disabled = isReadOnly;
+
         fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
             .then(res => res.json())
             .then(data => {
@@ -4441,35 +4528,49 @@
 
                 let actualCash = 0;
                 let remarks = '';
+                let actualDenoms = null;
                 if (data.delivery && data.delivery.reconciliation_json) {
                     try {
                         const recon = JSON.parse(data.delivery.reconciliation_json);
                         actualCash = parseFloat(recon.actual_cash || 0);
                         remarks = recon.audit_remarks || '';
+                        actualDenoms = recon.actual_denominations || null;
                     } catch(e) {}
                 }
 
-                // Fallback: if actualCash is 0, try to populate it using the driver's submitted cash_denominations total
-                if (actualCash === 0 && data.delivery && data.delivery.cash_denominations) {
+                // Parse collector's denominations
+                let colDenoms = {};
+                if (data.delivery && data.delivery.cash_denominations) {
                     try {
-                        const denoms = JSON.parse(data.delivery.cash_denominations);
-                        let sum = 0;
-                        const denomList = [5000, 2000, 1000, 500, 100, 50, 20];
-                        denomList.forEach(den => {
-                            const count = parseInt(denoms[den] || 0);
-                            sum += den * count;
-                        });
-                        sum += parseFloat(denoms.coins || 0);
-                        if (sum > 0) {
-                            actualCash = sum;
-                        }
+                        colDenoms = JSON.parse(data.delivery.cash_denominations) || {};
                     } catch(e) {}
                 }
 
-                document.getElementById('reconActualCash').value = actualCash.toFixed(2);
-                document.getElementById('reconAuditNotes').value = remarks;
+                // Populate collector column UI
+                denList.forEach(den => {
+                    const qty = parseInt(colDenoms[den] || 0);
+                    const val = qty * den;
+                    document.getElementById('colQty' + den).innerText = qty;
+                    document.getElementById('colVal' + den).innerText = val.toLocaleString('en-US', {minimumFractionDigits: 2});
+                });
+                const colCoins = parseFloat(colDenoms.coins || 0);
+                document.getElementById('colValCoins').innerText = colCoins.toLocaleString('en-US', {minimumFractionDigits: 2});
 
-                calculateCashVariance();
+                // Populate actual column UI
+                // If actualDenoms is present, use it. Otherwise, default to collector's denominations.
+                const denToUse = actualDenoms || colDenoms;
+
+                denList.forEach(den => {
+                    const qty = parseInt(denToUse[den] || 0);
+                    document.getElementById('actQty' + den).value = qty || '';
+                });
+                const actCoins = parseFloat(denToUse.coins || 0);
+                document.getElementById('actValCoins').value = actCoins || '';
+
+                // Call recalculateDenominations to calculate totals and values
+                recalculateDenominations();
+
+                document.getElementById('reconAuditNotes').value = remarks;
 
                 // Render cheques
                 const chequesTbody = document.getElementById('reconChequesTbody');
@@ -4496,6 +4597,24 @@
                     });
                 }
             });
+    }
+
+    function recalculateDenominations() {
+        const denoms = [5000, 2000, 1000, 500, 100, 50, 20];
+        let total = 0;
+        denoms.forEach(den => {
+            const qty = parseInt(document.getElementById('actQty' + den).value || 0);
+            const val = qty * den;
+            document.getElementById('actVal' + den).innerText = val.toLocaleString('en-US', {minimumFractionDigits: 2});
+            total += val;
+        });
+
+        const coinsVal = parseFloat(document.getElementById('actValCoins').value || 0);
+        document.getElementById('actValCoinsTotal').innerText = coinsVal.toLocaleString('en-US', {minimumFractionDigits: 2});
+        total += coinsVal;
+
+        document.getElementById('reconActualCash').value = total.toFixed(2);
+        calculateCashVariance();
     }
 
     function calculateCashVariance() {
@@ -4537,10 +4656,18 @@
             }
         });
 
+        const actualDenoms = {};
+        const denoms = [5000, 2000, 1000, 500, 100, 50, 20];
+        denoms.forEach(den => {
+            actualDenoms[den] = parseInt(document.getElementById('actQty' + den).value || 0);
+        });
+        actualDenoms['coins'] = parseFloat(document.getElementById('actValCoins').value || 0);
+
         const reconData = {
             actual_cash: actualCash,
             audit_remarks: remarks,
-            cheque_approvals: chequeApprovals
+            cheque_approvals: chequeApprovals,
+            actual_denominations: actualDenoms
         };
 
         const deliveryId = currentDeliveryDetails.delivery.id;
