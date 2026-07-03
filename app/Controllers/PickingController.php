@@ -199,17 +199,26 @@ class PickingController extends Controller {
             SELECT d.id, d.delivery_date, d.vehicle_number, d.driver_name, d.status as db_status, 
                    r.route_name, r.id as route_id, d.secondary_rep_route_id,
                    r.status as route_status,
+                   COALESCE(e.first_name, u.username) as rep_first_name, COALESCE(e.last_name, '') as rep_last_name,
                    (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id) as total_items,
                    (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_picked = 1) as picked_items
             FROM deliveries d
             JOIN rep_daily_routes r ON d.rep_route_id = r.id
+            LEFT JOIN users u ON r.user_id = u.id
+            LEFT JOIN employees e ON u.employee_id = e.id
             WHERE r.status NOT IN ('Completed', 'Finalized') OR d.status NOT IN ('Completed', 'Finalized')
             ORDER BY d.delivery_date DESC, d.id DESC
         ");
         $sheets = $this->db->resultSet() ?: [];
 
         foreach ($sheets as $sheet) {
-            // Retrieve customer names for this delivery's routes
+            $repName = trim(($sheet->rep_first_name ?? '') . ' ' . ($sheet->rep_last_name ?? ''));
+            if (empty($repName)) {
+                $repName = 'Pending Rep';
+            }
+            $sheet->rep_name = $repName;
+
+            // Retrieve customer names and totals for this delivery's routes
             $rids = [$sheet->route_id];
             if ($sheet->secondary_rep_route_id) {
                 $rids[] = $sheet->secondary_rep_route_id;
@@ -227,8 +236,20 @@ class PickingController extends Controller {
                 $custs = $this->db->resultSet();
                 $custNames = array_map(function($c) { return $c->name; }, $custs);
                 $sheet->customer_info = !empty($custNames) ? implode(', ', $custNames) : 'No Customer Invoices';
+
+                // Fetch total bills and sales
+                $this->db->query("
+                    SELECT COUNT(id) as total_bills, SUM(total_amount) as total_sales
+                    FROM invoices 
+                    WHERE rep_route_id IN ($ridsStr) AND status != 'Voided'
+                ");
+                $totals = $this->db->single();
+                $sheet->total_bills = intval($totals->total_bills ?? 0);
+                $sheet->total_sales = floatval($totals->total_sales ?? 0);
             } else {
                 $sheet->customer_info = 'No Customer Invoices';
+                $sheet->total_bills = 0;
+                $sheet->total_sales = 0.0;
             }
 
             // Determine picking status based on actual items picking progress
