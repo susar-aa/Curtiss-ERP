@@ -2293,21 +2293,21 @@
 
 <!-- Server-side Delivery Process Modal -->
 <div class="modal-backdrop" id="serverDeliveryProcessModal" style="display: none; align-items: center; justify-content: center;">
-    <div class="modal-panel" style="max-width: 1100px; width: 95%; max-height: 95vh; display: flex; flex-direction: column;">
-        <div class="modal-header" style="background: #0066cc; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; color: #fff; font-weight: bold;">
+    <div class="modal-panel" style="max-width: 1100px; width: 95%; height: 85vh; max-height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-header" style="background: #0066cc; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; color: #fff; font-weight: bold; flex-shrink: 0;">
             <span><i class="ph ph-steering-wheel"></i> Process Visit: <span id="sdpCustomerName"></span></span>
             <button onclick="closeServerDeliveryProcessModal()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
         </div>
-        <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 20px; display: flex; gap: 20px; background: #fafafa;">
+        <div class="modal-body" style="flex: 1; padding: 20px; display: flex !important; flex-direction: row !important; gap: 20px; background: #fafafa; overflow: hidden !important; min-height: 0;">
             
             <!-- Left Column: Adjust Invoice Items (Bill Quantity) -->
-            <div style="flex: 1.3; display: flex; flex-direction: column; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                <h4 style="margin: 0 0 10px 0; font-size: 13px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 6px;">
+            <div style="flex: 1.3; display: flex; flex-direction: column; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; height: 100%; min-height: 0;">
+                <h4 style="margin: 0 0 10px 0; font-size: 13px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                     <i class="ph ph-package" style="color:#0066cc;"></i> Adjust Invoice Items (Bill Quantity)
                 </h4>
                 
                 <!-- Search Option -->
-                <div style="margin-bottom: 10px;">
+                <div style="margin-bottom: 10px; flex-shrink: 0;">
                     <div style="position: relative;">
                         <input type="text" id="sdpItemSearch" placeholder="Search item description..." oninput="filterSdpItems()"
                                style="width: 100%; padding: 8px 12px 8px 35px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; outline: none; transition: border 0.2s;" />
@@ -2315,7 +2315,7 @@
                     </div>
                 </div>
                 
-                <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; flex: 1;">
+                <div style="border: 1px solid #e2e8f0; border-radius: 6px; flex: 1; overflow-y: auto; min-height: 0;">
                     <table class="data-table" style="margin-top: 0; font-size: 12px; width: 100%;">
                         <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 5;">
                             <tr>
@@ -2332,13 +2332,13 @@
             </div>
 
             <!-- Right Column: Visit Status, Outstanding, and Collections on a separate panel -->
-            <div style="flex: 1; display: flex; flex-direction: column; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; gap: 15px;">
+            <div style="flex: 1; display: flex; flex-direction: column; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; gap: 15px; height: 100%; min-height: 0; overflow-y: auto;">
                 <!-- Hidden details -->
                 <input type="hidden" id="sdpInvoiceId" />
                 <input type="hidden" id="sdpCustomerId" />
 
                 <!-- Visit Status & Info -->
-                <div style="background: #f8fafc; padding: 12px 15px; border-radius: 6px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
+                <div style="background: #f8fafc; padding: 12px 15px; border-radius: 6px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-shrink: 0;">
                     <div>
                         <div style="font-size: 11px; text-transform: uppercase; color: #888; font-weight: bold;">Processing Invoice</div>
                         <strong id="sdpInvoiceNumber" style="font-size: 15px; color: #0066cc;"></strong>
@@ -2355,17 +2355,17 @@
                 </div>
 
                 <!-- Arrears & Outstanding Info -->
-                <div id="sdpArrearsInfoBox" style="background: #fffbeb; padding: 12px 15px; border-radius: 6px; border: 1px solid #fef3c7; color: #b45309; font-size: 13px; font-weight: 500;">
+                <div id="sdpArrearsInfoBox" style="background: #fffbeb; padding: 12px 15px; border-radius: 6px; border: 1px solid #fef3c7; color: #b45309; font-size: 13px; font-weight: 500; flex-shrink: 0;">
                     <i class="ph ph-warning"></i> Customer Outstanding Balance: <strong id="sdpOutstandingArrears">Rs 0.00</strong>
                 </div>
 
                 <!-- Collections Section (Record Payments & Credit Collections) -->
-                <div style="flex: 1; display: flex; flex-direction: column;">
-                    <h4 style="margin: 0 0 15px 0; font-size: 13px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+                <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+                    <h4 style="margin: 0 0 15px 0; font-size: 13px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; flex-shrink: 0;">
                         <i class="ph ph-coins" style="color:#2e7d32;"></i> Record Payments & Collections
                     </h4>
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; flex-shrink: 0;">
                         <div>
                             <label style="font-size: 11px; font-weight: bold; color: #475569; display: block; margin-bottom: 4px;">Cash Amount (Rs)</label>
                             <input type="number" step="0.01" min="0" id="sdpCashAmount" style="width:100%; padding:8px 12px; border:1px solid #ccc; border-radius:6px; font-size: 12px;" value="0.00">
@@ -2377,8 +2377,8 @@
                     </div>
 
                     <!-- Cheques list section -->
-                    <div style="border-top: 1px dashed #e2e8f0; padding-top: 15px; flex: 1; overflow-y: auto; max-height: 200px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <div style="border-top: 1px dashed #e2e8f0; padding-top: 15px; flex: 1; overflow-y: auto; min-height: 0;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-shrink: 0;">
                             <strong style="font-size:12px; color:#555;">Cheque Collections</strong>
                             <button type="button" onclick="addSdpChequeRow()" class="btn-premium secondary" style="padding:4px 8px; font-size:11px; cursor:pointer;"><i class="ph ph-plus"></i> Add Cheque</button>
                         </div>
