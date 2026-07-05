@@ -2900,7 +2900,7 @@ class RepTrackingController extends Controller {
 
             // Write Audit Log
             $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-            $db->query("INSERT INTO audit_logs (user_id, action, module, description, reference_id, ip_address) 
+            $db->query("INSERT INTO audit_logs (user_id, action, module, description, record_id, ip_address) 
                         VALUES (:uid, 'RETURN_STOCK_SAVE', 'Logistics', :desc, :ref, :ip)");
             $db->bind(':uid', $_SESSION['user_id'] ?? null);
             $db->bind(':desc', "Verified and saved return stock, released reservation and depleted physical stock for delivery ID: " . $deliveryId);
