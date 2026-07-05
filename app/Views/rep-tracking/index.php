@@ -2331,14 +2331,14 @@
                 </div>
             </div>
 
-            <!-- Right Column: Visit Status, Outstanding, and Collections -->
-            <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
+            <!-- Right Column: Visit Status, Outstanding, and Collections on a separate panel -->
+            <div style="flex: 1; display: flex; flex-direction: column; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; gap: 15px;">
                 <!-- Hidden details -->
                 <input type="hidden" id="sdpInvoiceId" />
                 <input type="hidden" id="sdpCustomerId" />
 
                 <!-- Visit Status & Info -->
-                <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
+                <div style="background: #f8fafc; padding: 12px 15px; border-radius: 6px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
                     <div>
                         <div style="font-size: 11px; text-transform: uppercase; color: #888; font-weight: bold;">Processing Invoice</div>
                         <strong id="sdpInvoiceNumber" style="font-size: 15px; color: #0066cc;"></strong>
@@ -2355,13 +2355,13 @@
                 </div>
 
                 <!-- Arrears & Outstanding Info -->
-                <div id="sdpArrearsInfoBox" style="background: #fffbeb; padding: 12px 15px; border-radius: 8px; border: 1px solid #fef3c7; color: #b45309; font-size: 13px; font-weight: 500;">
+                <div id="sdpArrearsInfoBox" style="background: #fffbeb; padding: 12px 15px; border-radius: 6px; border: 1px solid #fef3c7; color: #b45309; font-size: 13px; font-weight: 500;">
                     <i class="ph ph-warning"></i> Customer Outstanding Balance: <strong id="sdpOutstandingArrears">Rs 0.00</strong>
                 </div>
 
                 <!-- Collections Section (Record Payments & Credit Collections) -->
-                <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; flex: 1; display: flex; flex-direction: column;">
-                    <h4 style="margin: 0 0 15px 0; font-size: 13px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 6px;">
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <h4 style="margin: 0 0 15px 0; font-size: 13px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
                         <i class="ph ph-coins" style="color:#2e7d32;"></i> Record Payments & Collections
                     </h4>
                     
