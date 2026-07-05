@@ -4492,18 +4492,35 @@
             document.getElementById('sdpDeliveryStatus').value = 'Delivered';
         }
         
-        // 1. Gather invoice items updates
+        // 1. Gather invoice items updates and validate range
         const items = [];
+        let qtyValidationFailed = false;
+        let qtyValidationMsg = '';
         document.querySelectorAll('#sdpItemsTbody tr').forEach(row => {
             const itemId = row.getAttribute('data-item-id');
             const qtyInput = row.querySelector('.sdp-delivered-qty');
             if (itemId && qtyInput) {
+                const val = parseInt(qtyInput.value) || 0;
+                const maxVal = parseInt(qtyInput.getAttribute('max')) || 0;
+                if (val < 0) {
+                    qtyValidationFailed = true;
+                    qtyValidationMsg = 'Delivered quantity cannot be negative.';
+                }
+                if (val > maxVal) {
+                    qtyValidationFailed = true;
+                    qtyValidationMsg = 'Delivered quantity cannot be greater than loaded quantity (' + maxVal + ').';
+                }
                 items.push({
                     invoice_item_id: parseInt(itemId),
-                    delivered_qty: parseInt(qtyInput.value) || 0
+                    delivered_qty: val
                 });
             }
         });
+
+        if (qtyValidationFailed) {
+            alert(qtyValidationMsg);
+            return;
+        }
         
         // 2. Gather payments & collections
         const cash = parseFloat(document.getElementById('sdpCashAmount').value) || 0;

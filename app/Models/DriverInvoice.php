@@ -118,6 +118,11 @@ class DriverInvoice {
             $invoiceId = $item->invoice_id;
             $oldQty = floatval($item->quantity);
             $newQty = floatval($newQty);
+            // Safety clamp: do not exceed loaded quantity
+            $loadedQty = floatval($item->loaded_quantity);
+            if ($newQty > $loadedQty) {
+                $newQty = $loadedQty;
+            }
             $diffQty = $oldQty - $newQty;
 
             // 2. Fetch invoice

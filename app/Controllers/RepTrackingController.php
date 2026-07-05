@@ -2716,6 +2716,10 @@ class RepTrackingController extends Controller {
                     foreach ($allInvoiceItems as $item) {
                         $driverInvoiceModel->deleteInvoiceItem($item->id); // sets quantity to 0 and releases reservation
                     }
+                    $db = new Database();
+                    $db->query("UPDATE invoices SET stock_status = 'returned' WHERE id = :id");
+                    $db->bind(':id', $invoiceId);
+                    $db->execute();
                 } else {
                     // If we are setting to Delivered or Pending, and NO custom items were sent in payload
                     // (meaning it was a simple status dropdown change), we should restore the items to their loaded_quantity!
@@ -2740,6 +2744,10 @@ class RepTrackingController extends Controller {
                             }
                         }
                     }
+                    $db = new Database();
+                    $db->query("UPDATE invoices SET stock_status = 'reserved' WHERE id = :id");
+                    $db->bind(':id', $invoiceId);
+                    $db->execute();
                 }
             }
         }
@@ -2828,7 +2836,7 @@ class RepTrackingController extends Controller {
                     $fifo = new FIFO();
 
                     foreach ($invoices as $invoice) {
-                        if ($invoice->stock_status === 'deducted') {
+                        if ($invoice->stock_status === 'deducted' || $invoice->stock_status === 'returned') {
                             continue;
                         }
 

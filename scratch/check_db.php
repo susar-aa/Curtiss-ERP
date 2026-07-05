@@ -43,7 +43,7 @@ class Database {
 }
 
 $db = new Database();
-$db->query("SHOW COLUMNS FROM audit_logs");
+$db->query("SHOW COLUMNS FROM item_variation_options");
 $cols = $db->resultSet();
 foreach ($cols as $col) {
     echo $col->Field . " - " . $col->Type . "\n";
