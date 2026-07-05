@@ -2361,18 +2361,34 @@
 
                 <!-- Collections Section (Record Payments & Credit Collections) -->
                 <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
-                    <h4 style="margin: 0 0 15px 0; font-size: 13px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; flex-shrink: 0;">
+                    <h4 style="margin: 0 0 12px 0; font-size: 13px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; flex-shrink: 0;">
                         <i class="ph ph-coins" style="color:#2e7d32;"></i> Record Payments & Collections
                     </h4>
+                    
+                    <!-- Balance Summary Row -->
+                    <div style="background: #f8fafc; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; font-size: 11px; flex-shrink: 0;">
+                        <div>
+                            <div style="color: #64748b; font-weight: bold;">INVOICE TOTAL</div>
+                            <strong id="sdpInvoiceTotal" style="font-size: 12px; color: #334155;">Rs 0.00</strong>
+                        </div>
+                        <div>
+                            <div style="color: #64748b; font-weight: bold;">TOTAL COLLECTED</div>
+                            <strong id="sdpTotalCollected" style="font-size: 12px; color: #2e7d32;">Rs 0.00</strong>
+                        </div>
+                        <div>
+                            <div style="color: #64748b; font-weight: bold;">REMAINING BALANCE</div>
+                            <strong id="sdpRemainingBalance" style="font-size: 12px; color: #c62828;">Rs 0.00</strong>
+                        </div>
+                    </div>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; flex-shrink: 0;">
                         <div>
                             <label style="font-size: 11px; font-weight: bold; color: #475569; display: block; margin-bottom: 4px;">Cash Amount (Rs)</label>
-                            <input type="number" step="0.01" min="0" id="sdpCashAmount" style="width:100%; padding:8px 12px; border:1px solid #ccc; border-radius:6px; font-size: 12px;" value="0.00">
+                            <input type="number" step="0.01" min="0" id="sdpCashAmount" oninput="updateSdpBalance()" style="width:100%; padding:8px 12px; border:1px solid #ccc; border-radius:6px; font-size: 12px;" value="0.00">
                         </div>
                         <div>
                             <label style="font-size: 11px; font-weight: bold; color: #475569; display: block; margin-bottom: 4px;">Bank Transfer (Rs)</label>
-                            <input type="number" step="0.01" min="0" id="sdpBankAmount" style="width:100%; padding:8px 12px; border:1px solid #ccc; border-radius:6px; font-size: 12px;" value="0.00">
+                            <input type="number" step="0.01" min="0" id="sdpBankAmount" oninput="updateSdpBalance()" style="width:100%; padding:8px 12px; border:1px solid #ccc; border-radius:6px; font-size: 12px;" value="0.00">
                         </div>
                     </div>
 
@@ -4284,6 +4300,7 @@
 
     function openServerDeliveryProcessModal(invoiceId, customerId, invoiceNumber, customerName, grandTotal) {
         document.getElementById('sdpInvoiceId').value = invoiceId;
+        document.getElementById('sdpInvoiceId').setAttribute('data-grand-total', grandTotal);
         document.getElementById('sdpCustomerId').value = customerId;
         document.getElementById('sdpCustomerName').innerText = customerName;
         document.getElementById('sdpInvoiceNumber').innerText = invoiceNumber;
@@ -4291,6 +4308,9 @@
         document.getElementById('sdpBankAmount').value = '0.00';
         document.getElementById('sdpChequesContainer').innerHTML = '';
         document.getElementById('sdpItemsTbody').innerHTML = '<tr><td colspan="3" style="text-align:center;">Loading items... </td></tr>';
+        
+        document.getElementById('sdpInvoiceTotal').innerText = 'Rs ' + parseFloat(grandTotal).toLocaleString('en-US', {minimumFractionDigits: 2});
+        updateSdpBalance();
         
         if (document.getElementById('sdpItemSearch')) {
             document.getElementById('sdpItemSearch').value = '';
@@ -4302,7 +4322,9 @@
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
-                    document.getElementById('sdpDeliveryStatus').value = data.invoice.delivery_status || 'Pending';
+                    let statusVal = data.invoice.delivery_status || 'Pending';
+                    if (statusVal === 'Pending') statusVal = 'Delivered';
+                    document.getElementById('sdpDeliveryStatus').value = statusVal;
                     
                     const arrears = parseFloat(data.arrears || 0);
                     document.getElementById('sdpOutstandingArrears').innerText = 'Rs ' + arrears.toLocaleString('en-US', {minimumFractionDigits: 2});
@@ -4354,6 +4376,29 @@
         });
     }
 
+    function updateSdpBalance() {
+        const grandTotal = parseFloat(document.getElementById('sdpInvoiceId').getAttribute('data-grand-total') || 0);
+        const cash = parseFloat(document.getElementById('sdpCashAmount').value) || 0;
+        const bank = parseFloat(document.getElementById('sdpBankAmount').value) || 0;
+        
+        let chequeTotal = 0;
+        document.querySelectorAll('.sdp-ch-amount').forEach(input => {
+            chequeTotal += parseFloat(input.value) || 0;
+        });
+        
+        const totalCollected = cash + bank + chequeTotal;
+        const balance = grandTotal - totalCollected;
+        
+        document.getElementById('sdpTotalCollected').innerText = 'Rs ' + totalCollected.toLocaleString('en-US', {minimumFractionDigits: 2});
+        document.getElementById('sdpRemainingBalance').innerText = 'Rs ' + balance.toLocaleString('en-US', {minimumFractionDigits: 2});
+        
+        if (balance <= 0) {
+            document.getElementById('sdpRemainingBalance').style.color = '#2e7d32';
+        } else {
+            document.getElementById('sdpRemainingBalance').style.color = '#c62828';
+        }
+    }
+
     function closeServerDeliveryProcessModal() {
         document.getElementById('serverDeliveryProcessModal').style.display = 'none';
     }
@@ -4373,10 +4418,10 @@
         
         row.innerHTML = `
             <input type="text" placeholder="Bank Name" class="sdp-ch-bank" style="padding:6px; border:1px solid #ccc; border-radius:4px; font-size:12px; width:100%;" required />
-            <input type="text" placeholder="Cheque #" class="sdp-ch-number" style="padding:6px; border:1px solid #ccc; border-radius:4px; font-size:12px; width:100%;" required />
+            <input type="text" placeholder="Cheque #" class="sdp-ch-number" maxlength="6" oninput="this.value = this.value.replace(/[^0-9]/g, '');" style="padding:6px; border:1px solid #ccc; border-radius:4px; font-size:12px; width:100%;" required />
             <input type="date" class="sdp-ch-date" style="padding:6px; border:1px solid #ccc; border-radius:4px; font-size:12px; width:100%;" required />
-            <input type="number" step="0.01" min="0" placeholder="Amount" class="sdp-ch-amount" style="padding:6px; border:1px solid #ccc; border-radius:4px; font-size:12px; width:100%;" required />
-            <button type="button" onclick="this.closest('.sdp-cheque-row').remove()" style="background:none; border:none; color:#ef4444; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="ph ph-trash"></i></button>
+            <input type="number" step="0.01" min="0" placeholder="Amount" class="sdp-ch-amount" oninput="updateSdpBalance()" style="padding:6px; border:1px solid #ccc; border-radius:4px; font-size:12px; width:100%;" required />
+            <button type="button" onclick="this.closest('.sdp-cheque-row').remove(); updateSdpBalance();" style="background:none; border:none; color:#ef4444; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="ph ph-trash"></i></button>
         `;
         container.appendChild(row);
     }
@@ -4385,7 +4430,12 @@
         const routeId = currentRouteId;
         const customerId = document.getElementById('sdpCustomerId').value;
         const invoiceId = document.getElementById('sdpInvoiceId').value;
-        const deliveryStatus = document.getElementById('sdpDeliveryStatus').value;
+        
+        let deliveryStatus = document.getElementById('sdpDeliveryStatus').value;
+        if (deliveryStatus === 'Pending') {
+            deliveryStatus = 'Delivered';
+            document.getElementById('sdpDeliveryStatus').value = 'Delivered';
+        }
         
         // 1. Gather invoice items updates
         const items = [];
