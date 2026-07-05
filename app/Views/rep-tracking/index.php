@@ -1903,7 +1903,7 @@
                             </tbody>
                         </table>
                         <div style="text-align:right; margin-top:20px;">
-                            <button id="btnSaveReturnStockDraft" onclick="saveReturnStockDraft()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">💾 Save Return Stock Draft</button>
+                            <button id="btnSaveReturnStockDraft" onclick="saveReturnStockDraft()" style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">💾 Save Return Stock</button>
                         </div>
                     </div>
                 </div>
@@ -4906,6 +4906,19 @@
                     } catch(e) {}
                 }
 
+                const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized' || savedReturnStock !== null);
+                if (saveBtn) {
+                    saveBtn.disabled = isReadOnly;
+                    saveBtn.style.opacity = isReadOnly ? '0.5' : '1';
+                    saveBtn.style.cursor = isReadOnly ? 'not-allowed' : 'pointer';
+                }
+                if (verifyStockCheck) {
+                    verifyStockCheck.disabled = isReadOnly;
+                    if (savedReturnStock) {
+                        verifyStockCheck.checked = true;
+                    }
+                }
+
                 tbody.innerHTML = '';
                 if (!data.balancing.stock_items || data.balancing.stock_items.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">No stock items loaded.</td></tr>';
@@ -4940,16 +4953,22 @@
                     });
                 }
 
-                if (isReadOnly && verifyStockCheck) {
-                    verifyStockCheck.checked = true;
-                }
-
                 checkSettleVerification();
             });
     }
 
     function saveReturnStockDraft() {
         if (!currentRouteId || !currentDeliveryDetails) return;
+
+        const verifyStockCheck = document.getElementById('settleVerifyStock');
+        if (!verifyStockCheck || !verifyStockCheck.checked) {
+            alert("You must check 'I have physically verified all returned inventory and confirm quantities are correct.' before saving.");
+            return;
+        }
+
+        if (!confirm("Are you sure you want to verify and save the return stock? This will deduct delivered quantities from inventory, release loaded reservations, and lock return stock edits. This action CANNOT be undone.")) {
+            return;
+        }
 
         const returnedItems = [];
         document.querySelectorAll('.actual-returned-input').forEach(input => {
@@ -4973,7 +4992,7 @@
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                alert("Return stock draft saved successfully!");
+                alert("Return stock verified and saved successfully!");
                 onRouteDataChanged();
             } else {
                 alert("Error: " + data.message);

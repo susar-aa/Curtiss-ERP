@@ -2785,15 +2785,136 @@ class RepTrackingController extends Controller {
         
         try {
             $db = new Database();
-            $db->query("UPDATE deliveries SET return_stock_json = :ret WHERE id = :id");
+            
+            // Check if return stock has already been saved
+            $db->query("SELECT return_stock_json FROM deliveries WHERE id = :id LIMIT 1");
+            $db->bind(':id', $deliveryId);
+            $existing = $db->single();
+            if ($existing && !empty($existing->return_stock_json)) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Return stock has already been verified and saved. Edits are locked.']);
+                exit;
+            }
+
+            $db->beginTransaction();
+
+            // 1. Update return stock JSON and verified fields
+            $db->query("UPDATE deliveries SET 
+                        return_stock_json = :ret,
+                        return_stock_verified_by = :uid,
+                        return_stock_verified_at = NOW()
+                        WHERE id = :id");
             $db->bind(':ret', json_encode($returnStockData));
+            $db->bind(':uid', $_SESSION['user_id'] ?? null);
             $db->bind(':id', $deliveryId);
             $db->execute();
-            
+
+            // 2. Fetch the delivery routes
+            $db->query("SELECT rep_route_id, secondary_rep_route_id FROM deliveries WHERE id = :id LIMIT 1");
+            $db->bind(':id', $deliveryId);
+            $delivery = $db->single();
+
+            if ($delivery) {
+                $routeIds = [];
+                if ($delivery->rep_route_id) { $routeIds[] = intval($delivery->rep_route_id); }
+                if ($delivery->secondary_rep_route_id) { $routeIds[] = intval($delivery->secondary_rep_route_id); }
+
+                if (!empty($routeIds)) {
+                    $routeIdsStr = implode(',', $routeIds);
+                    $db->query("SELECT id, stock_status FROM invoices WHERE rep_route_id IN ($routeIdsStr) AND status != 'Voided'");
+                    $invoices = $db->resultSet() ?: [];
+
+                    require_once dirname(__DIR__) . '/Models/FIFO.php';
+                    $fifo = new FIFO();
+
+                    foreach ($invoices as $invoice) {
+                        if ($invoice->stock_status === 'deducted') {
+                            continue;
+                        }
+
+                        $db->query("SELECT * FROM invoice_items WHERE invoice_id = :iid");
+                        $db->bind(':iid', $invoice->id);
+                        $items = $db->resultSet() ?: [];
+
+                        foreach ($items as $item) {
+                            $deliveredQty = floatval($item->quantity);
+                            $loadedQty = floatval($item->loaded_quantity);
+                            $itemId = $item->item_id;
+                            $varId = $item->variation_option_id;
+
+                            if (!$itemId && !empty($item->description)) {
+                                $db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
+                                $db->bind(':name', $item->description);
+                                $rowItem = $db->single();
+                                if ($rowItem) {
+                                    $itemId = $rowItem->id;
+                                }
+                            }
+
+                            if ($itemId) {
+                                // Deduct delivered quantity from physical stock
+                                if ($deliveredQty > 0) {
+                                    if ($varId) {
+                                        $db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
+                                        $db->bind(':qty', $deliveredQty);
+                                        $db->bind(':id', $varId);
+                                        $db->execute();
+                                    } else {
+                                        $db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
+                                        $db->bind(':qty', $deliveredQty);
+                                        $db->bind(':id', $itemId);
+                                        $db->execute();
+                                    }
+
+                                    // Deduct FIFO costing
+                                    try {
+                                        $fifo->depleteStock($itemId, $varId ?: null, $deliveredQty, $item->id, null);
+                                    } catch (Exception $e) {
+                                        error_log("FIFO depletion error for item $itemId: " . $e->getMessage());
+                                    }
+                                }
+
+                                // Release/clear loaded quantity from reserved stock
+                                if ($loadedQty > 0) {
+                                    if ($varId) {
+                                        $db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
+                                        $db->bind(':qty', $loadedQty);
+                                        $db->bind(':id', $varId);
+                                        $db->execute();
+                                    } else {
+                                        $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
+                                        $db->bind(':qty', $loadedQty);
+                                        $db->bind(':id', $itemId);
+                                        $db->execute();
+                                    }
+                                }
+                            }
+                        }
+
+                        $db->query("UPDATE invoices SET stock_status = 'deducted' WHERE id = :id");
+                        $db->bind(':id', $invoice->id);
+                        $db->execute();
+                    }
+                }
+            }
+
+            // Write Audit Log
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+            $db->query("INSERT INTO audit_logs (user_id, action, module, description, reference_id, ip_address) 
+                        VALUES (:uid, 'RETURN_STOCK_SAVE', 'Logistics', :desc, :ref, :ip)");
+            $db->bind(':uid', $_SESSION['user_id'] ?? null);
+            $db->bind(':desc', "Verified and saved return stock, released reservation and depleted physical stock for delivery ID: " . $deliveryId);
+            $db->bind(':ref', $deliveryId);
+            $db->bind(':ip', $ip);
+            $db->execute();
+
+            $db->commit();
+
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'message' => 'Return stock verification saved successfully!']);
             exit;
         } catch (Exception $e) {
+            if (isset($db)) { $db->rollBack(); }
             header('Content-Type: application/json');
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
             exit;
