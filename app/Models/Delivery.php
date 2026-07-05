@@ -369,25 +369,6 @@ class Delivery {
         ");
         $payments = $this->db->resultSet() ?: [];
 
-        // Parse reconciliation_json to apply cheque approvals
-        $chequeApprovals = [];
-        if (!empty($delivery->reconciliation_json)) {
-            $recon = json_decode($delivery->reconciliation_json, true);
-            if (isset($recon['cheque_approvals']) && is_array($recon['cheque_approvals'])) {
-                $chequeApprovals = $recon['cheque_approvals'];
-            }
-        }
-
-        foreach ($payments as &$pay) {
-            $pay->is_verified = 0;
-            if ($pay->payment_method === 'Cheque') {
-                if (isset($chequeApprovals[$pay->id])) {
-                    $pay->is_verified = $chequeApprovals[$pay->id] ? 1 : 0;
-                }
-            }
-        }
-        unset($pay);
-
         return [
             'delivery' => $delivery,
             'cash_sales' => floatval($cash_sales),
