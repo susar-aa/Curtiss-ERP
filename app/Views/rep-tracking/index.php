@@ -4975,15 +4975,20 @@
     }
 
     function saveReturnStockDraft() {
-        if (!currentRouteId || !currentDeliveryDetails) return;
+        if (!currentRouteId || !currentDeliveryDetails) {
+            console.log("saveReturnStockDraft aborted: missing currentRouteId or currentDeliveryDetails", {currentRouteId, currentDeliveryDetails});
+            return;
+        }
 
         const verifyStockCheck = document.getElementById('settleVerifyStock');
         if (!verifyStockCheck || !verifyStockCheck.checked) {
+            console.log("saveReturnStockDraft aborted: settleVerifyStock checkbox not checked");
             alert("You must check 'I have physically verified all returned inventory and confirm quantities are correct.' before saving.");
             return;
         }
 
         if (!confirm("Are you sure you want to verify and save the return stock? This will deduct delivered quantities from inventory, release loaded reservations, and lock return stock edits. This action CANNOT be undone.")) {
+            console.log("saveReturnStockDraft aborted by user confirmation dialog");
             return;
         }
 
@@ -5000,20 +5005,46 @@
         });
 
         const deliveryId = currentDeliveryDetails.delivery.id;
+        const payload = { delivery_id: deliveryId, return_stock_data: returnedItems };
+        console.log("[ReturnStock] Submitting Save Draft. Payload:", payload);
 
         fetchSecure('<?= APP_URL ?>/RepTracking/api_save_return_stock', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ delivery_id: deliveryId, return_stock_data: returnedItems })
+            body: JSON.stringify(payload)
         })
-        .then(res => res.json())
-        .then(data => {
+        .then(res => {
+            console.log("[ReturnStock] Server response status:", res.status);
+            return res.text();
+        })
+        .then(text => {
+            console.log("[ReturnStock] Server raw body:", text);
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch(e) {
+                console.error("[ReturnStock] Failed to parse response as JSON. Error:", e);
+                alert("Server returned invalid response. Please check the browser console.");
+                return;
+            }
+
+            console.log("[ReturnStock] Parsed response data:", data);
+            if (data.debug_logs && Array.isArray(data.debug_logs)) {
+                console.group("[ReturnStock] Backend Debug Execution Trace:");
+                data.debug_logs.forEach(logLine => console.log(logLine));
+                console.groupEnd();
+            }
+
             if (data.status === 'success') {
                 alert("Return stock verified and saved successfully!");
                 onRouteDataChanged();
             } else {
                 alert("Error: " + data.message);
             }
+        })
+        .catch(err => {
+            console.error("[ReturnStock] Fetch error:", err);
+            alert("An unexpected network error occurred. Please check the browser console.");
         });
     }
 

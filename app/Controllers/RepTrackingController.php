@@ -2791,6 +2791,9 @@ class RepTrackingController extends Controller {
             exit;
         }
         
+        $debugLogs = [];
+        $debugLogs[] = "Starting api_save_return_stock for delivery ID: " . $deliveryId;
+        
         try {
             $db = new Database();
             
@@ -2799,12 +2802,14 @@ class RepTrackingController extends Controller {
             $db->bind(':id', $deliveryId);
             $existing = $db->single();
             if ($existing && !empty($existing->return_stock_json)) {
+                $debugLogs[] = "Error: Return stock already verified and saved.";
                 header('Content-Type: application/json');
-                echo json_encode(['status' => 'error', 'message' => 'Return stock has already been verified and saved. Edits are locked.']);
+                echo json_encode(['status' => 'error', 'message' => 'Return stock has already been verified and saved. Edits are locked.', 'debug_logs' => $debugLogs]);
                 exit;
             }
 
             $db->beginTransaction();
+            $debugLogs[] = "Transaction started.";
 
             // 1. Update return stock JSON and verified fields
             $db->query("UPDATE deliveries SET 
@@ -2816,6 +2821,7 @@ class RepTrackingController extends Controller {
             $db->bind(':uid', $_SESSION['user_id'] ?? null);
             $db->bind(':id', $deliveryId);
             $db->execute();
+            $debugLogs[] = "Updated deliveries return_stock_json.";
 
             // 2. Fetch the delivery routes
             $db->query("SELECT rep_route_id, secondary_rep_route_id FROM deliveries WHERE id = :id LIMIT 1");
@@ -2829,20 +2835,26 @@ class RepTrackingController extends Controller {
 
                 if (!empty($routeIds)) {
                     $routeIdsStr = implode(',', $routeIds);
+                    $debugLogs[] = "Route IDs: " . $routeIdsStr;
+                    
                     $db->query("SELECT id, stock_status FROM invoices WHERE rep_route_id IN ($routeIdsStr) AND status != 'Voided'");
                     $invoices = $db->resultSet() ?: [];
+                    $debugLogs[] = "Found " . count($invoices) . " active invoices.";
 
                     require_once dirname(__DIR__) . '/Models/FIFO.php';
                     $fifo = new FIFO();
 
                     foreach ($invoices as $invoice) {
+                        $debugLogs[] = "Invoice ID: " . $invoice->id . " | stock_status: " . $invoice->stock_status;
                         if ($invoice->stock_status === 'deducted' || $invoice->stock_status === 'returned') {
+                            $debugLogs[] = "Skipping invoice ID: " . $invoice->id;
                             continue;
                         }
 
                         $db->query("SELECT * FROM invoice_items WHERE invoice_id = :iid");
                         $db->bind(':iid', $invoice->id);
                         $items = $db->resultSet() ?: [];
+                        $debugLogs[] = "Processing " . count($items) . " items for Invoice ID: " . $invoice->id;
 
                         foreach ($items as $item) {
                             $deliveredQty = floatval($item->quantity);
@@ -2856,6 +2868,7 @@ class RepTrackingController extends Controller {
                                 $rowItem = $db->single();
                                 if ($rowItem) {
                                     $itemId = $rowItem->id;
+                                    $debugLogs[] = "Resolved Item ID: " . $itemId . " from name: " . $item->description;
                                 }
                             }
 
@@ -2867,19 +2880,25 @@ class RepTrackingController extends Controller {
                                         $db->bind(':qty', $deliveredQty);
                                         $db->bind(':id', $varId);
                                         $db->execute();
+                                        $debugLogs[] = "Deducted " . $deliveredQty . " from item_variation_options ID: " . $varId;
                                     } else {
                                         $db->query("UPDATE items SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
                                         $db->bind(':qty', $deliveredQty);
                                         $db->bind(':id', $itemId);
                                         $db->execute();
+                                        $debugLogs[] = "Deducted " . $deliveredQty . " from items ID: " . $itemId;
                                     }
 
                                     // Deduct FIFO costing
                                     try {
                                         $fifo->depleteStock($itemId, $varId ?: null, $deliveredQty, $item->id, null);
+                                        $debugLogs[] = "FIFO depletion succeeded for item ID: " . $itemId;
                                     } catch (Exception $e) {
+                                        $debugLogs[] = "FIFO depletion error for item ID " . $itemId . ": " . $e->getMessage();
                                         error_log("FIFO depletion error for item $itemId: " . $e->getMessage());
                                     }
+                                } else {
+                                    $debugLogs[] = "Delivered quantity is 0 or negative for item ID: " . $itemId . ". Skipping hand-on-stock deduction.";
                                 }
 
                                 // Release/clear loaded quantity from reserved stock
@@ -2889,21 +2908,30 @@ class RepTrackingController extends Controller {
                                         $db->bind(':qty', $loadedQty);
                                         $db->bind(':id', $varId);
                                         $db->execute();
+                                        $debugLogs[] = "Released " . $loadedQty . " from reserved stock for variation ID: " . $varId;
                                     } else {
                                         $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
                                         $db->bind(':qty', $loadedQty);
                                         $db->bind(':id', $itemId);
                                         $db->execute();
+                                        $debugLogs[] = "Released " . $loadedQty . " from reserved stock for item ID: " . $itemId;
                                     }
                                 }
+                            } else {
+                                $debugLogs[] = "Item ID could not be found for description: " . $item->description;
                             }
                         }
 
                         $db->query("UPDATE invoices SET stock_status = 'deducted' WHERE id = :id");
                         $db->bind(':id', $invoice->id);
                         $db->execute();
+                        $debugLogs[] = "Updated invoice ID " . $invoice->id . " stock_status to 'deducted'.";
                     }
+                } else {
+                    $debugLogs[] = "No route IDs found for delivery.";
                 }
+            } else {
+                $debugLogs[] = "Delivery record not found.";
             }
 
             // Write Audit Log
@@ -2915,16 +2943,19 @@ class RepTrackingController extends Controller {
             $db->bind(':ref', $deliveryId);
             $db->bind(':ip', $ip);
             $db->execute();
+            $debugLogs[] = "Audit log written.";
 
             $db->commit();
+            $debugLogs[] = "Transaction committed successfully.";
 
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'success', 'message' => 'Return stock verification saved successfully!']);
+            echo json_encode(['status' => 'success', 'message' => 'Return stock verification saved successfully!', 'debug_logs' => $debugLogs]);
             exit;
         } catch (Exception $e) {
             if (isset($db)) { $db->rollBack(); }
+            $debugLogs[] = "Exception: " . $e->getMessage();
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage(), 'debug_logs' => $debugLogs]);
             exit;
         }
     }
