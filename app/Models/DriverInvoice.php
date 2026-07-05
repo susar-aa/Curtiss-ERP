@@ -426,21 +426,8 @@ class DriverInvoice {
                         throw new Exception("Failed to insert payment record for customer $customerId, method=$methodStr");
                     }
 
-                    // ALSO log to pending_collections so it displays on "≡ƒÆ░ Route Collections & GL Finalization" at rep tracking page
-                    $this->db->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, created_by, status) 
-                                      VALUES (:cid, :route_id, :method, :amt, :bn, :cn, :cdate, :uid, 'Pending')");
-                    $this->db->bind(':cid', $customerId);
-                    $this->db->bind(':route_id', $routeId);
-                    $this->db->bind(':method', $methodStr);
-                    $this->db->bind(':amt', $amount);
-                    $this->db->bind(':bn', ($methodStr === 'Bank Transfer' || $methodStr === 'Bank') ? ($chequeDetails['bank'] ?? 'Bank Transfer') : '');
-                    $this->db->bind(':cn', ($methodStr === 'Cheque') ? ($chequeDetails['number'] ?? 'Unknown') : '');
-                    $this->db->bind(':cdate', ($methodStr === 'Cheque') ? ($chequeDetails['date'] ?: date('Y-m-d')) : null);
-                    $this->db->bind(':uid', $userId);
-                    $resultPending = $this->db->execute();
-                    if (!$resultPending) {
-                        throw new Exception("Failed to insert pending collection for customer $customerId, method=$methodStr");
-                    }
+                    // Bypassed pending_collections insertion for delivery collections:
+                    // Driver/delivery collections should only show on the Accounting tab, not on the Credit Collections tab (Tab 2).
                     
                     file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Successfully saved $methodStr payment\n", FILE_APPEND);
                 } catch (Exception $e) {
