@@ -2293,46 +2293,30 @@
 
 <!-- Server-side Delivery Process Modal -->
 <div class="modal-backdrop" id="serverDeliveryProcessModal" style="display: none; align-items: center; justify-content: center;">
-    <div class="modal-panel" style="max-width: 750px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="modal-panel" style="max-width: 1100px; width: 95%; max-height: 95vh; display: flex; flex-direction: column;">
         <div class="modal-header" style="background: #0066cc; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; color: #fff; font-weight: bold;">
             <span><i class="ph ph-steering-wheel"></i> Process Visit: <span id="sdpCustomerName"></span></span>
             <button onclick="closeServerDeliveryProcessModal()" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
         </div>
-        <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 20px; background: #fafafa;">
+        <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 20px; display: flex; gap: 20px; background: #fafafa;">
             
-            <!-- Hidden details -->
-            <input type="hidden" id="sdpInvoiceId" />
-            <input type="hidden" id="sdpCustomerId" />
-
-            <!-- Visit Status & Info -->
-            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
-                <div>
-                    <div style="font-size: 11px; text-transform: uppercase; color: #888; font-weight: bold;">Processing Invoice</div>
-                    <strong id="sdpInvoiceNumber" style="font-size: 15px; color: #0066cc;"></strong>
-                </div>
-                <div>
-                    <div style="font-size: 11px; text-transform: uppercase; color: #888; font-weight: bold;">Delivery Status</div>
-                    <select id="sdpDeliveryStatus" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: bold; font-size: 13px;">
-                        <option value="Pending">Pending</option>
-                        <option value="Delivered">Delivered</option>
-                        <option value="Cancelled">Cancelled</option>
-                        <option value="Postponed">Postponed</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Arrears & Outstanding Info -->
-            <div id="sdpArrearsInfoBox" style="background: #fffbeb; padding: 12px 15px; border-radius: 8px; border: 1px solid #fef3c7; color: #b45309; font-size: 13px; font-weight: 500;">
-                <i class="ph ph-warning"></i> Customer Outstanding Balance: <strong id="sdpOutstandingArrears">Rs 0.00</strong>
-            </div>
-
-            <!-- Items Section (Adjust Bills) -->
-            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <!-- Left Column: Adjust Invoice Items (Bill Quantity) -->
+            <div style="flex: 1.3; display: flex; flex-direction: column; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
                 <h4 style="margin: 0 0 10px 0; font-size: 13px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 6px;">
                     <i class="ph ph-package" style="color:#0066cc;"></i> Adjust Invoice Items (Bill Quantity)
                 </h4>
-                <div style="max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
-                    <table class="data-table" style="margin-top: 0; font-size: 12px;">
+                
+                <!-- Search Option -->
+                <div style="margin-bottom: 10px;">
+                    <div style="position: relative;">
+                        <input type="text" id="sdpItemSearch" placeholder="Search item description..." oninput="filterSdpItems()"
+                               style="width: 100%; padding: 8px 12px 8px 35px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; outline: none; transition: border 0.2s;" />
+                        <i class="ph ph-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 14px;"></i>
+                    </div>
+                </div>
+                
+                <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; flex: 1;">
+                    <table class="data-table" style="margin-top: 0; font-size: 12px; width: 100%;">
                         <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 5;">
                             <tr>
                                 <th>Item Description</th>
@@ -2347,31 +2331,60 @@
                 </div>
             </div>
 
-            <!-- Collections Section (Record Payments & Credit Collections) -->
-            <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                <h4 style="margin: 0 0 15px 0; font-size: 13px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 6px;">
-                    <i class="ph ph-coins" style="color:#2e7d32;"></i> Record Payments & Collections
-                </h4>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+            <!-- Right Column: Visit Status, Outstanding, and Collections -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 15px;">
+                <!-- Hidden details -->
+                <input type="hidden" id="sdpInvoiceId" />
+                <input type="hidden" id="sdpCustomerId" />
+
+                <!-- Visit Status & Info -->
+                <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
                     <div>
-                        <label>Cash Amount (Rs)</label>
-                        <input type="number" step="0.01" min="0" id="sdpCashAmount" style="width:100%; padding:8px 12px; border:1px solid #ccc; border-radius:6px;" value="0.00">
+                        <div style="font-size: 11px; text-transform: uppercase; color: #888; font-weight: bold;">Processing Invoice</div>
+                        <strong id="sdpInvoiceNumber" style="font-size: 15px; color: #0066cc;"></strong>
                     </div>
                     <div>
-                        <label>Bank Transfer (Rs)</label>
-                        <input type="number" step="0.01" min="0" id="sdpBankAmount" style="width:100%; padding:8px 12px; border:1px solid #ccc; border-radius:6px;" value="0.00">
+                        <div style="font-size: 11px; text-transform: uppercase; color: #888; font-weight: bold;">Delivery Status</div>
+                        <select id="sdpDeliveryStatus" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: bold; font-size: 13px;">
+                            <option value="Pending">Pending</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Cancelled">Cancelled</option>
+                            <option value="Postponed">Postponed</option>
+                        </select>
                     </div>
                 </div>
 
-                <!-- Cheques list section -->
-                <div style="border-top: 1px dashed #e2e8f0; padding-top: 15px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <strong style="font-size:12px; color:#555;">Cheque Collections</strong>
-                        <button type="button" onclick="addSdpChequeRow()" class="btn-premium secondary" style="padding:4px 8px; font-size:11px; cursor:pointer;"><i class="ph ph-plus"></i> Add Cheque</button>
+                <!-- Arrears & Outstanding Info -->
+                <div id="sdpArrearsInfoBox" style="background: #fffbeb; padding: 12px 15px; border-radius: 8px; border: 1px solid #fef3c7; color: #b45309; font-size: 13px; font-weight: 500;">
+                    <i class="ph ph-warning"></i> Customer Outstanding Balance: <strong id="sdpOutstandingArrears">Rs 0.00</strong>
+                </div>
+
+                <!-- Collections Section (Record Payments & Credit Collections) -->
+                <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; flex: 1; display: flex; flex-direction: column;">
+                    <h4 style="margin: 0 0 15px 0; font-size: 13px; font-weight: bold; color: #333; display: flex; align-items: center; gap: 6px;">
+                        <i class="ph ph-coins" style="color:#2e7d32;"></i> Record Payments & Collections
+                    </h4>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label style="font-size: 11px; font-weight: bold; color: #475569; display: block; margin-bottom: 4px;">Cash Amount (Rs)</label>
+                            <input type="number" step="0.01" min="0" id="sdpCashAmount" style="width:100%; padding:8px 12px; border:1px solid #ccc; border-radius:6px; font-size: 12px;" value="0.00">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: bold; color: #475569; display: block; margin-bottom: 4px;">Bank Transfer (Rs)</label>
+                            <input type="number" step="0.01" min="0" id="sdpBankAmount" style="width:100%; padding:8px 12px; border:1px solid #ccc; border-radius:6px; font-size: 12px;" value="0.00">
+                        </div>
                     </div>
-                    <div id="sdpChequesContainer" style="display:flex; flex-direction:column; gap:10px;">
-                        <!-- Cheque rows go here -->
+
+                    <!-- Cheques list section -->
+                    <div style="border-top: 1px dashed #e2e8f0; padding-top: 15px; flex: 1; overflow-y: auto; max-height: 200px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <strong style="font-size:12px; color:#555;">Cheque Collections</strong>
+                            <button type="button" onclick="addSdpChequeRow()" class="btn-premium secondary" style="padding:4px 8px; font-size:11px; cursor:pointer;"><i class="ph ph-plus"></i> Add Cheque</button>
+                        </div>
+                        <div id="sdpChequesContainer" style="display:flex; flex-direction:column; gap:10px;">
+                            <!-- Cheque rows go here -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -4227,6 +4240,8 @@
                     let actionHtml = '';
                     if (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized') {
                         actionHtml = `<span style="color:#888; font-size:11px; font-weight:bold;">Closed</span>`;
+                    } else if (inv.delivery_status !== 'Pending') {
+                        actionHtml = `<span style="color:#6b7280; font-size:11px; font-weight:bold;">Processed</span>`;
                     } else {
                         actionHtml = `
                             <button onclick="openServerDeliveryProcessModal(${inv.id}, ${inv.customer_id}, '${inv.invoice_number}', '${inv.customer_name.replace(/'/g, "\\'")}', ${inv.true_grand_total})" 
@@ -4277,6 +4292,10 @@
         document.getElementById('sdpChequesContainer').innerHTML = '';
         document.getElementById('sdpItemsTbody').innerHTML = '<tr><td colspan="3" style="text-align:center;">Loading items... </td></tr>';
         
+        if (document.getElementById('sdpItemSearch')) {
+            document.getElementById('sdpItemSearch').value = '';
+        }
+        
         document.getElementById('serverDeliveryProcessModal').style.display = 'flex';
         
         fetchSecure('<?= APP_URL ?>/RepTracking/api_get_invoice_for_delivery/' + invoiceId)
@@ -4298,10 +4317,10 @@
                             tbody.innerHTML += `
                                 <tr data-item-id="${item.id}">
                                     <td><strong>${item.description}</strong></td>
-                                    <td style="text-align:right; font-family:monospace;">${parseFloat(item.loaded_quantity)}</td>
+                                    <td style="text-align:right; font-family:monospace;">${parseInt(item.loaded_quantity)}</td>
                                     <td style="text-align:right;">
-                                        <input type="number" step="any" min="0" max="${item.loaded_quantity}" class="sdp-delivered-qty" 
-                                               value="${item.quantity}" style="width: 80px; text-align: right; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px;" />
+                                        <input type="number" step="1" min="0" max="${parseInt(item.loaded_quantity)}" class="sdp-delivered-qty" 
+                                               value="${parseInt(item.quantity)}" style="width: 80px; text-align: right; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px;" />
                                     </td>
                                 </tr>
                             `;
@@ -4317,6 +4336,22 @@
                 alert('Failed to load invoice items.');
                 closeServerDeliveryProcessModal();
             });
+    }
+
+    function filterSdpItems() {
+        const query = document.getElementById('sdpItemSearch').value.toLowerCase().trim();
+        const rows = document.querySelectorAll('#sdpItemsTbody tr');
+        rows.forEach(row => {
+            const descTd = row.querySelector('td:first-child');
+            if (descTd) {
+                const desc = descTd.innerText.toLowerCase();
+                if (desc.includes(query)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+        });
     }
 
     function closeServerDeliveryProcessModal() {
@@ -4360,7 +4395,7 @@
             if (itemId && qtyInput) {
                 items.push({
                     invoice_item_id: parseInt(itemId),
-                    delivered_qty: parseFloat(qtyInput.value) || 0
+                    delivered_qty: parseInt(qtyInput.value) || 0
                 });
             }
         });
@@ -4774,11 +4809,11 @@
                         let expectedReturned = parseInt(st.loaded_qty) - parseInt(st.delivered_qty);
                         if (expectedReturned < 0) expectedReturned = 0;
                         
-                        let actualCounted = expectedReturned;
+                        let actualCounted = parseInt(expectedReturned);
                         if (savedReturnStock) {
                             const savedVal = savedReturnStock.find(x => x.item_id === st.item_id && x.variation_option_id === st.variation_option_id);
                             if (savedVal) {
-                                actualCounted = savedVal.actual_returned_qty;
+                                actualCounted = parseInt(savedVal.actual_returned_qty);
                             }
                         }
 
@@ -4817,9 +4852,9 @@
                 item_name: input.getAttribute('data-name'),
                 item_id: parseInt(input.getAttribute('data-item-id') || 0),
                 variation_option_id: parseInt(input.getAttribute('data-var-id') || 0),
-                loaded_qty: parseFloat(input.getAttribute('data-loaded') || 0),
-                delivered_qty: parseFloat(input.getAttribute('data-delivered') || 0),
-                actual_returned_qty: parseFloat(input.value || 0)
+                loaded_qty: parseInt(input.getAttribute('data-loaded') || 0),
+                delivered_qty: parseInt(input.getAttribute('data-delivered') || 0),
+                actual_returned_qty: parseInt(input.value || 0)
             });
         });
 
@@ -5133,9 +5168,9 @@
                 item_name: input.getAttribute('data-name'),
                 item_id: parseInt(input.getAttribute('data-item-id') || 0),
                 variation_option_id: parseInt(input.getAttribute('data-var-id') || 0),
-                loaded_qty: parseFloat(input.getAttribute('data-loaded') || 0),
-                delivered_qty: parseFloat(input.getAttribute('data-delivered') || 0),
-                actual_returned_qty: parseFloat(input.value || 0)
+                loaded_qty: parseInt(input.getAttribute('data-loaded') || 0),
+                delivered_qty: parseInt(input.getAttribute('data-delivered') || 0),
+                actual_returned_qty: parseInt(input.value || 0)
             });
         });
 

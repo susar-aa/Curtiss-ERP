@@ -2709,14 +2709,35 @@ class RepTrackingController extends Controller {
                 $driverInvoiceModel->updateInvoiceDeliveryStatus($invoiceId, $deliveryStatus);
                 
                 $items = $del['items'] ?? [];
-                foreach ($items as $item) {
-                    $itemId = intval($item['invoice_item_id'] ?? 0);
-                    $deliveredQty = floatval($item['delivered_qty'] ?? 0);
-                    if ($itemId > 0) {
-                        if ($deliveredQty <= 0) {
-                            $driverInvoiceModel->deleteInvoiceItem($itemId);
-                        } else {
-                            $driverInvoiceModel->updateInvoiceItemQty($itemId, $deliveredQty);
+                
+                // If status is Cancelled or Postponed, set all items delivered qty to 0
+                if ($deliveryStatus === 'Cancelled' || $deliveryStatus === 'Postponed') {
+                    $allInvoiceItems = $driverInvoiceModel->getInvoiceItems($invoiceId);
+                    foreach ($allInvoiceItems as $item) {
+                        $driverInvoiceModel->deleteInvoiceItem($item->id); // sets quantity to 0 and releases reservation
+                    }
+                } else {
+                    // If we are setting to Delivered or Pending, and NO custom items were sent in payload
+                    // (meaning it was a simple status dropdown change), we should restore the items to their loaded_quantity!
+                    if (empty($items)) {
+                        $allInvoiceItems = $driverInvoiceModel->getInvoiceItems($invoiceId);
+                        foreach ($allInvoiceItems as $item) {
+                            if (floatval($item->quantity) == 0 && floatval($item->loaded_quantity) > 0) {
+                                $driverInvoiceModel->updateInvoiceItemQty($item->id, intval($item->loaded_quantity));
+                            }
+                        }
+                    } else {
+                        // Otherwise update based on custom user input
+                        foreach ($items as $item) {
+                            $itemId = intval($item['invoice_item_id'] ?? 0);
+                            $deliveredQty = intval($item['delivered_qty'] ?? 0);
+                            if ($itemId > 0) {
+                                if ($deliveredQty <= 0) {
+                                    $driverInvoiceModel->deleteInvoiceItem($itemId);
+                                } else {
+                                    $driverInvoiceModel->updateInvoiceItemQty($itemId, $deliveredQty);
+                                }
+                            }
                         }
                     }
                 }
