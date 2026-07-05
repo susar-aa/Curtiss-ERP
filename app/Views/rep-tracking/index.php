@@ -4529,14 +4529,35 @@
                 let actualCash = 0;
                 let remarks = '';
                 let actualDenoms = null;
+                let chequeApprovals = {};
+                let isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+
                 if (data.delivery && data.delivery.reconciliation_json) {
                     try {
                         const recon = JSON.parse(data.delivery.reconciliation_json);
                         actualCash = parseFloat(recon.actual_cash || 0);
                         remarks = recon.audit_remarks || '';
                         actualDenoms = recon.actual_denominations || null;
+                        chequeApprovals = recon.cheque_approvals || {};
+                        if (recon && (recon.actual_cash !== undefined || recon.actual_denominations)) {
+                            isReadOnly = true;
+                        }
                     } catch(e) {}
                 }
+
+                // Re-apply read-only locks to form elements
+                const saveBtn = document.getElementById('btnSaveReconciliationDraft');
+                if (saveBtn) {
+                    saveBtn.disabled = isReadOnly;
+                    saveBtn.style.opacity = isReadOnly ? '0.5' : '1';
+                    saveBtn.style.cursor = isReadOnly ? 'not-allowed' : 'pointer';
+                }
+                document.getElementById('reconActualCash').disabled = isReadOnly;
+                document.getElementById('reconAuditNotes').disabled = isReadOnly;
+                denList.forEach(den => {
+                    document.getElementById('actQty' + den).disabled = isReadOnly;
+                });
+                document.getElementById('actValCoins').disabled = isReadOnly;
 
                 // Parse collector's denominations
                 let colDenoms = {};
@@ -4580,10 +4601,12 @@
                     chequesTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888; padding:10px;">No cheques collected.</td></tr>';
                 } else {
                     cheques.forEach((ch, idx) => {
-                        let isChApproved = parseInt(ch.is_verified) === 1;
+                        let isChApproved = (chequeApprovals && (chequeApprovals[ch.id] === true || chequeApprovals[String(ch.id)] === true)) || parseInt(ch.is_verified) === 1;
+                        ch.is_verified = isChApproved ? 1 : 0;
                         let approveBox = `
                             <input type="checkbox" onchange="toggleReconChequeApproval(${ch.id}, this.checked)" 
                                    ${isChApproved ? 'checked' : ''} ${isReadOnly ? 'disabled' : ''} 
+                                   data-payment-id="${ch.id}"
                                    style="width:16px; height:16px; cursor:${isReadOnly ? 'not-allowed' : 'pointer'};" />
                         `;
                         chequesTbody.innerHTML += `
@@ -4645,6 +4668,20 @@
 
     function saveReconciliationDraft() {
         if (!currentRouteId || !currentDeliveryDetails) return;
+        
+        // Verify all cheques are checked
+        const chequeCheckboxes = document.querySelectorAll('#reconChequesTbody input[type="checkbox"]');
+        let allChequesVerified = true;
+        chequeCheckboxes.forEach(cb => {
+            if (!cb.checked) {
+                allChequesVerified = false;
+            }
+        });
+        if (!allChequesVerified) {
+            alert('Verification of all cheques is required before saving the reconciliation.');
+            return;
+        }
+
         const actualCash = parseFloat(document.getElementById('reconActualCash').value) || 0;
         const remarks = document.getElementById('reconAuditNotes').value;
 

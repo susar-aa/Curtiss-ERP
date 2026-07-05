@@ -209,7 +209,11 @@ class RepTrackingController extends Controller {
             LEFT JOIN users u ON r.user_id = u.id
             LEFT JOIN employees e ON u.email = e.email
             LEFT JOIN route_bindings rb ON r.route_binding_id = rb.id
-            LEFT JOIN deliveries d ON d.rep_route_id = r.id OR d.secondary_rep_route_id = r.id
+            LEFT JOIN deliveries d ON d.id = (
+                SELECT id FROM deliveries 
+                WHERE rep_route_id = r.id OR secondary_rep_route_id = r.id 
+                ORDER BY id DESC LIMIT 1
+            )
             WHERE r.status != 'Bound' AND r.status != 'Bound Into Route'
               AND r.status != 'Completed' AND r.status != 'Finalized'
             ORDER BY r.start_time DESC
@@ -236,7 +240,11 @@ class RepTrackingController extends Controller {
             LEFT JOIN users u ON r.user_id = u.id
             LEFT JOIN employees e ON u.email = e.email
             LEFT JOIN route_bindings rb ON r.route_binding_id = rb.id
-            LEFT JOIN deliveries d ON d.rep_route_id = r.id OR d.secondary_rep_route_id = r.id
+            LEFT JOIN deliveries d ON d.id = (
+                SELECT id FROM deliveries 
+                WHERE rep_route_id = r.id OR secondary_rep_route_id = r.id 
+                ORDER BY id DESC LIMIT 1
+            )
             WHERE r.status != 'Bound' AND r.status != 'Bound Into Route'
             ORDER BY r.start_time DESC
         ");
