@@ -4329,6 +4329,22 @@
                     const arrears = parseFloat(data.arrears || 0);
                     document.getElementById('sdpOutstandingArrears').innerText = 'Rs ' + arrears.toLocaleString('en-US', {minimumFractionDigits: 2});
                     
+                    // Calculate tax percentage
+                    let taxPercentage = 0;
+                    const subTotal = parseFloat(data.invoice.total_amount || 0);
+                    const globalDiscVal = parseFloat(data.invoice.global_discount_val || 0);
+                    const globalDiscType = data.invoice.global_discount_type || 'Rs';
+                    const globalDisc = (globalDiscType === '%') ? (subTotal * globalDiscVal / 100) : globalDiscVal;
+                    const netSub = Math.max(0, subTotal - globalDisc);
+                    if (netSub > 0) {
+                        taxPercentage = parseFloat(data.invoice.tax_amount || 0) / netSub;
+                    }
+                    
+                    const modal = document.getElementById('serverDeliveryProcessModal');
+                    modal.setAttribute('data-global-discount-val', globalDiscVal);
+                    modal.setAttribute('data-global-discount-type', globalDiscType);
+                    modal.setAttribute('data-tax-percentage', taxPercentage);
+                    
                     let tbody = document.getElementById('sdpItemsTbody');
                     tbody.innerHTML = '';
                     
@@ -4342,11 +4358,17 @@
                                     <td style="text-align:right; font-family:monospace;">${parseInt(item.loaded_quantity)}</td>
                                     <td style="text-align:right;">
                                         <input type="number" step="1" min="0" max="${parseInt(item.loaded_quantity)}" class="sdp-delivered-qty" 
-                                               value="${parseInt(item.quantity)}" style="width: 80px; text-align: right; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px;" />
+                                               value="${parseInt(item.quantity)}" 
+                                               data-price="${parseFloat(item.unit_price || 0)}"
+                                               data-discount-type="${item.discount_type || 'Rs'}"
+                                               data-discount-val="${parseFloat(item.discount_value || 0)}"
+                                               oninput="recalculateSdpInvoiceTotal()"
+                                               style="width: 80px; text-align: right; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px;" />
                                     </td>
                                 </tr>
                             `;
                         });
+                        recalculateSdpInvoiceTotal();
                     }
                 } else {
                     alert('Error: ' + data.message);
@@ -4397,6 +4419,39 @@
         } else {
             document.getElementById('sdpRemainingBalance').style.color = '#c62828';
         }
+    }
+
+    function recalculateSdpInvoiceTotal() {
+        const modal = document.getElementById('serverDeliveryProcessModal');
+        const globalDiscVal = parseFloat(modal.getAttribute('data-global-discount-val') || 0);
+        const globalDiscType = modal.getAttribute('data-global-discount-type') || 'Rs';
+        const taxPercentage = parseFloat(modal.getAttribute('data-tax-percentage') || 0);
+        
+        let subTotal = 0;
+        document.querySelectorAll('#sdpItemsTbody tr').forEach(row => {
+            const qtyInput = row.querySelector('.sdp-delivered-qty');
+            if (qtyInput) {
+                const qty = parseInt(qtyInput.value) || 0;
+                const price = parseFloat(qtyInput.getAttribute('data-price') || 0);
+                const discVal = parseFloat(qtyInput.getAttribute('data-discount-val') || 0);
+                const discType = qtyInput.getAttribute('data-discount-type') || 'Rs';
+                
+                const rowGross = qty * price;
+                const rowDisc = (discType === '%') ? (rowGross * discVal / 100) : discVal;
+                const rowTotal = Math.max(0, rowGross - rowDisc);
+                subTotal += rowTotal;
+            }
+        });
+        
+        const globalDisc = (globalDiscType === '%') ? (subTotal * globalDiscVal / 100) : globalDiscVal;
+        const netSub = Math.max(0, subTotal - globalDisc);
+        const taxAmount = netSub * taxPercentage;
+        const newGrandTotal = netSub + taxAmount;
+        
+        document.getElementById('sdpInvoiceId').setAttribute('data-grand-total', newGrandTotal);
+        document.getElementById('sdpInvoiceTotal').innerText = 'Rs ' + newGrandTotal.toLocaleString('en-US', {minimumFractionDigits: 2});
+        
+        updateSdpBalance();
     }
 
     function closeServerDeliveryProcessModal() {
