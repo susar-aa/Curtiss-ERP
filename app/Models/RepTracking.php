@@ -10,15 +10,28 @@ class RepTracking {
     public function getAllRoutes() {
         $this->db->query("
             SELECT r.*, COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name,
-                (SELECT COUNT(*) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as bill_count,
-                (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) 
-                 FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales,
-                (SELECT COUNT(*) FROM pending_collections WHERE route_id = r.id AND status = 'Pending') as unfinalized_count,
+                COALESCE(inv.bill_count, 0) as bill_count,
+                COALESCE(inv.total_sales, 0.00) as total_sales,
+                COALESCE(pc.unfinalized_count, 0) as unfinalized_count,
                 rb.name as binding_name
             FROM rep_daily_routes r
             LEFT JOIN users u ON r.user_id = u.id
             LEFT JOIN employees e ON u.email = e.email
             LEFT JOIN route_bindings rb ON r.route_binding_id = rb.id
+            LEFT JOIN (
+                SELECT rep_route_id, 
+                       COUNT(*) as bill_count,
+                       SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_sales
+                FROM invoices 
+                WHERE status != 'Voided' AND rep_route_id IS NOT NULL
+                GROUP BY rep_route_id
+            ) inv ON inv.rep_route_id = r.id
+            LEFT JOIN (
+                SELECT route_id, COUNT(*) as unfinalized_count
+                FROM pending_collections 
+                WHERE status = 'Pending' AND route_id IS NOT NULL
+                GROUP BY route_id
+            ) pc ON pc.route_id = r.id
             WHERE r.id NOT IN (SELECT rep_route_id FROM deliveries)
               AND r.status != 'Bound' AND r.status != 'Bound Into Route'
             ORDER BY r.start_time DESC
@@ -75,7 +88,7 @@ class RepTracking {
     }
 
     public function getRouteBills($routeId) {
-        $routeIds = [$routeId];
+        $routeIds = [intval($routeId)];
         $this->db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
         $this->db->bind(':rid', $routeId);
         $routeRow = $this->db->single();
@@ -88,16 +101,24 @@ class RepTracking {
             }
         }
         $routeIds = array_unique($routeIds);
-        $routeIdsStr = implode(',', $routeIds);
+        
+        $placeholders = [];
+        foreach ($routeIds as $index => $id) {
+            $placeholders[] = ":rid_" . $index;
+        }
+        $placeholdersStr = implode(',', $placeholders);
 
         $this->db->query("
             SELECT i.*, c.name as customer_name,
             (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total
             FROM invoices i
             JOIN customers c ON i.customer_id = c.id
-            WHERE i.rep_route_id IN ($routeIdsStr)
+            WHERE i.rep_route_id IN ($placeholdersStr)
             ORDER BY i.created_at ASC
         ");
+        foreach ($routeIds as $index => $id) {
+            $this->db->bind(":rid_" . $index, intval($id));
+        }
         return $this->db->resultSet();
     }
 
@@ -118,7 +139,7 @@ class RepTracking {
     }
 
     public function getRouteLoadingItems($routeId) {
-        $routeIds = [$routeId];
+        $routeIds = [intval($routeId)];
         $this->db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
         $this->db->bind(':rid', $routeId);
         $routeRow = $this->db->single();
@@ -131,7 +152,12 @@ class RepTracking {
             }
         }
         $routeIds = array_unique($routeIds);
-        $routeIdsStr = implode(',', $routeIds);
+        
+        $placeholders = [];
+        foreach ($routeIds as $index => $id) {
+            $placeholders[] = ":rid_" . $index;
+        }
+        $placeholdersStr = implode(',', $placeholders);
 
         $this->db->query("
             SELECT ii.description as item_name,
@@ -142,16 +168,20 @@ class RepTracking {
             JOIN invoices i ON ii.invoice_id = i.id
             LEFT JOIN items it ON ii.item_id = it.id
             LEFT JOIN item_categories ic ON it.category_id = ic.id
-            WHERE i.rep_route_id IN ($routeIdsStr) AND i.status != 'Voided'
+            WHERE i.rep_route_id IN ($placeholdersStr) AND i.status != 'Voided'
             GROUP BY ii.description, COALESCE(ic.id, 0), COALESCE(ic.name, 'Uncategorized')
             ORDER BY category_name ASC, ii.description ASC
         ");
+        foreach ($routeIds as $index => $id) {
+            $this->db->bind(":rid_" . $index, intval($id));
+        }
         return $this->db->resultSet();
     }
 
     public function getRouteFinalLoadingItems($routeId) {
         $this->db->query("
             SELECT dpi.item_id,
+                   dpi.variation_option_id,
                    dpi.item_name,
                    dpi.required_qty,
                    dpi.loaded_qty as pre_loaded_qty,
@@ -287,7 +317,7 @@ class RepTracking {
     }
 
     public function getRouteCollections($routeId) {
-        $routeIds = [$routeId];
+        $routeIds = [intval($routeId)];
         $this->db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
         $this->db->bind(':rid', $routeId);
         $routeRow = $this->db->single();
@@ -300,7 +330,12 @@ class RepTracking {
             }
         }
         $routeIds = array_unique($routeIds);
-        $routeIdsStr = implode(',', $routeIds);
+        
+        $placeholders = [];
+        foreach ($routeIds as $index => $id) {
+            $placeholders[] = ":rid_" . $index;
+        }
+        $placeholdersStr = implode(',', $placeholders);
 
         $this->db->query("
             SELECT pc.id, pc.customer_id, pc.route_id as rep_route_id, pc.payment_method, pc.amount, 
@@ -313,9 +348,12 @@ class RepTracking {
                    COALESCE(pc.cheque_number, pc.bank_name, '') as reference
             FROM pending_collections pc
             JOIN customers c ON pc.customer_id = c.id
-            WHERE pc.route_id IN ($routeIdsStr)
+            WHERE pc.route_id IN ($placeholdersStr)
             ORDER BY pc.created_at ASC
         ");
+        foreach ($routeIds as $index => $id) {
+            $this->db->bind(":rid_" . $index, intval($id));
+        }
         return $this->db->resultSet() ?: [];
     }
 

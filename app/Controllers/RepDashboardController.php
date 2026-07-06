@@ -97,7 +97,14 @@ class RepDashboardController extends Controller {
                 exit;
             }
 
-            $lastSync = isset($_GET['last_sync']) ? trim($_GET['last_sync']) : (isset($_GET['last_sync_timestamp']) ? trim($_GET['last_sync_timestamp']) : '');
+            $lastSync = '';
+            if (isset($_GET['lastSync'])) {
+                $lastSync = trim($_GET['lastSync']);
+            } elseif (isset($_GET['last_sync'])) {
+                $lastSync = trim($_GET['last_sync']);
+            } elseif (isset($_GET['last_sync_timestamp'])) {
+                $lastSync = trim($_GET['last_sync_timestamp']);
+            }
 
             static $columnsCache = [];
             $columnExists = function($table, $column) use (&$columnsCache) {
@@ -166,7 +173,11 @@ class RepDashboardController extends Controller {
             }
             
             // 2. Get categories
-            $this->db->query("SELECT id, name, status FROM item_categories ORDER BY name ASC");
+            $deltaCat = $getDeltaFilter('item_categories', $lastSync, false);
+            $this->db->query("SELECT id, name, status FROM item_categories $deltaCat ORDER BY name ASC");
+            if (!empty($deltaCat)) {
+                $this->db->bind(':last_sync', $lastSync);
+            }
             $cats = $this->db->resultSet() ?: [];
             $categoriesJson = [];
             foreach ($cats as $cat) {
@@ -220,69 +231,124 @@ class RepDashboardController extends Controller {
                 ];
             }
             
-            // 4. Get server routes (territories) - ALWAYS FULL LIST
-            $this->db->query("SELECT id, name, main_area_id, status FROM mca_areas ORDER BY name ASC");
-            $routes = $this->db->resultSet() ?: [];
-            $routesJson = [];
-            foreach ($routes as $r) {
-                $routesJson[] = [
-                    'id' => intval($r->id),
-                    'name' => $r->name,
-                    'main_area_id' => intval($r->main_area_id ?? 0),
-                    'status' => $r->status ?? 'active'
-                ];
+            // 4. Get server routes (territories)
+            $routesJson = null;
+            $hasRouteChanges = true;
+            if (!empty($lastSync)) {
+                $this->db->query("SELECT COUNT(*) as cnt FROM mca_areas WHERE updated_at > :last_sync OR created_at > :last_sync");
+                $this->db->bind(':last_sync', $lastSync);
+                $cnt = intval($this->db->single()->cnt ?? 0);
+                if ($cnt === 0) {
+                    $hasRouteChanges = false;
+                }
+            }
+            if ($hasRouteChanges) {
+                $this->db->query("SELECT id, name, main_area_id, status FROM mca_areas ORDER BY name ASC");
+                $routes = $this->db->resultSet() ?: [];
+                $routesJson = [];
+                foreach ($routes as $r) {
+                    $routesJson[] = [
+                        'id' => intval($r->id),
+                        'name' => $r->name,
+                        'main_area_id' => intval($r->main_area_id ?? 0),
+                        'status' => $r->status ?? 'active'
+                    ];
+                }
             }
             
-            // 5. Get representatives - ALWAYS FULL LIST (Only active ones)
-            $this->db->query("SELECT u.id, u.username, u.password_hash, u.employee_id, e.first_name, e.last_name 
-                        FROM users u 
-                        LEFT JOIN employees e ON u.employee_id = e.id 
-                        WHERE u.role = 'rep' AND (u.status IS NULL OR u.status = 'Active')");
-            $reps = $this->db->resultSet() ?: [];
-            $repsJson = [];
-            foreach ($reps as $rep) {
-                $repsJson[] = [
-                    'id' => intval($rep->id),
-                    'username' => $rep->username,
-                    'password_hash' => $rep->password_hash,
-                    'employee_id' => intval($rep->employee_id),
-                    'first_name' => $rep->first_name ?? $rep->username,
-                    'last_name' => $rep->last_name ?? ''
-                ];
+            // 5. Get representatives (Only active ones)
+            $repsJson = null;
+            $hasRepChanges = true;
+            if (!empty($lastSync)) {
+                $repChangesCount = 0;
+                // Check users table
+                $this->db->query("SELECT COUNT(*) as cnt FROM users WHERE role = 'rep' AND (updated_at > :last_sync OR created_at > :last_sync)");
+                $this->db->bind(':last_sync', $lastSync);
+                $repChangesCount += intval($this->db->single()->cnt ?? 0);
+
+                // Check employees table
+                $this->db->query("SELECT COUNT(*) as cnt FROM employees WHERE created_at > :last_sync");
+                $this->db->bind(':last_sync', $lastSync);
+                $repChangesCount += intval($this->db->single()->cnt ?? 0);
+
+                if ($repChangesCount === 0) {
+                    $hasRepChanges = false;
+                }
+            }
+            if ($hasRepChanges) {
+                $this->db->query("SELECT u.id, u.username, u.employee_id, e.first_name, e.last_name 
+                            FROM users u 
+                            LEFT JOIN employees e ON u.employee_id = e.id 
+                            WHERE u.role = 'rep' AND (u.status IS NULL OR u.status = 'Active')");
+                $reps = $this->db->resultSet() ?: [];
+                $repsJson = [];
+                foreach ($reps as $rep) {
+                    $repsJson[] = [
+                        'id' => intval($rep->id),
+                        'username' => $rep->username,
+                        'employee_id' => intval($rep->employee_id),
+                        'first_name' => $rep->first_name ?? $rep->username,
+                        'last_name' => $rep->last_name ?? ''
+                    ];
+                }
             }
             
-            // 6. Get payment terms - ALWAYS FULL LIST
-            $this->db->query("SELECT id, name, days_due FROM payment_terms ORDER BY days_due ASC");
-            $terms = $this->db->resultSet() ?: [];
-            $termsJson = [];
-            foreach ($terms as $t) {
-                $termsJson[] = [
-                    'id' => intval($t->id),
-                    'name' => $t->name,
-                    'days_due' => intval($t->days_due)
-                ];
+            // 6. Get payment terms
+            $termsJson = null;
+            $hasTermChanges = true;
+            if (!empty($lastSync)) {
+                $this->db->query("SELECT COUNT(*) as cnt FROM payment_terms WHERE created_at > :last_sync");
+                $this->db->bind(':last_sync', $lastSync);
+                $cnt = intval($this->db->single()->cnt ?? 0);
+                if ($cnt === 0) {
+                    $hasTermChanges = false;
+                }
+            }
+            if ($hasTermChanges) {
+                $this->db->query("SELECT id, name, days_due FROM payment_terms ORDER BY days_due ASC");
+                $terms = $this->db->resultSet() ?: [];
+                $termsJson = [];
+                foreach ($terms as $t) {
+                    $termsJson[] = [
+                        'id' => intval($t->id),
+                        'name' => $t->name,
+                        'days_due' => intval($t->days_due)
+                    ];
+                }
             }
             
-            // 7. Get outstanding credit invoices for the customers - ALWAYS FULL LIST
-            $this->db->query("SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date, 
-                               (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
-                               c.name as customer_name, c.address as customer_address
-                        FROM invoices i
-                        JOIN customers c ON i.customer_id = c.id
-                        WHERE (i.status = 'Unpaid' OR i.status = 'Partially Paid')
-                        ORDER BY i.invoice_date ASC");
-            $creditInvs = $this->db->resultSet() ?: [];
-            $creditInvsJson = [];
-            foreach ($creditInvs as $ci) {
-                $creditInvsJson[] = [
-                    'id' => intval($ci->id),
-                    'invoice_number' => $ci->invoice_number,
-                    'customer_id' => intval($ci->customer_id),
-                    'invoice_date' => $ci->invoice_date,
-                    'true_grand_total' => floatval($ci->true_grand_total),
-                    'customer_name' => $ci->customer_name,
-                    'customer_address' => $ci->customer_address
-                ];
+            // 7. Get outstanding credit invoices for the customers
+            $creditInvsJson = null;
+            $hasInvoiceChanges = true;
+            if (!empty($lastSync)) {
+                $this->db->query("SELECT COUNT(*) as cnt FROM invoices WHERE updated_at > :last_sync OR created_at > :last_sync");
+                $this->db->bind(':last_sync', $lastSync);
+                $cnt = intval($this->db->single()->cnt ?? 0);
+                if ($cnt === 0) {
+                    $hasInvoiceChanges = false;
+                }
+            }
+            if ($hasInvoiceChanges) {
+                $this->db->query("SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date, 
+                                   (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
+                                   c.name as customer_name, c.address as customer_address
+                            FROM invoices i
+                            JOIN customers c ON i.customer_id = c.id
+                            WHERE (i.status = 'Unpaid' OR i.status = 'Partially Paid')
+                            ORDER BY i.invoice_date ASC");
+                $creditInvs = $this->db->resultSet() ?: [];
+                $creditInvsJson = [];
+                foreach ($creditInvs as $ci) {
+                    $creditInvsJson[] = [
+                        'id' => intval($ci->id),
+                        'invoice_number' => $ci->invoice_number,
+                        'customer_id' => intval($ci->customer_id),
+                        'invoice_date' => $ci->invoice_date,
+                        'true_grand_total' => floatval($ci->true_grand_total),
+                        'customer_name' => $ci->customer_name,
+                        'customer_address' => $ci->customer_address
+                    ];
+                }
             }
         
         // 8. Get ongoing active route for this rep
@@ -364,45 +430,37 @@ class RepDashboardController extends Controller {
             ];
         }
 
-            echo json_encode([
+            $responsePayload = [
                 'success' => true,
                 'products' => $productsJson,
                 'categories' => $categoriesJson,
-                'customers' => $customersJson,
-                'routes' => $routesJson,
-                'reps' => $repsJson,
-                'payment_terms' => $termsJson,
-                'credit_invoices' => $creditInvsJson,
-                'active_route' => $activeRouteJson,
-                'active_route_invoices' => $activeRouteInvsJson,
-                'active_route_invoice_items' => $activeRouteItemsJson,
-                'discount_rules' => $discountRulesJson
-            ]);
+                'customers' => $customersJson
+            ];
+            if ($routesJson !== null) {
+                $responsePayload['routes'] = $routesJson;
+            }
+            if ($repsJson !== null) {
+                $responsePayload['reps'] = $repsJson;
+            }
+            if ($termsJson !== null) {
+                $responsePayload['payment_terms'] = $termsJson;
+            }
+            if ($creditInvsJson !== null) {
+                $responsePayload['credit_invoices'] = $creditInvsJson;
+            }
+            $responsePayload['active_route'] = $activeRouteJson;
+            $responsePayload['active_route_invoices'] = $activeRouteInvsJson;
+            $responsePayload['active_route_invoice_items'] = $activeRouteItemsJson;
+            $responsePayload['discount_rules'] = $discountRulesJson;
+
+            echo json_encode($responsePayload);
             exit;
         } catch (Throwable $e) {
             http_response_code(500);
-            
-            $schemaDebug = [];
-            try {
-                $tables = ['invoices', 'customer_payments', 'credit_notes', 'customers', 'item_categories', 'mca_areas'];
-                foreach ($tables as $tbl) {
-                    $this->db->query("DESCRIBE `$tbl`");
-                    $rows = $this->db->resultSet() ?: [];
-                    $cols = [];
-                    foreach ($rows as $r) {
-                        $cols[] = $r->Field . ' (' . $r->Type . ')';
-                    }
-                    $schemaDebug[$tbl] = $cols;
-                }
-            } catch (Throwable $dbEx) {
-                $schemaDebug['error'] = $dbEx->getMessage();
-            }
-
+            error_log("Internal server error during pull sync: " . $e->getMessage() . "\n" . $e->getTraceAsString());
             echo json_encode([
                 'success' => false,
-                'message' => 'Internal server error during pull sync: ' . $e->getMessage(),
-                'schema' => $schemaDebug,
-                'trace' => $e->getTraceAsString()
+                'message' => 'Internal server error during pull sync.'
             ]);
             exit;
         }
@@ -771,16 +829,26 @@ class RepDashboardController extends Controller {
                                         }
                                     }
 
+                                    $itemDiscountType = isset($item['discount_type']) ? trim($item['discount_type']) : 'Rs';
+                                    if ($itemDiscountType !== '%' && $itemDiscountType !== 'Rs') {
+                                        $itemDiscountType = 'Rs';
+                                    }
+
                                     $itemsPayload[] = [
                                         'item_selection' => $prodId . '|0',
                                         'description' => $prodName,
                                         'quantity' => intval($item['quantity']),
                                         'unit_price' => floatval($item['unit_price']),
                                         'discount_value' => floatval($item['discount_val'] ?? 0.0),
-                                        'discount_type' => 'Rs',
+                                        'discount_type' => $itemDiscountType,
                                         'total' => floatval($item['total'])
                                     ];
                                 }
+                            }
+
+                            $globalDiscountType = isset($inv['global_discount_type']) ? trim($inv['global_discount_type']) : (isset($inv['discount_type']) ? trim($inv['discount_type']) : 'Rs');
+                            if ($globalDiscountType !== '%' && $globalDiscountType !== 'Rs') {
+                                $globalDiscountType = 'Rs';
                             }
 
                             $invoiceData = [
@@ -792,7 +860,7 @@ class RepDashboardController extends Controller {
                                 'payment_term_id' => !empty($inv['payment_term_id']) ? intval($inv['payment_term_id']) : null,
                                 'subtotal' => floatval($inv['subtotal']),
                                 'global_discount_val' => floatval($inv['discount'] ?? 0.00),
-                                'global_discount_type' => 'Rs',
+                                'global_discount_type' => $globalDiscountType,
                                 'notes' => 'Updated via Mobile App Sync',
                                 'rep_route_id' => $routeServerId ?: null,
                                 'grand_total' => floatval($inv['grand_total'])
@@ -865,16 +933,26 @@ class RepDashboardController extends Controller {
                                 }
                             }
 
+                            $itemDiscountType = isset($item['discount_type']) ? trim($item['discount_type']) : 'Rs';
+                            if ($itemDiscountType !== '%' && $itemDiscountType !== 'Rs') {
+                                $itemDiscountType = 'Rs';
+                            }
+
                             $itemsPayload[] = [
                                 'item_selection' => $prodId . '|0', // format: "product_id|var_id"
                                 'description' => $prodName,
                                 'quantity' => intval($item['quantity']),
                                 'unit_price' => floatval($item['unit_price']),
                                 'discount_value' => floatval($item['discount_val'] ?? 0.0),
-                                'discount_type' => 'Rs',
+                                'discount_type' => $itemDiscountType,
                                 'total' => floatval($item['total'])
                             ];
                         }
+                    }
+
+                    $globalDiscountType = isset($inv['global_discount_type']) ? trim($inv['global_discount_type']) : (isset($inv['discount_type']) ? trim($inv['discount_type']) : 'Rs');
+                    if ($globalDiscountType !== '%' && $globalDiscountType !== 'Rs') {
+                        $globalDiscountType = 'Rs';
                     }
 
                     $invoiceData = [
@@ -886,7 +964,7 @@ class RepDashboardController extends Controller {
                         'payment_term_id' => !empty($inv['payment_term_id']) ? intval($inv['payment_term_id']) : null,
                         'subtotal' => floatval($inv['subtotal']),
                         'global_discount_val' => floatval($inv['discount'] ?? 0.00),
-                        'global_discount_type' => 'Rs', // default mobile discount type is Rs
+                        'global_discount_type' => $globalDiscountType,
                         'notes' => 'Created via Mobile App Sync',
                         'rep_route_id' => $routeServerId ?: null,
                         'grand_total' => floatval($inv['grand_total']),

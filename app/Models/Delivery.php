@@ -30,7 +30,7 @@ class Delivery {
                 $rids[] = intval($data['secondary_rep_route_id']);
             }
             $rids = $this->resolveAllBoundRouteIds($rids);
-            $ridsStr = implode(',', $rids);
+            $ridsStr = implode(',', array_map('intval', $rids));
 
             $this->db->query("UPDATE rep_daily_routes SET status = 'Delivery Arranged' WHERE id IN ($ridsStr)");
             $this->db->execute();
@@ -46,13 +46,20 @@ class Delivery {
     public function getAllDeliveries() {
         $this->db->query("
             SELECT d.*, r.route_name, r.start_time, r.user_id as user_id, COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name,
-                (SELECT COUNT(*) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as bill_count,
-                (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) 
-                 FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales
+                COALESCE(inv.bill_count, 0) as bill_count,
+                COALESCE(inv.total_sales, 0.00) as total_sales
             FROM deliveries d
             JOIN rep_daily_routes r ON d.rep_route_id = r.id
             LEFT JOIN users u ON r.user_id = u.id
             LEFT JOIN employees e ON u.employee_id = e.id
+            LEFT JOIN (
+                SELECT rep_route_id, 
+                       COUNT(*) as bill_count,
+                       SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_sales
+                FROM invoices 
+                WHERE status != 'Voided' AND rep_route_id IS NOT NULL
+                GROUP BY rep_route_id
+            ) inv ON inv.rep_route_id = r.id
             ORDER BY d.delivery_date DESC, d.created_at DESC
         ");
         return $this->db->resultSet();
@@ -61,13 +68,20 @@ class Delivery {
     public function getDeliveryById($id) {
         $this->db->query("
             SELECT d.*, r.route_name, r.start_time, r.user_id as user_id, COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name,
-                (SELECT COUNT(*) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as bill_count,
-                (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) 
-                 FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales
+                COALESCE(inv.bill_count, 0) as bill_count,
+                COALESCE(inv.total_sales, 0.00) as total_sales
             FROM deliveries d
             JOIN rep_daily_routes r ON d.rep_route_id = r.id
             LEFT JOIN users u ON r.user_id = u.id
             LEFT JOIN employees e ON u.employee_id = e.id
+            LEFT JOIN (
+                SELECT rep_route_id, 
+                       COUNT(*) as bill_count,
+                       SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_sales
+                FROM invoices 
+                WHERE status != 'Voided' AND rep_route_id IS NOT NULL
+                GROUP BY rep_route_id
+            ) inv ON inv.rep_route_id = r.id
             WHERE d.id = :id
         ");
         $this->db->bind(':id', $id);
@@ -81,7 +95,7 @@ class Delivery {
                 $rids[] = intval($delivery->secondary_rep_route_id);
             }
             $rids = $this->resolveAllBoundRouteIds($rids);
-            $ridsStr = !empty($rids) ? implode(',', $rids) : '0';
+            $ridsStr = !empty($rids) ? implode(',', array_map('intval', $rids)) : '0';
             
             // 1. Fetch invoice draft JEs
             $this->db->query("SELECT id FROM invoices WHERE rep_route_id IN ($ridsStr) AND status != 'Voided'");
@@ -149,7 +163,7 @@ class Delivery {
             $rids[] = intval($secondaryRouteId);
         }
         $rids = $this->resolveAllBoundRouteIds($rids);
-        $ridsStr = implode(',', $rids);
+        $ridsStr = implode(',', array_map('intval', $rids));
 
         $this->db->query("
             SELECT i.*, c.name as customer_name,
@@ -196,7 +210,7 @@ class Delivery {
             $rids[] = intval($secondaryRouteId);
         }
         $rids = $this->resolveAllBoundRouteIds($rids);
-        $ridsStr = implode(',', $rids);
+        $ridsStr = implode(',', array_map('intval', $rids));
 
         $this->db->query("
             SELECT ii.description as item_name, SUM(ii.quantity) as total_qty 
@@ -218,7 +232,7 @@ class Delivery {
             $rids[] = intval($delivery->secondary_rep_route_id);
         }
         $rids = $this->resolveAllBoundRouteIds($rids);
-        $ridsStr = implode(',', $rids);
+        $ridsStr = implode(',', array_map('intval', $rids));
 
         // Ensure 1605 account exists in chart of accounts
         try {
@@ -393,6 +407,11 @@ class Delivery {
             if (!$delivery) {
                 throw new Exception("Delivery not found");
             }
+
+            // Enforce that return stock verification must be saved first (CRIT-4)
+            if ($delivery->return_stock_json === null || $delivery->return_stock_json === '') {
+                throw new Exception("Cannot finalize delivery: Return stock verification has not been saved yet.");
+            }
             
             // Merge draft mappings from deliveries.accounting_entries_json if empty
             if (empty($debitAccounts) || empty($creditAccounts)) {
@@ -458,14 +477,14 @@ class Delivery {
                 $rids[] = intval($delivery->secondary_rep_route_id);
             }
             $rids = $this->resolveAllBoundRouteIds($rids);
-            $ridsStr = implode(',', $rids);
+            $ridsStr = implode(',', array_map('intval', $rids));
 
             $this->db->query("UPDATE rep_daily_routes SET status = 'Finalized' WHERE id IN ($ridsStr)");
             $this->db->execute();
 
             // 2. Stock deductions & reservation releases
 
-            $this->db->query("SELECT id, delivery_status, stock_status FROM invoices WHERE rep_route_id IN ($ridsStr) AND status != 'Voided'");
+            $this->db->query("SELECT id, invoice_number, total_amount, global_discount_val, global_discount_type, tax_amount, journal_entry_id, delivery_status, stock_status FROM invoices WHERE rep_route_id IN ($ridsStr) AND status != 'Voided'");
             $invoices = $this->db->resultSet();
 
             require_once '../app/Models/FIFO.php';
@@ -568,136 +587,11 @@ class Delivery {
                 }
             }
 
-            // 2b. Apply administrator's actual counted returned products adjustments
-            if (!empty($returnedItems) && is_array($returnedItems)) {
-                foreach ($returnedItems as $ret) {
-                    $itemId = intval($ret['item_id'] ?? 0);
-                    $varId = intval($ret['variation_option_id'] ?? 0);
-                    $loadedQty = floatval($ret['loaded_qty'] ?? 0);
-                    $deliveredQty = floatval($ret['delivered_qty'] ?? 0);
-                    $actualReturnedQty = floatval($ret['actual_returned_qty'] ?? 0);
+            // 2b. Counted returns stock adjustment is now processed inside api_save_return_stock() to avoid double deduction/adjustment.
 
-                    if (!$itemId && !empty($ret['item_name'])) {
-                        $this->db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
-                        $this->db->bind(':name', $ret['item_name']);
-                        $rowItem = $this->db->single();
-                        if ($rowItem) $itemId = $rowItem->id;
-                    }
 
-                    $expectedReturned = $loadedQty - $deliveredQty;
-                    $adjustment = $actualReturnedQty - $expectedReturned;
-                    if ($adjustment != 0) {
-                        if ($varId) {
-                            $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :adj) WHERE id = :id");
-                            $this->db->bind(':adj', $adjustment);
-                            $this->db->bind(':id', $varId);
-                            $this->db->execute();
-                        } else if ($itemId) {
-                            require_once '../app/Models/Item.php';
-                            $itemModel = new Item();
-                            $itemModel->updateStockDelta($itemId, $adjustment);
-                        }
-
-                        // Log stock movement in ledger (counted returns adjustment)
-                        require_once '../app/Models/StockLedger.php';
-                        $ledger = new StockLedger();
-                        $this->db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
-                        $this->db->bind(':id', $itemId);
-                        $itemRow = $this->db->single();
-                        $whId = $itemRow ? $itemRow->warehouse_id : null;
-                        $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
-
-                        $qtyIn = $adjustment > 0 ? $adjustment : 0;
-                        $qtyOut = $adjustment < 0 ? abs($adjustment) : 0;
-                        $ledger->logMovement($itemId, $varId ?: null, $qtyIn, $qtyOut, 'Stock Adjustment', 'DEL-' . $deliveryId, $whId, $adminUserId, 'Delivery Finalized - Counted Returns Adjustment', $itemCost);
-                    }
-                }
-            }
-
-            // 3. Post Double Entry accounting entries for the delivered sales invoices if checked
-            $this->db->query("SELECT id, account_code FROM chart_of_accounts WHERE account_code IN ('1200', '4000')");
-            $salesAccs = $this->db->resultSet();
-            $sAccMap = [];
-            foreach ($salesAccs as $sa) { $sAccMap[$sa->account_code] = $sa->id; }
-            $defaultArAcc = $sAccMap['1200'] ?? null;
-            $defaultSalesAcc = $sAccMap['4000'] ?? null;
-
-            foreach ($invoices as $invoice) {
-                if ($invoice->delivery_status === 'Delivered') {
-                    $invId = intval($invoice->id);
-                    if (!empty($selectedInvoiceIds) && !in_array($invId, $selectedInvoiceIds)) {
-                        continue;
-                    }
-
-                    $gTotal = $this->getTrueGrandTotal($invoice);
-                    if ($gTotal <= 0) continue;
-
-                    // Ensure sales JE not already posted
-                    $this->db->query("SELECT id FROM journal_entries WHERE reference = :ref LIMIT 1");
-                    $this->db->bind(':ref', "INV-SALES-" . $invId);
-                    if ($this->db->single()) {
-                        continue;
-                    }
-
-                    $invDebAcc = isset($debitAccounts["inv_" . $invId]) ? intval($debitAccounts["inv_" . $invId]) : (isset($debitAccounts[$invId]) ? intval($debitAccounts[$invId]) : $defaultArAcc);
-                    $invCredAcc = isset($creditAccounts["inv_" . $invId]) ? intval($creditAccounts["inv_" . $invId]) : (isset($creditAccounts[$invId]) ? intval($creditAccounts[$invId]) : $defaultSalesAcc);
-
-                    if ($invDebAcc && $invCredAcc) {
-                        // Check if draft exists
-                        $this->db->query("SELECT id FROM journal_entries WHERE reference = :ref AND status = 'Draft' LIMIT 1");
-                        $this->db->bind(':ref', "INV-SALES-DRAFT-" . $invId);
-                        $draftRow = $this->db->single();
-
-                        if ($draftRow) {
-                            $invJid = $draftRow->id;
-                            
-                            // Update journal entry
-                            $this->db->query("UPDATE journal_entries SET reference = :ref, description = :desc, entry_date = CURDATE(), status = 'Posted' WHERE id = :id");
-                            $this->db->bind(':ref', "INV-SALES-" . $invId);
-                            $this->db->bind(':desc', "Sales Invoice Delivery Revenue Posting (" . $invoice->invoice_number . ")");
-                            $this->db->bind(':id', $invJid);
-                            $this->db->execute();
-
-                            // Clean up old draft transactions
-                            $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
-                            $this->db->bind(':jid', $invJid);
-                            $this->db->execute();
-                        } else {
-                            $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
-                                              VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
-                            $this->db->bind(':ref', "INV-SALES-" . $invId);
-                            $this->db->bind(':desc', "Sales Invoice Delivery Revenue Posting (" . $invoice->invoice_number . ")");
-                            $this->db->bind(':uid', $adminUserId);
-                            $this->db->execute();
-                            $invJid = $this->db->lastInsertId();
-                        }
-
-                        // Debit Accounts Receivable
-                        $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, 0)");
-                        $this->db->bind(':jid', $invJid);
-                        $this->db->bind(':aid', $invDebAcc);
-                        $this->db->bind(':deb', $gTotal);
-                        $this->db->execute();
-
-                        $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :aid");
-                        $this->db->bind(':amt', $gTotal);
-                        $this->db->bind(':aid', $invDebAcc);
-                        $this->db->execute();
-
-                        // Credit Sales Revenue
-                        $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :cred)");
-                        $this->db->bind(':jid', $invJid);
-                        $this->db->bind(':aid', $invCredAcc);
-                        $this->db->bind(':cred', $gTotal);
-                        $this->db->execute();
-
-                        $this->db->query("UPDATE chart_of_accounts SET balance = balance - :amt WHERE id = :aid");
-                        $this->db->bind(':amt', $gTotal);
-                        $this->db->bind(':aid', $invCredAcc);
-                        $this->db->execute();
-                    }
-                }
-            }
+            // 3. Redundant sales JE creation loop removed to prevent revenue double-counting (CRIT-1).
+            // Invoices already have their posted JEs and account balances updated at creation time in Invoice::createInvoiceWithAccounting().
 
             // 4. Financial Clearance collections balancing
             $this->db->query("
@@ -729,6 +623,42 @@ class Delivery {
                     $amount = floatval($pay->amount);
                     if ($amount <= 0) continue;
 
+                    // Ensure payment JE not already posted
+                    if (!empty($pay->journal_entry_id)) {
+                        $this->db->query("SELECT status FROM journal_entries WHERE id = :jid LIMIT 1");
+                        $this->db->bind(':jid', $pay->journal_entry_id);
+                        $jeRow = $this->db->single();
+                        if ($jeRow && $jeRow->status === 'Posted') {
+                            continue;
+                        }
+                    }
+                    $this->db->query("SELECT id, status FROM journal_entries WHERE reference = :ref LIMIT 1");
+                    $this->db->bind(':ref', "PMT-BAL-" . $payId);
+                    $jeRowRef = $this->db->single();
+                    if ($jeRowRef && $jeRowRef->status === 'Posted') {
+                        // Associate payment with this posted JE if not already done
+                        $this->db->query("UPDATE customer_payments SET journal_entry_id = :jid WHERE id = :pid");
+                        $this->db->bind(':jid', $jeRowRef->id);
+                        $this->db->bind(':pid', $pay->id);
+                        $this->db->execute();
+                        continue;
+                    }
+
+                    // Clean up any existing draft or incomplete journal entries for this payment to prevent collisions on retry
+                    $this->db->query("SELECT id FROM journal_entries WHERE reference IN (:ref, :ref2)");
+                    $this->db->bind(':ref', "PMT-BAL-" . $payId);
+                    $this->db->bind(':ref2', "PMT-BAL-DRAFT-" . $payId);
+                    $oldRows = $this->db->resultSet() ?: [];
+                    foreach ($oldRows as $oldRow) {
+                        $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
+                        $this->db->bind(':jid', $oldRow->id);
+                        $this->db->execute();
+
+                        $this->db->query("DELETE FROM journal_entries WHERE id = :id");
+                        $this->db->bind(':id', $oldRow->id);
+                        $this->db->execute();
+                    }
+
                     $debAccId = isset($debitAccounts["pay_" . $payId]) ? intval($debitAccounts["pay_" . $payId]) : (isset($debitAccounts[$payId]) ? intval($debitAccounts[$payId]) : null);
                     if (!$debAccId) {
                         $method = $pay->payment_method;
@@ -744,47 +674,14 @@ class Delivery {
 
                     $credAccId = isset($creditAccounts["pay_" . $payId]) ? intval($creditAccounts["pay_" . $payId]) : (isset($creditAccounts[$payId]) ? intval($creditAccounts[$payId]) : ($transitAcc ?: $arAcc));
 
-                    $refCode = "PMT-BAL-" . time() . rand(10,99);
-
-                    // Check if draft exists
-                    $draftJid = null;
-                    if ($pay->journal_entry_id) {
-                        $this->db->query("SELECT id FROM journal_entries WHERE id = :id AND status = 'Draft' LIMIT 1");
-                        $this->db->bind(':id', $pay->journal_entry_id);
-                        $row = $this->db->single();
-                        if ($row) $draftJid = $row->id;
-                    }
-                    if (!$draftJid) {
-                        $this->db->query("SELECT id FROM journal_entries WHERE reference = :ref AND status = 'Draft' LIMIT 1");
-                        $this->db->bind(':ref', "PMT-BAL-DRAFT-" . $payId);
-                        $row = $this->db->single();
-                        if ($row) $draftJid = $row->id;
-                    }
-
-                    if ($draftJid) {
-                        $payJid = $draftJid;
-
-                        // Update journal entry
-                        $this->db->query("UPDATE journal_entries SET reference = :ref, description = :desc, entry_date = CURDATE(), status = 'Posted' WHERE id = :id");
-                        $this->db->bind(':ref', $refCode);
-                        $this->db->bind(':desc', "Finalized Delivery Collection (" . $pay->payment_method . ")");
-                        $this->db->bind(':id', $payJid);
-                        $this->db->execute();
-
-                        // Clean up old draft transactions
-                        $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
-                        $this->db->bind(':jid', $payJid);
-                        $this->db->execute();
-                    } else {
-                        // Insert Journal Entry
-                        $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
-                                          VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
-                        $this->db->bind(':ref', $refCode);
-                        $this->db->bind(':desc', "Finalized Delivery Collection (" . $pay->payment_method . ")");
-                        $this->db->bind(':uid', $adminUserId);
-                        $this->db->execute();
-                        $payJid = $this->db->lastInsertId();
-                    }
+                    // Insert new Posted Journal Entry first to prevent partial updates with no rollback on failure
+                    $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
+                                      VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
+                    $this->db->bind(':ref', "PMT-BAL-" . $payId);
+                    $this->db->bind(':desc', "Finalized Delivery Collection (" . $pay->payment_method . ")");
+                    $this->db->bind(':uid', $adminUserId);
+                    $this->db->execute();
+                    $payJid = $this->db->lastInsertId();
 
                     // Update payment record to associate with this journal entry
                     $this->db->query("UPDATE customer_payments SET journal_entry_id = :jid WHERE id = :pid");
@@ -902,7 +799,7 @@ class Delivery {
     private function resolveAllBoundRouteIds($rids) {
         if (empty($rids)) return [];
         $rids = array_map('intval', $rids);
-        $ridsStr = implode(',', $rids);
+        $ridsStr = implode(',', array_map('intval', $rids));
         
         $this->db->query("SELECT DISTINCT route_binding_id FROM rep_daily_routes WHERE id IN ($ridsStr) AND route_binding_id IS NOT NULL");
         $bindings = $this->db->resultSet();
@@ -912,7 +809,7 @@ class Delivery {
             foreach ($bindings as $b) {
                 $bindingIds[] = intval($b->route_binding_id);
             }
-            $bindingIdsStr = implode(',', $bindingIds);
+            $bindingIdsStr = implode(',', array_map('intval', $bindingIds));
             
             $this->db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id IN ($bindingIdsStr)");
             $allRoutes = $this->db->resultSet();

@@ -1,4 +1,8 @@
 <?php
+require_once dirname(__DIR__) . '/Services/RepBindingService.php';
+require_once dirname(__DIR__) . '/Services/RepVarianceService.php';
+require_once dirname(__DIR__) . '/Services/RepRouteService.php';
+
 class RepTrackingController extends Controller {
     private $trackingModel;
     private $deliveryModel;
@@ -30,13 +34,7 @@ class RepTrackingController extends Controller {
         return true;
     }
 
-    public function index() {
-        $vehicleModel = $this->model('Vehicle');
-        $employeeModel = $this->model('Employee');
-
-        $vehicles = $vehicleModel->getAllVehicles();
-        $allEmployees = $employeeModel->getAllEmployees();
-
+    private function resolveDrivers($allEmployees) {
         $drivers = array_filter($allEmployees, function($emp) {
             return strtolower($emp->job_title) === 'driver' && $emp->status === 'Active';
         });
@@ -70,6 +68,17 @@ class RepTrackingController extends Controller {
                 $drivers[] = $virtualDriver;
             }
         }
+        return $drivers;
+    }
+
+    public function index() {
+        $vehicleModel = $this->model('Vehicle');
+        $employeeModel = $this->model('Employee');
+
+        $vehicles = $vehicleModel->getAllVehicles();
+        $allEmployees = $employeeModel->getAllEmployees();
+
+        $drivers = $this->resolveDrivers($allEmployees);
 
         $db = new Database();
         $db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1600'");
@@ -95,10 +104,37 @@ class RepTrackingController extends Controller {
         $db->query("SELECT id, name FROM mca_areas WHERE status = 'active' OR status IS NULL ORDER BY name ASC");
         $mcaAreas = $db->resultSet() ?: [];
 
+        $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+        $limit = 20;
+        $routesData = $this->getUnifiedRoutes($page, $limit);
+
+        // AJAX response for pagination and search
+        if (isset($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')) {
+            header('Content-Type: application/json');
+            ob_start();
+            $routes = $routesData['routes'];
+            $isHistory = false;
+            include dirname(__DIR__) . '/Views/rep-tracking/_route_list_items.php';
+            $routesHtml = ob_get_clean();
+
+            ob_start();
+            $pagination = $routesData['pagination'];
+            include dirname(__DIR__) . '/Views/rep-tracking/_pagination.php';
+            $paginationHtml = ob_get_clean();
+
+            echo json_encode([
+                'status' => 'success',
+                'routes_html' => $routesHtml,
+                'pagination_html' => $paginationHtml
+            ]);
+            exit;
+        }
+
         $data = [
             'title' => 'Master Route Control Panel',
             'content_view' => 'rep-tracking/index',
-            'routes' => $this->getUnifiedRoutes(),
+            'routes' => $routesData['routes'],
+            'pagination' => $routesData['pagination'],
             'vehicles' => $vehicles,
             'drivers' => $drivers,
             'employees' => $allEmployees,
@@ -118,39 +154,9 @@ class RepTrackingController extends Controller {
         $vehicles = $vehicleModel->getAllVehicles();
         $allEmployees = $employeeModel->getAllEmployees();
 
-        $drivers = array_filter($allEmployees, function($emp) {
-            return strtolower($emp->job_title) === 'driver' && $emp->status === 'Active';
-        });
+        $drivers = $this->resolveDrivers($allEmployees);
 
         $db = new Database();
-        $db->query("SELECT id, username, email, employee_id FROM users WHERE LOWER(role) = 'driver' AND (status = 'Active' OR status IS NULL)");
-        $driverUsers = $db->resultSet() ?: [];
-
-        foreach ($driverUsers as $du) {
-            $alreadyExists = false;
-            foreach ($drivers as $d) {
-                if ((!empty($du->employee_id) && $d->id == $du->employee_id) || 
-                    (!empty($du->email) && strtolower($d->email) === strtolower($du->email))) {
-                    $alreadyExists = true;
-                    break;
-                }
-            }
-            if (!$alreadyExists) {
-                $virtualDriver = new stdClass();
-                $virtualDriver->id = null;
-                $virtualDriver->employee_id = $du->employee_id;
-                $virtualDriver->username = $du->username;
-                $parts = explode('.', str_replace('@', '.', $du->username));
-                $virtualDriver->first_name = ucfirst($parts[0]);
-                $virtualDriver->last_name = isset($parts[1]) ? ucfirst($parts[1]) : '';
-                $virtualDriver->email = $du->email;
-                $virtualDriver->job_title = 'Driver';
-                $virtualDriver->status = 'Active';
-                
-                $drivers[] = $virtualDriver;
-            }
-        }
-
         $db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1600'");
         $parent = $db->single();
         $parentId = $parent ? $parent->id : 0;
@@ -174,10 +180,37 @@ class RepTrackingController extends Controller {
         $db->query("SELECT id, name FROM mca_areas WHERE status = 'active' OR status IS NULL ORDER BY name ASC");
         $mcaAreas = $db->resultSet() ?: [];
 
+        $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+        $limit = 20;
+        $routesData = $this->getCompletedRoutes($page, $limit);
+
+        // AJAX response for pagination and search
+        if (isset($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')) {
+            header('Content-Type: application/json');
+            ob_start();
+            $routes = $routesData['routes'];
+            $isHistory = true;
+            include dirname(__DIR__) . '/Views/rep-tracking/_route_list_items.php';
+            $routesHtml = ob_get_clean();
+
+            ob_start();
+            $pagination = $routesData['pagination'];
+            include dirname(__DIR__) . '/Views/rep-tracking/_pagination.php';
+            $paginationHtml = ob_get_clean();
+
+            echo json_encode([
+                'status' => 'success',
+                'routes_html' => $routesHtml,
+                'pagination_html' => $paginationHtml
+            ]);
+            exit;
+        }
+
         $data = [
             'title' => 'Route History',
             'content_view' => 'rep-tracking/index',
-            'routes' => $this->getCompletedRoutes(),
+            'routes' => $routesData['routes'],
+            'pagination' => $routesData['pagination'],
             'vehicles' => $vehicles,
             'drivers' => $drivers,
             'employees' => $allEmployees,
@@ -191,65 +224,270 @@ class RepTrackingController extends Controller {
         $this->view('layouts/main', $data);
     }
 
-    private function getUnifiedRoutes() {
+    protected function getUnifiedRoutes($page = 1, $limit = 20) {
         $db = new Database();
-        $db->query("
-            SELECT r.*, COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name,
-                (SELECT COUNT(*) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as bill_count,
-                (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) 
-                 FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales,
-                (SELECT COUNT(*) FROM pending_collections WHERE route_id = r.id AND status = 'Pending') as unfinalized_count,
-                (SELECT COUNT(DISTINCT customer_id) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as customer_count,
-                rb.name as binding_name,
-                d.id as delivery_id, d.vehicle_number, d.driver_name, d.partner_name, d.status as delivery_status,
-                (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id) as total_items,
-                (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_picked = 1) as picked_items,
-                (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_verified = 1) as verified_items
+        
+        $rep = isset($_GET['rep']) ? trim($_GET['rep']) : '';
+        $routeName = isset($_GET['route']) ? trim($_GET['route']) : '';
+        $date = isset($_GET['date']) ? trim($_GET['date']) : '';
+        $territory = isset($_GET['territory']) ? trim($_GET['territory']) : '';
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        
+        $filterSql = "";
+        $binds = [];
+        
+        if ($rep !== '') {
+            $filterSql .= " AND CONCAT(COALESCE(e.first_name, u.username), ' ', COALESCE(e.last_name, '')) = :rep";
+            $binds[':rep'] = $rep;
+        }
+        if ($routeName !== '') {
+            $filterSql .= " AND r.route_name = :route_name";
+            $binds[':route_name'] = $routeName;
+        }
+        if ($date !== '') {
+            $filterSql .= " AND DATE(r.start_time) = :date";
+            $binds[':date'] = $date;
+        }
+        if ($territory !== '') {
+            $filterSql .= " AND (r.route_name = :territory OR rb.name = :territory)";
+            $binds[':territory'] = $territory;
+        }
+        if ($search !== '') {
+            $filterSql .= " AND (r.route_name LIKE :search OR CONCAT(COALESCE(e.first_name, u.username), ' ', COALESCE(e.last_name, '')) LIKE :search OR r.id = :search_id)";
+            $binds[':search'] = '%' . $search . '%';
+            $binds[':search_id'] = intval(str_replace('#RT-', '', str_replace('#rt-', '', $search)));
+        }
+
+        $countQuery = "
+            SELECT COUNT(DISTINCT r.id) as cnt
             FROM rep_daily_routes r
             LEFT JOIN users u ON r.user_id = u.id
             LEFT JOIN employees e ON u.email = e.email
             LEFT JOIN route_bindings rb ON r.route_binding_id = rb.id
-            LEFT JOIN deliveries d ON d.id = (
-                SELECT id FROM deliveries 
-                WHERE rep_route_id = r.id OR secondary_rep_route_id = r.id 
-                ORDER BY id DESC LIMIT 1
-            )
             WHERE r.status != 'Bound' AND r.status != 'Bound Into Route'
               AND r.status != 'Completed' AND r.status != 'Finalized'
-            ORDER BY r.start_time DESC
-        ");
-        $rawRoutes = $db->resultSet() ?: [];
-        return $this->processUnifiedRoutes($rawRoutes);
-    }
+              $filterSql
+        ";
+        $db->query($countQuery);
+        foreach ($binds as $key => $val) {
+            $db->bind($key, $val);
+        }
+        $countRow = $db->single();
+        $total = $countRow ? intval($countRow->cnt) : 0;
+        $totalPages = max(1, ceil($total / $limit));
+        
+        // Ensure page doesn't exceed totalPages
+        if ($totalPages > 0) {
+            $page = max(1, min($page, $totalPages));
+        } else {
+            $page = 1;
+        }
+        $offset = ($page - 1) * $limit;
 
-    private function getCompletedRoutes() {
-        $db = new Database();
-        $db->query("
+        $selectQuery = "
             SELECT r.*, COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name,
-                (SELECT COUNT(*) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as bill_count,
-                (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) 
-                 FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales,
-                (SELECT COUNT(*) FROM pending_collections WHERE route_id = r.id AND status = 'Pending') as unfinalized_count,
-                (SELECT COUNT(DISTINCT customer_id) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as customer_count,
+                COALESCE(inv.bill_count, 0) as bill_count,
+                COALESCE(inv.total_sales, 0.00) as total_sales,
+                COALESCE(pc.unfinalized_count, 0) as unfinalized_count,
+                COALESCE(inv.customer_count, 0) as customer_count,
                 rb.name as binding_name,
                 d.id as delivery_id, d.vehicle_number, d.driver_name, d.partner_name, d.status as delivery_status,
-                (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id) as total_items,
-                (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_picked = 1) as picked_items,
-                (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_verified = 1) as verified_items
+                COALESCE(dpi.total_items, 0) as total_items,
+                COALESCE(dpi.picked_items, 0) as picked_items,
+                COALESCE(dpi.verified_items, 0) as verified_items
             FROM rep_daily_routes r
             LEFT JOIN users u ON r.user_id = u.id
             LEFT JOIN employees e ON u.email = e.email
             LEFT JOIN route_bindings rb ON r.route_binding_id = rb.id
-            LEFT JOIN deliveries d ON d.id = (
-                SELECT id FROM deliveries 
-                WHERE rep_route_id = r.id OR secondary_rep_route_id = r.id 
-                ORDER BY id DESC LIMIT 1
-            )
+            LEFT JOIN (
+                SELECT rep_route_id, 
+                       COUNT(*) as bill_count,
+                       SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_sales,
+                       COUNT(DISTINCT customer_id) as customer_count
+                FROM invoices 
+                WHERE status != 'Voided' AND rep_route_id IS NOT NULL
+                GROUP BY rep_route_id
+            ) inv ON inv.rep_route_id = r.id
+            LEFT JOIN (
+                SELECT route_id, COUNT(*) as unfinalized_count
+                FROM pending_collections 
+                WHERE status = 'Pending' AND route_id IS NOT NULL
+                GROUP BY route_id
+            ) pc ON pc.route_id = r.id
+            LEFT JOIN (
+                SELECT route_id, MAX(delivery_id) as latest_delivery_id
+                FROM (
+                    SELECT rep_route_id as route_id, id as delivery_id FROM deliveries WHERE rep_route_id IS NOT NULL
+                    UNION ALL
+                    SELECT secondary_rep_route_id as route_id, id as delivery_id FROM deliveries WHERE secondary_rep_route_id IS NOT NULL
+                ) as union_deliveries
+                GROUP BY route_id
+            ) latest_del ON latest_del.route_id = r.id
+            LEFT JOIN deliveries d ON d.id = latest_del.latest_delivery_id
+            LEFT JOIN (
+                SELECT delivery_id,
+                       COUNT(*) as total_items,
+                       SUM(CASE WHEN is_picked = 1 THEN 1 ELSE 0 END) as picked_items,
+                       SUM(CASE WHEN is_verified = 1 THEN 1 ELSE 0 END) as verified_items
+                FROM delivery_picking_items
+                GROUP BY delivery_id
+            ) dpi ON dpi.delivery_id = d.id
             WHERE r.status != 'Bound' AND r.status != 'Bound Into Route'
+              AND r.status != 'Completed' AND r.status != 'Finalized'
+              $filterSql
             ORDER BY r.start_time DESC
-        ");
+            LIMIT :limit OFFSET :offset
+        ";
+        
+        $db->query($selectQuery);
+        foreach ($binds as $key => $val) {
+            $db->bind($key, $val);
+        }
+        $db->bind(':limit', $limit);
+        $db->bind(':offset', $offset);
         $rawRoutes = $db->resultSet() ?: [];
-        return $this->processUnifiedRoutes($rawRoutes);
+        
+        return [
+            'routes' => $this->processUnifiedRoutes($rawRoutes),
+            'pagination' => [
+                'current_page' => $page,
+                'total_pages' => $totalPages,
+                'total_records' => $total,
+                'limit' => $limit
+            ]
+        ];
+    }
+
+    private function getCompletedRoutes($page = 1, $limit = 20) {
+        $db = new Database();
+        
+        $rep = isset($_GET['rep']) ? trim($_GET['rep']) : '';
+        $routeName = isset($_GET['route']) ? trim($_GET['route']) : '';
+        $date = isset($_GET['date']) ? trim($_GET['date']) : '';
+        $territory = isset($_GET['territory']) ? trim($_GET['territory']) : '';
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        
+        $filterSql = "";
+        $binds = [];
+        
+        if ($rep !== '') {
+            $filterSql .= " AND CONCAT(COALESCE(e.first_name, u.username), ' ', COALESCE(e.last_name, '')) = :rep";
+            $binds[':rep'] = $rep;
+        }
+        if ($routeName !== '') {
+            $filterSql .= " AND r.route_name = :route_name";
+            $binds[':route_name'] = $routeName;
+        }
+        if ($date !== '') {
+            $filterSql .= " AND DATE(r.start_time) = :date";
+            $binds[':date'] = $date;
+        }
+        if ($territory !== '') {
+            $filterSql .= " AND (r.route_name = :territory OR rb.name = :territory)";
+            $binds[':territory'] = $territory;
+        }
+        if ($search !== '') {
+            $filterSql .= " AND (r.route_name LIKE :search OR CONCAT(COALESCE(e.first_name, u.username), ' ', COALESCE(e.last_name, '')) LIKE :search OR r.id = :search_id)";
+            $binds[':search'] = '%' . $search . '%';
+            $binds[':search_id'] = intval(str_replace('#RT-', '', str_replace('#rt-', '', $search)));
+        }
+
+        $countQuery = "
+            SELECT COUNT(DISTINCT r.id) as cnt
+            FROM rep_daily_routes r
+            LEFT JOIN users u ON r.user_id = u.id
+            LEFT JOIN employees e ON u.email = e.email
+            LEFT JOIN route_bindings rb ON r.route_binding_id = rb.id
+            WHERE r.status != 'Bound' AND r.status != 'Bound Into Route'
+              $filterSql
+        ";
+        $db->query($countQuery);
+        foreach ($binds as $key => $val) {
+            $db->bind($key, $val);
+        }
+        $countRow = $db->single();
+        $total = $countRow ? intval($countRow->cnt) : 0;
+        $totalPages = max(1, ceil($total / $limit));
+        
+        // Ensure page doesn't exceed totalPages
+        if ($totalPages > 0) {
+            $page = max(1, min($page, $totalPages));
+        } else {
+            $page = 1;
+        }
+        $offset = ($page - 1) * $limit;
+
+        $selectQuery = "
+            SELECT r.*, COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name,
+                COALESCE(inv.bill_count, 0) as bill_count,
+                COALESCE(inv.total_sales, 0.00) as total_sales,
+                COALESCE(pc.unfinalized_count, 0) as unfinalized_count,
+                COALESCE(inv.customer_count, 0) as customer_count,
+                rb.name as binding_name,
+                d.id as delivery_id, d.vehicle_number, d.driver_name, d.partner_name, d.status as delivery_status,
+                COALESCE(dpi.total_items, 0) as total_items,
+                COALESCE(dpi.picked_items, 0) as picked_items,
+                COALESCE(dpi.verified_items, 0) as verified_items
+            FROM rep_daily_routes r
+            LEFT JOIN users u ON r.user_id = u.id
+            LEFT JOIN employees e ON u.email = e.email
+            LEFT JOIN route_bindings rb ON r.route_binding_id = rb.id
+            LEFT JOIN (
+                SELECT rep_route_id, 
+                       COUNT(*) as bill_count,
+                       SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_sales,
+                       COUNT(DISTINCT customer_id) as customer_count
+                FROM invoices 
+                WHERE status != 'Voided' AND rep_route_id IS NOT NULL
+                GROUP BY rep_route_id
+            ) inv ON inv.rep_route_id = r.id
+            LEFT JOIN (
+                SELECT route_id, COUNT(*) as unfinalized_count
+                FROM pending_collections 
+                WHERE status = 'Pending' AND route_id IS NOT NULL
+                GROUP BY route_id
+            ) pc ON pc.route_id = r.id
+            LEFT JOIN (
+                SELECT route_id, MAX(delivery_id) as latest_delivery_id
+                FROM (
+                    SELECT rep_route_id as route_id, id as delivery_id FROM deliveries WHERE rep_route_id IS NOT NULL
+                    UNION ALL
+                    SELECT secondary_rep_route_id as route_id, id as delivery_id FROM deliveries WHERE secondary_rep_route_id IS NOT NULL
+                ) as union_deliveries
+                GROUP BY route_id
+            ) latest_del ON latest_del.route_id = r.id
+            LEFT JOIN deliveries d ON d.id = latest_del.latest_delivery_id
+            LEFT JOIN (
+                SELECT delivery_id,
+                       COUNT(*) as total_items,
+                       SUM(CASE WHEN is_picked = 1 THEN 1 ELSE 0 END) as picked_items,
+                       SUM(CASE WHEN is_verified = 1 THEN 1 ELSE 0 END) as verified_items
+                FROM delivery_picking_items
+                GROUP BY delivery_id
+            ) dpi ON dpi.delivery_id = d.id
+            WHERE r.status != 'Bound' AND r.status != 'Bound Into Route'
+              $filterSql
+            ORDER BY r.start_time DESC
+            LIMIT :limit OFFSET :offset
+        ";
+        
+        $db->query($selectQuery);
+        foreach ($binds as $key => $val) {
+            $db->bind($key, $val);
+        }
+        $db->bind(':limit', $limit);
+        $db->bind(':offset', $offset);
+        $rawRoutes = $db->resultSet() ?: [];
+        
+        return [
+            'routes' => $this->processUnifiedRoutes($rawRoutes),
+            'pagination' => [
+                'current_page' => $page,
+                'total_pages' => $totalPages,
+                'total_records' => $total,
+                'limit' => $limit
+            ]
+        ];
     }
 
     private function processUnifiedRoutes($rawRoutes) {
@@ -480,20 +718,8 @@ class RepTrackingController extends Controller {
 
         // If no delivery exists but route status is 'Loading', auto-create it
         if (empty($deliveries) && $route && $route->status === 'Loading') {
-            $db->query("SELECT r.route_name, COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name 
-                        FROM rep_daily_routes r 
-                        LEFT JOIN users u ON r.user_id = u.id 
-                        LEFT JOIN employees e ON u.employee_id = e.id 
-                        WHERE r.id = :rid");
-            $db->bind(':rid', $routeId);
-            $routeInfo = $db->single();
-            $repName = $routeInfo ? trim($routeInfo->first_name . ' ' . $routeInfo->last_name) : 'Pending Rep';
-
-            $db->query("INSERT INTO deliveries (rep_route_id, delivery_date, vehicle_number, driver_name, partner_name, status) 
-                        VALUES (:rid, CURDATE(), 'Pending Vehicle', :driver, '', 'Arranged')");
-            $db->bind(':rid', $routeId);
-            $db->bind(':driver', $repName);
-            $db->execute();
+            require_once dirname(__DIR__) . '/Services/RepRouteService.php';
+            RepRouteService::ensureDeliveryAndPickingPopulated($db, $routeId);
             
             // Re-fetch deliveries
             $db->query("
@@ -507,50 +733,12 @@ class RepTrackingController extends Controller {
 
         $results = [];
         foreach ($deliveries as $del) {
-            // Check if picking items are populated
-            $db->query("SELECT COUNT(*) as cnt FROM delivery_picking_items WHERE delivery_id = :did");
-            $db->bind(':did', $del->id);
-            $check = $db->single();
-
-            if (!$check || intval($check->cnt) === 0) {
-                // Populate picking items
-                $rids = [intval($routeId)];
-                if ($route && $route->route_binding_id) {
-                    $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
-                    $db->bind(':bid', $route->route_binding_id);
-                    $boundRoutes = $db->resultSet();
-                    foreach ($boundRoutes as $br) {
-                        $rids[] = intval($br->id);
-                    }
-                }
-                $rids = array_unique($rids);
-                $ridsStr = implode(',', $rids);
-
-                $db->query("
-                    SELECT ii.item_id, ii.variation_option_id, ii.description as item_name, SUM(ii.quantity) as required_qty
-                    FROM invoice_items ii
-                    JOIN invoices i ON ii.invoice_id = i.id
-                    WHERE i.rep_route_id IN ($ridsStr) AND i.status != 'Voided'
-                    GROUP BY ii.item_id, ii.variation_option_id, ii.description
-                ");
-                $invoiceItems = $db->resultSet() ?: [];
-                foreach ($invoiceItems as $item) {
-                    $db->query("
-                        INSERT INTO delivery_picking_items (delivery_id, item_name, item_id, variation_option_id, required_qty, loaded_qty, is_picked)
-                        VALUES (:delivery_id, :item_name, :item_id, :variation_option_id, :required_qty, :loaded_qty, 0)
-                    ");
-                    $db->bind(':delivery_id', $del->id);
-                    $db->bind(':item_name', $item->item_name);
-                    $db->bind(':item_id', $item->item_id);
-                    $db->bind(':variation_option_id', $item->variation_option_id);
-                    $db->bind(':required_qty', $item->required_qty);
-                    $db->bind(':loaded_qty', $item->required_qty);
-                    $db->execute();
-                }
-            }
+            // Ensure picking items are populated
+            require_once dirname(__DIR__) . '/Services/RepRouteService.php';
+            RepRouteService::ensurePickingItemsPopulated($db, $del->id);
 
             $db->query("
-                SELECT dpi.item_id, dpi.item_name, dpi.required_qty, dpi.loaded_qty as pre_loaded_qty, 
+                SELECT dpi.item_id, dpi.variation_option_id, dpi.item_name, dpi.required_qty, dpi.loaded_qty as pre_loaded_qty, 
                        dpi.final_loaded_qty, dpi.variance, dpi.is_verified, dpi.verified_at, u.username as verifier_name
                 FROM delivery_picking_items dpi
                 LEFT JOIN users u ON dpi.verified_by = u.id
@@ -863,88 +1051,64 @@ class RepTrackingController extends Controller {
         ];
         $targetPriority = $statusPriority[$targetStatus] ?? 0;
         if ($targetPriority > 1) { // Beyond 'Pending GL'
-            $db->query("SELECT COUNT(*) as pending_count FROM pending_collections 
+            $db->query("SELECT id, UNIX_TIMESTAMP(created_at) as created_ts FROM pending_collections 
                         WHERE (route_id = :rid OR route_id IN (SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid AND route_binding_id IS NOT NULL)) 
                         AND (status = 'Pending' OR is_verified = 0)");
             $db->bind(':rid', $routeId);
             $db->bind(':bid', $oldRoute ? $oldRoute->route_binding_id : 0);
-            $pendingRow = $db->single();
-            if ($pendingRow && intval($pendingRow->pending_count) > 0) {
-                echo json_encode(['status' => 'error', 'message' => 'Cannot advance status: There are outstanding payment collections that have not been verified and finalized by the accounts department.']);
-                exit;
+            $pendingCollections = $db->resultSet() ?: [];
+
+            if (!empty($pendingCollections)) {
+                $hasTimeout = false;
+                $timeoutLimit = 86400; // 24 hours in seconds
+                $now = time();
+                foreach ($pendingCollections as $pc) {
+                    $createdTs = intval($pc->created_ts ?? 0);
+                    if ($createdTs > 0 && ($now - $createdTs) > $timeoutLimit) {
+                        $hasTimeout = true;
+                    }
+                }
+
+                $userRole = strtolower($_SESSION['role'] ?? '');
+                $isAuthorizedToOverride = in_array($userRole, ['admin', 'accountant', 'manager']);
+                $adminOverride = !empty($postData['admin_override']);
+
+                if ($isAuthorizedToOverride && $adminOverride) {
+                    // Log the bypass action in audit_logs
+                    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+                    $bypassReason = $hasTimeout ? "Escalation/Timeout Bypass (>24h)" : "Manual Administrative Override";
+                    $db->query("INSERT INTO audit_logs (user_id, action, module, description, reference_id, ip_address) 
+                                VALUES (:uid, 'ADMIN_OVERRIDE_COLLECTIONS', 'Logistics', :desc, :ref, :ip)");
+                    $db->bind(':uid', $_SESSION['user_id'] ?? null);
+                    $db->bind(':desc', "$bypassReason bypassed unverified collections check for route ID: " . $routeId . " moving to status: " . $targetStatus);
+                    $db->bind(':ref', $routeId);
+                    $db->bind(':ip', $ip);
+                    $db->execute();
+                } else {
+                    $msg = "Cannot advance status: There are outstanding payment collections that have not been verified and finalized by the accounts department.";
+                    if ($hasTimeout) {
+                        $msg .= " Note: Some unverified collections have been pending for over 24 hours (Escalated status).";
+                    }
+                    if ($isAuthorizedToOverride) {
+                        $msg .= " As an authorized user (" . ucfirst($userRole) . "), you can override this guard to proceed.";
+                    } else {
+                        $msg .= " Please contact an Administrator, Accountant, or Manager to override this guard.";
+                    }
+                    echo json_encode([
+                        'status' => 'error',
+                        'message' => $msg,
+                        'show_override' => $isAuthorizedToOverride,
+                        'is_escalated' => $hasTimeout
+                    ]);
+                    exit;
+                }
             }
         }
 
         // Automatically create and expose loading task if moving to Loading status
         if ($targetStatus === 'Loading') {
-            $db->query("SELECT id FROM deliveries WHERE rep_route_id = :rid OR secondary_rep_route_id = :rid ORDER BY id DESC LIMIT 1");
-            $db->bind(':rid', $routeId);
-            $del = $db->single();
-            
-            $deliveryId = null;
-            if (!$del) {
-                $db->query("SELECT r.route_name, COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name 
-                            FROM rep_daily_routes r 
-                            LEFT JOIN users u ON r.user_id = u.id 
-                            LEFT JOIN employees e ON u.employee_id = e.id 
-                            WHERE r.id = :rid");
-                $db->bind(':rid', $routeId);
-                $routeInfo = $db->single();
-                $repName = $routeInfo ? trim($routeInfo->first_name . ' ' . $routeInfo->last_name) : 'Pending Rep';
-
-                $db->query("INSERT INTO deliveries (rep_route_id, delivery_date, vehicle_number, driver_name, partner_name, status) 
-                            VALUES (:rid, CURDATE(), 'Pending Vehicle', :driver, '', 'Arranged')");
-                $db->bind(':rid', $routeId);
-                $db->bind(':driver', $repName);
-                $db->execute();
-                $deliveryId = $db->lastInsertId();
-            } else {
-                $deliveryId = $del->id;
-            }
-
-            if ($deliveryId) {
-                // Ensure picking items are populated
-                $db->query("SELECT COUNT(*) as cnt FROM delivery_picking_items WHERE delivery_id = :did");
-                $db->bind(':did', $deliveryId);
-                $check = $db->single();
-
-                if (!$check || intval($check->cnt) === 0) {
-                    // Populate picking items
-                    $rids = [intval($routeId)];
-                    if ($oldRoute && $oldRoute->route_binding_id) {
-                        $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
-                        $db->bind(':bid', $oldRoute->route_binding_id);
-                        $boundRoutes = $db->resultSet();
-                        foreach ($boundRoutes as $br) {
-                            $rids[] = intval($br->id);
-                        }
-                    }
-                    $rids = array_unique($rids);
-                    $ridsStr = implode(',', $rids);
-
-                    $db->query("
-                        SELECT ii.item_id, ii.variation_option_id, ii.description as item_name, SUM(ii.quantity) as required_qty
-                        FROM invoice_items ii
-                        JOIN invoices i ON ii.invoice_id = i.id
-                        WHERE i.rep_route_id IN ($ridsStr) AND i.status != 'Voided'
-                        GROUP BY ii.item_id, ii.variation_option_id, ii.description
-                    ");
-                    $invoiceItems = $db->resultSet() ?: [];
-                    foreach ($invoiceItems as $item) {
-                        $db->query("
-                            INSERT INTO delivery_picking_items (delivery_id, item_name, item_id, variation_option_id, required_qty, loaded_qty, is_picked)
-                            VALUES (:delivery_id, :item_name, :item_id, :variation_option_id, :required_qty, :loaded_qty, 0)
-                        ");
-                        $db->bind(':delivery_id', $deliveryId);
-                        $db->bind(':item_name', $item->item_name);
-                        $db->bind(':item_id', $item->item_id);
-                        $db->bind(':variation_option_id', $item->variation_option_id);
-                        $db->bind(':required_qty', $item->required_qty);
-                        $db->bind(':loaded_qty', $item->required_qty);
-                        $db->execute();
-                    }
-                }
-            }
+            require_once dirname(__DIR__) . '/Services/RepRouteService.php';
+            RepRouteService::ensureDeliveryAndPickingPopulated($db, $routeId);
         }
 
         $db->query("UPDATE rep_daily_routes SET status = :status WHERE id = :id");
@@ -999,7 +1163,9 @@ class RepTrackingController extends Controller {
             $db->bind(':ref', $refId);
             $db->bind(':ip', $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
             $db->execute();
-        } catch (Exception $e) {}
+        } catch (Exception $e) {
+            error_log("Audit logging failed in logRouteActivity: " . $e->getMessage());
+        }
     }
 
     public function balancing_report($id) {
@@ -1304,10 +1470,11 @@ class RepTrackingController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') { die("Invalid Request"); }
         $routeId = intval($_GET['route_id'] ?? 0);
         $itemId = intval($_GET['item_id'] ?? 0);
+        $varId = (isset($_GET['variation_option_id']) && $_GET['variation_option_id'] !== '' && $_GET['variation_option_id'] !== 'null') ? intval($_GET['variation_option_id']) : null;
 
         try {
             $db = new Database();
-            $routeIds = [$routeId];
+            $routeIds = [intval($routeId)];
             $db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
             $db->bind(':rid', $routeId);
             $routeRow = $db->single();
@@ -1320,7 +1487,7 @@ class RepTrackingController extends Controller {
                 }
             }
             $routeIds = array_unique($routeIds);
-            $routeIdsStr = implode(',', $routeIds);
+            $routeIdsStr = implode(',', array_map('intval', $routeIds));
 
             // Check if this item is a replacement in a product substitution on this route
             $db->query("SELECT original_item_id, status FROM product_substitutions WHERE route_id IN ($routeIdsStr) AND replacement_item_id = :item_id LIMIT 1");
@@ -1363,14 +1530,23 @@ class RepTrackingController extends Controller {
                     $invoices = $db->resultSet() ?: [];
                 }
             } else {
-                $db->query("
-                    SELECT i.id as invoice_id, i.invoice_number, c.name as customer_name, ii.quantity, ii.unit_price, ii.total as line_total
+                $sql = "
+                    SELECT i.id as invoice_id, i.invoice_number, c.name as customer_name, ii.quantity, ii.unit_price, ii.total as line_total, ii.variation_option_id, ii.quantity as original_qty
                     FROM invoices i
                     JOIN customers c ON i.customer_id = c.id
                     JOIN invoice_items ii ON ii.invoice_id = i.id
                     WHERE i.rep_route_id IN ($routeIdsStr) AND ii.item_id = :item_id AND i.status != 'Voided'
-                ");
+                ";
+                if ($varId !== null && $varId > 0) {
+                    $sql .= " AND ii.variation_option_id = :var_id";
+                } else {
+                    $sql .= " AND (ii.variation_option_id IS NULL OR ii.variation_option_id = 0)";
+                }
+                $db->query($sql);
                 $db->bind(':item_id', $itemId);
+                if ($varId !== null && $varId > 0) {
+                    $db->bind(':var_id', $varId);
+                }
                 $invoices = $db->resultSet() ?: [];
             }
 
@@ -1390,276 +1566,13 @@ class RepTrackingController extends Controller {
         $payload = json_decode(file_get_contents('php://input'), true);
         $routeId = intval($payload['route_id'] ?? 0);
         $adjustments = $payload['adjustments'] ?? [];
+        $force = !empty($payload['force']) ? true : false;
         $userId = $_SESSION['user_id'] ?? 1;
 
         try {
-            $db = new Database();
-
-            // 1. Auto-apply any remaining pending product substitutions
-            $this->auto_apply_route_substitutions($db, $routeId, $userId);
-
-            // 2. No action selection check needed since zero-quantity items are always completely removed.
-            
-            // 3. Validate that adjusted bills match the final loaded stock
-            $routeFinalItems = $this->trackingModel->getRouteFinalLoadingItems($routeId);
-            $adjMap = [];
-            foreach ($adjustments as $adj) {
-                $itemId = intval($adj['item_id']);
-                $sum = 0.0;
-                foreach ($adj['invoice_adjustments'] as $ia) {
-                    $sum += floatval($ia['new_qty']);
-                }
-                $adjMap[$itemId] = $sum;
-            }
-
-            foreach ($routeFinalItems as $item) {
-                if (floatval($item->variance) !== 0.0) {
-                    $itemId = intval($item->item_id);
-                    $expected = floatval($item->final_loaded_qty);
-                    $allocated = $adjMap[$itemId] ?? null;
-                    if ($allocated === null || abs($allocated - $expected) > 0.01) {
-                        header('Content-Type: application/json');
-                        echo json_encode(['status' => 'error', 'message' => "Cannot complete Variance Audit. The adjusted bills do not match the final loaded stock for product '{$item->item_name}'. (Expected: {$expected}, Allocated: " . ($allocated ?? 0) . ")"]);
-                        exit;
-                    }
-                }
-            }
-
-            $db->beginTransaction();
-
-            $db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1200' OR account_name LIKE '%Receivable%' LIMIT 1");
-            $arAccRow = $db->single();
-            $arAccId = $arAccRow ? intval($arAccRow->id) : null;
-
-            $db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' LIMIT 1");
-            $revAccRow = $db->single();
-            $revAccId = $revAccRow ? intval($revAccRow->id) : null;
-
-            $modifiedInvoices = [];
-
-            foreach ($adjustments as $adj) {
-                $itemId = intval($adj['item_id']);
-                $invoiceAdjs = $adj['invoice_adjustments'] ?? [];
-
-                foreach ($invoiceAdjs as $ia) {
-                    $invoiceId = intval($ia['invoice_id']);
-                    $newQty = floatval($ia['new_qty']);
-                    $removeCompletely = isset($ia['remove_completely']) ? intval($ia['remove_completely']) : 0;
-
-                    $db->query("SELECT ii.id, ii.quantity as old_qty, ii.unit_price, ii.discount_value, ii.discount_type, i.stock_status, i.invoice_number
-                                FROM invoice_items ii
-                                JOIN invoices i ON ii.invoice_id = i.id
-                                WHERE ii.invoice_id = :iid AND ii.item_id = :item_id");
-                    $db->bind(':iid', $invoiceId);
-                    $db->bind(':item_id', $itemId);
-                    $line = $db->single();
-
-                    if ($line) {
-                        $oldQty = floatval($line->old_qty);
-                        if ($oldQty === $newQty && $newQty !== 0.0) {
-                            continue;
-                        }
-
-                        $unitPrice = floatval($line->unit_price);
-                        $discVal = floatval($line->discount_value);
-                        $discType = $line->discount_type;
-
-                        $lineTotal = $newQty * $unitPrice;
-                        if ($discType === '%') {
-                            $lineTotal -= ($lineTotal * $discVal / 100);
-                        } else {
-                            $lineTotal -= ($discVal * $newQty);
-                        }
-
-                        if ($newQty === 0.0) {
-                            $db->query("DELETE FROM invoice_items WHERE id = :id");
-                            $db->bind(':id', $line->id);
-                            $db->execute();
-                        } else {
-                            $db->query("UPDATE invoice_items SET quantity = :qty, total = :total WHERE id = :id");
-                            $db->bind(':qty', $newQty);
-                            $db->bind(':total', $lineTotal);
-                            $db->bind(':id', $line->id);
-                            $db->execute();
-                        }
-
-                        $diff = $newQty - $oldQty;
-                        if ($line->stock_status === 'reserved') {
-                            $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) + :diff) WHERE id = :item_id");
-                            $db->bind(':diff', $diff);
-                            $db->bind(':item_id', $itemId);
-                            $db->execute();
-                        } else {
-                            require_once '../app/Models/Item.php';
-                            $itemModel = new Item();
-                            $itemModel->updateStockDelta($itemId, -$diff);
-
-                            require_once '../app/Models/StockLedger.php';
-                            $ledger = new StockLedger();
-                            $db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
-                            $db->bind(':id', $itemId);
-                            $itemRow = $db->single();
-                            $whId = $itemRow ? $itemRow->warehouse_id : null;
-                            $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
-                            if ($diff > 0) {
-                                $ledger->logMovement($itemId, null, 0, $diff, 'Sales Invoice Variance Increase', $line->invoice_number, $whId, $userId, 'Variance Audit Adjust', $itemCost);
-                            } else {
-                                $ledger->logMovement($itemId, null, abs($diff), 0, 'Sales Invoice Variance Decrease', $line->invoice_number, $whId, $userId, 'Variance Audit Adjust', $itemCost);
-                            }
-                        }
-
-                        if (!in_array($invoiceId, $modifiedInvoices)) {
-                            $modifiedInvoices[] = $invoiceId;
-                        }
-                    } else if ($newQty > 0.0) {
-                        $db->query("SELECT name, price, cost, cost_price, warehouse_id FROM items WHERE id = :id");
-                        $db->bind(':id', $itemId);
-                        $itemRow = $db->single();
-                        if ($itemRow) {
-                            $itemName = $itemRow->name;
-                            $unitPrice = floatval($itemRow->price);
-                            $discVal = 0.0;
-                            $discType = '%';
-                            $lineTotal = $newQty * $unitPrice;
-
-                            $db->query("INSERT INTO invoice_items (invoice_id, item_id, description, quantity, unit_price, discount_value, discount_type, total)
-                                        VALUES (:iid, :item_id, :desc, :qty, :unit_price, :disc_val, :disc_type, :total)");
-                            $db->bind(':iid', $invoiceId);
-                            $db->bind(':item_id', $itemId);
-                            $db->bind(':desc', $itemName);
-                            $db->bind(':qty', $newQty);
-                            $db->bind(':unit_price', $unitPrice);
-                            $db->bind(':disc_val', $discVal);
-                            $db->bind(':disc_type', $discType);
-                            $db->bind(':total', $lineTotal);
-                            $db->execute();
-
-                            $db->query("SELECT invoice_number, stock_status FROM invoices WHERE id = :iid");
-                            $db->bind(':iid', $invoiceId);
-                            $invMeta = $db->single();
-                            $invNum = $invMeta ? $invMeta->invoice_number : '';
-                            $stockStatus = $invMeta ? $invMeta->stock_status : 'picked';
-
-                            if ($stockStatus === 'reserved') {
-                                $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) + :qty) WHERE id = :item_id");
-                                $db->bind(':qty', $newQty);
-                                $db->bind(':item_id', $itemId);
-                                $db->execute();
-                            } else {
-                                require_once '../app/Models/Item.php';
-                                $itemModel = new Item();
-                                $itemModel->updateStockDelta($itemId, -$newQty);
-
-                                require_once '../app/Models/StockLedger.php';
-                                $ledger = new StockLedger();
-                                $whId = $itemRow->warehouse_id;
-                                $itemCost = floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00));
-                                $ledger->logMovement($itemId, null, 0, $newQty, 'Sales Invoice Variance Increase', $invNum, $whId, $userId, 'Variance Audit Adjust', $itemCost);
-                            }
-
-                            if (!in_array($invoiceId, $modifiedInvoices)) {
-                                $modifiedInvoices[] = $invoiceId;
-                            }
-                        }
-                    }
-                }
-            }
-
-            foreach ($modifiedInvoices as $invId) {
-                $db->query("SELECT SUM(total) as subtotal FROM invoice_items WHERE invoice_id = :id");
-                $db->bind(':id', $invId);
-                $subrow = $db->single();
-                $subtotal = $subrow ? floatval($subrow->subtotal) : 0.0;
-
-                $db->query("SELECT total_amount, global_discount_val, global_discount_type, tax_rate_id, tax_amount, journal_entry_id FROM invoices WHERE id = :id");
-                $db->bind(':id', $invId);
-                $invRow = $db->single();
-
-                if ($invRow) {
-                    $oldSub = floatval($invRow->total_amount);
-                    $oldDiscVal = floatval($invRow->global_discount_val);
-                    $oldDiscType = $invRow->global_discount_type;
-                    $oldDisc = ($oldDiscType === '%') ? ($oldSub * $oldDiscVal / 100) : $oldDiscVal;
-                    $oldGrand = ($oldSub - $oldDisc) + floatval($invRow->tax_amount);
-
-                    $disc = ($oldDiscType === '%') ? ($subtotal * $oldDiscVal / 100) : $oldDiscVal;
-                    $taxVal = 0.0;
-
-                    if ($invRow->tax_rate_id) {
-                        $db->query("SELECT rate_percentage FROM tax_rates WHERE id = :tid");
-                        $db->bind(':tid', $invRow->tax_rate_id);
-                        $taxRateRow = $db->single();
-                        if ($taxRateRow) {
-                            $taxVal = ($subtotal - $disc) * floatval($taxRateRow->rate_percentage) / 100;
-                        }
-                    }
-
-                    $grandTotal = max(0.0, ($subtotal - $disc) + $taxVal);
-
-                    $db->query("UPDATE invoices SET total_amount = :sub, tax_amount = :tax WHERE id = :id");
-                    $db->bind(':sub', $subtotal);
-                    $db->bind(':tax', $taxVal);
-                    $db->bind(':id', $invId);
-                    $db->execute();
-
-                    $jid = $invRow->journal_entry_id;
-                    if ($jid) {
-                        if ($arAccId) {
-                            $db->query("UPDATE transactions SET debit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
-                            $db->bind(':grand', $grandTotal);
-                            $db->bind(':jid', $jid);
-                            $db->bind(':aid', $arAccId);
-                            $db->execute();
-                        }
-                        if ($revAccId) {
-                            $db->query("UPDATE transactions SET credit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
-                            $db->bind(':grand', $grandTotal);
-                            $db->bind(':jid', $jid);
-                            $db->bind(':aid', $revAccId);
-                            $db->execute();
-                        }
-
-                        $diffGrand = $grandTotal - $oldGrand;
-                        if ($diffGrand !== 0.0) {
-                            if ($arAccId) {
-                                $db->query("UPDATE chart_of_accounts SET balance = balance + :diff WHERE id = :id");
-                                $db->bind(':diff', $diffGrand);
-                                $db->bind(':id', $arAccId);
-                                $db->execute();
-                            }
-                            if ($revAccId) {
-                                $db->query("UPDATE chart_of_accounts SET balance = balance + :diff WHERE id = :id");
-                                $db->bind(':diff', $diffGrand);
-                                $db->bind(':id', $revAccId);
-                                $db->execute();
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Resolve all bound/merged route IDs to transition them together
-            $routeIds = [$routeId];
-            $db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
-            $db->bind(':rid', $routeId);
-            $routeRow = $db->single();
-            if ($routeRow && $routeRow->route_binding_id) {
-                $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
-                $db->bind(':bid', $routeRow->route_binding_id);
-                $boundRoutes = $db->resultSet();
-                foreach ($boundRoutes as $br) {
-                    $routeIds[] = intval($br->id);
-                }
-            }
-            $routeIds = array_unique($routeIds);
-            $routeIdsStr = implode(',', $routeIds);
-
-            $db->query("UPDATE rep_daily_routes SET status = 'Finalizing' WHERE id IN ($routeIdsStr)");
-            $db->execute();
-
-            $db->commit();
+            $result = RepVarianceService::adjustVarianceBilling($routeId, $adjustments, $userId, $force);
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'success', 'message' => 'Variances reconciled and bills adjusted successfully!']);
+            echo json_encode($result);
             exit;
         } catch (Exception $e) {
             header('Content-Type: application/json');
@@ -1690,285 +1603,6 @@ class RepTrackingController extends Controller {
         exit;
     }
 
-    private function execute_apply_substitution($db, $subId, $pricingChoice, $userId) {
-        // Fetch substitution details
-        $db->query("SELECT * FROM product_substitutions WHERE id = :id AND status = 'Pending Bill Update'");
-        $db->bind(':id', $subId);
-        $sub = $db->single();
-
-        if (!$sub) {
-            throw new Exception("Pending substitution not found or already applied");
-        }
-
-        // Find affected invoices on this route that contain the original product
-        $routeIds = [$sub->route_id];
-        $db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
-        $db->bind(':rid', $sub->route_id);
-        $routeRow = $db->single();
-        if ($routeRow && $routeRow->route_binding_id) {
-            $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
-            $db->bind(':bid', $routeRow->route_binding_id);
-            $boundRoutes = $db->resultSet();
-            foreach ($boundRoutes as $br) {
-                $routeIds[] = intval($br->id);
-            }
-        }
-        $routeIds = array_unique($routeIds);
-        $routeIdsStr = implode(',', $routeIds);
-
-        // Fetch affected invoices
-        $db->query("
-            SELECT DISTINCT i.id, i.invoice_number, i.total_amount
-            FROM invoices i
-            JOIN invoice_items ii ON i.id = ii.invoice_id
-            WHERE i.rep_route_id IN ($routeIdsStr) AND ii.item_id = :oid AND i.status != 'Voided'
-        ");
-        $db->bind(':oid', $sub->original_item_id);
-        $invoices = $db->resultSet() ?: [];
-
-        if (empty($invoices)) {
-            throw new Exception("No active invoices on this route contain the original product.");
-        }
-
-        // Fetch original and replacement items
-        $db->query("SELECT name, price AS selling_price FROM items WHERE id = :id");
-        $db->bind(':id', $sub->original_item_id);
-        $origProduct = $db->single();
-
-        if (!$origProduct) {
-            $db->query("SELECT description as name FROM invoice_items WHERE item_id = :oid LIMIT 1");
-            $db->bind(':oid', $sub->original_item_id);
-            $iiRow = $db->single();
-            
-            $origName = $iiRow ? $iiRow->name : 'Deleted Product';
-            $origProduct = (object)[
-                'name' => $origName,
-                'selling_price' => 0.00
-            ];
-        }
-
-        $db->query("SELECT name, price AS selling_price FROM items WHERE id = :id");
-        $db->bind(':id', $sub->replacement_item_id);
-        $replProduct = $db->single();
-
-        if (!$origProduct || !$replProduct) {
-            throw new Exception("Original or replacement product not found in database.");
-        }
-
-        // Calculate total original bill value of affected invoices before applying
-        $originalBillValue = 0.0;
-        foreach ($invoices as $invIdRow) {
-            $db->query("SELECT total_amount, tax_amount, global_discount_val, global_discount_type FROM invoices WHERE id = :id");
-            $db->bind(':id', $invIdRow->id);
-            $invRow = $db->single();
-            if ($invRow) {
-                $subTotal = floatval($invRow->total_amount);
-                $disc = ($invRow->global_discount_type === '%') ? ($subTotal * floatval($invRow->global_discount_val) / 100) : floatval($invRow->global_discount_val);
-                $originalBillValue += ($subTotal - $disc) + floatval($invRow->tax_amount);
-            }
-        }
-
-        $db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1200' OR account_name LIKE '%Receivable%' LIMIT 1");
-        $arAccRow = $db->single();
-        $arAccId = $arAccRow ? intval($arAccRow->id) : null;
-
-        $db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' LIMIT 1");
-        $revAccRow = $db->single();
-        $revAccId = $revAccRow ? intval($revAccRow->id) : null;
-
-        $modifiedInvoices = [];
-
-        foreach ($invoices as $inv) {
-            $db->query("SELECT * FROM invoice_items WHERE invoice_id = :iid AND item_id = :item_id");
-            $db->bind(':iid', $inv->id);
-            $db->bind(':item_id', $sub->original_item_id);
-            $line = $db->single();
-
-            if (!$line) continue;
-
-            $qty = floatval($line->quantity);
-            
-            $priceToUse = floatval($replProduct->selling_price);
-            if ($pricingChoice === 'original') {
-                $priceToUse = floatval($line->unit_price);
-            }
-
-            $discVal = floatval($line->discount_value);
-            $discType = $line->discount_type;
-
-            $newLineTotal = $qty * $priceToUse;
-            if ($discType === '%') {
-                $newLineTotal -= ($newLineTotal * $discVal / 100);
-            } else {
-                $newLineTotal -= ($discVal * $qty);
-            }
-
-            // Delete original line
-            $db->query("DELETE FROM invoice_items WHERE id = :id");
-            $db->bind(':id', $line->id);
-            $db->execute();
-
-            // Insert replacement line
-            $db->query("INSERT INTO invoice_items (invoice_id, item_id, description, quantity, unit_price, discount_value, discount_type, total)
-                        VALUES (:iid, :item_id, :desc, :qty, :unit_price, :disc_val, :disc_type, :total)");
-            $db->bind(':iid', $inv->id);
-            $db->bind(':item_id', $sub->replacement_item_id);
-            $db->bind(':desc', $replProduct->name);
-            $db->bind(':qty', $qty);
-            $db->bind(':unit_price', $priceToUse);
-            $db->bind(':disc_val', $discVal);
-            $db->bind(':disc_type', $discType);
-            $db->bind(':total', $newLineTotal);
-            $db->execute();
-
-            // Inventory Update
-            require_once '../app/Models/Item.php';
-            $itemModel = new Item();
-            $itemModel->updateStockDelta($sub->original_item_id, $qty);
-            $itemModel->updateStockDelta($sub->replacement_item_id, -$qty);
-
-            // Log Stock Movements
-            require_once '../app/Models/StockLedger.php';
-            $ledger = new StockLedger();
-
-            $db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
-            $db->bind(':id', $sub->original_item_id);
-            $origItemRow = $db->single();
-            $origWh = $origItemRow ? $origItemRow->warehouse_id : null;
-            $origCost = $origItemRow ? floatval($origItemRow->cost > 0 ? $origItemRow->cost : ($origItemRow->cost_price > 0 ? $origItemRow->cost_price : 0.00)) : 0.00;
-            $ledger->logMovement($sub->original_item_id, null, $qty, 0, 'Sales Invoice Substitution Return', $inv->invoice_number, $origWh, $userId, 'Substitution Apply', $origCost);
-
-            $db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
-            $db->bind(':id', $sub->replacement_item_id);
-            $replItemRow = $db->single();
-            $replWh = $replItemRow ? $replItemRow->warehouse_id : null;
-            $replCost = $replItemRow ? floatval($replItemRow->cost > 0 ? $replItemRow->cost : ($replItemRow->cost_price > 0 ? $replItemRow->cost_price : 0.00)) : 0.00;
-            $ledger->logMovement($sub->replacement_item_id, null, 0, $qty, 'Sales Invoice Substitution Supply', $inv->invoice_number, $replWh, $userId, 'Substitution Apply', $replCost);
-
-            $modifiedInvoices[] = $inv->id;
-        }
-
-        // Recalculate bill totals, taxes, and discounts for modified invoices
-        foreach ($modifiedInvoices as $invId) {
-            $db->query("SELECT SUM(total) as subtotal FROM invoice_items WHERE invoice_id = :id");
-            $db->bind(':id', $invId);
-            $subrow = $db->single();
-            $subtotal = $subrow ? floatval($subrow->subtotal) : 0.0;
-
-            $db->query("SELECT total_amount, global_discount_val, global_discount_type, tax_rate_id, tax_amount, journal_entry_id FROM invoices WHERE id = :id");
-            $db->bind(':id', $invId);
-            $invRow = $db->single();
-
-            if ($invRow) {
-                $oldSub = floatval($invRow->total_amount);
-                $oldDiscVal = floatval($invRow->global_discount_val);
-                $oldDiscType = $invRow->global_discount_type;
-                $oldDisc = ($oldDiscType === '%') ? ($oldSub * $oldDiscVal / 100) : $oldDiscVal;
-                $oldGrand = ($oldSub - $oldDisc) + floatval($invRow->tax_amount);
-
-                $disc = ($oldDiscType === '%') ? ($subtotal * $oldDiscVal / 100) : $oldDiscVal;
-                $taxVal = 0.0;
-
-                if ($invRow->tax_rate_id) {
-                    $db->query("SELECT rate_percentage FROM tax_rates WHERE id = :tid");
-                    $db->bind(':tid', $invRow->tax_rate_id);
-                    $taxRateRow = $db->single();
-                    if ($taxRateRow) {
-                        $taxVal = ($subtotal - $disc) * floatval($taxRateRow->rate_percentage) / 100;
-                    }
-                }
-
-                $grandTotal = max(0.0, ($subtotal - $disc) + $taxVal);
-
-                $db->query("UPDATE invoices SET total_amount = :sub, tax_amount = :tax WHERE id = :id");
-                $db->bind(':sub', $subtotal);
-                $db->bind(':tax', $taxVal);
-                $db->bind(':id', $invId);
-                $db->execute();
-
-                $jid = $invRow->journal_entry_id;
-                if ($jid) {
-                    if ($arAccId) {
-                        $db->query("UPDATE transactions SET debit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
-                        $db->bind(':grand', $grandTotal);
-                        $db->bind(':jid', $jid);
-                        $db->bind(':aid', $arAccId);
-                        $db->execute();
-                    }
-                    if ($revAccId) {
-                        $db->query("UPDATE transactions SET credit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
-                        $db->bind(':grand', $grandTotal);
-                        $db->bind(':jid', $jid);
-                        $db->bind(':aid', $revAccId);
-                        $db->execute();
-                    }
-
-                    $diffGrand = $grandTotal - $oldGrand;
-                    if ($diffGrand !== 0.0) {
-                        if ($arAccId) {
-                            $db->query("UPDATE chart_of_accounts SET balance = balance + :diff WHERE id = :id");
-                            $db->bind(':diff', $diffGrand);
-                            $db->bind(':id', $arAccId);
-                            $db->execute();
-                        }
-                        if ($revAccId) {
-                            $db->query("UPDATE chart_of_accounts SET balance = balance + :diff WHERE id = :id");
-                            $db->bind(':diff', $diffGrand);
-                            $db->bind(':id', $revAccId);
-                            $db->execute();
-                        }
-                    }
-                }
-            }
-        }
-
-        // Calculate updated bill value of affected invoices
-        $updatedBillValue = 0.0;
-        foreach ($modifiedInvoices as $invId) {
-            $db->query("SELECT total_amount, tax_amount, global_discount_val, global_discount_type FROM invoices WHERE id = :id");
-            $db->bind(':id', $invId);
-            $invRow = $db->single();
-            if ($invRow) {
-                $sub = floatval($invRow->total_amount);
-                $disc = ($invRow->global_discount_type === '%') ? ($sub * floatval($invRow->global_discount_val) / 100) : floatval($invRow->global_discount_val);
-                $updatedBillValue += ($sub - $disc) + floatval($invRow->tax_amount);
-            }
-        }
-
-        // Update substitution record: mark as Applied and fill audit info
-        $db->query("UPDATE product_substitutions 
-                    SET status = 'Applied', 
-                        pricing_choice = :pricing_choice,
-                        original_bill_value = :orig_val,
-                        updated_bill_value = :upd_val,
-                        applied_by = :uid,
-                        applied_at = NOW()
-                    WHERE id = :id");
-        $db->bind(':pricing_choice', $pricingChoice);
-        $db->bind(':orig_val', $originalBillValue);
-        $db->bind(':upd_val', $updatedBillValue);
-        $db->bind(':uid', $userId);
-        $db->bind(':id', $subId);
-        $db->execute();
-    }
-
-    private function auto_apply_route_substitutions($db, $routeId, $userId) {
-        $db->query("SELECT id FROM product_substitutions WHERE route_id = :rid AND status = 'Pending Bill Update'");
-        $db->bind(':rid', $routeId);
-        $subs = $db->resultSet() ?: [];
-        
-        foreach ($subs as $sub) {
-            $db->beginTransaction();
-            try {
-                $this->execute_apply_substitution($db, intval($sub->id), 'replacement', $userId);
-                $db->commit();
-            } catch (Exception $e) {
-                $db->rollBack();
-                error_log("Failed to auto-apply product substitution ID {$sub->id}: " . $e->getMessage());
-            }
-        }
-    }
-
     public function api_apply_substitution() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
         $this->validateCsrf();
@@ -1986,7 +1620,7 @@ class RepTrackingController extends Controller {
         $db = new Database();
         $db->beginTransaction();
         try {
-            $this->execute_apply_substitution($db, $subId, $pricingChoice, $userId);
+            RepVarianceService::executeApplySubstitution($db, $subId, $pricingChoice, $userId);
             $db->commit();
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'message' => 'Product substitution applied to bills successfully!']);
@@ -2030,16 +1664,44 @@ class RepTrackingController extends Controller {
         try {
             $db = new Database();
             $db->beginTransaction();
-            $db->query("SELECT item_id, quantity FROM invoice_items WHERE invoice_id = :iid");
+
+            // Retrieve invoice number for reference
+            $db->query("SELECT invoice_number FROM invoices WHERE id = :id");
+            $db->bind(':id', $invoiceId);
+            $invRow = $db->single();
+            $invNumber = $invRow ? $invRow->invoice_number : 'INV-DELETE';
+
+            $db->query("SELECT item_id, variation_option_id, quantity FROM invoice_items WHERE invoice_id = :iid");
             $db->bind(':iid', $invoiceId);
             $items = $db->resultSet() ?: [];
             foreach ($items as $item) {
-                if ($item->item_id) {
-                    $db->query("UPDATE items SET quantity_reserved = GREATEST(0, quantity_reserved - :qty) WHERE id = :id");
-                    $db->bind(':qty', $item->quantity);
-                    $db->bind(':id', $item->item_id);
+                $itemId = $item->item_id;
+                $varId = (!empty($item->variation_option_id) && is_numeric($item->variation_option_id) && intval($item->variation_option_id) > 0) ? intval($item->variation_option_id) : null;
+                $qty = floatval($item->quantity);
+
+                if ($itemId) {
+                    $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
+                    $db->bind(':qty', $qty);
+                    $db->bind(':id', $itemId);
                     $db->execute();
                 }
+                if ($varId) {
+                    $db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
+                    $db->bind(':qty', $qty);
+                    $db->bind(':id', $varId);
+                    $db->execute();
+                }
+
+                // Log movement in stock ledger (HIGH-6)
+                require_once dirname(__DIR__) . '/Models/StockLedger.php';
+                $ledger = new StockLedger();
+                $db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                $db->bind(':id', $itemId);
+                $itemRow = $db->single();
+                $whId = $itemRow ? $itemRow->warehouse_id : null;
+                $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
+                
+                $ledger->logMovement($itemId, $varId, 0, 0, 'Reserved Stock Release', $invNumber, $whId, $_SESSION['user_id'] ?? 1, 'Invoice Deleted - Reserved Stock Released', $itemCost);
             }
             $db->query("DELETE FROM invoice_items WHERE invoice_id = :iid");
             $db->bind(':iid', $invoiceId);
@@ -2173,115 +1835,15 @@ class RepTrackingController extends Controller {
         $payload = json_decode(file_get_contents('php://input'), true);
         $routeId = intval($payload['route_id'] ?? 0);
         $invoiceIds = $payload['invoice_ids'] ?? [];
+        $userId = $_SESSION['user_id'] ?? 1;
+
         if ($routeId <= 0 || empty($invoiceIds)) {
             header('Content-Type: application/json');
             echo json_encode(['status' => 'error', 'message' => 'Invalid route or invoice selection.']);
             exit;
         }
         try {
-            $db = new Database();
-            foreach ($invoiceIds as $compositeId) {
-                if (strpos($compositeId, 'standard:') === 0) {
-                    $soId = intval(substr($compositeId, 9));
-                    
-                    // Fetch standard sales order details
-                    $db->query("SELECT * FROM sales_orders WHERE id = :id");
-                    $db->bind(':id', $soId);
-                    $so = $db->single();
-                    if (!$so) {
-                        throw new Exception("Standard Sales Order not found for ID: " . $soId);
-                    }
-                    
-                    // Fetch items
-                    $db->query("SELECT * FROM sales_order_items WHERE sales_order_id = :id");
-                    $db->bind(':id', $soId);
-                    $soItems = $db->resultSet() ?: [];
-                    
-                    // Prepare items payload
-                    $itemsPayload = [];
-                    foreach ($soItems as $item) {
-                        $compositeItemSelection = $item->item_id . '|' . ($item->variation_option_id ?: '0');
-                        $itemsPayload[] = [
-                            'item_selection' => $compositeItemSelection,
-                            'description' => $item->name,
-                            'quantity' => $item->qty,
-                            'unit_price' => $item->billing_price,
-                            'discount_value' => $item->discount_value,
-                            'discount_type' => $item->discount_type,
-                            'total' => $item->total
-                        ];
-                    }
-                    
-                    // AR and Revenue Accounts
-                    $arAccountId = null;
-                    $db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' AND (account_name LIKE '%Receivable%' OR account_code LIKE '1100%') LIMIT 1");
-                    $arRow = $db->single();
-                    $arAccountId = $arRow ? $arRow->id : null;
-
-                    $revenueAccountId = null;
-                    $db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' AND (account_name LIKE '%Sales%' OR account_name LIKE '%Revenue%' OR account_code LIKE '4000%') LIMIT 1");
-                    $revRow = $db->single();
-                    $revenueAccountId = $revRow ? $revRow->id : null;
-
-                    if (!$arAccountId || !$revenueAccountId) {
-                        throw new Exception("Accounting Accounts not configured.");
-                    }
-                    
-                    // Create invoice number
-                    $db->query("SELECT id FROM invoices ORDER BY id DESC LIMIT 1");
-                    $lastRow = $db->single();
-                    $nextId = $lastRow ? ($lastRow->id + 1) : 1;
-                    $invoiceNumber = 'INV-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
-                    
-                    $invoiceData = [
-                        'customer_id' => $so->customer_id,
-                        'invoice_number' => $invoiceNumber,
-                        'invoice_date' => date('Y-m-d'),
-                        'due_date' => date('Y-m-d'),
-                        'payment_term_id' => $so->payment_term_id,
-                        'subtotal' => $so->subtotal,
-                        'global_discount_val' => $so->discount,
-                        'global_discount_type' => 'Rs',
-                        'notes' => trim($so->notes ?? ''),
-                        'rep_route_id' => $routeId,
-                        'grand_total' => $so->grand_total,
-                        'stock_status' => 'reserved'
-                    ];
-                    
-                    $invoiceModel = $this->model('Invoice');
-                    $invoiceId = $invoiceModel->createInvoiceWithAccounting(
-                        $invoiceData,
-                        $itemsPayload,
-                        $arAccountId,
-                        $revenueAccountId,
-                        $_SESSION['user_id']
-                    );
-                    
-                    if ($invoiceId) {
-                        // Update standard sales order status to Transferred
-                        $db->query("UPDATE sales_orders SET status = 'Transferred' WHERE id = :id");
-                        $db->bind(':id', $soId);
-                        $db->execute();
-                    } else {
-                        throw new Exception("Failed to convert Sales Order to Invoice.");
-                    }
-                    
-                } else {
-                    // It is a route booking (invoice)
-                    $invId = $compositeId;
-                    if (strpos($invId, 'route:') === 0) {
-                        $invId = substr($invId, 6);
-                    }
-                    $invId = intval($invId);
-                    
-                    $db->beginTransaction();
-                    $db->query("UPDATE invoices SET rep_route_id = :rid WHERE id = :id");
-                    $db->bind(':rid', $routeId);
-                    $db->bind(':id', $invId);
-                    $db->execute();
-                    $db->commit();
-                }
-            }
+            RepRouteService::attachInvoices($routeId, $invoiceIds, $userId);
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'message' => 'Invoices attached successfully!']);
             exit;
@@ -2298,145 +1860,21 @@ class RepTrackingController extends Controller {
         $payload = json_decode(file_get_contents('php://input'), true);
         $bindingName = trim($payload['binding_name'] ?? '');
         $routeIds = $payload['route_ids'] ?? [];
+        $userId = $_SESSION['user_id'] ?? null;
+        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
         if (empty($bindingName) || empty($routeIds) || count($routeIds) < 2) {
             header('Content-Type: application/json');
             echo json_encode(['status' => 'error', 'message' => 'Please enter a valid route name and select at least 2 routes to bind.']);
             exit;
         }
+
         try {
-            $db = new Database();
-            $db->beginTransaction();
-
-            // Validate Route Name uniqueness
-            $db->query("SELECT id FROM rep_daily_routes WHERE route_name = :name LIMIT 1");
-            $db->bind(':name', $bindingName);
-            if ($db->single()) {
-                throw new Exception("The route name '{$bindingName}' is already taken. Please enter a unique route name.");
-            }
-
-            // Fetch original routes details
-            $routeIdsList = implode(',', array_map('intval', $routeIds));
-            $db->query("SELECT id, user_id, route_name, start_meter, start_time, status, route_binding_id, bound_to_route_id FROM rep_daily_routes WHERE id IN ($routeIdsList)");
-            $originalRoutes = $db->resultSet() ?: [];
-            if (count($originalRoutes) < 2) {
-                throw new Exception("Selected routes not found in database.");
-            }
-
-            // Fetch associated records to create snapshot
-            // Invoices
-            $db->query("SELECT id, rep_route_id FROM invoices WHERE rep_route_id IN ($routeIdsList)");
-            $originalInvoices = $db->resultSet() ?: [];
-
-            // Deliveries
-            $db->query("SELECT id, rep_route_id, secondary_rep_route_id FROM deliveries WHERE rep_route_id IN ($routeIdsList) OR secondary_rep_route_id IN ($routeIdsList)");
-            $originalDeliveries = $db->resultSet() ?: [];
-
-            // Cheques
-            $db->query("SELECT id, rep_route_id FROM cheques WHERE rep_route_id IN ($routeIdsList)");
-            $originalCheques = $db->resultSet() ?: [];
-
-            // Customer Payments
-            $db->query("SELECT id, rep_route_id FROM customer_payments WHERE rep_route_id IN ($routeIdsList)");
-            $originalPayments = $db->resultSet() ?: [];
-
-            // Pending Collections
-            $db->query("SELECT id, route_id FROM pending_collections WHERE route_id IN ($routeIdsList)");
-            $originalCollections = $db->resultSet() ?: [];
-
-            // Create JSON snapshot
-            $snapshot = [
-                'original_routes' => array_map(function($r) { return (array)$r; }, $originalRoutes),
-                'invoices' => array_map(function($i) { return (array)$i; }, $originalInvoices),
-                'deliveries' => array_map(function($d) { return (array)$d; }, $originalDeliveries),
-                'cheques' => array_map(function($c) { return (array)$c; }, $originalCheques),
-                'customer_payments' => array_map(function($p) { return (array)$p; }, $originalPayments),
-                'pending_collections' => array_map(function($col) { return (array)$col; }, $originalCollections)
-            ];
-            $snapshotJson = json_encode($snapshot);
-
-            // Insert into route_bindings
-            $db->query("INSERT INTO route_bindings (name, created_by, snapshot) VALUES (:name, :created_by, :snapshot)");
-            $db->bind(':name', $bindingName);
-            $db->bind(':created_by', $_SESSION['user_id'] ?? null);
-            $db->bind(':snapshot', $snapshotJson);
-            $db->execute();
-            $bindingId = $db->lastInsertId();
-
-            // Create new combined route in rep_daily_routes
-            // Copy rep, start odo, and start time from the first selected route
-            $firstRoute = $originalRoutes[0];
-            $db->query("INSERT INTO rep_daily_routes (user_id, route_name, start_meter, start_time, status, route_binding_id, is_merged_route) 
-                        VALUES (:user_id, :route_name, :start_meter, :start_time, 'Adjustments', :route_binding_id, 1)");
-            $db->bind(':user_id', $firstRoute->user_id);
-            $db->bind(':route_name', $bindingName);
-            $db->bind(':start_meter', $firstRoute->start_meter);
-            $db->bind(':start_time', $firstRoute->start_time);
-            $db->bind(':route_binding_id', $bindingId);
-            $db->execute();
-            $newRouteId = $db->lastInsertId();
-
-            // Mark source routes as Bound and link to the new route
-            $db->query("UPDATE rep_daily_routes SET status = 'Bound', bound_to_route_id = :new_route_id, route_binding_id = :binding_id WHERE id IN ($routeIdsList)");
-            $db->bind(':new_route_id', $newRouteId);
-            $db->bind(':binding_id', $bindingId);
-            $db->execute();
-
-            // Move invoices
-            if (!empty($originalInvoices)) {
-                $db->query("UPDATE invoices SET rep_route_id = :new_route_id WHERE rep_route_id IN ($routeIdsList)");
-                $db->bind(':new_route_id', $newRouteId);
-                $db->execute();
-            }
-
-            // Move deliveries
-            if (!empty($originalDeliveries)) {
-                $db->query("UPDATE deliveries SET rep_route_id = :new_route_id WHERE rep_route_id IN ($routeIdsList)");
-                $db->bind(':new_route_id', $newRouteId);
-                $db->execute();
-
-                $db->query("UPDATE deliveries SET secondary_rep_route_id = NULL WHERE secondary_rep_route_id IN ($routeIdsList)");
-                $db->execute();
-            }
-
-            // Move cheques
-            if (!empty($originalCheques)) {
-                $db->query("UPDATE cheques SET rep_route_id = :new_route_id WHERE rep_route_id IN ($routeIdsList)");
-                $db->bind(':new_route_id', $newRouteId);
-                $db->execute();
-            }
-
-            // Move customer payments
-            if (!empty($originalPayments)) {
-                $db->query("UPDATE customer_payments SET rep_route_id = :new_route_id WHERE rep_route_id IN ($routeIdsList)");
-                $db->bind(':new_route_id', $newRouteId);
-                $db->execute();
-            }
-
-            // Move pending collections
-            if (!empty($originalCollections)) {
-                $db->query("UPDATE pending_collections SET route_id = :new_route_id WHERE route_id IN ($routeIdsList)");
-                $db->bind(':new_route_id', $newRouteId);
-                $db->execute();
-            }
-
-            // Write Audit Log
-            $routesDescription = implode(', ', array_map(function($r) { return "{$r->route_name} (#{$r->id})"; }, $originalRoutes));
-            $auditDesc = "Bound routes [{$routesDescription}] into combined route '{$bindingName}' (#{$newRouteId})";
-            $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-            $db->query("INSERT INTO audit_logs (user_id, action, module, description, reference_id, ip_address) 
-                        VALUES (:uid, 'ROUTE_BIND', 'Logistics', :desc, :ref, :ip)");
-            $db->bind(':uid', $_SESSION['user_id'] ?? null);
-            $db->bind(':desc', $auditDesc);
-            $db->bind(':ref', $newRouteId);
-            $db->bind(':ip', $ip);
-            $db->execute();
-
-            $db->commit();
+            $result = RepBindingService::createBinding($bindingName, $routeIds, $userId, $ipAddress);
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'success', 'message' => 'Routes successfully bound under "' . $bindingName . '"!']);
+            echo json_encode($result);
             exit;
         } catch (Exception $e) {
-            if (isset($db)) { $db->rollBack(); }
             header('Content-Type: application/json');
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
             exit;
@@ -2449,123 +1887,15 @@ class RepTrackingController extends Controller {
         $payload = json_decode(file_get_contents('php://input'), true);
         $bindingId = intval($payload['binding_id'] ?? 0);
         $routeId = intval($payload['route_id'] ?? 0);
-        
+        $userId = $_SESSION['user_id'] ?? null;
+        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
         try {
-            $db = new Database();
-            $db->beginTransaction();
-
-            if ($routeId > 0 && $bindingId === 0) {
-                $db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
-                $db->bind(':rid', $routeId);
-                $row = $db->single();
-                if ($row) {
-                    $bindingId = intval($row->route_binding_id);
-                }
-            }
-
-            if (empty($bindingId)) {
-                throw new Exception("Invalid Binding ID or Route ID provided.");
-            }
-
-            // Fetch the route binding record
-            $db->query("SELECT * FROM route_bindings WHERE id = :bid LIMIT 1");
-            $db->bind(':bid', $bindingId);
-            $binding = $db->single();
-            if (!$binding) {
-                throw new Exception("Route binding record not found.");
-            }
-
-            $snapshot = json_decode($binding->snapshot, true);
-            if (empty($snapshot)) {
-                throw new Exception("Snapshot data is missing or corrupted.");
-            }
-
-            // Restore original routes
-            foreach ($snapshot['original_routes'] as $orig) {
-                $db->query("UPDATE rep_daily_routes SET 
-                            route_name = :route_name,
-                            status = :status,
-                            route_binding_id = :route_binding_id,
-                            bound_to_route_id = :bound_to_route_id
-                            WHERE id = :id");
-                $db->bind(':route_name', $orig['route_name']);
-                $db->bind(':status', $orig['status']);
-                $db->bind(':route_binding_id', $orig['route_binding_id']);
-                $db->bind(':bound_to_route_id', $orig['bound_to_route_id']);
-                $db->bind(':id', $orig['id']);
-                $db->execute();
-            }
-
-            // Restore Invoices
-            foreach ($snapshot['invoices'] as $inv) {
-                $db->query("UPDATE invoices SET rep_route_id = :orig_rid WHERE id = :id");
-                $db->bind(':orig_rid', $inv['rep_route_id']);
-                $db->bind(':id', $inv['id']);
-                $db->execute();
-            }
-
-            // Restore Deliveries
-            foreach ($snapshot['deliveries'] as $del) {
-                $db->query("UPDATE deliveries SET rep_route_id = :orig_rid, secondary_rep_route_id = :orig_sec_rid WHERE id = :id");
-                $db->bind(':orig_rid', $del['rep_route_id']);
-                $db->bind(':orig_sec_rid', $del['secondary_rep_route_id']);
-                $db->bind(':id', $del['id']);
-                $db->execute();
-            }
-
-            // Restore Cheques
-            foreach ($snapshot['cheques'] as $chq) {
-                $db->query("UPDATE cheques SET rep_route_id = :orig_rid WHERE id = :id");
-                $db->bind(':orig_rid', $chq['rep_route_id']);
-                $db->bind(':id', $chq['id']);
-                $db->execute();
-            }
-
-            // Restore Customer Payments
-            foreach ($snapshot['customer_payments'] as $pmt) {
-                $db->query("UPDATE customer_payments SET rep_route_id = :orig_rid WHERE id = :id");
-                $db->bind(':orig_rid', $pmt['rep_route_id']);
-                $db->bind(':id', $pmt['id']);
-                $db->execute();
-            }
-
-            // Restore Pending Collections
-            foreach ($snapshot['pending_collections'] as $col) {
-                $db->query("UPDATE pending_collections SET route_id = :orig_rid WHERE id = :id");
-                $db->bind(':orig_rid', $col['route_id']);
-                $db->bind(':id', $col['id']);
-                $db->execute();
-            }
-
-            // Delete the combined route
-            $db->query("DELETE FROM rep_daily_routes WHERE route_binding_id = :bid AND is_merged_route = 1");
-            $db->bind(':bid', $bindingId);
-            $db->execute();
-
-            // Mark route_binding as undone (audit trail preservation)
-            $db->query("UPDATE route_bindings SET undo_by = :undo_by, undo_at = NOW() WHERE id = :bid");
-            $db->bind(':undo_by', $_SESSION['user_id'] ?? null);
-            $db->bind(':bid', $bindingId);
-            $db->execute();
-
-            // Write Audit Log
-            $routesDescription = implode(', ', array_map(function($r) { return "{$r['route_name']} (#{$r['id']})"; }, $snapshot['original_routes']));
-            $auditDesc = "Undid route binding '{$binding->name}' (#{$bindingId}), restoring constituent routes [{$routesDescription}]";
-            $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-            $db->query("INSERT INTO audit_logs (user_id, action, module, description, reference_id, ip_address) 
-                        VALUES (:uid, 'ROUTE_UNBIND', 'Logistics', :desc, :ref, :ip)");
-            $db->bind(':uid', $_SESSION['user_id'] ?? null);
-            $db->bind(':desc', $auditDesc);
-            $db->bind(':ref', $bindingId);
-            $db->bind(':ip', $ip);
-            $db->execute();
-
-            $db->commit();
+            $result = RepBindingService::unbindRoute($bindingId, $routeId, $userId, $ipAddress);
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'success', 'message' => 'Route binding successfully undone! Routes are now separated.']);
+            echo json_encode($result);
             exit;
         } catch (Exception $e) {
-            if (isset($db)) { $db->rollBack(); }
             header('Content-Type: application/json');
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
             exit;
@@ -2794,17 +2124,31 @@ class RepTrackingController extends Controller {
         $debugLogs = [];
         $debugLogs[] = "Starting api_save_return_stock for delivery ID: " . $deliveryId;
         
+        $logDebugToPhp = function() use (&$debugLogs) {
+            foreach ($debugLogs as $line) {
+                error_log("[api_save_return_stock] " . $line);
+            }
+        };
+        
         try {
             $db = new Database();
             
-            // Check if return stock has already been saved
-            $db->query("SELECT return_stock_json FROM deliveries WHERE id = :id LIMIT 1");
+            // Check if return stock has already been saved or delivery is finalized
+            $db->query("SELECT status, return_stock_json FROM deliveries WHERE id = :id LIMIT 1");
             $db->bind(':id', $deliveryId);
             $existing = $db->single();
+            if ($existing && ($existing->status === 'Finalized' || $existing->status === 'Completed')) {
+                $debugLogs[] = "Error: Cannot save return stock because this delivery is already finalized.";
+                $logDebugToPhp();
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Cannot verify return stock because this delivery has already been finalized.']);
+                exit;
+            }
             if ($existing && !empty($existing->return_stock_json)) {
                 $debugLogs[] = "Error: Return stock already verified and saved.";
+                $logDebugToPhp();
                 header('Content-Type: application/json');
-                echo json_encode(['status' => 'error', 'message' => 'Return stock has already been verified and saved. Edits are locked.', 'debug_logs' => $debugLogs]);
+                echo json_encode(['status' => 'error', 'message' => 'Return stock has already been verified and saved. Edits are locked.']);
                 exit;
             }
 
@@ -2834,10 +2178,10 @@ class RepTrackingController extends Controller {
                 if ($delivery->secondary_rep_route_id) { $routeIds[] = intval($delivery->secondary_rep_route_id); }
 
                 if (!empty($routeIds)) {
-                    $routeIdsStr = implode(',', $routeIds);
+                    $routeIdsStr = implode(',', array_map('intval', $routeIds));
                     $debugLogs[] = "Route IDs: " . $routeIdsStr;
                     
-                    $db->query("SELECT id, stock_status FROM invoices WHERE rep_route_id IN ($routeIdsStr) AND status != 'Voided'");
+                    $db->query("SELECT id, delivery_status, stock_status FROM invoices WHERE rep_route_id IN ($routeIdsStr) AND status != 'Voided'");
                     $invoices = $db->resultSet() ?: [];
                     $debugLogs[] = "Found " . count($invoices) . " active invoices.";
 
@@ -2845,7 +2189,7 @@ class RepTrackingController extends Controller {
                     $fifo = new FIFO();
 
                     foreach ($invoices as $invoice) {
-                        $debugLogs[] = "Invoice ID: " . $invoice->id . " | stock_status: " . $invoice->stock_status;
+                        $debugLogs[] = "Invoice ID: " . $invoice->id . " | stock_status: " . $invoice->stock_status . " | delivery_status: " . $invoice->delivery_status;
                         if ($invoice->stock_status === 'deducted' || $invoice->stock_status === 'returned') {
                             $debugLogs[] = "Skipping invoice ID: " . $invoice->id;
                             continue;
@@ -2860,7 +2204,7 @@ class RepTrackingController extends Controller {
                             $deliveredQty = floatval($item->quantity);
                             $loadedQty = floatval($item->loaded_quantity);
                             $itemId = $item->item_id;
-                            $varId = $item->variation_option_id;
+                            $varId = (!empty($item->variation_option_id) && is_numeric($item->variation_option_id) && intval($item->variation_option_id) > 0) ? intval($item->variation_option_id) : null;
 
                             if (!$itemId && !empty($item->description)) {
                                 $db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
@@ -2873,9 +2217,9 @@ class RepTrackingController extends Controller {
                             }
 
                             if ($itemId) {
-                                // Deduct delivered quantity from physical stock
-                                if ($deliveredQty > 0) {
-                                    if ($varId) {
+                                // Deduct delivered quantity from physical stock ONLY IF invoice is Delivered
+                                if ($invoice->delivery_status === 'Delivered' && $deliveredQty > 0) {
+                                    if ($varId !== null) {
                                         $db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
                                         $db->bind(':qty', $deliveredQty);
                                         $db->bind(':id', $varId);
@@ -2894,19 +2238,19 @@ class RepTrackingController extends Controller {
 
                                     // Deduct FIFO costing
                                     try {
-                                        $fifo->depleteStock($itemId, $varId ?: null, $deliveredQty, $item->id, null);
+                                        $fifo->depleteStock($itemId, $varId, $deliveredQty, $item->id, null);
                                         $debugLogs[] = "FIFO depletion succeeded for item ID: " . $itemId;
                                     } catch (Exception $e) {
                                         $debugLogs[] = "FIFO depletion error for item ID " . $itemId . ": " . $e->getMessage();
                                         error_log("FIFO depletion error for item $itemId: " . $e->getMessage());
                                     }
                                 } else {
-                                    $debugLogs[] = "Delivered quantity is 0 or negative for item ID: " . $itemId . ". Skipping hand-on-stock deduction.";
+                                    $debugLogs[] = "Delivered quantity is 0 or negative, or invoice is not Delivered for item ID: " . $itemId . ". Skipping hand-on-stock deduction.";
                                 }
 
-                                // Release/clear loaded quantity from reserved stock
+                                // Release/clear loaded quantity from reserved stock (always do this if loadedQty > 0)
                                 if ($loadedQty > 0) {
-                                    if ($varId) {
+                                    if ($varId !== null) {
                                         $db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
                                         $db->bind(':qty', $loadedQty);
                                         $db->bind(':id', $varId);
@@ -2925,16 +2269,69 @@ class RepTrackingController extends Controller {
                             }
                         }
 
-                        $db->query("UPDATE invoices SET stock_status = 'deducted' WHERE id = :id");
+                        $targetStatus = ($invoice->delivery_status === 'Delivered') ? 'deducted' : 'returned';
+                        $db->query("UPDATE invoices SET stock_status = :status WHERE id = :id");
+                        $db->bind(':status', $targetStatus);
                         $db->bind(':id', $invoice->id);
                         $db->execute();
-                        $debugLogs[] = "Updated invoice ID " . $invoice->id . " stock_status to 'deducted'.";
+                        $debugLogs[] = "Updated invoice ID " . $invoice->id . " stock_status to '$targetStatus'.";
                     }
                 } else {
                     $debugLogs[] = "No route IDs found for delivery.";
                 }
             } else {
                 $debugLogs[] = "Delivery record not found.";
+            }
+
+            // Apply actual counted returned products adjustments (CRIT-3)
+            if (!empty($returnStockData) && is_array($returnStockData)) {
+                require_once dirname(__DIR__) . '/Models/Item.php';
+                $itemModel = new Item();
+                require_once dirname(__DIR__) . '/Models/StockLedger.php';
+                $ledger = new StockLedger();
+
+                foreach ($returnStockData as $ret) {
+                    $itemId = intval($ret['item_id'] ?? 0);
+                    $varId = (!empty($ret['variation_option_id']) && is_numeric($ret['variation_option_id']) && intval($ret['variation_option_id']) > 0) ? intval($ret['variation_option_id']) : null;
+                    $loadedQty = floatval($ret['loaded_qty'] ?? 0);
+                    $deliveredQty = floatval($ret['delivered_qty'] ?? 0);
+                    $actualReturnedQty = floatval($ret['actual_returned_qty'] ?? 0);
+
+                    if (!$itemId && !empty($ret['item_name'])) {
+                        $db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
+                        $db->bind(':name', $ret['item_name']);
+                        $rowItem = $db->single();
+                        if ($rowItem) {
+                            $itemId = $rowItem->id;
+                        }
+                    }
+
+                    $expectedReturned = $loadedQty - $deliveredQty;
+                    $adjustment = $actualReturnedQty - $expectedReturned;
+                    if ($adjustment != 0) {
+                        if ($varId !== null) {
+                            $db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :adj) WHERE id = :id");
+                            $db->bind(':adj', $adjustment);
+                            $db->bind(':id', $varId);
+                            $db->execute();
+                            $debugLogs[] = "Adjusted item_variation_options ID: " . $varId . " quantity_on_hand by " . $adjustment;
+                        } else if ($itemId) {
+                            $itemModel->updateStockDelta($itemId, $adjustment);
+                            $debugLogs[] = "Adjusted items ID: " . $itemId . " quantity by " . $adjustment;
+                        }
+
+                        // Log stock movement in ledger (counted returns adjustment)
+                        $db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                        $db->bind(':id', $itemId);
+                        $itemRow = $db->single();
+                        $whId = $itemRow ? $itemRow->warehouse_id : null;
+                        $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
+
+                        $qtyIn = $adjustment > 0 ? $adjustment : 0;
+                        $qtyOut = $adjustment < 0 ? abs($adjustment) : 0;
+                        $ledger->logMovement($itemId, $varId, $qtyIn, $qtyOut, 'Stock Adjustment', 'DEL-' . $deliveryId, $whId, $_SESSION['user_id'] ?? null, 'Delivery Return Stock Saved - Counted Returns Adjustment', $itemCost);
+                    }
+                }
             }
 
             // Write Audit Log
@@ -2951,14 +2348,16 @@ class RepTrackingController extends Controller {
             $db->commit();
             $debugLogs[] = "Transaction committed successfully.";
 
+            $logDebugToPhp();
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'success', 'message' => 'Return stock verification saved successfully!', 'debug_logs' => $debugLogs]);
+            echo json_encode(['status' => 'success', 'message' => 'Return stock verification saved successfully!']);
             exit;
         } catch (Exception $e) {
             if (isset($db)) { $db->rollBack(); }
             $debugLogs[] = "Exception: " . $e->getMessage();
+            $logDebugToPhp();
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'error', 'message' => $e->getMessage(), 'debug_logs' => $debugLogs]);
+            echo json_encode(['status' => 'error', 'message' => 'An error occurred while saving return stock. Please try again.']);
             exit;
         }
     }
@@ -3282,6 +2681,31 @@ class RepTrackingController extends Controller {
         exit;
     }
 
+    public function get_captcha() {
+        $num1 = rand(1, 10);
+        $num2 = rand(1, 10);
+        $_SESSION['delete_route_captcha'] = $num1 + $num2;
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'success', 'question' => "What is $num1 + $num2?"]);
+        exit;
+    }
+
+    private function descramblePassword($str, $key) {
+        if (empty($key)) {
+            return $str;
+        }
+        $data = base64_decode($str);
+        if ($data === false) {
+            return $str;
+        }
+        $result = "";
+        $keyLen = strlen($key);
+        for ($i = 0; $i < strlen($data); $i++) {
+            $result .= $data[$i] ^ $key[$i % $keyLen];
+        }
+        return $result;
+    }
+
     public function delete_route() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: ' . APP_URL . '/RepTracking');
@@ -3290,10 +2714,17 @@ class RepTrackingController extends Controller {
 
         $this->validateCsrf();
 
-        $password = $_POST['password'] ?? '';
-        $reason = trim($_POST['delete_reason'] ?? '');
-        $routeId = intval($_POST['route_id'] ?? 0);
-        $mode = $_POST['mode'] ?? 'detach'; // 'detach', 'delete_with_so', 'force_delete_all'
+        $rawInput = file_get_contents('php://input');
+        $postData = json_decode($rawInput, true);
+        if (!$postData) {
+            $postData = $_POST;
+        }
+
+        $scrambledPassword = $postData['password'] ?? '';
+        $reason = trim($postData['delete_reason'] ?? '');
+        $routeId = intval($postData['route_id'] ?? 0);
+        $mode = $postData['mode'] ?? 'detach'; // 'detach', 'delete_with_so', 'force_delete_all'
+        $captchaAnswer = trim($postData['captcha_answer'] ?? '');
 
         $errorResponse = function($msg) {
             header('Content-Type: application/json');
@@ -3309,14 +2740,48 @@ class RepTrackingController extends Controller {
             $errorResponse("Deletion reason is required!");
         }
 
+        // 1. Rate Limiting Check
+        $sessionKey = 'route_delete_attempts';
+        $lockoutKey = 'route_delete_lockout_time';
+        $now = time();
+
+        if (isset($_SESSION[$lockoutKey]) && $_SESSION[$lockoutKey] > $now) {
+            $timeLeft = $_SESSION[$lockoutKey] - $now;
+            $errorResponse("Too many failed attempts. Please try again in " . $timeLeft . " seconds.");
+        }
+
+        // 2. CAPTCHA Check
+        $expectedCaptcha = $_SESSION['delete_route_captcha'] ?? null;
+        if ($expectedCaptcha === null || intval($captchaAnswer) !== intval($expectedCaptcha)) {
+            $errorResponse("Security CAPTCHA verification failed! Please try again.");
+        }
+        // Invalidate CAPTCHA after verification attempt
+        unset($_SESSION['delete_route_captcha']);
+
+        // Descramble the password using session CSRF token
+        $csrfToken = $_SESSION['csrf_token'] ?? '';
+        $password = $this->descramblePassword($scrambledPassword, $csrfToken);
+
         // Authenticate password
         $userModel = $this->model('User');
         $username = $_SESSION['username'] ?? '';
         $user = $userModel->login($username, $password);
 
         if (!$user) {
-            $errorResponse("Authentication failed: Incorrect password!");
+            $_SESSION[$sessionKey] = ($_SESSION[$sessionKey] ?? 0) + 1;
+            if ($_SESSION[$sessionKey] >= 3) {
+                $_SESSION[$lockoutKey] = time() + 300; // 5 minutes lockout
+                unset($_SESSION[$sessionKey]);
+                $errorResponse("Authentication failed: Incorrect password! Too many failed attempts. You have been locked out for 5 minutes.");
+            } else {
+                $remaining = 3 - $_SESSION[$sessionKey];
+                $errorResponse("Authentication failed: Incorrect password! " . $remaining . " attempts remaining.");
+            }
         }
+
+        // Reset rate limiter on successful authentication
+        unset($_SESSION[$sessionKey]);
+        unset($_SESSION[$lockoutKey]);
 
         // Verify Delete Permission
         if (isset($_SESSION['role']) && strtolower($_SESSION['role']) !== 'admin') {
@@ -3326,156 +2791,13 @@ class RepTrackingController extends Controller {
             }
         }
 
-        $db = new Database();
         try {
-            // Fetch Route Details for auditing/logging
-            $db->query("SELECT * FROM rep_daily_routes WHERE id = :id");
-            $db->bind(':id', $routeId);
-            $route = $db->single();
-            if (!$route) {
-                throw new Exception("Route not found.");
-            }
-
-            $invoiceModel = $this->model('Invoice');
-
-            // Handle Invoices first (outside main transaction to avoid nested PDO transaction exception)
-            if ($mode === 'delete_with_so' || $mode === 'force_delete_all') {
-                $db->query("SELECT id, invoice_number, customer_name, total_amount FROM invoices WHERE rep_route_id = :rid");
-                $db->bind(':rid', $routeId);
-                $invoices = $db->resultSet() ?: [];
-
-                foreach ($invoices as $inv) {
-                    $invoiceId = $inv->id;
-                    $invoiceNumber = $inv->invoice_number;
-                    $customerName = $inv->customer_name;
-                    $grandTotal = floatval($inv->total_amount);
-
-                    // Revert stock/ledger entries, delete items & invoice (runs its own transaction)
-                    $success = $invoiceModel->deleteInvoiceWithAccounting($invoiceId, $_SESSION['user_id']);
-                    if ($success) {
-                        // Audit trail write for invoice deletion
-                        $db->query("INSERT INTO deleted_invoices (invoice_number, customer_name, total_amount, deleted_user_name, delete_reason, record_type) 
-                                          VALUES (:inv_num, :cust_name, :total, :deleted_user, :reason, 'Invoice')");
-                        $db->bind(':inv_num', $invoiceNumber);
-                        $db->bind(':cust_name', $customerName);
-                        $db->bind(':total', $grandTotal);
-                        $db->bind(':deleted_user', $_SESSION['username'] ?? 'System');
-                        $db->bind(':reason', $reason . " (via Route Deletion)");
-                        $db->execute();
-                    } else {
-                        throw new Exception("Failed to delete associated invoice: " . $invoiceNumber);
-                    }
-                }
-            }
-
-            // Start main transaction for route deletion and other entity cleaning
-            $db->beginTransaction();
-
-            if ($mode === 'detach') {
-                // Mode 1: Detach Invoices/Payments/Deliveries
-                $db->query("UPDATE invoices SET rep_route_id = NULL WHERE rep_route_id = :rid");
-                $db->bind(':rid', $routeId);
-                $db->execute();
-
-                $db->query("UPDATE deliveries SET rep_route_id = NULL WHERE rep_route_id = :rid");
-                $db->bind(':rid', $routeId);
-                $db->execute();
-
-                $db->query("UPDATE deliveries SET secondary_rep_route_id = NULL WHERE secondary_rep_route_id = :rid");
-                $db->bind(':rid', $routeId);
-                $db->execute();
-
-                $db->query("UPDATE customer_payments SET rep_route_id = NULL WHERE rep_route_id = :rid");
-                $db->bind(':rid', $routeId);
-                $db->execute();
-
-                $db->query("DELETE FROM pending_collections WHERE route_id = :rid");
-                $db->bind(':rid', $routeId);
-                $db->execute();
-            } 
-            elseif ($mode === 'delete_with_so') {
-                // Mode 2: Detach other details
-                $db->query("UPDATE deliveries SET rep_route_id = NULL WHERE rep_route_id = :rid");
-                $db->bind(':rid', $routeId);
-                $db->execute();
-
-                $db->query("UPDATE deliveries SET secondary_rep_route_id = NULL WHERE secondary_rep_route_id = :rid");
-                $db->bind(':rid', $routeId);
-                $db->execute();
-
-                $db->query("UPDATE customer_payments SET rep_route_id = NULL WHERE rep_route_id = :rid");
-                $db->bind(':rid', $routeId);
-                $db->execute();
-
-                $db->query("DELETE FROM pending_collections WHERE route_id = :rid");
-                $db->bind(':rid', $routeId);
-                $db->execute();
-            } 
-            elseif ($mode === 'force_delete_all') {
-                // Mode 3: Delete payments, cheques, deliveries, collections
-                $db->query("SELECT id, payment_method, cheque_number, customer_id FROM customer_payments WHERE rep_route_id = :rid");
-                $db->bind(':rid', $routeId);
-                $payments = $db->resultSet() ?: [];
-
-                foreach ($payments as $pmt) {
-                    $paymentId = $pmt->id;
-                    
-                    if ($pmt->payment_method === 'Cheque' && !empty($pmt->cheque_number)) {
-                        $db->query("DELETE FROM cheques WHERE customer_id = :cid AND cheque_number = :cn");
-                        $db->bind(':cid', $pmt->customer_id);
-                        $db->bind(':cn', $pmt->cheque_number);
-                        $db->execute();
-                    }
-
-                    // Get journal entry and transactions
-                    $db->query("SELECT journal_entry_id FROM customer_payments WHERE id = :id");
-                    $db->bind(':id', $paymentId);
-                    $pmtRow = $db->single();
-                    if ($pmtRow && $pmtRow->journal_entry_id) {
-                        $jid = $pmtRow->journal_entry_id;
-                        
-                        $db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
-                        $db->bind(':jid', $jid);
-                        $db->execute();
-
-                        $db->query("DELETE FROM journal_entries WHERE id = :jid");
-                        $db->bind(':jid', $jid);
-                        $db->execute();
-                    }
-
-                    // Delete payment row
-                    $db->query("DELETE FROM customer_payments WHERE id = :id");
-                    $db->bind(':id', $paymentId);
-                    $db->execute();
-                }
-
-                // Delete deliveries
-                $db->query("DELETE FROM deliveries WHERE rep_route_id = :rid OR secondary_rep_route_id = :rid");
-                $db->bind(':rid', $routeId);
-                $db->execute();
-
-                // Delete pending collections
-                $db->query("DELETE FROM pending_collections WHERE route_id = :rid");
-                $db->bind(':rid', $routeId);
-                $db->execute();
-            }
-
-            // Finally, delete the route itself
-            $db->query("DELETE FROM rep_daily_routes WHERE id = :rid");
-            $db->bind(':rid', $routeId);
-            $db->execute();
-
-            // Log activity
-            $this->logActivity('Delete Route', 'RepTracking', "Deleted Daily Route #RT-{$routeId} - {$route->route_name}. Mode: {$mode}. Reason: {$reason}", $routeId);
-
-            $db->commit();
-
+            $userId = $_SESSION['user_id'] ?? 1;
+            $msg = RepRouteService::deleteRoute($routeId, $mode, $reason, $userId, $username);
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'success', 'message' => "Daily Route #RT-{$routeId} and associated records handled with mode '{$mode}' successfully deleted!"]);
+            echo json_encode(['status' => 'success', 'message' => $msg]);
             exit;
-
         } catch (Exception $e) {
-            $db->rollBack();
             $errorResponse('Failed to delete route: ' . $e->getMessage());
         }
     }

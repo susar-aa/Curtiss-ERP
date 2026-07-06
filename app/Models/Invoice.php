@@ -409,6 +409,16 @@ class Invoice {
                         $this->db->bind(':id', $varId);
                         $this->db->execute();
                     }
+
+                    // Log stock movement in ledger (HIGH-6)
+                    require_once '../app/Models/StockLedger.php';
+                    $ledger = new StockLedger();
+                    $this->db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                    $this->db->bind(':id', $itemId);
+                    $itemRow = $this->db->single();
+                    $whId = $itemRow ? $itemRow->warehouse_id : null;
+                    $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
+                    $ledger->logMovement($itemId, $varId, 0, 0, 'Reserved Stock Release', $oldInvoice->invoice_number, $whId, $userId, 'Invoice Deleted - Reserved Stock Released', $itemCost);
                 } else {
                     if ($itemId) {
                         require_once '../app/Models/Item.php';

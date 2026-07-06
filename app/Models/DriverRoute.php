@@ -108,13 +108,20 @@ class DriverRoute {
         $this->db->query("
             SELECT d.*, r.route_name, r.start_time,
                    COALESCE(CONCAT(rep_e.first_name, ' ', rep_e.last_name), rep_u.username) as rep_name,
-                (SELECT COUNT(*) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as bill_count,
-                (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) 
-                 FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales
+                   COALESCE(inv.bill_count, 0) as bill_count,
+                   COALESCE(inv.total_sales, 0.00) as total_sales
             FROM deliveries d
             JOIN rep_daily_routes r ON d.rep_route_id = r.id
             LEFT JOIN users rep_u ON r.user_id = rep_u.id
             LEFT JOIN employees rep_e ON rep_u.employee_id = rep_e.id
+            LEFT JOIN (
+                SELECT rep_route_id, 
+                       COUNT(*) as bill_count,
+                       SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_sales
+                FROM invoices 
+                WHERE status != 'Voided' AND rep_route_id IS NOT NULL
+                GROUP BY rep_route_id
+            ) inv ON inv.rep_route_id = r.id
             WHERE $whereSql AND d.status NOT IN ('Completed', 'Finalized')
             ORDER BY d.delivery_date DESC, d.created_at DESC
             LIMIT 1
@@ -130,11 +137,18 @@ class DriverRoute {
     public function getDeliveryById($id) {
         $this->db->query("
             SELECT d.*, r.route_name, r.start_time,
-                (SELECT COUNT(*) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as bill_count,
-                (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) 
-                 FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales
+                   COALESCE(inv.bill_count, 0) as bill_count,
+                   COALESCE(inv.total_sales, 0.00) as total_sales
             FROM deliveries d
             JOIN rep_daily_routes r ON d.rep_route_id = r.id
+            LEFT JOIN (
+                SELECT rep_route_id, 
+                       COUNT(*) as bill_count,
+                       SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_sales
+                FROM invoices 
+                WHERE status != 'Voided' AND rep_route_id IS NOT NULL
+                GROUP BY rep_route_id
+            ) inv ON inv.rep_route_id = r.id
             WHERE d.id = :id
         ");
         $this->db->bind(':id', $id);
@@ -192,6 +206,23 @@ class DriverRoute {
             $delivery = $this->getDeliveryById($deliveryId);
             if (!$delivery) {
                 throw new Exception("Delivery not found");
+            }
+
+            // Validate cash denominations (MED-7)
+            if ($cashDenomJson !== null) {
+                $denoms = json_decode($cashDenomJson, true);
+                if (json_last_error() !== JSON_ERROR_NONE || !is_array($denoms)) {
+                    throw new Exception("Invalid cash denominations format");
+                }
+                $allowedKeys = ['5000', '2000', '1000', '500', '100', '50', '20', 'coins'];
+                foreach ($denoms as $key => $val) {
+                    if (!in_array(strval($key), $allowedKeys)) {
+                        throw new Exception("Invalid denomination unit: " . $key);
+                    }
+                    if (!is_numeric($val) || floatval($val) < 0) {
+                        throw new Exception("Denomination count or value cannot be negative or non-numeric for: " . $key);
+                    }
+                }
             }
 
             // 1. Update delivery status

@@ -24,7 +24,7 @@ class PickingController extends Controller {
     private function resolveAllBoundRouteIds($rids) {
         if (empty($rids)) return [];
         $rids = array_map('intval', $rids);
-        $ridsStr = implode(',', $rids);
+        $ridsStr = implode(',', array_map('intval', $rids));
         
         $this->db->query("SELECT DISTINCT route_binding_id FROM rep_daily_routes WHERE id IN ($ridsStr) AND route_binding_id IS NOT NULL");
         $bindings = $this->db->resultSet();
@@ -34,7 +34,7 @@ class PickingController extends Controller {
             foreach ($bindings as $b) {
                 $bindingIds[] = intval($b->route_binding_id);
             }
-            $bindingIdsStr = implode(',', $bindingIds);
+            $bindingIdsStr = implode(',', array_map('intval', $bindingIds));
             
             $this->db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id IN ($bindingIdsStr)");
             $allRoutes = $this->db->resultSet();
@@ -73,7 +73,7 @@ class PickingController extends Controller {
                         $rids[] = intval($delivery->secondary_rep_route_id);
                     }
                     $rids = $this->resolveAllBoundRouteIds($rids);
-                    $ridsStr = implode(',', $rids);
+                    $ridsStr = implode(',', array_map('intval', $rids));
 
                     $this->db->query("UPDATE rep_daily_routes SET status = 'Variance Adjustment' WHERE id IN ($ridsStr)");
                     $this->db->execute();
@@ -173,26 +173,16 @@ class PickingController extends Controller {
         $this->checkAuth();
         // Auto-create deliveries for any routes in non-completed status that don't have one
         $this->db->query("
-            SELECT r.id, r.route_name, r.route_binding_id, 
-                   COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name
+            SELECT r.id
             FROM rep_daily_routes r
-            LEFT JOIN users u ON r.user_id = u.id
-            LEFT JOIN employees e ON u.employee_id = e.id
             WHERE r.status NOT IN ('Completed', 'Finalized') 
               AND r.id NOT IN (SELECT rep_route_id FROM deliveries WHERE rep_route_id IS NOT NULL)
               AND r.id NOT IN (SELECT secondary_rep_route_id FROM deliveries WHERE secondary_rep_route_id IS NOT NULL)
         ");
         $missingDeliveries = $this->db->resultSet() ?: [];
         foreach ($missingDeliveries as $route) {
-            $repName = trim($route->first_name . ' ' . $route->last_name);
-            if (empty($repName)) {
-                $repName = 'Pending Rep';
-            }
-            $this->db->query("INSERT INTO deliveries (rep_route_id, delivery_date, vehicle_number, driver_name, partner_name, status) 
-                              VALUES (:rid, CURDATE(), 'Pending Vehicle', :driver, '', 'Arranged')");
-            $this->db->bind(':rid', $route->id);
-            $this->db->bind(':driver', $repName);
-            $this->db->execute();
+            require_once dirname(__DIR__) . '/Services/RepRouteService.php';
+            RepRouteService::ensureDeliveryAndPickingPopulated($this->db, $route->id);
         }
 
         $this->db->query("
@@ -200,12 +190,19 @@ class PickingController extends Controller {
                    r.route_name, r.id as route_id, d.secondary_rep_route_id,
                    r.status as route_status,
                    COALESCE(e.first_name, u.username) as rep_first_name, COALESCE(e.last_name, '') as rep_last_name,
-                   (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id) as total_items,
-                   (SELECT COUNT(*) FROM delivery_picking_items WHERE delivery_id = d.id AND is_picked = 1) as picked_items
+                   COALESCE(dpi.total_items, 0) as total_items,
+                   COALESCE(dpi.picked_items, 0) as picked_items
             FROM deliveries d
             JOIN rep_daily_routes r ON d.rep_route_id = r.id
             LEFT JOIN users u ON r.user_id = u.id
-            LEFT JOIN employees e ON u.employee_id = e.id
+            LEFT JOIN employees e ON r.user_id = e.id
+            LEFT JOIN (
+                SELECT delivery_id,
+                       COUNT(*) as total_items,
+                       SUM(CASE WHEN is_picked = 1 THEN 1 ELSE 0 END) as picked_items
+                FROM delivery_picking_items
+                GROUP BY delivery_id
+            ) dpi ON dpi.delivery_id = d.id
             WHERE r.status NOT IN ('Completed', 'Finalized') OR d.status NOT IN ('Completed', 'Finalized')
             ORDER BY d.delivery_date DESC, d.id DESC
         ");
@@ -226,7 +223,7 @@ class PickingController extends Controller {
             $rids = $this->resolveAllBoundRouteIds($rids);
             
             if (!empty($rids)) {
-                $ridsStr = implode(',', $rids);
+                $ridsStr = implode(',', array_map('intval', $rids));
                 $this->db->query("
                     SELECT DISTINCT c.name 
                     FROM invoices i 
@@ -294,7 +291,7 @@ class PickingController extends Controller {
             $rids[] = $delivery->secondary_rep_route_id;
         }
         $rids = $this->resolveAllBoundRouteIds($rids);
-        $ridsStr = implode(',', $rids);
+        $ridsStr = implode(',', array_map('intval', $rids));
 
         $this->db->query("
             SELECT DISTINCT c.name 
@@ -306,36 +303,9 @@ class PickingController extends Controller {
         $custNames = array_map(function($c) { return $c->name; }, $custs);
         $delivery->customer_info = !empty($custNames) ? implode(', ', $custNames) : 'No Customer Invoices';
 
-        // Check if items are already populated in delivery_picking_items
-        $this->db->query("SELECT COUNT(*) as cnt FROM delivery_picking_items WHERE delivery_id = :id");
-        $this->db->bind(':id', $deliveryId);
-        $check = $this->db->single();
-
-        if (!$check || intval($check->cnt) === 0) {
-            // Initialize from aggregated invoices items on the route
-            $this->db->query("
-                SELECT ii.item_id, ii.variation_option_id, ii.description as item_name, SUM(ii.quantity) as required_qty
-                FROM invoice_items ii
-                JOIN invoices i ON ii.invoice_id = i.id
-                WHERE i.rep_route_id IN ($ridsStr) AND i.status != 'Voided'
-                GROUP BY ii.item_id, ii.variation_option_id, ii.description
-            ");
-            $invoiceItems = $this->db->resultSet();
-
-            foreach ($invoiceItems as $item) {
-                $this->db->query("
-                    INSERT INTO delivery_picking_items (delivery_id, item_name, item_id, variation_option_id, required_qty, loaded_qty, is_picked)
-                    VALUES (:delivery_id, :item_name, :item_id, :variation_option_id, :required_qty, :loaded_qty, 0)
-                ");
-                $this->db->bind(':delivery_id', $deliveryId);
-                $this->db->bind(':item_name', $item->item_name);
-                $this->db->bind(':item_id', $item->item_id);
-                $this->db->bind(':variation_option_id', $item->variation_option_id);
-                $this->db->bind(':required_qty', $item->required_qty);
-                $this->db->bind(':loaded_qty', $item->required_qty);
-                $this->db->execute();
-            }
-        }
+        // Ensure picking items are populated
+        require_once dirname(__DIR__) . '/Services/RepRouteService.php';
+        RepRouteService::ensurePickingItemsPopulated($this->db, $deliveryId);
 
         // Fetch picking items details with categories and primary images
         $this->db->query("
@@ -641,7 +611,7 @@ class PickingController extends Controller {
                 $rids[] = intval($delivery->secondary_rep_route_id);
             }
             $rids = $this->resolveAllBoundRouteIds($rids);
-            $ridsStr = implode(',', $rids);
+            $ridsStr = implode(',', array_map('intval', $rids));
 
             $this->db->query("UPDATE rep_daily_routes SET status = 'Variance Adjustment' WHERE id IN ($ridsStr)");
             $this->db->execute();
