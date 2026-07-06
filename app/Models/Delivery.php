@@ -286,7 +286,8 @@ class Delivery {
         $custDispatches = [];
         foreach ($routeInvoices as $inv) {
             $amt = $this->getTrueGrandTotal($inv);
-            if ($inv->delivery_status === 'Delivered') {
+            $isDelivered = ($inv->delivery_status !== 'Cancelled' && $inv->delivery_status !== 'Postponed');
+            if ($isDelivered) {
                 $custDispatches[$inv->customer_id] = ($custDispatches[$inv->customer_id] ?? 0.0) + $amt;
             }
         }
@@ -343,8 +344,8 @@ class Delivery {
                 MAX(ii.variation_option_id) as variation_option_id,
                 TRIM(ii.description) as item_name,
                 SUM(ii.loaded_quantity) as loaded_qty,
-                SUM(CASE WHEN i.delivery_status = 'Delivered' THEN ii.quantity ELSE 0 END) as delivered_qty,
-                (SUM(ii.loaded_quantity) - SUM(CASE WHEN i.delivery_status = 'Delivered' THEN ii.quantity ELSE 0 END)) as remaining_qty
+                SUM(CASE WHEN i.delivery_status != 'Cancelled' AND i.delivery_status != 'Postponed' THEN ii.quantity ELSE 0 END) as delivered_qty,
+                (SUM(ii.loaded_quantity) - SUM(CASE WHEN i.delivery_status != 'Cancelled' AND i.delivery_status != 'Postponed' THEN ii.quantity ELSE 0 END)) as remaining_qty
             FROM invoice_items ii
             JOIN invoices i ON ii.invoice_id = i.id
             WHERE i.rep_route_id IN ($ridsStr) AND i.status != 'Voided'
@@ -495,7 +496,8 @@ class Delivery {
                 $this->db->bind(':iid', $invoice->id);
                 $items = $this->db->resultSet();
 
-                if ($invoice->delivery_status === 'Delivered') {
+                $isDelivered = ($invoice->delivery_status !== 'Cancelled' && $invoice->delivery_status !== 'Postponed');
+                if ($isDelivered) {
                     if ($invoice->stock_status === 'reserved') {
                         foreach ($items as $item) {
                             $qty = floatval($item->quantity);
@@ -537,11 +539,11 @@ class Delivery {
                             // Log stock movement in ledger (depletion)
                             require_once '../app/Models/StockLedger.php';
                             $ledger = new StockLedger();
-                            $this->db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                            $this->db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
                             $this->db->bind(':id', $itemId);
                             $itemRow = $this->db->single();
                             $whId = $itemRow ? $itemRow->warehouse_id : null;
-                            $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
+                            $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
                             
                             $this->db->query("SELECT invoice_number FROM invoices WHERE id = :iid");
                             $this->db->bind(':iid', $invoice->id);
@@ -796,7 +798,7 @@ class Delivery {
         return max(0, $subTotal - $globalDisc) + floatval($invoice->tax_amount ?? 0);
     }
 
-    private function resolveAllBoundRouteIds($rids) {
+    public function resolveAllBoundRouteIds($rids) {
         if (empty($rids)) return [];
         $rids = array_map('intval', $rids);
         $ridsStr = implode(',', array_map('intval', $rids));

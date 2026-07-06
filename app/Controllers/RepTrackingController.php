@@ -2222,6 +2222,9 @@ class RepTrackingController extends Controller {
                 if ($delivery->rep_route_id) { $routeIds[] = intval($delivery->rep_route_id); }
                 if ($delivery->secondary_rep_route_id) { $routeIds[] = intval($delivery->secondary_rep_route_id); }
 
+                // Resolve all bound route IDs
+                $routeIds = $this->deliveryModel->resolveAllBoundRouteIds($routeIds);
+
                 if (!empty($routeIds)) {
                     $routeIdsStr = implode(',', array_map('intval', $routeIds));
                     $debugLogs[] = "Route IDs: " . $routeIdsStr;
@@ -2262,22 +2265,20 @@ class RepTrackingController extends Controller {
                             }
 
                             if ($itemId) {
+                                require_once dirname(__DIR__) . '/Models/Item.php';
+                                $itemModel = new Item();
+
                                 // Deduct delivered quantity from physical stock ONLY IF invoice is Delivered
                                 if ($invoice->delivery_status === 'Delivered' && $deliveredQty > 0) {
+                                    $itemModel->updateStockDelta($itemId, -$deliveredQty);
+                                    $debugLogs[] = "Deducted " . $deliveredQty . " from items ID: " . $itemId . " (quantity_on_hand)";
+
                                     if ($varId !== null) {
                                         $db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
                                         $db->bind(':qty', $deliveredQty);
                                         $db->bind(':id', $varId);
                                         $db->execute();
                                         $debugLogs[] = "Deducted " . $deliveredQty . " from item_variation_options ID: " . $varId;
-                                    } else {
-                                        $db->query("UPDATE items SET 
-                                                    quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty)
-                                                    WHERE id = :id");
-                                        $db->bind(':qty', $deliveredQty);
-                                        $db->bind(':id', $itemId);
-                                        $db->execute();
-                                        $debugLogs[] = "Deducted " . $deliveredQty . " from items ID: " . $itemId . " (quantity_on_hand)";
                                     }
 
                                     // Deduct FIFO costing
@@ -2294,18 +2295,18 @@ class RepTrackingController extends Controller {
 
                                 // Release/clear loaded quantity from reserved stock (always do this if loadedQty > 0)
                                 if ($loadedQty > 0) {
+                                    $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
+                                    $db->bind(':qty', $loadedQty);
+                                    $db->bind(':id', $itemId);
+                                    $db->execute();
+                                    $debugLogs[] = "Released " . $loadedQty . " from reserved stock for item ID: " . $itemId;
+
                                     if ($varId !== null) {
                                         $db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
                                         $db->bind(':qty', $loadedQty);
                                         $db->bind(':id', $varId);
                                         $db->execute();
                                         $debugLogs[] = "Released " . $loadedQty . " from reserved stock for variation ID: " . $varId;
-                                    } else {
-                                        $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
-                                        $db->bind(':qty', $loadedQty);
-                                        $db->bind(':id', $itemId);
-                                        $db->execute();
-                                        $debugLogs[] = "Released " . $loadedQty . " from reserved stock for item ID: " . $itemId;
                                     }
                                 }
                             } else {
@@ -2353,15 +2354,16 @@ class RepTrackingController extends Controller {
                     $expectedReturned = $loadedQty - $deliveredQty;
                     $adjustment = $actualReturnedQty - $expectedReturned;
                     if ($adjustment != 0) {
+                        if ($itemId) {
+                            $itemModel->updateStockDelta($itemId, $adjustment);
+                            $debugLogs[] = "Adjusted items ID: " . $itemId . " quantity by " . $adjustment;
+                        }
                         if ($varId !== null) {
                             $db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :adj) WHERE id = :id");
                             $db->bind(':adj', $adjustment);
                             $db->bind(':id', $varId);
                             $db->execute();
                             $debugLogs[] = "Adjusted item_variation_options ID: " . $varId . " quantity_on_hand by " . $adjustment;
-                        } else if ($itemId) {
-                            $itemModel->updateStockDelta($itemId, $adjustment);
-                            $debugLogs[] = "Adjusted items ID: " . $itemId . " quantity by " . $adjustment;
                         }
 
                         // Log stock movement in ledger (counted returns adjustment)
