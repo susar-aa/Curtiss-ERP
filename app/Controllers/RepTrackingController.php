@@ -701,7 +701,7 @@ class RepTrackingController extends Controller {
 
     public function api_get_route_variances($routeId) {
         $db = new Database();
-        $this->auto_apply_route_substitutions($db, $routeId, $_SESSION['user_id'] ?? 1);
+        RepVarianceService::autoApplyRouteSubstitutions($db, $routeId, $_SESSION['user_id'] ?? 1);
 
         // Fetch route details first
         $db->query("SELECT status, route_name, route_binding_id FROM rep_daily_routes WHERE id = :id");
