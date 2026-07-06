@@ -1061,7 +1061,7 @@ class RepTrackingController extends Controller {
             'Completed' => 6
         ];
         $targetPriority = $statusPriority[$targetStatus] ?? 0;
-        if ($targetPriority > 1) { // Beyond 'Pending GL'
+        if ($targetStatus === 'Completed') { // Only guard transition to Completed
             $db->query("SELECT id, UNIX_TIMESTAMP(created_at) as created_ts FROM pending_collections 
                         WHERE (route_id = :rid OR route_id IN (SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid AND route_binding_id IS NOT NULL)) 
                         AND (status = 'Pending' OR is_verified = 0)");
@@ -2440,8 +2440,31 @@ class RepTrackingController extends Controller {
             if (is_array($accountingEntries)) {
                 $debits = $accountingEntries['debit'] ?? [];
                 $credits = $accountingEntries['credit'] ?? [];
+                $collections = $payload['collections'] ?? $payload['accounting_entries_json']['collections'] ?? $accountingEntries['collections'] ?? [];
 
-                // Gather all unique keys from debits and credits
+                // 1. Save collections verification draft to pending_collections
+                foreach ($collections as $c) {
+                    $payId = intval($c['id']);
+                    $isVerified = intval($c['is_verified'] ?? 0);
+                    $adjAmount = (isset($c['adjusted_amount']) && $c['adjusted_amount'] !== '') ? floatval($c['adjusted_amount']) : null;
+                    $notes = isset($c['verification_notes']) ? trim($c['verification_notes']) : null;
+                    $debitAccId = !empty($c['debit_account_id']) ? intval($c['debit_account_id']) : null;
+                    $creditAccId = !empty($c['credit_account_id']) ? intval($c['credit_account_id']) : null;
+
+                    $db->query("UPDATE pending_collections 
+                                SET is_verified = :is_v, adjusted_amount = :adj, verification_notes = :notes, 
+                                    debit_account_id = :da, credit_account_id = :ca
+                                WHERE id = :id");
+                    $db->bind(':is_v', $isVerified);
+                    $db->bind(':adj', $adjAmount);
+                    $db->bind(':notes', $notes);
+                    $db->bind(':da', $debitAccId);
+                    $db->bind(':ca', $creditAccId);
+                    $db->bind(':id', $payId);
+                    $db->execute();
+                }
+
+                // 2. Gather invoice keys and insert draft Journal Entries and Transactions for Invoices Sales Posting
                 $allKeys = array_unique(array_merge(array_keys($debits), array_keys($credits)));
 
                 // Default accounts for fallback
@@ -2453,10 +2476,6 @@ class RepTrackingController extends Controller {
                 }
                 $defaultArAcc = $accMap['1200'] ?? null;
                 $defaultSalesAcc = $accMap['4000'] ?? null;
-                $defaultCashAcc = $accMap['1000'] ?? null;
-                $defaultChequeAcc = $accMap['1010'] ?? null;
-                $defaultTempBankAcc = $accMap['1605'] ?? ($accMap['1600'] ?? null);
-                $transitAcc = $accMap['1090'] ?? null;
 
                 foreach ($allKeys as $key) {
                     $debAcc = isset($debits[$key]) ? intval($debits[$key]) : null;
@@ -2521,77 +2540,6 @@ class RepTrackingController extends Controller {
                             $db->bind(':jid', $jid);
                             $db->bind(':aid', $credAcc);
                             $db->bind(':cred', $gTotal);
-                            $db->execute();
-                        }
-                    } elseif (strpos($key, 'pay_') === 0) {
-                        $payId = intval(substr($key, 4));
-                        if ($payId <= 0) continue;
-
-                        // Fetch payment
-                        $db->query("SELECT * FROM customer_payments WHERE id = :id");
-                        $db->bind(':id', $payId);
-                        $payment = $db->single();
-                        if (!$payment) continue;
-
-                        $amount = floatval($payment->amount);
-                        if ($amount <= 0) continue;
-
-                        // Use defaults if not set
-                        if (!$debAcc) {
-                            if ($payment->payment_method === 'Cash') {
-                                $debAcc = $defaultCashAcc;
-                            } elseif ($payment->payment_method === 'Cheque') {
-                                $debAcc = $defaultChequeAcc;
-                            } else {
-                                $debAcc = $defaultTempBankAcc;
-                            }
-                        }
-                        if (!$credAcc) {
-                            $credAcc = $transitAcc ?: $defaultArAcc;
-                        }
-
-                        if ($debAcc && $credAcc) {
-                            // Find and clean up any existing draft JEs for this payment
-                            $db->query("SELECT id FROM journal_entries WHERE reference = :ref AND status = 'Draft'");
-                            $db->bind(':ref', "PMT-BAL-DRAFT-" . $payId);
-                            $oldJEs = $db->resultSet();
-                            foreach ($oldJEs as $oldJE) {
-                                $db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
-                                $db->bind(':jid', $oldJE->id);
-                                $db->execute();
-
-                                $db->query("DELETE FROM journal_entries WHERE id = :id");
-                                $db->bind(':id', $oldJE->id);
-                                $db->execute();
-                            }
-
-                            // Insert new Draft Journal Entry
-                            $db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
-                                              VALUES (CURDATE(), :ref, :desc, :uid, 'Draft')");
-                            $db->bind(':ref', "PMT-BAL-DRAFT-" . $payId);
-                            $db->bind(':desc', "Finalized Delivery Collection (" . $payment->payment_method . ") [Draft]");
-                            $db->bind(':uid', $_SESSION['user_id']);
-                            $db->execute();
-                            $jid = $db->lastInsertId();
-
-                            // Update customer_payments
-                            $db->query("UPDATE customer_payments SET journal_entry_id = :jid WHERE id = :pid");
-                            $db->bind(':jid', $jid);
-                            $db->bind(':pid', $payId);
-                            $db->execute();
-
-                            // Debit transaction
-                            $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, 0)");
-                            $db->bind(':jid', $jid);
-                            $db->bind(':aid', $debAcc);
-                            $db->bind(':deb', $amount);
-                            $db->execute();
-
-                            // Credit transaction
-                            $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :cred)");
-                            $db->bind(':jid', $jid);
-                            $db->bind(':aid', $credAcc);
-                            $db->bind(':cred', $amount);
                             $db->execute();
                         }
                     }

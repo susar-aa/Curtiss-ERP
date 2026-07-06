@@ -378,9 +378,9 @@ class Delivery {
         // Fetch route collections payments
         $this->db->query("
             SELECT cp.*, cust.name as customer_name
-            FROM customer_payments cp
+            FROM pending_collections cp
             JOIN customers cust ON cp.customer_id = cust.id
-            WHERE cp.rep_route_id IN ($ridsStr)
+            WHERE cp.route_id IN ($ridsStr)
         ");
         $payments = $this->db->resultSet() ?: [];
 
@@ -598,11 +598,10 @@ class Delivery {
             // 4. Financial Clearance collections balancing
             $this->db->query("
                 SELECT * 
-                FROM customer_payments 
-                WHERE rep_route_id = :rid
+                FROM pending_collections 
+                WHERE route_id IN ($ridsStr) AND status = 'Pending'
             ");
-            $this->db->bind(':rid', $delivery->rep_route_id);
-            $routePayments = $this->db->resultSet();
+            $routePayments = $this->db->resultSet() ?: [];
 
             if (!empty($routePayments)) {
                 $this->db->query("SELECT id, account_code FROM chart_of_accounts WHERE account_code IN ('1000', '1010', '1600', '1605', '1200', '1090')");
@@ -622,29 +621,8 @@ class Delivery {
                         continue;
                     }
 
-                    $amount = floatval($pay->amount);
+                    $amount = floatval($pay->adjusted_amount !== null ? $pay->adjusted_amount : $pay->amount);
                     if ($amount <= 0) continue;
-
-                    // Ensure payment JE not already posted
-                    if (!empty($pay->journal_entry_id)) {
-                        $this->db->query("SELECT status FROM journal_entries WHERE id = :jid LIMIT 1");
-                        $this->db->bind(':jid', $pay->journal_entry_id);
-                        $jeRow = $this->db->single();
-                        if ($jeRow && $jeRow->status === 'Posted') {
-                            continue;
-                        }
-                    }
-                    $this->db->query("SELECT id, status FROM journal_entries WHERE reference = :ref LIMIT 1");
-                    $this->db->bind(':ref', "PMT-BAL-" . $payId);
-                    $jeRowRef = $this->db->single();
-                    if ($jeRowRef && $jeRowRef->status === 'Posted') {
-                        // Associate payment with this posted JE if not already done
-                        $this->db->query("UPDATE customer_payments SET journal_entry_id = :jid WHERE id = :pid");
-                        $this->db->bind(':jid', $jeRowRef->id);
-                        $this->db->bind(':pid', $pay->id);
-                        $this->db->execute();
-                        continue;
-                    }
 
                     // Clean up any existing draft or incomplete journal entries for this payment to prevent collisions on retry
                     $this->db->query("SELECT id FROM journal_entries WHERE reference IN (:ref, :ref2)");
@@ -661,7 +639,7 @@ class Delivery {
                         $this->db->execute();
                     }
 
-                    $debAccId = isset($debitAccounts["pay_" . $payId]) ? intval($debitAccounts["pay_" . $payId]) : (isset($debitAccounts[$payId]) ? intval($debitAccounts[$payId]) : null);
+                    $debAccId = isset($debitAccounts["pay_" . $payId]) ? intval($debitAccounts["pay_" . $payId]) : (isset($debitAccounts[$payId]) ? intval($debitAccounts[$payId]) : intval($pay->debit_account_id ?? 0));
                     if (!$debAccId) {
                         $method = $pay->payment_method;
                         if ($method === 'Cash') {
@@ -674,7 +652,10 @@ class Delivery {
                     }
                     if (!$debAccId) continue;
 
-                    $credAccId = isset($creditAccounts["pay_" . $payId]) ? intval($creditAccounts["pay_" . $payId]) : (isset($creditAccounts[$payId]) ? intval($creditAccounts[$payId]) : ($transitAcc ?: $arAcc));
+                    $credAccId = isset($creditAccounts["pay_" . $payId]) ? intval($creditAccounts["pay_" . $payId]) : (isset($creditAccounts[$payId]) ? intval($creditAccounts[$payId]) : intval($pay->credit_account_id ?? 0));
+                    if (!$credAccId) {
+                        $credAccId = $transitAcc ?: $arAcc;
+                    }
 
                     // Insert new Posted Journal Entry first to prevent partial updates with no rollback on failure
                     $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
@@ -685,10 +666,23 @@ class Delivery {
                     $this->db->execute();
                     $payJid = $this->db->lastInsertId();
 
-                    // Update payment record to associate with this journal entry
-                    $this->db->query("UPDATE customer_payments SET journal_entry_id = :jid WHERE id = :pid");
+                    // Insert into customer_payments officially to credit customer subledger
+                    $this->db->query("INSERT INTO customer_payments (customer_id, amount, payment_date, payment_method, reference, journal_entry_id, created_by, rep_route_id) 
+                                      VALUES (:cid, :amt, CURDATE(), :method, :ref, :jid, :uid, :rid)");
+                    $this->db->bind(':cid', $pay->customer_id);
+                    $this->db->bind(':amt', $amount);
+                    $this->db->bind(':method', $pay->payment_method);
+                    $this->db->bind(':ref', $pay->cheque_number ? $pay->cheque_number : ($pay->reference ? $pay->reference : "Route Payment"));
                     $this->db->bind(':jid', $payJid);
-                    $this->db->bind(':pid', $pay->id);
+                    $this->db->bind(':uid', $adminUserId);
+                    $this->db->bind(':rid', $pay->route_id);
+                    $this->db->execute();
+                    $insertedPaymentId = $this->db->lastInsertId();
+
+                    // Update pending_collections status to Verified
+                    $this->db->query("UPDATE pending_collections SET status = 'Verified', is_verified = 1, verified_by = :vby, verified_at = NOW() WHERE id = :id");
+                    $this->db->bind(':vby', $adminUserId);
+                    $this->db->bind(':id', $payId);
                     $this->db->execute();
 
                     // Debit Asset Account

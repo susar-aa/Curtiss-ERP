@@ -150,15 +150,14 @@
         <!-- Route Workspace Tabs -->
         <div class="scroll-tabs" id="routeWorkspaceTabs" style="display: none; border-bottom: 2px solid #cbd5e1; margin-bottom: 0;">
             <button id="auto-evt-button-4" class="scroll-tab-btn active" ><i class="ph ph-clipboard-text"></i> 1. Route Details</button>
-            <button id="auto-evt-button-5" class="scroll-tab-btn" ><i class="ph ph-coins"></i> 2. Credit Collections</button>
-            <button id="auto-evt-button-6" class="scroll-tab-btn" ><i class="ph ph-gear"></i> 3. Bill Adjustments</button>
-            <button id="auto-evt-button-7" class="scroll-tab-btn" ><i class="ph ph-truck"></i> 4. Loading</button>
-            <button id="auto-evt-button-8" class="scroll-tab-btn" ><i class="ph ph-scales"></i> 5. Variance Audit</button>
-            <button id="auto-evt-button-9" class="scroll-tab-btn" ><i class="ph ph-map-trifold"></i> 6. Delivery Arrangement</button>
-            <button id="auto-evt-button-10" class="scroll-tab-btn" ><i class="ph ph-currency-dollar"></i> 7. Reconciliation</button>
-            <button id="auto-evt-button-11" class="scroll-tab-btn" ><i class="ph ph-steering-wheel"></i> 8. Delivery</button>
-            <button id="auto-evt-button-12" class="scroll-tab-btn" ><i class="ph ph-package"></i> 9. Return Stock Verification</button>
-            <button id="auto-evt-button-13" class="scroll-tab-btn" ><i class="ph ph-briefcase"></i> 10. Accounting</button>
+            <button id="auto-evt-button-6" class="scroll-tab-btn" ><i class="ph ph-gear"></i> 2. Bill Adjustments</button>
+            <button id="auto-evt-button-7" class="scroll-tab-btn" ><i class="ph ph-truck"></i> 3. Loading</button>
+            <button id="auto-evt-button-8" class="scroll-tab-btn" ><i class="ph ph-scales"></i> 4. Variance Audit</button>
+            <button id="auto-evt-button-9" class="scroll-tab-btn" ><i class="ph ph-map-trifold"></i> 5. Delivery Arrangement</button>
+            <button id="auto-evt-button-10" class="scroll-tab-btn" ><i class="ph ph-currency-dollar"></i> 6. Reconciliation</button>
+            <button id="auto-evt-button-11" class="scroll-tab-btn" ><i class="ph ph-steering-wheel"></i> 7. Delivery</button>
+            <button id="auto-evt-button-12" class="scroll-tab-btn" ><i class="ph ph-package"></i> 8. Return Stock Verification</button>
+            <button id="auto-evt-button-13" class="scroll-tab-btn" ><i class="ph ph-briefcase"></i> 9. Accounting</button>
         </div>
 
         <!-- Workspace Layout Container (Sidebar + Content Body) -->
@@ -178,64 +177,57 @@
                             <span class="step-desc">Representative & Odo</span>
                         </div>
                     </div>
-                    <div class="sidebar-step-item" id="sb-step-2" >
-                        <div class="step-dot">2</div>
-                        <div class="step-info">
-                            <span class="step-title">Credit Collections</span>
-                            <span class="step-desc">Audit credit payments</span>
-                        </div>
-                    </div>
                     <div class="sidebar-step-item" id="sb-step-3" >
-                        <div class="step-dot">3</div>
+                        <div class="step-dot">2</div>
                         <div class="step-info">
                             <span class="step-title">Bill Adjustments</span>
                             <span class="step-desc">Attach/detach SOs</span>
                         </div>
                     </div>
                     <div class="sidebar-step-item" id="sb-step-4" >
-                        <div class="step-dot">4</div>
+                        <div class="step-dot">3</div>
                         <div class="step-info">
                             <span class="step-title">Loading Checklist</span>
                             <span class="step-desc">Verify loaded stock</span>
                         </div>
                     </div>
                     <div class="sidebar-step-item" id="sb-step-5" >
-                        <div class="step-dot">5</div>
+                        <div class="step-dot">4</div>
                         <div class="step-info">
                             <span class="step-title">Variance Audit</span>
                             <span class="step-desc">Confirm product variances</span>
                         </div>
                     </div>
                     <div class="sidebar-step-item" id="sb-step-6" >
-                        <div class="step-dot">6</div>
+                        <div class="step-dot">5</div>
                         <div class="step-info">
                             <span class="step-title">Delivery Arrange</span>
                             <span class="step-desc">Assign driver & vehicle</span>
                         </div>
                     </div>
                     <div class="sidebar-step-item" id="sb-step-7" >
-                        <div class="step-dot">7</div>
+                        <div class="step-dot">6</div>
                         <div class="step-info">
                             <span class="step-title">Reconciliation</span>
                             <span class="step-desc">Discrepancies & cash</span>
                         </div>
                     </div>
                     <div class="sidebar-step-item" id="sb-step-8" >
-                        <div class="step-dot">8</div>
+                        <div class="step-dot">7</div>
                         <div class="step-info">
                             <span class="step-title">Delivery Execution</span>
                             <span class="step-desc">Track live status</span>
                         </div>
                     </div>
                     <div class="sidebar-step-item" id="sb-step-9" >
-                        <div class="step-dot">9</div>
+                        <div class="step-dot">8</div>
                         <div class="step-info">
                             <span class="step-title">Return Stock</span>
                             <span class="step-desc">Verify returned items</span>
                         </div>
                     </div>
                     <div class="sidebar-step-item" id="sb-step-10" >
-                        <div class="step-dot">10</div>
+                        <div class="step-dot">9</div>
                         <div class="step-info">
                             <span class="step-title">Accounting</span>
                             <span class="step-desc">Double-entry GL posting</span>
@@ -315,41 +307,6 @@
                 </div>
 
                 <!-- TAB 2: CREDIT COLLECTIONS -->
-                <div class="workspace-tab-panel" id="tabpanel-2" style="display:none;">
-                    <!-- Collections Verification Table Card -->
-                    <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); display:flex; flex-direction:column; justify-content:space-between; margin-bottom:20px;">
-                        <div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                                <h5 style="margin:0; font-size:14px; font-weight:700; color:var(--t-primary);"><i class="ph ph-coins"></i> Credit Collections & Verification</h5>
-                                <button id="btnSaveCollectionsVerification2"  style="padding:8px 16px; background:var(--c-green); color:#fff; border:none; border-radius:var(--r-sm); font-size:12px; font-weight:bold; cursor:pointer; transition:0.2s;"><i class="ph ph-floppy-disk"></i> Save Verification</button>
-                            </div>
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
-                                <div style="background:var(--c-bg); border:0.5px solid var(--c-separator); padding:12px; border-radius:var(--r-md); font-size:13px; text-align:center; font-weight:500;">
-                                    Cash: <strong id="glTotalCash" style="font-family:var(--f-mono); color:var(--c-green); font-size:16px; margin-left:6px;">Rs 0.00</strong>
-                                </div>
-                                <div style="background:var(--c-bg); border:0.5px solid var(--c-separator); padding:12px; border-radius:var(--r-md); font-size:13px; text-align:center; font-weight:500;">
-                                    Cheque: <strong id="glTotalCheque" style="font-family:var(--f-mono); color:var(--c-blue); font-size:16px; margin-left:6px;">Rs 0.00</strong>
-                                </div>
-                            </div>
-                            <div style="border: 0.5px solid var(--c-separator); border-radius: var(--r-md); background: var(--c-surface); overflow: hidden;">
-                                <table class="data-table" style="margin-top:0;">
-                                    <thead>
-                                        <tr style="background:var(--c-surface2);">
-                                            <th style="text-align:left; width:20%;">Customer / Pay</th>
-                                            <th style="text-align:right; width:12%;">Collected</th>
-                                            <th style="text-align:center; width:8%;">Approve</th>
-                                            <th style="text-align:left; width:20%;">Debit Account</th>
-                                            <th style="text-align:left; width:20%;">Credit Account</th>
-                                            <th style="text-align:right; width:10%;">Adjusted</th>
-                                            <th style="text-align:left; width:10%;">Notes</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="glCollectionsTableBody"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- TAB 3: ADJUSTMENTS -->
                 <div class="workspace-tab-panel" id="tabpanel-3" style="display:none; margin: -16px -20px; height: calc(100% + 32px); background: var(--c-surface);">

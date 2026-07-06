@@ -270,16 +270,15 @@
 
     function updateSidebarProgress() {
         const steps = [
-            { id: 1, name: 'Route Details', statusKey: 'Active' },
-            { id: 2, name: 'Credit Collections', statusKey: 'Pending GL' },
-            { id: 3, name: 'Bill Adjustments', statusKey: 'Adjustments' },
-            { id: 4, name: 'Loading', statusKey: 'Loading' },
-            { id: 5, name: 'Variance Audit', statusKey: 'Variance Adjustment' },
-            { id: 6, name: 'Delivery Arrange', statusKey: 'Finalizing' },
-            { id: 7, name: 'Reconciliation', statusKey: 'Finalizing' },
-            { id: 8, name: 'Delivery Execution', statusKey: 'Finalizing' },
-            { id: 9, name: 'Return Stock', statusKey: 'Finalizing' },
-            { id: 10, name: 'Accounting', statusKey: 'Finalizing' }
+            { id: 1, num: 1, name: 'Route Details', statusKey: 'Active' },
+            { id: 3, num: 2, name: 'Bill Adjustments', statusKey: 'Adjustments' },
+            { id: 4, num: 3, name: 'Loading', statusKey: 'Loading' },
+            { id: 5, num: 4, name: 'Variance Audit', statusKey: 'Variance Adjustment' },
+            { id: 6, num: 5, name: 'Delivery Arrange', statusKey: 'Finalizing' },
+            { id: 7, num: 6, name: 'Reconciliation', statusKey: 'Finalizing' },
+            { id: 8, num: 7, name: 'Delivery Execution', statusKey: 'Finalizing' },
+            { id: 9, num: 8, name: 'Return Stock', statusKey: 'Finalizing' },
+            { id: 10, num: 9, name: 'Accounting', statusKey: 'Finalizing' }
         ];
 
         const statusSequence = ['Active', 'Pending GL', 'Adjustments', 'Loading', 'Variance Adjustment', 'Finalizing', 'Completed', 'Finalized'];
@@ -298,7 +297,7 @@
             
             // Step dot element
             const dot = el.querySelector('.step-dot');
-            dot.innerHTML = step.id; // Default back to step number
+            dot.innerHTML = step.num; // Default back to step sequence number
 
             // Determine active tab
             if (step.id === currentTabIndex) {
@@ -482,9 +481,6 @@
             case 1:
                 loadTab1Details(currentRouteId);
                 break;
-            case 2:
-                loadCollectionsVerificationStage2(currentRouteId);
-                break;
             case 3:
                 loadAdjustmentsStage(currentRouteId);
                 break;
@@ -577,242 +573,7 @@
         });
     }
 
-    let currentGLCollectionsState = [];
 
-    function loadCollectionsVerificationStage2(routeId) {
-        const tbody = document.getElementById('glCollectionsTableBody');
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Loading collections... </td></tr>';
-        currentGLCollectionsState = [];
-        
-        document.getElementById('glTotalCash').innerText = 'Rs 0.00';
-        document.getElementById('glTotalCheque').innerText = 'Rs 0.00';
-
-        const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
-        const saveBtn = document.getElementById('btnSaveCollectionsVerification2');
-        if (saveBtn) {
-            saveBtn.disabled = isReadOnly;
-            saveBtn.style.opacity = isReadOnly ? '0.5' : '1';
-            saveBtn.style.cursor = isReadOnly ? 'not-allowed' : 'pointer';
-        }
-
-        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_route_collections/' + routeId)
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    currentGLCollectionsState = data.collections || [];
-                    renderGLCollectionsVerification();
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red;">Failed to load collections.</td></tr>';
-                }
-            });
-    }
-
-    function renderGLCollectionsVerification() {
-        const tbody = document.getElementById('glCollectionsTableBody');
-        tbody.innerHTML = '';
-
-        let cashSum = 0;
-        let chequeSum = 0;
-
-        if (currentGLCollectionsState.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888; padding: 10px;">No payments collected on this route.</td></tr>';
-            checkGLVerification();
-            return;
-        }
-
-        const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
-
-        currentGLCollectionsState.forEach((col, index) => {
-            const isVerified = parseInt(col.is_verified) === 1;
-            const isFinalized = col.status === 'Finalized' || isReadOnly;
-            const amt = parseFloat(col.amount);
-            
-            if (col.payment_method === 'Cash') {
-                cashSum += amt;
-            } else {
-                chequeSum += amt;
-            }
-
-            let statusSelect = `
-                <input type="checkbox" onchange="updateGLCollectionApproval(${index}, this.checked)" 
-                       ${(isVerified || isFinalized) ? 'checked' : ''} ${isFinalized ? 'disabled' : ''} 
-                       style="width:16px; height:16px; cursor:${isFinalized ? 'not-allowed' : 'pointer'};" />
-            `;
-
-            const adjustedVal = col.adjusted_amount !== null ? col.adjusted_amount : col.amount;
-
-            tbody.innerHTML += `
-                <tr style="border-bottom:1px solid #f1f5f9;">
-                    <td style="padding:6px 4px;">
-                        <strong>${col.customer_name}</strong><br>
-                        <span style="font-size:10px; color:#64748b;">${col.payment_method} ${col.reference ? '(' + col.reference + ')' : ''}</span>
-                        ${isFinalized ? '<br><span style="font-size:10px; color:#2e7d32; font-weight:bold;">Posted to GL</span>' : ''}
-                    </td>
-                    <td style="padding:6px 4px; text-align:right; font-family:monospace; font-weight:bold;">
-                        Rs ${amt.toFixed(2)}
-                    </td>
-                    <td style="padding:6px 4px; text-align:center;">
-                        ${statusSelect}
-                    </td>
-                    <td style="padding:6px 4px;">
-                        <select onchange="updateGLCollectionDebitAccount(${index}, this.value)" 
-                                style="width:100%; max-width:180px; padding:4px; font-size:11px; border:1px solid #cbd5e1; border-radius:4px;" 
-                                ${isFinalized ? 'disabled' : ''}>
-                            ${buildAccountOptions(col.debit_account_id, col.payment_method === 'Cash' ? '1000' : (col.payment_method === 'Cheque' ? '1010' : '1605'))}
-                        </select>
-                    </td>
-                    <td style="padding:6px 4px;">
-                        <select onchange="updateGLCollectionCreditAccount(${index}, this.value)" 
-                                style="width:100%; max-width:180px; padding:4px; font-size:11px; border:1px solid #cbd5e1; border-radius:4px;" 
-                                ${isFinalized ? 'disabled' : ''}>
-                            ${buildAccountOptions(col.credit_account_id, '1200')}
-                        </select>
-                    </td>
-                    <td style="padding:6px 4px; text-align:center;">
-                        <input type="number" step="0.01" min="0" value="${parseFloat(adjustedVal).toFixed(2)}"
-                               oninput="updateGLCollectionAdjustedAmount(${index}, this.value)"
-                               ${isFinalized ? 'disabled' : ''}
-                               style="width:80px; padding:3px; border:1px solid #cbd5e1; border-radius:4px; text-align:right; font-family:monospace; font-size:11px;" />
-                    </td>
-                    <td style="padding:6px 4px; text-align:center;">
-                        <input type="text" value="${col.verification_notes || ''}" placeholder="Notes"
-                               oninput="updateGLCollectionNotes(${index}, this.value)"
-                               ${isFinalized ? 'disabled' : ''}
-                               style="width:100px; padding:3px; border:1px solid #cbd5e1; border-radius:4px; font-size:11px;" />
-                    </td>
-                </tr>
-            `;
-        });
-
-        document.getElementById('glTotalCash').innerText = 'Rs ' + cashSum.toLocaleString('en-US', {minimumFractionDigits: 2});
-        document.getElementById('glTotalCheque').innerText = 'Rs ' + chequeSum.toLocaleString('en-US', {minimumFractionDigits: 2});
-
-        checkGLVerification();
-    }
-
-    function updateGLCollectionApproval(index, checked) {
-        const col = currentGLCollectionsState[index];
-        if (col) {
-            col.is_verified = checked ? 1 : 0;
-            col.is_flagged = 0;
-        }
-        checkGLVerification();
-    }
-
-    function updateGLCollectionDebitAccount(index, val) {
-        const col = currentGLCollectionsState[index];
-        if (col) {
-            col.debit_account_id = val !== '' ? parseInt(val) : null;
-        }
-    }
-
-    function updateGLCollectionCreditAccount(index, val) {
-        const col = currentGLCollectionsState[index];
-        if (col) {
-            col.credit_account_id = val !== '' ? parseInt(val) : null;
-        }
-    }
-
-    function updateGLCollectionAdjustedAmount(index, val) {
-        const col = currentGLCollectionsState[index];
-        if (col) {
-            col.adjusted_amount = val !== '' ? parseFloat(val) : null;
-        }
-        checkGLVerification();
-    }
-
-    function updateGLCollectionNotes(index, val) {
-        const col = currentGLCollectionsState[index];
-        if (col) {
-            col.verification_notes = val;
-        }
-    }
-
-    function saveCollectionsVerificationStage2() {
-        if (!currentRouteId) return;
-
-        const updates = currentGLCollectionsState.map(col => ({
-            id: col.id,
-            is_verified: col.is_verified,
-            is_flagged: col.is_flagged,
-            adjusted_amount: col.adjusted_amount !== null ? parseFloat(col.adjusted_amount) : parseFloat(col.amount),
-            verification_notes: col.verification_notes,
-            debit_account_id: col.debit_account_id || getAccountIdByCode(col.payment_method === 'Cash' ? '1000' : (col.payment_method === 'Cheque' ? '1010' : '1605')),
-            credit_account_id: col.credit_account_id || getAccountIdByCode('1200')
-        }));
-
-        fetchSecure('<?= APP_URL ?>/RepTracking/api_verify_collections', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ updates: updates })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                alert(data.message);
-                
-                // Update the route data status attribute dynamically!
-                const routeDataEl = document.getElementById('route_data_' + currentRouteId);
-                if (routeDataEl && data.route_status) {
-                    routeDataEl.setAttribute('data-status', data.route_status);
-                    currentRouteStatus = data.route_status;
-                }
-
-                // Update the route list badge in the sidebar list too!
-                const routeEl = document.getElementById('route_' + currentRouteId);
-                if (routeEl) {
-                    const listBadge = routeEl.querySelector('span[style*="font-size: 10px"]');
-                    if (listBadge && data.route_status) {
-                        listBadge.innerText = data.route_status;
-                        const isCompleted = (data.route_status === 'Completed' || data.route_status === 'Finalized');
-                        listBadge.style.background = isCompleted ? '#e2f0d9' : '#fff3cd';
-                        listBadge.style.color = isCompleted ? '#2e7d32' : '#d97706';
-                        listBadge.style.borderColor = isCompleted ? '#2e7d32' : '#d97706';
-                    }
-                }
-
-                // Reload route details to refresh status badges, workflow steps and progress
-                loadRouteDetails(currentRouteId, routeEl);
-
-                loadCollectionsVerificationStage2(currentRouteId);
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            alert('An error occurred while saving verification.');
-        });
-    }
-
-    function checkGLVerification() {
-        const btn = document.getElementById('glApproveSalesBtn');
-        const text = document.getElementById('glVerificationStatusText');
-        if (!btn || !text) return;
-
-        let allCollectionsApproved = true;
-        let pendingOrFlaggedCount = 0;
-        currentGLCollectionsState.forEach(col => {
-            if (parseInt(col.is_verified) !== 1) {
-                allCollectionsApproved = false;
-                pendingOrFlaggedCount++;
-            }
-        });
-
-        if (allCollectionsApproved) {
-            btn.disabled = false;
-            btn.style.opacity = '1';
-            btn.style.cursor = 'pointer';
-            text.innerHTML = '<span style="color:#2e7d32; font-weight:bold;">Verification Complete!</span> collections approved.';
-        } else {
-            btn.disabled = true;
-            btn.style.opacity = '0.5';
-            btn.style.cursor = 'not-allowed';
-            text.innerHTML = `<span style="color:#dc2626; font-weight:bold;">Verification Pending:</span> ${pendingOrFlaggedCount} collections remaining.`;
-        }
-    }
 
     let cachedOutstandingBills = [];
     let selectedCreditBills = [];
@@ -2728,7 +2489,7 @@
                 if (data.delivery && data.delivery.accounting_entries_json) {
                     try {
                         const accEntries = JSON.parse(data.delivery.accounting_entries_json);
-                        document.querySelectorAll('.settle-de-select').forEach(sel => {
+                        document.querySelectorAll('.settle-de-select, .settle-payment-debit, .settle-payment-credit').forEach(sel => {
                             const id = sel.getAttribute('data-id');
                             const type = sel.getAttribute('data-type');
                             let val = null;
@@ -2748,7 +2509,7 @@
                 }
 
                 if (isReadOnly) {
-                    document.querySelectorAll('.settle-de-select, .settle-payment-chk, .settle-invoice-chk').forEach(el => {
+                    document.querySelectorAll('.settle-de-select, .settle-payment-debit, .settle-payment-credit, .settle-payment-chk, .settle-invoice-chk, .settle-payment-adj, .settle-payment-notes').forEach(el => {
                         el.disabled = true;
                     });
                 }
@@ -2769,6 +2530,15 @@
             if (type === 'debit') { debitAccounts[id] = val; } else { creditAccounts[id] = val; }
         });
 
+        // Also add the collection debit/credit accounts so they are preserved in delivery accounting json as draft
+        document.querySelectorAll('.settle-payment-row').forEach(row => {
+            const payId = parseInt(row.getAttribute('data-pay-id'));
+            const debAcc = parseInt(row.querySelector('.settle-payment-debit').value);
+            const credAcc = parseInt(row.querySelector('.settle-payment-credit').value);
+            debitAccounts['pay_' + payId] = debAcc;
+            creditAccounts['pay_' + payId] = credAcc;
+        });
+
         const accountingData = {
             debit: debitAccounts,
             credit: creditAccounts
@@ -2776,19 +2546,54 @@
 
         const deliveryId = currentDeliveryDetails.delivery.id;
 
-        fetchSecure('<?= APP_URL ?>/RepTracking/api_save_accounting_entries', {
+        const updates = [];
+        document.querySelectorAll('.settle-payment-row').forEach(row => {
+            const payId = parseInt(row.getAttribute('data-pay-id'));
+            const isVerified = row.querySelector('.settle-payment-chk').checked ? 1 : 0;
+            const debAcc = parseInt(row.querySelector('.settle-payment-debit').value);
+            const credAcc = parseInt(row.querySelector('.settle-payment-credit').value);
+            const adjAmt = parseFloat(row.querySelector('.settle-payment-adj').value);
+            const notes = row.querySelector('.settle-payment-notes').value;
+
+            updates.push({
+                id: payId,
+                is_verified: isVerified,
+                is_flagged: 0,
+                adjusted_amount: adjAmt,
+                verification_notes: notes,
+                debit_account_id: debAcc,
+                credit_account_id: credAcc
+            });
+        });
+
+        // 1. Save collections verification
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_verify_collections', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ delivery_id: deliveryId, accounting_entries_json: accountingData })
+            body: JSON.stringify({ updates: updates })
         })
         .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                alert("Accounting mappings draft saved successfully!");
-                onRouteDataChanged();
-            } else {
-                alert("Error: " + data.message);
+        .then(colData => {
+            if (colData.status !== 'success') {
+                alert("Error saving collections: " + colData.message);
+                return;
             }
+
+            // 2. Save accounting entries json
+            fetchSecure('<?= APP_URL ?>/RepTracking/api_save_accounting_entries', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ delivery_id: deliveryId, accounting_entries_json: accountingData })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert("Accounting mappings and collection verification draft saved successfully!");
+                    onRouteDataChanged();
+                } else {
+                    alert("Error: " + data.message);
+                }
+            });
         });
     }
 
@@ -2811,9 +2616,9 @@
         let allCollectionsApproved = true;
         let pendingOrFlaggedCount = 0;
         
-        // Check collections verification from Tab 2
-        currentGLCollectionsState.forEach(col => {
-            if (parseInt(col.is_verified) !== 1) {
+        // Check collections verification from Cash/Cheques Posting DOM checkboxes
+        document.querySelectorAll('.settle-payment-chk').forEach(chk => {
+            if (!chk.checked) {
                 allCollectionsApproved = false;
                 pendingOrFlaggedCount++;
             }
@@ -2831,7 +2636,7 @@
             
             let msg = '';
             if (!allCollectionsApproved) {
-                msg += `Please approve/verify all collections under Collection Verification tab (${pendingOrFlaggedCount} remaining). `;
+                msg += `Please approve/verify all collections under Cash/Cheques Posting tab (${pendingOrFlaggedCount} remaining). `;
             }
             if (!verifyStock) {
                 msg += 'Please verify Return Stock checkbox under Return Stock tab.';
@@ -2858,6 +2663,15 @@
         return `<select class="settle-de-select" data-id="${id}" data-type="${type}" style="padding:4px 8px; font-size:12px; border-radius:4px; border:1px solid #ccc; width:100%;">${optionsHtml}</select>`;
     }
 
+    function renderSettleDeAccountSelectForPayment(id, type, selectedId, isReadOnly) {
+        let optionsHtml = '';
+        globalAllAccounts.forEach(acc => {
+            let isSel = String(acc.id) === String(selectedId) ? 'selected' : '';
+            optionsHtml += `<option value="${acc.id}" ${isSel}>${acc.account_code} - ${acc.account_name}</option>`;
+        });
+        return `<select class="settle-payment-${type}" data-id="${id}" data-type="${type}" style="padding:4px 8px; font-size:11px; border-radius:4px; border:1px solid #cbd5e1; width:100%;" ${isReadOnly ? 'disabled' : ''}>${optionsHtml}</select>`;
+    }
+
     function renderSettleDoubleEntries() {
         const colContainer = document.getElementById('settleDeCollectionsContainer');
         const salesContainer = document.getElementById('settleDeSalesContainer');
@@ -2874,33 +2688,78 @@
         if (payments.length === 0) {
             colContainer.innerHTML = '<p style="color:#888; text-align:center;">No payments logged on this trip.</p>';
         } else {
+            let tableHTML = `
+                <div style="border: 0.5px solid var(--c-separator); border-radius: var(--r-md); background: var(--c-surface); overflow: hidden;">
+                    <table class="data-table" style="margin-top:0;">
+                        <thead>
+                            <tr style="background:var(--c-surface2);">
+                                <th style="text-align:left; width:22%;">Customer / Pay</th>
+                                <th style="text-align:right; width:12%;">Collected</th>
+                                <th style="text-align:center; width:8%;">Approve</th>
+                                <th style="text-align:left; width:20%;">Debit Account</th>
+                                <th style="text-align:left; width:20%;">Credit Account</th>
+                                <th style="text-align:right; width:10%;">Adjusted</th>
+                                <th style="text-align:left; width:10%;">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
             payments.forEach(p => {
+                const isVerified = parseInt(p.is_verified) === 1;
+                const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+                const amt = parseFloat(p.amount);
+                const adjustedVal = p.adjusted_amount !== null ? p.adjusted_amount : p.amount;
+
                 let defaultDebitCode = '1000'; // Cash
                 if (p.payment_method === 'Cheque') { defaultDebitCode = '1010'; }
                 else if (p.payment_method === 'Bank Transfer') { defaultDebitCode = '1605'; }
 
-                colContainer.innerHTML += `
-                    <div style="display:flex; justify-content:space-between; align-items:center; background:#fafafa; border:1px solid #eee; padding:10px; margin-bottom:8px; border-radius:6px; flex-wrap:wrap; gap:10px;">
-                        <div style="flex:1; min-width:200px;">
-                            <label style="display:flex; align-items:center; gap:8px; font-weight:bold;">
-                                <input type="checkbox" class="settle-payment-chk" value="${p.id}" checked>
-                                ${p.customer_name} (${p.payment_method})
-                            </label>
-                        </div>
-                        <div style="font-weight:bold; color:#2e7d32;">Rs ${parseFloat(p.amount).toFixed(2)}</div>
-                        <div style="display:flex; gap:10px; flex:2;">
-                            <div style="flex:1;">
-                                <span style="font-size:9px; color:#666;">Debit Account</span>
-                                ${renderSettleDeAccountSelect('pay_' + p.id, 'debit', defaultDebitCode)}
-                            </div>
-                            <div style="flex:1;">
-                                <span style="font-size:9px; color:#666;">Credit Account</span>
-                                ${renderSettleDeAccountSelect('pay_' + p.id, 'credit', '1090')}
-                            </div>
-                        </div>
-                    </div>
+                const selectedDebit = p.debit_account_id || getAccountIdByCode(defaultDebitCode);
+                const selectedCredit = p.credit_account_id || getAccountIdByCode('1200');
+
+                tableHTML += `
+                    <tr class="settle-payment-row" data-pay-id="${p.id}" style="border-bottom:1px solid #f1f5f9;">
+                        <td style="padding:6px 4px;">
+                            <strong>${p.customer_name}</strong><br>
+                            <span style="font-size:10px; color:#64748b;">${p.payment_method} ${p.cheque_number ? '(' + p.cheque_number + ')' : (p.reference ? '(' + p.reference + ')' : '')}</span>
+                            ${isReadOnly ? '<br><span style="font-size:10px; color:#2e7d32; font-weight:bold;">Posted to GL</span>' : ''}
+                        </td>
+                        <td style="padding:6px 4px; text-align:right; font-family:monospace; font-weight:bold;">
+                            Rs ${amt.toFixed(2)}
+                        </td>
+                        <td style="padding:6px 4px; text-align:center;">
+                            <input type="checkbox" class="settle-payment-chk" value="${p.id}" 
+                                   ${(isVerified || isReadOnly) ? 'checked' : ''} ${isReadOnly ? 'disabled' : ''} 
+                                   onchange="checkSettleVerification()"
+                                   style="width:16px; height:16px; cursor:${isReadOnly ? 'not-allowed' : 'pointer'};" />
+                        </td>
+                        <td style="padding:6px 4px;">
+                            ${renderSettleDeAccountSelectForPayment('pay_' + p.id, 'debit', selectedDebit, isReadOnly)}
+                        </td>
+                        <td style="padding:6px 4px;">
+                            ${renderSettleDeAccountSelectForPayment('pay_' + p.id, 'credit', selectedCredit, isReadOnly)}
+                        </td>
+                        <td style="padding:6px 4px; text-align:center;">
+                            <input type="number" step="0.01" min="0" class="settle-payment-adj" value="${parseFloat(adjustedVal).toFixed(2)}"
+                                   ${isReadOnly ? 'disabled' : ''}
+                                   style="width:80px; padding:3px; border:1px solid #cbd5e1; border-radius:4px; text-align:right; font-family:monospace; font-size:11px;" />
+                        </td>
+                        <td style="padding:6px 4px; text-align:center;">
+                            <input type="text" class="settle-payment-notes" value="${p.verification_notes || ''}" placeholder="Notes"
+                                   ${isReadOnly ? 'disabled' : ''}
+                                   style="width:100px; padding:3px; border:1px solid #cbd5e1; border-radius:4px; font-size:11px;" />
+                        </td>
+                    </tr>
                 `;
             });
+
+            tableHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            colContainer.innerHTML = tableHTML;
         }
 
         // 2. Sales
@@ -2966,6 +2825,16 @@
             const type = sel.getAttribute('data-type');
             const val = parseInt(sel.value);
             if (type === 'debit') { debitAccounts[id] = val; } else { creditAccounts[id] = val; }
+        });
+        document.querySelectorAll('.settle-payment-debit').forEach(sel => {
+            const id = sel.getAttribute('data-id');
+            const val = parseInt(sel.value);
+            debitAccounts[id] = val;
+        });
+        document.querySelectorAll('.settle-payment-credit').forEach(sel => {
+            const id = sel.getAttribute('data-id');
+            const val = parseInt(sel.value);
+            creditAccounts[id] = val;
         });
 
         const returnedItems = [];
@@ -3885,7 +3754,6 @@
         document.getElementById('auto-evt-button-3')?.addEventListener('click', (event) => { openRouteSwitcherModal(); });
         document.getElementById('btnViewMap')?.addEventListener('click', (event) => { openMapModal(); });
         document.getElementById('auto-evt-button-4')?.addEventListener('click', function(event) { switchRouteTab(1, this); });
-        document.getElementById('auto-evt-button-5')?.addEventListener('click', function(event) { switchRouteTab(2, this); });
         document.getElementById('auto-evt-button-6')?.addEventListener('click', function(event) { switchRouteTab(3, this); });
         document.getElementById('auto-evt-button-7')?.addEventListener('click', function(event) { switchRouteTab(4, this); });
         document.getElementById('auto-evt-button-8')?.addEventListener('click', function(event) { switchRouteTab(5, this); });
@@ -3896,7 +3764,6 @@
         document.getElementById('auto-evt-button-13')?.addEventListener('click', function(event) { switchRouteTab(10, this); });
         document.getElementById('auto-evt-button-14')?.addEventListener('click', (event) => { goBackToRoutes(); });
         document.getElementById('sb-step-1')?.addEventListener('click', (event) => { switchRouteTab(1); });
-        document.getElementById('sb-step-2')?.addEventListener('click', (event) => { switchRouteTab(2); });
         document.getElementById('sb-step-3')?.addEventListener('click', (event) => { switchRouteTab(3); });
         document.getElementById('sb-step-4')?.addEventListener('click', (event) => { switchRouteTab(4); });
         document.getElementById('sb-step-5')?.addEventListener('click', (event) => { switchRouteTab(5); });
@@ -3913,7 +3780,6 @@
         document.getElementById('btnViewMapDetails')?.addEventListener('click', (event) => { openMapModal(); });
         document.getElementById('auto-evt-button-20')?.addEventListener('click', (event) => { openDeleteRouteModal(); });
         document.getElementById('btnSaveRouteNotes')?.addEventListener('click', (event) => { saveRouteNotes(); });
-        document.getElementById('btnSaveCollectionsVerification2')?.addEventListener('click', (event) => { saveCollectionsVerificationStage2(); });
         document.getElementById('btnTab3CreateSO')?.addEventListener('click', (event) => { redirectToAddInvoice(); });
         document.getElementById('btnTab3AttachSO')?.addEventListener('click', (event) => { openAttachInvoiceModal(); });
         document.getElementById('btnTab3PrintInvoices')?.addEventListener('click', (event) => { printRouteInvoices(); });
@@ -3978,15 +3844,7 @@ window.buildAccountOptions = buildAccountOptions;
     window.switchRouteTab = switchRouteTab;
     window.loadTab1Details = loadTab1Details;
     window.saveRouteNotes = saveRouteNotes;
-    window.loadCollectionsVerificationStage2 = loadCollectionsVerificationStage2;
-    window.renderGLCollectionsVerification = renderGLCollectionsVerification;
-    window.updateGLCollectionApproval = updateGLCollectionApproval;
-    window.updateGLCollectionDebitAccount = updateGLCollectionDebitAccount;
-    window.updateGLCollectionCreditAccount = updateGLCollectionCreditAccount;
-    window.updateGLCollectionAdjustedAmount = updateGLCollectionAdjustedAmount;
-    window.updateGLCollectionNotes = updateGLCollectionNotes;
-    window.saveCollectionsVerificationStage2 = saveCollectionsVerificationStage2;
-    window.checkGLVerification = checkGLVerification;
+
     window.loadOutstandingBillsChecklist = loadOutstandingBillsChecklist;
     window.filterCreditBillsList = filterCreditBillsList;
     window.toggleCreditBillSelection = toggleCreditBillSelection;
