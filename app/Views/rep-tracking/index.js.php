@@ -3948,6 +3948,7 @@
         document.getElementById('floatingSearchInput')?.addEventListener('input', (event) => { searchRouteList(); });
         document.getElementById('auto-evt-button-28')?.addEventListener('click', (event) => { openCreateRouteModal(); });
         document.getElementById('btnOpenRouteBinding')?.addEventListener('click', (event) => { openRouteBindingModal(); });
+        document.getElementById('btnUnbindRoute')?.addEventListener('click', (event) => { unbindActiveRoute(); });
         document.getElementById('auto-evt-button-29')?.addEventListener('click', (event) => { window.location.reload(); });
     };
     if (document.readyState === 'loading') {

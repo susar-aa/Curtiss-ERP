@@ -33,50 +33,40 @@ class RepTracking {
                 GROUP BY route_id
             ) pc ON pc.route_id = r.id
             WHERE r.id NOT IN (SELECT rep_route_id FROM deliveries)
-              AND r.status != 'Bound' AND r.status != 'Bound Into Route'
             ORDER BY r.start_time DESC
         ");
         $rawRoutes = $this->db->resultSet() ?: [];
         
-        $grouped = [];
-        $unbound = [];
+        $mergedRoutes = [];
+        $constituentNames = [];
+        $unboundRoutes = [];
         
         foreach ($rawRoutes as $route) {
-            if ($route->route_binding_id && $route->is_merged_route == 0) {
-                $grouped[$route->route_binding_id][] = $route;
-            } else {
-                $unbound[] = $route;
+            if ($route->is_merged_route == 1) {
+                $mergedRoutes[$route->route_binding_id] = $route;
+            }
+        }
+        
+        foreach ($rawRoutes as $route) {
+            $isConstituent = ($route->status === 'Bound' || $route->status === 'Bound Into Route') && $route->route_binding_id;
+            if ($isConstituent) {
+                $constituentNames[$route->route_binding_id][] = $route->route_name;
+            } elseif ($route->is_merged_route == 0) {
+                $unboundRoutes[] = $route;
             }
         }
         
         $finalRoutes = [];
-        foreach ($unbound as $route) {
+        foreach ($unboundRoutes as $route) {
             $route->is_bound_group = false;
             $finalRoutes[] = $route;
         }
         
-        foreach ($grouped as $bindingId => $routesList) {
-            // Pick route with lowest ID as primary representative
-            usort($routesList, function($a, $b) { return $a->id - $b->id; });
-            $rep = $routesList[0];
-            
-            $merged = clone $rep;
-            $merged->route_name = $rep->binding_name; // Use new binding name
-            $merged->bill_count = 0;
-            $merged->total_sales = 0.0;
-            $merged->unfinalized_count = 0;
-            $merged->is_bound_group = true;
-            
-            $names = [];
-            foreach ($routesList as $r) {
-                $merged->bill_count += intval($r->bill_count);
-                $merged->total_sales += floatval($r->total_sales);
-                $merged->unfinalized_count += intval($r->unfinalized_count);
-                $names[] = $r->route_name;
-            }
-            
-            $merged->constituent_routes_info = implode(' & ', $names);
-            $finalRoutes[] = $merged;
+        foreach ($mergedRoutes as $bindingId => $mergedRoute) {
+            $mergedRoute->is_bound_group = true;
+            $names = isset($constituentNames[$bindingId]) ? $constituentNames[$bindingId] : [];
+            $mergedRoute->constituent_routes_info = implode(' & ', $names);
+            $finalRoutes[] = $mergedRoute;
         }
         
         // Sort final list by start_time descending

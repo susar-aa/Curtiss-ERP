@@ -142,6 +142,7 @@
                         <i class="ph ph-swap"></i> Switch
                     </button>
                     <button type="button" id="btnViewMap"  style="padding: 8px 12px; border: none; background: var(--c-orange); color: #fff; border-radius: var(--r-sm); font-weight: 600; cursor: pointer; font-size: 12px; display: none; align-items: center; gap: 4px; box-shadow: var(--shadow-xs);"><i class="ph ph-map-pin"></i> Map</button>
+                    <button type="button" id="btnUnbindRoute" style="padding: 8px 12px; border: none; background: #dc2626; color: #fff; border-radius: var(--r-sm); font-weight: 600; cursor: pointer; font-size: 12px; display: none; align-items: center; gap: 4px; box-shadow: var(--shadow-xs);"><i class="ph ph-link-break"></i> Undo Bind</button>
                 </div>
             </div>
         </div>
