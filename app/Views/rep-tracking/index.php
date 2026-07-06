@@ -358,6 +358,7 @@
                             <button id="btnTab3CreateSO"  style="padding:8px 16px; background:#0066cc; border:none; color:#fff; border-radius:var(--r-sm); font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-plus-circle"></i> Create Sales Order</button>
                             <button id="btnTab3AttachSO"  style="padding:8px 16px; background:#5c6bc0; border:none; color:#fff; border-radius:var(--r-sm); font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-link"></i> Attach Sales Order</button>
                             <button id="btnTab3PrintInvoices"  style="padding:8px 16px; background:#1e293b; border:none; color:#fff; border-radius:var(--r-sm); font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-printer"></i> Print All Invoices</button>
+                            <button id="btnTab3PrintSummary"  style="padding:8px 16px; background:#0f766e; border:none; color:#fff; border-radius:var(--r-sm); font-weight:bold; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-printer"></i> Print Invoice Summary</button>
                         </div>
                     </div>
                     <div style="padding: 16px 20px; background: var(--c-surface);">

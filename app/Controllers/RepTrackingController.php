@@ -1313,15 +1313,15 @@ class RepTrackingController extends Controller {
             ");
             $db->bind(':id', $fullInvoice->customer_id);
             $billed = $db->single()->total_billed ?? 0;
-
+ 
             $db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :id");
             $db->bind(':id', $fullInvoice->customer_id);
             $paid = $db->single()->total_paid ?? 0;
-
+ 
             $db->query("SELECT COALESCE(SUM(total_amount), 0) as total_credited FROM credit_notes WHERE customer_id = :id");
             $db->bind(':id', $fullInvoice->customer_id);
             $credited = $db->single()->total_credited ?? 0;
-
+ 
             $totalOutstanding = $billed - $paid - $credited;
             
             $invoicesData[] = [
@@ -1339,6 +1339,40 @@ class RepTrackingController extends Controller {
         ];
         
         $this->view('rep-tracking/print_route_invoices', $data);
+    }
+
+    public function print_route_invoices_summary($routeId) {
+        $route = $this->trackingModel->getRouteById($routeId);
+        if (!$route) {
+            die("Route not found.");
+        }
+        
+        $bills = $this->trackingModel->getRouteBills($routeId);
+        
+        $invoiceModel = $this->model('Invoice');
+        $companyModel = $this->model('Company');
+        $company = $companyModel->getSettings();
+        
+        $invoicesData = [];
+        foreach ($bills as $bill) {
+            if ($bill->status === 'Voided') continue;
+            
+            $fullInvoice = $invoiceModel->getInvoiceById($bill->id);
+            if (!$fullInvoice) continue;
+            
+            $invoicesData[] = [
+                'invoice' => $fullInvoice,
+                'items' => $invoiceModel->getInvoiceItems($bill->id)
+            ];
+        }
+        
+        $data = [
+            'route' => $route,
+            'company' => $company,
+            'invoices' => $invoicesData
+        ];
+        
+        $this->view('rep-tracking/print_route_invoices_summary', $data);
     }
 
     public function api_get_route_collections($routeId) {

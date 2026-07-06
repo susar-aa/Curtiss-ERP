@@ -3081,6 +3081,12 @@
         }
     }
 
+    function printRouteInvoicesSummary() {
+        if (currentRouteId) {
+            window.open('<?= APP_URL ?>/RepTracking/print_route_invoices_summary/' + currentRouteId, '_blank');
+        }
+    }
+
     function openInvoiceSlider(invoiceId) {
         const backdrop = document.getElementById('invoiceSliderBackdrop');
         const iframe = document.getElementById('invoiceIframe');
@@ -3898,6 +3904,7 @@
         document.getElementById('btnTab3CreateSO')?.addEventListener('click', (event) => { redirectToAddInvoice(); });
         document.getElementById('btnTab3AttachSO')?.addEventListener('click', (event) => { openAttachInvoiceModal(); });
         document.getElementById('btnTab3PrintInvoices')?.addEventListener('click', (event) => { printRouteInvoices(); });
+        document.getElementById('btnTab3PrintSummary')?.addEventListener('click', (event) => { printRouteInvoicesSummary(); });
         document.getElementById('auto-evt-button-21')?.addEventListener('click', (event) => { printLoadingSheet('summary'); });
         document.getElementById('auto-evt-button-22')?.addEventListener('click', (event) => { submitAdjustmentsLogisticsArrange(); });
         document.getElementById('creditBillsSearch')?.addEventListener('input', (event) => { filterCreditBillsList(); });
@@ -4012,6 +4019,7 @@ window.buildAccountOptions = buildAccountOptions;
     window.advanceRouteStatus = advanceRouteStatus;
     window.redirectToAddInvoice = redirectToAddInvoice;
     window.printRouteInvoices = printRouteInvoices;
+    window.printRouteInvoicesSummary = printRouteInvoicesSummary;
     window.openInvoiceSlider = openInvoiceSlider;
     window.closeInvoiceSlider = closeInvoiceSlider;
     window.deleteSalesOrder = deleteSalesOrder;
