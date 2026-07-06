@@ -192,7 +192,6 @@ class GRN {
                 $this->db->query("
                     UPDATE items 
                     SET quantity_on_hand = COALESCE(quantity_on_hand, 0) + :qty, 
-                        qty = COALESCE(qty, 0) + :qty, 
                         price = :sprice, 
                         wholesale_price = :wprice, 
                         cost = :cost, 

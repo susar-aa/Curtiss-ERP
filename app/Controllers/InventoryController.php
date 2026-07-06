@@ -260,7 +260,7 @@ class InventoryController extends Controller {
                 number_format(floatval($item->price ?? 0), 2, '.', ''),
                 number_format(floatval($item->wholesale_price ?? 0), 2, '.', ''),
                 number_format(floatval($item->cost_price ?? 0), 2, '.', ''),
-                intval($item->qty ?? 0),
+                intval($item->quantity_on_hand ?? 0),
                 $item->description ?? '',
                 $item->barcode ?? '',
                 $item->category_name ?? '',

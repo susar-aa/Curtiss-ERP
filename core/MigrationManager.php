@@ -153,7 +153,7 @@ class MigrationManager {
             'items_wholesale_price' => "ALTER TABLE items ADD COLUMN wholesale_price DECIMAL(10,2) NOT NULL DEFAULT 0.00",
             'items_item_code' => "ALTER TABLE items ADD COLUMN item_code VARCHAR(100) NULL",
             'items_name' => "ALTER TABLE items ADD COLUMN name VARCHAR(255) NOT NULL DEFAULT ''",
-            'items_qty' => "ALTER TABLE items ADD COLUMN qty INT NOT NULL DEFAULT 0",
+            'items_qty' => "SELECT 1",
             'items_description' => "ALTER TABLE items ADD COLUMN description TEXT NULL",
             'create_stock_batches' => "
                 CREATE TABLE IF NOT EXISTS stock_batches (
@@ -380,7 +380,18 @@ class MigrationManager {
                     FOREIGN KEY (template_id) REFERENCES recurring_journal_templates(id) ON DELETE CASCADE,
                     FOREIGN KEY (account_id) REFERENCES chart_of_accounts(id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-            "
+            ",
+            'drop_items_qty' => function(PDO $dbh) {
+                try {
+                    $q = $dbh->query("SHOW COLUMNS FROM items LIKE 'qty'");
+                    if ($q->rowCount() > 0) {
+                        $dbh->exec("ALTER TABLE items DROP COLUMN qty");
+                    }
+                } catch (PDOException $e) {
+                    return false;
+                }
+                return true;
+            }
         ];
     }
 

@@ -346,14 +346,14 @@ class Report {
         $this->db->query("
             SELECT i.id, i.name, i.item_code,
                    COALESCE(ic.name, 'Uncategorized') as category_name,
-                   COALESCE(i.quantity_on_hand, i.qty, 0) as qty_on_hand,
+                   COALESCE(i.quantity_on_hand, 0) as qty_on_hand,
                    COALESCE(i.cost_price, 0) as unit_cost,
                    COALESCE(i.price, 0) as selling_price,
-                   (COALESCE(i.quantity_on_hand, i.qty, 0) * COALESCE(i.cost_price, 0)) as stock_value_cost,
-                   (COALESCE(i.quantity_on_hand, i.qty, 0) * COALESCE(i.price, 0)) as stock_value_retail
+                   (COALESCE(i.quantity_on_hand, 0) * COALESCE(i.cost_price, 0)) as stock_value_cost,
+                   (COALESCE(i.quantity_on_hand, 0) * COALESCE(i.price, 0)) as stock_value_retail
             FROM items i
             LEFT JOIN item_categories ic ON i.category_id = ic.id
-            WHERE COALESCE(i.quantity_on_hand, i.qty, 0) > 0
+            WHERE COALESCE(i.quantity_on_hand, 0) > 0
             ORDER BY category_name ASC, i.name ASC
         ");
         $rows = $this->db->resultSet();

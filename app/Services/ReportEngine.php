@@ -42,11 +42,11 @@ class ReportEngine {
                     'val_retail' => ['label' => 'Value (Retail)', 'type' => 'currency', 'align' => 'right', 'total' => 'sum']
                 ],
                 'sql' => "SELECT i.id, i.item_code, i.name, ic.name as category_name, i.brand, i.warehouse_id,
-                                 COALESCE(i.quantity_on_hand, i.qty, 0) as qty_on_hand,
+                                 COALESCE(i.quantity_on_hand, 0) as qty_on_hand,
                                  COALESCE(i.cost_price, 0) as cost_price,
                                  COALESCE(i.price, 0) as price,
-                                 (COALESCE(i.quantity_on_hand, i.qty, 0) * COALESCE(i.cost_price, 0)) as val_cost,
-                                 (COALESCE(i.quantity_on_hand, i.qty, 0) * COALESCE(i.price, 0)) as val_retail
+                                 (COALESCE(i.quantity_on_hand, 0) * COALESCE(i.cost_price, 0)) as val_cost,
+                                 (COALESCE(i.quantity_on_hand, 0) * COALESCE(i.price, 0)) as val_retail
                           FROM items i
                           LEFT JOIN item_categories ic ON i.category_id = ic.id
                           WHERE 1=1"
@@ -61,7 +61,7 @@ class ReportEngine {
                     'qty_on_hand' => ['label' => 'In Stock', 'type' => 'number', 'align' => 'right', 'total' => 'sum']
                 ],
                 'sql' => "SELECT i.id as item_id, i.name, COALESCE(w.name, 'Main Warehouse') as warehouse_name, i.warehouse_id,
-                                 COALESCE(i.quantity_on_hand, i.qty, 0) as qty_on_hand
+                                 COALESCE(i.quantity_on_hand, 0) as qty_on_hand
                           FROM items i
                           LEFT JOIN warehouses w ON i.warehouse_id = w.id
                           WHERE 1=1"
@@ -121,11 +121,11 @@ class ReportEngine {
                     'total_stock' => ['label' => 'Total Qty', 'type' => 'number', 'align' => 'right', 'total' => 'sum']
                 ],
                 'sql' => "SELECT i.name, ic.name as category_name, i.brand, i.id as item_id, i.category_id,
-                                 SUM(CASE WHEN DATEDIFF(NOW(), i.created_at) <= 30 THEN COALESCE(i.quantity_on_hand, i.qty, 0) ELSE 0 END) as qty_0_30,
-                                 SUM(CASE WHEN DATEDIFF(NOW(), i.created_at) > 30 AND DATEDIFF(NOW(), i.created_at) <= 60 THEN COALESCE(i.quantity_on_hand, i.qty, 0) ELSE 0 END) as qty_31_60,
-                                 SUM(CASE WHEN DATEDIFF(NOW(), i.created_at) > 60 AND DATEDIFF(NOW(), i.created_at) <= 90 THEN COALESCE(i.quantity_on_hand, i.qty, 0) ELSE 0 END) as qty_61_90,
-                                 SUM(CASE WHEN DATEDIFF(NOW(), i.created_at) > 90 THEN COALESCE(i.quantity_on_hand, i.qty, 0) ELSE 0 END) as qty_90_plus,
-                                 SUM(COALESCE(i.quantity_on_hand, i.qty, 0)) as total_stock
+                                 SUM(CASE WHEN DATEDIFF(NOW(), i.created_at) <= 30 THEN COALESCE(i.quantity_on_hand, 0) ELSE 0 END) as qty_0_30,
+                                 SUM(CASE WHEN DATEDIFF(NOW(), i.created_at) > 30 AND DATEDIFF(NOW(), i.created_at) <= 60 THEN COALESCE(i.quantity_on_hand, 0) ELSE 0 END) as qty_31_60,
+                                 SUM(CASE WHEN DATEDIFF(NOW(), i.created_at) > 60 AND DATEDIFF(NOW(), i.created_at) <= 90 THEN COALESCE(i.quantity_on_hand, 0) ELSE 0 END) as qty_61_90,
+                                 SUM(CASE WHEN DATEDIFF(NOW(), i.created_at) > 90 THEN COALESCE(i.quantity_on_hand, 0) ELSE 0 END) as qty_90_plus,
+                                 SUM(COALESCE(i.quantity_on_hand, 0)) as total_stock
                           FROM items i
                           LEFT JOIN item_categories ic ON i.category_id = ic.id
                           WHERE 1=1
@@ -146,11 +146,11 @@ class ReportEngine {
                     'stock_value_retail' => ['label' => 'Valuation (Retail)', 'type' => 'currency', 'align' => 'right', 'total' => 'sum']
                 ],
                 'sql' => "SELECT i.id as item_id, i.category_id, i.brand, i.item_code, i.name, ic.name as category_name,
-                                 COALESCE(i.quantity_on_hand, i.qty, 0) as qty_on_hand,
+                                 COALESCE(i.quantity_on_hand, 0) as qty_on_hand,
                                  COALESCE(i.cost_price, 0) as cost_price,
-                                 (COALESCE(i.quantity_on_hand, i.qty, 0) * COALESCE(i.cost_price, 0)) as stock_value_cost,
+                                 (COALESCE(i.quantity_on_hand, 0) * COALESCE(i.cost_price, 0)) as stock_value_cost,
                                  COALESCE(i.price, 0) as price,
-                                 (COALESCE(i.quantity_on_hand, i.qty, 0) * COALESCE(i.price, 0)) as stock_value_retail
+                                 (COALESCE(i.quantity_on_hand, 0) * COALESCE(i.price, 0)) as stock_value_retail
                           FROM items i
                           LEFT JOIN item_categories ic ON i.category_id = ic.id
                           WHERE 1=1"
@@ -167,11 +167,11 @@ class ReportEngine {
                     'shortage' => ['label' => 'Deficit', 'type' => 'number', 'align' => 'right', 'total' => 'sum']
                 ],
                 'sql' => "SELECT i.id as item_id, i.category_id, i.name, 
-                                 COALESCE(i.quantity_on_hand, i.qty, 0) as qty_on_hand,
+                                 COALESCE(i.quantity_on_hand, 0) as qty_on_hand,
                                  COALESCE(i.minimum_stock_level, i.alert_qty, 5) as reorder_point,
                                  (COALESCE(i.minimum_stock_level, i.alert_qty, 5) * 2) as reorder_qty,
-                                 CASE WHEN COALESCE(i.minimum_stock_level, i.alert_qty, 5) > COALESCE(i.quantity_on_hand, i.qty, 0)
-                                      THEN (COALESCE(i.minimum_stock_level, i.alert_qty, 5) - COALESCE(i.quantity_on_hand, i.qty, 0))
+                                 CASE WHEN COALESCE(i.minimum_stock_level, i.alert_qty, 5) > COALESCE(i.quantity_on_hand, 0)
+                                      THEN (COALESCE(i.minimum_stock_level, i.alert_qty, 5) - COALESCE(i.quantity_on_hand, 0))
                                       ELSE 0 END as shortage
                           FROM items i
                           WHERE 1=1"
@@ -187,10 +187,10 @@ class ReportEngine {
                     'qty_on_hand' => ['label' => 'Quantity', 'type' => 'number', 'align' => 'right', 'total' => 'sum']
                 ],
                 'sql' => "SELECT i.id as item_id, i.item_code, i.name, COALESCE(w.name, 'Main Warehouse') as warehouse_name, i.warehouse_id,
-                                 COALESCE(i.quantity_on_hand, i.qty, 0) as qty_on_hand
+                                 COALESCE(i.quantity_on_hand, 0) as qty_on_hand
                           FROM items i
                           LEFT JOIN warehouses w ON i.warehouse_id = w.id
-                          WHERE COALESCE(i.quantity_on_hand, i.qty, 0) < 0"
+                          WHERE COALESCE(i.quantity_on_hand, 0) < 0"
             ],
             'damaged_stock' => [
                 'title' => 'Damaged Stock Report',
@@ -283,10 +283,10 @@ class ReportEngine {
                     'days_since_sold' => ['label' => 'Days Since Last Sale', 'type' => 'number', 'align' => 'right']
                 ],
                 'sql' => "SELECT i.name, i.category_id,
-                                 COALESCE(i.quantity_on_hand, i.qty, 0) as qty_on_hand,
+                                 COALESCE(i.quantity_on_hand, 0) as qty_on_hand,
                                  COALESCE(DATEDIFF(NOW(), (SELECT MAX(inv.invoice_date) FROM invoice_items ii JOIN invoices inv ON ii.invoice_id = inv.id WHERE ii.item_id = i.id AND inv.status != 'Voided')), 999) as days_since_sold
                           FROM items i
-                          WHERE COALESCE(i.quantity_on_hand, i.qty, 0) > 0
+                          WHERE COALESCE(i.quantity_on_hand, 0) > 0
                           ORDER BY days_since_sold DESC"
             ],
             'dead_stock' => [
@@ -300,11 +300,11 @@ class ReportEngine {
                     'days_dormant' => ['label' => 'Days Dormant', 'type' => 'number', 'align' => 'right']
                 ],
                 'sql' => "SELECT i.name, i.category_id,
-                                 COALESCE(i.quantity_on_hand, i.qty, 0) as qty_on_hand,
-                                 (COALESCE(i.quantity_on_hand, i.qty, 0) * COALESCE(i.cost_price, 0)) as cost_value,
+                                 COALESCE(i.quantity_on_hand, 0) as qty_on_hand,
+                                 (COALESCE(i.quantity_on_hand, 0) * COALESCE(i.cost_price, 0)) as cost_value,
                                  COALESCE(DATEDIFF(NOW(), (SELECT MAX(inv.invoice_date) FROM invoice_items ii JOIN invoices inv ON ii.invoice_id = inv.id WHERE ii.item_id = i.id AND inv.status != 'Voided')), DATEDIFF(NOW(), i.created_at)) as days_dormant
                           FROM items i
-                          WHERE COALESCE(i.quantity_on_hand, i.qty, 0) > 0
+                          WHERE COALESCE(i.quantity_on_hand, 0) > 0
                             AND NOT EXISTS (
                                 SELECT 1 FROM invoice_items ii 
                                 JOIN invoices inv ON ii.invoice_id = inv.id 
@@ -321,7 +321,7 @@ class ReportEngine {
                     'product_name' => ['label' => 'Product Name', 'type' => 'text'],
                     'qty' => ['label' => 'Qty On Hand', 'type' => 'number', 'align' => 'right', 'total' => 'sum']
                 ],
-                'sql' => "SELECT COALESCE(w.name, 'Main Warehouse') as warehouse_name, i.name as product_name, COALESCE(i.quantity_on_hand, i.qty, 0) as qty, i.warehouse_id
+                'sql' => "SELECT COALESCE(w.name, 'Main Warehouse') as warehouse_name, i.name as product_name, COALESCE(i.quantity_on_hand, 0) as qty, i.warehouse_id
                           FROM items i
                           LEFT JOIN warehouses w ON i.warehouse_id = w.id
                           WHERE 1=1"

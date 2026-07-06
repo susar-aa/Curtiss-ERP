@@ -2272,13 +2272,12 @@ class RepTrackingController extends Controller {
                                         $debugLogs[] = "Deducted " . $deliveredQty . " from item_variation_options ID: " . $varId;
                                     } else {
                                         $db->query("UPDATE items SET 
-                                                    qty = GREATEST(0, CAST(qty AS SIGNED) - :qty),
                                                     quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty)
                                                     WHERE id = :id");
                                         $db->bind(':qty', $deliveredQty);
                                         $db->bind(':id', $itemId);
                                         $db->execute();
-                                        $debugLogs[] = "Deducted " . $deliveredQty . " from items ID: " . $itemId . " (both qty and quantity_on_hand)";
+                                        $debugLogs[] = "Deducted " . $deliveredQty . " from items ID: " . $itemId . " (quantity_on_hand)";
                                     }
 
                                     // Deduct FIFO costing

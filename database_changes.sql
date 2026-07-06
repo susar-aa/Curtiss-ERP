@@ -63,3 +63,6 @@ ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS variation_option_id INT NULL 
 
 -- 5. Add accessible_apps column to users table
 ALTER TABLE users ADD COLUMN IF NOT EXISTS accessible_apps VARCHAR(255) DEFAULT 'ERP System' AFTER status;
+
+-- 6. Drop redundant qty column from items table
+ALTER TABLE items DROP COLUMN qty;

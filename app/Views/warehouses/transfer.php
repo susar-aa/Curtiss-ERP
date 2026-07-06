@@ -3,7 +3,7 @@
 $db = new Database();
 
 // Load catalog items and warehouses dynamically
-$db->query("SELECT *, price AS selling_price, qty AS quantity_on_hand FROM items ORDER BY name ASC");
+$db->query("SELECT *, price AS selling_price, quantity_on_hand FROM items ORDER BY name ASC");
 $items = $db->resultSet() ?: [];
 
 $db->query("SELECT * FROM warehouses ORDER BY is_default DESC, name ASC");

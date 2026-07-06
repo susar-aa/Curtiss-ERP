@@ -5,11 +5,11 @@ class Item {
     private $priceColumn = 'price'; // Default fallback
     private $itemCodeColumn = 'item_code';
     private $nameColumn = 'name';
-    private $qtyColumn = 'qty';
+    private $qtyColumn = 'quantity_on_hand';
     private $descColumn = 'description';
     private $wholesalePriceColumn = 'wholesale_price'; // For WholesaleX B2B compatibility
     private $orderByColumn = 'id DESC';
-    private $hasQtyColumn = true;
+    private $hasQtyColumn = false;
     private $hasQuantityOnHandColumn = true;
 
     // Static cache for detected columns to optimize performance
@@ -38,7 +38,7 @@ class Item {
             return;
         }
 
-        $cached = Cache::get('items_schema_columns');
+        $cached = Cache::get('items_schema_columns_v2');
         if ($cached) {
             self::$cachedColumns = $cached;
             $this->priceColumn = $cached['priceColumn'];
@@ -98,10 +98,8 @@ class Item {
                 $this->nameColumn = in_array('name', $fields) ? 'name' : (in_array('title', $fields) ? 'title' : 'name');
 
                 // 5. Detect Qty / Stock
-                $qtyCol = 'qty';
-                if (in_array('qty', $fields)) {
-                    $qtyCol = 'qty';
-                } elseif (in_array('quantity_on_hand', $fields)) {
+                $qtyCol = 'quantity_on_hand';
+                if (in_array('quantity_on_hand', $fields)) {
                     $qtyCol = 'quantity_on_hand';
                 } else {
                     foreach ($fields as $f) {
@@ -136,7 +134,7 @@ class Item {
                     'hasQuantityOnHandColumn' => $this->hasQuantityOnHandColumn,
                     'fields' => $fields
                 ];
-                Cache::set('items_schema_columns', self::$cachedColumns, 86400);
+                Cache::set('items_schema_columns_v2', self::$cachedColumns, 86400);
             }
         } catch (Exception $e) {
             // Fall back silently
