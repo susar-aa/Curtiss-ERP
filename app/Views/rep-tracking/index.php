@@ -828,7 +828,12 @@
     </div>
     <div class="cmd-divider"></div>
     
-    <?php if (!$isHistory): ?>
+    <?php if ($isHistory): ?>
+        <a href="<?= APP_URL ?>/RepTracking/index" class="cmd-btn" title="Active Routes">
+            <i class="ph-bold ph-arrow-left"></i>
+            <span>Active Routes</span>
+        </a>
+    <?php else: ?>
         <a href="<?= APP_URL ?>/RepTracking/history" class="cmd-btn" title="Route History">
             <i class="ph-bold ph-clock-counter-clockwise"></i>
             <span>Route History</span>
@@ -837,12 +842,13 @@
             <i class="ph-bold ph-plus-circle"></i>
             <span>Create Route</span>
         </button>
-        <button type="button" id="btnOpenRouteBinding"  class="cmd-btn" title="Route Binding Panel">
-            <i class="ph-bold ph-link"></i>
-            <span>Binding Panel</span>
-        </button>
-        <div class="cmd-divider"></div>
     <?php endif; ?>
+    
+    <button type="button" id="btnOpenRouteBinding"  class="cmd-btn" title="Route Binding Panel">
+        <i class="ph-bold ph-link"></i>
+        <span>Binding Panel</span>
+    </button>
+    <div class="cmd-divider"></div>
     
     <button id="auto-evt-button-29" type="button"  class="cmd-icon" title="Refresh page">
         <i class="ph ph-arrows-clockwise"></i>
