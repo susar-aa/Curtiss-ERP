@@ -242,7 +242,7 @@
                             <tr>
                                 <td style="color:#666; font-family: monospace; font-size:12px;"><?= htmlspecialchars($p->sku ?: 'N/A') ?></td>
                                 <td><strong><?= htmlspecialchars($p->product_name) ?></strong></td>
-                                <td class="num-col" style="font-weight:500;">Rs: <?= number_format($p->cost, 2) ?></td>
+                                <td class="num-col" style="font-weight:500;">Rs: <?= number_format($p->cost_price, 2) ?></td>
                                 <td class="num-col" style="color:#0066cc; font-weight:500;">Rs: <?= number_format($p->price, 2) ?></td>
                                 <td class="num-col" style="font-weight:bold; color: <?= $p->quantity_on_hand > 5 ? 'var(--text-main)' : '#ff9500' ?>;">
                                     <?= number_format($p->quantity_on_hand) ?>

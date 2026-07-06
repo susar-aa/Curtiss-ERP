@@ -612,7 +612,7 @@ class Report {
                         'item_code' => $product->item_code,
                         'brand' => $product->brand ?? 'N/A',
                         'price' => $product->selling_price ?? $product->price ?? 0.00,
-                        'cost' => $product->cost ?? $product->cost_price ?? 0.00,
+                        'cost' => $product->cost_price ?? 0.00,
                         'qty_on_hand' => $product->quantity_on_hand
                     ],
                     'stock' => $warehouseStock,

@@ -126,7 +126,7 @@ class CreditNote {
                 cn.credit_note_number, 
                 cn.note_date, 
                 c.name as customer_name,
-                i.cost as current_cost
+                i.cost_price as current_cost
             FROM credit_note_items cni
             JOIN credit_notes cn ON cni.credit_note_id = cn.id
             JOIN customers c ON cn.customer_id = c.id
@@ -261,11 +261,11 @@ class CreditNote {
                 }
                 
                 if ($costPrice <= 0 && $item['item_id']) {
-                    $this->db->query("SELECT cost, cost_price FROM items WHERE id = :id");
+                    $this->db->query("SELECT cost_price FROM items WHERE id = :id");
                     $this->db->bind(':id', $item['item_id']);
                     $itm = $this->db->single();
                     if ($itm) {
-                        $costPrice = floatval($itm->cost > 0 ? $itm->cost : $itm->cost_price);
+                        $costPrice = floatval($itm->cost_price);
                     }
                 }
 

@@ -145,11 +145,11 @@ class Invoice {
                     // Log stock movement in ledger
                     require_once '../app/Models/StockLedger.php';
                     $ledger = new StockLedger();
-                    $this->db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                    $this->db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
                     $this->db->bind(':id', $itemId);
                     $itemRow = $this->db->single();
                     $whId = $itemRow ? $itemRow->warehouse_id : null;
-                    $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
+                    $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
                     $ledger->logMovement($itemId, $varId, 0, $item['quantity'], 'Sales Invoice', $invoiceData['invoice_number'], $whId, $userId, 'Sales Invoice Direct Deduction', $itemCost);
                 }
             }
@@ -229,11 +229,11 @@ class Invoice {
                     // Log stock movement in ledger (reversion/addition)
                     require_once '../app/Models/StockLedger.php';
                     $ledger = new StockLedger();
-                    $this->db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                    $this->db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
                     $this->db->bind(':id', $itemId);
                     $itemRow = $this->db->single();
                     $whId = $itemRow ? $itemRow->warehouse_id : null;
-                    $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
+                    $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
                     $ledger->logMovement($itemId, $varId, $oldItem->quantity, 0, 'Sales Invoice Reversion', $oldInvoice->invoice_number, $whId, $userId, 'Invoice Updated - Stock Reverted', $itemCost);
                 }
             }
@@ -350,11 +350,11 @@ class Invoice {
                     // Log stock movement in ledger (new deduction)
                     require_once '../app/Models/StockLedger.php';
                     $ledger = new StockLedger();
-                    $this->db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                    $this->db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
                     $this->db->bind(':id', $itemId);
                     $itemRow = $this->db->single();
                     $whId = $itemRow ? $itemRow->warehouse_id : null;
-                    $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
+                    $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
                     $ledger->logMovement($itemId, $varId, 0, $item['quantity'], 'Sales Invoice', $invoiceData['invoice_number'], $whId, $userId, 'Invoice Updated - New Stock Deducted', $itemCost);
                 }
             }
@@ -413,11 +413,11 @@ class Invoice {
                     // Log stock movement in ledger (HIGH-6)
                     require_once '../app/Models/StockLedger.php';
                     $ledger = new StockLedger();
-                    $this->db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                    $this->db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
                     $this->db->bind(':id', $itemId);
                     $itemRow = $this->db->single();
                     $whId = $itemRow ? $itemRow->warehouse_id : null;
-                    $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
+                    $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
                     $ledger->logMovement($itemId, $varId, 0, 0, 'Reserved Stock Release', $oldInvoice->invoice_number, $whId, $userId, 'Invoice Deleted - Reserved Stock Released', $itemCost);
                 } else {
                     if ($itemId) {
@@ -436,11 +436,11 @@ class Invoice {
 
                     require_once '../app/Models/StockLedger.php';
                     $ledger = new StockLedger();
-                    $this->db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                    $this->db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
                     $this->db->bind(':id', $itemId);
                     $itemRow = $this->db->single();
                     $whId = $itemRow ? $itemRow->warehouse_id : null;
-                    $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
+                    $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
                     $ledger->logMovement($itemId, $varId, $oldItem->quantity, 0, 'Sales Invoice Deletion', $oldInvoice->invoice_number, $whId, $userId, 'Invoice Deleted - Stock Reverted', $itemCost);
                 }
             }

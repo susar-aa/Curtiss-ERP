@@ -187,11 +187,11 @@ class RepVarianceService {
 
                             require_once dirname(__DIR__) . '/Models/StockLedger.php';
                             $ledger = new StockLedger();
-                            $db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                            $db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
                             $db->bind(':id', $itemId);
                             $itemMeta = $db->single();
                             $whId = $itemMeta ? $itemMeta->warehouse_id : null;
-                            $itemCost = $itemMeta ? floatval($itemMeta->cost > 0 ? $itemMeta->cost : ($itemMeta->cost_price > 0 ? $itemMeta->cost_price : 0.00)) : 0.00;
+                            $itemCost = $itemMeta ? floatval($itemMeta->cost_price > 0 ? $itemMeta->cost_price : 0.00) : 0.00;
                             if ($diff > 0) {
                                 $ledger->logMovement($itemId, $varId, 0, $diff, 'Sales Invoice Variance Increase', $line->invoice_number, $whId, $userId, 'Variance Audit Adjust', $itemCost);
                             } else {
@@ -203,7 +203,7 @@ class RepVarianceService {
                             $modifiedInvoices[] = $invoiceId;
                         }
                     } else if ($newQty > 0.0) {
-                        $db->query("SELECT name, price, cost, cost_price, warehouse_id FROM items WHERE id = :id");
+                        $db->query("SELECT name, price, cost_price, warehouse_id FROM items WHERE id = :id");
                         $db->bind(':id', $itemId);
                         $itemRow = $db->single();
                         if ($itemRow) {
@@ -290,7 +290,7 @@ class RepVarianceService {
                                 require_once dirname(__DIR__) . '/Models/StockLedger.php';
                                 $ledger = new StockLedger();
                                 $whId = $itemRow->warehouse_id;
-                                $itemCost = floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00));
+                                $itemCost = floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00);
                                 $ledger->logMovement($itemId, $varId, 0, $newQty, 'Sales Invoice Variance Increase', $invNum, $whId, $userId, 'Variance Audit Adjust', $itemCost);
                             }
 

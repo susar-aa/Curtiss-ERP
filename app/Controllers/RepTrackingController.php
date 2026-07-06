@@ -1740,11 +1740,11 @@ class RepTrackingController extends Controller {
                 // Log movement in stock ledger (HIGH-6)
                 require_once dirname(__DIR__) . '/Models/StockLedger.php';
                 $ledger = new StockLedger();
-                $db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                $db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
                 $db->bind(':id', $itemId);
                 $itemRow = $db->single();
                 $whId = $itemRow ? $itemRow->warehouse_id : null;
-                $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
+                $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
                 
                 $ledger->logMovement($itemId, $varId, 0, 0, 'Reserved Stock Release', $invNumber, $whId, $_SESSION['user_id'] ?? 1, 'Invoice Deleted - Reserved Stock Released', $itemCost);
             }
@@ -2365,11 +2365,11 @@ class RepTrackingController extends Controller {
                         }
 
                         // Log stock movement in ledger (counted returns adjustment)
-                        $db->query("SELECT warehouse_id, cost, cost_price FROM items WHERE id = :id");
+                        $db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
                         $db->bind(':id', $itemId);
                         $itemRow = $db->single();
                         $whId = $itemRow ? $itemRow->warehouse_id : null;
-                        $itemCost = $itemRow ? floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00)) : 0.00;
+                        $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
 
                         $qtyIn = $adjustment > 0 ? $adjustment : 0;
                         $qtyOut = $adjustment < 0 ? abs($adjustment) : 0;

@@ -54,10 +54,10 @@ class StockLedger {
             $this->db->query("SELECT COUNT(*) as cnt FROM stock_ledger");
             $count = $this->db->single();
             if ($count && $count->cnt == 0) {
-                $this->db->query("SELECT id, quantity_on_hand, cost, cost_price, warehouse_id FROM items WHERE quantity_on_hand > 0");
+                $this->db->query("SELECT id, quantity_on_hand, cost_price, warehouse_id FROM items WHERE quantity_on_hand > 0");
                 $items = $this->db->resultSet() ?: [];
                 foreach ($items as $item) {
-                    $cost = floatval($item->cost > 0 ? $item->cost : ($item->cost_price > 0 ? $item->cost_price : 0.00));
+                    $cost = floatval($item->cost_price > 0 ? $item->cost_price : 0.00);
                     $this->db->query("INSERT INTO stock_ledger (item_id, transaction_type, reference_number, warehouse_id, quantity_in, quantity_out, running_balance, unit_cost, total_value, user_id, remarks)
                                       VALUES (:iid, 'Opening Stock', 'INIT-STOCK', :whid, :qty, 0, :qty, :cost, :val, :uid, 'Initial system stock import')");
                     $this->db->bind(':iid', $item->id);

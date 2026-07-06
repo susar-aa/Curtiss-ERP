@@ -66,3 +66,6 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS accessible_apps VARCHAR(255) DEFAULT 
 
 -- 6. Drop redundant qty column from items table
 ALTER TABLE items DROP COLUMN qty;
+
+-- 7. Drop redundant cost column from items table
+ALTER TABLE items DROP COLUMN cost;

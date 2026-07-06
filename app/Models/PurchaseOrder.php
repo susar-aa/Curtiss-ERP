@@ -67,7 +67,7 @@ class PurchaseOrder {
 
     public function getVendorProductsSales($vendorId, $startDate, $endDate) {
         $this->db->query("
-            SELECT i.id, i.name as item_name, COALESCE(NULLIF(i.cost_price, 0.00), i.cost) as cost, i.quantity_on_hand, 
+            SELECT i.id, i.name as item_name, COALESCE(i.cost_price, 0.00) as cost, i.quantity_on_hand, 
                    COALESCE(SUM(ii.quantity), 0) as sold_qty
             FROM items i
             LEFT JOIN invoice_items ii ON i.name = ii.description
@@ -75,7 +75,7 @@ class PurchaseOrder {
                                   AND inv.invoice_date BETWEEN :sdate AND :edate 
                                   AND inv.status != 'Voided'
             WHERE i.vendor_id = :vid
-            GROUP BY i.id, i.name, i.cost, i.cost_price, i.quantity_on_hand
+            GROUP BY i.id, i.name, i.cost_price, i.quantity_on_hand
             ORDER BY sold_qty DESC, i.name ASC
         ");
         $this->db->bind(':vid', $vendorId);

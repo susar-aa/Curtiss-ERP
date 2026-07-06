@@ -391,6 +391,17 @@ class MigrationManager {
                     return false;
                 }
                 return true;
+            },
+            'drop_items_cost' => function(PDO $dbh) {
+                try {
+                    $q = $dbh->query("SHOW COLUMNS FROM items LIKE 'cost'");
+                    if ($q->rowCount() > 0) {
+                        $dbh->exec("ALTER TABLE items DROP COLUMN cost");
+                    }
+                } catch (PDOException $e) {
+                    return false;
+                }
+                return true;
             }
         ];
     }
