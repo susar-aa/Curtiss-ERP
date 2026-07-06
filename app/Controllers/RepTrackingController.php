@@ -700,28 +700,15 @@ class RepTrackingController extends Controller {
     }
 
     public function api_get_route_variances($routeId) {
-        $db = new Database();
-        RepVarianceService::autoApplyRouteSubstitutions($db, $routeId, $_SESSION['user_id'] ?? 1);
+        try {
+            $db = new Database();
+            RepVarianceService::autoApplyRouteSubstitutions($db, $routeId, $_SESSION['user_id'] ?? 1);
 
-        // Fetch route details first
-        $db->query("SELECT status, route_name, route_binding_id FROM rep_daily_routes WHERE id = :id");
-        $db->bind(':id', $routeId);
-        $route = $db->single();
+            // Fetch route details first
+            $db->query("SELECT status, route_name, route_binding_id FROM rep_daily_routes WHERE id = :id");
+            $db->bind(':id', $routeId);
+            $route = $db->single();
 
-        $db->query("
-            SELECT d.id as id, d.vehicle_number, d.driver_name, d.status
-            FROM deliveries d
-            WHERE d.rep_route_id = :rid OR d.secondary_rep_route_id = :rid
-        ");
-        $db->bind(':rid', $routeId);
-        $deliveries = $db->resultSet() ?: [];
-
-        // If no delivery exists but route status is 'Loading', auto-create it
-        if (empty($deliveries) && $route && $route->status === 'Loading') {
-            require_once dirname(__DIR__) . '/Services/RepRouteService.php';
-            RepRouteService::ensureDeliveryAndPickingPopulated($db, $routeId);
-            
-            // Re-fetch deliveries
             $db->query("
                 SELECT d.id as id, d.vehicle_number, d.driver_name, d.status
                 FROM deliveries d
@@ -729,117 +716,141 @@ class RepTrackingController extends Controller {
             ");
             $db->bind(':rid', $routeId);
             $deliveries = $db->resultSet() ?: [];
-        }
 
-        $results = [];
-        foreach ($deliveries as $del) {
-            // Ensure picking items are populated
-            require_once dirname(__DIR__) . '/Services/RepRouteService.php';
-            RepRouteService::ensurePickingItemsPopulated($db, $del->id);
+            // If no delivery exists but route status is 'Loading', auto-create it
+            if (empty($deliveries) && $route && $route->status === 'Loading') {
+                require_once dirname(__DIR__) . '/Services/RepRouteService.php';
+                RepRouteService::ensureDeliveryAndPickingPopulated($db, $routeId);
+                
+                // Re-fetch deliveries
+                $db->query("
+                    SELECT d.id as id, d.vehicle_number, d.driver_name, d.status
+                    FROM deliveries d
+                    WHERE d.rep_route_id = :rid OR d.secondary_rep_route_id = :rid
+                ");
+                    $db->bind(':rid', $routeId);
+                $deliveries = $db->resultSet() ?: [];
+            }
 
-            $db->query("
-                SELECT dpi.item_id, dpi.variation_option_id, dpi.item_name, dpi.required_qty, dpi.loaded_qty as pre_loaded_qty, 
-                       dpi.final_loaded_qty, dpi.variance, dpi.is_verified, dpi.verified_at, u.username as verifier_name
-                FROM delivery_picking_items dpi
-                LEFT JOIN users u ON dpi.verified_by = u.id
-                WHERE dpi.delivery_id = :did
-            ");
-            $db->bind(':did', $del->id);
-            $items = $db->resultSet() ?: [];
+            $results = [];
+            foreach ($deliveries as $del) {
+                // Ensure picking items are populated
+                require_once dirname(__DIR__) . '/Services/RepRouteService.php';
+                RepRouteService::ensurePickingItemsPopulated($db, $del->id);
+
+                $db->query("
+                    SELECT dpi.item_id, dpi.variation_option_id, dpi.item_name, dpi.required_qty, dpi.loaded_qty as pre_loaded_qty, 
+                           dpi.final_loaded_qty, dpi.variance, dpi.is_verified, dpi.verified_at, u.username as verifier_name
+                    FROM delivery_picking_items dpi
+                    LEFT JOIN users u ON dpi.verified_by = u.id
+                    WHERE dpi.delivery_id = :did
+                ");
+                $db->bind(':did', $del->id);
+                $items = $db->resultSet() ?: [];
+                
+                $shortages = 0;
+                $overages = 0;
+                $totalItems = count($items);
+                $verifiedItems = 0;
+                
+                // Fetch substitutions for this delivery
+                $db->query("
+                    SELECT ps.*, 
+                           COALESCE(oi.name, 'Deleted Product') as original_item_name, 
+                           COALESCE(ri.name, 'Deleted Product') as replacement_item_name
+                    FROM product_substitutions ps
+                    LEFT JOIN items oi ON ps.original_item_id = oi.id
+                    LEFT JOIN items ri ON ps.replacement_item_id = ri.id
+                    WHERE ps.delivery_id = :delivery_id
+                ");
+                $db->bind(':delivery_id', $del->id);
+                $deliverySubs = $db->resultSet() ?: [];
+
+                foreach ($items as $item) {
+                    $item->required_qty = floatval($item->required_qty);
+                    $item->pre_loaded_qty = floatval($item->pre_loaded_qty);
+                    $item->final_loaded_qty = $item->final_loaded_qty !== null ? floatval($item->final_loaded_qty) : null;
+                    $item->variance = floatval($item->variance);
+                    $item->is_verified = intval($item->is_verified);
+                    
+                    if ($item->is_verified) {
+                        $verifiedItems++;
+                    }
+                    if ($item->variance < 0) {
+                        $shortages += abs($item->variance);
+                    } elseif ($item->variance > 0) {
+                        $overages += $item->variance;
+                    }
+
+                    // Attach substitution details
+                    $item->replaced_by_name = null;
+                    $item->replacement_qty = null;
+                    $item->replaces_name = null;
+
+                    foreach ($deliverySubs as $ds) {
+                        if (intval($ds->original_item_id) === intval($item->item_id)) {
+                            $item->replaced_by_name = $ds->replacement_item_name;
+                            $item->replacement_qty = floatval($ds->loaded_qty);
+                        }
+                        if (intval($ds->replacement_item_id) === intval($item->item_id) && floatval($item->required_qty) === 0.0) {
+                            $item->replaces_name = $ds->original_item_name;
+                        }
+                    }
+                }
+                
+                $results[] = [
+                    'delivery_id' => $del->id,
+                    'vehicle_number' => $del->vehicle_number,
+                    'driver_name' => $del->driver_name,
+                    'status' => $del->status,
+                    'total_items' => $totalItems,
+                    'verified_items' => $verifiedItems,
+                    'shortages' => $shortages,
+                    'overages' => $overages,
+                    'items' => $items
+                ];
+            }
             
-            $shortages = 0;
-            $overages = 0;
-            $totalItems = count($items);
-            $verifiedItems = 0;
-            
-            // Fetch substitutions for this delivery
+            // Fetch substitutions
             $db->query("
                 SELECT ps.*, 
                        COALESCE(oi.name, 'Deleted Product') as original_item_name, 
-                       COALESCE(ri.name, 'Deleted Product') as replacement_item_name
+                       COALESCE(ri.name, 'Deleted Product') as replacement_item_name,
+                       u.username as creator_name
                 FROM product_substitutions ps
                 LEFT JOIN items oi ON ps.original_item_id = oi.id
                 LEFT JOIN items ri ON ps.replacement_item_id = ri.id
-                WHERE ps.delivery_id = :delivery_id
+                LEFT JOIN users u ON ps.user_id = u.id
+                WHERE ps.route_id = :rid
+                ORDER BY ps.created_at DESC
             ");
-            $db->bind(':delivery_id', $del->id);
-            $deliverySubs = $db->resultSet() ?: [];
+            $db->bind(':rid', $routeId);
+            $substitutions = $db->resultSet() ?: [];
 
-            foreach ($items as $item) {
-                $item->required_qty = floatval($item->required_qty);
-                $item->pre_loaded_qty = floatval($item->pre_loaded_qty);
-                $item->final_loaded_qty = $item->final_loaded_qty !== null ? floatval($item->final_loaded_qty) : null;
-                $item->variance = floatval($item->variance);
-                $item->is_verified = intval($item->is_verified);
-                
-                if ($item->is_verified) {
-                    $verifiedItems++;
-                }
-                if ($item->variance < 0) {
-                    $shortages += abs($item->variance);
-                } elseif ($item->variance > 0) {
-                    $overages += $item->variance;
-                }
-
-                // Attach substitution details
-                $item->replaced_by_name = null;
-                $item->replacement_qty = null;
-                $item->replaces_name = null;
-
-                foreach ($deliverySubs as $ds) {
-                    if (intval($ds->original_item_id) === intval($item->item_id)) {
-                        $item->replaced_by_name = $ds->replacement_item_name;
-                        $item->replacement_qty = floatval($ds->loaded_qty);
-                    }
-                    if (intval($ds->replacement_item_id) === intval($item->item_id) && floatval($item->required_qty) === 0.0) {
-                        $item->replaces_name = $ds->original_item_name;
-                    }
-                }
+            $loadingItems = $this->trackingModel->getRouteLoadingItems($routeId) ?: [];
+            foreach ($loadingItems as $li) {
+                $li->total_qty = floatval($li->total_qty);
+                $li->unit_price = floatval($li->unit_price);
             }
-            
-            $results[] = [
-                'delivery_id' => $del->id,
-                'vehicle_number' => $del->vehicle_number,
-                'driver_name' => $del->driver_name,
-                'status' => $del->status,
-                'total_items' => $totalItems,
-                'verified_items' => $verifiedItems,
-                'shortages' => $shortages,
-                'overages' => $overages,
-                'items' => $items
-            ];
-        }
-        
-        // Fetch substitutions
-        $db->query("
-            SELECT ps.*, 
-                   COALESCE(oi.name, 'Deleted Product') as original_item_name, 
-                   COALESCE(ri.name, 'Deleted Product') as replacement_item_name,
-                   u.username as creator_name
-            FROM product_substitutions ps
-            LEFT JOIN items oi ON ps.original_item_id = oi.id
-            LEFT JOIN items ri ON ps.replacement_item_id = ri.id
-            LEFT JOIN users u ON ps.user_id = u.id
-            WHERE ps.route_id = :rid
-            ORDER BY ps.created_at DESC
-        ");
-        $db->bind(':rid', $routeId);
-        $substitutions = $db->resultSet() ?: [];
 
-        $loadingItems = $this->trackingModel->getRouteLoadingItems($routeId) ?: [];
-        foreach ($loadingItems as $li) {
-            $li->total_qty = floatval($li->total_qty);
-            $li->unit_price = floatval($li->unit_price);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status' => 'success', 
+                'deliveries' => $results,
+                'substitutions' => $substitutions,
+                'loading_items' => $loadingItems
+            ]);
+            exit;
+        } catch (Throwable $e) {
+            error_log("api_get_route_variances failed for Route ID {$routeId}: " . $e->getMessage());
+            header('Content-Type: application/json');
+            http_response_code(500);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Internal server error: ' . $e->getMessage()
+            ]);
+            exit;
         }
-
-        header('Content-Type: application/json');
-        echo json_encode([
-            'status' => 'success', 
-            'deliveries' => $results,
-            'substitutions' => $substitutions,
-            'loading_items' => $loadingItems
-        ]);
-        exit;
     }
 
     public function api_get_delivery_details($id) {
