@@ -29,6 +29,26 @@ class App {
         $isPickingApi = isset($url[0]) && strtolower($url[0]) === 'picking';
         $isPickingLogin = $isPickingApi && isset($url[1]) && strtolower($url[1]) === 'api_login';
 
+        // Support token/header-based authentication fallback for Picking PWA on mobile browsers
+        if (!isset($_SESSION['user_id']) && $isPickingApi) {
+            $pwaUserId = $_SERVER['HTTP_X_USER_ID'] ?? '';
+            if (empty($pwaUserId) && function_exists('getallheaders')) {
+                $headers = getallheaders();
+                $pwaUserId = $headers['X-User-ID'] ?? $headers['x-user-id'] ?? '';
+            }
+            if (!empty($pwaUserId)) {
+                $_SESSION['user_id'] = intval($pwaUserId);
+                $db = new Database();
+                $db->query("SELECT username, role FROM users WHERE id = :id");
+                $db->bind(':id', intval($pwaUserId));
+                $u = $db->single();
+                if ($u) {
+                    $_SESSION['username'] = $u->username;
+                    $_SESSION['user_role'] = $u->role;
+                }
+            }
+        }
+
         // Global CSRF Protection
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isMobileSync && !$isPickingApi) {
             $token = $_POST['csrf_token'] ?? '';
