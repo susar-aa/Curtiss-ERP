@@ -2872,6 +2872,7 @@
         .then(data => {
             if (data.status === 'success') {
                 alert("Settle balancing successfully completed! Route marked as Completed.");
+                window.shouldReloadOnClose = true;
                 openBalancingReportModal(delId);
             } else {
                 alert("Error: " + data.message);
@@ -2881,6 +2882,8 @@
             }
         });
     }
+
+    window.shouldReloadOnClose = false;
 
     function openBalancingReportModal(delId) {
         const modal = document.getElementById('balancingReportModal');
@@ -2898,7 +2901,10 @@
             modal.style.display = 'none';
             iframe.src = 'about:blank';
         }
-        window.location.reload();
+        if (window.shouldReloadOnClose) {
+            window.shouldReloadOnClose = false;
+            window.location.reload();
+        }
     }
 
     function printBalancingReportFromModal() {
@@ -2912,7 +2918,7 @@
     function printBalancingReport() {
         const d = document.getElementById('route_data_' + currentRouteId);
         const delId = d ? d.getAttribute('data-delivery-id') : null;
-        if (delId) { window.open('<?= APP_URL ?>/RepTracking/balancing_report/' + delId, '_blank'); }
+        if (delId) { openBalancingReportModal(delId); }
     }
 
     function printLoadingSheetSpreadsheet() {
