@@ -137,6 +137,12 @@
             </div>
         <?php endif; ?>
 
+        <?php if(!empty($data['system_err'])): ?>
+            <div style="background: rgba(255, 59, 48, 0.15); border: 1px dashed #ff3b30; color: #ff453a; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-bottom: 20px; line-height: 1.4; text-align: left; word-break: break-all;">
+                <strong>System Error:</strong> <?= htmlspecialchars($data['system_err']) ?>
+            </div>
+        <?php endif; ?>
+
         <form action="<?= APP_URL ?>/auth/login" method="POST">
             <!-- Hidden CSRF Token -->
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">

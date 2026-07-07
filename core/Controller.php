@@ -26,7 +26,7 @@ class Controller {
             require_once '../app/Models/AuditLog.php';
             $audit = new AuditLog();
             $audit->logAction($userId, $action, $module, $description, $recordId, $oldValues, $newValues);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             // Failsafe to avoid crashing the main application flow
         }
     }
