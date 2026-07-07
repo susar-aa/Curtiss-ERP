@@ -986,14 +986,14 @@ class RepTrackingController extends Controller {
                 $routeRow = $db->single();
                 $bindingId = $routeRow ? $routeRow->route_binding_id : 0;
 
-                // Check for pending collections
-                $db->query("SELECT COUNT(*) as pending_count FROM pending_collections WHERE (route_id = :rid OR route_id IN (SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid AND route_binding_id IS NOT NULL)) AND status = 'Pending'");
+                // Check for unverified collections
+                $db->query("SELECT COUNT(*) as pending_count FROM pending_collections WHERE (route_id = :rid OR route_id IN (SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid AND route_binding_id IS NOT NULL)) AND is_verified = 0");
                 $db->bind(':rid', $repRouteId);
                 $db->bind(':bid', $bindingId);
                 $pendingRow = $db->single();
                 
                 if ($pendingRow && intval($pendingRow->pending_count) > 0) {
-                    throw new Exception("Cannot finalize dispatch: There are outstanding payment collections that have not been verified and finalized by the accounts department.");
+                    throw new Exception("Cannot finalize dispatch: There are outstanding payment collections that have not been verified and approved by the accounts department.");
                 }
             }
 
@@ -1471,9 +1471,6 @@ class RepTrackingController extends Controller {
                 $db->bind(':id', $paymentId);
                 $db->execute();
 
-                if ($isVerified === 1 && $currentStatus === 'Pending') {
-                    $this->trackingModel->finalizePayments([$paymentId], $userId, [], [$paymentId => $debitAccId], [$paymentId => $creditAccId]);
-                }
             }
 
             // Transition route status based on pending collections count
