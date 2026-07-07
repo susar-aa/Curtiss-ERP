@@ -167,8 +167,8 @@
                         <td class="text-center"><?= intval($st->loaded_qty) ?></td>
                         <td class="text-center"><?= intval($st->delivered_qty) ?></td>
                         <td class="text-center"><?= $expectedReturned ?></td>
-                        <td class="text-center" style="font-weight: bold;"><?= $actualCounted ?></td>
-                        <td class="text-center <?= $varianceClass ?>"><?= $varianceStr ?></td>
+                        <td class="text-center"></td>
+                        <td class="text-center"></td>
                     </tr>
                 <?php 
                     endforeach;

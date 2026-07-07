@@ -230,7 +230,7 @@
 
     <div class="report-header">
         <h1 class="report-title">Route Summary</h1>
-        <h2 style="margin: 8px 0 4px 0; font-size: 16px; font-weight: 700; color: #111; text-transform: uppercase;">Route Name: <?= htmlspecialchars($d->route_name) ?></h2>
+        <h2 style="margin: 8px 0 4px 0; font-size: 16px; font-weight: 700; color: #111; text-transform: uppercase;"><?= htmlspecialchars($d->route_name) ?></h2>
         <h3 style="margin: 0 0 5px 0; font-size: 13px; font-weight: 500; color: #555;">Representative: <?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?> &nbsp;|&nbsp; Delivered Date: <?= date('l, F d, Y', strtotime($d->delivery_date)) ?></h3>
     </div>
 

@@ -278,7 +278,8 @@
             { id: 7, num: 6, name: 'Reconciliation', statusKey: 'Finalizing' },
             { id: 8, num: 7, name: 'Delivery Execution', statusKey: 'Finalizing' },
             { id: 9, num: 8, name: 'Return Stock', statusKey: 'Finalizing' },
-            { id: 10, num: 9, name: 'Payments', statusKey: 'Finalizing' }
+            { id: 10, num: 9, name: 'Payments', statusKey: 'Finalizing' },
+            { id: 11, num: 10, name: 'Finalize', statusKey: 'Finalizing' }
         ];
 
         const statusSequence = ['Active', 'Pending GL', 'Adjustments', 'Loading', 'Variance Adjustment', 'Finalizing', 'Completed', 'Finalized'];
@@ -329,6 +330,20 @@
                 } else if (step.id === 9) {
                     // Check if stock verified checkbox is checked
                     if (document.getElementById('settleVerifyStock')?.checked) {
+                        isStepCompleted = true;
+                    }
+                } else if (step.id === 10) {
+                    let allCollectionsApproved = true;
+                    let hasChks = false;
+                    document.querySelectorAll('.settle-payment-chk').forEach(chk => {
+                        hasChks = true;
+                        if (!chk.checked) allCollectionsApproved = false;
+                    });
+                    if (hasChks && allCollectionsApproved) {
+                        isStepCompleted = true;
+                    }
+                } else if (step.id === 11) {
+                    if (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized') {
                         isStepCompleted = true;
                     }
                 }
@@ -456,13 +471,25 @@
         currentTabIndex = tabIndex;
         
         // Update tab buttons styling
-        document.querySelectorAll('#routeWorkspaceTabs .scroll-tab-btn').forEach((btn, idx) => {
-            if (idx + 1 === tabIndex) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
+        const tabBtnMap = {
+            1: 'auto-evt-button-4',
+            3: 'auto-evt-button-6',
+            4: 'auto-evt-button-7',
+            5: 'auto-evt-button-8',
+            6: 'auto-evt-button-9',
+            7: 'auto-evt-button-10',
+            8: 'auto-evt-button-11',
+            9: 'auto-evt-button-12',
+            10: 'auto-evt-button-13',
+            11: 'btnTabFinalize'
+        };
+        document.querySelectorAll('#routeWorkspaceTabs .scroll-tab-btn').forEach(btn => {
+            btn.classList.remove('active');
         });
+        const activeBtnId = tabBtnMap[tabIndex];
+        if (activeBtnId) {
+            document.getElementById(activeBtnId)?.classList.add('active');
+        }
         
         // Toggle tab panels display
         document.querySelectorAll('.workspace-tab-panel').forEach(panel => {
@@ -504,6 +531,9 @@
                 break;
             case 10:
                 loadTab10Accounting(currentRouteId);
+                break;
+            case 11:
+                loadTab11Finalize(currentRouteId);
                 break;
         }
     }
@@ -2545,6 +2575,125 @@
             });
     }
 
+    function applyFinalizeDefensiveGuard(routeId, delId) {
+        const guardEl = document.getElementById('tab11GuardContainer');
+        const contentEl = document.getElementById('tab11ContentContainer');
+        if (!guardEl || !contentEl) return false;
+
+        let isBlocked = false;
+        let title = '';
+        let desc = '';
+
+        if (currentRouteStatus === 'Active') {
+            isBlocked = true;
+            title = 'Route Still Active';
+            desc = 'Route summary and finalization options are not available until the representative has ended the route from their app.';
+        }
+
+        if (isBlocked) {
+            guardEl.innerHTML = `
+                <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 45px 20px; text-align: center; max-width: 580px; margin: 40px auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <div style="width: 60px; height: 60px; background: #fffbeb; color: #d97706; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; font-size: 28px;">
+                        <i class="ph ph-warning-circle"></i>
+                    </div>
+                    <h4 style="margin: 0 0 10px 0; font-size: 15px; font-weight: bold; color: #0f172a;">${title}</h4>
+                    <p style="margin: 0; font-size: 12px; color: #64748b; line-height: 1.6;">${desc}</p>
+                </div>
+            `;
+            guardEl.style.display = 'block';
+            contentEl.style.display = 'none';
+            return true;
+        } else {
+            guardEl.style.display = 'none';
+            contentEl.style.display = 'block';
+            return false;
+        }
+    }
+
+    function loadTab11Finalize(routeId) {
+        const rdata = document.getElementById('route_data_' + routeId);
+        const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
+
+        if (applyFinalizeDefensiveGuard(routeId, delId)) {
+            return;
+        }
+
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + (delId || 0) + '?route_id=' + routeId)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status !== 'success') return;
+                currentDeliveryDetails = data;
+                
+                const delivery = data.delivery || {};
+                const balancing = data.balancing || {};
+                
+                document.getElementById('sumRouteName').innerText = delivery.route_name || '--';
+                document.getElementById('sumRepName').innerText = ((delivery.first_name || '') + ' ' + (delivery.last_name || '')).trim() || '--';
+                document.getElementById('sumVehicleNumber').innerText = delivery.vehicle_number || '--';
+                document.getElementById('sumDriverName').innerText = delivery.driver_name || '--';
+                document.getElementById('sumPartnerName').innerText = delivery.partner_name || 'None';
+                
+                const startMeter = parseFloat(delivery.start_meter) || 0;
+                const endMeter = parseFloat(delivery.end_meter) || 0;
+                document.getElementById('sumStartMeter').innerText = startMeter.toLocaleString() + ' KM';
+                document.getElementById('sumEndMeter').innerText = endMeter.toLocaleString() + ' KM';
+                document.getElementById('sumDistanceTraveled').innerText = Math.max(0, endMeter - startMeter).toLocaleString() + ' KM';
+                
+                const cashSales = parseFloat(balancing.cash_sales) || 0;
+                const chequeSales = parseFloat(balancing.cheque_sales) || 0;
+                const bankSales = parseFloat(balancing.bank_sales) || 0;
+                const creditSales = parseFloat(balancing.credit_sales) || 0;
+                const totalSales = cashSales + chequeSales + bankSales + creditSales;
+                
+                document.getElementById('sumCashSales').innerText = 'Rs ' + cashSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('sumChequeSales').innerText = 'Rs ' + chequeSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('sumBankSales').innerText = 'Rs ' + bankSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('sumCreditSales').innerText = 'Rs ' + creditSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('sumTotalSales').innerText = 'Rs ' + totalSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                
+                let driverCashCollections = 0.0;
+                if (balancing.payments) {
+                    balancing.payments.forEach(p => {
+                        if (p.payment_method === 'Cash' && !p.mobile_rep_id) {
+                            driverCashCollections += parseFloat(p.amount) || 0;
+                        }
+                    });
+                }
+                
+                let cashDenoms = {};
+                try {
+                    if (delivery.cash_denominations) {
+                        cashDenoms = JSON.parse(delivery.cash_denominations);
+                    }
+                } catch(e) {}
+                
+                let actualCash = 0.0;
+                const denomList = [5000, 2000, 1000, 500, 100, 50, 20];
+                denomList.forEach(den => {
+                    const cnt = parseInt(cashDenoms[den]) || 0;
+                    actualCash += cnt * den;
+                });
+                actualCash += parseFloat(cashDenoms['coins']) || 0;
+                
+                const variance = actualCash - driverCashCollections;
+                
+                document.getElementById('sumExpectedCash').innerText = 'Rs ' + driverCashCollections.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('sumActualCash').innerText = 'Rs ' + actualCash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                
+                const varEl = document.getElementById('sumCashVariance');
+                varEl.innerText = (variance >= 0 ? '+' : '') + 'Rs ' + variance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                if (Math.abs(variance) < 0.01) {
+                    varEl.style.color = '#166534';
+                } else if (variance < 0) {
+                    varEl.style.color = '#dc2626';
+                } else {
+                    varEl.style.color = '#ef6c00';
+                }
+                
+                checkSettleVerification();
+            });
+    }
+
     function saveAccountingDraft() {
         if (!currentRouteId || !currentDeliveryDetails) return;
 
@@ -2771,7 +2920,7 @@
                         <td style="padding:6px 4px; text-align:center;">
                             <input type="checkbox" class="settle-payment-chk" value="${p.id}" 
                                    ${(isVerified || isReadOnly) ? 'checked' : ''} ${isReadOnly ? 'disabled' : ''} 
-                                   onchange="checkSettleVerification()"
+                                   onchange="checkSettleVerification(); updateSidebarProgress();"
                                    style="width:16px; height:16px; cursor:${isReadOnly ? 'not-allowed' : 'pointer'};" />
                         </td>
                         <td style="padding:6px 4px;">
@@ -3835,6 +3984,7 @@
         document.getElementById('auto-evt-button-11')?.addEventListener('click', function(event) { switchRouteTab(8, this); });
         document.getElementById('auto-evt-button-12')?.addEventListener('click', function(event) { switchRouteTab(9, this); });
         document.getElementById('auto-evt-button-13')?.addEventListener('click', function(event) { switchRouteTab(10, this); });
+        document.getElementById('btnTabFinalize')?.addEventListener('click', function(event) { switchRouteTab(11, this); });
         document.getElementById('auto-evt-button-14')?.addEventListener('click', (event) => { goBackToRoutes(); });
         document.getElementById('sb-step-1')?.addEventListener('click', (event) => { switchRouteTab(1); });
         document.getElementById('sb-step-3')?.addEventListener('click', (event) => { switchRouteTab(3); });
@@ -3845,6 +3995,7 @@
         document.getElementById('sb-step-8')?.addEventListener('click', (event) => { switchRouteTab(8); });
         document.getElementById('sb-step-9')?.addEventListener('click', (event) => { switchRouteTab(9); });
         document.getElementById('sb-step-10')?.addEventListener('click', (event) => { switchRouteTab(10); });
+        document.getElementById('sb-step-11')?.addEventListener('click', (event) => { switchRouteTab(11); });
         document.getElementById('auto-evt-button-15')?.addEventListener('click', (event) => { printBalancingReport(); });
         document.getElementById('auto-evt-button-16')?.addEventListener('click', (event) => { printLoadingSheetSpreadsheet(); });
         document.getElementById('auto-evt-button-17')?.addEventListener('click', (event) => { printLoadingSheet('summary'); });
@@ -3870,7 +4021,7 @@
         document.getElementById('actQty20')?.addEventListener('input', (event) => { recalculateDenominations(); });
         document.getElementById('actValCoins')?.addEventListener('input', (event) => { recalculateDenominations(); });
         document.getElementById('btnSaveReconciliationDraft')?.addEventListener('click', (event) => { saveReconciliationDraft(); });
-        document.getElementById('settleVerifyStock')?.addEventListener('change', (event) => { checkSettleVerification(); });
+        document.getElementById('settleVerifyStock')?.addEventListener('change', (event) => { checkSettleVerification(); updateSidebarProgress(); });
         document.getElementById('btnSaveReturnStockDraft')?.addEventListener('click', (event) => { saveReturnStockDraft(); });
         document.getElementById('btnPrintReturnStock')?.addEventListener('click', (event) => {
             if (!currentRouteId) return;
@@ -3955,6 +4106,7 @@ window.buildAccountOptions = buildAccountOptions;
     window.loadTab9ReturnStock = loadTab9ReturnStock;
     window.saveReturnStockDraft = saveReturnStockDraft;
     window.loadTab10Accounting = loadTab10Accounting;
+    window.loadTab11Finalize = loadTab11Finalize;
     window.saveAccountingDraft = saveAccountingDraft;
     window.checkSettleVerification = checkSettleVerification;
     window.switchSettleDeTab = switchSettleDeTab;

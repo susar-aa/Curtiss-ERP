@@ -181,6 +181,7 @@
             <button id="auto-evt-button-11" class="scroll-tab-btn" ><i class="ph ph-steering-wheel"></i> 7. Delivery</button>
             <button id="auto-evt-button-12" class="scroll-tab-btn" ><i class="ph ph-package"></i> 8. Return Stock Verification</button>
             <button id="auto-evt-button-13" class="scroll-tab-btn" ><i class="ph ph-briefcase"></i> 9. Payments</button>
+            <button id="btnTabFinalize" class="scroll-tab-btn" ><i class="ph ph-flag-checkered"></i> 10. Finalize</button>
         </div>
 
         <!-- Workspace Layout Container (Sidebar + Content Body) -->
@@ -254,6 +255,13 @@
                         <div class="step-info">
                             <span class="step-title">Payments</span>
                             <span class="step-desc">Verify & approve payments</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-step-item" id="sb-step-11" >
+                        <div class="step-dot">10</div>
+                        <div class="step-info">
+                            <span class="step-title">Finalize</span>
+                            <span class="step-desc">Settle & Close Route</span>
                         </div>
                     </div>
                 </div>
@@ -746,6 +754,109 @@
                             </div>
                         </div>
 
+                    </div>
+                    <div id="tab10GuardContainer" style="display:none;"></div>
+                </div>
+
+                <!-- TAB 11: FINALIZE ROUTE -->
+                <div class="workspace-tab-panel" id="tabpanel-11" style="display:none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div>
+                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Finalize Route</h3>
+                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Review the route summary and submit final settlement.</p>
+                        </div>
+                    </div>
+                    
+                    <div id="tab11ContentContainer">
+                        <!-- Summary Cards Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 20px;">
+                            <!-- Card 1: Sales & Collections Summary -->
+                            <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm);">
+                                <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-chart-bar"></i> Sales & Collections Summary</h4>
+                                
+                                <div style="margin-bottom: 15px; background: #f8fafc; padding: 12px; border-radius: 6px;">
+                                    <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size: 13px;">
+                                        <span>Cash Sales:</span>
+                                        <strong id="sumCashSales" style="font-family:monospace;">Rs 0.00</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size: 13px;">
+                                        <span>Cheque Sales:</span>
+                                        <strong id="sumChequeSales" style="font-family:monospace;">Rs 0.00</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size: 13px;">
+                                        <span>Bank Transfer Sales:</span>
+                                        <strong id="sumBankSales" style="font-family:monospace;">Rs 0.00</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size: 13px;">
+                                        <span>Credit Sales:</span>
+                                        <strong id="sumCreditSales" style="font-family:monospace;">Rs 0.00</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; font-weight:bold; border-top: 1px dashed #cbd5e1; padding-top: 6px; margin-top: 6px; font-size: 13px;">
+                                        <span>Total Route Sales:</span>
+                                        <strong id="sumTotalSales" style="font-family:monospace;">Rs 0.00</strong>
+                                    </div>
+                                </div>
+
+                                <div style="background: #f0fdf4; padding: 12px; border-radius: 6px;">
+                                    <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size: 13px; color: #166534;">
+                                        <span>Expected Cash Collections (Driver):</span>
+                                        <strong id="sumExpectedCash" style="font-family:monospace;">Rs 0.00</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size: 13px; color: #166534;">
+                                        <span>Actual Cash Entered:</span>
+                                        <strong id="sumActualCash" style="font-family:monospace;">Rs 0.00</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; font-weight:bold; border-top: 1px dashed #bbf7d0; padding-top: 6px; margin-top: 6px; font-size: 13px; color: #166534;">
+                                        <span>Cash Count Variance:</span>
+                                        <strong id="sumCashVariance" style="font-family:monospace;">Rs 0.00</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card 2: Vehicle & Route Info -->
+                            <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm);">
+                                <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-info"></i> Route & Vehicle Info</h4>
+                                
+                                <div style="margin-bottom: 15px; font-size: 13px;">
+                                    <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
+                                        <span style="color:var(--t-secondary);">Route:</span>
+                                        <strong id="sumRouteName">--</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
+                                        <span style="color:var(--t-secondary);">Representative:</span>
+                                        <strong id="sumRepName">--</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
+                                        <span style="color:var(--t-secondary);">Vehicle Number:</span>
+                                        <strong id="sumVehicleNumber">--</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
+                                        <span style="color:var(--t-secondary);">Driver Name:</span>
+                                        <strong id="sumDriverName">--</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between;">
+                                        <span style="color:var(--t-secondary);">Partner/Helper:</span>
+                                        <strong id="sumPartnerName">--</strong>
+                                    </div>
+                                </div>
+
+                                <div style="background: #f8fafc; padding: 12px; border-radius: 6px; font-size: 13px;">
+                                    <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
+                                        <span>Start Meter:</span>
+                                        <strong id="sumStartMeter">0 KM</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
+                                        <span>End Meter:</span>
+                                        <strong id="sumEndMeter">0 KM</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; font-weight:bold; border-top: 1px dashed #cbd5e1; padding-top: 6px; margin-top: 6px;">
+                                        <span>Distance Traveled:</span>
+                                        <strong id="sumDistanceTraveled">0 KM</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <!-- Settle Actions -->
                         <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); display:flex; justify-content:space-between; align-items:center;">
                             <div id="settleStatusText" style="font-size:12px; color:#c62828; font-weight:bold;">
@@ -756,7 +867,8 @@
                             </button>
                         </div>
                     </div>
-                    <div id="tab10GuardContainer" style="display:none;"></div>
+                    
+                    <div id="tab11GuardContainer" style="display:none;"></div>
                 </div>
 
                 <!-- COMPLETED / READ ONLY VIEW -->
