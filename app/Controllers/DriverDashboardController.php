@@ -375,6 +375,11 @@ class DriverDashboardController extends Controller {
                         $this->routeModel->startTrip($deliveryId, $startMeter, $driverName, $partnerName);
                         $this->logActivity('Start Trip', 'Delivery Route', "Driver started trip for Delivery Route ID {$deliveryId} with Odometer {$startMeter} via Driver Mobile App Sync.", $deliveryId, null, $td);
                     } elseif ($status === 'Completed') {
+                        $startMeter = floatval($td['start_meter'] ?? 0);
+                        $driverName = $td['driver_name'] ?? '';
+                        $partnerName = $td['partner_name'] ?? '';
+                        $this->routeModel->startTrip($deliveryId, $startMeter, $driverName, $partnerName);
+                        
                         $endMeter = floatval($td['end_meter'] ?? 0);
                         $cashDenoms = isset($td['cash_denominations']) ? json_encode($td['cash_denominations']) : null;
                         $this->routeModel->endTrip($deliveryId, $endMeter, $cashDenoms);

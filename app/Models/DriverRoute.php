@@ -162,18 +162,42 @@ class DriverRoute {
     }
 
     public function startTrip($deliveryId, $startMeter, $driverName, $partnerName) {
-        $this->db->query("UPDATE deliveries 
-                          SET status = 'In Transit', 
-                              start_meter = :startMeter, 
-                              started_at = NOW(), 
-                              driver_name = :driverName, 
-                              partner_name = :partnerName 
-                          WHERE id = :id");
-        $this->db->bind(':id', $deliveryId);
-        $this->db->bind(':startMeter', $startMeter);
-        $this->db->bind(':driverName', $driverName);
-        $this->db->bind(':partnerName', $partnerName);
-        return $this->db->execute();
+        $this->db->beginTransaction();
+        try {
+            $delivery = $this->getDeliveryById($deliveryId);
+            if (!$delivery) {
+                throw new Exception("Delivery not found");
+            }
+
+            // 1. Update deliveries status & start_meter
+            $this->db->query("UPDATE deliveries 
+                              SET status = 'In Transit', 
+                                  start_meter = :startMeter, 
+                                  started_at = NOW(), 
+                                  driver_name = :driverName, 
+                                  partner_name = :partnerName 
+                              WHERE id = :id");
+            $this->db->bind(':id', $deliveryId);
+            $this->db->bind(':startMeter', $startMeter);
+            $this->db->bind(':driverName', $driverName);
+            $this->db->bind(':partnerName', $partnerName);
+            $this->db->execute();
+
+            // 2. Update rep_daily_routes status & start_meter
+            $this->db->query("UPDATE rep_daily_routes 
+                              SET start_meter = :startMeter, status = 'In Transit' 
+                              WHERE id = :route_id");
+            $this->db->bind(':route_id', $delivery->rep_route_id);
+            $this->db->bind(':startMeter', $startMeter);
+            $this->db->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            error_log("startTrip error: " . $e->getMessage());
+            return false;
+        }
     }
 
     public function getActiveEmployees() {
