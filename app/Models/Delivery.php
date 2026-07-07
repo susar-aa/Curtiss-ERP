@@ -157,6 +157,38 @@ class Delivery {
         return $delivery;
     }
 
+    public function getVirtualDeliveryByRouteId($routeId) {
+        $this->db->query("
+            SELECT 0 as id, r.id as rep_route_id, null as secondary_rep_route_id, 
+                   DATE(r.start_time) as delivery_date, '' as vehicle_number, '' as driver_name, '' as partner_name,
+                   'Arranged' as status, null as start_meter, null as end_meter, r.created_at,
+                   null as accepted_at, null as started_at, null as completed_at, null as cash_denominations,
+                   null as selected_credit_invoices, null as reconciliation_json, null as return_stock_json,
+                   null as accounting_entries_json, null as return_stock_verified_by, null as return_stock_verified_at,
+                   r.route_name, r.start_time, r.user_id as user_id, COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name,
+                   COALESCE(inv.bill_count, 0) as bill_count,
+                   COALESCE(inv.total_sales, 0.00) as total_sales
+            FROM rep_daily_routes r
+            LEFT JOIN users u ON r.user_id = u.id
+            LEFT JOIN employees e ON u.employee_id = e.id
+            LEFT JOIN (
+                SELECT rep_route_id, 
+                       COUNT(*) as bill_count,
+                       SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_sales
+                FROM invoices 
+                WHERE status != 'Voided' AND rep_route_id IS NOT NULL
+                GROUP BY rep_route_id
+            ) inv ON inv.rep_route_id = r.id
+            WHERE r.id = :route_id
+        ");
+        $this->db->bind(':route_id', $routeId);
+        $delivery = $this->db->single();
+        if ($delivery) {
+            $delivery->id = 0;
+        }
+        return $delivery;
+    }
+
     public function getDeliveryInvoices($routeId, $secondaryRouteId = null) {
         $rids = [intval($routeId)];
         if ($secondaryRouteId) {
@@ -223,8 +255,12 @@ class Delivery {
         return $this->db->resultSet();
     }
 
-    public function getDeliveryBalancingData($deliveryId) {
-        $delivery = $this->getDeliveryById($deliveryId);
+    public function getDeliveryBalancingData($deliveryId, $routeId = null) {
+        if ($deliveryId > 0) {
+            $delivery = $this->getDeliveryById($deliveryId);
+        } else {
+            $delivery = $this->getVirtualDeliveryByRouteId($routeId);
+        }
         if (!$delivery) return null;
 
         $rids = [intval($delivery->rep_route_id)];

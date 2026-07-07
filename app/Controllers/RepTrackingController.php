@@ -864,7 +864,27 @@ class RepTrackingController extends Controller {
     }
 
     public function api_get_delivery_details($id) {
-        $delivery = $this->deliveryModel->getDeliveryById($id);
+        $delivery = null;
+        $routeId = isset($_GET['route_id']) ? intval($_GET['route_id']) : 0;
+        
+        if ($id > 0) {
+            $delivery = $this->deliveryModel->getDeliveryById($id);
+        }
+        
+        if (!$delivery && $routeId > 0) {
+            $db = new Database();
+            $db->query("SELECT id FROM deliveries WHERE rep_route_id = :rid ORDER BY id DESC LIMIT 1");
+            $db->bind(':rid', $routeId);
+            $delRow = $db->single();
+            if ($delRow) {
+                $delivery = $this->deliveryModel->getDeliveryById($delRow->id);
+            }
+        }
+        
+        if (!$delivery && $routeId > 0) {
+            $delivery = $this->deliveryModel->getVirtualDeliveryByRouteId($routeId);
+        }
+        
         if (!$delivery) {
             header('Content-Type: application/json');
             echo json_encode(['status' => 'error', 'message' => 'Delivery not found.']);
@@ -873,7 +893,7 @@ class RepTrackingController extends Controller {
 
         $invoices = $this->deliveryModel->getDeliveryInvoices($delivery->rep_route_id, $delivery->secondary_rep_route_id ?? null);
         $creditInvoices = $this->deliveryModel->getDeliveryCreditInvoices($delivery->rep_route_id, $delivery->secondary_rep_route_id ?? null);
-        $balancing = $this->deliveryModel->getDeliveryBalancingData($id);
+        $balancing = $this->deliveryModel->getDeliveryBalancingData($delivery->id, $delivery->rep_route_id);
 
         header('Content-Type: application/json');
         echo json_encode([
@@ -2428,7 +2448,31 @@ class RepTrackingController extends Controller {
         }
         $payload = json_decode(file_get_contents('php://input'), true);
         $deliveryId = intval($payload['delivery_id'] ?? 0);
+        $routeId = intval($payload['route_id'] ?? 0);
         $accountingEntries = $payload['accounting_entries'] ?? $payload['accounting_entries_json'] ?? null;
+        
+        $db = new Database();
+        
+        if ($deliveryId <= 0 && $routeId > 0) {
+            $db->query("SELECT id FROM deliveries WHERE rep_route_id = :rid ORDER BY id DESC LIMIT 1");
+            $db->bind(':rid', $routeId);
+            $delRow = $db->single();
+            if ($delRow) {
+                $deliveryId = intval($delRow->id);
+            } else {
+                $db->query("SELECT start_time FROM rep_daily_routes WHERE id = :rid");
+                $db->bind(':rid', $routeId);
+                $rRow = $db->single();
+                $deliveryDate = $rRow ? date('Y-m-d', strtotime($rRow->start_time)) : date('Y-m-d');
+                
+                $db->query("INSERT INTO deliveries (rep_route_id, delivery_date, vehicle_number, driver_name, status) 
+                            VALUES (:rid, :ddate, '', '', 'Arranged')");
+                $db->bind(':rid', $routeId);
+                $db->bind(':ddate', $deliveryDate);
+                $db->execute();
+                $deliveryId = intval($db->lastInsertId());
+            }
+        }
         
         if ($deliveryId <= 0) {
             header('Content-Type: application/json');
@@ -2437,7 +2481,6 @@ class RepTrackingController extends Controller {
         }
         
         try {
-            $db = new Database();
             $db->beginTransaction();
 
             // Save the raw JSON mapping to the delivery as cache/fallback
@@ -2558,7 +2601,7 @@ class RepTrackingController extends Controller {
 
             $db->commit();
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'success', 'message' => 'Suggested double-entries accounting mappings and draft ledger entries saved successfully!']);
+            echo json_encode(['status' => 'success', 'message' => 'Suggested double-entries accounting mappings and draft ledger entries saved successfully!', 'delivery_id' => $deliveryId]);
             exit;
         } catch (Exception $e) {
             if (isset($db)) {

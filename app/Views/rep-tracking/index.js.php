@@ -278,7 +278,7 @@
             { id: 7, num: 6, name: 'Reconciliation', statusKey: 'Finalizing' },
             { id: 8, num: 7, name: 'Delivery Execution', statusKey: 'Finalizing' },
             { id: 9, num: 8, name: 'Return Stock', statusKey: 'Finalizing' },
-            { id: 10, num: 9, name: 'Accounting', statusKey: 'Finalizing' }
+            { id: 10, num: 9, name: 'Payments', statusKey: 'Finalizing' }
         ];
 
         const statusSequence = ['Active', 'Pending GL', 'Adjustments', 'Loading', 'Variance Adjustment', 'Finalizing', 'Completed', 'Finalized'];
@@ -2030,6 +2030,41 @@
         }
     }
 
+    function applyPaymentsDefensiveGuard(routeId, delId) {
+        const guardEl = document.getElementById('tab10GuardContainer');
+        const contentEl = document.getElementById('tab10ContentContainer');
+        if (!guardEl || !contentEl) return false;
+
+        let isBlocked = false;
+        let title = '';
+        let desc = '';
+
+        if (currentRouteStatus === 'Active') {
+            isBlocked = true;
+            title = 'Route Still Active';
+            desc = 'Payments collected cannot be verified until the representative has ended the route from their app.';
+        }
+
+        if (isBlocked) {
+            guardEl.innerHTML = `
+                <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 45px 20px; text-align: center; max-width: 580px; margin: 40px auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <div style="width: 60px; height: 60px; background: #fffbeb; color: #d97706; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; font-size: 28px;">
+                        <i class="ph ph-warning-circle"></i>
+                    </div>
+                    <h4 style="margin: 0 0 10px 0; font-size: 15px; font-weight: bold; color: #0f172a;">${title}</h4>
+                    <p style="margin: 0; font-size: 12px; color: #64748b; line-height: 1.6;">${desc}</p>
+                </div>
+            `;
+            guardEl.style.display = 'block';
+            contentEl.style.display = 'none';
+            return true;
+        } else {
+            guardEl.style.display = 'none';
+            contentEl.style.display = 'block';
+            return false;
+        }
+    }
+
     function loadTab8Reconciliation(routeId) {
         const rdata = document.getElementById('route_data_' + routeId);
         const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
@@ -2447,7 +2482,7 @@
         const rdata = document.getElementById('route_data_' + routeId);
         const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
 
-        if (applyDefensiveGuard(delId, 'tab10GuardContainer', 'tab10ContentContainer')) {
+        if (applyPaymentsDefensiveGuard(routeId, delId)) {
             return;
         }
 
@@ -2472,7 +2507,7 @@
         document.getElementById('settleDaDriver').disabled = isReadOnly;
         document.getElementById('settleDaPartner').disabled = isReadOnly;
 
-        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + (delId || 0) + '?route_id=' + routeId)
             .then(res => res.json())
             .then(data => {
                 if (data.status !== 'success') return;
@@ -2583,12 +2618,25 @@
             fetchSecure('<?= APP_URL ?>/RepTracking/api_save_accounting_entries', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ delivery_id: deliveryId, accounting_entries_json: accountingData })
+                body: JSON.stringify({ 
+                    delivery_id: deliveryId, 
+                    route_id: currentRouteId,
+                    accounting_entries_json: accountingData 
+                })
             })
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
                     alert("Accounting mappings and collection verification draft saved successfully!");
+                    if (data.delivery_id) {
+                        const rdata = document.getElementById('route_data_' + currentRouteId);
+                        if (rdata) {
+                            rdata.setAttribute('data-delivery-id', data.delivery_id);
+                        }
+                        if (currentDeliveryDetails && currentDeliveryDetails.delivery) {
+                            currentDeliveryDetails.delivery.id = data.delivery_id;
+                        }
+                    }
                     onRouteDataChanged();
                 } else {
                     alert("Error: " + data.message);

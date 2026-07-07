@@ -180,7 +180,7 @@
             <button id="auto-evt-button-10" class="scroll-tab-btn" ><i class="ph ph-currency-dollar"></i> 6. Reconciliation</button>
             <button id="auto-evt-button-11" class="scroll-tab-btn" ><i class="ph ph-steering-wheel"></i> 7. Delivery</button>
             <button id="auto-evt-button-12" class="scroll-tab-btn" ><i class="ph ph-package"></i> 8. Return Stock Verification</button>
-            <button id="auto-evt-button-13" class="scroll-tab-btn" ><i class="ph ph-briefcase"></i> 9. Accounting</button>
+            <button id="auto-evt-button-13" class="scroll-tab-btn" ><i class="ph ph-briefcase"></i> 9. Payments</button>
         </div>
 
         <!-- Workspace Layout Container (Sidebar + Content Body) -->
@@ -252,8 +252,8 @@
                     <div class="sidebar-step-item" id="sb-step-10" >
                         <div class="step-dot">9</div>
                         <div class="step-info">
-                            <span class="step-title">Accounting</span>
-                            <span class="step-desc">Double-entry GL posting</span>
+                            <span class="step-title">Payments</span>
+                            <span class="step-desc">Verify & approve payments</span>
                         </div>
                     </div>
                 </div>
@@ -693,12 +693,12 @@
                     </div>
                 </div>
 
-                <!-- TAB 10: ACCOUNTING -->
+                <!-- TAB 10: PAYMENTS -->
                 <div class="workspace-tab-panel" id="tabpanel-10" style="display:none;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <div>
-                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">General Ledger Postings</h3>
-                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Map route transactions to general ledger double-entries and finalize settlement.</p>
+                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Payments & Settlements</h3>
+                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Verify collected payments and map route transactions to general ledger postings.</p>
                         </div>
                     </div>
 
