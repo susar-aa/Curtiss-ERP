@@ -19,9 +19,19 @@ if (isset($_SERVER['HTTP_ORIGIN'])) {
 }
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
-
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
+}
+
+if (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'suzxlabs.com') !== false) {
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'domain' => '.suzxlabs.com',
+        'secure' => true,
+        'httponly' => true,
+        'samesite' => 'None'
+    ]);
 }
 
 session_start();
