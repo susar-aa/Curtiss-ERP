@@ -2872,7 +2872,7 @@
         .then(data => {
             if (data.status === 'success') {
                 alert("Settle balancing successfully completed! Route marked as Completed.");
-                window.location.reload();
+                openBalancingReportModal(delId);
             } else {
                 alert("Error: " + data.message);
                 btn.disabled = false;
@@ -2880,6 +2880,33 @@
                 checkSettleVerification();
             }
         });
+    }
+
+    function openBalancingReportModal(delId) {
+        const modal = document.getElementById('balancingReportModal');
+        const iframe = document.getElementById('balancingReportIframe');
+        if (modal && iframe) {
+            iframe.src = '<?= APP_URL ?>/RepTracking/balancing_report/' + delId;
+            modal.style.display = 'flex';
+        }
+    }
+
+    function closeBalancingReportModal() {
+        const modal = document.getElementById('balancingReportModal');
+        const iframe = document.getElementById('balancingReportIframe');
+        if (modal && iframe) {
+            modal.style.display = 'none';
+            iframe.src = 'about:blank';
+        }
+        window.location.reload();
+    }
+
+    function printBalancingReportFromModal() {
+        const iframe = document.getElementById('balancingReportIframe');
+        if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+        }
     }
 
     function printBalancingReport() {
@@ -3884,6 +3911,9 @@ window.buildAccountOptions = buildAccountOptions;
     window.renderSettleDeAccountSelect = renderSettleDeAccountSelect;
     window.renderSettleDoubleEntries = renderSettleDoubleEntries;
     window.submitFinalSettle = submitFinalSettle;
+    window.openBalancingReportModal = openBalancingReportModal;
+    window.closeBalancingReportModal = closeBalancingReportModal;
+    window.printBalancingReportFromModal = printBalancingReportFromModal;
     window.printBalancingReport = printBalancingReport;
     window.printLoadingSheetSpreadsheet = printLoadingSheetSpreadsheet;
     window.exportCSV = exportCSV;

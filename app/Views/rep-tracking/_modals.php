@@ -405,3 +405,20 @@
         </div>
     </div>
 </div>
+
+<!-- Trip Settle Balancing & Finalized Audit Summary Modal -->
+<div class="modal-backdrop" id="balancingReportModal" style="display: none; z-index: 2010;">
+    <div class="modal-panel" style="max-width: 1100px; width: 95%; height: 90vh; display: flex; flex-direction: column; position: relative; border-radius: var(--r-lg); overflow: hidden; background: #fff; box-shadow: var(--shadow-xl);">
+        <div style="background: #1e293b; color: #fff; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 15px; border-bottom: 1px solid #334155; flex-shrink: 0;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="display: flex; align-items: center; gap: 6px;"><i class="ph ph-file-text"></i> Trip Settlement Balancing & Audit Report</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button onclick="printBalancingReportFromModal()" style="background: #2563eb; color: #fff; border: none; padding: 6px 14px; border-radius: var(--r-sm); font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: var(--shadow-sm); transition: 0.2s;"><i class="ph ph-printer"></i> Print Summary</button>
+                <button onclick="closeBalancingReportModal()" style="background: #ef4444; color: #fff; border: none; padding: 6px 14px; border-radius: var(--r-sm); font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: var(--shadow-sm); transition: 0.2s;">✕ Close & Reload</button>
+            </div>
+        </div>
+        <iframe id="balancingReportIframe" src="about:blank" style="width: 100%; flex: 1; border: none; background: #fff;"></iframe>
+    </div>
+</div>
+
