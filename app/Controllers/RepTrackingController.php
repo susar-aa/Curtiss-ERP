@@ -664,10 +664,20 @@ class RepTrackingController extends Controller {
 
     private function autoApplyPaymentsToInvoices($customerId) {
         $db = new Database();
-        $db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :cid");
+        
+        // Sum active/finalized customer payments
+        $db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :cid AND (status IS NULL OR status = 'Active')");
         $db->bind(':cid', $customerId);
         $rowPaid = $db->single();
         $totalPaid = $rowPaid ? floatval($rowPaid->total_paid) : 0.0;
+        
+        // Sum pending route collections (in transit/not yet finalized)
+        $db->query("SELECT COALESCE(SUM(amount), 0) as total_pending FROM pending_collections WHERE customer_id = :cid AND status = 'Pending'");
+        $db->bind(':cid', $customerId);
+        $rowPending = $db->single();
+        $totalPending = $rowPending ? floatval($rowPending->total_pending) : 0.0;
+        
+        $totalPaid += $totalPending;
         
         $db->query("
             SELECT id, 

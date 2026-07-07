@@ -1097,65 +1097,68 @@ class Payment {
     public function settleCustomerInvoicesWithCredit($customerId, $userId) {
         try {
             $this->db->beginTransaction();
-
-            // 1. Get available active customer payments with unallocated_amount > 0
-            $this->db->query("SELECT * FROM customer_payments WHERE customer_id = :cid AND status = 'Active' AND unallocated_amount > 0 ORDER BY payment_date ASC");
-            $this->db->bind(':cid', $customerId);
-            $credits = $this->db->resultSet();
-
-            if (empty($credits)) {
-                throw new Exception("No available customer credit found.");
-            }
-
-            // 2. Get unpaid invoices
-            $unpaid = $this->getCustomerUnpaidInvoices($customerId);
-            if (empty($unpaid)) {
-                throw new Exception("No unpaid invoices found for this customer.");
-            }
-
-            foreach ($credits as $cred) {
-                $remainingCredit = $cred->unallocated_amount;
-                
-                foreach ($unpaid as &$inv) {
-                    if ($remainingCredit <= 0.01) break;
-                    if ($inv->balance_due <= 0.01) continue;
-
-                    $allocAmt = min($remainingCredit, $inv->balance_due);
-
-                    // Create allocation record
-                    $this->db->query("INSERT INTO customer_payment_allocations (customer_payment_id, invoice_id, amount) 
-                                      VALUES (:pid, :inv_id, :amt)");
-                    $this->db->bind(':pid', $cred->id);
-                    $this->db->bind(':inv_id', $inv->id);
-                    $this->db->bind(':amt', $allocAmt);
-                    $this->db->execute();
-
-                    $inv->amount_paid += $allocAmt;
-                    $inv->balance_due -= $allocAmt;
-                    $remainingCredit -= $allocAmt;
-
-                    // Update invoice status if fully paid
-                    if ($inv->amount_paid >= $inv->total_amount - 0.01) {
-                        $this->db->query("UPDATE invoices SET status = 'Paid' WHERE id = :id");
-                        $this->db->bind(':id', $inv->id);
-                        $this->db->execute();
-                    }
-                }
-
-                // Update unallocated amount on the payment
-                $this->db->query("UPDATE customer_payments SET unallocated_amount = :uamt WHERE id = :pid");
-                $this->db->bind(':uamt', $remainingCredit);
-                $this->db->bind(':pid', $cred->id);
-                $this->db->execute();
-            }
-
+            $res = $this->settleCustomerInvoicesWithCreditNonTransactional($customerId, $userId);
             $this->db->commit();
-            return true;
+            return $res;
         } catch (Throwable $e) {
             $this->db->rollBack();
             error_log("settleCustomerInvoicesWithCredit Error: " . $e->getMessage());
             return false;
         }
+    }
+
+    public function settleCustomerInvoicesWithCreditNonTransactional($customerId, $userId) {
+        // 1. Get available active customer payments with unallocated_amount > 0
+        $this->db->query("SELECT * FROM customer_payments WHERE customer_id = :cid AND status = 'Active' AND unallocated_amount > 0 ORDER BY payment_date ASC");
+        $this->db->bind(':cid', $customerId);
+        $credits = $this->db->resultSet();
+
+        if (empty($credits)) {
+            return false;
+        }
+
+        // 2. Get unpaid invoices
+        $unpaid = $this->getCustomerUnpaidInvoices($customerId);
+        if (empty($unpaid)) {
+            return false;
+        }
+
+        foreach ($credits as $cred) {
+            $remainingCredit = $cred->unallocated_amount;
+            
+            foreach ($unpaid as &$inv) {
+                if ($remainingCredit <= 0.01) break;
+                if ($inv->balance_due <= 0.01) continue;
+
+                $allocAmt = min($remainingCredit, $inv->balance_due);
+
+                // Create allocation record
+                $this->db->query("INSERT INTO customer_payment_allocations (customer_payment_id, invoice_id, amount) 
+                                  VALUES (:pid, :inv_id, :amt)");
+                $this->db->bind(':pid', $cred->id);
+                $this->db->bind(':inv_id', $inv->id);
+                $this->db->bind(':amt', $allocAmt);
+                $this->db->execute();
+
+                $inv->amount_paid += $allocAmt;
+                $inv->balance_due -= $allocAmt;
+                $remainingCredit -= $allocAmt;
+
+                // Update invoice status if fully paid
+                if ($inv->amount_paid >= $inv->total_amount - 0.01) {
+                    $this->db->query("UPDATE invoices SET status = 'Paid' WHERE id = :id");
+                    $this->db->bind(':id', $inv->id);
+                    $this->db->execute();
+                }
+            }
+
+            // Update unallocated amount on the payment
+            $this->db->query("UPDATE customer_payments SET unallocated_amount = :uamt WHERE id = :pid");
+            $this->db->bind(':uamt', $remainingCredit);
+            $this->db->bind(':pid', $cred->id);
+            $this->db->execute();
+        }
+        return true;
     }
 
     /**

@@ -667,20 +667,35 @@ class Delivery {
                     $payJid = $this->db->lastInsertId();
 
                     // Insert into customer_payments officially to credit customer subledger
-                    $this->db->query("INSERT INTO customer_payments (customer_id, amount, payment_date, payment_method, reference, journal_entry_id, created_by, rep_route_id) 
-                                      VALUES (:cid, :amt, CURDATE(), :method, :ref, :jid, :uid, :rid)");
+                    $this->db->query("INSERT INTO customer_payments (customer_id, amount, unallocated_amount, payment_date, payment_method, reference, journal_entry_id, rep_route_id, created_by, status) 
+                                      VALUES (:cid, :amt, :uamt, CURDATE(), :method, :ref, :jid, :rid, :uid, 'Active')");
                     $this->db->bind(':cid', $pay->customer_id);
                     $this->db->bind(':amt', $amount);
+                    $this->db->bind(':uamt', $amount);
                     $this->db->bind(':method', $pay->payment_method);
                     $this->db->bind(':ref', $pay->cheque_number ? $pay->cheque_number : ($pay->reference ? $pay->reference : "Route Payment"));
                     $this->db->bind(':jid', $payJid);
-                    $this->db->bind(':uid', $adminUserId);
                     $this->db->bind(':rid', $pay->route_id);
+                    $this->db->bind(':uid', $adminUserId);
                     $this->db->execute();
                     $insertedPaymentId = $this->db->lastInsertId();
 
-                    // Update pending_collections status to Verified
-                    $this->db->query("UPDATE pending_collections SET status = 'Verified', is_verified = 1, verified_by = :vby, verified_at = NOW() WHERE id = :id");
+                    // If it is a cheque, register it in the cheques table as well
+                    if ($pay->payment_method === 'Cheque') {
+                        $this->db->query("INSERT INTO cheques (customer_id, bank_name, cheque_number, amount, banking_date, status, rep_route_id, created_by) 
+                                          VALUES (:cid, :bn, :cn, :amt, :bdate, 'Pending', :rid, :uid)");
+                        $this->db->bind(':cid', $pay->customer_id);
+                        $this->db->bind(':bn', $pay->bank_name ?? 'Unknown');
+                        $this->db->bind(':cn', $pay->cheque_number ?? 'Unknown');
+                        $this->db->bind(':amt', $amount);
+                        $this->db->bind(':bdate', $pay->cheque_date ?: date('Y-m-d'));
+                        $this->db->bind(':rid', $pay->route_id);
+                        $this->db->bind(':uid', $adminUserId);
+                        $this->db->execute();
+                    }
+
+                    // Update pending_collections status to Finalized
+                    $this->db->query("UPDATE pending_collections SET status = 'Finalized', is_verified = 1, verified_by = :vby, verified_at = NOW() WHERE id = :id");
                     $this->db->bind(':vby', $adminUserId);
                     $this->db->bind(':id', $payId);
                     $this->db->execute();
@@ -709,29 +724,10 @@ class Delivery {
                     $this->db->bind(':aid', $credAccId);
                     $this->db->execute();
 
-                    // FIFO mark invoices Paid
-                    $customerId = $pay->customer_id;
-                    $this->db->query("
-                        SELECT id, total_amount, global_discount_val, global_discount_type, tax_amount 
-                        FROM invoices 
-                        WHERE customer_id = :cid AND status = 'Unpaid' 
-                        ORDER BY invoice_date ASC, id ASC
-                    ");
-                    $this->db->bind(':cid', $customerId);
-                    $unpaidList = $this->db->resultSet();
-
-                    $pool = $amount;
-                    foreach ($unpaidList as $unp) {
-                        $gTotal = $this->getTrueGrandTotal($unp);
-                        if ($pool >= $gTotal) {
-                            $this->db->query("UPDATE invoices SET status = 'Paid' WHERE id = :id");
-                            $this->db->bind(':id', $unp->id);
-                            $this->db->execute();
-                            $pool -= $gTotal;
-                        } else {
-                            break;
-                        }
-                    }
+                    // FIFO allocation
+                    require_once __DIR__ . '/Payment.php';
+                    $paymentModel = new Payment();
+                    $paymentModel->settleCustomerInvoicesWithCreditNonTransactional($pay->customer_id, $adminUserId);
                 }
             }
 

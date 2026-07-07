@@ -343,110 +343,24 @@ class DriverInvoice {
                 }
 
                 try {
-                    // Fetch account IDs for 1090 and 1200
-                    $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1090'");
-                    $rowTemp = $this->db->single();
-                    $tempAccId = $rowTemp ? $rowTemp->id : null;
-
-                    $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1200'");
-                    $rowAR = $this->db->single();
-                    $arAccId = $rowAR ? $rowAR->id : null;
-
-                    // Log Customer Payment History with rep_route_id (associated with transit journal entry)
-                    file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Inserting payment record: method=$methodStr, amount=$amount\n", FILE_APPEND);
+                    file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Inserting pending collection: method=$methodStr, amount=$amount\n", FILE_APPEND);
                     
-                    $payRef = $chequeDetails['number'] ?? '';
-
-                    $this->db->query("INSERT INTO customer_payments (customer_id, amount, payment_date, payment_method, reference, journal_entry_id, rep_route_id, created_by) 
-                                      VALUES (:cid, :amt, CURDATE(), :method, :ref, NULL, :route_id, :uid)");
+                    $this->db->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, status, created_by, is_verified, created_at) 
+                                      VALUES (:cid, :route_id, :method, :amt, :bn, :cn, :cdate, 'Pending', :uid, 0, NOW())");
                     $this->db->bind(':cid', $customerId);
-                    $this->db->bind(':amt', $amount);
-                    $this->db->bind(':method', $methodStr);
-                    $this->db->bind(':ref', $payRef);
                     $this->db->bind(':route_id', $routeId);
+                    $this->db->bind(':method', $methodStr);
+                    $this->db->bind(':amt', $amount);
+                    $this->db->bind(':bn', $chequeDetails['bank'] ?? 'Unknown');
+                    $this->db->bind(':cn', $chequeDetails['number'] ?? 'Unknown');
+                    $this->db->bind(':cdate', $chequeDetails['date'] ?: date('Y-m-d'));
                     $this->db->bind(':uid', $userId);
                     $result = $this->db->execute();
                     if (!$result) {
-                        throw new Exception("Failed to insert payment record for customer $customerId, method=$methodStr");
+                        throw new Exception("Failed to insert pending collection for customer $customerId, method=$methodStr");
                     }
-                    $payId = $this->db->lastInsertId();
-
-                    // If reference is empty, update it with PMT-{$payId} to ensure uniqueness
-                    if (empty($payRef)) {
-                        $payRef = "PMT-" . $payId;
-                        $this->db->query("UPDATE customer_payments SET reference = :ref WHERE id = :pid");
-                        $this->db->bind(':ref', $payRef);
-                        $this->db->bind(':pid', $payId);
-                        $this->db->execute();
-                    }
-
-                    $payJid = null;
-                    if ($tempAccId && $arAccId) {
-                        $refCode = "PMT-" . $payId;
-
-                        // Create temporary journal entry
-                        $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
-                                          VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
-                        $this->db->bind(':ref', $refCode);
-                        $this->db->bind(':desc', "Driver Transit Collection ($methodStr) - Customer ID: $customerId");
-                        $this->db->bind(':uid', $userId);
-                        $this->db->execute();
-                        $payJid = $this->db->lastInsertId();
-
-                        // Update the payment record with the journal_entry_id
-                        $this->db->query("UPDATE customer_payments SET journal_entry_id = :jid WHERE id = :pid");
-                        $this->db->bind(':jid', $payJid);
-                        $this->db->bind(':pid', $payId);
-                        $this->db->execute();
-
-                        // Debit 1090 (Driver Transit Collections (Temp))
-                        $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, 0)");
-                        $this->db->bind(':jid', $payJid);
-                        $this->db->bind(':aid', $tempAccId);
-                        $this->db->bind(':deb', $amount);
-                        $this->db->execute();
-
-                        $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :aid");
-                        $this->db->bind(':amt', $amount);
-                        $this->db->bind(':aid', $tempAccId);
-                        $this->db->execute();
-
-                        // Credit 1200 (Accounts Receivable)
-                        $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :cred)");
-                        $this->db->bind(':jid', $payJid);
-                        $this->db->bind(':aid', $arAccId);
-                        $this->db->bind(':cred', $amount);
-                        $this->db->execute();
-
-                        $this->db->query("UPDATE chart_of_accounts SET balance = balance - :amt WHERE id = :aid");
-                        $this->db->bind(':amt', $amount);
-                        $this->db->bind(':aid', $arAccId);
-                        $this->db->execute();
-                    }
-
-                    // If PDC Cheque details provided, write to cheques table
-                    if ($methodStr === 'Cheque' && $chequeDetails) {
-                        file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Inserting cheque record: bank={$chequeDetails['bank']}, number={$chequeDetails['number']}, amount=$amount\n", FILE_APPEND);
-                        
-                        $this->db->query("INSERT INTO cheques (customer_id, bank_name, cheque_number, amount, banking_date, status, rep_route_id, created_by) 
-                                          VALUES (:cid, :bn, :cn, :amt, :bdate, 'Pending', :route_id, :uid)");
-                        $this->db->bind(':cid', $customerId);
-                        $this->db->bind(':bn', $chequeDetails['bank'] ?? 'Unknown');
-                        $this->db->bind(':cn', $chequeDetails['number'] ?? 'Unknown');
-                        $this->db->bind(':amt', $amount);
-                        $this->db->bind(':bdate', $chequeDetails['date'] ?: date('Y-m-d'));
-                        $this->db->bind(':route_id', $routeId);
-                        $this->db->bind(':uid', $userId);
-                        $result = $this->db->execute();
-                        if (!$result) {
-                            throw new Exception("Failed to insert cheque record for customer $customerId");
-                        }
-                    }
-
-                    // Bypassed pending_collections insertion for delivery collections:
-                    // Driver/delivery collections should only show on the Accounting tab, not on the Credit Collections tab (Tab 2).
                     
-                    file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Successfully saved $methodStr payment\n", FILE_APPEND);
+                    file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Successfully saved $methodStr pending collection\n", FILE_APPEND);
                 } catch (Exception $e) {
                     file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] ERROR in savePaymentRecord ($methodStr): " . $e->getMessage() . "\n", FILE_APPEND);
                     throw $e;

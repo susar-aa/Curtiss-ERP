@@ -186,10 +186,11 @@ class Customer {
                 $this->db->execute();
             }
 
-            $this->db->query("INSERT INTO customer_payments (customer_id, amount, payment_date, payment_method, reference, journal_entry_id, created_by) 
-                              VALUES (:cid, :amt, :date, :method, :ref, :jid, :uid)");
+            $this->db->query("INSERT INTO customer_payments (customer_id, amount, unallocated_amount, payment_date, payment_method, reference, journal_entry_id, created_by, status) 
+                              VALUES (:cid, :amt, :uamt, :date, :method, :ref, :jid, :uid, 'Active')");
             $this->db->bind(':cid', $data['customer_id']);
             $this->db->bind(':amt', $data['amount']);
+            $this->db->bind(':uamt', $data['amount']);
             $this->db->bind(':date', $data['date']);
             $this->db->bind(':method', $data['method']);
             $this->db->bind(':ref', $data['reference']);
@@ -209,30 +210,10 @@ class Customer {
                 $this->db->execute();
             }
 
-            $this->db->query("SELECT * FROM invoices WHERE customer_id = :cid AND status IN ('Unpaid', 'Draft') ORDER BY invoice_date ASC");
-            $this->db->bind(':cid', $data['customer_id']);
-            $unpaid = $this->db->resultSet();
-            
-            $remaining = $data['amount'];
-            foreach($unpaid as $inv) {
-                // Accurately calculate the exact Grand Total for the invoice
-                $trueGrandTotal = $inv->total_amount;
-                if ($inv->global_discount_val > 0) {
-                    if ($inv->global_discount_type == '%') {
-                        $trueGrandTotal -= ($inv->total_amount * ($inv->global_discount_val / 100));
-                    } else {
-                        $trueGrandTotal -= $inv->global_discount_val;
-                    }
-                }
-                $trueGrandTotal += $inv->tax_amount;
-
-                if ($remaining >= $trueGrandTotal - 0.01) { 
-                    $this->db->query("UPDATE invoices SET status = 'Paid' WHERE id = :id");
-                    $this->db->bind(':id', $inv->id);
-                    $this->db->execute();
-                    $remaining -= $trueGrandTotal;
-                }
-            }
+            // Standard FIFO allocation
+            require_once __DIR__ . '/Payment.php';
+            $paymentModel = new Payment();
+            $paymentModel->settleCustomerInvoicesWithCreditNonTransactional($data['customer_id'], $userId);
 
             $this->db->commit();
             return true;
