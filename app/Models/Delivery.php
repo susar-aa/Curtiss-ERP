@@ -625,7 +625,58 @@ class Delivery {
                 }
             }
 
-            // 2b. Counted returns stock adjustment is now processed inside api_save_return_stock() to avoid double deduction/adjustment.
+            // 2b. Counted returns stock adjustment (CRIT-3)
+            if (!empty($delivery->return_stock_json)) {
+                $returnStockData = json_decode($delivery->return_stock_json, true);
+                if (is_array($returnStockData)) {
+                    require_once __DIR__ . '/Item.php';
+                    $itemModel = new Item();
+                    require_once __DIR__ . '/StockLedger.php';
+                    $ledger = new StockLedger();
+
+                    foreach ($returnStockData as $ret) {
+                        $itemId = intval($ret['item_id'] ?? 0);
+                        $varId = (!empty($ret['variation_option_id']) && is_numeric($ret['variation_option_id']) && intval($ret['variation_option_id']) > 0) ? intval($ret['variation_option_id']) : null;
+                        $loadedQty = floatval($ret['loaded_qty'] ?? 0);
+                        $deliveredQty = floatval($ret['delivered_qty'] ?? 0);
+                        $actualReturnedQty = floatval($ret['actual_returned_qty'] ?? 0);
+
+                        if (!$itemId && !empty($ret['item_name'])) {
+                            $this->db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
+                            $this->db->bind(':name', $ret['item_name']);
+                            $rowItem = $this->db->single();
+                            if ($rowItem) {
+                                $itemId = $rowItem->id;
+                            }
+                        }
+
+                        $expectedReturned = $loadedQty - $deliveredQty;
+                        $adjustment = $actualReturnedQty - $expectedReturned;
+                        if ($adjustment != 0) {
+                            if ($itemId) {
+                                $itemModel->updateStockDelta($itemId, $adjustment);
+                            }
+                            if ($varId !== null) {
+                                $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :adj) WHERE id = :id");
+                                $this->db->bind(':adj', $adjustment);
+                                $this->db->bind(':id', $varId);
+                                $this->db->execute();
+                            }
+
+                            // Log stock movement in ledger (counted returns adjustment)
+                            $this->db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
+                            $this->db->bind(':id', $itemId);
+                            $itemRow = $this->db->single();
+                            $whId = $itemRow ? $itemRow->warehouse_id : null;
+                            $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
+
+                            $qtyIn = $adjustment > 0 ? $adjustment : 0;
+                            $qtyOut = $adjustment < 0 ? abs($adjustment) : 0;
+                            $ledger->logMovement($itemId, $varId, $qtyIn, $qtyOut, 'Stock Adjustment', 'DEL-' . $deliveryId, $whId, $adminUserId, 'Delivery Return Stock Finalized - Counted Returns Adjustment', $itemCost);
+                        }
+                    }
+                }
+            }
 
 
             // 3. Redundant sales JE creation loop removed to prevent revenue double-counting (CRIT-1).

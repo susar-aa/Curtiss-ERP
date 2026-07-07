@@ -2353,7 +2353,7 @@
                     } catch(e) {}
                 }
 
-                const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized' || savedReturnStock !== null);
+                const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
                 if (saveBtn) {
                     saveBtn.disabled = isReadOnly;
                     saveBtn.style.opacity = isReadOnly ? '0.5' : '1';
@@ -2410,15 +2410,7 @@
             return;
         }
 
-        const verifyStockCheck = document.getElementById('settleVerifyStock');
-        if (!verifyStockCheck || !verifyStockCheck.checked) {
-            console.log("saveReturnStockDraft aborted: settleVerifyStock checkbox not checked");
-            alert("You must check 'I have physically verified all returned inventory and confirm quantities are correct.' before saving.");
-            return;
-        }
-
-        if (!confirm("Are you sure you want to verify and save the return stock? This will deduct delivered quantities from inventory, release loaded reservations, and lock return stock edits. This action CANNOT be undone.")) {
-            console.log("saveReturnStockDraft aborted by user confirmation dialog");
+        if (!confirm("Save return stock draft?")) {
             return;
         }
 
@@ -3880,6 +3872,10 @@
         document.getElementById('btnSaveReconciliationDraft')?.addEventListener('click', (event) => { saveReconciliationDraft(); });
         document.getElementById('settleVerifyStock')?.addEventListener('change', (event) => { checkSettleVerification(); });
         document.getElementById('btnSaveReturnStockDraft')?.addEventListener('click', (event) => { saveReturnStockDraft(); });
+        document.getElementById('btnPrintReturnStock')?.addEventListener('click', (event) => {
+            if (!currentRouteId) return;
+            window.open('<?= APP_URL ?>/RepTracking/print_return_stock/' + currentRouteId, '_blank');
+        });
         document.getElementById('settleDeTabCollectionsBtn')?.addEventListener('click', (event) => { switchSettleDeTab('collections'); });
         document.getElementById('settleDeTabSalesBtn')?.addEventListener('click', (event) => { switchSettleDeTab('sales'); });
         document.getElementById('btnSaveAccountingDraft')?.addEventListener('click', (event) => { saveAccountingDraft(); });

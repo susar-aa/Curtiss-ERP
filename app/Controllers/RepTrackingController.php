@@ -1416,6 +1416,41 @@ class RepTrackingController extends Controller {
         $this->view('rep-tracking/print_route_invoices_summary', $data);
     }
 
+    public function print_return_stock($routeId) {
+        $route = $this->trackingModel->getRouteById($routeId);
+        if (!$route) {
+            die("Route not found.");
+        }
+        
+        $db = new Database();
+        $db->query("SELECT * FROM deliveries WHERE rep_route_id = :rid ORDER BY id DESC LIMIT 1");
+        $db->bind(':rid', $routeId);
+        $delivery = $db->single();
+
+        if (!$delivery) {
+            die("Delivery not arranged for this route.");
+        }
+
+        $balancing = $this->deliveryModel->getDeliveryBalancingData($delivery->id, $routeId);
+        $savedReturnStock = null;
+        if (!empty($delivery->return_stock_json)) {
+            $savedReturnStock = json_decode($delivery->return_stock_json, true);
+        }
+
+        $companyModel = $this->model('Company');
+        $company = $companyModel->getSettings();
+
+        $data = [
+            'route' => $route,
+            'delivery' => $delivery,
+            'balancing' => $balancing,
+            'savedReturnStock' => $savedReturnStock,
+            'company' => $company
+        ];
+
+        $this->view('rep-tracking/print_return_stock', $data);
+    }
+
     public function api_get_route_collections($routeId) {
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') { die("Invalid Request"); }
         $collections = $this->trackingModel->getRouteCollections($routeId);
@@ -2193,41 +2228,22 @@ class RepTrackingController extends Controller {
             exit;
         }
         
-        $debugLogs = [];
-        $debugLogs[] = "Starting api_save_return_stock for delivery ID: " . $deliveryId;
-        
-        $logDebugToPhp = function() use (&$debugLogs) {
-            foreach ($debugLogs as $line) {
-                error_log("[api_save_return_stock] " . $line);
-            }
-        };
-        
         try {
             $db = new Database();
             
-            // Check if return stock has already been saved or delivery is finalized
-            $db->query("SELECT status, return_stock_json FROM deliveries WHERE id = :id LIMIT 1");
+            // Check if delivery is finalized
+            $db->query("SELECT status FROM deliveries WHERE id = :id LIMIT 1");
             $db->bind(':id', $deliveryId);
             $existing = $db->single();
             if ($existing && ($existing->status === 'Finalized' || $existing->status === 'Completed')) {
-                $debugLogs[] = "Error: Cannot save return stock because this delivery is already finalized.";
-                $logDebugToPhp();
                 header('Content-Type: application/json');
                 echo json_encode(['status' => 'error', 'message' => 'Cannot verify return stock because this delivery has already been finalized.']);
                 exit;
             }
-            if ($existing && !empty($existing->return_stock_json)) {
-                $debugLogs[] = "Error: Return stock already verified and saved.";
-                $logDebugToPhp();
-                header('Content-Type: application/json');
-                echo json_encode(['status' => 'error', 'message' => 'Return stock has already been verified and saved. Edits are locked.']);
-                exit;
-            }
 
             $db->beginTransaction();
-            $debugLogs[] = "Transaction started.";
 
-            // 1. Update return stock JSON and verified fields
+            // Update return stock JSON and verified fields
             $db->query("UPDATE deliveries SET 
                         return_stock_json = :ret,
                         return_stock_verified_by = :uid,
@@ -2237,200 +2253,25 @@ class RepTrackingController extends Controller {
             $db->bind(':uid', $_SESSION['user_id'] ?? null);
             $db->bind(':id', $deliveryId);
             $db->execute();
-            $debugLogs[] = "Updated deliveries return_stock_json.";
-
-            // 2. Fetch the delivery routes
-            $db->query("SELECT rep_route_id, secondary_rep_route_id FROM deliveries WHERE id = :id LIMIT 1");
-            $db->bind(':id', $deliveryId);
-            $delivery = $db->single();
-
-            if ($delivery) {
-                $routeIds = [];
-                if ($delivery->rep_route_id) { $routeIds[] = intval($delivery->rep_route_id); }
-                if ($delivery->secondary_rep_route_id) { $routeIds[] = intval($delivery->secondary_rep_route_id); }
-
-                // Resolve all bound route IDs
-                $routeIds = $this->deliveryModel->resolveAllBoundRouteIds($routeIds);
-
-                if (!empty($routeIds)) {
-                    $routeIdsStr = implode(',', array_map('intval', $routeIds));
-                    $debugLogs[] = "Route IDs: " . $routeIdsStr;
-                    
-                    $db->query("SELECT id, delivery_status, stock_status FROM invoices WHERE rep_route_id IN ($routeIdsStr) AND status != 'Voided'");
-                    $invoices = $db->resultSet() ?: [];
-                    $debugLogs[] = "Found " . count($invoices) . " active invoices.";
-
-                    require_once dirname(__DIR__) . '/Models/FIFO.php';
-                    $fifo = new FIFO();
-
-                    foreach ($invoices as $invoice) {
-                        $debugLogs[] = "Invoice ID: " . $invoice->id . " | stock_status: " . $invoice->stock_status . " | delivery_status: " . $invoice->delivery_status;
-                        if ($invoice->stock_status === 'deducted' || $invoice->stock_status === 'returned') {
-                            $debugLogs[] = "Skipping invoice ID: " . $invoice->id;
-                            continue;
-                        }
-
-                        $db->query("SELECT * FROM invoice_items WHERE invoice_id = :iid");
-                        $db->bind(':iid', $invoice->id);
-                        $items = $db->resultSet() ?: [];
-                        $debugLogs[] = "Processing " . count($items) . " items for Invoice ID: " . $invoice->id;
-
-                        foreach ($items as $item) {
-                            $deliveredQty = floatval($item->quantity);
-                            $loadedQty = floatval($item->loaded_quantity);
-                            $itemId = $item->item_id;
-                            $varId = (!empty($item->variation_option_id) && is_numeric($item->variation_option_id) && intval($item->variation_option_id) > 0) ? intval($item->variation_option_id) : null;
-
-                            if (!$itemId && !empty($item->description)) {
-                                $db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
-                                $db->bind(':name', $item->description);
-                                $rowItem = $db->single();
-                                if ($rowItem) {
-                                    $itemId = $rowItem->id;
-                                    $debugLogs[] = "Resolved Item ID: " . $itemId . " from name: " . $item->description;
-                                }
-                            }
-
-                            if ($itemId) {
-                                require_once dirname(__DIR__) . '/Models/Item.php';
-                                $itemModel = new Item();
-
-                                // Deduct delivered quantity from physical stock ONLY IF invoice is Delivered
-                                if ($invoice->delivery_status === 'Delivered' && $deliveredQty > 0) {
-                                    $itemModel->updateStockDelta($itemId, -$deliveredQty);
-                                    $debugLogs[] = "Deducted " . $deliveredQty . " from items ID: " . $itemId . " (quantity_on_hand)";
-
-                                    if ($varId !== null) {
-                                        $db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
-                                        $db->bind(':qty', $deliveredQty);
-                                        $db->bind(':id', $varId);
-                                        $db->execute();
-                                        $debugLogs[] = "Deducted " . $deliveredQty . " from item_variation_options ID: " . $varId;
-                                    }
-
-                                    // Deduct FIFO costing
-                                    try {
-                                        $fifo->depleteStock($itemId, $varId, $deliveredQty, $item->id, null);
-                                        $debugLogs[] = "FIFO depletion succeeded for item ID: " . $itemId;
-                                    } catch (Exception $e) {
-                                        $debugLogs[] = "FIFO depletion error for item ID " . $itemId . ": " . $e->getMessage();
-                                        error_log("FIFO depletion error for item $itemId: " . $e->getMessage());
-                                    }
-                                } else {
-                                    $debugLogs[] = "Delivered quantity is 0 or negative, or invoice is not Delivered for item ID: " . $itemId . ". Skipping hand-on-stock deduction.";
-                                }
-
-                                // Release/clear loaded quantity from reserved stock (always do this if loadedQty > 0)
-                                if ($loadedQty > 0) {
-                                    $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
-                                    $db->bind(':qty', $loadedQty);
-                                    $db->bind(':id', $itemId);
-                                    $db->execute();
-                                    $debugLogs[] = "Released " . $loadedQty . " from reserved stock for item ID: " . $itemId;
-
-                                    if ($varId !== null) {
-                                        $db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
-                                        $db->bind(':qty', $loadedQty);
-                                        $db->bind(':id', $varId);
-                                        $db->execute();
-                                        $debugLogs[] = "Released " . $loadedQty . " from reserved stock for variation ID: " . $varId;
-                                    }
-                                }
-                            } else {
-                                $debugLogs[] = "Item ID could not be found for description: " . $item->description;
-                            }
-                        }
-
-                        $targetStatus = ($invoice->delivery_status === 'Delivered') ? 'deducted' : 'returned';
-                        $db->query("UPDATE invoices SET stock_status = :status WHERE id = :id");
-                        $db->bind(':status', $targetStatus);
-                        $db->bind(':id', $invoice->id);
-                        $db->execute();
-                        $debugLogs[] = "Updated invoice ID " . $invoice->id . " stock_status to '$targetStatus'.";
-                    }
-                } else {
-                    $debugLogs[] = "No route IDs found for delivery.";
-                }
-            } else {
-                $debugLogs[] = "Delivery record not found.";
-            }
-
-            // Apply actual counted returned products adjustments (CRIT-3)
-            if (!empty($returnStockData) && is_array($returnStockData)) {
-                require_once dirname(__DIR__) . '/Models/Item.php';
-                $itemModel = new Item();
-                require_once dirname(__DIR__) . '/Models/StockLedger.php';
-                $ledger = new StockLedger();
-
-                foreach ($returnStockData as $ret) {
-                    $itemId = intval($ret['item_id'] ?? 0);
-                    $varId = (!empty($ret['variation_option_id']) && is_numeric($ret['variation_option_id']) && intval($ret['variation_option_id']) > 0) ? intval($ret['variation_option_id']) : null;
-                    $loadedQty = floatval($ret['loaded_qty'] ?? 0);
-                    $deliveredQty = floatval($ret['delivered_qty'] ?? 0);
-                    $actualReturnedQty = floatval($ret['actual_returned_qty'] ?? 0);
-
-                    if (!$itemId && !empty($ret['item_name'])) {
-                        $db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
-                        $db->bind(':name', $ret['item_name']);
-                        $rowItem = $db->single();
-                        if ($rowItem) {
-                            $itemId = $rowItem->id;
-                        }
-                    }
-
-                    $expectedReturned = $loadedQty - $deliveredQty;
-                    $adjustment = $actualReturnedQty - $expectedReturned;
-                    if ($adjustment != 0) {
-                        if ($itemId) {
-                            $itemModel->updateStockDelta($itemId, $adjustment);
-                            $debugLogs[] = "Adjusted items ID: " . $itemId . " quantity by " . $adjustment;
-                        }
-                        if ($varId !== null) {
-                            $db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :adj) WHERE id = :id");
-                            $db->bind(':adj', $adjustment);
-                            $db->bind(':id', $varId);
-                            $db->execute();
-                            $debugLogs[] = "Adjusted item_variation_options ID: " . $varId . " quantity_on_hand by " . $adjustment;
-                        }
-
-                        // Log stock movement in ledger (counted returns adjustment)
-                        $db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
-                        $db->bind(':id', $itemId);
-                        $itemRow = $db->single();
-                        $whId = $itemRow ? $itemRow->warehouse_id : null;
-                        $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
-
-                        $qtyIn = $adjustment > 0 ? $adjustment : 0;
-                        $qtyOut = $adjustment < 0 ? abs($adjustment) : 0;
-                        $ledger->logMovement($itemId, $varId, $qtyIn, $qtyOut, 'Stock Adjustment', 'DEL-' . $deliveryId, $whId, $_SESSION['user_id'] ?? null, 'Delivery Return Stock Saved - Counted Returns Adjustment', $itemCost);
-                    }
-                }
-            }
 
             // Write Audit Log
             $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
             $db->query("INSERT INTO audit_logs (user_id, action, module, description, record_id, ip_address) 
-                        VALUES (:uid, 'RETURN_STOCK_SAVE', 'Logistics', :desc, :ref, :ip)");
+                        VALUES (:uid, 'RETURN_STOCK_DRAFT_SAVE', 'Logistics', :desc, :ref, :ip)");
             $db->bind(':uid', $_SESSION['user_id'] ?? null);
-            $db->bind(':desc', "Verified and saved return stock, released reservation and depleted physical stock for delivery ID: " . $deliveryId);
+            $db->bind(':desc', "Saved return stock draft for delivery ID: " . $deliveryId);
             $db->bind(':ref', $deliveryId);
             $db->bind(':ip', $ip);
             $db->execute();
-            $debugLogs[] = "Audit log written.";
 
             $db->commit();
-            $debugLogs[] = "Transaction committed successfully.";
-
-            $logDebugToPhp();
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'success', 'message' => 'Return stock verification saved successfully!']);
+            echo json_encode(['status' => 'success', 'message' => 'Return stock draft saved successfully!']);
             exit;
         } catch (Exception $e) {
             if (isset($db)) { $db->rollBack(); }
-            $debugLogs[] = "Exception: " . $e->getMessage();
-            $logDebugToPhp();
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'error', 'message' => 'An error occurred while saving return stock. Please try again.']);
+            echo json_encode(['status' => 'error', 'message' => 'An error occurred while saving return stock draft. Please try again.']);
             exit;
         }
     }

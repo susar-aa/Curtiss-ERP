@@ -664,6 +664,11 @@
                             <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Return Stock Verification</h3>
                             <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Verify returned physical stocks and confirm route inventory updates.</p>
                         </div>
+                        <div>
+                            <button id="btnPrintReturnStock" style="padding:10px 16px; background:#475569; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                                🖨️ Print Return Stock Report
+                            </button>
+                        </div>
                     </div>
                     <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); margin-bottom:20px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
@@ -688,7 +693,7 @@
                             </tbody>
                         </table>
                         <div style="text-align:right; margin-top:20px;">
-                            <button id="btnSaveReturnStockDraft"  style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">💾 Save Return Stock</button>
+                            <button id="btnSaveReturnStockDraft"  style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer;">💾 Save Return Stock Draft</button>
                         </div>
                     </div>
                 </div>

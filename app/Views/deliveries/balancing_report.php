@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title><?= $data['title'] ?></title>
+    <title>Route Summary - <?= htmlspecialchars($data['delivery']->route_name) ?></title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -17,30 +17,23 @@
         .report-header {
             text-align: center;
             border-bottom: 2px solid #333;
-            padding-bottom: 15px;
-            margin-bottom: 30px;
+            padding-bottom: 12px;
+            margin-bottom: 25px;
         }
         
         .report-title {
             margin: 0;
-            font-size: 22px;
+            font-size: 24px;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         
-        .report-subtitle {
-            margin: 5px 0 0 0;
-            font-size: 13px;
-            color: #666;
-            font-weight: 500;
-        }
-
         .meta-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(2, 1fr);
             gap: 15px;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             background: #f9f9f9;
             padding: 15px;
             border-radius: 8px;
@@ -67,7 +60,7 @@
 
         .kpi-container {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(2, 1fr);
             gap: 20px;
             margin-bottom: 25px;
         }
@@ -154,8 +147,8 @@
         .signatures {
             margin-top: 60px;
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 50px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
         }
 
         .signature-block {
@@ -202,22 +195,46 @@
 
     <button class="btn-print" onclick="window.print()">🖨️ Print Report</button>
 
-    <div class="report-header">
-        <h1 class="report-title">Delivery Trip Settle Balancing & Audit Report</h1>
-        <p class="report-subtitle">Final Settlement, Cash Count Variance, Cheques, and Remaining Stock Reconciliation</p>
-    </div>
-
     <?php 
         $d = $data['delivery'];
         $b = $data['balancing'];
+
+        // Filter delivery-only collections (exclude rep collections where mobile_rep_id is not null/empty)
+        $deliveryPayments = array_filter($b['payments'] ?? [], function($p) {
+            return empty($p->mobile_rep_id);
+        });
+
+        $deliveryCashCollections = 0.0;
+        $deliveryChequeCollections = 0.0;
+        $deliveryBankCollections = 0.0;
+        $deliveryChequeList = [];
+        
+        foreach ($deliveryPayments as $p) {
+            $amt = floatval($p->amount);
+            if ($p->payment_method === 'Cash') {
+                $deliveryCashCollections += $amt;
+            } elseif ($p->payment_method === 'Cheque') {
+                $deliveryChequeCollections += $amt;
+                $deliveryChequeList[] = (object)[
+                    'customer_name' => $p->customer_name,
+                    'bank_name' => $p->bank_name,
+                    'cheque_number' => $p->cheque_number,
+                    'banking_date' => $p->cheque_date ?: ($p->created_at ? date('Y-m-d', strtotime($p->created_at)) : date('Y-m-d')),
+                    'amount' => $p->amount
+                ];
+            } elseif ($p->payment_method === 'Bank Transfer') {
+                $deliveryBankCollections += $amt;
+            }
+        }
     ?>
 
+    <div class="report-header">
+        <h1 class="report-title">Route Summary</h1>
+        <h2 style="margin: 8px 0 4px 0; font-size: 16px; font-weight: 700; color: #111; text-transform: uppercase;">Route Name: <?= htmlspecialchars($d->route_name) ?></h2>
+        <h3 style="margin: 0 0 5px 0; font-size: 13px; font-weight: 500; color: #555;">Representative: <?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?> &nbsp;|&nbsp; Delivered Date: <?= date('l, F d, Y', strtotime($d->delivery_date)) ?></h3>
+    </div>
+
     <div class="meta-grid">
-        <div class="meta-item">
-            Route Name: <strong><?= htmlspecialchars($d->route_name) ?></strong><br>
-            Representative: <strong><?= htmlspecialchars($d->first_name . ' ' . $d->last_name) ?></strong><br>
-            Delivery Date: <strong><?= date('l, F d, Y', strtotime($d->delivery_date)) ?></strong>
-        </div>
         <div class="meta-item">
             Vehicle Number: <strong><?= htmlspecialchars($d->vehicle_number) ?></strong><br>
             Driver Name: <strong><?= htmlspecialchars($d->driver_name) ?></strong><br>
@@ -233,43 +250,35 @@
     <div class="section-title">📊 Trip Financial Summary</div>
     <div class="kpi-container">
         <div class="kpi-card">
-            <span class="kpi-card-title">Today's Sales Summary</span>
+            <span class="kpi-card-title">Sales Summary</span>
             <div class="kpi-row">
-                <span>Cash Sales Value:</span>
+                <span>Cash Sales:</span>
                 <strong style="color: #2e7d32;">Rs <?= number_format($b['cash_sales'], 2) ?></strong>
             </div>
             <div class="kpi-row">
-                <span>Credit Sales Value:</span>
+                <span>Cheque Sales:</span>
+                <strong style="color: #2e7d32;">Rs <?= number_format($b['cheque_sales'], 2) ?></strong>
+            </div>
+            <div class="kpi-row">
+                <span>Bank Transfer Sales:</span>
+                <strong style="color: #2e7d32;">Rs <?= number_format($b['bank_sales'], 2) ?></strong>
+            </div>
+            <div class="kpi-row">
+                <span>Credit Sales:</span>
                 <strong style="color: #ef6c00;">Rs <?= number_format($b['credit_sales'], 2) ?></strong>
             </div>
-            <div class="kpi-row" style="border-top: 1px dashed #ccc; padding-top: 4px; margin-top: 6px; font-weight: bold;">
-                <span>Total Route Sales:</span>
-                <strong>Rs <?= number_format($b['cash_sales'] + $b['credit_sales'], 2) ?></strong>
+            <div class="kpi-row" style="border-top: 1px dashed #ccc; padding-top: 4px; margin-top: 6px; font-weight: bold; font-size: 13.5px;">
+                <span>Total Sales:</span>
+                <strong>Rs <?= number_format($b['cash_sales'] + $b['cheque_sales'] + $b['bank_sales'] + $b['credit_sales'], 2) ?></strong>
             </div>
         </div>
 
         <div class="kpi-card">
-            <span class="kpi-card-title">Driver Collections Today</span>
+            <span class="kpi-card-title">Vehicle Info</span>
             <div class="kpi-row">
-                <span>Cash:</span>
-                <strong>Rs <?= number_format($b['cash_collections'], 2) ?></strong>
+                <span>Vehicle Number:</span>
+                <strong><?= htmlspecialchars($d->vehicle_number) ?></strong>
             </div>
-            <div class="kpi-row">
-                <span>Cheque:</span>
-                <strong>Rs <?= number_format($b['cheque_collections'], 2) ?></strong>
-            </div>
-            <div class="kpi-row">
-                <span>Bank Transfer:</span>
-                <strong>Rs <?= number_format($b['bank_collections'], 2) ?></strong>
-            </div>
-            <div class="kpi-row" style="border-top: 1px dashed #ccc; padding-top: 4px; margin-top: 6px; font-weight: bold;">
-                <span>Total Collected:</span>
-                <strong>Rs <?= number_format($b['cash_collections'] + $b['cheque_collections'] + $b['bank_collections'], 2) ?></strong>
-            </div>
-        </div>
-
-        <div class="kpi-card">
-            <span class="kpi-card-title">Odometer & Mileage Audit</span>
             <div class="kpi-row">
                 <span>Start Odometer:</span>
                 <strong><?= number_format($d->start_meter, 0) ?> KM</strong>
@@ -299,6 +308,7 @@
                 
                 $denomList = [5000, 2000, 1000, 500, 100, 50, 20, 'coins'];
                 $totalCashEntered = 0.0;
+                $hasEntries = false;
             ?>
             <table>
                 <thead>
@@ -322,6 +332,10 @@
                                 $label = 'Rs ' . $den;
                             }
                             $totalCashEntered += $val;
+                            if ($val <= 0) {
+                                continue;
+                            }
+                            $hasEntries = true;
                         ?>
                         <tr>
                             <td style="font-weight: 600;"><?= $label ?></td>
@@ -329,6 +343,11 @@
                             <td class="text-right monospace"><?= number_format($val, 2) ?></td>
                         </tr>
                     <?php endforeach; ?>
+                    <?php if (!$hasEntries): ?>
+                        <tr>
+                            <td colspan="3" class="text-center" style="color: #666; padding: 10px;">No cash denominations entered.</td>
+                        </tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -336,13 +355,13 @@
         <div style="width: 320px; background: #fafafa; border: 1px solid #ccc; padding: 20px; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; height: fit-content; margin-top: 10px;">
             <div class="kpi-row" style="margin-bottom: 12px;">
                 <span>Expected Cash Collections:</span>
-                <strong class="monospace">Rs <?= number_format($b['cash_collections'], 2) ?></strong>
+                <strong class="monospace">Rs <?= number_format($deliveryCashCollections, 2) ?></strong>
             </div>
             <div class="kpi-row" style="margin-bottom: 12px;">
                 <span>Actual Cash Count Entered:</span>
                 <strong class="monospace">Rs <?= number_format($totalCashEntered, 2) ?></strong>
             </div>
-            <?php $variance = $totalCashEntered - $b['cash_collections']; ?>
+            <?php $variance = $totalCashEntered - $deliveryCashCollections; ?>
             <div class="kpi-row" style="border-top: 1px solid #aaa; padding-top: 12px; font-weight: bold; font-size: 14px;">
                 <span>Variance (Difference):</span>
                 <strong class="monospace" style="color: <?= abs($variance) < 0.01 ? '#2e7d32' : ($variance < 0 ? '#c62828' : '#ef6c00') ?>;">
@@ -364,12 +383,12 @@
             </tr>
         </thead>
         <tbody>
-            <?php if (empty($b['cheques'])): ?>
+            <?php if (empty($deliveryChequeList)): ?>
                 <tr>
                     <td colspan="5" class="text-center" style="color: #666; padding: 15px;">No cheques collected on this trip.</td>
                 </tr>
             <?php else: ?>
-                <?php foreach ($b['cheques'] as $ch): ?>
+                <?php foreach ($deliveryChequeList as $ch): ?>
                     <tr>
                         <td style="font-weight: 600;"><?= htmlspecialchars($ch->customer_name) ?></td>
                         <td><?= htmlspecialchars($ch->bank_name) ?></td>
@@ -382,46 +401,21 @@
         </tbody>
     </table>
 
-    <div class="section-title">📦 Vehicle Stock Balance Audit</div>
-    <table>
-        <thead>
-            <tr>
-                <th>Product / Item Description</th>
-                <th class="text-center" style="width: 100px;">Loaded Qty</th>
-                <th class="text-center" style="width: 100px;">Delivered Qty</th>
-                <th class="text-center" style="width: 100px;">Returned Qty</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if (empty($b['stock_items'])): ?>
-                <tr>
-                    <td colspan="4" class="text-center" style="color: #666; padding: 15px;">No stock loaded on this trip.</td>
-                </tr>
-            <?php else: ?>
-                <?php foreach ($b['stock_items'] as $st): ?>
-                    <tr>
-                        <td style="font-weight: 600;"><?= htmlspecialchars($st->item_name) ?></td>
-                        <td class="text-center" style="font-weight: 700;"><?= intval($st->loaded_qty) ?></td>
-                        <td class="text-center" style="font-weight: 700; color: #2e7d32;"><?= intval($st->delivered_qty) ?></td>
-                        <td class="text-center" style="font-weight: 700; color: #ef6c00;"><?= intval($st->remaining_qty) ?></td>
-                    </tr>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </tbody>
-    </table>
-
     <div class="signatures">
         <div class="signature-block">
             <div style="height: 60px;"></div>
-            <p><strong>Representative / Driver Signature</strong></p>
+            <p><strong>Driver Signature</strong></p>
             <p>Name: <?= htmlspecialchars($d->driver_name) ?></p>
-            <p>Date: ____ / ____ / ________</p>
+        </div>
+        <div class="signature-block">
+            <div style="height: 60px;"></div>
+            <p><strong>Partner / Helper Signature</strong></p>
+            <p>Name: <?= htmlspecialchars($d->partner_name ?: '_____________________') ?></p>
         </div>
         <div class="signature-block">
             <div style="height: 60px;"></div>
             <p><strong>Auditing Administrator Signature</strong></p>
             <p>Name: _______________________________</p>
-            <p>Date: ____ / ____ / ________</p>
         </div>
     </div>
 
