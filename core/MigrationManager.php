@@ -402,7 +402,8 @@ class MigrationManager {
                     return false;
                 }
                 return true;
-            }
+            },
+            'make_users_email_nullable' => "ALTER TABLE users MODIFY email VARCHAR(100) NULL"
         ];
     }
 

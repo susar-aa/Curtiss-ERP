@@ -69,3 +69,7 @@ ALTER TABLE items DROP COLUMN qty;
 
 -- 7. Drop redundant cost column from items table
 ALTER TABLE items DROP COLUMN cost;
+
+-- 8. Make email column in users table nullable to allow creating login credentials without an email
+ALTER TABLE users MODIFY email VARCHAR(100) NULL;
+
