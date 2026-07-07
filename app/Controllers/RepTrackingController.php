@@ -237,7 +237,7 @@ class RepTrackingController extends Controller {
         $binds = [];
         
         if ($rep !== '') {
-            $filterSql .= " AND CONCAT(COALESCE(e.first_name, u.username), ' ', COALESCE(e.last_name, '')) = :rep";
+            $filterSql .= " AND TRIM(CONCAT(COALESCE(e.first_name, u.username), ' ', COALESCE(e.last_name, ''))) = :rep";
             $binds[':rep'] = $rep;
         }
         if ($routeName !== '') {
@@ -371,7 +371,7 @@ class RepTrackingController extends Controller {
         $binds = [];
         
         if ($rep !== '') {
-            $filterSql .= " AND CONCAT(COALESCE(e.first_name, u.username), ' ', COALESCE(e.last_name, '')) = :rep";
+            $filterSql .= " AND TRIM(CONCAT(COALESCE(e.first_name, u.username), ' ', COALESCE(e.last_name, ''))) = :rep";
             $binds[':rep'] = $rep;
         }
         if ($routeName !== '') {

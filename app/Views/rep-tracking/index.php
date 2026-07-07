@@ -38,8 +38,30 @@
             <label style="font-size: 10px; font-weight: 700; color: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em;">Representative</label>
             <select id="filterRepSelect"  style="padding: 6px 12px; border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); font-size: 13px; background: var(--c-surface2); color: var(--t-primary); min-width: 160px; outline: none;">
                 <option value="">All Representatives</option>
-                <?php foreach ($data['reps'] as $r): ?>
-                    <option value="<?= htmlspecialchars($r->first_name . ' ' . $r->last_name) ?>"><?= htmlspecialchars($r->first_name . ' ' . $r->last_name) ?></option>
+                <?php
+                $db = new Database();
+                $db->query("
+                    SELECT DISTINCT COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name
+                    FROM rep_daily_routes r
+                    LEFT JOIN users u ON r.user_id = u.id
+                    LEFT JOIN employees e ON u.email = e.email
+                    UNION
+                    SELECT DISTINCT COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name
+                    FROM users u
+                    LEFT JOIN employees e ON u.employee_id = e.id
+                    WHERE u.role = 'rep' AND (u.status IS NULL OR u.status = 'Active')
+                ");
+                $dbReps = $db->resultSet() ?: [];
+                $repNames = [];
+                foreach ($dbReps as $r) {
+                    $fullName = trim($r->first_name . ' ' . $r->last_name);
+                    if ($fullName !== '' && !in_array($fullName, $repNames)) {
+                        $repNames[] = $fullName;
+                    }
+                }
+                sort($repNames);
+                foreach ($repNames as $name): ?>
+                    <option value="<?= htmlspecialchars($name) ?>"><?= htmlspecialchars($name) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
