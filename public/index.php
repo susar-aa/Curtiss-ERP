@@ -31,7 +31,7 @@ if (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'suzxlabs.com'
         'domain' => '.suzxlabs.com',
         'secure' => $isSecure,
         'httponly' => true,
-        'samesite' => $isSecure ? 'None' : 'Lax'
+        'samesite' => 'Lax'
     ]);
 }
 
