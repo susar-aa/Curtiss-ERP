@@ -14,10 +14,19 @@ class TerritoryController extends Controller {
             $area->mcas = $this->territoryModel->getMcaAreasWithDistance($area->id, $area->latitude, $area->longitude);
         }
 
+        $db = new Database();
+        $db->query("SELECT u.id, u.username, e.first_name, e.last_name 
+                    FROM users u 
+                    LEFT JOIN employees e ON u.employee_id = e.id 
+                    WHERE u.role = 'rep' AND (u.status IS NULL OR u.status = 'Active') 
+                    ORDER BY e.first_name ASC, u.username ASC");
+        $repsList = $db->resultSet() ?: [];
+
         $data = [
             'title' => 'Territory & Routing',
             'content_view' => 'territories/index',
             'main_areas' => $mainAreas,
+            'reps' => $repsList,
             'error' => '',
             'success' => ''
         ];
@@ -26,8 +35,9 @@ class TerritoryController extends Controller {
             if ($_POST['action'] == 'add_main_area') {
                 if ($this->territoryModel->addMainArea([
                     'name' => trim($_POST['name']),
-                    'lat' => $_POST['latitude'],
-                    'lng' => $_POST['longitude']
+                    'lat' => !empty($_POST['latitude']) ? $_POST['latitude'] : '7.8731',
+                    'lng' => !empty($_POST['longitude']) ? $_POST['longitude'] : '80.7718',
+                    'rep_id' => !empty($_POST['rep_id']) ? intval($_POST['rep_id']) : null
                 ])) {
                     $data['success'] = "Main Area created successfully!";
                     header("Refresh:0"); 

@@ -7,7 +7,13 @@ class Territory {
     }
 
     public function getMainAreas() {
-        $this->db->query("SELECT * FROM main_areas ORDER BY name ASC");
+        $this->db->query("
+            SELECT m.*, u.username, e.first_name, e.last_name 
+            FROM main_areas m 
+            LEFT JOIN users u ON m.rep_id = u.id 
+            LEFT JOIN employees e ON u.employee_id = e.id 
+            ORDER BY m.name ASC
+        ");
         return $this->db->resultSet();
     }
 
@@ -27,10 +33,11 @@ class Territory {
     }
 
     public function addMainArea($data) {
-        $this->db->query("INSERT INTO main_areas (name, latitude, longitude) VALUES (:name, :lat, :lng)");
+        $this->db->query("INSERT INTO main_areas (name, latitude, longitude, rep_id) VALUES (:name, :lat, :lng, :rep_id)");
         $this->db->bind(':name', $data['name']);
         $this->db->bind(':lat', $data['lat']);
         $this->db->bind(':lng', $data['lng']);
+        $this->db->bind(':rep_id', $data['rep_id']);
         return $this->db->execute();
     }
 
