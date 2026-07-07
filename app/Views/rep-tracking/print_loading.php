@@ -174,19 +174,8 @@
                         </tr>
                     <?php else: ?>
                         <?php 
-                        $currentCategory = null;
                         $counter = 1;
                         foreach ($data['items'] as $item): 
-                            if ($item->category_name !== $currentCategory):
-                                $currentCategory = $item->category_name;
-                        ?>
-                            <tr class="category-header-row">
-                                <td colspan="6" style="background-color: #f1f3f9; font-weight: bold; padding: 6px 8px; font-size: 10px; border: 1px solid #000; text-transform: uppercase;">
-                                    <?= htmlspecialchars($currentCategory) ?>
-                                </td>
-                            </tr>
-                        <?php 
-                            endif; 
                             $itemTotal = floatval($item->final_loaded_qty) * floatval($item->unit_price);
                         ?>
                             <tr>
