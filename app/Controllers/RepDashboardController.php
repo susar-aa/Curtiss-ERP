@@ -276,10 +276,10 @@ class RepDashboardController extends Controller {
                 }
             }
             if ($hasRepChanges) {
-                $this->db->query("SELECT u.id, u.username, u.employee_id, e.first_name, e.last_name 
+                $this->db->query("SELECT DISTINCT u.id, u.username, u.employee_id, e.first_name, e.last_name 
                             FROM users u 
-                            LEFT JOIN employees e ON u.employee_id = e.id 
-                            WHERE u.role = 'rep' AND (u.status IS NULL OR u.status = 'Active')");
+                            INNER JOIN employees e ON u.employee_id = e.id OR (e.email IS NOT NULL AND e.email != '' AND LOWER(u.email) = LOWER(e.email))
+                            WHERE (e.job_title = 'Rep' OR u.role = 'rep') AND e.status = 'Active' AND (u.status IS NULL OR u.status = 'Active')");
                 $reps = $this->db->resultSet() ?: [];
                 $repsJson = [];
                 foreach ($reps as $rep) {

@@ -93,10 +93,10 @@ class RepTrackingController extends Controller {
         $allAccounts = $db->resultSet() ?: [];
 
         // Fetch active reps (users with role = 'rep')
-        $db->query("SELECT u.id, u.username, e.first_name, e.last_name 
+        $db->query("SELECT DISTINCT u.id, u.username, e.first_name, e.last_name 
                     FROM users u 
-                    LEFT JOIN employees e ON u.employee_id = e.id 
-                    WHERE u.role = 'rep' AND (u.status IS NULL OR u.status = 'Active') 
+                    INNER JOIN employees e ON u.employee_id = e.id OR (e.email IS NOT NULL AND e.email != '' AND LOWER(u.email) = LOWER(e.email))
+                    WHERE (e.job_title = 'Rep' OR u.role = 'rep') AND e.status = 'Active' AND (u.status IS NULL OR u.status = 'Active') 
                     ORDER BY e.first_name ASC, u.username ASC");
         $repsList = $db->resultSet() ?: [];
 
@@ -169,10 +169,10 @@ class RepTrackingController extends Controller {
         $allAccounts = $db->resultSet() ?: [];
 
         // Fetch active reps (users with role = 'rep')
-        $db->query("SELECT u.id, u.username, e.first_name, e.last_name 
+        $db->query("SELECT DISTINCT u.id, u.username, e.first_name, e.last_name 
                     FROM users u 
-                    LEFT JOIN employees e ON u.employee_id = e.id 
-                    WHERE u.role = 'rep' AND (u.status IS NULL OR u.status = 'Active') 
+                    INNER JOIN employees e ON u.employee_id = e.id OR (e.email IS NOT NULL AND e.email != '' AND LOWER(u.email) = LOWER(e.email))
+                    WHERE (e.job_title = 'Rep' OR u.role = 'rep') AND e.status = 'Active' AND (u.status IS NULL OR u.status = 'Active') 
                     ORDER BY e.first_name ASC, u.username ASC");
         $repsList = $db->resultSet() ?: [];
 
