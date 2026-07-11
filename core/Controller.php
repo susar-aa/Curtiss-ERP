@@ -131,4 +131,21 @@ class Controller {
             }
         }
     }
+
+    /**
+     * Sanitizes product image paths to resolve absolute URL embedding issues.
+     */
+    protected function sanitizeImagePath($path) {
+        if (empty($path)) {
+            return '';
+        }
+        $pos = strpos($path, 'http://');
+        if ($pos === false) {
+            $pos = strpos($path, 'https://');
+        }
+        if ($pos !== false) {
+            return substr($path, $pos);
+        }
+        return $path;
+    }
 }

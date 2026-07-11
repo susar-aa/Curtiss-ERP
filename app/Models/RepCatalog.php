@@ -24,6 +24,8 @@ class RepCatalog {
         
         // Embed variations inside each item for the modal selection screen
         foreach($items as $item) {
+            $item->image_path = $this->sanitizePath($item->image_path ?? '');
+
             if ($includeVariations) {
                 $this->db->query("
                     SELECT ivo.*, v.name as variation_name, vv.value_name,
@@ -35,6 +37,9 @@ class RepCatalog {
                 ");
                 $this->db->bind(':id', $item->id);
                 $item->variations = $this->db->resultSet() ?: [];
+                foreach ($item->variations as $var) {
+                    $var->var_image = $this->sanitizePath($var->var_image ?? '');
+                }
             } else {
                 $item->variations = [];
             }
@@ -100,5 +105,19 @@ class RepCatalog {
             }
         }
         return $items;
+    }
+
+    private function sanitizePath($path) {
+        if (empty($path)) {
+            return '';
+        }
+        $pos = strpos($path, 'http://');
+        if ($pos === false) {
+            $pos = strpos($path, 'https://');
+        }
+        if ($pos !== false) {
+            return substr($path, $pos);
+        }
+        return $path;
     }
 }

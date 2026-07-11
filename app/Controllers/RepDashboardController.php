@@ -162,7 +162,7 @@ class RepDashboardController extends Controller {
                     'cost_price' => floatval($item->cost_price ?? 0),
                     'qty' => intval($item->qty ?? $item->quantity_on_hand ?? 0),
                     'quantity_reserved' => intval($item->quantity_reserved),
-                    'image_path' => $item->image_path ?? '',
+                    'image_path' => $this->sanitizeImagePath($item->image_path ?? ''),
                     'sku' => $item->item_code ?? $item->sku ?? '',
                     'sample_code' => $item->sample_code ?? '',
                     'variations_json' => $item->variations_json ?? '',
