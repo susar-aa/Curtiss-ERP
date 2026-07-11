@@ -799,7 +799,7 @@ $totalReps = count($data['reps'] ?? []);
 
     function placeStartMarker(lat, lng) {
         if(startMarker) map.removeLayer(startMarker);
-        startMarker = L.marker([lat, lng], {icon: greenIcon}).addTo(map);
+                   startMarker = L.marker([lat, lng], {icon: greenIcon}).addTo(map);
         document.getElementById('formStartLat').value = lat;
         document.getElementById('formStartLng').value = lng;
         drawRealRoute();

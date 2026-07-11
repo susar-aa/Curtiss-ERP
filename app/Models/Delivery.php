@@ -683,35 +683,41 @@ class Delivery {
             // Invoices already have their posted JEs and account balances updated at creation time in Invoice::createInvoiceWithAccounting().
 
             // 4. Financial Clearance collections balancing
+            // ACCT-1 FIX: Delegate to the canonical RepTracking::finalizePayments() method
+            // to eliminate duplicate GL posting paths and prevent double-posting.
             $this->db->query("
-                SELECT * 
+                SELECT id 
                 FROM pending_collections 
                 WHERE route_id IN ($ridsStr) AND status = 'Pending'
             ");
             $routePayments = $this->db->resultSet() ?: [];
 
             if (!empty($routePayments)) {
-                $this->db->query("SELECT id, account_code FROM chart_of_accounts WHERE account_code IN ('1000', '1010', '1600', '1605', '1200', '1090')");
-                $accounts = $this->db->resultSet();
-                $accMap = [];
-                foreach ($accounts as $a) { $accMap[$a->account_code] = $a->id; }
-
-                $cashAcc = $accMap['1000'] ?? null;
-                $chequeAcc = $accMap['1010'] ?? null;
-                $tempBankAcc = $accMap['1605'] ?? ($accMap['1600'] ?? null);
-                $arAcc = $accMap['1200'] ?? null;
-                $transitAcc = $accMap['1090'] ?? null;
+                // Build payment IDs list and account override maps
+                $payIdsToFinalize = [];
+                $customDebitMap = [];
+                $customCreditMap = [];
 
                 foreach ($routePayments as $pay) {
                     $payId = intval($pay->id);
                     if (!empty($selectedPaymentIds) && !in_array($payId, $selectedPaymentIds)) {
                         continue;
                     }
+                    $payIdsToFinalize[] = $payId;
 
-                    $amount = floatval($pay->adjusted_amount !== null ? $pay->adjusted_amount : $pay->amount);
-                    if ($amount <= 0) continue;
+                    // Map custom debit/credit accounts from delivery accounting entries
+                    if (isset($debitAccounts["pay_" . $payId])) {
+                        $customDebitMap[$payId] = intval($debitAccounts["pay_" . $payId]);
+                    } elseif (isset($debitAccounts[$payId])) {
+                        $customDebitMap[$payId] = intval($debitAccounts[$payId]);
+                    }
+                    if (isset($creditAccounts["pay_" . $payId])) {
+                        $customCreditMap[$payId] = intval($creditAccounts["pay_" . $payId]);
+                    } elseif (isset($creditAccounts[$payId])) {
+                        $customCreditMap[$payId] = intval($creditAccounts[$payId]);
+                    }
 
-                    // Clean up any existing draft or incomplete journal entries for this payment to prevent collisions on retry
+                    // Clean up any existing draft journal entries for this payment
                     $this->db->query("SELECT id FROM journal_entries WHERE reference IN (:ref, :ref2)");
                     $this->db->bind(':ref', "PMT-BAL-" . $payId);
                     $this->db->bind(':ref2', "PMT-BAL-DRAFT-" . $payId);
@@ -725,96 +731,12 @@ class Delivery {
                         $this->db->bind(':id', $oldRow->id);
                         $this->db->execute();
                     }
+                }
 
-                    $debAccId = isset($debitAccounts["pay_" . $payId]) ? intval($debitAccounts["pay_" . $payId]) : (isset($debitAccounts[$payId]) ? intval($debitAccounts[$payId]) : intval($pay->debit_account_id ?? 0));
-                    if (!$debAccId) {
-                        $method = $pay->payment_method;
-                        if ($method === 'Cash') {
-                            $debAccId = $cashAcc;
-                        } elseif ($method === 'Cheque') {
-                            $debAccId = $chequeAcc;
-                        } elseif ($method === 'Bank Transfer') {
-                            $debAccId = $tempBankAcc;
-                        }
-                    }
-                    if (!$debAccId) continue;
-
-                    $credAccId = isset($creditAccounts["pay_" . $payId]) ? intval($creditAccounts["pay_" . $payId]) : (isset($creditAccounts[$payId]) ? intval($creditAccounts[$payId]) : intval($pay->credit_account_id ?? 0));
-                    if (!$credAccId) {
-                        $credAccId = $transitAcc ?: $arAcc;
-                    }
-
-                    // Insert new Posted Journal Entry first to prevent partial updates with no rollback on failure
-                    $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
-                                      VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
-                    $this->db->bind(':ref', "PMT-BAL-" . $payId);
-                    $this->db->bind(':desc', "Finalized Delivery Collection (" . $pay->payment_method . ")");
-                    $this->db->bind(':uid', $adminUserId);
-                    $this->db->execute();
-                    $payJid = $this->db->lastInsertId();
-
-                    // Insert into customer_payments officially to credit customer subledger
-                    $this->db->query("INSERT INTO customer_payments (customer_id, amount, unallocated_amount, payment_date, payment_method, reference, journal_entry_id, rep_route_id, created_by, status) 
-                                      VALUES (:cid, :amt, :uamt, CURDATE(), :method, :ref, :jid, :rid, :uid, 'Active')");
-                    $this->db->bind(':cid', $pay->customer_id);
-                    $this->db->bind(':amt', $amount);
-                    $this->db->bind(':uamt', $amount);
-                    $this->db->bind(':method', $pay->payment_method);
-                    $this->db->bind(':ref', $pay->cheque_number ? $pay->cheque_number : ($pay->reference ? $pay->reference : "Route Payment"));
-                    $this->db->bind(':jid', $payJid);
-                    $this->db->bind(':rid', $pay->route_id);
-                    $this->db->bind(':uid', $adminUserId);
-                    $this->db->execute();
-                    $insertedPaymentId = $this->db->lastInsertId();
-
-                    // If it is a cheque, register it in the cheques table as well
-                    if ($pay->payment_method === 'Cheque') {
-                        $this->db->query("INSERT INTO cheques (customer_id, bank_name, cheque_number, amount, banking_date, status, rep_route_id, created_by) 
-                                          VALUES (:cid, :bn, :cn, :amt, :bdate, 'Pending', :rid, :uid)");
-                        $this->db->bind(':cid', $pay->customer_id);
-                        $this->db->bind(':bn', $pay->bank_name ?? 'Unknown');
-                        $this->db->bind(':cn', $pay->cheque_number ?? 'Unknown');
-                        $this->db->bind(':amt', $amount);
-                        $this->db->bind(':bdate', $pay->cheque_date ?: date('Y-m-d'));
-                        $this->db->bind(':rid', $pay->route_id);
-                        $this->db->bind(':uid', $adminUserId);
-                        $this->db->execute();
-                    }
-
-                    // Update pending_collections status to Finalized
-                    $this->db->query("UPDATE pending_collections SET status = 'Finalized', is_verified = 1, verified_by = :vby, verified_at = NOW() WHERE id = :id");
-                    $this->db->bind(':vby', $adminUserId);
-                    $this->db->bind(':id', $payId);
-                    $this->db->execute();
-
-                    // Debit Asset Account
-                    $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, 0)");
-                    $this->db->bind(':jid', $payJid);
-                    $this->db->bind(':aid', $debAccId);
-                    $this->db->bind(':deb', $amount);
-                    $this->db->execute();
-
-                    $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :aid");
-                    $this->db->bind(':amt', $amount);
-                    $this->db->bind(':aid', $debAccId);
-                    $this->db->execute();
-
-                    // Credit cleared transit account
-                    $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :cred)");
-                    $this->db->bind(':jid', $payJid);
-                    $this->db->bind(':aid', $credAccId);
-                    $this->db->bind(':cred', $amount);
-                    $this->db->execute();
-
-                    $this->db->query("UPDATE chart_of_accounts SET balance = balance - :amt WHERE id = :aid");
-                    $this->db->bind(':amt', $amount);
-                    $this->db->bind(':aid', $credAccId);
-                    $this->db->execute();
-
-                    // FIFO allocation
-                    require_once __DIR__ . '/Payment.php';
-                    $paymentModel = new Payment();
-                    $paymentModel->settleCustomerInvoicesWithCreditNonTransactional($pay->customer_id, $adminUserId);
+                if (!empty($payIdsToFinalize)) {
+                    require_once __DIR__ . '/RepTracking.php';
+                    $trackingModel = new RepTracking();
+                    $trackingModel->finalizePayments($payIdsToFinalize, $adminUserId, [], $customDebitMap, $customCreditMap);
                 }
             }
 
