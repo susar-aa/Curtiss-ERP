@@ -619,8 +619,20 @@ class MigrationManager {
                 if (is_callable($sql)) {
                     $success = call_user_func($sql, $dbh);
                 } else {
-                    $dbh->exec($sql);
-                    $success = true;
+                    try {
+                        $dbh->exec($sql);
+                        $success = true;
+                    } catch (PDOException $e) {
+                        // Self-healing: if an ALTER TABLE ADD COLUMN ... AFTER column statement fails,
+                        // try running it without the AFTER clause in case the target column order reference is missing.
+                        if (strpos(strtolower($sql), ' add column ') !== false && strpos(strtolower($sql), ' after ') !== false) {
+                            $cleanSql = preg_replace('/\s+after\s+\S+/i', '', $sql);
+                            $dbh->exec($cleanSql);
+                            $success = true;
+                        } else {
+                            throw $e;
+                        }
+                    }
                 }
             } catch (PDOException $e) {
                 // If migration fails because column/table already exists, we count it as success (previously manually run)
@@ -628,7 +640,17 @@ class MigrationManager {
                 $errorCode = $e->errorInfo[1] ?? 0;
                 if (in_array($errorCode, [1050, 1060, 1061])) {
                     $success = true;
+                } else {
+                    // Log the failure to app_errors.log
+                    $logFile = dirname(__DIR__) . '/app_errors.log';
+                    $logContent = "[" . date('Y-m-d H:i:s') . "] Migration '$name' failed: " . $e->getMessage() . "\nSQL: " . (is_string($sql) ? $sql : "Callable") . "\n\n";
+                    @file_put_contents($logFile, $logContent, FILE_APPEND);
                 }
+            } catch (Throwable $t) {
+                // Log standard exception or error
+                $logFile = dirname(__DIR__) . '/app_errors.log';
+                $logContent = "[" . date('Y-m-d H:i:s') . "] Migration '$name' threw non-PDO exception: " . $t->getMessage() . "\n" . $t->getTraceAsString() . "\n\n";
+                @file_put_contents($logFile, $logContent, FILE_APPEND);
             }
 
             if ($success) {

@@ -38,15 +38,25 @@ class Database {
             
             $this->dbh = self::$sharedDbh;
 
-        } catch (PDOException $e) {
+        } catch (Throwable $e) {
             $this->error = $e->getMessage();
-            // Return JSON error if this is an AJAX request
-            if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
+            // Log to app_errors.log
+            $logFile = dirname(__DIR__) . '/app_errors.log';
+            $logContent = "[" . date('Y-m-d H:i:s') . "] Database initialization failed: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n";
+            @file_put_contents($logFile, $logContent, FILE_APPEND);
+
+            // Return JSON error if this is an AJAX/API request
+            $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
+                      (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
+                      isset($_GET['api_sync']);
+
+            if ($isAjax) {
                 header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'error' => 'Database connection failed']);
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => 'Database connection/migration failed: ' . $this->error]);
                 exit;
             }
-            die("Database Connection Failed: " . $this->error . "<br><br>Make sure you have created the 'curtiss_erp' database in phpMyAdmin!");
+            die("Database Connection/Migration Failed: " . htmlspecialchars($this->error) . "<br><br>Please check <strong>app_errors.log</strong> for the full traceback details.");
         }
     }
 
