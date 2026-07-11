@@ -255,21 +255,7 @@ class Delivery {
         return $this->db->resultSet();
     }
 
-    public function getDeliveryBalancingData($deliveryId, $routeId = null) {
-        if ($deliveryId > 0) {
-            $delivery = $this->getDeliveryById($deliveryId);
-        } else {
-            $delivery = $this->getVirtualDeliveryByRouteId($routeId);
-        }
-        if (!$delivery) return null;
-
-        $rids = [intval($delivery->rep_route_id)];
-        if (!empty($delivery->secondary_rep_route_id)) {
-            $rids[] = intval($delivery->secondary_rep_route_id);
-        }
-        $rids = $this->resolveAllBoundRouteIds($rids);
-        $ridsStr = implode(',', array_map('intval', $rids));
-
+    public function ensureRequiredAccountsExist() {
         // Ensure 1605 account exists in chart of accounts
         try {
             $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1605'");
@@ -304,6 +290,24 @@ class Delivery {
                 $this->db->execute();
             }
         } catch (Exception $e) {}
+    }
+
+    public function getDeliveryBalancingData($deliveryId, $routeId = null) {
+        if ($deliveryId > 0) {
+            $delivery = $this->getDeliveryById($deliveryId);
+        } else {
+            $delivery = $this->getVirtualDeliveryByRouteId($routeId);
+        }
+        if (!$delivery) return null;
+
+        $rids = [intval($delivery->rep_route_id)];
+        if (!empty($delivery->secondary_rep_route_id)) {
+            $rids[] = intval($delivery->secondary_rep_route_id);
+        }
+        $rids = $this->resolveAllBoundRouteIds($rids);
+        $ridsStr = implode(',', array_map('intval', $rids));
+
+        $this->ensureRequiredAccountsExist();
 
         // 1. Fetch Invoices stats (today's Cash Sales vs today's Credit Sales)
         $this->db->query("
@@ -440,14 +444,23 @@ class Delivery {
     public function finalizeDelivery($deliveryId, $adminUserId, $selectedPaymentIds = [], $selectedInvoiceIds = [], $debitAccounts = [], $creditAccounts = [], $returnedItems = [], $vehicleNumber = null, $driverName = null, $partnerName = null) {
         $this->db->beginTransaction();
         try {
+            // Lock the deliveries row immediately to prevent concurrent return stock save/other finalize (INV-2 Race Condition protection)
+            $this->db->query("SELECT id, status, return_stock_json FROM deliveries WHERE id = :id FOR UPDATE");
+            $this->db->bind(':id', $deliveryId);
+            $lockedDelivery = $this->db->single();
+            if (!$lockedDelivery) {
+                throw new Exception("Delivery not found");
+            }
+            if ($lockedDelivery->status === 'Finalized') {
+                throw new Exception("Delivery is already finalized");
+            }
+            if ($lockedDelivery->return_stock_json === null || $lockedDelivery->return_stock_json === '') {
+                throw new Exception("Cannot finalize delivery: Return stock verification has not been saved yet.");
+            }
+
             $delivery = $this->getDeliveryById($deliveryId);
             if (!$delivery) {
                 throw new Exception("Delivery not found");
-            }
-
-            // Enforce that return stock verification must be saved first (CRIT-4)
-            if ($delivery->return_stock_json === null || $delivery->return_stock_json === '') {
-                throw new Exception("Cannot finalize delivery: Return stock verification has not been saved yet.");
             }
             
             // Merge draft mappings from deliveries.accounting_entries_json if empty
@@ -484,25 +497,7 @@ class Delivery {
             }
 
             // Ensure 1605 account exists in chart of accounts
-            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1605'");
-            if (!$this->db->single()) {
-                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1600' LIMIT 1");
-                $parentRow = $this->db->single();
-                $pId = $parentRow ? $parentRow->id : null;
-
-                $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, balance, parent_id) 
-                                  VALUES ('1605', 'Temporary Bank Account', 'Asset', 0.00, :pid)");
-                $this->db->bind(':pid', $pId);
-                $this->db->execute();
-            }
-
-            // Ensure 1010 account exists for cheques
-            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1010'");
-            if (!$this->db->single()) {
-                $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, balance, parent_id) 
-                                  VALUES ('1010', 'Cheque in Hand', 'Asset', 0.00, NULL)");
-                $this->db->execute();
-            }
+            $this->ensureRequiredAccountsExist();
 
             // 1. Update statuses to Finalized
             $this->db->query("UPDATE deliveries SET status = 'Finalized' WHERE id = :id");

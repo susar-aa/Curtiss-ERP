@@ -90,8 +90,12 @@ class RepVarianceService {
             $arAccRow = $db->single();
             $arAccId = $arAccRow ? intval($arAccRow->id) : null;
 
-            $db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' LIMIT 1");
+            $db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' AND (account_code = '4000' OR account_name LIKE '%Sales%' OR account_name LIKE '%Revenue%') LIMIT 1");
             $revAccRow = $db->single();
+            if (!$revAccRow) {
+                $db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' LIMIT 1");
+                $revAccRow = $db->single();
+            }
             $revAccId = $revAccRow ? intval($revAccRow->id) : null;
 
             $modifiedInvoices = [];
@@ -144,7 +148,7 @@ class RepVarianceService {
                             $db->bind(':id', $line->id);
                             $db->execute();
                         } else {
-                            $db->query("UPDATE invoice_items SET quantity = :qty, total = :total WHERE id = :id");
+                            $db->query("UPDATE invoice_items SET quantity = :qty, loaded_quantity = :qty, total = :total WHERE id = :id");
                             $db->bind(':qty', $newQty);
                             $db->bind(':total', $lineTotal);
                             $db->bind(':id', $line->id);
@@ -357,18 +361,14 @@ class RepVarianceService {
                         }
 
                         $diffGrand = $grandTotal - $oldGrand;
-                        if ($diffGrand !== 0.0) {
+                        if (abs($diffGrand) > 0.001) {
                             if ($arAccId) {
-                                $db->query("UPDATE chart_of_accounts SET balance = balance + :diff WHERE id = :id");
-                                $db->bind(':diff', $diffGrand);
-                                $db->bind(':id', $arAccId);
-                                $db->execute();
+                                // ACCT-2 FIX: AR (Asset): positive diff = debit, negative = credit
+                                $db->updateAccountBalance($arAccId, ($diffGrand > 0 ? $diffGrand : 0), ($diffGrand < 0 ? abs($diffGrand) : 0));
                             }
                             if ($revAccId) {
-                                $db->query("UPDATE chart_of_accounts SET balance = balance + :diff WHERE id = :id");
-                                $db->bind(':diff', $diffGrand);
-                                $db->bind(':id', $revAccId);
-                                $db->execute();
+                                // ACCT-2 FIX: Revenue: positive diff = credit increase, negative = debit decrease
+                                $db->updateAccountBalance($revAccId, ($diffGrand < 0 ? abs($diffGrand) : 0), ($diffGrand > 0 ? $diffGrand : 0));
                             }
                         }
                     }
@@ -502,8 +502,12 @@ class RepVarianceService {
         $arAccRow = $db->single();
         $arAccId = $arAccRow ? intval($arAccRow->id) : null;
 
-        $db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' LIMIT 1");
+        $db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' AND (account_code = '4000' OR account_name LIKE '%Sales%' OR account_name LIKE '%Revenue%') LIMIT 1");
         $revAccRow = $db->single();
+        if (!$revAccRow) {
+            $db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' LIMIT 1");
+            $revAccRow = $db->single();
+        }
         $revAccId = $revAccRow ? intval($revAccRow->id) : null;
 
         foreach ($invoices as $invoice) {
@@ -591,18 +595,14 @@ class RepVarianceService {
                         }
 
                         $diffGrand = $grandTotal - $oldGrand;
-                        if ($diffGrand !== 0.0) {
+                        if (abs($diffGrand) > 0.001) {
                             if ($arAccId) {
-                                $db->query("UPDATE chart_of_accounts SET balance = balance + :diff WHERE id = :id");
-                                $db->bind(':diff', $diffGrand);
-                                $db->bind(':id', $arAccId);
-                                $db->execute();
+                                // ACCT-2 FIX: AR (Asset): positive diff = debit, negative = credit
+                                $db->updateAccountBalance($arAccId, ($diffGrand > 0 ? $diffGrand : 0), ($diffGrand < 0 ? abs($diffGrand) : 0));
                             }
                             if ($revAccId) {
-                                $db->query("UPDATE chart_of_accounts SET balance = balance + :diff WHERE id = :id");
-                                $db->bind(':diff', $diffGrand);
-                                $db->bind(':id', $revAccId);
-                                $db->execute();
+                                // ACCT-2 FIX: Revenue: positive diff = credit increase, negative = debit decrease
+                                $db->updateAccountBalance($revAccId, ($diffGrand < 0 ? abs($diffGrand) : 0), ($diffGrand > 0 ? $diffGrand : 0));
                             }
                         }
                     }

@@ -355,6 +355,8 @@ class DriverDashboardController extends Controller {
         
         try {
             $billingModel = $this->model('DriverInvoice');
+            $db = $billingModel->db;
+            $db->beginTransaction();
             file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Successfully loaded DriverInvoice model\n\n", FILE_APPEND);
             
             // 1. Process trip odometer & status updates
@@ -453,8 +455,8 @@ class DriverDashboardController extends Controller {
                         ];
                         
                         file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Calling checkoutShop: cust=$customerId, route=$routeId, user=$userId, collections=" . print_r($collections, true) . "\n", FILE_APPEND);
-                        $billingModel->checkoutShop($customerId, $routeId, $userId, $collections);
-                        $this->autoApplyPaymentsToInvoices($customerId);
+                        $billingModel->checkoutShop($customerId, $routeId, $userId, $collections, $db);
+                        $this->autoApplyPaymentsToInvoices($customerId, $db);
                         $this->logActivity('Collection Received', 'Billing', "Collected Rs. " . number_format($amount, 2) . " via {$method} from Customer ID {$customerId} (Route ID: {$routeId}) via Driver Mobile App Sync.", null, null, $pmt);
                         file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] checkoutShop succeeded and invoice payment statuses healed\n", FILE_APPEND);
                     } else {
@@ -463,10 +465,14 @@ class DriverDashboardController extends Controller {
                 }
             }
             
+            $db->commit();
             file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] PUSH SYNC COMPLETED SUCCESSFULLY\n\n", FILE_APPEND);
             echo json_encode(['success' => true, 'message' => 'Offline driver changes synchronized successfully!']);
             exit;
         } catch (Exception $e) {
+            if (isset($db) && $db->inTransaction()) {
+                $db->rollBack();
+            }
             file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] FATAL ERROR DURING PUSH: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
             echo json_encode(['success' => false, 'message' => 'Server sync processing error: ' . $e->getMessage()]);
             exit;
@@ -474,17 +480,17 @@ class DriverDashboardController extends Controller {
     }
 
     // Helper to auto-apply customer payments to non-voided invoices in chronological (FIFO) order
-    private function autoApplyPaymentsToInvoices($customerId) {
-        $db = new Database();
+    private function autoApplyPaymentsToInvoices($customerId, $db = null) {
+        $dbToUse = $db ?: new Database();
         
         // 1. Get total paid amount for this customer
-        $db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :cid");
-        $db->bind(':cid', $customerId);
-        $rowPaid = $db->single();
+        $dbToUse->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :cid");
+        $dbToUse->bind(':cid', $customerId);
+        $rowPaid = $dbToUse->single();
         $totalPaid = $rowPaid ? floatval($rowPaid->total_paid) : 0.0;
         
         // 2. Get all non-voided invoices in chronological order
-        $db->query("
+        $dbToUse->query("
             SELECT id, 
                    (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total,
                    status
@@ -492,8 +498,8 @@ class DriverDashboardController extends Controller {
             WHERE customer_id = :cid AND status != 'Voided'
             ORDER BY invoice_date ASC, id ASC
         ");
-        $db->bind(':cid', $customerId);
-        $invoices = $db->resultSet();
+        $dbToUse->bind(':cid', $customerId);
+        $invoices = $dbToUse->resultSet();
         
         $remainingPaid = $totalPaid;
         
@@ -509,10 +515,10 @@ class DriverDashboardController extends Controller {
             }
             
             if ($inv->status !== $newStatus) {
-                $db->query("UPDATE invoices SET status = :status WHERE id = :id");
-                $db->bind(':status', $newStatus);
-                $db->bind(':id', $inv->id);
-                $db->execute();
+                $dbToUse->query("UPDATE invoices SET status = :status WHERE id = :id");
+                $dbToUse->bind(':status', $newStatus);
+                $dbToUse->bind(':id', $inv->id);
+                $dbToUse->execute();
             }
         }
     }

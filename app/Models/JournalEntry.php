@@ -188,12 +188,8 @@ class JournalEntry {
                 $this->db->bind(':desc', "Year-End Closing - Transfer Net Income to Retained Earnings");
                 $this->db->execute();
 
-                // Update Retained Earnings balance
-                $this->db->query("UPDATE chart_of_accounts SET balance = balance - :deb + :cred WHERE id = :id");
-                $this->db->bind(':deb', $reDebit);
-                $this->db->bind(':cred', $reCredit);
-                $this->db->bind(':id', $retainedEarningsAccId);
-                $this->db->execute();
+                // ACCT-2 FIX: Use account-type-aware balance update for Retained Earnings
+                $this->db->updateAccountBalance($retainedEarningsAccId, $reDebit, $reCredit);
             }
 
             // 5. Lock all old journal entries (excluding drafts)

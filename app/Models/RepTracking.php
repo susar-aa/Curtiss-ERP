@@ -430,10 +430,8 @@ class RepTracking {
             $this->db->bind(':amount', $amount);
             $this->db->execute();
 
-            $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :aid");
-            $this->db->bind(':amt', $amount);
-            $this->db->bind(':aid', $assetAccId);
-            $this->db->execute();
+            // ACCT-2 FIX: Use account-type-aware balance update
+            $this->db->updateAccountBalance($assetAccId, $amount, 0);
 
             // Transaction 2: Credit Accounts Receivable (or custom credit account)
             $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :amount)");
@@ -442,10 +440,8 @@ class RepTracking {
             $this->db->bind(':amount', $amount);
             $this->db->execute();
 
-            $this->db->query("UPDATE chart_of_accounts SET balance = balance - :amt WHERE id = :aid");
-            $this->db->bind(':amt', $amount);
-            $this->db->bind(':aid', $arAccId);
-            $this->db->execute();
+            // ACCT-2 FIX: Use account-type-aware balance update
+            $this->db->updateAccountBalance($arAccId, 0, $amount);
 
             // Insert into customer_payments officially to credit customer subledger
             $this->db->query("INSERT INTO customer_payments (customer_id, amount, unallocated_amount, payment_date, payment_method, reference, journal_entry_id, rep_route_id, created_by, status) 

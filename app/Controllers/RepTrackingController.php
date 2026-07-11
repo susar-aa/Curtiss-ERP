@@ -662,24 +662,24 @@ class RepTrackingController extends Controller {
         exit;
     }
 
-    private function autoApplyPaymentsToInvoices($customerId) {
-        $db = new Database();
+    private function autoApplyPaymentsToInvoices($customerId, $db = null) {
+        $dbToUse = $db ?: new Database();
         
         // Sum active/finalized customer payments
-        $db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :cid AND (status IS NULL OR status = 'Active')");
-        $db->bind(':cid', $customerId);
-        $rowPaid = $db->single();
+        $dbToUse->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :cid AND (status IS NULL OR status = 'Active')");
+        $dbToUse->bind(':cid', $customerId);
+        $rowPaid = $dbToUse->single();
         $totalPaid = $rowPaid ? floatval($rowPaid->total_paid) : 0.0;
         
         // Sum pending route collections (in transit/not yet finalized)
-        $db->query("SELECT COALESCE(SUM(amount), 0) as total_pending FROM pending_collections WHERE customer_id = :cid AND status = 'Pending'");
-        $db->bind(':cid', $customerId);
-        $rowPending = $db->single();
+        $dbToUse->query("SELECT COALESCE(SUM(amount), 0) as total_pending FROM pending_collections WHERE customer_id = :cid AND status = 'Pending'");
+        $dbToUse->bind(':cid', $customerId);
+        $rowPending = $dbToUse->single();
         $totalPending = $rowPending ? floatval($rowPending->total_pending) : 0.0;
         
         $totalPaid += $totalPending;
         
-        $db->query("
+        $dbToUse->query("
             SELECT id, 
                    (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total,
                    status
@@ -687,8 +687,8 @@ class RepTrackingController extends Controller {
             WHERE customer_id = :cid AND status != 'Voided'
             ORDER BY invoice_date ASC, id ASC
         ");
-        $db->bind(':cid', $customerId);
-        $invoices = $db->resultSet();
+        $dbToUse->bind(':cid', $customerId);
+        $invoices = $dbToUse->resultSet();
         
         $remainingPaid = $totalPaid;
         foreach ($invoices as $inv) {
@@ -701,10 +701,10 @@ class RepTrackingController extends Controller {
                 $remainingPaid = 0;
             }
             if ($inv->status !== $newStatus) {
-                $db->query("UPDATE invoices SET status = :status WHERE id = :id");
-                $db->bind(':status', $newStatus);
-                $db->bind(':id', $inv->id);
-                $db->execute();
+                $dbToUse->query("UPDATE invoices SET status = :status WHERE id = :id");
+                $dbToUse->bind(':status', $newStatus);
+                $dbToUse->bind(':id', $inv->id);
+                $dbToUse->execute();
             }
         }
     }
@@ -1772,13 +1772,14 @@ class RepTrackingController extends Controller {
             $db = new Database();
             $db->beginTransaction();
 
-            // Retrieve invoice number for reference
-            $db->query("SELECT invoice_number FROM invoices WHERE id = :id");
+            // Retrieve invoice number and stock status for reference
+            $db->query("SELECT invoice_number, stock_status FROM invoices WHERE id = :id");
             $db->bind(':id', $invoiceId);
             $invRow = $db->single();
             $invNumber = $invRow ? $invRow->invoice_number : 'INV-DELETE';
+            $stockStatus = $invRow ? $invRow->stock_status : 'reserved';
 
-            $db->query("SELECT item_id, variation_option_id, quantity FROM invoice_items WHERE invoice_id = :iid");
+            $db->query("SELECT id, item_id, variation_option_id, quantity FROM invoice_items WHERE invoice_id = :iid");
             $db->bind(':iid', $invoiceId);
             $items = $db->resultSet() ?: [];
             foreach ($items as $item) {
@@ -1786,29 +1787,59 @@ class RepTrackingController extends Controller {
                 $varId = (!empty($item->variation_option_id) && is_numeric($item->variation_option_id) && intval($item->variation_option_id) > 0) ? intval($item->variation_option_id) : null;
                 $qty = floatval($item->quantity);
 
-                if ($itemId) {
-                    $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
-                    $db->bind(':qty', $qty);
-                    $db->bind(':id', $itemId);
-                    $db->execute();
-                }
-                if ($varId) {
-                    $db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
-                    $db->bind(':qty', $qty);
-                    $db->bind(':id', $varId);
-                    $db->execute();
-                }
+                if ($stockStatus === 'deducted') {
+                    if ($itemId) {
+                        require_once dirname(__DIR__) . '/Models/Item.php';
+                        $itemModel = new Item();
+                        $itemModel->updateStockDelta($itemId, $qty);
+                    }
+                    if ($varId) {
+                        $db->query("UPDATE item_variation_options SET quantity_on_hand = quantity_on_hand + :qty WHERE id = :id");
+                        $db->bind(':qty', $qty);
+                        $db->bind(':id', $varId);
+                        $db->execute();
+                    }
 
-                // Log movement in stock ledger (HIGH-6)
-                require_once dirname(__DIR__) . '/Models/StockLedger.php';
-                $ledger = new StockLedger();
-                $db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
-                $db->bind(':id', $itemId);
-                $itemRow = $db->single();
-                $whId = $itemRow ? $itemRow->warehouse_id : null;
-                $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
-                
-                $ledger->logMovement($itemId, $varId, 0, 0, 'Reserved Stock Release', $invNumber, $whId, $_SESSION['user_id'] ?? 1, 'Invoice Deleted - Reserved Stock Released', $itemCost);
+                    require_once dirname(__DIR__) . '/Models/FIFO.php';
+                    $fifo = new FIFO();
+                    $fifo->revertDepletion($item->id, null);
+
+                    // Log movement in stock ledger
+                    require_once dirname(__DIR__) . '/Models/StockLedger.php';
+                    $ledger = new StockLedger();
+                    $db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
+                    $db->bind(':id', $itemId);
+                    $itemRow = $db->single();
+                    $whId = $itemRow ? $itemRow->warehouse_id : null;
+                    $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
+                    
+                    $ledger->logMovement($itemId, $varId, $qty, 0, 'Sales Invoice Deletion', $invNumber, $whId, $_SESSION['user_id'] ?? 1, 'Invoice Deleted - Stock Reverted', $itemCost);
+                } else {
+                    // Reserved status
+                    if ($itemId) {
+                        $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
+                        $db->bind(':qty', $qty);
+                        $db->bind(':id', $itemId);
+                        $db->execute();
+                    }
+                    if ($varId) {
+                        $db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :qty) WHERE id = :id");
+                        $db->bind(':qty', $qty);
+                        $db->bind(':id', $varId);
+                        $db->execute();
+                    }
+
+                    // Log movement in stock ledger
+                    require_once dirname(__DIR__) . '/Models/StockLedger.php';
+                    $ledger = new StockLedger();
+                    $db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
+                    $db->bind(':id', $itemId);
+                    $itemRow = $db->single();
+                    $whId = $itemRow ? $itemRow->warehouse_id : null;
+                    $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
+                    
+                    $ledger->logMovement($itemId, $varId, 0, 0, 'Reserved Stock Release', $invNumber, $whId, $_SESSION['user_id'] ?? 1, 'Invoice Deleted - Reserved Stock Released', $itemCost);
+                }
             }
             $db->query("DELETE FROM invoice_items WHERE invoice_id = :iid");
             $db->bind(':iid', $invoiceId);
@@ -2136,83 +2167,92 @@ class RepTrackingController extends Controller {
         }
         
         $driverInvoiceModel = $this->model('DriverInvoice');
+        $db = $driverInvoiceModel->db;
         
-        // 1. Process deliveries
-        $deliveries = $payload['deliveries'] ?? [];
-        foreach ($deliveries as $del) {
-            $invoiceId = intval($del['invoice_id'] ?? 0);
-            $deliveryStatus = $del['delivery_status'] ?? 'Delivered';
-            if ($invoiceId > 0) {
-                $driverInvoiceModel->updateInvoiceDeliveryStatus($invoiceId, $deliveryStatus);
-                
-                $items = $del['items'] ?? [];
-                
-                // If status is Cancelled or Postponed, set all items delivered qty to 0
-                if ($deliveryStatus === 'Cancelled' || $deliveryStatus === 'Postponed') {
-                    $allInvoiceItems = $driverInvoiceModel->getInvoiceItems($invoiceId);
-                    foreach ($allInvoiceItems as $item) {
-                        $driverInvoiceModel->deleteInvoiceItem($item->id); // sets quantity to 0 and releases reservation
-                    }
-                    $db = new Database();
-                    $db->query("UPDATE invoices SET stock_status = 'returned' WHERE id = :id");
-                    $db->bind(':id', $invoiceId);
-                    $db->execute();
-                } else {
-                    // If we are setting to Delivered or Pending, and NO custom items were sent in payload
-                    // (meaning it was a simple status dropdown change), we should restore the items to their loaded_quantity!
-                    if (empty($items)) {
+        $db->beginTransaction();
+        try {
+            // 1. Process deliveries
+            $deliveries = $payload['deliveries'] ?? [];
+            foreach ($deliveries as $del) {
+                $invoiceId = intval($del['invoice_id'] ?? 0);
+                $deliveryStatus = $del['delivery_status'] ?? 'Delivered';
+                if ($invoiceId > 0) {
+                    $driverInvoiceModel->updateInvoiceDeliveryStatus($invoiceId, $deliveryStatus);
+                    
+                    $items = $del['items'] ?? [];
+                    
+                    // If status is Cancelled or Postponed, set all items delivered qty to 0
+                    if ($deliveryStatus === 'Cancelled' || $deliveryStatus === 'Postponed') {
                         $allInvoiceItems = $driverInvoiceModel->getInvoiceItems($invoiceId);
                         foreach ($allInvoiceItems as $item) {
-                            if (floatval($item->quantity) == 0 && floatval($item->loaded_quantity) > 0) {
-                                $driverInvoiceModel->updateInvoiceItemQty($item->id, intval($item->loaded_quantity));
-                            }
+                            $driverInvoiceModel->deleteInvoiceItem($item->id); // sets quantity to 0 and releases reservation
                         }
+                        $db->query("UPDATE invoices SET stock_status = 'returned' WHERE id = :id");
+                        $db->bind(':id', $invoiceId);
+                        $db->execute();
                     } else {
-                        // Otherwise update based on custom user input
-                        foreach ($items as $item) {
-                            $itemId = intval($item['invoice_item_id'] ?? 0);
-                            $deliveredQty = intval($item['delivered_qty'] ?? 0);
-                            if ($itemId > 0) {
-                                if ($deliveredQty <= 0) {
-                                    $driverInvoiceModel->deleteInvoiceItem($itemId);
-                                } else {
-                                    $driverInvoiceModel->updateInvoiceItemQty($itemId, $deliveredQty);
+                        // If we are setting to Delivered or Pending, and NO custom items were sent in payload
+                        // (meaning it was a simple status dropdown change), we should restore the items to their loaded_quantity!
+                        if (empty($items)) {
+                            $allInvoiceItems = $driverInvoiceModel->getInvoiceItems($invoiceId);
+                            foreach ($allInvoiceItems as $item) {
+                                if (floatval($item->quantity) == 0 && floatval($item->loaded_quantity) > 0) {
+                                    $driverInvoiceModel->updateInvoiceItemQty($item->id, intval($item->loaded_quantity));
+                                }
+                            }
+                        } else {
+                            // Otherwise update based on custom user input
+                            foreach ($items as $item) {
+                                $itemId = intval($item['invoice_item_id'] ?? 0);
+                                $deliveredQty = intval($item['delivered_qty'] ?? 0);
+                                if ($itemId > 0) {
+                                    if ($deliveredQty <= 0) {
+                                        $driverInvoiceModel->deleteInvoiceItem($itemId);
+                                    } else {
+                                        $driverInvoiceModel->updateInvoiceItemQty($itemId, $deliveredQty);
+                                    }
                                 }
                             }
                         }
+                        $db->query("UPDATE invoices SET stock_status = 'reserved' WHERE id = :id");
+                        $db->bind(':id', $invoiceId);
+                        $db->execute();
                     }
-                    $db = new Database();
-                    $db->query("UPDATE invoices SET stock_status = 'reserved' WHERE id = :id");
-                    $db->bind(':id', $invoiceId);
-                    $db->execute();
                 }
             }
-        }
-        
-        // 2. Process payments (collections)
-        $collections = $payload['collections'] ?? null;
-        if ($collections) {
-            $cashAmt = floatval($collections['cash'] ?? 0);
-            $bankAmt = floatval($collections['bank'] ?? 0);
-            $cheques = $collections['cheques'] ?? [];
             
-            $collectionsPayload = [
-                'cash' => $cashAmt,
-                'bank' => $bankAmt,
-                'cheques' => $cheques
-            ];
-            
-            if ($cashAmt > 0 || $bankAmt > 0 || count($cheques) > 0) {
-                $driverInvoiceModel->checkoutShop($customerId, $routeId, $userId, $collectionsPayload);
+            // 2. Process payments (collections)
+            $collections = $payload['collections'] ?? null;
+            if ($collections) {
+                $cashAmt = floatval($collections['cash'] ?? 0);
+                $bankAmt = floatval($collections['bank'] ?? 0);
+                $cheques = $collections['cheques'] ?? [];
+                
+                $collectionsPayload = [
+                    'cash' => $cashAmt,
+                    'bank' => $bankAmt,
+                    'cheques' => $cheques
+                ];
+                
+                if ($cashAmt > 0 || $bankAmt > 0 || count($cheques) > 0) {
+                    $driverInvoiceModel->checkoutShop($customerId, $routeId, $userId, $collectionsPayload, $db);
+                }
             }
+            
+            // 3. Auto-apply payments to invoices
+            $this->autoApplyPaymentsToInvoices($customerId, $db);
+            
+            $db->commit();
+            
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => 'Delivery visit processed successfully!']);
+            exit;
+        } catch (Exception $e) {
+            $db->rollBack();
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            exit;
         }
-        
-        // 3. Auto-apply payments to invoices
-        $this->autoApplyPaymentsToInvoices($customerId);
-        
-        header('Content-Type: application/json');
-        echo json_encode(['status' => 'success', 'message' => 'Delivery visit processed successfully!']);
-        exit;
     }
 
     public function api_save_return_stock() {
@@ -2230,18 +2270,18 @@ class RepTrackingController extends Controller {
         
         try {
             $db = new Database();
+            $db->beginTransaction();
             
-            // Check if delivery is finalized
-            $db->query("SELECT status FROM deliveries WHERE id = :id LIMIT 1");
+            // Check if delivery is finalized (INV-2 Race Condition protection with row-level lock)
+            $db->query("SELECT status FROM deliveries WHERE id = :id LIMIT 1 FOR UPDATE");
             $db->bind(':id', $deliveryId);
             $existing = $db->single();
             if ($existing && $existing->status === 'Finalized') {
+                $db->rollBack();
                 header('Content-Type: application/json');
                 echo json_encode(['status' => 'error', 'message' => 'Cannot verify return stock because this delivery has already been finalized.']);
                 exit;
             }
-
-            $db->beginTransaction();
 
             // Update return stock JSON and verified fields
             $db->query("UPDATE deliveries SET 

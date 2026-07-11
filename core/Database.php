@@ -181,4 +181,36 @@ class Database {
     public function getDbHandler() {
         return $this->dbh;
     }
+
+    /**
+     * ACCT-2 FIX: Account-type-aware balance update utility.
+     * Standardizes chart_of_accounts.balance updates across all modules.
+     * 
+     * For Asset/Expense accounts: balance += debit - credit
+     * For Liability/Equity/Revenue accounts: balance += credit - debit
+     * 
+     * @param int    $accountId    The chart_of_accounts.id to update
+     * @param float  $debitAmount  The debit amount being applied
+     * @param float  $creditAmount The credit amount being applied
+     */
+    public function updateAccountBalance($accountId, $debitAmount, $creditAmount) {
+        $this->query("SELECT account_type FROM chart_of_accounts WHERE id = :id");
+        $this->bind(':id', $accountId);
+        $acc = $this->single();
+        if (!$acc) return;
+
+        $sql = "UPDATE chart_of_accounts SET balance = balance ";
+        if (in_array($acc->account_type, ['Asset', 'Expense'])) {
+            $sql .= "+ :debit - :credit ";
+        } else {
+            $sql .= "- :debit + :credit ";
+        }
+        $sql .= "WHERE id = :id";
+
+        $this->query($sql);
+        $this->bind(':debit', $debitAmount);
+        $this->bind(':credit', $creditAmount);
+        $this->bind(':id', $accountId);
+        $this->execute();
+    }
 }

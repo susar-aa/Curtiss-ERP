@@ -131,8 +131,12 @@ if (empty($assets)) {
 
 $revenues = $data['revenues'] ?? [];
 if (empty($revenues)) {
-    $db->query("SELECT * FROM chart_of_accounts WHERE account_type = 'Revenue' LIMIT 1");
+    $db->query("SELECT * FROM chart_of_accounts WHERE account_type = 'Revenue' AND (account_code = '4000' OR account_name LIKE '%Sales%' OR account_name LIKE '%Revenue%') LIMIT 1");
     $revenues = $db->resultSet();
+    if (empty($revenues)) {
+        $db->query("SELECT * FROM chart_of_accounts WHERE account_type = 'Revenue' LIMIT 1");
+        $revenues = $db->resultSet();
+    }
 }
 
 // Extract Invoice Parameters

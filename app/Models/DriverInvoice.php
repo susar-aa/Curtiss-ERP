@@ -46,17 +46,18 @@ class DriverInvoice {
         }
     }
 
-    public function getCustomerInvoices($customerId, $routeId) {
-        $this->db->query("
+    public function getCustomerInvoices($customerId, $routeId, $db = null) {
+        $dbToUse = $db ?: $this->db;
+        $dbToUse->query("
             SELECT i.*, 
                 (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total
             FROM invoices i
             WHERE i.customer_id = :cid AND i.rep_route_id = :rid AND i.status != 'Voided'
             ORDER BY i.created_at ASC
         ");
-        $this->db->bind(':cid', $customerId);
-        $this->db->bind(':rid', $routeId);
-        return $this->db->resultSet();
+        $dbToUse->bind(':cid', $customerId);
+        $dbToUse->bind(':rid', $routeId);
+        return $dbToUse->resultSet();
     }
 
     public function getCustomerCreditBills($customerId) {
@@ -270,18 +271,14 @@ class DriverInvoice {
         $salesAcc = $accMap['4000'] ?? null;
 
         if ($arAcc && $salesAcc) {
-            // Update chart_of_accounts balances
-            $this->db->query("UPDATE chart_of_accounts SET balance = balance - :old_amt + :new_amt WHERE id = :id");
-            $this->db->bind(':old_amt', $oldGrandTotal);
-            $this->db->bind(':new_amt', $newGrandTotal);
-            $this->db->bind(':id', $arAcc);
-            $this->db->execute();
-
-            $this->db->query("UPDATE chart_of_accounts SET balance = balance - :old_amt + :new_amt WHERE id = :id");
-            $this->db->bind(':old_amt', $oldGrandTotal);
-            $this->db->bind(':new_amt', $newGrandTotal);
-            $this->db->bind(':id', $salesAcc);
-            $this->db->execute();
+            // ACCT-2 FIX: Use account-type-aware balance update for delta adjustments
+            $diff = $newGrandTotal - $oldGrandTotal;
+            if (abs($diff) > 0.001) {
+                // AR (Asset): positive diff means debit increase, negative means credit decrease
+                $this->db->updateAccountBalance($arAcc, ($diff > 0 ? $diff : 0), ($diff < 0 ? abs($diff) : 0));
+                // Sales (Revenue): positive diff means credit increase, negative means debit decrease
+                $this->db->updateAccountBalance($salesAcc, ($diff < 0 ? abs($diff) : 0), ($diff > 0 ? $diff : 0));
+            }
 
             // Update journal transactions
             $jid = $invoice->journal_entry_id;
@@ -309,22 +306,27 @@ class DriverInvoice {
         return max(0, $subTotal - $globalDisc) + floatval($invoice->tax_amount ?? 0);
     }
 
-    public function checkoutShop($customerId, $routeId, $userId, $collections) {
+    public function checkoutShop($customerId, $routeId, $userId, $collections, $db = null) {
         $logPath = dirname(dirname(__DIR__)) . '/sync_debug.log';
         
-        $this->db->beginTransaction();
+        $dbToUse = $db ?: $this->db;
+        $manageTransaction = !$dbToUse->inTransaction();
+        
+        if ($manageTransaction) {
+            $dbToUse->beginTransaction();
+        }
         try {
             file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] checkoutShop START: cust=$customerId, route=$routeId\n", FILE_APPEND);
             
             // 1. Fetch today's invoices for this customer
-            $invoices = $this->getCustomerInvoices($customerId, $routeId);
+            $invoices = $this->getCustomerInvoices($customerId, $routeId, $dbToUse);
             file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Found " . count($invoices) . " invoices\n", FILE_APPEND);
 
             // 2. Update delivery status to 'Delivered'
             foreach ($invoices as $invoice) {
-                $this->db->query("UPDATE invoices SET delivery_status = 'Delivered' WHERE id = :id");
-                $this->db->bind(':id', $invoice->id);
-                $result = $this->db->execute();
+                $dbToUse->query("UPDATE invoices SET delivery_status = 'Delivered' WHERE id = :id");
+                $dbToUse->bind(':id', $invoice->id);
+                $result = $dbToUse->execute();
                 if (!$result) {
                     throw new Exception("Failed to update invoice delivery status for invoice ID: {$invoice->id}");
                 }
@@ -336,7 +338,7 @@ class DriverInvoice {
 
             file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Processing payments: cash=$cashAmt, bank=$bankAmt\n", FILE_APPEND);
 
-            $savePaymentRecord = function($amount, $methodStr, $chequeDetails = null) use ($userId, $customerId, $routeId, $logPath) {
+            $savePaymentRecord = function($amount, $methodStr, $chequeDetails = null) use ($userId, $customerId, $routeId, $logPath, $dbToUse) {
                 if ($amount <= 0) {
                     file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Skipping $methodStr payment with amount=$amount\n", FILE_APPEND);
                     return;
@@ -345,17 +347,17 @@ class DriverInvoice {
                 try {
                     file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Inserting pending collection: method=$methodStr, amount=$amount\n", FILE_APPEND);
                     
-                    $this->db->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, status, created_by, is_verified, created_at) 
+                    $dbToUse->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, status, created_by, is_verified, created_at) 
                                       VALUES (:cid, :route_id, :method, :amt, :bn, :cn, :cdate, 'Pending', :uid, 0, NOW())");
-                    $this->db->bind(':cid', $customerId);
-                    $this->db->bind(':route_id', $routeId);
-                    $this->db->bind(':method', $methodStr);
-                    $this->db->bind(':amt', $amount);
-                    $this->db->bind(':bn', $chequeDetails['bank'] ?? 'Unknown');
-                    $this->db->bind(':cn', $chequeDetails['number'] ?? 'Unknown');
-                    $this->db->bind(':cdate', $chequeDetails['date'] ?: date('Y-m-d'));
-                    $this->db->bind(':uid', $userId);
-                    $result = $this->db->execute();
+                    $dbToUse->bind(':cid', $customerId);
+                    $dbToUse->bind(':route_id', $routeId);
+                    $dbToUse->bind(':method', $methodStr);
+                    $dbToUse->bind(':amt', $amount);
+                    $dbToUse->bind(':bn', $chequeDetails['bank'] ?? 'Unknown');
+                    $dbToUse->bind(':cn', $chequeDetails['number'] ?? 'Unknown');
+                    $dbToUse->bind(':cdate', $chequeDetails['date'] ?: date('Y-m-d'));
+                    $dbToUse->bind(':uid', $userId);
+                    $result = $dbToUse->execute();
                     if (!$result) {
                         throw new Exception("Failed to insert pending collection for customer $customerId, method=$methodStr");
                     }
@@ -477,11 +479,15 @@ class DriverInvoice {
             }
             */
 
-            $this->db->commit();
+            if ($manageTransaction) {
+                $dbToUse->commit();
+            }
             file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] checkoutShop COMPLETED SUCCESSFULLY\n", FILE_APPEND);
             return true;
         } catch (Exception $e) {
-            $this->db->rollBack();
+            if ($manageTransaction) {
+                $dbToUse->rollBack();
+            }
             file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] checkoutShop ROLLBACK: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString() . "\n", FILE_APPEND);
             throw $e;
         }

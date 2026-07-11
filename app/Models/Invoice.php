@@ -52,10 +52,8 @@ class Invoice {
             $this->db->bind(':debit', $invoiceData['grand_total']);
             $this->db->execute();
 
-            $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amount WHERE id = :id");
-            $this->db->bind(':amount', $invoiceData['grand_total']);
-            $this->db->bind(':id', $arAccountId);
-            $this->db->execute();
+            // ACCT-2 FIX: Use account-type-aware balance update (AR is an Asset: debit increases)
+            $this->db->updateAccountBalance($arAccountId, $invoiceData['grand_total'], 0);
 
             $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, 0, :credit)");
             $this->db->bind(':journal_id', $journalEntryId);
@@ -63,10 +61,8 @@ class Invoice {
             $this->db->bind(':credit', $invoiceData['grand_total']);
             $this->db->execute();
 
-            $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amount WHERE id = :id");
-            $this->db->bind(':amount', $invoiceData['grand_total']);
-            $this->db->bind(':id', $revenueAccountId);
-            $this->db->execute();
+            // ACCT-2 FIX: Use account-type-aware balance update (Revenue: credit increases)
+            $this->db->updateAccountBalance($revenueAccountId, 0, $invoiceData['grand_total']);
 
             $stockStatus = $invoiceData['stock_status'] ?? 'deducted';
             $uuid = $invoiceData['uuid'] ?? null;
@@ -244,17 +240,16 @@ class Invoice {
             $this->db->execute();
 
             // 2. ADJUST LEDGER BALANCE COALESCE
-            $this->db->query("UPDATE chart_of_accounts SET balance = balance - :old_amt + :new_amt WHERE id = :id");
-            $this->db->bind(':old_amt', $oldGrandTotal);
-            $this->db->bind(':new_amt', $invoiceData['grand_total']);
-            $this->db->bind(':id', $arAccountId);
-            $this->db->execute();
-
-            $this->db->query("UPDATE chart_of_accounts SET balance = balance - :old_amt + :new_amt WHERE id = :id");
-            $this->db->bind(':old_amt', $oldGrandTotal);
-            $this->db->bind(':new_amt', $invoiceData['grand_total']);
-            $this->db->bind(':id', $revenueAccountId);
-            $this->db->execute();
+            // ACCT-2 FIX: Use account-type-aware balance update for delta adjustments
+            $diff = $invoiceData['grand_total'] - $oldGrandTotal;
+            if (abs($diff) > 0.001) {
+                $this->db->updateAccountBalance($arAccountId, ($diff > 0 ? $diff : 0), ($diff < 0 ? abs($diff) : 0));
+                $this->db->updateAccountBalance($revenueAccountId, 0, ($diff > 0 ? $diff : 0));
+                // If diff is negative (reduced invoice), debit revenue to reduce it
+                if ($diff < 0) {
+                    $this->db->updateAccountBalance($revenueAccountId, abs($diff), 0);
+                }
+            }
 
             // 3. RE-POST REVISED JOURNAL ENTRIES
             $jid = $oldInvoice->journal_entry_id;
@@ -457,17 +452,13 @@ class Invoice {
             $revenueAccountId = $revRow ? $revRow->id : null;
 
             if ($arAccountId) {
-                $this->db->query("UPDATE chart_of_accounts SET balance = balance - :amount WHERE id = :id");
-                $this->db->bind(':amount', $oldGrandTotal);
-                $this->db->bind(':id', $arAccountId);
-                $this->db->execute();
+                // ACCT-2 FIX: Use account-type-aware balance update (reversal: credit AR to reduce asset)
+                $this->db->updateAccountBalance($arAccountId, 0, $oldGrandTotal);
             }
 
             if ($revenueAccountId) {
-                $this->db->query("UPDATE chart_of_accounts SET balance = balance - :amount WHERE id = :id");
-                $this->db->bind(':amount', $oldGrandTotal);
-                $this->db->bind(':id', $revenueAccountId);
-                $this->db->execute();
+                // ACCT-2 FIX: Use account-type-aware balance update (reversal: debit Revenue to reduce income)
+                $this->db->updateAccountBalance($revenueAccountId, $oldGrandTotal, 0);
             }
 
             // 3. REMOVE JOURNAL ENTRIES & TRANSACTIONS
