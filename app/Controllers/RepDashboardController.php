@@ -456,7 +456,7 @@ class RepDashboardController extends Controller {
             echo json_encode($responsePayload);
             exit;
         } catch (Throwable $e) {
-            http_response_code(500);
+            http_response_code(200);
             $errMessage = "Internal server error during pull sync: " . $e->getMessage();
             error_log($errMessage . "\n" . $e->getTraceAsString());
             

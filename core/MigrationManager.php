@@ -568,7 +568,11 @@ class MigrationManager {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            "
+            ",
+            'add_status_to_customers' => "ALTER TABLE customers ADD COLUMN status VARCHAR(20) DEFAULT 'active'",
+            'add_status_to_item_categories' => "ALTER TABLE item_categories ADD COLUMN status VARCHAR(20) DEFAULT 'active'",
+            'add_status_to_mca_areas' => "ALTER TABLE mca_areas ADD COLUMN status VARCHAR(20) DEFAULT 'active'",
+            'add_status_to_customer_payments' => "ALTER TABLE customer_payments ADD COLUMN status VARCHAR(20) DEFAULT 'Active'"
         ];
     }
 

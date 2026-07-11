@@ -155,3 +155,16 @@ CREATE TABLE IF NOT EXISTS scheduled_reports (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 11. Status Fields additions (Critical for Customers list and mobile synchronization)
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
+ALTER TABLE item_categories ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
+ALTER TABLE mca_areas ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
+ALTER TABLE customer_payments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Active';
+
+-- 12. Register these migrations in the system table to prevent rerun triggers
+INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_customers');
+INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_item_categories');
+INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_mca_areas');
+INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_customer_payments');
+

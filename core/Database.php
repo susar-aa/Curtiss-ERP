@@ -52,7 +52,7 @@ class Database {
 
             if ($isAjax) {
                 header('Content-Type: application/json');
-                http_response_code(500);
+                http_response_code(200);
                 echo json_encode(['success' => false, 'error' => 'Database connection/migration failed: ' . $this->error]);
                 exit;
             }
