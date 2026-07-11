@@ -457,10 +457,18 @@ class RepDashboardController extends Controller {
             exit;
         } catch (Throwable $e) {
             http_response_code(500);
-            error_log("Internal server error during pull sync: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            $errMessage = "Internal server error during pull sync: " . $e->getMessage();
+            error_log($errMessage . "\n" . $e->getTraceAsString());
+            
+            // Log to sync_errors.log in the project root directory
+            $logFile = dirname(dirname(__DIR__)) . '/sync_errors.log';
+            $logContent = "[" . date('Y-m-d H:i:s') . "] " . $errMessage . "\n" . $e->getTraceAsString() . "\n\n";
+            @file_put_contents($logFile, $logContent, FILE_APPEND);
+
             echo json_encode([
                 'success' => false,
-                'message' => 'Internal server error during pull sync.'
+                'message' => $errMessage,
+                'trace' => $e->getTraceAsString()
             ]);
             exit;
         }

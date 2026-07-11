@@ -421,7 +421,154 @@ class MigrationManager {
                 }
                 return true;
             },
-            'make_users_email_nullable' => "ALTER TABLE users MODIFY email VARCHAR(100) NULL"
+            'make_users_email_nullable' => "ALTER TABLE users MODIFY email VARCHAR(100) NULL",
+            'create_deleted_invoices_table' => "
+                CREATE TABLE IF NOT EXISTS deleted_invoices (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    invoice_number VARCHAR(50) NOT NULL,
+                    customer_name VARCHAR(150) NOT NULL,
+                    total_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                    deleted_user_name VARCHAR(100) NOT NULL,
+                    deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    delete_reason TEXT NOT NULL,
+                    record_type VARCHAR(20) NOT NULL DEFAULT 'Invoice'
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'create_sales_orders_table' => "
+                CREATE TABLE IF NOT EXISTS sales_orders (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    order_number VARCHAR(50) NOT NULL UNIQUE,
+                    customer_id INT NOT NULL,
+                    customer_name VARCHAR(150) NOT NULL,
+                    customer_phone VARCHAR(50) NULL,
+                    billing_type ENUM('retail', 'wholesale') NOT NULL DEFAULT 'retail',
+                    subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                    discount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                    grand_total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                    notes TEXT NULL,
+                    rep_name VARCHAR(100) NULL,
+                    mca VARCHAR(100) NULL,
+                    rep_tp VARCHAR(50) NULL,
+                    po_number VARCHAR(50) NULL,
+                    order_date DATE NOT NULL,
+                    due_date DATE NOT NULL,
+                    payment_term_id INT NULL DEFAULT NULL,
+                    status VARCHAR(50) DEFAULT 'Pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'create_sales_order_items_table' => "
+                CREATE TABLE IF NOT EXISTS sales_order_items (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    sales_order_id INT NOT NULL,
+                    item_id INT NOT NULL,
+                    variation_option_id INT NULL DEFAULT NULL,
+                    sku VARCHAR(100) NOT NULL,
+                    name VARCHAR(255) NOT NULL,
+                    billing_price DECIMAL(10,2) NOT NULL,
+                    qty INT NOT NULL,
+                    discount_value DECIMAL(10,2) DEFAULT 0.00,
+                    discount_type VARCHAR(10) DEFAULT 'Rs',
+                    total DECIMAL(10,2) NOT NULL,
+                    FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'add_accessible_apps_to_users_table' => "ALTER TABLE users ADD COLUMN accessible_apps VARCHAR(255) DEFAULT 'ERP System' AFTER status",
+            'customers_credit_limit' => "ALTER TABLE customers ADD COLUMN credit_limit DECIMAL(15,2) DEFAULT 0.00 AFTER territory",
+            'customers_customer_type' => "ALTER TABLE customers ADD COLUMN customer_type VARCHAR(50) DEFAULT 'Standard' AFTER credit_limit",
+            'customers_notes' => "ALTER TABLE customers ADD COLUMN notes TEXT NULL AFTER customer_type",
+            'customers_opening_balance' => "ALTER TABLE customers ADD COLUMN opening_balance DECIMAL(15,2) DEFAULT 0.00 AFTER credit_limit",
+            'customers_uuid' => "ALTER TABLE customers ADD COLUMN uuid VARCHAR(255) NULL",
+            'customers_updated_at' => "ALTER TABLE customers ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+            'items_updated_at' => "ALTER TABLE items ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+            'item_categories_updated_at' => "ALTER TABLE item_categories ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+            'mca_areas_updated_at' => "ALTER TABLE mca_areas ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+            'create_delivery_picking_items' => "
+                CREATE TABLE IF NOT EXISTS delivery_picking_items (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    delivery_id INT NOT NULL,
+                    item_name VARCHAR(255) NOT NULL,
+                    item_id INT DEFAULT NULL,
+                    variation_option_id INT DEFAULT NULL,
+                    required_qty DECIMAL(10,2) NOT NULL,
+                    loaded_qty DECIMAL(10,2) NOT NULL,
+                    is_picked TINYINT(1) DEFAULT 0,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX (delivery_id),
+                    FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'delivery_picking_items_final_verify' => "
+                ALTER TABLE delivery_picking_items
+                ADD COLUMN final_loaded_qty DECIMAL(10,2) DEFAULT NULL,
+                ADD COLUMN is_verified TINYINT(1) DEFAULT 0,
+                ADD COLUMN variance DECIMAL(10,2) DEFAULT 0,
+                ADD COLUMN verified_at TIMESTAMP NULL DEFAULT NULL,
+                ADD COLUMN verified_by INT(11) DEFAULT NULL
+            ",
+            'pending_collections_is_verified' => "ALTER TABLE pending_collections ADD COLUMN is_verified TINYINT(1) NOT NULL DEFAULT 0",
+            'pending_collections_is_flagged' => "ALTER TABLE pending_collections ADD COLUMN is_flagged TINYINT(1) NOT NULL DEFAULT 0",
+            'pending_collections_adjusted_amount' => "ALTER TABLE pending_collections ADD COLUMN adjusted_amount DECIMAL(12,2) NULL",
+            'pending_collections_verification_notes' => "ALTER TABLE pending_collections ADD COLUMN verification_notes TEXT NULL",
+            'pending_collections_verified_by' => "ALTER TABLE pending_collections ADD COLUMN verified_by INT NULL",
+            'pending_collections_verified_at' => "ALTER TABLE pending_collections ADD COLUMN verified_at DATETIME NULL",
+            'pending_collections_mobile_local_id' => "ALTER TABLE pending_collections ADD COLUMN mobile_local_id INT NULL",
+            'pending_collections_mobile_rep_id' => "ALTER TABLE pending_collections ADD COLUMN mobile_rep_id INT NULL",
+            'pending_collections_uuid' => "ALTER TABLE pending_collections ADD COLUMN uuid VARCHAR(255) NULL",
+            'pending_collections_debit_account_id' => "ALTER TABLE pending_collections ADD COLUMN debit_account_id INT NULL",
+            'pending_collections_credit_account_id' => "ALTER TABLE pending_collections ADD COLUMN credit_account_id INT NULL",
+            'grn_service_bills' => "
+                ALTER TABLE goods_receipt_notes 
+                ADD COLUMN due_date DATE NULL,
+                ADD COLUMN service_period VARCHAR(100) NULL,
+                ADD COLUMN amount DECIMAL(15,2) NULL,
+                ADD COLUMN tax DECIMAL(15,2) NULL,
+                ADD COLUMN total_amount DECIMAL(15,2) NULL,
+                ADD COLUMN status ENUM('Unpaid', 'Partially Paid', 'Paid') DEFAULT 'Unpaid',
+                ADD COLUMN attachment VARCHAR(255) NULL
+            ",
+            'create_app_releases' => "
+                CREATE TABLE IF NOT EXISTS app_releases (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    version VARCHAR(50) NOT NULL UNIQUE,
+                    build_version INT NULL,
+                    version_name VARCHAR(50) NULL,
+                    package_name VARCHAR(255) NULL,
+                    app_name VARCHAR(255) NULL,
+                    major INT NOT NULL,
+                    minor INT NOT NULL,
+                    patch INT NOT NULL,
+                    release_notes TEXT NULL,
+                    apk_path VARCHAR(255) NOT NULL,
+                    force_update TINYINT(1) NOT NULL DEFAULT 0,
+                    is_latest TINYINT(1) NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'create_saved_reports' => "
+                CREATE TABLE IF NOT EXISTS saved_reports (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    report_key VARCHAR(100) NOT NULL,
+                    view_name VARCHAR(255) NOT NULL,
+                    filters TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'create_scheduled_reports' => "
+                CREATE TABLE IF NOT EXISTS scheduled_reports (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    report_key VARCHAR(100) NOT NULL,
+                    frequency VARCHAR(50) NOT NULL,
+                    email_recipient VARCHAR(255) NOT NULL,
+                    filters TEXT NOT NULL,
+                    last_run_at TIMESTAMP NULL DEFAULT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            "
         ];
     }
 

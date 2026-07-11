@@ -1,6 +1,11 @@
--- Database Schema Upgrades for Sales Orders & Invoice Deletion Audit Log
+-- =========================================================================
+-- CURTISS ERP - CONSOLIDATED DATABASE SCHEMA UPGRADES & MIGRATIONS
+-- =========================================================================
+-- Execute these queries on your server/production database (curtiss.suzxlabs.com)
+-- to bring it to a 100% stable state matching the latest code features.
+-- =========================================================================
 
--- 1. Create Deleted Invoices Audit Trail Table
+-- 1. Audit Trail: Create Deleted Invoices Table
 CREATE TABLE IF NOT EXISTS deleted_invoices (
     id INT AUTO_INCREMENT PRIMARY KEY,
     invoice_number VARCHAR(50) NOT NULL,
@@ -10,9 +15,9 @@ CREATE TABLE IF NOT EXISTS deleted_invoices (
     deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     delete_reason TEXT NOT NULL,
     record_type VARCHAR(20) NOT NULL DEFAULT 'Invoice'
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 2. Create Sales Orders Table
+-- 2. Sales Orders Module: Create Sales Orders & Items Tables
 CREATE TABLE IF NOT EXISTS sales_orders (
     id INT AUTO_INCREMENT PRIMARY KEY,
     order_number VARCHAR(50) NOT NULL UNIQUE,
@@ -33,9 +38,8 @@ CREATE TABLE IF NOT EXISTS sales_orders (
     payment_term_id INT NULL DEFAULT NULL,
     status VARCHAR(50) DEFAULT 'Pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 3. Create Sales Order Items Table
 CREATE TABLE IF NOT EXISTS sales_order_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     sales_order_id INT NOT NULL,
@@ -49,27 +53,105 @@ CREATE TABLE IF NOT EXISTS sales_order_items (
     discount_type VARCHAR(10) DEFAULT 'Rs',
     total DECIMAL(10,2) NOT NULL,
     FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 4. Failsafe upgrades to invoices and invoice_items tables (in case columns are missing on live system)
-ALTER TABLE invoices ADD COLUMN IF NOT EXISTS stock_status VARCHAR(20) DEFAULT 'deducted' AFTER status;
-ALTER TABLE invoices ADD COLUMN IF NOT EXISTS notes TEXT NULL AFTER global_discount_type;
-ALTER TABLE invoices ADD COLUMN IF NOT EXISTS cheque_date DATE NULL AFTER due_date;
-ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_term_id INT NULL DEFAULT NULL AFTER due_date;
-ALTER TABLE invoices ADD COLUMN IF NOT EXISTS uuid VARCHAR(100) UNIQUE NULL AFTER invoice_number;
-
-ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS item_id INT NULL DEFAULT NULL AFTER invoice_id;
-ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS variation_option_id INT NULL DEFAULT NULL AFTER item_id;
-
--- 5. Add accessible_apps column to users table
+-- 3. Representative App: Add accessible_apps column to users table
 ALTER TABLE users ADD COLUMN IF NOT EXISTS accessible_apps VARCHAR(255) DEFAULT 'ERP System' AFTER status;
-
--- 6. Drop redundant qty column from items table
-ALTER TABLE items DROP COLUMN qty;
-
--- 7. Drop redundant cost column from items table
-ALTER TABLE items DROP COLUMN cost;
-
--- 8. Make email column in users table nullable to allow creating login credentials without an email
 ALTER TABLE users MODIFY email VARCHAR(100) NULL;
 
+-- 4. Customer Management: Add Credit Limits, Customer Type, Notes, Opening Balance & sync tracking
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS credit_limit DECIMAL(15,2) DEFAULT 0.00 AFTER territory;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS customer_type VARCHAR(50) DEFAULT 'Standard' AFTER credit_limit;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS notes TEXT NULL AFTER customer_type;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS opening_balance DECIMAL(15,2) DEFAULT 0.00 AFTER credit_limit;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS uuid VARCHAR(255) NULL;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+
+-- 5. Mobile Synchronization: Add updated_at columns for incremental (delta) sync tracking
+ALTER TABLE items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+ALTER TABLE item_categories ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+ALTER TABLE mca_areas ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+
+-- 6. Logistics & Deliveries: Create Delivery Picking Items Table & Final Loading Verification
+CREATE TABLE IF NOT EXISTS delivery_picking_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    delivery_id INT NOT NULL,
+    item_name VARCHAR(255) NOT NULL,
+    item_id INT DEFAULT NULL,
+    variation_option_id INT DEFAULT NULL,
+    required_qty DECIMAL(10,2) NOT NULL,
+    loaded_qty DECIMAL(10,2) NOT NULL,
+    is_picked TINYINT(1) DEFAULT 0,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (delivery_id),
+    FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE delivery_picking_items ADD COLUMN IF NOT EXISTS final_loaded_qty DECIMAL(10,2) DEFAULT NULL;
+ALTER TABLE delivery_picking_items ADD COLUMN IF NOT EXISTS is_verified TINYINT(1) DEFAULT 0;
+ALTER TABLE delivery_picking_items ADD COLUMN IF NOT EXISTS variance DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE delivery_picking_items ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP NULL DEFAULT NULL;
+ALTER TABLE delivery_picking_items ADD COLUMN IF NOT EXISTS verified_by INT(11) DEFAULT NULL;
+
+-- 7. Route Settlement: Add verification, audit, and mobile tracking to pending_collections table
+ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS is_verified TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS is_flagged TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS adjusted_amount DECIMAL(12,2) NULL;
+ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS verification_notes TEXT NULL;
+ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS verified_by INT NULL;
+ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS verified_at DATETIME NULL;
+ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS mobile_local_id INT NULL;
+ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS mobile_rep_id INT NULL;
+ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS uuid VARCHAR(255) NULL;
+ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS debit_account_id INT NULL;
+ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS credit_account_id INT NULL;
+
+-- 8. Supplier Management & GRN: Add Service Bills tracking to Goods Receipt Notes
+ALTER TABLE goods_receipt_notes ADD COLUMN IF NOT EXISTS due_date DATE NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN IF NOT EXISTS service_period VARCHAR(100) NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN IF NOT EXISTS amount DECIMAL(15,2) NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN IF NOT EXISTS tax DECIMAL(15,2) NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN IF NOT EXISTS total_amount DECIMAL(15,2) NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN IF NOT EXISTS status ENUM('Unpaid', 'Partially Paid', 'Paid') DEFAULT 'Unpaid';
+ALTER TABLE goods_receipt_notes ADD COLUMN IF NOT EXISTS attachment VARCHAR(255) NULL;
+
+-- 9. App Release Management: Create app_releases Table
+CREATE TABLE IF NOT EXISTS app_releases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    version VARCHAR(50) NOT NULL UNIQUE,
+    build_version INT NULL,
+    version_name VARCHAR(50) NULL,
+    package_name VARCHAR(255) NULL,
+    app_name VARCHAR(255) NULL,
+    major INT NOT NULL,
+    minor INT NOT NULL,
+    patch INT NOT NULL,
+    release_notes TEXT NULL,
+    apk_path VARCHAR(255) NOT NULL,
+    force_update TINYINT(1) NOT NULL DEFAULT 0,
+    is_latest TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 10. Reporting Module: Create saved_reports and scheduled_reports Tables
+CREATE TABLE IF NOT EXISTS saved_reports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    report_key VARCHAR(100) NOT NULL,
+    view_name VARCHAR(255) NOT NULL,
+    filters TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS scheduled_reports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    report_key VARCHAR(100) NOT NULL,
+    frequency VARCHAR(50) NOT NULL,
+    email_recipient VARCHAR(255) NOT NULL,
+    filters TEXT NOT NULL,
+    last_run_at TIMESTAMP NULL DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -223,113 +223,130 @@ class DriverDashboardController extends Controller {
     // JSON API for Native Mobile App Pull Synchronization
     public function api_sync_pull() {
         header('Content-Type: application/json');
-        
-        $userId = intval($_GET['user_id'] ?? 0);
-        if ($userId <= 0) {
-            echo json_encode(['success' => false, 'message' => 'Invalid User ID.']);
-            exit;
-        }
-        
-        $activeDelivery = $this->routeModel->getAssignedDelivery($userId);
-        
-        $shops = [];
-        $invoices = [];
-        $invoiceItems = [];
-        $employees = [];
-        
-        $creditInvoices = [];
-        if ($activeDelivery) {
-            $shops = $this->routeModel->getDeliveryShops($activeDelivery->rep_route_id);
-            $employees = $this->routeModel->getActiveEmployees();
+        try {
+            $userId = intval($_GET['user_id'] ?? 0);
+            if ($userId <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid User ID.']);
+                exit;
+            }
             
-            $billingModel = $this->model('DriverInvoice');
-            foreach ($shops as $shop) {
-                $shopInvs = $billingModel->getCustomerInvoices($shop->id, $activeDelivery->rep_route_id);
-                foreach ($shopInvs as $inv) {
-                    $invoices[] = $inv;
-                    $items = $billingModel->getInvoiceItems($inv->id);
-                    foreach ($items as $item) {
-                        $invoiceItems[] = $item;
+            $activeDelivery = $this->routeModel->getAssignedDelivery($userId);
+            
+            $shops = [];
+            $invoices = [];
+            $invoiceItems = [];
+            $employees = [];
+            
+            $creditInvoices = [];
+            if ($activeDelivery) {
+                $shops = $this->routeModel->getDeliveryShops($activeDelivery->rep_route_id);
+                $employees = $this->routeModel->getActiveEmployees();
+                
+                $billingModel = $this->model('DriverInvoice');
+                foreach ($shops as $shop) {
+                    $shopInvs = $billingModel->getCustomerInvoices($shop->id, $activeDelivery->rep_route_id);
+                    foreach ($shopInvs as $inv) {
+                        $invoices[] = $inv;
+                        $items = $billingModel->getInvoiceItems($inv->id);
+                        foreach ($items as $item) {
+                            $invoiceItems[] = $item;
+                        }
                     }
                 }
             }
-        }
 
-        // Heal invoice payment statuses dynamically before fetching
-        $db = new Database();
-        $db->query("SELECT DISTINCT customer_id FROM invoices WHERE status = 'Unpaid'");
-        $custs = $db->resultSet();
-        foreach ($custs as $c) {
-            $this->autoApplyPaymentsToInvoices($c->customer_id);
-        }
+            // Heal invoice payment statuses dynamically before fetching
+            $db = new Database();
+            $db->query("SELECT DISTINCT customer_id FROM invoices WHERE status = 'Unpaid'");
+            $custs = $db->resultSet();
+            foreach ($custs as $c) {
+                $this->autoApplyPaymentsToInvoices($c->customer_id);
+            }
 
-        // Fetch outstanding credit invoices: ONLY selected/ticked ones for the active delivery if specified
-        $selectedIds = [];
-        if ($activeDelivery && !empty($activeDelivery->selected_credit_invoices)) {
-            $selectedIds = json_decode($activeDelivery->selected_credit_invoices, true);
-        }
+            // Fetch outstanding credit invoices: ONLY selected/ticked ones for the active delivery if specified
+            $selectedIds = [];
+            if ($activeDelivery && !empty($activeDelivery->selected_credit_invoices)) {
+                $selectedIds = json_decode($activeDelivery->selected_credit_invoices, true);
+            }
 
-        if ($activeDelivery && !empty($selectedIds) && is_array($selectedIds)) {
-            $idList = implode(',', array_map('intval', $selectedIds));
-            $db->query("
-                SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date, i.status,
-                       (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
-                       c.name as customer_name, c.address as customer_address
-                FROM invoices i
-                JOIN customers c ON i.customer_id = c.id
-                WHERE i.status = 'Unpaid' AND i.id IN ($idList)
-                ORDER BY i.invoice_date ASC
-            ");
-        } else {
-            // Default fallback if no specific invoices were selected: return empty
-            $db->query("SELECT 1 FROM invoices WHERE 1=0");
-        }
-        $creditInvoices = $db->resultSet();
-        
-        // Fetch visual catalog and categories for driver app local catalog support
-        $products = [];
-        $categories = [];
-        try {
-            require_once __DIR__ . '/../Models/RepCatalog.php';
-            $catalogModel = new RepCatalog();
-            $products = $catalogModel->getVisualCatalog(false);
+            if ($activeDelivery && !empty($selectedIds) && is_array($selectedIds)) {
+                $idList = implode(',', array_map('intval', $selectedIds));
+                $db->query("
+                    SELECT i.id, i.invoice_number, i.customer_id, i.invoice_date, i.status,
+                           (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_grand_total,
+                           c.name as customer_name, c.address as customer_address
+                    FROM invoices i
+                    JOIN customers c ON i.customer_id = c.id
+                    WHERE i.status = 'Unpaid' AND i.id IN ($idList)
+                    ORDER BY i.invoice_date ASC
+                ");
+            } else {
+                // Default fallback if no specific invoices were selected: return empty
+                $db->query("SELECT 1 FROM invoices WHERE 1=0");
+            }
+            $creditInvoices = $db->resultSet();
             
-            $db->query("SELECT id, name FROM item_categories ORDER BY name ASC");
-            $categories = $db->resultSet() ?: [];
-        } catch (Exception $e) {
-            error_log("Failed to fetch products/categories in driver api_sync_pull: " . $e->getMessage());
-        }
+            // Fetch visual catalog and categories for driver app local catalog support
+            $products = [];
+            $categories = [];
+            try {
+                require_once __DIR__ . '/../Models/RepCatalog.php';
+                $catalogModel = new RepCatalog();
+                $products = $catalogModel->getVisualCatalog(false);
+                
+                $db->query("SELECT id, name FROM item_categories ORDER BY name ASC");
+                $categories = $db->resultSet() ?: [];
+            } catch (Exception $e) {
+                error_log("Failed to fetch products/categories in driver api_sync_pull: " . $e->getMessage());
+            }
 
-        // Debug helper: fetch ALL active deliveries (status != 'Completed') in the DB to see why none matched
-        $db = new Database();
-        $db->query("SELECT d.id, d.rep_route_id, d.vehicle_number, d.driver_name, d.partner_name, d.status FROM deliveries d WHERE d.status != 'Completed'");
-        $allActive = $db->resultSet();
-        
-        $db->query("SELECT id, username, employee_id, email, role FROM users");
-        $allUsers = $db->resultSet();
-        
-        $userDetails = $this->routeModel->getUserDetails($userId);
-        
-        echo json_encode([
-            'success' => true,
-            'assigned_delivery' => $activeDelivery ?: null,
-            'shops' => $shops,
-            'invoices' => $invoices,
-            'invoice_items' => $invoiceItems,
-            'employees' => $employees,
-            'credit_invoices' => $creditInvoices,
-            'products' => $products,
-            'categories' => $categories,
-            'debug' => [
-                'user_id' => $userId,
-                'user_details' => $userDetails,
-                'search_full_name' => $userDetails ? ($userDetails->full_name ?: $userDetails->username) : null,
-                'search_username' => $userDetails ? $userDetails->username : null,
-                'all_active_deliveries_in_db' => $allActive,
-                'all_users_in_db' => $allUsers
-            ]
-        ], JSON_INVALID_UTF8_SUBSTITUTE);
-        exit;
+            // Debug helper: fetch ALL active deliveries (status != 'Completed') in the DB to see why none matched
+            $db = new Database();
+            $db->query("SELECT d.id, d.rep_route_id, d.vehicle_number, d.driver_name, d.partner_name, d.status FROM deliveries d WHERE d.status != 'Completed'");
+            $allActive = $db->resultSet();
+            
+            $db->query("SELECT id, username, employee_id, email, role FROM users");
+            $allUsers = $db->resultSet();
+            
+            $userDetails = $this->routeModel->getUserDetails($userId);
+            
+            echo json_encode([
+                'success' => true,
+                'assigned_delivery' => $activeDelivery ?: null,
+                'shops' => $shops,
+                'invoices' => $invoices,
+                'invoice_items' => $invoiceItems,
+                'employees' => $employees,
+                'credit_invoices' => $creditInvoices,
+                'products' => $products,
+                'categories' => $categories,
+                'debug' => [
+                    'user_id' => $userId,
+                    'user_details' => $userDetails,
+                    'search_full_name' => $userDetails ? ($userDetails->full_name ?: $userDetails->username) : null,
+                    'search_username' => $userDetails ? $userDetails->username : null,
+                    'all_active_deliveries_in_db' => $allActive,
+                    'all_users_in_db' => $allUsers
+                ]
+            ], JSON_INVALID_UTF8_SUBSTITUTE);
+            exit;
+        } catch (Throwable $e) {
+            http_response_code(500);
+            $errMessage = "Internal server error during driver pull sync: " . $e->getMessage();
+            error_log($errMessage . "\n" . $e->getTraceAsString());
+            
+            // Log to sync_errors.log in the project root directory
+            $logFile = dirname(dirname(__DIR__)) . '/sync_errors.log';
+            $logContent = "[" . date('Y-m-d H:i:s') . "] " . $errMessage . "\n" . $e->getTraceAsString() . "\n\n";
+            @file_put_contents($logFile, $logContent, FILE_APPEND);
+
+            echo json_encode([
+                'success' => false,
+                'message' => $errMessage,
+                'trace' => $e->getTraceAsString()
+            ]);
+            exit;
+        }
     }
 
     // JSON API for Native Mobile App Push Synchronization
