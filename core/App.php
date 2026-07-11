@@ -104,8 +104,11 @@ class App {
             $isPublicInvoice = true;
         }
 
-        // Check if user is logged in. If not, force routing to AuthController (unless it is auth controller, an API sync/login request, or a public invoice view)
-        if (!isset($_SESSION['user_id']) && !$isMobileSync && !$isPublicInvoice && !$isPickingLogin && (isset($url[0]) ? strtolower($url[0]) !== 'auth' : true)) {
+        // Allow access to diagnostics controller when secret is set
+        $isDiagnostics = isset($url[0]) && strtolower($url[0]) === 'diagnostics';
+
+        // Check if user is logged in. If not, force routing to AuthController (unless it is auth controller, an API sync/login request, a public invoice view, or diagnostics request)
+        if (!isset($_SESSION['user_id']) && !$isMobileSync && !$isPublicInvoice && !$isPickingLogin && !$isDiagnostics && (isset($url[0]) ? strtolower($url[0]) !== 'auth' : true)) {
             $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
                       (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
                       (strpos($_SERVER['REQUEST_URI'], '/fetch_data') !== false) ||

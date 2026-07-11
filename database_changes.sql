@@ -3,6 +3,8 @@
 -- =========================================================================
 -- Execute these queries on your server/production database (curtiss.suzxlabs.com)
 -- to bring it to a 100% stable state matching the latest code features.
+-- Note: Standard MySQL does not support "ADD COLUMN IF NOT EXISTS".
+-- If a column already exists, you can ignore the "duplicate column" warning/error.
 -- =========================================================================
 
 -- 1. Audit Trail: Create Deleted Invoices Table
@@ -56,21 +58,21 @@ CREATE TABLE IF NOT EXISTS sales_order_items (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 3. Representative App: Add accessible_apps column to users table
-ALTER TABLE users ADD COLUMN IF NOT EXISTS accessible_apps VARCHAR(255) DEFAULT 'ERP System' AFTER status;
+ALTER TABLE users ADD COLUMN accessible_apps VARCHAR(255) DEFAULT 'ERP System' AFTER status;
 ALTER TABLE users MODIFY email VARCHAR(100) NULL;
 
 -- 4. Customer Management: Add Credit Limits, Customer Type, Notes, Opening Balance & sync tracking
-ALTER TABLE customers ADD COLUMN IF NOT EXISTS credit_limit DECIMAL(15,2) DEFAULT 0.00 AFTER territory;
-ALTER TABLE customers ADD COLUMN IF NOT EXISTS customer_type VARCHAR(50) DEFAULT 'Standard' AFTER credit_limit;
-ALTER TABLE customers ADD COLUMN IF NOT EXISTS notes TEXT NULL AFTER customer_type;
-ALTER TABLE customers ADD COLUMN IF NOT EXISTS opening_balance DECIMAL(15,2) DEFAULT 0.00 AFTER credit_limit;
-ALTER TABLE customers ADD COLUMN IF NOT EXISTS uuid VARCHAR(255) NULL;
-ALTER TABLE customers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+ALTER TABLE customers ADD COLUMN credit_limit DECIMAL(15,2) DEFAULT 0.00 AFTER territory;
+ALTER TABLE customers ADD COLUMN customer_type VARCHAR(50) DEFAULT 'Standard' AFTER credit_limit;
+ALTER TABLE customers ADD COLUMN notes TEXT NULL AFTER customer_type;
+ALTER TABLE customers ADD COLUMN opening_balance DECIMAL(15,2) DEFAULT 0.00 AFTER credit_limit;
+ALTER TABLE customers ADD COLUMN uuid VARCHAR(255) NULL;
+ALTER TABLE customers ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
 
 -- 5. Mobile Synchronization: Add updated_at columns for incremental (delta) sync tracking
-ALTER TABLE items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
-ALTER TABLE item_categories ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
-ALTER TABLE mca_areas ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+ALTER TABLE items ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+ALTER TABLE item_categories ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+ALTER TABLE mca_areas ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
 
 -- 6. Logistics & Deliveries: Create Delivery Picking Items Table & Final Loading Verification
 CREATE TABLE IF NOT EXISTS delivery_picking_items (
@@ -87,33 +89,33 @@ CREATE TABLE IF NOT EXISTS delivery_picking_items (
     FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-ALTER TABLE delivery_picking_items ADD COLUMN IF NOT EXISTS final_loaded_qty DECIMAL(10,2) DEFAULT NULL;
-ALTER TABLE delivery_picking_items ADD COLUMN IF NOT EXISTS is_verified TINYINT(1) DEFAULT 0;
-ALTER TABLE delivery_picking_items ADD COLUMN IF NOT EXISTS variance DECIMAL(10,2) DEFAULT 0;
-ALTER TABLE delivery_picking_items ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP NULL DEFAULT NULL;
-ALTER TABLE delivery_picking_items ADD COLUMN IF NOT EXISTS verified_by INT(11) DEFAULT NULL;
+ALTER TABLE delivery_picking_items ADD COLUMN final_loaded_qty DECIMAL(10,2) DEFAULT NULL;
+ALTER TABLE delivery_picking_items ADD COLUMN is_verified TINYINT(1) DEFAULT 0;
+ALTER TABLE delivery_picking_items ADD COLUMN variance DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE delivery_picking_items ADD COLUMN verified_at TIMESTAMP NULL DEFAULT NULL;
+ALTER TABLE delivery_picking_items ADD COLUMN verified_by INT(11) DEFAULT NULL;
 
 -- 7. Route Settlement: Add verification, audit, and mobile tracking to pending_collections table
-ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS is_verified TINYINT(1) NOT NULL DEFAULT 0;
-ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS is_flagged TINYINT(1) NOT NULL DEFAULT 0;
-ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS adjusted_amount DECIMAL(12,2) NULL;
-ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS verification_notes TEXT NULL;
-ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS verified_by INT NULL;
-ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS verified_at DATETIME NULL;
-ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS mobile_local_id INT NULL;
-ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS mobile_rep_id INT NULL;
-ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS uuid VARCHAR(255) NULL;
-ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS debit_account_id INT NULL;
-ALTER TABLE pending_collections ADD COLUMN IF NOT EXISTS credit_account_id INT NULL;
+ALTER TABLE pending_collections ADD COLUMN is_verified TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE pending_collections ADD COLUMN is_flagged TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE pending_collections ADD COLUMN adjusted_amount DECIMAL(12,2) NULL;
+ALTER TABLE pending_collections ADD COLUMN verification_notes TEXT NULL;
+ALTER TABLE pending_collections ADD COLUMN verified_by INT NULL;
+ALTER TABLE pending_collections ADD COLUMN verified_at DATETIME NULL;
+ALTER TABLE pending_collections ADD COLUMN mobile_local_id INT NULL;
+ALTER TABLE pending_collections ADD COLUMN mobile_rep_id INT NULL;
+ALTER TABLE pending_collections ADD COLUMN uuid VARCHAR(255) NULL;
+ALTER TABLE pending_collections ADD COLUMN debit_account_id INT NULL;
+ALTER TABLE pending_collections ADD COLUMN credit_account_id INT NULL;
 
 -- 8. Supplier Management & GRN: Add Service Bills tracking to Goods Receipt Notes
-ALTER TABLE goods_receipt_notes ADD COLUMN IF NOT EXISTS due_date DATE NULL;
-ALTER TABLE goods_receipt_notes ADD COLUMN IF NOT EXISTS service_period VARCHAR(100) NULL;
-ALTER TABLE goods_receipt_notes ADD COLUMN IF NOT EXISTS amount DECIMAL(15,2) NULL;
-ALTER TABLE goods_receipt_notes ADD COLUMN IF NOT EXISTS tax DECIMAL(15,2) NULL;
-ALTER TABLE goods_receipt_notes ADD COLUMN IF NOT EXISTS total_amount DECIMAL(15,2) NULL;
-ALTER TABLE goods_receipt_notes ADD COLUMN IF NOT EXISTS status ENUM('Unpaid', 'Partially Paid', 'Paid') DEFAULT 'Unpaid';
-ALTER TABLE goods_receipt_notes ADD COLUMN IF NOT EXISTS attachment VARCHAR(255) NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN due_date DATE NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN service_period VARCHAR(100) NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN amount DECIMAL(15,2) NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN tax DECIMAL(15,2) NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN total_amount DECIMAL(15,2) NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN status ENUM('Unpaid', 'Partially Paid', 'Paid') DEFAULT 'Unpaid';
+ALTER TABLE goods_receipt_notes ADD COLUMN attachment VARCHAR(255) NULL;
 
 -- 9. App Release Management: Create app_releases Table
 CREATE TABLE IF NOT EXISTS app_releases (
@@ -157,14 +159,13 @@ CREATE TABLE IF NOT EXISTS scheduled_reports (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 11. Status Fields additions (Critical for Customers list and mobile synchronization)
-ALTER TABLE customers ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
-ALTER TABLE item_categories ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
-ALTER TABLE mca_areas ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
-ALTER TABLE customer_payments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Active';
+ALTER TABLE customers ADD COLUMN status VARCHAR(20) DEFAULT 'active';
+ALTER TABLE item_categories ADD COLUMN status VARCHAR(20) DEFAULT 'active';
+ALTER TABLE mca_areas ADD COLUMN status VARCHAR(20) DEFAULT 'active';
+ALTER TABLE customer_payments ADD COLUMN status VARCHAR(20) DEFAULT 'Active';
 
 -- 12. Register these migrations in the system table to prevent rerun triggers
 INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_customers');
 INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_item_categories');
 INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_mca_areas');
 INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_customer_payments');
-
