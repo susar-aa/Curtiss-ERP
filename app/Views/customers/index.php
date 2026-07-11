@@ -653,7 +653,7 @@ foreach ($data['customers'] ?? [] as $cust) {
                         <div class="sf-dropdown-item active" data-val="" onclick="selectRoute('', 'All Routes')">All Routes</div>
                         <?php 
                         $routes = [];
-                        foreach(($data['customers'] ?? []) as $c) {
+                        foreach($data['customers'] as $c) {
                             if(!empty($c->mca_name) && !in_array($c->mca_name, $routes)) { $routes[] = $c->mca_name; }
                         }
                         sort($routes);
@@ -684,7 +684,7 @@ foreach ($data['customers'] ?? [] as $cust) {
 
             <!-- Counter -->
             <div class="filter-count">
-                <strong id="matching-count"><?= count($data['customers'] ?? []) ?></strong> customers
+                <strong id="matching-count"><?= count($data['customers']) ?></strong> customers
             </div>
         </div>
 
@@ -709,7 +709,7 @@ foreach ($data['customers'] ?? [] as $cust) {
                             </td>
                         </tr>
                     <?php else: ?>
-                        <?php foreach(($data['customers'] ?? []) as $c): ?>
+                        <?php foreach($data['customers'] as $c): ?>
                             <?php 
                             $bal = floatval($c->outstanding_balance); 
                             $badgeCls = $bal > 0 ? 'badge-owed' : 'badge-active';
@@ -773,7 +773,7 @@ foreach ($data['customers'] ?? [] as $cust) {
             <!-- Pagination Block -->
             <div class="sf-pagination">
                 <div class="pg-info" id="pg-info-text">
-                    Showing <strong>1</strong> – <strong>15</strong> of <strong><?= count($data['customers'] ?? []) ?></strong>
+                    Showing <strong>1</strong> – <strong>15</strong> of <strong><?= count($data['customers']) ?></strong>
                 </div>
                 <div class="pg-right">
                     <div class="pg-size-wrap">
@@ -849,16 +849,8 @@ foreach ($data['customers'] ?? [] as $cust) {
 <!-- ============================================================
      HIDDEN TEMPLATE SOURCES (EXTRACTED VIA DOM PARSER OR DIRECT)
      ============================================================ -->
-<?php if (!empty($data['selected_customer'])): ?>
-    <?php 
-    $c = $data['selected_customer']; 
-    $s = $data['stats'] ?? (object)[
-        'total_orders' => 0,
-        'total_billed' => 0.00,
-        'total_paid' => 0.00,
-        'outstanding' => 0.00
-    ]; 
-    ?>
+<?php if ($data['selected_customer']): ?>
+    <?php $c = $data['selected_customer']; $s = $data['stats']; ?>
     
     <div id="modal-header-source" class="hidden">
         <div style="display: flex; gap: 15px; align-items: center; min-width: 0; flex: 1;">
@@ -924,7 +916,7 @@ foreach ($data['customers'] ?? [] as $cust) {
                 <tbody>
                     <?php if(empty($data['ledger'])): ?>
                         <tr><td colspan="5" style="text-align: center; color: var(--t-secondary); padding: 20px;">No financial activity yet.</td></tr>
-                    <?php else: foreach(($data['ledger'] ?? []) as $l): ?>
+                    <?php else: foreach($data['ledger'] as $l): ?>
                         <tr>
                             <td style="color:var(--t-secondary); font-size:12px;"><?= date('M d, Y', strtotime($l->date)) ?></td>
                             <td>
@@ -964,7 +956,7 @@ foreach ($data['customers'] ?? [] as $cust) {
                 <tbody>
                     <?php if(empty($data['invoices'])): ?>
                         <tr><td colspan="4" style="text-align:center; color:var(--t-secondary); padding: 20px;">No invoices found.</td></tr>
-                    <?php else: foreach(($data['invoices'] ?? []) as $inv): ?>
+                    <?php else: foreach($data['invoices'] as $inv): ?>
                         <?php 
                             $trueInvTotal = $inv->total_amount;
                             if($inv->global_discount_val > 0) {
@@ -996,7 +988,7 @@ foreach ($data['customers'] ?? [] as $cust) {
                 <tbody>
                     <?php if(empty($data['cheques'])): ?>
                         <tr><td colspan="3" style="text-align:center; color:var(--t-secondary); padding: 20px;">No cheques recorded.</td></tr>
-                    <?php else: foreach(($data['cheques'] ?? []) as $chk): ?>
+                    <?php else: foreach($data['cheques'] as $chk): ?>
                         <tr>
                             <td>
                                 <strong><?= htmlspecialchars($chk->bank_name) ?></strong><br>
@@ -1045,7 +1037,7 @@ foreach ($data['customers'] ?? [] as $cust) {
                                 <label>Assigned Route</label>
                                 <select name="mca_id" class="sf-input" style="height:41px;">
                                     <option value="">Unassigned</option>
-                                    <?php foreach(($data['mca_areas'] ?? []) as $route): ?>
+                                    <?php foreach($data['mca_areas'] as $route): ?>
                                         <option value="<?= $route->id ?>" <?= $c->mca_id == $route->id ? 'selected' : '' ?>><?= htmlspecialchars($route->name ?? '') ?></option>
                                     <?php endforeach; ?>
                                 </select>
@@ -1187,7 +1179,7 @@ foreach ($data['customers'] ?? [] as $cust) {
                         <label>Assign Route</label>
                         <select name="mca_id" class="sf-input" style="height:41px;">
                             <option value="">Unassigned</option>
-                            <?php foreach(($data['mca_areas'] ?? []) as $route): ?>
+                            <?php foreach($data['mca_areas'] as $route): ?>
                                 <option value="<?= $route->id ?>"><?= htmlspecialchars($route->name ?? '') ?></option>
                             <?php endforeach; ?>
                         </select>

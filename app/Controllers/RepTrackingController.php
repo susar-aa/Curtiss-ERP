@@ -1751,10 +1751,10 @@ class RepTrackingController extends Controller {
         $userId = $_SESSION['user_id'];
         
         try {
-            $db = new Database();
-            $db->beginTransaction();
+            // WF-1 FIX: Removed redundant outer transaction wrapper that used a separate
+            // Database connection. The model's finalizePayments() uses its own connection
+            // with FOR UPDATE locking for concurrency safety.
             $this->trackingModel->finalizePayments($paymentIds, $userId, $bankAllocations, $customDebitAccounts, $customCreditAccounts);
-            $db->commit();
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'message' => 'Selected collections posted to GL successfully!']);
             exit;

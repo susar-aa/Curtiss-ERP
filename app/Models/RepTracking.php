@@ -368,13 +368,17 @@ class RepTracking {
         }
 
         foreach ($paymentIds as $pid) {
-            // Fetch payment details from pending_collections
-            $this->db->query("SELECT * FROM pending_collections WHERE id = :id AND status = 'Pending'");
+            // ACCT-1 FIX: Use SELECT ... FOR UPDATE to acquire a row-level lock
+            // preventing race conditions if both api_finalize_collections and 
+            // finalizeDelivery are called concurrently for the same pending_collection.
+            $this->db->query("SELECT * FROM pending_collections WHERE id = :id AND status = 'Pending' FOR UPDATE");
             $this->db->bind(':id', $pid);
             $payment = $this->db->single();
             if (!$payment) continue;
 
-            $amount = floatval($payment->amount);
+            // Use adjusted_amount if set during verification, otherwise use original amount
+            $amount = floatval($payment->adjusted_amount !== null ? $payment->adjusted_amount : $payment->amount);
+            if ($amount <= 0) continue;
             $method = $payment->payment_method;
 
             // Map payment method to asset account
