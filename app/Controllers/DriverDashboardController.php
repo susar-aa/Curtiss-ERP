@@ -222,6 +222,7 @@ class DriverDashboardController extends Controller {
 
     // JSON API for Native Mobile App Pull Synchronization
     public function api_sync_pull() {
+        ini_set('memory_limit', '512M');
         header('Content-Type: application/json');
         try {
             $userId = intval($_GET['user_id'] ?? 0);

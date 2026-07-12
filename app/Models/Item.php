@@ -351,7 +351,8 @@ class Item {
         $descCol = $this->safeCol($this->descColumn);
         $orderByCol = $this->safeCol($this->orderByColumn);
         
-        $this->db->query("SELECT i.*, cat.name AS category_name, i.{$priceCol} AS selling_price, i.{$wholesalePriceCol} AS wholesale_price, i.{$itemCodeCol} AS item_code, i.{$qtyCol} AS qty, i.{$descCol} AS description 
+        $this->db->query("SELECT i.id, i.name, i.category_id, cat.name AS category_name, i.quantity_reserved, i.image_path, i.brand, i.status, i.cost_price, i.sample_code, i.variations_json,
+                                 i.{$priceCol} AS selling_price, i.{$wholesalePriceCol} AS wholesale_price, i.{$itemCodeCol} AS item_code, i.{$qtyCol} AS qty, i.{$descCol} AS description 
                           FROM items i 
                           LEFT JOIN item_categories cat ON i.category_id = cat.id 
                           $whereSql

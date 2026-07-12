@@ -1,5 +1,5 @@
 <?php
-$url = "https://curtiss.suzxlabs.com/rep/RepDashboard/sync_pull?api_sync=1&user_id=16";
+$url = "https://curtiss.suzxlabs.com/rep/RepDashboard/sync_pull?api_sync=1&user_id=2&secret=curtiss_debug_123";
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

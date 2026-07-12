@@ -117,15 +117,16 @@ if ($dbh) {
     }
 
     // Database Audit Report
-    echo "=== DATABASE AUDIT ===\n";
+    echo "=== DATABASE AUDIT & ROW COUNTS ===\n";
     $tablesToAudit = [
         'customers' => ['id', 'name', 'phone', 'whatsapp', 'address', 'territory', 'latitude', 'longitude', 'opening_balance', 'credit_limit', 'customer_type', 'notes', 'status', 'uuid', 'updated_at'],
-        'products' => ['id', 'name', 'category_name', 'price', 'wholesale_price', 'cost_price', 'quantity_on_hand', 'quantity_reserved', 'sku', 'sample_code', 'variations_json', 'brand', 'description', 'status'],
-        'categories' => ['id', 'name', 'status'],
-        'server_routes' => ['id', 'name', 'main_area_id', 'status'],
+        'items' => ['id', 'woocommerce_product_id', 'item_code', 'name', 'category_id', 'price', 'quantity_on_hand', 'quantity_reserved', 'wholesale_price', 'variations_json', 'image_path', 'brand', 'status', 'cost_price', 'sample_code', 'updated_at'],
+        'item_categories' => ['id', 'name', 'description', 'updated_at', 'status'],
         'mca_areas' => ['id', 'name', 'status', 'updated_at'],
         'customer_payments' => ['id', 'customer_id', 'amount', 'status', 'payment_date'],
-        'migrations' => ['id', 'migration', 'executed_at']
+        'migrations' => ['id', 'migration', 'executed_at'],
+        'invoices' => ['id', 'invoice_number', 'customer_id', 'invoice_date', 'total_amount', 'status'],
+        'invoice_items' => ['id', 'invoice_id', 'item_id', 'quantity', 'price']
     ];
 
     foreach ($tablesToAudit as $table => $columns) {
@@ -134,7 +135,9 @@ if ($dbh) {
             if ($q->rowCount() === 0) {
                 echo "Table `$table`: MISSING\n";
             } else {
-                echo "Table `$table`: EXISTS\n";
+                $countQ = $dbh->query("SELECT COUNT(*) FROM `$table`");
+                $rowCount = $countQ->fetchColumn();
+                echo "Table `$table`: EXISTS ($rowCount rows)\n";
                 $existingColumns = [];
                 $colQuery = $dbh->query("SHOW COLUMNS FROM `$table`");
                 while ($col = $colQuery->fetch(PDO::FETCH_ASSOC)) {

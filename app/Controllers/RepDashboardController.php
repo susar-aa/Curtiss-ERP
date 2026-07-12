@@ -76,6 +76,7 @@ class RepDashboardController extends Controller {
     }
 
     public function sync_pull() {
+        ini_set('memory_limit', '512M');
         header('Content-Type: application/json');
         try {
             $userId = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;

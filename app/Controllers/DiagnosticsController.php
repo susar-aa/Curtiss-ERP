@@ -21,6 +21,10 @@ class DiagnosticsController extends Controller {
         return false;
     }
 
+    public function index() {
+        return $this->db();
+    }
+
     public function db() {
         if (!$this->checkAuth()) {
             http_response_code(403);
@@ -106,6 +110,58 @@ class DiagnosticsController extends Controller {
 
         // Render Page
         $this->renderDiagnosticsHtml($dbStatus, $dbError, $tablesAudit, $migrationStatus, $appErrors, $syncErrors);
+    }
+
+    public function get_db_stats() {
+        if (!$this->checkAuth()) {
+            http_response_code(403);
+            echo "Unauthorized";
+            exit;
+        }
+        header('Content-Type: text/plain');
+        try {
+            $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+            $dbh = new PDO($dsn, DB_USER, DB_PASS, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+            ]);
+            
+            echo "=== TABLE COUNTS ===\n";
+            $tables = ['items', 'customers', 'invoices', 'customer_payments', 'item_categories', 'mca_areas', 'rep_daily_routes', 'invoice_items'];
+            foreach ($tables as $t) {
+                try {
+                    $q = $dbh->query("SELECT COUNT(*) FROM `$t`");
+                    echo "$t: " . $q->fetchColumn() . " rows\n";
+                } catch (Exception $ex) {
+                    echo "$t: ERROR - " . $ex->getMessage() . "\n";
+                }
+            }
+            
+            // Check items columns
+            echo "\n=== ITEMS COLUMNS ===\n";
+            try {
+                $q = $dbh->query("SHOW COLUMNS FROM items");
+                while ($col = $q->fetch(PDO::FETCH_ASSOC)) {
+                    echo $col['Field'] . " (" . $col['Type'] . ")\n";
+                }
+            } catch (Exception $ex) {
+                echo "Error: " . $ex->getMessage() . "\n";
+            }
+            
+            // Check sample items row size
+            echo "\n=== ITEMS SAMPLE DATA SIZE ===\n";
+            try {
+                $q = $dbh->query("SELECT * FROM items LIMIT 5");
+                $rows = $q->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($rows as $index => $r) {
+                    echo "Row $index: " . strlen(serialize($r)) . " bytes\n";
+                }
+            } catch (Exception $ex) {
+                echo "Error: " . $ex->getMessage() . "\n";
+            }
+        } catch (Exception $e) {
+            echo "Connection Error: " . $e->getMessage() . "\n";
+        }
+        exit;
     }
 
     public function fix() {
