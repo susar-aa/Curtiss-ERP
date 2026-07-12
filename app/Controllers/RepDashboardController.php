@@ -224,41 +224,6 @@ class RepDashboardController extends Controller {
             }
 
             $deltaCust = $getDeltaFilter('customers', $lastSync, true, 'c');
-            $this->db->query("
-                SELECT c.id, c.name, c.phone, c.whatsapp, c.address, c.territory, c.latitude, c.longitude, c.mca_id, m.name as mca_name, c.updated_at,
-                       c.email, c.credit_limit, c.customer_type, c.notes, c.status
-                FROM customers c 
-                LEFT JOIN mca_areas m ON c.mca_id = m.id
-                WHERE 1=1 $deltaCust
-                ORDER BY c.name ASC
-            ");
-            if (!empty($deltaCust)) {
-                $this->db->bind(':last_sync', $lastSync);
-            }
-            $customers = $this->db->resultSet() ?: [];
-            $customersJson = [];
-            foreach ($customers as $c) {
-                $customerId = intval($c->id);
-                $customersJson[] = [
-                    'id' => $customerId,
-                    'name' => $c->name,
-                    'phone' => $c->phone ?? '',
-                    'whatsapp' => $c->whatsapp ?? '',
-                    'address' => $c->address ?? '',
-                    'territory' => $c->territory ?? '',
-                    'latitude' => floatval($c->latitude ?? 0.0),
-                    'longitude' => floatval($c->longitude ?? 0.0),
-                    'outstanding' => floatval($balances[$customerId] ?? 0.0),
-                    'mca_id' => intval($c->mca_id ?? 0),
-                    'mca_name' => $c->mca_name ?? '',
-                    'email' => $c->email ?? '',
-                    'credit_limit' => floatval($c->credit_limit ?? 0.00),
-                    'customer_type' => $c->customer_type ?? 'Standard',
-                    'notes' => $c->notes ?? '',
-                    'status' => $c->status ?? 'active',
-                    'updated_at' => $c->updated_at ?? ''
-                ];
-            }
             
             // 4. Get server routes (territories)
             $routesJson = null;
@@ -462,8 +427,7 @@ class RepDashboardController extends Controller {
             $responsePayload = [
                 'success' => true,
                 'products' => $productsJson,
-                'categories' => $categoriesJson,
-                'customers' => $customersJson
+                'categories' => $categoriesJson
             ];
             if ($routesJson !== null) {
                 $responsePayload['routes'] = $routesJson;
@@ -481,8 +445,69 @@ class RepDashboardController extends Controller {
             $responsePayload['active_route_invoices'] = $activeRouteInvsJson;
             $responsePayload['active_route_invoice_items'] = $activeRouteItemsJson;
             $responsePayload['discount_rules'] = $discountRulesJson;
+            $responsePayload['system_date'] = date('Y-m-d H:i:s');
 
-            echo json_encode($responsePayload);
+            // Stream response to dramatically reduce memory footprint
+            while (ob_get_level() > 0) {
+                @ob_end_clean();
+            }
+            header('Content-Type: application/json');
+            
+            // Encode main payload and strip trailing "}"
+            $jsonStart = json_encode($responsePayload);
+            $jsonStart = substr($jsonStart, 0, -1);
+            echo $jsonStart;
+            
+            // Stream customers array
+            echo ',"customers":[';
+            
+            $this->db->query("
+                SELECT c.id, c.name, c.phone, c.whatsapp, c.address, c.territory, c.latitude, c.longitude, c.mca_id, m.name as mca_name, c.updated_at,
+                       c.email, c.credit_limit, c.customer_type, c.notes, c.status
+                FROM customers c 
+                LEFT JOIN mca_areas m ON c.mca_id = m.id
+                WHERE 1=1 $deltaCust
+                ORDER BY c.name ASC
+            ");
+            if (!empty($deltaCust)) {
+                $this->db->bind(':last_sync', $lastSync);
+            }
+            $this->db->execute();
+            
+            $stmt = $this->db->stmt;
+            $first = true;
+            while ($c = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                if (!$first) {
+                    echo ',';
+                }
+                $first = false;
+                $customerId = intval($c['id']);
+                
+                $custData = [
+                    'id' => $customerId,
+                    'name' => $c['name'],
+                    'phone' => $c['phone'] ?? '',
+                    'whatsapp' => $c['whatsapp'] ?? '',
+                    'address' => $c['address'] ?? '',
+                    'territory' => $c['territory'] ?? '',
+                    'latitude' => floatval($c['latitude'] ?? 0.0),
+                    'longitude' => floatval($c['longitude'] ?? 0.0),
+                    'outstanding' => floatval($balances[$customerId] ?? 0.0),
+                    'mca_id' => intval($c['mca_id'] ?? 0),
+                    'mca_name' => $c['mca_name'] ?? '',
+                    'email' => $c['email'] ?? '',
+                    'credit_limit' => floatval($c['credit_limit'] ?? 0.00),
+                    'customer_type' => $c['customer_type'] ?? 'Standard',
+                    'notes' => $c['notes'] ?? '',
+                    'status' => $c['status'] ?? 'active',
+                    'updated_at' => $c['updated_at'] ?? ''
+                ];
+                echo json_encode($custData);
+                flush();
+            }
+            $stmt->closeCursor();
+            
+            echo ']}';
             exit;
         } catch (Throwable $e) {
             http_response_code(200);
