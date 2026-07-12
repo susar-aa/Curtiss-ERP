@@ -76,6 +76,34 @@ function global_error_handler($errno, $errstr, $errfile, $errline) {
 set_exception_handler('global_exception_handler');
 set_error_handler('global_error_handler');
 
+function global_shutdown_handler() {
+    $error = error_get_last();
+    if ($error !== null && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR, E_RECOVERABLE_ERROR])) {
+        $logFile = dirname(__DIR__) . '/app_errors.log';
+        $errMessage = "Fatal Error [{$error['type']}]: " . $error['message'] . " in " . $error['file'] . " on line " . $error['line'];
+        $logContent = "[" . date('Y-m-d H:i:s') . "] " . $errMessage . "\nShutdown handler captured fatal crash.\n\n";
+        @file_put_contents($logFile, $logContent, FILE_APPEND);
+
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
+                  (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
+                  isset($_GET['api_sync']);
+                  
+        if ($isAjax) {
+            while (ob_get_level() > 0) {
+                @ob_end_clean();
+            }
+            header('Content-Type: application/json');
+            http_response_code(200);
+            echo json_encode([
+                'success' => false,
+                'message' => $error['message'],
+                'trace' => 'Fatal error in ' . $error['file'] . ' on line ' . $error['line']
+            ]);
+        }
+    }
+}
+register_shutdown_function('global_shutdown_handler');
+
 
 // Global CORS Headers
 if (isset($_SERVER['HTTP_ORIGIN'])) {

@@ -126,7 +126,7 @@ if ($dbh) {
         'customer_payments' => ['id', 'customer_id', 'amount', 'status', 'payment_date'],
         'migrations' => ['id', 'migration', 'executed_at'],
         'invoices' => ['id', 'invoice_number', 'customer_id', 'invoice_date', 'total_amount', 'status'],
-        'invoice_items' => ['id', 'invoice_id', 'item_id', 'quantity', 'price']
+        'invoice_items' => ['id', 'invoice_id', 'item_id', 'quantity', 'unit_price']
     ];
 
     foreach ($tablesToAudit as $table => $columns) {

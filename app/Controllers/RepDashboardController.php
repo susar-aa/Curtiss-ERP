@@ -190,16 +190,43 @@ class RepDashboardController extends Controller {
             }
             
             // 3. Get customers
+            $balances = [];
+            try {
+                $this->db->query("
+                    SELECT customer_id, SUM(bal) as balance
+                    FROM (
+                        SELECT customer_id, SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as bal
+                        FROM invoices 
+                        WHERE status != 'Voided'
+                        GROUP BY customer_id
+                        
+                        UNION ALL
+                        
+                        SELECT customer_id, -SUM(amount) as bal
+                        FROM customer_payments 
+                        WHERE status = 'Active'
+                        GROUP BY customer_id
+                        
+                        UNION ALL
+                        
+                        SELECT customer_id, -SUM(total_amount) as bal
+                        FROM credit_notes
+                        GROUP BY customer_id
+                    ) t
+                    GROUP BY customer_id
+                ");
+                $balRows = $this->db->resultSet() ?: [];
+                foreach ($balRows as $r) {
+                    $balances[intval($r->customer_id)] = floatval($r->balance);
+                }
+            } catch (Exception $ex) {
+                // Fallback silently if table / column issues occur during migrations
+            }
+
             $deltaCust = $getDeltaFilter('customers', $lastSync, true, 'c');
             $this->db->query("
                 SELECT c.id, c.name, c.phone, c.whatsapp, c.address, c.territory, c.latitude, c.longitude, c.mca_id, m.name as mca_name, c.updated_at,
-                       c.email, c.credit_limit, c.customer_type, c.notes, c.status,
-                       ((SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = c.id AND status != 'Voided') 
-                       - 
-                       (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE customer_id = c.id AND status = 'Active') 
-                       - 
-                       (SELECT COALESCE(SUM(total_amount), 0) FROM credit_notes WHERE customer_id = c.id)) 
-                       AS balance
+                       c.email, c.credit_limit, c.customer_type, c.notes, c.status
                 FROM customers c 
                 LEFT JOIN mca_areas m ON c.mca_id = m.id
                 WHERE 1=1 $deltaCust
@@ -211,8 +238,9 @@ class RepDashboardController extends Controller {
             $customers = $this->db->resultSet() ?: [];
             $customersJson = [];
             foreach ($customers as $c) {
+                $customerId = intval($c->id);
                 $customersJson[] = [
-                    'id' => intval($c->id),
+                    'id' => $customerId,
                     'name' => $c->name,
                     'phone' => $c->phone ?? '',
                     'whatsapp' => $c->whatsapp ?? '',
@@ -220,7 +248,7 @@ class RepDashboardController extends Controller {
                     'territory' => $c->territory ?? '',
                     'latitude' => floatval($c->latitude ?? 0.0),
                     'longitude' => floatval($c->longitude ?? 0.0),
-                    'outstanding' => floatval($c->balance ?? 0.0),
+                    'outstanding' => floatval($balances[$customerId] ?? 0.0),
                     'mca_id' => intval($c->mca_id ?? 0),
                     'mca_name' => $c->mca_name ?? '',
                     'email' => $c->email ?? '',
