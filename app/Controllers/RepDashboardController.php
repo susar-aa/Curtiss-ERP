@@ -453,11 +453,6 @@ class RepDashboardController extends Controller {
             if ($creditInvsJson !== null) {
                 $responsePayload['credit_invoices'] = $creditInvsJson;
             }
-            $responsePayload['active_route'] = $activeRouteJson;
-            $responsePayload['active_route_invoices'] = $activeRouteInvsJson;
-            $responsePayload['active_route_invoice_items'] = $activeRouteItemsJson;
-            $responsePayload['discount_rules'] = $discountRulesJson;
-            $responsePayload['system_date'] = date('Y-m-d H:i:s');
 
             // Stream response to dramatically reduce memory footprint
             while (ob_get_level() > 0) {
@@ -519,7 +514,13 @@ class RepDashboardController extends Controller {
             }
             $stmt->closeCursor();
             
-            echo ']}';
+            echo ']';
+            echo ',"active_route":' . json_encode($activeRouteJson);
+            echo ',"active_route_invoices":' . json_encode($activeRouteInvsJson);
+            echo ',"active_route_invoice_items":' . json_encode($activeRouteItemsJson);
+            echo ',"discount_rules":' . json_encode($discountRulesJson);
+            echo ',"system_date":' . json_encode(date('Y-m-d H:i:s'));
+            echo '}';
             exit;
         } catch (Throwable $e) {
             http_response_code(200);
