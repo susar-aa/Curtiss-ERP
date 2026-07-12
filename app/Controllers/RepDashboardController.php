@@ -424,8 +424,20 @@ class RepDashboardController extends Controller {
             ];
         }
 
+            // Calculate total customer count for progress tracking
+            $this->db->query("
+                SELECT COUNT(*) as cnt
+                FROM customers c 
+                WHERE 1=1 $deltaCust
+            ");
+            if (!empty($deltaCust)) {
+                $this->db->bind(':last_sync', $lastSync);
+            }
+            $totalCustomers = intval($this->db->single()->cnt ?? 0);
+
             $responsePayload = [
                 'success' => true,
+                'total_customers' => $totalCustomers,
                 'products' => $productsJson,
                 'categories' => $categoriesJson
             ];
@@ -459,7 +471,7 @@ class RepDashboardController extends Controller {
             echo $jsonStart;
             
             // Stream customers array
-            echo ',"customers":[';
+            echo ',"customers":[' . "\n";
             
             $this->db->query("
                 SELECT c.id, c.name, c.phone, c.whatsapp, c.address, c.territory, c.latitude, c.longitude, c.mca_id, m.name as mca_name, c.updated_at,
@@ -478,7 +490,7 @@ class RepDashboardController extends Controller {
             $first = true;
             while ($c = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 if (!$first) {
-                    echo ',';
+                    echo ",\n";
                 }
                 $first = false;
                 $customerId = intval($c['id']);
