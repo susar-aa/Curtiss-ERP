@@ -576,16 +576,66 @@ class MigrationManager {
             'create_petty_cash_config' => "
                 CREATE TABLE IF NOT EXISTS petty_cash_config (
                     id INT AUTO_INCREMENT PRIMARY KEY,
-                    cash_limit DECIMAL(15,2) NOT NULL DEFAULT 50000.00,
-                    reimbursement_threshold DECIMAL(15,2) NOT NULL DEFAULT 10000.00,
-                    updated_by INT NOT NULL,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    limit_amount DECIMAL(15,2) NOT NULL DEFAULT 50000.00,
+                    custodian_id INT NOT NULL,
+                    require_approval TINYINT(1) DEFAULT 1,
+                    default_funding_account_id INT NOT NULL,
+                    reimbursement_threshold DECIMAL(15,2) DEFAULT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ",
-            'seed_petty_cash_config' => "
-                INSERT IGNORE INTO petty_cash_config (id, cash_limit, reimbursement_threshold, updated_by) 
-                VALUES (1, 50000.00, 10000.00, 1)
-            ",
+            'seed_petty_cash_config' => function(PDO $dbh) {
+                // Find a default custodian (first Admin user, or first user in users table)
+                $custodianId = 1;
+                $stmt = $dbh->query("
+                    SELECT u.id FROM users u 
+                    LEFT JOIN user_roles ur ON u.id = ur.user_id 
+                    LEFT JOIN roles r ON ur.role_id = r.id 
+                    WHERE r.name = 'Admin' 
+                    LIMIT 1
+                ");
+                if ($stmt) {
+                    $row = $stmt->fetch(PDO::FETCH_OBJ);
+                    if ($row) {
+                        $custodianId = intval($row->id);
+                    }
+                }
+
+                // Find a default funding account (Asset account starting with 10 or 11, e.g. Cheque in Hand, Bank)
+                $fundingAccId = 1;
+                $stmt = $dbh->query("
+                    SELECT id FROM chart_of_accounts 
+                    WHERE account_type = 'Asset' AND (account_code LIKE '10%' OR account_code LIKE '11%') 
+                    ORDER BY account_code ASC LIMIT 1
+                ");
+                if ($stmt) {
+                    $row = $stmt->fetch(PDO::FETCH_OBJ);
+                    if ($row) {
+                        $fundingAccId = intval($row->id);
+                    } else {
+                        // fallback to any asset account
+                        $stmt2 = $dbh->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' LIMIT 1");
+                        if ($stmt2) {
+                            $row2 = $stmt2->fetch(PDO::FETCH_OBJ);
+                            if ($row2) {
+                                $fundingAccId = intval($row2->id);
+                            }
+                        }
+                    }
+                }
+
+                // Insert the initial config if not exists
+                $stmtInsert = $dbh->prepare("
+                    INSERT IGNORE INTO petty_cash_config (id, limit_amount, custodian_id, require_approval, default_funding_account_id, reimbursement_threshold) 
+                    VALUES (1, 50000.00, :custodian_id, 1, :funding_acc_id, 10000.00)
+                ");
+                $stmtInsert->execute([
+                    ':custodian_id' => $custodianId,
+                    ':funding_acc_id' => $fundingAccId
+                ]);
+                return true;
+            },
             'create_petty_cash_reimbursements' => "
                 CREATE TABLE IF NOT EXISTS petty_cash_reimbursements (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -622,7 +672,103 @@ class MigrationManager {
                     FOREIGN KEY (reimbursement_id) REFERENCES petty_cash_reimbursements(id) ON DELETE SET NULL,
                     FOREIGN KEY (account_id) REFERENCES chart_of_accounts(id) ON DELETE SET NULL
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            "
+            ",
+            'create_petty_cash_config_history' => "
+                CREATE TABLE IF NOT EXISTS petty_cash_config_history (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    limit_amount DECIMAL(15,2) NOT NULL,
+                    custodian_id INT NOT NULL,
+                    require_approval TINYINT(1) DEFAULT 1,
+                    default_funding_account_id INT NOT NULL,
+                    reimbursement_threshold DECIMAL(15,2) DEFAULT NULL,
+                    changed_by INT NOT NULL,
+                    changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    action VARCHAR(50) NOT NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'upgrade_petty_cash_config_table' => function(PDO $dbh) {
+                // 1. Check if table has cash_limit column (outdated schema) or lacks limit_amount
+                $hasLimitAmount = false;
+                try {
+                    $q = $dbh->query("SHOW COLUMNS FROM petty_cash_config LIKE 'limit_amount'");
+                    if ($q && $q->rowCount() > 0) {
+                        $hasLimitAmount = true;
+                    }
+                } catch (Exception $e) {
+                    // Table might not exist yet
+                }
+
+                if (!$hasLimitAmount) {
+                    // Drop old table to clean up
+                    $dbh->exec("DROP TABLE IF EXISTS petty_cash_config");
+
+                    // Create table with correct schema
+                    $dbh->exec("
+                        CREATE TABLE petty_cash_config (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            limit_amount DECIMAL(15,2) NOT NULL DEFAULT 50000.00,
+                            custodian_id INT NOT NULL,
+                            require_approval TINYINT(1) DEFAULT 1,
+                            default_funding_account_id INT NOT NULL,
+                            reimbursement_threshold DECIMAL(15,2) DEFAULT NULL,
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                    ");
+
+                    // Seed with defaults
+                    // Find a default custodian (first Admin user, or first user in users table)
+                    $custodianId = 1;
+                    $stmt = $dbh->query("
+                        SELECT u.id FROM users u 
+                        LEFT JOIN user_roles ur ON u.id = ur.user_id 
+                        LEFT JOIN roles r ON ur.role_id = r.id 
+                        WHERE r.name = 'Admin' 
+                        LIMIT 1
+                    ");
+                    if ($stmt) {
+                        $row = $stmt->fetch(PDO::FETCH_OBJ);
+                        if ($row) {
+                            $custodianId = intval($row->id);
+                        }
+                    }
+
+                    // Find a default funding account (Asset account starting with 10 or 11, e.g. Cheque in Hand, Bank)
+                    $fundingAccId = 1;
+                    $stmt = $dbh->query("
+                        SELECT id FROM chart_of_accounts 
+                        WHERE account_type = 'Asset' AND (account_code LIKE '10%' OR account_code LIKE '11%') 
+                        ORDER BY account_code ASC LIMIT 1
+                    ");
+                    if ($stmt) {
+                        $row = $stmt->fetch(PDO::FETCH_OBJ);
+                        if ($row) {
+                            $fundingAccId = intval($row->id);
+                        } else {
+                            // fallback to any asset account
+                            $stmt2 = $dbh->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' LIMIT 1");
+                            if ($stmt2) {
+                                $row2 = $stmt2->fetch(PDO::FETCH_OBJ);
+                                if ($row2) {
+                                    $fundingAccId = intval($row2->id);
+                                }
+                            }
+                        }
+                    }
+
+                    // Insert the initial config
+                    $stmtInsert = $dbh->prepare("
+                        INSERT INTO petty_cash_config (id, limit_amount, custodian_id, require_approval, default_funding_account_id, reimbursement_threshold) 
+                        VALUES (1, 50000.00, :custodian_id, 1, :funding_acc_id, 10000.00)
+                        ON DUPLICATE KEY UPDATE limit_amount = 50000.00
+                    ");
+                    $stmtInsert->execute([
+                        ':custodian_id' => $custodianId,
+                        ':funding_acc_id' => $fundingAccId
+                    ]);
+                }
+                return true;
+            }
         ];
     }
 

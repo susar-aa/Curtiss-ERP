@@ -34,3 +34,27 @@ SQL:
                 VALUES (1, 50000.00, 10000.00, 1)
             
 
+[2026-07-13 19:59:02] Migration 'seed_petty_cash_config' failed: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'cash_limit' in 'field list'
+SQL: 
+                INSERT IGNORE INTO petty_cash_config (id, cash_limit, reimbursement_threshold, updated_by) 
+                VALUES (1, 50000.00, 10000.00, 1)
+            
+
+[2026-07-13 19:59:32] Migration 'seed_petty_cash_config' failed: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'cash_limit' in 'field list'
+SQL: 
+                INSERT IGNORE INTO petty_cash_config (id, cash_limit, reimbursement_threshold, updated_by) 
+                VALUES (1, 50000.00, 10000.00, 1)
+            
+
+[2026-07-13 19:59:40] Migration 'seed_petty_cash_config' failed: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'cash_limit' in 'field list'
+SQL: 
+                INSERT IGNORE INTO petty_cash_config (id, cash_limit, reimbursement_threshold, updated_by) 
+                VALUES (1, 50000.00, 10000.00, 1)
+            
+
+[2026-07-13 19:59:48] Migration 'seed_petty_cash_config' failed: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'cash_limit' in 'field list'
+SQL: 
+                INSERT IGNORE INTO petty_cash_config (id, cash_limit, reimbursement_threshold, updated_by) 
+                VALUES (1, 50000.00, 10000.00, 1)
+            
+

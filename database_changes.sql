@@ -169,3 +169,39 @@ INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_customers');
 INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_item_categories');
 INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_mca_areas');
 INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_customer_payments');
+
+-- 13. Petty Cash Module: Re-initialize / Update Configuration & create History tables
+-- (Runs on server/production to resolve incorrect initial schema from the old migration definition)
+DROP TABLE IF EXISTS petty_cash_config;
+CREATE TABLE petty_cash_config (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    limit_amount DECIMAL(15,2) NOT NULL DEFAULT 50000.00,
+    custodian_id INT NOT NULL,
+    require_approval TINYINT(1) DEFAULT 1,
+    default_funding_account_id INT NOT NULL,
+    reimbursement_threshold DECIMAL(15,2) DEFAULT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Seed the initial configuration
+-- Dynamically resolved: custodian_id points to Admin (ID 2 or 1), default_funding_account_id points to an Asset account (e.g., Cheque/Bank account)
+INSERT INTO petty_cash_config (id, limit_amount, custodian_id, require_approval, default_funding_account_id, reimbursement_threshold) 
+VALUES (1, 50000.00, 1, 1, (SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' ORDER BY account_code ASC LIMIT 1), 10000.00)
+ON DUPLICATE KEY UPDATE limit_amount = 50000.00;
+
+CREATE TABLE IF NOT EXISTS petty_cash_config_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    limit_amount DECIMAL(15,2) NOT NULL,
+    custodian_id INT NOT NULL,
+    require_approval TINYINT(1) DEFAULT 1,
+    default_funding_account_id INT NOT NULL,
+    reimbursement_threshold DECIMAL(15,2) DEFAULT NULL,
+    changed_by INT NOT NULL,
+    changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    action VARCHAR(50) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO migrations (migration) VALUES ('create_petty_cash_config_history');
+INSERT IGNORE INTO migrations (migration) VALUES ('upgrade_petty_cash_config_table');
+
