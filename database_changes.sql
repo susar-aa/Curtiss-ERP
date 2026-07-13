@@ -214,4 +214,94 @@ ALTER TABLE petty_cash_transactions ADD COLUMN approved_at DATETIME NULL AFTER a
 
 INSERT IGNORE INTO migrations (migration) VALUES ('upgrade_petty_cash_tables_columns');
 
+-- Petty Cash Module - Production Server Complete Self-Healing Schema Fix
+-- Execute this block on your production database (curtiss.suzxlabs.com)
+CREATE TABLE IF NOT EXISTS petty_cash_config (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    limit_amount DECIMAL(15,2) NOT NULL DEFAULT 50000.00,
+    custodian_id INT NOT NULL,
+    require_approval TINYINT(1) DEFAULT 1,
+    default_funding_account_id INT NOT NULL,
+    reimbursement_threshold DECIMAL(15,2) DEFAULT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS petty_cash_reimbursements (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    reimbursement_date DATE NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    bank_account_id INT NOT NULL,
+    status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    description TEXT NULL,
+    created_by INT NOT NULL,
+    approved_by INT NULL,
+    approved_at DATETIME NULL,
+    journal_entry_id INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS petty_cash_transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    transaction_date DATE NOT NULL,
+    type ENUM('allocation', 'expense', 'reimbursement') NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    reference VARCHAR(100) NULL,
+    description TEXT NOT NULL,
+    paid_to VARCHAR(150) NULL,
+    account_id INT NULL,
+    status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    attachment_path VARCHAR(255) NULL,
+    created_by INT NOT NULL,
+    approved_by INT NULL,
+    approved_at DATETIME NULL,
+    journal_entry_id INT NULL,
+    reimbursement_id INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (reimbursement_id) REFERENCES petty_cash_reimbursements(id) ON DELETE SET NULL,
+    FOREIGN KEY (account_id) REFERENCES chart_of_accounts(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS petty_cash_config_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    limit_amount DECIMAL(15,2) NOT NULL,
+    custodian_id INT NOT NULL,
+    require_approval TINYINT(1) DEFAULT 1,
+    default_funding_account_id INT NOT NULL,
+    reimbursement_threshold DECIMAL(15,2) DEFAULT NULL,
+    changed_by INT NOT NULL,
+    changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    action VARCHAR(50) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO petty_cash_config (id, limit_amount, custodian_id, require_approval, default_funding_account_id, reimbursement_threshold) 
+VALUES (
+    1, 
+    50000.00, 
+    1, 
+    1, 
+    (SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' AND (account_code LIKE '10%' OR account_code LIKE '11%') ORDER BY account_code ASC LIMIT 1), 
+    10000.00
+);
+
+-- Safely apply columns to ensure missing ones are added without duplicate column errors
+ALTER TABLE petty_cash_reimbursements ADD COLUMN IF NOT EXISTS bank_account_id INT NOT NULL AFTER amount;
+ALTER TABLE petty_cash_reimbursements ADD COLUMN IF NOT EXISTS status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending' AFTER bank_account_id;
+ALTER TABLE petty_cash_reimbursements ADD COLUMN IF NOT EXISTS description TEXT NULL AFTER status;
+ALTER TABLE petty_cash_reimbursements ADD COLUMN IF NOT EXISTS approved_by INT NULL AFTER created_by;
+ALTER TABLE petty_cash_reimbursements ADD COLUMN IF NOT EXISTS approved_at DATETIME NULL AFTER approved_by;
+ALTER TABLE petty_cash_transactions ADD COLUMN IF NOT EXISTS approved_by INT NULL AFTER created_by;
+ALTER TABLE petty_cash_transactions ADD COLUMN IF NOT EXISTS approved_at DATETIME NULL AFTER approved_by;
+
+-- Register all migrations as executed
+INSERT IGNORE INTO migrations (migration) VALUES 
+('create_petty_cash_config'),
+('create_petty_cash_reimbursements'),
+('create_petty_cash_transactions'),
+('seed_petty_cash_config'),
+('create_petty_cash_config_history'),
+('upgrade_petty_cash_config_table'),
+('upgrade_petty_cash_tables_columns');
+
+
 
