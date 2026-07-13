@@ -614,41 +614,111 @@ class RepDashboardController extends Controller {
         try {
             // 1. Process Customers
             if (isset($payload['customers']) && is_array($payload['customers'])) {
+                $processCustomerUpdate = function($c, $serverId) {
+                    $existingCust = $this->customerModel->getCustomerById($serverId);
+                    
+                    $mcaId = null;
+                    if (!empty($c['territory'])) {
+                        $this->db->query("SELECT id FROM mca_areas WHERE name = :name LIMIT 1");
+                        $this->db->bind(':name', $c['territory']);
+                        $areaRow = $this->db->single();
+                        if ($areaRow) {
+                            $mcaId = $areaRow->id;
+                        }
+                    }
+                    if (!$mcaId && $existingCust) {
+                        $mcaId = $existingCust->mca_id;
+                    }
+
+                    $territory = $c['territory'] ?? ($existingCust ? $existingCust->territory : null);
+
+                    $oldValues = [];
+                    $newValues = [];
+                    $changes = [];
+
+                    if ($existingCust) {
+                        $fieldsToCompare = [
+                            'name' => 'Shop Name',
+                            'phone' => 'Phone Number',
+                            'whatsapp' => 'WhatsApp Number',
+                            'address' => 'Address',
+                            'territory' => 'Route',
+                            'mca_id' => 'MCA'
+                        ];
+
+                        // Location comparison
+                        $oldLat = floatval($existingCust->latitude ?? 0);
+                        $oldLng = floatval($existingCust->longitude ?? 0);
+                        $newLat = floatval($c['latitude'] ?? 0);
+                        $newLng = floatval($c['longitude'] ?? 0);
+
+                        if ($newLat != 0.0 || $newLng != 0.0) {
+                            $oldLoc = ($oldLat != 0.0 || $oldLng != 0.0) ? "{$oldLat}, {$oldLng}" : "None";
+                            $newLoc = "{$newLat}, {$newLng}";
+                            if ($oldLoc !== $newLoc) {
+                                $oldValues['location'] = $oldLoc;
+                                $newValues['location'] = $newLoc;
+                                $changes[] = "Location changed from '{$oldLoc}' to '{$newLoc}'";
+                            }
+                        }
+
+                        foreach ($fieldsToCompare as $dbKey => $label) {
+                            $oldVal = $existingCust->$dbKey ?? null;
+                            if ($dbKey === 'mca_id') {
+                                $newVal = $mcaId;
+                            } else {
+                                $newVal = $c[$dbKey === 'territory' ? 'territory' : ($dbKey === 'name' ? 'name' : ($dbKey === 'phone' ? 'phone' : ($dbKey === 'whatsapp' ? 'whatsapp' : $dbKey)))] ?? null;
+                            }
+
+                            if ($newVal !== null && trim(strval($oldVal ?? '')) !== trim(strval($newVal ?? ''))) {
+                                $oldValues[$dbKey] = $oldVal;
+                                $newValues[$dbKey] = $newVal;
+                                $changes[] = "$label changed from '" . ($oldVal ?: 'None') . "' to '" . ($newVal ?: 'None') . "'";
+                            }
+                        }
+                    }
+
+                    $this->customerModel->updateCustomer([
+                        'id' => $serverId,
+                        'name' => $c['name'],
+                        'email' => $c['email'] ?? ($existingCust ? $existingCust->email : null),
+                        'phone' => $c['phone'] ?? ($existingCust ? $existingCust->phone : null),
+                        'whatsapp' => $c['whatsapp'] ?? ($existingCust ? $existingCust->whatsapp : null),
+                        'address' => $c['address'] ?? ($existingCust ? $existingCust->address : null),
+                        'lat' => ($newLat != 0.0) ? $newLat : ($existingCust ? $existingCust->latitude : null),
+                        'lng' => ($newLng != 0.0) ? $newLng : ($existingCust ? $existingCust->longitude : null),
+                        'mca_id' => $mcaId,
+                        'territory' => $territory,
+                        'credit_limit' => isset($c['credit_limit']) ? floatval($c['credit_limit']) : ($existingCust ? floatval($existingCust->credit_limit) : 0.00),
+                        'customer_type' => $c['customer_type'] ?? ($existingCust ? $existingCust->customer_type : 'Standard'),
+                        'notes' => $c['notes'] ?? ($existingCust ? $existingCust->notes : null),
+                        'uuid' => $c['uuid'] ?? ($existingCust ? $existingCust->uuid : null)
+                    ]);
+
+                    $source = (isset($c['sync_source']) && $c['sync_source'] == 'Billing Customer Information Completion') 
+                        ? 'Billing Customer Information Completion' 
+                        : 'Mobile Sync';
+
+                    $actionName = ($source == 'Billing Customer Information Completion') ? 'Update Customer (Billing Completion)' : 'Update Customer';
+
+                    $desc = ($source == 'Billing Customer Information Completion')
+                        ? "Completed missing profile details via billing customer info completion: {$c['name']}"
+                        : "Updated customer profile via mobile sync: {$c['name']}";
+
+                    if (!empty($changes)) {
+                        $desc .= ". Changes: " . implode(', ', $changes);
+                    }
+
+                    $this->logActivity($actionName, 'Customer', $desc, $serverId, $oldValues, $newValues);
+                };
+
                 foreach ($payload['customers'] as $c) {
                     $localId = intval($c['local_id']);
                     $serverId = isset($c['server_id']) ? intval($c['server_id']) : 0;
                     
                     if ($serverId > 0) {
                         // This is an update to an existing customer
-                        $mcaId = null;
-                        $territory = $c['territory'] ?? null;
-                        $this->db->query("SELECT mca_id, territory FROM customers WHERE id = :id");
-                        $this->db->bind(':id', $serverId);
-                        $existingInfo = $this->db->single();
-                        if ($existingInfo) {
-                            $mcaId = $existingInfo->mca_id;
-                            if (!$territory) {
-                                $territory = $existingInfo->territory;
-                            }
-                        }
-
-                        $this->customerModel->updateCustomer([
-                            'id' => $serverId,
-                            'name' => $c['name'],
-                            'email' => $c['email'] ?? null,
-                            'phone' => $c['phone'] ?? null,
-                            'whatsapp' => $c['whatsapp'] ?? null,
-                            'address' => $c['address'] ?? null,
-                            'lat' => $c['latitude'] ?? null,
-                            'lng' => $c['longitude'] ?? null,
-                            'mca_id' => $mcaId,
-                            'territory' => $territory,
-                            'credit_limit' => isset($c['credit_limit']) ? floatval($c['credit_limit']) : 0.00,
-                            'customer_type' => $c['customer_type'] ?? 'Standard',
-                            'notes' => $c['notes'] ?? null,
-                            'uuid' => $c['uuid'] ?? null
-                        ]);
-                        $this->logActivity('Update Customer', 'Customer', "Updated customer profile via mobile sync: {$c['name']}", $serverId);
+                        $processCustomerUpdate($c, $serverId);
                     } else {
                         // Check if customer with same UUID or same name and phone already exists
                         $existingCust = null;
@@ -666,35 +736,7 @@ class RepDashboardController extends Controller {
 
                         if ($existingCust) {
                             $serverId = $existingCust->id;
-                            $mcaId = null;
-                            $territory = $c['territory'] ?? null;
-                            $this->db->query("SELECT mca_id, territory FROM customers WHERE id = :id");
-                            $this->db->bind(':id', $serverId);
-                            $existingInfo = $this->db->single();
-                            if ($existingInfo) {
-                                $mcaId = $existingInfo->mca_id;
-                                if (!$territory) {
-                                    $territory = $existingInfo->territory;
-                                }
-                            }
-
-                            $this->customerModel->updateCustomer([
-                                'id' => $serverId,
-                                'name' => $c['name'],
-                                'email' => $c['email'] ?? null,
-                                'phone' => $c['phone'] ?? null,
-                                'whatsapp' => $c['whatsapp'] ?? null,
-                                'address' => $c['address'] ?? null,
-                                'lat' => $c['latitude'] ?? null,
-                                'lng' => $c['longitude'] ?? null,
-                                'mca_id' => $mcaId,
-                                'territory' => $territory,
-                                'credit_limit' => isset($c['credit_limit']) ? floatval($c['credit_limit']) : 0.00,
-                                'customer_type' => $c['customer_type'] ?? 'Standard',
-                                'notes' => $c['notes'] ?? null,
-                                'uuid' => $c['uuid'] ?? null
-                            ]);
-                            $this->logActivity('Update Customer', 'Customer', "Updated customer profile via mobile sync: {$c['name']}", $serverId);
+                            $processCustomerUpdate($c, $serverId);
                         } else {
                             $this->customerModel->addCustomer([
                                 'name' => $c['name'],
