@@ -1057,7 +1057,7 @@ declare(strict_types=1);
 
 <script>
     // Tab switching logic
-    function switchTab(evt, tabId) {
+    window.switchTab = function(evt, tabId) {
         // Hide all tab contents
         const tabcontents = document.getElementsByClassName("tab-content");
         for (let i = 0; i < tabcontents.length; i++) {
@@ -1073,10 +1073,10 @@ declare(strict_types=1);
         // Show the current tab and activate the button
         document.getElementById(tabId).classList.add("active");
         evt.currentTarget.classList.add("active");
-    }
+    };
 
     // Modal control logic
-    function openModal(modalId) {
+    window.openModal = function(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.style.display = 'flex';
@@ -1084,9 +1084,9 @@ declare(strict_types=1);
                 modal.classList.add('show');
             }, 10);
         }
-    }
+    };
 
-    function closeModal(modalId) {
+    window.closeModal = function(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.remove('show');
@@ -1094,12 +1094,12 @@ declare(strict_types=1);
                 modal.style.display = 'none';
             }, 250);
         }
-    }
+    };
 
     // Close modal when clicking outside the dialog content
-    window.onclick = function(event) {
+    window.addEventListener('click', function(event) {
         if (event.target.classList.contains('modal')) {
-            closeModal(event.target.id);
+            window.closeModal(event.target.id);
         }
-    }
+    });
 </script>
