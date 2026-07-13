@@ -513,9 +513,9 @@ declare(strict_types=1);
             <p>Administer allocations, record office expenditures, and request replenishments</p>
         </div>
         <div class="pc-actions">
-            <button class="btn btn-secondary" onclick="openModal('settingsModal')"><i class="ph ph-gear"></i> Settings</button>
-            <button class="btn btn-outline" onclick="openModal('allocateModal')"><i class="ph ph-bank"></i> Fund Float</button>
-            <button class="btn btn-primary" onclick="openModal('expenseModal')"><i class="ph ph-plus"></i> Record Expense</button>
+            <button class="btn btn-secondary" onclick="window.openModal('settingsModal')"><i class="ph ph-gear"></i> Settings</button>
+            <button class="btn btn-outline" onclick="window.openModal('allocateModal')"><i class="ph ph-bank"></i> Fund Float</button>
+            <button class="btn btn-primary" onclick="window.openModal('expenseModal')"><i class="ph ph-plus"></i> Record Expense</button>
         </div>
     </div>
 
@@ -606,7 +606,7 @@ declare(strict_types=1);
             <div class="kpi-footer" style="justify-content: space-between;">
                 <span>Threshold: Rs: <?= number_format((float)$threshold, 2) ?></span>
                 <?php if ($data['pending_reimbursements'] > 0): ?>
-                    <button class="btn btn-outline btn-sm" onclick="openModal('reimburseModal')">Reimburse</button>
+                    <button class="btn btn-outline btn-sm" onclick="window.openModal('reimburseModal')">Reimburse</button>
                 <?php endif; ?>
             </div>
         </div>
@@ -615,9 +615,9 @@ declare(strict_types=1);
     <!-- Tabs Wrapper -->
     <div class="pc-tabs-wrapper">
         <div class="pc-tabs">
-            <button class="tab-btn active" onclick="switchTab(event, 'transactionsTab')"><i class="ph ph-list-bullets"></i> Transactions</button>
-            <button class="tab-btn" onclick="switchTab(event, 'reimbursementsTab')"><i class="ph ph-arrows-clockwise"></i> Reimbursements</button>
-            <button class="tab-btn" onclick="switchTab(event, 'pendingExpensesTab')"><i class="ph ph-clock"></i> Unreimbursed Expenses (<?= count($data['pending_expenses']) ?>)</button>
+            <button class="tab-btn active" onclick="window.switchTab(event, 'transactionsTab')"><i class="ph ph-list-bullets"></i> Transactions</button>
+            <button class="tab-btn" onclick="window.switchTab(event, 'reimbursementsTab')"><i class="ph ph-arrows-clockwise"></i> Reimbursements</button>
+            <button class="tab-btn" onclick="window.switchTab(event, 'pendingExpensesTab')"><i class="ph ph-clock"></i> Unreimbursed Expenses (<?= count($data['pending_expenses']) ?>)</button>
         </div>
 
         <!-- Tab 1: Transactions -->
@@ -812,7 +812,7 @@ declare(strict_types=1);
                     These approved expenses are paid out of Petty Cash and await replenishment from a bank account.
                 </p>
                 <?php if (!empty($data['pending_expenses'])): ?>
-                    <button class="btn btn-primary" onclick="openModal('reimburseModal')"><i class="ph ph-arrows-clockwise"></i> Generate Reimbursement Payout</button>
+                    <button class="btn btn-primary" onclick="window.openModal('reimburseModal')"><i class="ph ph-arrows-clockwise"></i> Generate Reimbursement Payout</button>
                 <?php endif; ?>
             </div>
 
@@ -861,7 +861,7 @@ declare(strict_types=1);
             <input type="hidden" name="csrf_token" value="<?= $data['csrf_token'] ?>">
             <div class="modal-header">
                 <h3><i class="ph ph-gear"></i> Petty Cash Configuration</h3>
-                <button type="button" class="close-btn" onclick="closeModal('settingsModal')">&times;</button>
+                <button type="button" class="close-btn" onclick="window.closeModal('settingsModal')">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -900,7 +900,7 @@ declare(strict_types=1);
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('settingsModal')">Cancel</button>
+                <button type="button" class="btn btn-secondary" onclick="window.closeModal('settingsModal')">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save Settings</button>
             </div>
         </form>
@@ -914,7 +914,7 @@ declare(strict_types=1);
             <input type="hidden" name="csrf_token" value="<?= $data['csrf_token'] ?>">
             <div class="modal-header">
                 <h3><i class="ph ph-bank"></i> Fund Petty Cash Float</h3>
-                <button type="button" class="close-btn" onclick="closeModal('allocateModal')">&times;</button>
+                <button type="button" class="close-btn" onclick="window.closeModal('allocateModal')">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -946,7 +946,7 @@ declare(strict_types=1);
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('allocateModal')">Cancel</button>
+                <button type="button" class="btn btn-secondary" onclick="window.closeModal('allocateModal')">Cancel</button>
                 <button type="submit" class="btn btn-primary">Allocate Funds</button>
             </div>
         </form>
@@ -960,7 +960,7 @@ declare(strict_types=1);
             <input type="hidden" name="csrf_token" value="<?= $data['csrf_token'] ?>">
             <div class="modal-header">
                 <h3><i class="ph ph-plus"></i> Record Petty Cash Expense</h3>
-                <button type="button" class="close-btn" onclick="closeModal('expenseModal')">&times;</button>
+                <button type="button" class="close-btn" onclick="window.closeModal('expenseModal')">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -998,7 +998,7 @@ declare(strict_types=1);
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('expenseModal')">Cancel</button>
+                <button type="button" class="btn btn-secondary" onclick="window.closeModal('expenseModal')">Cancel</button>
                 <button type="submit" class="btn btn-primary">Record Expense</button>
             </div>
         </form>
@@ -1012,7 +1012,7 @@ declare(strict_types=1);
             <input type="hidden" name="csrf_token" value="<?= $data['csrf_token'] ?>">
             <div class="modal-header">
                 <h3><i class="ph ph-arrows-clockwise"></i> Generate Reimbursement Request</h3>
-                <button type="button" class="close-btn" onclick="closeModal('reimburseModal')">&times;</button>
+                <button type="button" class="close-btn" onclick="window.closeModal('reimburseModal')">&times;</button>
             </div>
             <div class="modal-body">
                 <?php 
@@ -1048,7 +1048,7 @@ declare(strict_types=1);
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('reimburseModal')">Cancel</button>
+                <button type="button" class="btn btn-secondary" onclick="window.closeModal('reimburseModal')">Cancel</button>
                 <button type="submit" class="btn btn-primary">Generate Request</button>
             </div>
         </form>
