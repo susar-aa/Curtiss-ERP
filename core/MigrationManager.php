@@ -572,7 +572,57 @@ class MigrationManager {
             'add_status_to_customers' => "ALTER TABLE customers ADD COLUMN status VARCHAR(20) DEFAULT 'active'",
             'add_status_to_item_categories' => "ALTER TABLE item_categories ADD COLUMN status VARCHAR(20) DEFAULT 'active'",
             'add_status_to_mca_areas' => "ALTER TABLE mca_areas ADD COLUMN status VARCHAR(20) DEFAULT 'active'",
-            'add_status_to_customer_payments' => "ALTER TABLE customer_payments ADD COLUMN status VARCHAR(20) DEFAULT 'Active'"
+            'add_status_to_customer_payments' => "ALTER TABLE customer_payments ADD COLUMN status VARCHAR(20) DEFAULT 'Active'",
+            'create_petty_cash_config' => "
+                CREATE TABLE IF NOT EXISTS petty_cash_config (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    cash_limit DECIMAL(15,2) NOT NULL DEFAULT 50000.00,
+                    reimbursement_threshold DECIMAL(15,2) NOT NULL DEFAULT 10000.00,
+                    updated_by INT NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'seed_petty_cash_config' => "
+                INSERT IGNORE INTO petty_cash_config (id, cash_limit, reimbursement_threshold, updated_by) 
+                VALUES (1, 50000.00, 10000.00, 1)
+            ",
+            'create_petty_cash_reimbursements' => "
+                CREATE TABLE IF NOT EXISTS petty_cash_reimbursements (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    reimbursement_date DATE NOT NULL,
+                    amount DECIMAL(15,2) NOT NULL,
+                    bank_account_id INT NOT NULL,
+                    status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+                    description TEXT NULL,
+                    created_by INT NOT NULL,
+                    approved_by INT NULL,
+                    approved_at DATETIME NULL,
+                    journal_entry_id INT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'create_petty_cash_transactions' => "
+                CREATE TABLE IF NOT EXISTS petty_cash_transactions (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    transaction_date DATE NOT NULL,
+                    type ENUM('allocation', 'expense', 'reimbursement') NOT NULL,
+                    amount DECIMAL(15,2) NOT NULL,
+                    reference VARCHAR(100) NULL,
+                    description TEXT NOT NULL,
+                    paid_to VARCHAR(150) NULL,
+                    account_id INT NULL,
+                    status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+                    attachment_path VARCHAR(255) NULL,
+                    created_by INT NOT NULL,
+                    approved_by INT NULL,
+                    approved_at DATETIME NULL,
+                    journal_entry_id INT NULL,
+                    reimbursement_id INT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (reimbursement_id) REFERENCES petty_cash_reimbursements(id) ON DELETE SET NULL,
+                    FOREIGN KEY (account_id) REFERENCES chart_of_accounts(id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            "
         ];
     }
 

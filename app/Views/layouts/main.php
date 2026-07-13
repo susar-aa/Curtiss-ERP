@@ -1569,6 +1569,15 @@ if (!function_exists('hasPermission')) {
                             </div>
                         </a>
                         <?php endif; ?>
+                        <?php if (hasPermission('petty_cash')): ?>
+                        <a href="<?= APP_URL ?>/pettycash" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-coins"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Petty Cash Management</div>
+                                <div class="desc">Limits, expenses & reimbursements</div>
+                            </div>
+                        </a>
+                        <?php endif; ?>
                         <?php if (hasPermission('customerpayment')): ?>
                         <a href="<?= APP_URL ?>/customerpayment" class="mega-list-item">
                             <div class="icon-wrapper text-primary"><i class="ph ph-hand-coins"></i></div>

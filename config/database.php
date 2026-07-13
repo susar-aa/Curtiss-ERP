@@ -65,6 +65,7 @@ define('COA_CODE_CASH_TEMP', '1605');
 define('COA_CODE_AR', '1200');
 define('COA_CODE_SALES', '4000');
 define('COA_CODE_CASH_HAND', '1100');
+define('COA_CODE_PETTY_CASH', '1020');
 
 // System Financial Account Types
 define('COA_TYPE_ASSET', 'Asset');
