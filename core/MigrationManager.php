@@ -600,6 +600,7 @@ class MigrationManager {
                     if ($row) {
                         $custodianId = intval($row->id);
                     }
+                    $stmt->closeCursor();
                 }
 
                 // Find a default funding account (Asset account starting with 10 or 11, e.g. Cheque in Hand, Bank)
@@ -621,8 +622,10 @@ class MigrationManager {
                             if ($row2) {
                                 $fundingAccId = intval($row2->id);
                             }
+                            $stmt2->closeCursor();
                         }
                     }
+                    $stmt->closeCursor();
                 }
 
                 // Insert the initial config if not exists
@@ -634,6 +637,7 @@ class MigrationManager {
                     ':custodian_id' => $custodianId,
                     ':funding_acc_id' => $fundingAccId
                 ]);
+                $stmtInsert->closeCursor();
                 return true;
             },
             'create_petty_cash_reimbursements' => "
@@ -694,6 +698,9 @@ class MigrationManager {
                     if ($q && $q->rowCount() > 0) {
                         $hasLimitAmount = true;
                     }
+                    if ($q) {
+                        $q->closeCursor();
+                    }
                 } catch (Exception $e) {
                     // Table might not exist yet
                 }
@@ -731,6 +738,7 @@ class MigrationManager {
                         if ($row) {
                             $custodianId = intval($row->id);
                         }
+                        $stmt->closeCursor();
                     }
 
                     // Find a default funding account (Asset account starting with 10 or 11, e.g. Cheque in Hand, Bank)
@@ -752,8 +760,10 @@ class MigrationManager {
                                 if ($row2) {
                                     $fundingAccId = intval($row2->id);
                                 }
+                                $stmt2->closeCursor();
                             }
                         }
+                        $stmt->closeCursor();
                     }
 
                     // Insert the initial config
@@ -766,6 +776,7 @@ class MigrationManager {
                         ':custodian_id' => $custodianId,
                         ':funding_acc_id' => $fundingAccId
                     ]);
+                    $stmtInsert->closeCursor();
                 }
                 return true;
             },
@@ -791,6 +802,7 @@ class MigrationManager {
                         while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
                             $existingReim[] = strtolower($row['Field']);
                         }
+                        $q->closeCursor();
                     }
                 } catch (Exception $e) {}
 
@@ -829,6 +841,7 @@ class MigrationManager {
                         while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
                             $existingTx[] = strtolower($row['Field']);
                         }
+                        $q->closeCursor();
                     }
                 } catch (Exception $e) {}
 
