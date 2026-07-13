@@ -1220,6 +1220,13 @@ if (!function_exists('hasPermission')) {
                                 <div class="desc">Manage receivables</div>
                             </div>
                         </a>
+                        <a href="<?= APP_URL ?>/sales/all_invoices" class="mega-list-item text-warning">
+                            <div class="icon-wrapper text-warning"><i class="ph ph-warning-circle"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title text-warning">All Invoices (Inc. Missing)</div>
+                                <div class="desc">View all records (joins unresolved)</div>
+                            </div>
+                        </a>
                         <?php endif; ?>
                         <?php if (hasPermission('creditnote')): ?>
                         <a href="<?= APP_URL ?>/creditnote" class="mega-list-item">
@@ -1782,6 +1789,7 @@ if (!function_exists('hasPermission')) {
                             <a href="<?= APP_URL ?>/sales/create" class="fs-link"><i class="ph ph-pencil-simple"></i> Billing Creator</a>
                             <a href="<?= APP_URL ?>/salesorder" class="fs-link"><i class="ph ph-list-bullets"></i> Sales Orders</a>
                             <a href="<?= APP_URL ?>/sales" class="fs-link"><i class="ph ph-credit-card"></i> Invoices &amp; AR</a>
+                            <a href="<?= APP_URL ?>/sales/all_invoices" class="fs-link text-warning"><i class="ph ph-warning-circle"></i> All Invoices (Inc. Missing)</a>
                         <?php endif; ?>
                         <?php if (hasPermission('creditnote')): ?><a href="<?= APP_URL ?>/creditnote" class="fs-link"><i class="ph ph-money"></i> Refunds</a><?php endif; ?>
                         <?php if (hasPermission('dunning')): ?><a href="<?= APP_URL ?>/dunning" class="fs-link"><i class="ph ph-clock"></i> Dunning</a><?php endif; ?>

@@ -1467,6 +1467,123 @@ class SalesController extends Controller {
     }
 
     /**
+     * Display all invoices in the database, including those with missing or incorrect customer relations.
+     */
+    public function all_invoices() {
+        $limit = 10;
+        $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+        if ($page < 1) $page = 1;
+        $offset = ($page - 1) * $limit;
+
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        $startDate = isset($_GET['start_date']) ? trim($_GET['start_date']) : '';
+        $endDate = isset($_GET['end_date']) ? trim($_GET['end_date']) : '';
+        $customerId = isset($_GET['customer_id']) ? intval($_GET['customer_id']) : 0;
+        $status = isset($_GET['status']) ? trim($_GET['status']) : '';
+
+        // Build base query with LEFT JOIN to include orphaned customer IDs
+        $queryStr = "SELECT i.*, c.name as customer_name 
+                     FROM invoices i 
+                     LEFT JOIN customers c ON i.customer_id = c.id 
+                     WHERE 1=1";
+        
+        $params = [];
+
+        if (!empty($search)) {
+            $queryStr .= " AND (i.invoice_number LIKE :search OR c.name LIKE :search OR i.notes LIKE :search OR CAST(i.customer_id AS CHAR) = :search_id)";
+            $params[':search'] = '%' . $search . '%';
+            $params[':search_id'] = $search;
+        }
+
+        if (!empty($startDate)) {
+            $queryStr .= " AND i.invoice_date >= :start_date";
+            $params[':start_date'] = $startDate;
+        }
+
+        if (!empty($endDate)) {
+            $queryStr .= " AND i.invoice_date <= :end_date";
+            $params[':end_date'] = $endDate;
+        }
+
+        if ($customerId > 0) {
+            $queryStr .= " AND i.customer_id = :customer_id";
+            $params[':customer_id'] = $customerId;
+        }
+
+        if (!empty($status)) {
+            $queryStr .= " AND i.status = :status";
+            $params[':status'] = $status;
+        }
+
+        // Count total records for pagination
+        $countQuery = "SELECT COUNT(*) as total 
+                       FROM invoices i 
+                       LEFT JOIN customers c ON i.customer_id = c.id 
+                       WHERE 1=1";
+        if (!empty($search)) {
+            $countQuery .= " AND (i.invoice_number LIKE :search OR c.name LIKE :search OR i.notes LIKE :search OR CAST(i.customer_id AS CHAR) = :search_id)";
+        }
+        if (!empty($startDate)) {
+            $countQuery .= " AND i.invoice_date >= :start_date";
+        }
+        if (!empty($endDate)) {
+            $countQuery .= " AND i.invoice_date <= :end_date";
+        }
+        if ($customerId > 0) {
+            $countQuery .= " AND i.customer_id = :customer_id";
+        }
+        if (!empty($status)) {
+            $countQuery .= " AND i.status = :status";
+        }
+
+        $this->db->query($countQuery);
+        foreach ($params as $key => $val) {
+            $this->db->bind($key, $val);
+        }
+        $countRow = $this->db->single();
+        $totalRecords = $countRow ? intval($countRow->total) : 0;
+        $totalPages = ceil($totalRecords / $limit);
+        if ($totalPages < 1) $totalPages = 1;
+        if ($page > $totalPages) $page = $totalPages;
+
+        // Fetch paginated results
+        $queryStr .= " ORDER BY i.invoice_date DESC, i.id DESC LIMIT :limit OFFSET :offset";
+        $this->db->query($queryStr);
+        foreach ($params as $key => $val) {
+            $this->db->bind($key, $val);
+        }
+        $this->db->bind(':limit', $limit, PDO::PARAM_INT);
+        $this->db->bind(':offset', $offset, PDO::PARAM_INT);
+        $invoices = $this->db->resultSet() ?: [];
+
+        // Fetch customers for filter dropdown
+        $this->db->query("SELECT id, name FROM customers ORDER BY name ASC");
+        $customers = $this->db->resultSet() ?: [];
+
+        // Fetch active sales reps for bulk edit dropdown
+        $this->db->query("SELECT CONCAT(first_name, ' ', last_name) as name FROM employees WHERE status = 'Active' ORDER BY first_name ASC, last_name ASC");
+        $salesReps = $this->db->resultSet() ?: [];
+
+        $data = [
+            'title' => 'All Invoices (Including Unlinked / Missing Customers)',
+            'invoices' => $invoices,
+            'customers' => $customers,
+            'sales_reps' => $salesReps,
+            'search' => $search,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'customer_id' => $customerId,
+            'status' => $status,
+            'page' => $page,
+            'total_pages' => $totalPages,
+            'total_records' => $totalRecords,
+            'content_view' => 'sales/all_invoices'
+        ];
+
+        $this->view('layouts/main', $data);
+    }
+
+    /**
      * Download Invoice as PDF using Dompdf
      */
     public function download_pdf($id = null) {
