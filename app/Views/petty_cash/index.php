@@ -543,14 +543,14 @@ declare(strict_types=1);
                     <span>Petty Cash Balance</span>
                     <span class="badge badge-info">Ledger 1020</span>
                 </div>
-                <div class="kpi-value">Rs: <?= number_format($data['ledger_balance'], 2) ?></div>
+                <div class="kpi-value">Rs: <?= number_format((float)$data['ledger_balance'], 2) ?></div>
             </div>
             <div>
                 <?php 
                 $pct = $data['config_limit'] > 0 ? ($data['ledger_balance'] / $data['config_limit']) * 100 : 0;
                 ?>
                 <div class="kpi-footer">
-                    <span><?= round($pct) ?>% of limit (Rs: <?= number_format($data['config_limit'], 2) ?>)</span>
+                    <span><?= round($pct) ?>% of limit (Rs: <?= number_format((float)$data['config_limit'], 2) ?>)</span>
                 </div>
                 <div class="progress-bar-container">
                     <div class="progress-bar" style="width: <?= min(100, $pct) ?>%; background: <?= $pct < 20 ? '#ef6868' : 'var(--text-accent)' ?>;"></div>
@@ -565,7 +565,7 @@ declare(strict_types=1);
                 <div class="kpi-header">
                     <span>Petty Cash Limit</span>
                 </div>
-                <div class="kpi-value">Rs: <?= number_format($data['config_limit'], 2) ?></div>
+                <div class="kpi-value">Rs: <?= number_format((float)$data['config_limit'], 2) ?></div>
             </div>
             <div class="kpi-footer">
                 <i class="ph ph-user-focus"></i>
@@ -580,7 +580,7 @@ declare(strict_types=1);
                 <div class="kpi-header">
                     <span>Available to Spend</span>
                 </div>
-                <div class="kpi-value" style="color: <?= $data['available_balance'] <= 0 ? '#ef6868' : 'inherit' ?>;">Rs: <?= number_format($data['available_balance'], 2) ?></div>
+                <div class="kpi-value" style="color: <?= $data['available_balance'] <= 0 ? '#ef6868' : 'inherit' ?>;">Rs: <?= number_format((float)$data['available_balance'], 2) ?></div>
             </div>
             <div class="kpi-footer">
                 <span>Excluding pending approvals</span>
@@ -601,10 +601,10 @@ declare(strict_types=1);
                         <span class="badge badge-danger">Threshold Exceeded</span>
                     <?php endif; ?>
                 </div>
-                <div class="kpi-value">Rs: <?= number_format($data['pending_reimbursements'], 2) ?></div>
+                <div class="kpi-value">Rs: <?= number_format((float)$data['pending_reimbursements'], 2) ?></div>
             </div>
             <div class="kpi-footer" style="justify-content: space-between;">
-                <span>Threshold: Rs: <?= number_format($threshold, 2) ?></span>
+                <span>Threshold: Rs: <?= number_format((float)$threshold, 2) ?></span>
                 <?php if ($data['pending_reimbursements'] > 0): ?>
                     <button class="btn btn-outline btn-sm" onclick="openModal('reimburseModal')">Reimburse</button>
                 <?php endif; ?>
@@ -708,7 +708,7 @@ declare(strict_types=1);
                                 <?php endif; ?>
                             </td>
                             <td style="text-align: right; font-weight: bold; color: <?= $tx->type === 'expense' ? '#ef6868' : '#10b981' ?>;">
-                                <?= $tx->type === 'expense' ? '-' : '+' ?>Rs: <?= number_format($tx->amount, 2) ?>
+                                <?= $tx->type === 'expense' ? '-' : '+' ?>Rs: <?= number_format((float)$tx->amount, 2) ?>
                             </td>
                             <td>
                                 <?php if ($tx->status === 'Approved'): ?>
@@ -783,7 +783,7 @@ declare(strict_types=1);
                             <td><strong>REIM-<?= $reim->id ?></strong></td>
                             <td><?= htmlspecialchars($reim->description) ?></td>
                             <td><?= $reim->bank_account_code ?> - <?= htmlspecialchars($reim->bank_account_name) ?></td>
-                            <td style="text-align: right; font-weight: bold; color: #10b981;">Rs: <?= number_format($reim->amount, 2) ?></td>
+                            <td style="text-align: right; font-weight: bold; color: #10b981;">Rs: <?= number_format((float)$reim->amount, 2) ?></td>
                             <td>
                                 <?php if ($reim->status === 'Approved'): ?>
                                     <span class="badge badge-success">Disbursed</span>
@@ -845,7 +845,7 @@ declare(strict_types=1);
                                 <?= htmlspecialchars($pe->description) ?>
                                 <br><span style="font-size: 11px; color: var(--text-accent);">Acct: <?= $pe->offset_account_code ?> - <?= $pe->offset_account_name ?></span>
                             </td>
-                            <td style="text-align: right; font-weight: bold; color: #ef6868;">Rs: <?= number_format($pe->amount, 2) ?></td>
+                            <td style="text-align: right; font-weight: bold; color: #ef6868;">Rs: <?= number_format((float)$pe->amount, 2) ?></td>
                         </tr>
                     <?php endforeach; endif; ?>
                 </tbody>
@@ -1023,7 +1023,7 @@ declare(strict_types=1);
                 ?>
                 <div style="background: rgba(79, 70, 229, 0.06); padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid rgba(79, 70, 229, 0.1);">
                     <p style="font-size: 13px; color: var(--text-muted);">Total Reimbursement Value:</p>
-                    <p style="font-size: 24px; font-weight: 700; color: var(--text-main); margin-top: 4px;">Rs: <?= number_format($reimAmount, 2) ?></p>
+                    <p style="font-size: 24px; font-weight: 700; color: var(--text-main); margin-top: 4px;">Rs: <?= number_format((float)$reimAmount, 2) ?></p>
                     <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">Includes <strong><?= count($data['pending_expenses']) ?></strong> approved expense transactions.</p>
                 </div>
 
