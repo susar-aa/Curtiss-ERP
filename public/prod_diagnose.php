@@ -82,10 +82,11 @@ if ($dbh) {
                 try {
                     $q = $dbh->query("SHOW COLUMNS FROM `$table`");
                     if ($q) {
-                        while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
+                        $rows = $q->fetchAll(PDO::FETCH_ASSOC);
+                        $q->closeCursor();
+                        foreach ($rows as $row) {
                             $existing[] = strtolower($row['Field']);
                         }
-                        $q->closeCursor();
                     }
                 } catch (Exception $ex) {
                     echo "Table `$table` check failed (might not exist yet): " . $ex->getMessage() . "\n";
@@ -139,9 +140,13 @@ if ($dbh) {
     foreach ($tablesToAudit as $table => $columns) {
         try {
             $q = $dbh->query("SHOW TABLES LIKE '$table'");
-            $hasTable = ($q && $q->rowCount() > 0);
+            $hasTable = false;
             if ($q) {
+                $tables = $q->fetchAll();
                 $q->closeCursor();
+                if (count($tables) > 0) {
+                    $hasTable = true;
+                }
             }
 
             if (!$hasTable) {
@@ -157,10 +162,11 @@ if ($dbh) {
                 $existingColumns = [];
                 $colQuery = $dbh->query("SHOW COLUMNS FROM `$table`");
                 if ($colQuery) {
-                    while ($col = $colQuery->fetch(PDO::FETCH_ASSOC)) {
+                    $cols = $colQuery->fetchAll(PDO::FETCH_ASSOC);
+                    $colQuery->closeCursor();
+                    foreach ($cols as $col) {
                         $existingColumns[] = strtolower($col['Field']);
                     }
-                    $colQuery->closeCursor();
                 }
                 foreach ($columns as $c) {
                     $present = in_array(strtolower($c), $existingColumns);

@@ -596,11 +596,11 @@ class MigrationManager {
                     LIMIT 1
                 ");
                 if ($stmt) {
-                    $row = $stmt->fetch(PDO::FETCH_OBJ);
-                    if ($row) {
-                        $custodianId = intval($row->id);
-                    }
+                    $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
                     $stmt->closeCursor();
+                    if (!empty($rows)) {
+                        $custodianId = intval($rows[0]->id);
+                    }
                 }
 
                 // Find a default funding account (Asset account starting with 10 or 11, e.g. Cheque in Hand, Bank)
@@ -611,21 +611,21 @@ class MigrationManager {
                     ORDER BY account_code ASC LIMIT 1
                 ");
                 if ($stmt) {
-                    $row = $stmt->fetch(PDO::FETCH_OBJ);
-                    if ($row) {
-                        $fundingAccId = intval($row->id);
+                    $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+                    $stmt->closeCursor();
+                    if (!empty($rows)) {
+                        $fundingAccId = intval($rows[0]->id);
                     } else {
                         // fallback to any asset account
                         $stmt2 = $dbh->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' LIMIT 1");
                         if ($stmt2) {
-                            $row2 = $stmt2->fetch(PDO::FETCH_OBJ);
-                            if ($row2) {
-                                $fundingAccId = intval($row2->id);
-                            }
+                            $rows2 = $stmt2->fetchAll(PDO::FETCH_OBJ);
                             $stmt2->closeCursor();
+                            if (!empty($rows2)) {
+                                $fundingAccId = intval($rows2[0]->id);
+                            }
                         }
                     }
-                    $stmt->closeCursor();
                 }
 
                 // Insert the initial config if not exists
@@ -695,11 +695,12 @@ class MigrationManager {
                 $hasLimitAmount = false;
                 try {
                     $q = $dbh->query("SHOW COLUMNS FROM petty_cash_config LIKE 'limit_amount'");
-                    if ($q && $q->rowCount() > 0) {
-                        $hasLimitAmount = true;
-                    }
                     if ($q) {
+                        $cols = $q->fetchAll();
                         $q->closeCursor();
+                        if (count($cols) > 0) {
+                            $hasLimitAmount = true;
+                        }
                     }
                 } catch (Exception $e) {
                     // Table might not exist yet
@@ -734,11 +735,11 @@ class MigrationManager {
                         LIMIT 1
                     ");
                     if ($stmt) {
-                        $row = $stmt->fetch(PDO::FETCH_OBJ);
-                        if ($row) {
-                            $custodianId = intval($row->id);
-                        }
+                        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
                         $stmt->closeCursor();
+                        if (!empty($rows)) {
+                            $custodianId = intval($rows[0]->id);
+                        }
                     }
 
                     // Find a default funding account (Asset account starting with 10 or 11, e.g. Cheque in Hand, Bank)
@@ -749,21 +750,21 @@ class MigrationManager {
                         ORDER BY account_code ASC LIMIT 1
                     ");
                     if ($stmt) {
-                        $row = $stmt->fetch(PDO::FETCH_OBJ);
-                        if ($row) {
-                            $fundingAccId = intval($row->id);
+                        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+                        $stmt->closeCursor();
+                        if (!empty($rows)) {
+                            $fundingAccId = intval($rows[0]->id);
                         } else {
                             // fallback to any asset account
                             $stmt2 = $dbh->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' LIMIT 1");
                             if ($stmt2) {
-                                $row2 = $stmt2->fetch(PDO::FETCH_OBJ);
-                                if ($row2) {
-                                    $fundingAccId = intval($row2->id);
-                                }
+                                $rows2 = $stmt2->fetchAll(PDO::FETCH_OBJ);
                                 $stmt2->closeCursor();
+                                if (!empty($rows2)) {
+                                    $fundingAccId = intval($rows2[0]->id);
+                                }
                             }
                         }
-                        $stmt->closeCursor();
                     }
 
                     // Insert the initial config
@@ -799,10 +800,11 @@ class MigrationManager {
                 try {
                     $q = $dbh->query("SHOW COLUMNS FROM petty_cash_reimbursements");
                     if ($q) {
-                        while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
+                        $rows = $q->fetchAll(PDO::FETCH_ASSOC);
+                        $q->closeCursor();
+                        foreach ($rows as $row) {
                             $existingReim[] = strtolower($row['Field']);
                         }
-                        $q->closeCursor();
                     }
                 } catch (Exception $e) {}
 
@@ -838,10 +840,11 @@ class MigrationManager {
                 try {
                     $q = $dbh->query("SHOW COLUMNS FROM petty_cash_transactions");
                     if ($q) {
-                        while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
+                        $rows = $q->fetchAll(PDO::FETCH_ASSOC);
+                        $q->closeCursor();
+                        foreach ($rows as $row) {
                             $existingTx[] = strtolower($row['Field']);
                         }
-                        $q->closeCursor();
                     }
                 } catch (Exception $e) {}
 

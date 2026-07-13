@@ -62,20 +62,28 @@ class DiagnosticsController extends Controller {
             foreach ($tablesToAudit as $table => $columns) {
                 try {
                     $q = $dbh->query("SHOW TABLES LIKE '$table'");
-                    if ($q->rowCount() === 0) {
-                        $tablesAudit[$table] = ['exists' => false, 'columns' => []];
-                    } else {
-                        $existingColumns = [];
-                        $colQuery = $dbh->query("SHOW COLUMNS FROM `$table`");
-                        while ($col = $colQuery->fetch(PDO::FETCH_ASSOC)) {
-                            $existingColumns[] = strtolower($col['Field']);
+                    if ($q) {
+                        $tables = $q->fetchAll();
+                        $q->closeCursor();
+                        if (count($tables) === 0) {
+                            $tablesAudit[$table] = ['exists' => false, 'columns' => []];
+                        } else {
+                            $existingColumns = [];
+                            $colQuery = $dbh->query("SHOW COLUMNS FROM `$table`");
+                            if ($colQuery) {
+                                $cols = $colQuery->fetchAll(PDO::FETCH_ASSOC);
+                                $colQuery->closeCursor();
+                                foreach ($cols as $col) {
+                                    $existingColumns[] = strtolower($col['Field']);
+                                }
+                            }
+                            
+                            $colAudit = [];
+                            foreach ($columns as $c) {
+                                $colAudit[$c] = in_array(strtolower($c), $existingColumns);
+                            }
+                            $tablesAudit[$table] = ['exists' => true, 'columns' => $colAudit];
                         }
-                        
-                        $colAudit = [];
-                        foreach ($columns as $c) {
-                            $colAudit[$c] = in_array(strtolower($c), $existingColumns);
-                        }
-                        $tablesAudit[$table] = ['exists' => true, 'columns' => $colAudit];
                     }
                 } catch (Exception $e) {
                     $tablesAudit[$table] = ['exists' => false, 'error' => $e->getMessage()];
@@ -84,14 +92,21 @@ class DiagnosticsController extends Controller {
 
             // Migration Status
             try {
-                require_once dirname(__DIR__) . '/core/MigrationManager.php';
+                require_once dirname(dirname(__DIR__)) . '/core/MigrationManager.php';
                 $allMigrations = MigrationManager::getMigrations();
                 
                 $executed = [];
                 $q = $dbh->query("SHOW TABLES LIKE 'migrations'");
-                if ($q->rowCount() > 0) {
-                    $stmt = $dbh->query("SELECT migration FROM migrations");
-                    $executed = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+                if ($q) {
+                    $tables = $q->fetchAll();
+                    $q->closeCursor();
+                    if (count($tables) > 0) {
+                        $stmt = $dbh->query("SELECT migration FROM migrations");
+                        if ($stmt) {
+                            $executed = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+                            $stmt->closeCursor();
+                        }
+                    }
                 }
                 
                 foreach ($allMigrations as $name => $sql) {
@@ -225,8 +240,12 @@ class DiagnosticsController extends Controller {
                 // Check existing columns
                 $existing = [];
                 $q = $dbh->query("SHOW COLUMNS FROM `$table`");
-                while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
-                    $existing[] = strtolower($row['Field']);
+                if ($q) {
+                    $rows = $q->fetchAll(PDO::FETCH_ASSOC);
+                    $q->closeCursor();
+                    foreach ($rows as $row) {
+                        $existing[] = strtolower($row['Field']);
+                    }
                 }
 
                 foreach ($cols as $colName => $alterSql) {
@@ -242,7 +261,7 @@ class DiagnosticsController extends Controller {
             }
 
             // 3. Run any remaining migrations through MigrationManager
-            require_once dirname(__DIR__) . '/core/MigrationManager.php';
+            require_once dirname(dirname(__DIR__)) . '/core/MigrationManager.php';
             MigrationManager::run($dbh);
             $report[] = "Executed MigrationManager::run(). All migrations completed/checked.";
 
