@@ -251,7 +251,10 @@ class RepDashboardController extends Controller {
                 }
             }
             if ($hasRouteChanges) {
-                $this->db->query("SELECT id, name, main_area_id, status FROM mca_areas ORDER BY name ASC");
+                $this->db->query("SELECT mca.id, mca.name, mca.main_area_id, mca.status, ma.name as main_area_name 
+                                  FROM mca_areas mca 
+                                  LEFT JOIN main_areas ma ON mca.main_area_id = ma.id 
+                                  ORDER BY mca.name ASC");
                 $routes = $this->db->resultSet() ?: [];
                 $routesJson = [];
                 foreach ($routes as $r) {
@@ -259,6 +262,7 @@ class RepDashboardController extends Controller {
                         'id' => intval($r->id),
                         'name' => $r->name,
                         'main_area_id' => intval($r->main_area_id ?? 0),
+                        'main_area_name' => $r->main_area_name ?? '',
                         'status' => $r->status ?? 'active'
                     ];
                 }
