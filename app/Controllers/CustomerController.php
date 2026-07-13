@@ -126,12 +126,122 @@ class CustomerController extends Controller {
                     } else { $data['error'] = 'Failed to update customer details.'; }
                 }
 
+            } elseif ($_POST['action'] == 'review_customer') {
+                $customerId = intval($_POST['customer_id'] ?? 0);
+                $existingCustomer = $this->customerModel->getCustomerById($customerId);
+
+                if ($existingCustomer) {
+                    $mcaId = !empty($_POST['mca_id']) ? intval($_POST['mca_id']) : null;
+                    $territoryName = null;
+                    if ($mcaId) {
+                        foreach ($mcaAreas as $area) {
+                            if ($area->id == $mcaId) {
+                                $territoryName = $area->name;
+                                break;
+                            }
+                        }
+                    }
+
+                    $updateData = [
+                        'id' => $customerId,
+                        'name' => trim($_POST['name'] ?? ''),
+                        'email' => trim($_POST['email'] ?? ''),
+                        'phone' => trim($_POST['phone'] ?? ''),
+                        'whatsapp' => trim($_POST['whatsapp'] ?? ''),
+                        'address' => trim($_POST['address'] ?? ''),
+                        'lat' => !empty($_POST['latitude']) ? $_POST['latitude'] : null,
+                        'lng' => !empty($_POST['longitude']) ? $_POST['longitude'] : null,
+                        'mca_id' => $mcaId,
+                        'territory' => $territoryName,
+                        'credit_limit' => isset($_POST['credit_limit']) ? floatval($_POST['credit_limit']) : 0.00,
+                        'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00,
+                        'review_status' => 'Reviewed',
+                        'reviewed_by_user_id' => $_SESSION['user_id'],
+                        'reviewed_at' => date('Y-m-d H:i:s')
+                    ];
+
+                    $oldValues = [];
+                    $newValues = [];
+                    $changes = [];
+
+                    $fieldsToCompare = [
+                        'name' => 'Name',
+                        'email' => 'Email',
+                        'phone' => 'Phone',
+                        'whatsapp' => 'WhatsApp',
+                        'address' => 'Address',
+                        'latitude' => 'Latitude',
+                        'longitude' => 'Longitude',
+                        'mca_id' => 'Territory ID',
+                        'territory' => 'Territory Name',
+                        'credit_limit' => 'Credit Limit',
+                        'opening_balance' => 'Opening Balance'
+                    ];
+
+                    foreach ($fieldsToCompare as $dbKey => $label) {
+                        $oldVal = $existingCustomer->$dbKey ?? null;
+                        $newVal = $updateData[$dbKey === 'latitude' ? 'lat' : ($dbKey === 'longitude' ? 'lng' : $dbKey)];
+
+                        if (trim(strval($oldVal ?? '')) != trim(strval($newVal ?? ''))) {
+                            $oldValues[$dbKey] = $oldVal;
+                            $newValues[$dbKey] = $newVal;
+                            $changes[] = "$label changed from '" . ($oldVal ?: 'None') . "' to '" . ($newVal ?: 'None') . "'";
+                        }
+                    }
+
+                    if ($this->customerModel->updateCustomer($updateData)) {
+                        $desc = "Reviewed and updated customer profile: {$updateData['name']}";
+                        if (!empty($changes)) {
+                            $desc .= ". Changes: " . implode(', ', $changes);
+                        }
+                        $this->logActivity('Review Customer', 'Customer', $desc, $customerId, $oldValues, $newValues);
+                        header('Location: ' . APP_URL . '/customer/index?success=review'); exit;
+                    } else {
+                        $data['error'] = 'Failed to update customer during review.';
+                    }
+                } else {
+                    $data['error'] = 'Customer not found.';
+                }
+            } elseif ($_POST['action'] == 'quick_review') {
+                $customerId = intval($_POST['customer_id'] ?? 0);
+                $existingCustomer = $this->customerModel->getCustomerById($customerId);
+
+                if ($existingCustomer) {
+                    $updateData = [
+                        'id' => $customerId,
+                        'name' => $existingCustomer->name,
+                        'email' => $existingCustomer->email,
+                        'phone' => $existingCustomer->phone,
+                        'whatsapp' => $existingCustomer->whatsapp,
+                        'address' => $existingCustomer->address,
+                        'lat' => $existingCustomer->latitude,
+                        'lng' => $existingCustomer->longitude,
+                        'mca_id' => $existingCustomer->mca_id,
+                        'territory' => $existingCustomer->territory,
+                        'credit_limit' => $existingCustomer->credit_limit,
+                        'opening_balance' => $existingCustomer->opening_balance,
+                        'review_status' => 'Reviewed',
+                        'reviewed_by_user_id' => $_SESSION['user_id'],
+                        'reviewed_at' => date('Y-m-d H:i:s')
+                    ];
+
+                    if ($this->customerModel->updateCustomer($updateData)) {
+                        $this->logActivity('Review Customer', 'Customer', "Marked customer profile as reviewed: {$existingCustomer->name}", $customerId, [], []);
+                        header('Location: ' . APP_URL . '/customer/index?success=review'); exit;
+                    } else {
+                        $data['error'] = 'Failed to mark customer as reviewed.';
+                    }
+                } else {
+                    $data['error'] = 'Customer not found.';
+                }
             }
         }
 
         if (isset($_GET['success'])) {
             if ($_GET['success'] == 'add') {
                 $data['success'] = "New customer profile registered successfully!";
+            } elseif ($_GET['success'] == 'review') {
+                $data['success'] = "Customer profile reviewed and verified successfully!";
             } else {
                 $data['success'] = "Customer profile updated successfully!";
             }

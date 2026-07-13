@@ -303,6 +303,7 @@ foreach ($data['customers'] ?? [] as $cust) {
 }
 .sf-badge.badge-active { background: var(--c-green-light); color: var(--c-green); }
 .sf-badge.badge-owed   { background: var(--c-red-light);   color: var(--c-red); }
+.sf-badge.badge-new    { background: var(--c-orange-light); color: var(--c-orange); }
 .sf-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
 .avatar-circle {
@@ -642,6 +643,79 @@ foreach ($data['customers'] ?? [] as $cust) {
             </div>
         <?php endif; ?>
 
+        <!-- Newly Added Customers Pending Review Section -->
+        <?php
+        $pendingReview = [];
+        foreach ($data['customers'] ?? [] as $cust) {
+            if (isset($cust->review_status) && $cust->review_status === 'New') {
+                $pendingReview[] = $cust;
+            }
+        }
+        ?>
+        <?php if (!empty($pendingReview)): ?>
+            <div class="review-panel" style="background: var(--c-surface); border-radius: var(--r-xl); border: 0.5px solid var(--c-separator); box-shadow: var(--shadow-sm); margin-bottom: 24px; overflow: hidden;">
+                <div style="background: linear-gradient(135deg, rgba(255,149,0,0.1), rgba(255,149,0,0.05)); padding: 14px 20px; border-bottom: 0.5px solid var(--c-separator); display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fa-solid fa-user-clock" style="color: var(--c-orange); font-size: 18px;"></i>
+                        <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--t-primary);">Newly Added Customers Pending Review (<?= count($pendingReview) ?>)</h4>
+                    </div>
+                    <span style="font-size: 11px; font-weight: 700; background: var(--c-orange); color: #fff; padding: 3px 8px; border-radius: var(--r-pill); text-transform: uppercase; letter-spacing: 0.05em;">Needs Verification</span>
+                </div>
+                
+                <table class="cust-table" style="width: 100%;">
+                    <thead>
+                        <tr style="background: var(--c-surface2);">
+                            <th style="padding: 10px 18px; font-size: 11px;">Customer / Code</th>
+                            <th style="padding: 10px 18px; font-size: 11px;">Contact Number</th>
+                            <th style="padding: 10px 18px; font-size: 11px;">Address</th>
+                            <th style="padding: 10px 18px; font-size: 11px;">Sales Representative</th>
+                            <th style="padding: 10px 18px; font-size: 11px;">Date & Time Created</th>
+                            <th style="padding: 10px 18px; font-size: 11px; width: 180px; text-align: center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($pendingReview as $pc): ?>
+                            <tr class="pending-customer-row" onclick="showCustomerProfile(<?= $pc->id ?>, 'profile')" style="border-bottom: 0.5px solid var(--c-separator2); transition: background 0.2s; cursor: pointer;">
+                                <td style="padding: 10px 18px;">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <div class="avatar-circle" style="width: 30px; height: 30px; font-size: 12px; background: var(--c-orange-light); color: var(--c-orange);">
+                                            <?= strtoupper(substr($pc->name ?? '', 0, 2)) ?>
+                                        </div>
+                                        <div>
+                                            <strong style="font-size: 13.5px; font-weight: 600; color: var(--t-primary);"><?= htmlspecialchars($pc->name ?? '') ?></strong>
+                                            <span style="font-size: 10px; color: var(--t-secondary); display: block; margin-top: 1px;">CODE: CUST-<?= $pc->id ?></span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 10px 18px; font-size: 13px;">
+                                    📞 <?= !empty($pc->phone) ? htmlspecialchars($pc->phone) : '<span style="color:var(--c-red); font-weight:600;">Missing</span>' ?>
+                                </td>
+                                <td style="padding: 10px 18px; font-size: 12px; color: var(--t-secondary);">
+                                    <?= !empty($pc->address) ? htmlspecialchars($pc->address) : '<span style="color:var(--c-red); font-weight:600;">Missing Address</span>' ?>
+                                </td>
+                                <td style="padding: 10px 18px; font-size: 13px; font-weight: 500;">
+                                    👤 <?= htmlspecialchars($pc->created_by_username ?? 'Rep App Sync') ?>
+                                </td>
+                                <td style="padding: 10px 18px; font-size: 12px; color: var(--t-secondary);">
+                                    🕒 <?= date('M d, Y h:i A', strtotime($pc->created_at)) ?>
+                                </td>
+                                <td style="padding: 10px 18px;" onclick="event.stopPropagation()">
+                                    <div style="display: flex; gap: 6px; justify-content: center;">
+                                        <button type="button" class="sf-btn success" onclick="quickVerifyCustomer(<?= $pc->id ?>)" style="padding: 5px 10px; font-size: 11px;" title="Quick Verify">
+                                            <i class="fa-solid fa-check"></i> Verify
+                                        </button>
+                                        <button type="button" class="sf-btn primary" onclick="showCustomerProfile(<?= $pc->id ?>, 'profile')" style="padding: 5px 10px; font-size: 11px;" title="Review & Correct">
+                                            <i class="fa-solid fa-user-pen"></i> Review
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
+
         <!-- Filters Block -->
         <div class="filter-shelf">
             <!-- Filter by Route -->
@@ -750,9 +824,16 @@ foreach ($data['customers'] ?? [] as $cust) {
                                     Rs: <?= number_format($bal, 2) ?>
                                 </td>
                                 <td>
-                                    <span class="sf-badge <?= $badgeCls ?>">
-                                        <span class="dot"></span><?= $badgeTxt ?>
-                                    </span>
+                                    <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+                                        <span class="sf-badge <?= $badgeCls ?>">
+                                            <span class="dot"></span><?= $badgeTxt ?>
+                                        </span>
+                                        <?php if (isset($c->review_status) && $c->review_status === 'New'): ?>
+                                            <span class="sf-badge badge-new">
+                                                <span class="dot"></span>New
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                                 <td>
                                     <div style="display:flex; justify-content:center; gap:6px;" onclick="event.stopPropagation()">
@@ -861,10 +942,13 @@ foreach ($data['customers'] ?? [] as $cust) {
                 <h3 class="modal-title" style="font-size: 16.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0;" title="<?= htmlspecialchars($c->name ?? '') ?>">
                     <?= htmlspecialchars($c->name ?? '') ?>
                 </h3>
-                <div style="font-size: 11px; color: var(--t-secondary); display: flex; gap: 10px; margin-top: 2px; white-space: nowrap; overflow: hidden;">
+                <div style="font-size: 11px; color: var(--t-secondary); display: flex; gap: 10px; margin-top: 2px; white-space: nowrap; overflow: hidden; align-items: center;">
                     <span>📞 <?= !empty($c->phone) ? htmlspecialchars($c->phone) : '<span style="color:var(--c-red); font-weight:600;">Missing</span>' ?></span>
                     <span>✉️ <?= !empty($c->email) ? htmlspecialchars($c->email) : '<span style="color:var(--c-red); font-weight:600;">Missing</span>' ?></span>
                     <span>📍 <?= !empty($c->mca_name) ? htmlspecialchars($c->mca_name) : '<span style="color:var(--c-red); font-weight:600;">Unassigned</span>' ?></span>
+                    <?php if (isset($c->review_status) && $c->review_status === 'New'): ?>
+                        <span class="status-badge" style="background:var(--c-orange-light); color:var(--c-orange); padding:2px 6px; font-size:10px; border-radius:4px;">New</span>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -1006,10 +1090,12 @@ foreach ($data['customers'] ?? [] as $cust) {
         <div id="mtab_profile" class="tab-content" style="padding: 22px; overflow-y: auto; flex: 1;">
             <div class="grid-2">
                 <div>
-                    <h4 style="margin:0 0 14px 0; border-bottom: 0.5px solid var(--c-separator); padding-bottom: 6px; font-size:14px; font-weight:700; text-transform:uppercase; color:var(--t-secondary);">Edit Customer Profile</h4>
+                    <h4 style="margin:0 0 14px 0; border-bottom: 0.5px solid var(--c-separator); padding-bottom: 6px; font-size:14px; font-weight:700; text-transform:uppercase; color:var(--t-secondary);">
+                        <?= (isset($c->review_status) && $c->review_status === 'New') ? 'Review Customer Profile' : 'Edit Customer Profile' ?>
+                    </h4>
                     
                     <form action="<?= APP_URL ?>/customer/index/<?= $c->id ?>" method="POST">
-                        <input type="hidden" name="action" value="update_customer">
+                        <input type="hidden" name="action" value="<?= (isset($c->review_status) && $c->review_status === 'New') ? 'review_customer' : 'update_customer' ?>">
                         <input type="hidden" name="customer_id" value="<?= $c->id ?>">
                         
                         <div class="sf-group">
@@ -1071,10 +1157,30 @@ foreach ($data['customers'] ?? [] as $cust) {
                             </div>
                         </div>
                         
-                        <div style="text-align: right; margin-top: 10px;">
-                            <button type="submit" class="sf-btn primary">Save Changes</button>
+                        <div style="text-align: right; margin-top: 10px; display: flex; justify-content: flex-end; gap: 8px;">
+                            <?php if (isset($c->review_status) && $c->review_status === 'New'): ?>
+                                <button type="button" class="sf-btn success" onclick="quickVerifyCustomer(<?= $c->id ?>)">
+                                    <i class="fa-solid fa-circle-check"></i> Quick Verify
+                                </button>
+                                <button type="submit" class="sf-btn primary">Verify & Save</button>
+                            <?php else: ?>
+                                <button type="submit" class="sf-btn primary">Save Changes</button>
+                            <?php endif; ?>
                         </div>
                     </form>
+
+                    <!-- Workflow Details -->
+                    <div style="margin-top: 20px; background: var(--c-surface2); border: 0.5px solid var(--c-separator); border-radius: var(--r-md); padding: 12px 16px;">
+                        <h5 style="margin: 0 0 10px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--t-secondary);">Workflow Details</h5>
+                        <ul style="list-style: none; padding: 0; margin: 0; font-size: 12.5px; display: flex; flex-direction: column; gap: 6px;">
+                            <li><strong>Created By:</strong> <?= htmlspecialchars($c->created_by_username ?? 'System/Office') ?></li>
+                            <li><strong>Created Date & Time:</strong> <?= !empty($c->created_at) ? date('M d, Y H:i:s', strtotime($c->created_at)) : 'N/A' ?></li>
+                            <?php if (isset($c->review_status) && $c->review_status === 'Reviewed' && !empty($c->reviewed_by_username)): ?>
+                                <li><strong>Reviewed By:</strong> <?= htmlspecialchars($c->reviewed_by_username) ?></li>
+                                <li><strong>Reviewed Date & Time:</strong> <?= !empty($c->reviewed_at) ? date('M d, Y H:i:s', strtotime($c->reviewed_at)) : 'N/A' ?></li>
+                            <?php endif; ?>
+                        </ul>
+                    </div>
                 </div>
 
                 <!-- GPS Map View -->
@@ -1561,6 +1667,29 @@ foreach ($data['customers'] ?? [] as $cust) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'Confirm Delete';
         });
+    }
+
+    function quickVerifyCustomer(id) {
+        if (confirm("Are you sure you want to mark this customer as verified/reviewed?")) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '<?= APP_URL ?>/customer/index';
+            
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'quick_review';
+            form.appendChild(actionInput);
+            
+            const idInput = document.createElement('input');
+            idInput.type = 'hidden';
+            idInput.name = 'customer_id';
+            idInput.value = id;
+            form.appendChild(idInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
     }
 
     // Handle initial state if selected customer exists on page load

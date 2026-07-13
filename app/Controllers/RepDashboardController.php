@@ -709,7 +709,9 @@ class RepDashboardController extends Controller {
                                 'credit_limit' => isset($c['credit_limit']) ? floatval($c['credit_limit']) : 0.00,
                                 'customer_type' => $c['customer_type'] ?? 'Standard',
                                 'notes' => $c['notes'] ?? null,
-                                'uuid' => $c['uuid'] ?? null
+                                'uuid' => $c['uuid'] ?? null,
+                                'review_status' => 'New',
+                                'created_by_user_id' => $userId
                             ]);
                             $serverId = $this->customerModel->getLastInsertId();
                             $this->logActivity('Add Customer', 'Customer', "Registered new customer profile via mobile sync: {$c['name']}", $serverId);

@@ -10,6 +10,8 @@ class Customer {
         // FIXED: Dynamically calculates the True Grand Total, adds opening_balance, and JOINS the mca_areas table for filtering
         $this->db->query("
             SELECT c.*, m.name as mca_name,
+                   u.username as created_by_username,
+                   ru.username as reviewed_by_username,
                    c.opening_balance + 
                    (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = c.id AND status != 'Voided') 
                    - 
@@ -19,15 +21,19 @@ class Customer {
                    AS outstanding_balance
             FROM customers c 
             LEFT JOIN mca_areas m ON c.mca_id = m.id
+            LEFT JOIN users u ON c.created_by_user_id = u.id
+            LEFT JOIN users ru ON c.reviewed_by_user_id = ru.id
             ORDER BY c.name ASC
         ");
         return $this->db->resultSet();
     }
 
     public function getCustomerById($id) {
-        $this->db->query("SELECT c.*, m.name as mca_name 
+        $this->db->query("SELECT c.*, m.name as mca_name, u.username as created_by_username, ru.username as reviewed_by_username 
                           FROM customers c 
                           LEFT JOIN mca_areas m ON c.mca_id = m.id 
+                          LEFT JOIN users u ON c.created_by_user_id = u.id
+                          LEFT JOIN users ru ON c.reviewed_by_user_id = ru.id
                           WHERE c.id = :id");
         $this->db->bind(':id', $id);
         return $this->db->single();
@@ -101,8 +107,13 @@ class Customer {
     }
 
     public function addCustomer($data) {
-        $this->db->query("INSERT INTO customers (name, email, phone, whatsapp, address, latitude, longitude, mca_id, territory, credit_limit, customer_type, notes, uuid, opening_balance) 
-                          VALUES (:name, :email, :phone, :whatsapp, :address, :lat, :lng, :mca_id, :territory, :credit_limit, :customer_type, :notes, :uuid, :opening_balance)");
+        $reviewStatus = $data['review_status'] ?? 'Reviewed';
+        $createdByUserId = $data['created_by_user_id'] ?? null;
+        $reviewedByUserId = $data['reviewed_by_user_id'] ?? null;
+        $reviewedAt = $data['reviewed_at'] ?? null;
+
+        $this->db->query("INSERT INTO customers (name, email, phone, whatsapp, address, latitude, longitude, mca_id, territory, credit_limit, customer_type, notes, uuid, opening_balance, review_status, created_by_user_id, reviewed_by_user_id, reviewed_at) 
+                          VALUES (:name, :email, :phone, :whatsapp, :address, :lat, :lng, :mca_id, :territory, :credit_limit, :customer_type, :notes, :uuid, :opening_balance, :review_status, :created_by_user_id, :reviewed_by_user_id, :reviewed_at)");
         $this->db->bind(':name', $data['name']);
         $this->db->bind(':email', $data['email'] ?: null);
         $this->db->bind(':phone', $data['phone'] ?: null);
@@ -117,6 +128,10 @@ class Customer {
         $this->db->bind(':notes', $data['notes'] ?: null);
         $this->db->bind(':uuid', $data['uuid'] ?? null);
         $this->db->bind(':opening_balance', $data['opening_balance'] ?? 0.00);
+        $this->db->bind(':review_status', $reviewStatus);
+        $this->db->bind(':created_by_user_id', $createdByUserId);
+        $this->db->bind(':reviewed_by_user_id', $reviewedByUserId);
+        $this->db->bind(':reviewed_at', $reviewedAt);
         return $this->db->execute();
     }
 
@@ -125,10 +140,26 @@ class Customer {
     }
 
     public function updateCustomer($data) {
-        $this->db->query("UPDATE customers SET name = :name, email = :email, phone = :phone, whatsapp = :whatsapp, address = :address, 
+        $sql = "UPDATE customers SET name = :name, email = :email, phone = :phone, whatsapp = :whatsapp, address = :address, 
                           latitude = :lat, longitude = :lng, mca_id = :mca_id, territory = :territory, 
-                          credit_limit = :credit_limit, customer_type = :customer_type, notes = :notes, uuid = :uuid, opening_balance = :opening_balance
-                          WHERE id = :id");
+                          credit_limit = :credit_limit, customer_type = :customer_type, notes = :notes, uuid = :uuid, opening_balance = :opening_balance";
+        
+        if (array_key_exists('review_status', $data)) {
+            $sql .= ", review_status = :review_status";
+        }
+        if (array_key_exists('created_by_user_id', $data)) {
+            $sql .= ", created_by_user_id = :created_by_user_id";
+        }
+        if (array_key_exists('reviewed_by_user_id', $data)) {
+            $sql .= ", reviewed_by_user_id = :reviewed_by_user_id";
+        }
+        if (array_key_exists('reviewed_at', $data)) {
+            $sql .= ", reviewed_at = :reviewed_at";
+        }
+        
+        $sql .= " WHERE id = :id";
+        
+        $this->db->query($sql);
         $this->db->bind(':id', $data['id']);
         $this->db->bind(':name', $data['name']);
         $this->db->bind(':email', $data['email'] ?: null);
@@ -144,6 +175,20 @@ class Customer {
         $this->db->bind(':notes', $data['notes'] ?: null);
         $this->db->bind(':uuid', $data['uuid'] ?? null);
         $this->db->bind(':opening_balance', $data['opening_balance'] ?? 0.00);
+
+        if (array_key_exists('review_status', $data)) {
+            $this->db->bind(':review_status', $data['review_status']);
+        }
+        if (array_key_exists('created_by_user_id', $data)) {
+            $this->db->bind(':created_by_user_id', $data['created_by_user_id']);
+        }
+        if (array_key_exists('reviewed_by_user_id', $data)) {
+            $this->db->bind(':reviewed_by_user_id', $data['reviewed_by_user_id']);
+        }
+        if (array_key_exists('reviewed_at', $data)) {
+            $this->db->bind(':reviewed_at', $data['reviewed_at']);
+        }
+
         return $this->db->execute();
     }
 
