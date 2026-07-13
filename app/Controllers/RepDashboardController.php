@@ -79,7 +79,21 @@ class RepDashboardController extends Controller {
         ini_set('memory_limit', '512M');
         header('Content-Type: application/json');
         try {
-            $userId = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
+            $userId = 0;
+            if (isset($_SERVER['HTTP_X_USER_ID'])) {
+                $userId = intval($_SERVER['HTTP_X_USER_ID']);
+            } elseif (function_exists('getallheaders')) {
+                $headers = getallheaders();
+                if (isset($headers['X-User-ID'])) {
+                    $userId = intval($headers['X-User-ID']);
+                } elseif (isset($headers['x-user-id'])) {
+                    $userId = intval($headers['x-user-id']);
+                }
+            }
+            if ($userId <= 0 && isset($_GET['user_id'])) {
+                $userId = intval($_GET['user_id']);
+            }
+
             if ($userId <= 0) {
                 echo json_encode(['success' => false, 'message' => 'Invalid user ID.']);
                 exit;
@@ -394,6 +408,7 @@ class RepDashboardController extends Controller {
                         'quantity' => intval($item->quantity),
                         'unit_price' => floatval($item->unit_price),
                         'discount_value' => floatval($item->discount_value),
+                        'discount_type' => $item->discount_type ?? 'Rs',
                         'total' => floatval($item->total)
                     ];
                 }
@@ -544,15 +559,30 @@ class RepDashboardController extends Controller {
     public function sync_push() {
         header('Content-Type: application/json');
         
+        $userId = 0;
+        if (isset($_SERVER['HTTP_X_USER_ID'])) {
+            $userId = intval($_SERVER['HTTP_X_USER_ID']);
+        } elseif (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            if (isset($headers['X-User-ID'])) {
+                $userId = intval($headers['X-User-ID']);
+            } elseif (isset($headers['x-user-id'])) {
+                $userId = intval($headers['x-user-id']);
+            }
+        }
+
         $json = file_get_contents('php://input');
         $payload = json_decode($json, true);
         
+        if ($userId <= 0 && $payload && isset($payload['user_id'])) {
+            $userId = intval($payload['user_id']);
+        }
+
         if (!$payload) {
             echo json_encode(['success' => false, 'message' => 'Invalid JSON payload.']);
             exit;
         }
 
-        $userId = isset($payload['user_id']) ? intval($payload['user_id']) : 0;
         if ($userId <= 0) {
             echo json_encode(['success' => false, 'message' => 'Missing or invalid user ID.']);
             exit;
@@ -1190,9 +1220,43 @@ class RepDashboardController extends Controller {
     public function sync_verify() {
         header('Content-Type: application/json');
         
+        $userId = 0;
+        if (isset($_SERVER['HTTP_X_USER_ID'])) {
+            $userId = intval($_SERVER['HTTP_X_USER_ID']);
+        } elseif (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            if (isset($headers['X-User-ID'])) {
+                $userId = intval($headers['X-User-ID']);
+            } elseif (isset($headers['x-user-id'])) {
+                $userId = intval($headers['x-user-id']);
+            }
+        }
+        
         $json = file_get_contents('php://input');
         $payload = json_decode($json, true);
         
+        if ($userId <= 0 && $payload && isset($payload['user_id'])) {
+            $userId = intval($payload['user_id']);
+        }
+        
+        if ($userId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Missing or invalid user ID.']);
+            exit;
+        }
+
+        // Validate that user exists in database and is active
+        $this->db->query("SELECT id, status FROM users WHERE id = :id");
+        $this->db->bind(':id', $userId);
+        $userRow = $this->db->single();
+        if (!$userRow) {
+            echo json_encode(['success' => false, 'unauthorized' => true, 'message' => 'Unauthorized: User ID does not exist on server.']);
+            exit;
+        }
+        if (isset($userRow->status) && strtolower($userRow->status) !== 'active') {
+            echo json_encode(['success' => false, 'unauthorized' => true, 'message' => 'Unauthorized: User account is blocked/inactive.']);
+            exit;
+        }
+
         if (!$payload || !isset($payload['uuids']) || !is_array($payload['uuids'])) {
             echo json_encode(['success' => false, 'message' => 'Missing UUIDs list.']);
             exit;

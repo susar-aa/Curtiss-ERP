@@ -14,14 +14,24 @@ try {
         echo "- $t\n";
     }
     
-    echo "\n=== DESCRIBE CUSTOMER_PAYMENTS ===\n";
+    echo "\n=== DESCRIBE INVOICES ===\n";
     try {
-        $stmt = $dbh->query("DESCRIBE customer_payments");
+        $stmt = $dbh->query("DESCRIBE invoices");
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             echo "  {$row['Field']} - {$row['Type']} - {$row['Null']} - {$row['Key']}\n";
         }
     } catch (Exception $e) {
-        echo "Error describing customer_payments: " . $e->getMessage() . "\n";
+        echo "Error describing invoices: " . $e->getMessage() . "\n";
+    }
+
+    echo "\n=== DESCRIBE INVOICE_ITEMS ===\n";
+    try {
+        $stmt = $dbh->query("DESCRIBE invoice_items");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            echo "  {$row['Field']} - {$row['Type']} - {$row['Null']} - {$row['Key']}\n";
+        }
+    } catch (Exception $e) {
+        echo "Error describing invoice_items: " . $e->getMessage() . "\n";
     }
 } catch (Exception $e) {
     echo "ERROR: " . $e->getMessage() . "\n";
