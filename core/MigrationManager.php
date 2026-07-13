@@ -768,6 +768,80 @@ class MigrationManager {
                     ]);
                 }
                 return true;
+            },
+            'upgrade_petty_cash_tables_columns' => function(PDO $dbh) {
+                // Check and fix petty_cash_reimbursements columns
+                $reimCols = [
+                    'reimbursement_date' => "ALTER TABLE petty_cash_reimbursements ADD COLUMN reimbursement_date DATE NOT NULL",
+                    'amount' => "ALTER TABLE petty_cash_reimbursements ADD COLUMN amount DECIMAL(15,2) NOT NULL",
+                    'bank_account_id' => "ALTER TABLE petty_cash_reimbursements ADD COLUMN bank_account_id INT NOT NULL",
+                    'status' => "ALTER TABLE petty_cash_reimbursements ADD COLUMN status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending'",
+                    'description' => "ALTER TABLE petty_cash_reimbursements ADD COLUMN description TEXT NULL",
+                    'created_by' => "ALTER TABLE petty_cash_reimbursements ADD COLUMN created_by INT NOT NULL",
+                    'approved_by' => "ALTER TABLE petty_cash_reimbursements ADD COLUMN approved_by INT NULL",
+                    'approved_at' => "ALTER TABLE petty_cash_reimbursements ADD COLUMN approved_at DATETIME NULL",
+                    'journal_entry_id' => "ALTER TABLE petty_cash_reimbursements ADD COLUMN journal_entry_id INT NULL",
+                    'created_at' => "ALTER TABLE petty_cash_reimbursements ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+                ];
+
+                $existingReim = [];
+                try {
+                    $q = $dbh->query("SHOW COLUMNS FROM petty_cash_reimbursements");
+                    if ($q) {
+                        while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
+                            $existingReim[] = strtolower($row['Field']);
+                        }
+                    }
+                } catch (Exception $e) {}
+
+                if (!empty($existingReim)) {
+                    foreach ($reimCols as $col => $sql) {
+                        if (!in_array(strtolower($col), $existingReim)) {
+                            try {
+                                $dbh->exec($sql);
+                            } catch (Exception $e) {}
+                        }
+                    }
+                }
+
+                // Check and fix petty_cash_transactions columns
+                $txCols = [
+                    'transaction_date' => "ALTER TABLE petty_cash_transactions ADD COLUMN transaction_date DATE NOT NULL",
+                    'type' => "ALTER TABLE petty_cash_transactions ADD COLUMN type ENUM('allocation', 'expense', 'reimbursement') NOT NULL",
+                    'amount' => "ALTER TABLE petty_cash_transactions ADD COLUMN amount DECIMAL(15,2) NOT NULL",
+                    'reference' => "ALTER TABLE petty_cash_transactions ADD COLUMN reference VARCHAR(100) NULL",
+                    'description' => "ALTER TABLE petty_cash_transactions ADD COLUMN description TEXT NOT NULL",
+                    'paid_to' => "ALTER TABLE petty_cash_transactions ADD COLUMN paid_to VARCHAR(150) NULL",
+                    'account_id' => "ALTER TABLE petty_cash_transactions ADD COLUMN account_id INT NULL",
+                    'status' => "ALTER TABLE petty_cash_transactions ADD COLUMN status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending'",
+                    'attachment_path' => "ALTER TABLE petty_cash_transactions ADD COLUMN attachment_path VARCHAR(255) NULL",
+                    'created_by' => "ALTER TABLE petty_cash_transactions ADD COLUMN created_by INT NOT NULL",
+                    'approved_by' => "ALTER TABLE petty_cash_transactions ADD COLUMN approved_by INT NULL",
+                    'approved_at' => "ALTER TABLE petty_cash_transactions ADD COLUMN approved_at DATETIME NULL",
+                    'journal_entry_id' => "ALTER TABLE petty_cash_transactions ADD COLUMN journal_entry_id INT NULL",
+                    'reimbursement_id' => "ALTER TABLE petty_cash_transactions ADD COLUMN reimbursement_id INT NULL"
+                ];
+
+                $existingTx = [];
+                try {
+                    $q = $dbh->query("SHOW COLUMNS FROM petty_cash_transactions");
+                    if ($q) {
+                        while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
+                            $existingTx[] = strtolower($row['Field']);
+                        }
+                    }
+                } catch (Exception $e) {}
+
+                if (!empty($existingTx)) {
+                    foreach ($txCols as $col => $sql) {
+                        if (!in_array(strtolower($col), $existingTx)) {
+                            try {
+                                $dbh->exec($sql);
+                            } catch (Exception $e) {}
+                        }
+                    }
+                }
+                return true;
             }
         ];
     }

@@ -205,3 +205,13 @@ CREATE TABLE IF NOT EXISTS petty_cash_config_history (
 INSERT IGNORE INTO migrations (migration) VALUES ('create_petty_cash_config_history');
 INSERT IGNORE INTO migrations (migration) VALUES ('upgrade_petty_cash_config_table');
 
+-- 14. Petty Cash Module: Schema upgrade for reimbursements & transactions tables
+-- (Runs on production/server to ensure missing columns such as approved_by exist)
+ALTER TABLE petty_cash_reimbursements ADD COLUMN approved_by INT NULL AFTER created_by;
+ALTER TABLE petty_cash_reimbursements ADD COLUMN approved_at DATETIME NULL AFTER approved_by;
+ALTER TABLE petty_cash_transactions ADD COLUMN approved_by INT NULL AFTER created_by;
+ALTER TABLE petty_cash_transactions ADD COLUMN approved_at DATETIME NULL AFTER approved_by;
+
+INSERT IGNORE INTO migrations (migration) VALUES ('upgrade_petty_cash_tables_columns');
+
+

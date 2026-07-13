@@ -38,7 +38,7 @@ class PettyCashReimbursement {
         $this->db->query("SELECT r.*, u.username as creator_name, app.username as approver_name, a.account_name as bank_account_name, a.account_code as bank_account_code
                           FROM petty_cash_reimbursements r
                           LEFT JOIN users u ON r.created_by = u.id
-                          LEFT JOIN users app ON r.approved_by = u.id
+                          LEFT JOIN users app ON r.approved_by = app.id
                           LEFT JOIN chart_of_accounts a ON r.bank_account_id = a.id
                           ORDER BY r.reimbursement_date DESC, r.id DESC");
         return $this->db->resultSet() ?: [];

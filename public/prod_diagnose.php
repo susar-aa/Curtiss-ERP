@@ -22,7 +22,8 @@ try {
     $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
     $dbh = new PDO($dsn, DB_USER, DB_PASS, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
+        PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true
     ]);
     echo "Database Connection: SUCCESS\n\n";
 } catch (Exception $e) {
@@ -126,7 +127,10 @@ if ($dbh) {
         'customer_payments' => ['id', 'customer_id', 'amount', 'status', 'payment_date'],
         'migrations' => ['id', 'migration', 'executed_at'],
         'invoices' => ['id', 'invoice_number', 'customer_id', 'invoice_date', 'total_amount', 'status'],
-        'invoice_items' => ['id', 'invoice_id', 'item_id', 'quantity', 'unit_price']
+        'invoice_items' => ['id', 'invoice_id', 'item_id', 'quantity', 'unit_price'],
+        'petty_cash_config' => ['id', 'limit_amount', 'custodian_id', 'require_approval', 'default_funding_account_id', 'reimbursement_threshold', 'created_at', 'updated_at'],
+        'petty_cash_reimbursements' => ['id', 'reimbursement_date', 'amount', 'bank_account_id', 'status', 'description', 'created_by', 'approved_by', 'approved_at', 'journal_entry_id', 'created_at'],
+        'petty_cash_transactions' => ['id', 'transaction_date', 'type', 'amount', 'reference', 'description', 'paid_to', 'account_id', 'status', 'attachment_path', 'created_by', 'approved_by', 'approved_at', 'journal_entry_id', 'reimbursement_id', 'created_at']
     ];
 
     foreach ($tablesToAudit as $table => $columns) {
