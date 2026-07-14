@@ -17,6 +17,22 @@ echo "Database Host: " . DB_HOST . "\n";
 echo "Database Name: " . DB_NAME . "\n";
 echo "Database User: " . DB_USER . "\n\n";
 
+echo "=== FILE INTEGRITY CHECKS ===\n";
+$viewPath = __DIR__ . '/../app/Views/petty_cash/index.php';
+if (file_exists($viewPath)) {
+    $content = file_get_contents($viewPath);
+    echo "View File: EXISTS\n";
+    echo "  - Size: " . strlen($content) . " bytes\n";
+    echo "  - Last Modified: " . date("Y-m-d H:i:s", filemtime($viewPath)) . "\n";
+    echo "  - Contains 'settingsModal': " . (strpos($content, 'settingsModal') !== false ? 'YES' : 'NO') . "\n";
+    echo "  - Contains 'allocateModal': " . (strpos($content, 'allocateModal') !== false ? 'YES' : 'NO') . "\n";
+    echo "  - Contains 'expenseModal': " . (strpos($content, 'expenseModal') !== false ? 'YES' : 'NO') . "\n";
+    echo "  - Contains 'reimburseModal': " . (strpos($content, 'reimburseModal') !== false ? 'YES' : 'NO') . "\n";
+} else {
+    echo "View File: MISSING\n";
+}
+echo "\n";
+
 $dbh = null;
 try {
     $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
