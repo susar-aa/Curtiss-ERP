@@ -237,13 +237,54 @@ if (file_exists($appLog)) {
 }
 echo "\n";
 
-echo "=== RECENT SYNC ERRORS (sync_errors.log) ===\n";
-$syncLog = __DIR__ . '/../sync_errors.log';
-if (file_exists($syncLog)) {
-    $lines = file($syncLog);
-    $last_lines = array_slice($lines, -50);
-    echo implode("", $last_lines);
-} else {
-    echo "No sync_errors.log file found.\n";
+echo "\n";
+
+echo "=== CHART OF ACCOUNTS VIEW DIAGNOSTIC TESTS ===\n";
+try {
+    require_once __DIR__ . '/../app/Models/ChartOfAccount.php';
+    require_once __DIR__ . '/../app/Models/Customer.php';
+    
+    echo "1. Instantiating ChartOfAccount model... ";
+    $coaModel = new ChartOfAccount();
+    echo "SUCCESS\n";
+    
+    echo "2. Loading accounts via getAccounts()... ";
+    $accounts = $coaModel->getAccounts();
+    echo "SUCCESS (Loaded " . count($accounts) . " accounts)\n";
+    
+    echo "3. Instantiating Customer model... ";
+    $customerModel = new Customer();
+    echo "SUCCESS\n";
+    
+    echo "4. Loading customers via getAllCustomers()... ";
+    $customers = $customerModel->getAllCustomers();
+    echo "SUCCESS (Loaded " . count($customers) . " customers)\n";
+    
+    echo "5. Building Tree structure... ";
+    $accountsMap = [];
+    foreach($accounts as $acc) {
+        $acc->children = [];
+        $accountsMap[$acc->id] = $acc;
+    }
+    $tree = [];
+    foreach($accounts as $acc) {
+        if (empty($acc->parent_id)) {
+            $tree[] = $accountsMap[$acc->id];
+        } else {
+            $parent = $accountsMap[$acc->parent_id] ?? null;
+            if ($parent) {
+                $parent->children[] = $accountsMap[$acc->id];
+            } else {
+                $tree[] = $accountsMap[$acc->id];
+            }
+        }
+    }
+    echo "SUCCESS (Tree has " . count($tree) . " root nodes)\n";
+    
+} catch (Throwable $e) {
+    echo "FAILED: " . $e->getMessage() . "\n";
+    echo "File: " . $e->getFile() . " on line " . $e->getLine() . "\n";
+    echo "Trace:\n" . $e->getTraceAsString() . "\n";
 }
 echo "\n";
+
