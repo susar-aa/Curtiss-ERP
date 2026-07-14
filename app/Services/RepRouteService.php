@@ -129,7 +129,10 @@ class RepRouteService {
 
         // Handle Invoices first (outside main transaction to avoid nested PDO transaction exception)
         if ($mode === 'delete_with_so' || $mode === 'force_delete_all') {
-            $db->query("SELECT id, invoice_number, customer_name, total_amount FROM invoices WHERE rep_route_id = :rid");
+            $db->query("SELECT i.id, i.invoice_number, c.name as customer_name, i.total_amount 
+                        FROM invoices i 
+                        JOIN customers c ON i.customer_id = c.id 
+                        WHERE i.rep_route_id = :rid");
             $db->bind(':rid', $routeId);
             $invoices = $db->resultSet() ?: [];
 
