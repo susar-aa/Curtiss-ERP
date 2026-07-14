@@ -199,12 +199,18 @@ class PurchaseController extends Controller {
             }
         }
 
+        $db = new Database();
+        $db->query("SELECT COUNT(id) as total FROM purchase_orders");
+        $countRow = $db->single();
+        $nextId = $countRow ? ($countRow->total + 1) : 1;
+        $poNumber = 'PO-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+
         $data = [
             'title' => 'Create Purchase Order',
             'content_view' => 'purchases/create',
             'vendors' => $this->vendorModel->getAllVendors(),
             'catalog_items' => $catalogItems,
-            'po_number' => 'PO-' . time(),
+            'po_number' => $poNumber,
             'prefilled_vendor' => $prefilledVendor,
             'prefilled_items' => $prefilledItems,
             'error' => ''

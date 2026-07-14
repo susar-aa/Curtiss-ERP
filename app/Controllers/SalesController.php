@@ -228,13 +228,13 @@ class SalesController extends Controller {
             $this->db->query("SELECT id FROM sales_orders ORDER BY id DESC LIMIT 1");
             $lastRow = $this->db->single();
             $nextId = $lastRow ? ($lastRow->id + 1) : 1;
-            $invoiceNumber = 'SO-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            $invoiceNumber = 'SO-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
         } else {
             // Generate next invoice number
             $this->db->query("SELECT id FROM invoices ORDER BY id DESC LIMIT 1");
             $lastRow = $this->db->single();
             $nextId = $lastRow ? ($lastRow->id + 1) : 1;
-            $invoiceNumber = 'INV-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            $invoiceNumber = 'INV-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
         }
 
         // Fetch all payment terms
@@ -1167,7 +1167,7 @@ class SalesController extends Controller {
         $this->db->query("SELECT id FROM sales_orders ORDER BY id DESC LIMIT 1");
         $lastRow = $this->db->single();
         $nextId = $lastRow ? ($lastRow->id + 1) : 1;
-        $orderNumber = 'SO-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+        $orderNumber = 'SO-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
 
         // Delete invoice and reverse stock/ledgers/transactions
         $success = $invoiceModel->deleteInvoiceWithAccounting($id, $_SESSION['user_id']);

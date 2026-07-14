@@ -86,11 +86,17 @@ class CreditNoteController extends Controller {
     }
 
     public function create() {
+        $db = new Database();
+        $db->query("SELECT COUNT(id) as total FROM credit_notes");
+        $countRow = $db->single();
+        $nextId = $countRow ? ($countRow->total + 1) : 1;
+        $cnNumber = 'CN-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+
         $data = [
             'title' => 'Issue Credit Note',
             'content_view' => 'credit_notes/create',
             'customers' => $this->customerModel->getAllCustomers(),
-            'credit_note_number' => 'CN-' . time(),
+            'credit_note_number' => $cnNumber,
             'error' => ''
         ];
 

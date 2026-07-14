@@ -1560,12 +1560,18 @@ if (!function_exists('hasPermission')) {
                     </div>
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Banking & Assets</div>
-                        <?php if (hasPermission('accounting')): ?>
                         <a href="<?= APP_URL ?>/banking" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-bank"></i></div>
                             <div class="mega-list-item-content">
                                 <div class="title">Banking & Registers</div>
                                 <div class="desc">Accounts and recons</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/pettycash" class="mega-list-item">
+                            <div class="icon-wrapper text-warning"><i class="ph ph-coins"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title text-warning">Petty Cash</div>
+                                <div class="desc">Expenses and claims</div>
                             </div>
                         </a>
                         <?php endif; ?>
@@ -1858,6 +1864,7 @@ if (!function_exists('hasPermission')) {
                             <a href="<?= APP_URL ?>/accounting/recurring" class="fs-link"><i class="ph ph-arrows-clockwise"></i> Recurring Entries</a>
                             <a href="<?= APP_URL ?>/accounting/close_year" class="fs-link"><i class="ph ph-lock"></i> Close Financial Year</a>
                             <a href="<?= APP_URL ?>/banking" class="fs-link"><i class="ph ph-bank"></i> Banking</a>
+                            <a href="<?= APP_URL ?>/pettycash" class="fs-link"><i class="ph ph-coins"></i> Petty Cash</a>
                         <?php endif; ?>
                         <?php if (hasPermission('customerpayment')): ?><a href="<?= APP_URL ?>/customerpayment" class="fs-link"><i class="ph ph-hand-coins"></i> Customer Payments</a><?php endif; ?>
                         <?php if (hasPermission('supplierpayment')): ?><a href="<?= APP_URL ?>/payment" class="fs-link"><i class="ph ph-hand-deposit"></i> Payments</a><?php endif; ?>
