@@ -183,15 +183,22 @@ class DepositController extends Controller {
     }
 
     public function process($id) {
-        $this->checkPermission('accounting', 'create_edit');
+        $this->checkPermission('accounting', 'view');
 
         $deposit = $this->depositModel->getDepositById($id);
-        if (!$deposit || $deposit->status !== 'Sent to Bank') {
-            header('Location: ' . APP_URL . '/deposit?error=Only deposits Sent to Bank can be processed.');
+        if (!$deposit || $deposit->status === 'Draft') {
+            header('Location: ' . APP_URL . '/deposit?error=Invalid deposit selected.');
             exit;
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->checkPermission('accounting', 'create_edit');
+
+            if ($deposit->status !== 'Sent to Bank') {
+                header('Location: ' . APP_URL . '/deposit?error=Only deposits Sent to Bank can be processed.');
+                exit;
+            }
+
             $processedData = [
                 'accepted_cash_amount' => floatval($_POST['accepted_cash_amount'] ?? 0),
                 'cheque_action' => $_POST['cheque_action'] ?? [],
@@ -219,5 +226,27 @@ class DepositController extends Controller {
         ];
 
         $this->view('layouts/main', $data);
+    }
+
+    public function printSlip($id) {
+        $this->checkPermission('accounting', 'view');
+
+        $deposit = $this->depositModel->getDepositById($id);
+        if (!$deposit) {
+            die("Deposit not found.");
+        }
+
+        $items = $this->depositModel->getDepositItems($id);
+        $companyModel = $this->model('Company');
+        $company = $companyModel->getSettings();
+
+        $data = [
+            'title' => 'Deposit Slip - ' . $deposit->deposit_number,
+            'deposit' => $deposit,
+            'items' => $items,
+            'company' => $company
+        ];
+
+        $this->view('deposit/print', $data);
     }
 }

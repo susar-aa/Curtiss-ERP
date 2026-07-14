@@ -144,9 +144,11 @@
                                     <a href="<?= APP_URL ?>/deposit/send/<?= $dep->id ?>" class="btn btn-success" style="padding: 5px 10px; font-size: 11px;" onclick="return confirm('Are you sure you want to send this deposit to the bank? This will debit Deposit in Transit and credit Cash/Cheque in Hand.')">📤 Send to Bank</a>
                                     <a href="<?= APP_URL ?>/deposit/delete/<?= $dep->id ?>" class="btn btn-danger" style="padding: 5px 10px; font-size: 11px; background:#c62828;" onclick="return confirm('Are you sure you want to delete this draft?')">🗑️</a>
                                 <?php elseif ($dep->status === 'Sent to Bank'): ?>
-                                    <a href="<?= APP_URL ?>/deposit/process/<?= $dep->id ?>" class="btn btn-primary" style="padding: 5px 10px; font-size: 11px; background:#ef6c00; border-color:#ef6c00;">⚙️ Process realization</a>
+                                    <a href="<?= APP_URL ?>/deposit/process/<?= $dep->id ?>" class="btn btn-primary" style="padding: 5px 10px; font-size: 11px; background:#ef6c00; border-color:#ef6c00;">⚙️ Process</a>
+                                    <a href="<?= APP_URL ?>/deposit/printSlip/<?= $dep->id ?>" target="_blank" class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;">🖨️</a>
                                 <?php else: ?>
                                     <a href="<?= APP_URL ?>/deposit/process/<?= $dep->id ?>" class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;">🔍 View Details</a>
+                                    <a href="<?= APP_URL ?>/deposit/printSlip/<?= $dep->id ?>" target="_blank" class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;">🖨️</a>
                                 <?php endif; ?>
                             </div>
                         </td>

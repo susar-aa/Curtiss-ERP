@@ -331,6 +331,7 @@ $isCompleted = $dep->status === 'Completed';
         <!-- Buttons Section -->
         <div style="display: flex; gap: 12px; margin-bottom: 50px;">
             <a href="<?= APP_URL ?>/deposit" class="btn btn-secondary">Back</a>
+            <a href="<?= APP_URL ?>/deposit/printSlip/<?= $dep->id ?>" target="_blank" class="btn btn-primary" style="background:#0066cc; color:#fff;">🖨️ Print Slip</a>
             <?php if ($isSent): ?>
                 <button type="submit" class="btn btn-success" onclick="return confirm('Are you sure you want to finalize this deposit processing? Cleared items will post to the bank account ledger; returned cheques will be reversed.')">✔️ Complete Processing</button>
             <?php endif; ?>
