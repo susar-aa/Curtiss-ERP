@@ -1627,7 +1627,7 @@ class RepDashboardController extends Controller {
 
         // Fetch bills
         $this->db->query("SELECT i.id, i.invoice_number, i.invoice_date, i.total_amount, i.global_discount_val, i.global_discount_type, i.tax_amount, i.status, i.customer_id,
-                                 c.name as customer_name, c.customer_code,
+                                 c.name as customer_name, CONCAT('CUST-', c.id) as customer_code,
                                  pt.name as payment_term_name,
                                  COALESCE((SELECT SUM(amount) FROM customer_payment_allocations WHERE invoice_id = i.id AND is_reversed = 0), 0) as paid_amount,
                                  COALESCE((SELECT GROUP_CONCAT(DISTINCT cp.payment_method SEPARATOR ', ') FROM customer_payment_allocations cpa JOIN customer_payments cp ON cpa.customer_payment_id = cp.id WHERE cpa.invoice_id = i.id AND cpa.is_reversed = 0), pt.name) as payment_method
@@ -1744,7 +1744,7 @@ class RepDashboardController extends Controller {
 
         // Fetch invoice with security check: must belong to user or route owned by user
         $sql = "SELECT i.*, 
-                       c.name as customer_name, c.customer_code, c.address as customer_address, c.phone as customer_phone,
+                       c.name as customer_name, CONCAT('CUST-', c.id) as customer_code, c.address as customer_address, c.phone as customer_phone,
                        r.route_name,
                        COALESCE(e.first_name, u.username) as rep_first_name, COALESCE(e.last_name, '') as rep_last_name,
                        pt.name as payment_term_name
