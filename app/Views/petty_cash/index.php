@@ -635,7 +635,7 @@ declare(strict_types=1);
             </div>
             <div class="kpi-footer">
                 <i class="ph ph-user-focus"></i>
-                <span>Custodian: <strong><?= $data['config'] && $data['config']->custodian_name ? htmlspecialchars($data['config']->custodian_name) : 'Not Assigned' ?></strong></span>
+                <span>Custodian: <strong><?= ($data['config'] && isset($data['config']->custodian_name)) ? htmlspecialchars($data['config']->custodian_name) : 'Not Assigned' ?></strong></span>
             </div>
         </div>
 
@@ -660,7 +660,7 @@ declare(strict_types=1);
                 <div class="kpi-header">
                     <span>Pending Reimbursement</span>
                     <?php 
-                    $threshold = $data['config'] ? floatval($data['config']->reimbursement_threshold) : 10000.00;
+                    $threshold = ($data['config'] && isset($data['config']->reimbursement_threshold)) ? floatval($data['config']->reimbursement_threshold) : 10000.00;
                     $exceeded = $data['pending_reimbursements'] >= $threshold;
                     if ($exceeded):
                     ?>
@@ -932,25 +932,15 @@ declare(strict_types=1);
             <div class="modal-body">
                 <div class="form-group">
                     <label for="limit_amount">Petty Cash Limit (Float Amount) *</label>
-                    <input type="number" step="0.01" name="limit_amount" id="limit_amount" value="<?= $data['config'] ? $data['config']->limit_amount : '50000.00' ?>" required>
+                    <input type="number" step="0.01" name="limit_amount" id="limit_amount" value="<?= ($data['config'] && isset($data['config']->limit_amount)) ? $data['config']->limit_amount : '50000.00' ?>" required>
                 </div>
-                <div class="form-group">
-                    <label for="custodian_id">Custodian User *</label>
-                    <select name="custodian_id" id="custodian_id" required>
-                        <option value="">-- Select Custodian --</option>
-                        <?php foreach ($data['users'] as $u): ?>
-                            <option value="<?= $u->id ?>" <?= $data['config'] && (int)$data['config']->custodian_id === (int)$u->id ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($u->username) ?> (<?= htmlspecialchars($u->email) ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
+                <input type="hidden" name="custodian_id" value="<?= ($data['config'] && isset($data['config']->custodian_id)) ? (int)$data['config']->custodian_id : $_SESSION['user_id'] ?>">
                 <div class="form-group">
                     <label for="default_funding_account_id">Default Funding Bank/Cash Account *</label>
                     <select name="default_funding_account_id" id="default_funding_account_id" required>
                         <option value="">-- Select Source Account --</option>
                         <?php foreach ($data['funding_accounts'] as $fa): ?>
-                            <option value="<?= $fa->id ?>" <?= $data['config'] && (int)$data['config']->default_funding_account_id === (int)$fa->id ? 'selected' : '' ?>>
+                            <option value="<?= $fa->id ?>" <?= ($data['config'] && isset($data['config']->default_funding_account_id) && (int)$data['config']->default_funding_account_id === (int)$fa->id) ? 'selected' : '' ?>>
                                 <?= $fa->account_code ?> - <?= htmlspecialchars($fa->account_name) ?>
                             </option>
                         <?php endforeach; ?>
@@ -958,10 +948,10 @@ declare(strict_types=1);
                 </div>
                 <div class="form-group">
                     <label for="reimbursement_threshold">Reimbursement Alert Threshold (Spent Amount) *</label>
-                    <input type="number" step="0.01" name="reimbursement_threshold" id="reimbursement_threshold" value="<?= $data['config'] ? $data['config']->reimbursement_threshold : '10000.00' ?>" required>
+                    <input type="number" step="0.01" name="reimbursement_threshold" id="reimbursement_threshold" value="<?= ($data['config'] && isset($data['config']->reimbursement_threshold)) ? $data['config']->reimbursement_threshold : '10000.00' ?>" required>
                 </div>
                 <div class="form-group form-checkbox">
-                    <input type="checkbox" name="require_approval" id="require_approval" value="1" <?= !$data['config'] || $data['config']->require_approval ? 'checked' : '' ?>>
+                    <input type="checkbox" name="require_approval" id="require_approval" value="1" <?= (!$data['config'] || !isset($data['config']->require_approval) || $data['config']->require_approval) ? 'checked' : '' ?>>
                     <label for="require_approval">Require Manager Approval for all Petty Cash Expenses</label>
                 </div>
             </div>
@@ -992,7 +982,7 @@ declare(strict_types=1);
                     <select name="bank_account_id" id="bank_account_id" required>
                         <option value="">-- Select Source Account --</option>
                         <?php foreach ($data['funding_accounts'] as $fa): ?>
-                            <option value="<?= $fa->id ?>" <?= $data['config'] && (int)$data['config']->default_funding_account_id === (int)$fa->id ? 'selected' : '' ?>>
+                            <option value="<?= $fa->id ?>" <?= ($data['config'] && isset($data['config']->default_funding_account_id) && (int)$data['config']->default_funding_account_id === (int)$fa->id) ? 'selected' : '' ?>>
                                 <?= $fa->account_code ?> - <?= htmlspecialchars($fa->account_name) ?>
                             </option>
                         <?php endforeach; ?>
@@ -1098,7 +1088,7 @@ declare(strict_types=1);
                     <select name="bank_account_id" id="reim_bank_account_id" required>
                         <option value="">-- Select Source Bank --</option>
                         <?php foreach ($data['funding_accounts'] as $fa): ?>
-                            <option value="<?= $fa->id ?>" <?= $data['config'] && (int)$data['config']->default_funding_account_id === (int)$fa->id ? 'selected' : '' ?>>
+                            <option value="<?= $fa->id ?>" <?= ($data['config'] && isset($data['config']->default_funding_account_id) && (int)$data['config']->default_funding_account_id === (int)$fa->id) ? 'selected' : '' ?>>
                                 <?= $fa->account_code ?> - <?= htmlspecialchars($fa->account_name) ?>
                             </option>
                         <?php endforeach; ?>

@@ -109,10 +109,15 @@ class PettyCashController extends Controller {
                 'reimbursement_threshold' => floatval($_POST['reimbursement_threshold'] ?? 0)
             ];
 
+            if ($settingsData['custodian_id'] <= 0) {
+                $config = $this->pcConfigModel->getConfig();
+                $settingsData['custodian_id'] = ($config && isset($config->custodian_id) && $config->custodian_id > 0)
+                    ? intval($config->custodian_id)
+                    : intval($_SESSION['user_id'] ?? 1);
+            }
+
             if ($settingsData['limit_amount'] <= 0) {
                 $_SESSION['flash_error'] = 'Limit amount must be greater than zero.';
-            } elseif ($settingsData['custodian_id'] <= 0) {
-                $_SESSION['flash_error'] = 'Please select a valid custodian user.';
             } elseif ($settingsData['default_funding_account_id'] <= 0) {
                 $_SESSION['flash_error'] = 'Please select a default funding account.';
             } else {
