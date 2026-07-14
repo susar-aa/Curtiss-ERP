@@ -7,26 +7,69 @@ class Customer {
     }
 
     public function getAllCustomers() {
-        // FIXED: Dynamically calculates the True Grand Total, adds opening_balance, and JOINS the mca_areas table for filtering
+        // Optimized to use pre-aggregated subqueries to prevent N+1 performance bottlenecks and memory exhaustion
         $this->db->query("
             SELECT c.*, m.name as mca_name,
                    u.username as created_by_username,
                    ru.username as reviewed_by_username,
-                   c.opening_balance + 
-                   (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = c.id AND status != 'Voided') 
-                   - 
-                   (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE customer_id = c.id AND status = 'Active') 
-                   - 
-                   (SELECT COALESCE(SUM(total_amount), 0) FROM credit_notes WHERE customer_id = c.id) 
-                   AS outstanding_balance
-            FROM customers c 
+                   (c.opening_balance + COALESCE(inv.total_billed, 0) - COALESCE(pmt.total_paid, 0) - COALESCE(cn.total_credited, 0)) AS outstanding_balance
+            FROM customers c
             LEFT JOIN mca_areas m ON c.mca_id = m.id
             LEFT JOIN users u ON c.created_by_user_id = u.id
             LEFT JOIN users ru ON c.reviewed_by_user_id = ru.id
+            LEFT JOIN (
+                SELECT customer_id, 
+                       SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_billed
+                FROM invoices 
+                WHERE status != 'Voided'
+                GROUP BY customer_id
+            ) inv ON c.id = inv.customer_id
+            LEFT JOIN (
+                SELECT customer_id, SUM(amount) as total_paid
+                FROM customer_payments 
+                WHERE status = 'Active'
+                GROUP BY customer_id
+            ) pmt ON c.id = pmt.customer_id
+            LEFT JOIN (
+                SELECT customer_id, SUM(total_amount) as total_credited
+                FROM credit_notes
+                GROUP BY customer_id
+            ) cn ON c.id = cn.customer_id
             ORDER BY c.name ASC
         ");
         return $this->db->resultSet();
     }
+
+    public function getOutstandingCustomers() {
+        // Optimized pre-aggregated query that only returns records with a non-zero balance to prevent memory exhaustion
+        $this->db->query("
+            SELECT c.id, c.name,
+                   (c.opening_balance + COALESCE(inv.total_billed, 0) - COALESCE(pmt.total_paid, 0) - COALESCE(cn.total_credited, 0)) AS outstanding_balance
+            FROM customers c
+            LEFT JOIN (
+                SELECT customer_id, 
+                       SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_billed
+                FROM invoices 
+                WHERE status != 'Voided'
+                GROUP BY customer_id
+            ) inv ON c.id = inv.customer_id
+            LEFT JOIN (
+                SELECT customer_id, SUM(amount) as total_paid
+                FROM customer_payments 
+                WHERE status = 'Active'
+                GROUP BY customer_id
+            ) pmt ON c.id = pmt.customer_id
+            LEFT JOIN (
+                SELECT customer_id, SUM(total_amount) as total_credited
+                FROM credit_notes
+                GROUP BY customer_id
+            ) cn ON c.id = cn.customer_id
+            HAVING outstanding_balance != 0
+            ORDER BY c.name ASC
+        ");
+        return $this->db->resultSet();
+    }
+
 
     public function getCustomerById($id) {
         $this->db->query("SELECT c.*, m.name as mca_name, u.username as created_by_username, ru.username as reviewed_by_username 

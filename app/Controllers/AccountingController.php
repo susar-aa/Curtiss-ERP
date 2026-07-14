@@ -193,7 +193,7 @@ class AccountingController extends Controller {
         $data['main_accounts'] = array_filter($allAccounts, function($a) { return empty($a->parent_id); });
         
         $customerModel = $this->model('Customer');
-        $data['customers'] = $customerModel->getAllCustomers() ?: [];
+        $data['customers'] = $customerModel->getOutstandingCustomers() ?: [];
         
         $this->view('layouts/main', $data);
     }

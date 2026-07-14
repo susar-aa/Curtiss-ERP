@@ -241,6 +241,7 @@ echo "\n";
 
 echo "=== CHART OF ACCOUNTS VIEW DIAGNOSTIC TESTS ===\n";
 try {
+    require_once __DIR__ . '/../core/Database.php';
     require_once __DIR__ . '/../app/Models/ChartOfAccount.php';
     require_once __DIR__ . '/../app/Models/Customer.php';
     
@@ -256,9 +257,17 @@ try {
     $customerModel = new Customer();
     echo "SUCCESS\n";
     
-    echo "4. Loading customers via getAllCustomers()... ";
+    echo "4a. Loading customers via getAllCustomers()... ";
+    $start = microtime(true);
     $customers = $customerModel->getAllCustomers();
-    echo "SUCCESS (Loaded " . count($customers) . " customers)\n";
+    $time = round((microtime(true) - $start) * 1000, 2);
+    echo "SUCCESS (Loaded " . count($customers) . " customers in {$time} ms)\n";
+    
+    echo "4b. Loading outstanding customers via getOutstandingCustomers()... ";
+    $start = microtime(true);
+    $outstanding = $customerModel->getOutstandingCustomers();
+    $time = round((microtime(true) - $start) * 1000, 2);
+    echo "SUCCESS (Loaded " . count($outstanding) . " outstanding customers in {$time} ms)\n";
     
     echo "5. Building Tree structure... ";
     $accountsMap = [];
