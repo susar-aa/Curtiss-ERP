@@ -712,7 +712,6 @@ class RepDashboardController extends Controller {
                     if (!empty($changes)) {
                         $desc .= ". Changes: " . implode(', ', $changes);
                     }
-
                     $this->logActivity($actionName, 'Customer', $desc, $serverId, $oldValues, $newValues);
                 };
 
@@ -720,7 +719,16 @@ class RepDashboardController extends Controller {
                     $localId = intval($c['local_id']);
                     $serverId = isset($c['server_id']) ? intval($c['server_id']) : 0;
                     
+                    $existsOnServer = false;
                     if ($serverId > 0) {
+                        $this->db->query("SELECT id FROM customers WHERE id = :id LIMIT 1");
+                        $this->db->bind(':id', $serverId);
+                        if ($this->db->single()) {
+                            $existsOnServer = true;
+                        }
+                    }
+                    
+                    if ($serverId > 0 && $existsOnServer) {
                         // This is an update to an existing customer
                         $processCustomerUpdate($c, $serverId);
                     } else {
