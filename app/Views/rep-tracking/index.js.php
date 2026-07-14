@@ -328,8 +328,17 @@
                 } else if (step.id === 8 && (delStatus === 'Finalizing' || delStatus === 'Completed')) {
                     isStepCompleted = true; // Delivery is completed if delivery status is Completed or Finalizing (meaning driver ended the route)
                 } else if (step.id === 9) {
-                    // Check if stock verified checkbox is checked
-                    if (document.getElementById('settleVerifyStock')?.checked) {
+                    // Check if stock verified checkbox is checked OR return stock has been saved in delivery details
+                    const verifyStockCheck = document.getElementById('settleVerifyStock');
+                    let isVerified = verifyStockCheck ? verifyStockCheck.checked : false;
+                    if (!isVerified && currentDeliveryDetails && currentDeliveryDetails.delivery && currentDeliveryDetails.delivery.return_stock_json !== null && currentDeliveryDetails.delivery.return_stock_json !== '') {
+                        console.log("[SidebarProgress] Found saved return stock in database. Auto-checking checkbox.");
+                        isVerified = true;
+                        if (verifyStockCheck) {
+                            verifyStockCheck.checked = true;
+                        }
+                    }
+                    if (isVerified) {
                         isStepCompleted = true;
                     }
                 } else if (step.id === 10) {
@@ -2488,9 +2497,21 @@
             }
 
             if (data.status === 'success') {
+                console.log("[ReturnStock] Save draft success. Updating local state and UI.");
                 alert("Return stock verified and saved successfully!");
+                // Update local delivery details to avoid page-reload requirements
+                if (currentDeliveryDetails && currentDeliveryDetails.delivery) {
+                    currentDeliveryDetails.delivery.return_stock_json = JSON.stringify(returnedItems);
+                }
+                // Synchronize the checkbox
+                const verifyStockCheck = document.getElementById('settleVerifyStock');
+                if (verifyStockCheck) {
+                    verifyStockCheck.checked = true;
+                }
+                checkSettleVerification();
                 onRouteDataChanged();
             } else {
+                console.warn("[ReturnStock] Save draft failed. Server message:", data.message);
                 alert("Error: " + data.message);
             }
         })
@@ -2787,8 +2808,19 @@
     }
 
     function checkSettleVerification() {
+        console.log("[SettleVerify] checkSettleVerification started.");
         const verifyStockCheck = document.getElementById('settleVerifyStock');
-        const verifyStock = verifyStockCheck ? verifyStockCheck.checked : false;
+        let verifyStock = verifyStockCheck ? verifyStockCheck.checked : false;
+
+        // Fallback: check if the global delivery details already have return stock saved
+        if (!verifyStock && currentDeliveryDetails && currentDeliveryDetails.delivery && currentDeliveryDetails.delivery.return_stock_json !== null && currentDeliveryDetails.delivery.return_stock_json !== '') {
+            console.log("[SettleVerify] Fallback: Found saved return stock in database. Auto-checking checkbox.");
+            verifyStock = true;
+            if (verifyStockCheck) {
+                verifyStockCheck.checked = true;
+            }
+        }
+        console.log("[SettleVerify] verifyStock state:", verifyStock);
 
         const btn = document.getElementById('settleSubmitBtn');
         const text = document.getElementById('settleStatusText');

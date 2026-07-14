@@ -2235,7 +2235,7 @@ class RepTrackingController extends Controller {
             $db->query("SELECT status FROM deliveries WHERE id = :id LIMIT 1");
             $db->bind(':id', $deliveryId);
             $existing = $db->single();
-            if ($existing && ($existing->status === 'Finalized' || $existing->status === 'Completed')) {
+            if ($existing && $existing->status === 'Finalized') {
                 header('Content-Type: application/json');
                 echo json_encode(['status' => 'error', 'message' => 'Cannot verify return stock because this delivery has already been finalized.']);
                 exit;
