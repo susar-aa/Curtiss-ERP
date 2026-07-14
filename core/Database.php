@@ -99,7 +99,11 @@ class Database {
                 }
             }
         }
-        return $this->stmt->execute();
+        try {
+            return $this->stmt->execute();
+        } catch (PDOException $e) {
+            throw new Exception("Database execution error: " . $e->getMessage() . " | SQL: " . $this->currentSql . " | Params: " . json_encode($this->boundParams));
+        }
     }
 
     public function generateJournalReference($date = null) {
@@ -113,6 +117,7 @@ class Database {
         $stmt->bindValue(':pattern', $pattern, PDO::PARAM_STR);
         $stmt->execute();
         $row = $stmt->fetch(PDO::FETCH_OBJ);
+        $stmt->closeCursor();
         
         if ($row && !empty($row->reference)) {
             $lastRef = $row->reference;
@@ -132,7 +137,11 @@ class Database {
 
     public function single() {
         $this->execute();
-        return $this->stmt->fetch(PDO::FETCH_OBJ);
+        $row = $this->stmt->fetch(PDO::FETCH_OBJ);
+        if ($this->stmt) {
+            $this->stmt->closeCursor();
+        }
+        return $row;
     }
 
     public function rowCount() {
