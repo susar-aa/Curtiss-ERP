@@ -12,20 +12,10 @@ class DepositController extends Controller {
         $this->coaModel = $this->model('ChartOfAccount');
     }
 
-    private function checkPermission() {
-        if (isset($_SESSION['role']) && strtolower($_SESSION['role']) === 'admin') {
-            return true;
-        }
-        if (isset($_SESSION['permissions']['accounting']['can_view']) && $_SESSION['permissions']['accounting']['can_view']) {
-            return true;
-        }
-        
-        http_response_code(403);
-        die("Unauthorized access to Deposits module.");
-    }
+
 
     public function index() {
-        $this->checkPermission();
+        $this->checkPermission('accounting', 'view');
 
         $deposits = $this->depositModel->getAllDeposits();
 
@@ -41,7 +31,7 @@ class DepositController extends Controller {
     }
 
     public function create() {
-        $this->checkPermission();
+        $this->checkPermission('accounting', 'create_edit');
 
         $parentId = $this->coaModel->selfHealBankAccounts();
         $bankAccounts = $this->coaModel->getBankAccounts($parentId);
@@ -61,7 +51,7 @@ class DepositController extends Controller {
     }
 
     public function store() {
-        $this->checkPermission();
+        $this->checkPermission('accounting', 'create_edit');
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: ' . APP_URL . '/deposit');
@@ -96,7 +86,7 @@ class DepositController extends Controller {
     }
 
     public function edit($id) {
-        $this->checkPermission();
+        $this->checkPermission('accounting', 'create_edit');
 
         $deposit = $this->depositModel->getDepositById($id);
         if (!$deposit || $deposit->status !== 'Draft') {
@@ -134,7 +124,7 @@ class DepositController extends Controller {
     }
 
     public function update($id) {
-        $this->checkPermission();
+        $this->checkPermission('accounting', 'create_edit');
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('Location: ' . APP_URL . '/deposit');
@@ -169,7 +159,7 @@ class DepositController extends Controller {
     }
 
     public function delete($id) {
-        $this->checkPermission();
+        $this->checkPermission('accounting', 'delete');
 
         $success = $this->depositModel->deleteDeposit($id);
         if ($success) {
@@ -181,7 +171,7 @@ class DepositController extends Controller {
     }
 
     public function send($id) {
-        $this->checkPermission();
+        $this->checkPermission('accounting', 'create_edit');
 
         $result = $this->depositModel->sendToBank($id, $_SESSION['user_id']);
         if ($result === true) {
@@ -193,7 +183,7 @@ class DepositController extends Controller {
     }
 
     public function process($id) {
-        $this->checkPermission();
+        $this->checkPermission('accounting', 'create_edit');
 
         $deposit = $this->depositModel->getDepositById($id);
         if (!$deposit || $deposit->status !== 'Sent to Bank') {
