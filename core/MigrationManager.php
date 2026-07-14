@@ -98,7 +98,9 @@ class MigrationManager {
             'fy_start_date' => function(PDO $dbh) {
                 try {
                     $q = $dbh->query("SHOW COLUMNS FROM financial_years LIKE 'start_date'");
-                    if ($q->rowCount() == 0) {
+                    $rowCount = $q->rowCount();
+                    $q->closeCursor();
+                    if ($rowCount == 0) {
                         $dbh->exec("ALTER TABLE financial_years ADD COLUMN start_date DATE NULL AFTER year_name");
                         $dbh->exec("UPDATE financial_years SET start_date = DATE_SUB(end_date, INTERVAL 1 YEAR) WHERE start_date IS NULL");
                         $dbh->exec("ALTER TABLE financial_years MODIFY COLUMN start_date DATE NOT NULL");
@@ -111,12 +113,16 @@ class MigrationManager {
             'accounting_indexes' => function(PDO $dbh) {
                 try {
                     $q1 = $dbh->query("SHOW INDEX FROM transactions WHERE Key_name = 'idx_account_journal'");
-                    if ($q1->rowCount() == 0) {
+                    $rowCount1 = $q1->rowCount();
+                    $q1->closeCursor();
+                    if ($rowCount1 == 0) {
                         $dbh->exec("CREATE INDEX idx_account_journal ON transactions (account_id, journal_entry_id)");
                     }
 
                     $q2 = $dbh->query("SHOW INDEX FROM journal_entries WHERE Key_name = 'idx_date_closed'");
-                    if ($q2->rowCount() == 0) {
+                    $rowCount2 = $q2->rowCount();
+                    $q2->closeCursor();
+                    if ($rowCount2 == 0) {
                         $dbh->exec("CREATE INDEX idx_date_closed ON journal_entries (entry_date, is_closed)");
                     }
 
@@ -204,7 +210,9 @@ class MigrationManager {
                     try {
                         $stmt = $dbh->prepare("SHOW INDEX FROM `$table` WHERE Key_name = :idx");
                         $stmt->execute([':idx' => $idxName]);
-                        if (!$stmt->fetch()) {
+                        $hasIndex = (bool)$stmt->fetch();
+                        $stmt->closeCursor();
+                        if (!$hasIndex) {
                             $dbh->exec("CREATE INDEX `$idxName` ON `$table` (`$col`)");
                         }
                     } catch (PDOException $e) {
@@ -258,8 +266,11 @@ class MigrationManager {
 
                 // Get role IDs
                 $stmt = $dbh->query("SELECT id, name FROM roles");
-                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    $roleIds[strtolower($row['name'])] = $row['id'];
+                if ($stmt) {
+                    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        $roleIds[strtolower($row['name'])] = $row['id'];
+                    }
+                    $stmt->closeCursor();
                 }
 
                 // Seed Admin permissions: grant view, create_edit, delete to all modules
@@ -335,25 +346,28 @@ class MigrationManager {
 
                 // 3. Migrate existing users from `users.role` to `user_roles`
                 $userStmt = $dbh->query("SELECT id, role FROM users");
-                $userRolesStmt = $dbh->prepare("INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (:user_id, :role_id)");
-                while ($user = $userStmt->fetch(PDO::FETCH_ASSOC)) {
-                    $roleName = strtolower(trim($user['role']));
-                    $targetRoleId = null;
-                    if ($roleName === 'admin') {
-                        $targetRoleId = $roleIds['admin'] ?? null;
-                    } elseif ($roleName === 'accountant') {
-                        $targetRoleId = $roleIds['accountant'] ?? null;
-                    } elseif ($roleName === 'driver') {
-                        $targetRoleId = $roleIds['driver'] ?? null;
-                    } elseif ($roleName === 'rep') {
-                        $targetRoleId = $roleIds['rep (sales representative)'] ?? null;
-                    } else {
-                        $targetRoleId = $roleIds['office staff'] ?? null;
-                    }
+                if ($userStmt) {
+                    $userRolesStmt = $dbh->prepare("INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (:user_id, :role_id)");
+                    while ($user = $userStmt->fetch(PDO::FETCH_ASSOC)) {
+                        $roleName = strtolower(trim($user['role']));
+                        $targetRoleId = null;
+                        if ($roleName === 'admin') {
+                            $targetRoleId = $roleIds['admin'] ?? null;
+                        } elseif ($roleName === 'accountant') {
+                            $targetRoleId = $roleIds['accountant'] ?? null;
+                        } elseif ($roleName === 'driver') {
+                            $targetRoleId = $roleIds['driver'] ?? null;
+                        } elseif ($roleName === 'rep') {
+                            $targetRoleId = $roleIds['rep (sales representative)'] ?? null;
+                        } else {
+                            $targetRoleId = $roleIds['office staff'] ?? null;
+                        }
 
-                    if ($targetRoleId) {
-                        $userRolesStmt->execute([':user_id' => $user['id'], ':role_id' => $targetRoleId]);
+                        if ($targetRoleId) {
+                            $userRolesStmt->execute([':user_id' => $user['id'], ':role_id' => $targetRoleId]);
+                        }
                     }
+                    $userStmt->closeCursor();
                 }
                 return true;
             },
@@ -384,7 +398,9 @@ class MigrationManager {
             'drop_items_qty' => function(PDO $dbh) {
                 try {
                     $q = $dbh->query("SHOW COLUMNS FROM items LIKE 'qty'");
-                    if ($q->rowCount() > 0) {
+                    $rowCount = $q->rowCount();
+                    $q->closeCursor();
+                    if ($rowCount > 0) {
                         $dbh->exec("ALTER TABLE items DROP COLUMN qty");
                     }
                 } catch (PDOException $e) {
@@ -395,7 +411,9 @@ class MigrationManager {
             'drop_items_cost' => function(PDO $dbh) {
                 try {
                     $q = $dbh->query("SHOW COLUMNS FROM items LIKE 'cost'");
-                    if ($q->rowCount() > 0) {
+                    $rowCount = $q->rowCount();
+                    $q->closeCursor();
+                    if ($rowCount > 0) {
                         $dbh->exec("ALTER TABLE items DROP COLUMN cost");
                     }
                 } catch (PDOException $e) {
@@ -435,6 +453,7 @@ class MigrationManager {
             $stmt = $dbh->query("SELECT migration FROM migrations");
             if ($stmt) {
                 $executed = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+                $stmt->closeCursor();
             }
         } catch (PDOException $e) {
             return;
