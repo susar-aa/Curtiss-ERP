@@ -89,12 +89,12 @@ class FIFO {
         // (e.g. initial stock imported via CSV or migrated prior to FIFO)
         if ($remainingNeeded > 0) {
             // Fetch fallback cost from items table
-            $this->db->query("SELECT cost, cost_price FROM items WHERE id = :id");
+            $this->db->query("SELECT cost_price FROM items WHERE id = :id");
             $this->db->bind(':id', $itemId);
             $itemRow = $this->db->single();
             $fallbackCost = 0.00;
             if ($itemRow) {
-                $fallbackCost = floatval($itemRow->cost > 0 ? $itemRow->cost : ($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00));
+                $fallbackCost = floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00);
             }
             $totalCost += ($remainingNeeded * $fallbackCost);
         }
