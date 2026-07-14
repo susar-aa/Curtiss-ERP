@@ -175,10 +175,7 @@ class PurchaseOrder {
         try {
             $this->db->beginTransaction();
 
-            $this->db->query("SELECT COUNT(id) as total FROM goods_receipt_notes");
-            $countRow = $this->db->single();
-            $nextId = $countRow ? ($countRow->total + 1) : 1;
-            $grnNum = 'GRN-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+            $grnNum = 'GRN-' . time();
             $this->db->query("INSERT INTO goods_receipt_notes (grn_number, po_id, vendor_id, grn_date, created_by) VALUES (:num, :pid, :vid, :date, :uid)");
             $this->db->bind(':num', $grnNum);
             $this->db->bind(':pid', $poId);

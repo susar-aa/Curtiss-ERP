@@ -19,14 +19,7 @@ class Expense {
     public function createExpenseWithAccounting(array $data, int $expenseAccountId, int $paymentAccountId, int $userId): bool {
         try {
             $desc = "Expense recorded: " . $data['description'];
-            if (!empty($data['reference'])) {
-                $ref = $data['reference'];
-            } else {
-                $this->db->query("SELECT COUNT(id) as total FROM expenses");
-                $countRow = $this->db->single();
-                $nextId = $countRow ? ($countRow->total + 1) : 1;
-                $ref = 'EXP-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
-            }
+            $ref = !empty($data['reference']) ? $data['reference'] : 'EXP-' . time();
 
             $lines = [
                 ['account_id' => $expenseAccountId, 'debit' => $data['amount'], 'credit' => 0, 'description' => $data['description']],

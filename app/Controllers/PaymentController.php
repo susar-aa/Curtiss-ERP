@@ -148,7 +148,7 @@ class PaymentController extends Controller {
             $db->query("SELECT id FROM supplier_payments ORDER BY id DESC LIMIT 1");
             $lastRow = $db->single();
             $nextId = $lastRow ? ($lastRow->id + 1) : 1;
-            $reference = 'PV-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+            $reference = 'PV-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
         }
 
         $entityType = $_POST['entity_type'] ?? 'supplier';

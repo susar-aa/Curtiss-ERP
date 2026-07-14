@@ -19,10 +19,7 @@ class Payroll {
     public function processPayroll(string $periodStart, string $periodEnd, string $runDate, float $totalGross, int $wageExpenseAccId, int $bankAccId, int $userId): bool {
         try {
             $desc = "Payroll Run: " . date('M d', strtotime($periodStart)) . " to " . date('M d, Y', strtotime($periodEnd));
-            $this->db->query("SELECT COUNT(id) as total FROM payroll_runs");
-            $countRow = $this->db->single();
-            $nextId = $countRow ? ($countRow->total + 1) : 1;
-            $reference = "PR-" . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+            $reference = "PR-" . time();
             
             $lines = [
                 ['account_id' => $wageExpenseAccId, 'debit' => $totalGross, 'credit' => 0, 'description' => 'Wage Expense'],

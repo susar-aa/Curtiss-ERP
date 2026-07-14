@@ -59,10 +59,9 @@ class EstimateController extends Controller {
 
                     // Try to resolve item_id by searching by description (name)
                     $itemId = 0;
-                    $db = new Database();
-                    $db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
-                    $db->bind(':name', $i->description);
-                    $rowItem = $db->single();
+                    $this->db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
+                    $this->db->bind(':name', $i->description);
+                    $rowItem = $this->db->single();
                     if ($rowItem) {
                         $itemId = $rowItem->id;
                     }
@@ -79,11 +78,10 @@ class EstimateController extends Controller {
                 }
 
                 // Generate new invoice number
-                $dbQuery = new Database();
-                $dbQuery->query("SELECT id FROM invoices ORDER BY id DESC LIMIT 1");
-                $lastRow = $dbQuery->single();
+                $this->db->query("SELECT id FROM invoices ORDER BY id DESC LIMIT 1");
+                $lastRow = $this->db->single();
                 $nextId = $lastRow ? ($lastRow->id + 1) : 1;
-                $invoiceNumber = 'INV-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+                $invoiceNumber = 'INV-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
 
                 // Map estimate data to invoice data array
                 $invoiceData = [
@@ -116,18 +114,12 @@ class EstimateController extends Controller {
     }
 
     public function create() {
-        $db = new Database();
-        $db->query("SELECT COUNT(id) as total FROM estimates");
-        $countRow = $db->single();
-        $nextId = $countRow ? ($countRow->total + 1) : 1;
-        $estimateNumber = 'EST-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
-
         $data = [
             'title' => 'Create Estimate',
             'content_view' => 'estimates/create',
             'customers' => $this->customerModel->getAllCustomers(),
             'catalog_items' => $this->itemModel->getAllItems(), 
-            'estimate_number' => $estimateNumber,
+            'estimate_number' => 'EST-' . time(),
             'error' => ''
         ];
 

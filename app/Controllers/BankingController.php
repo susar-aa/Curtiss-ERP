@@ -82,11 +82,7 @@ class BankingController extends Controller {
                 } elseif ($amount <= 0) {
                     $data['error'] = 'Transfer amount must be greater than zero.';
                 } else {
-                    $db = new Database();
-                    $db->query("SELECT COUNT(id) as total FROM journal_entries");
-                    $countRow = $db->single();
-                    $nextId = $countRow ? ($countRow->total + 1) : 1;
-                    $reference = 'BK-XFER-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+                    $reference = 'BK-XFER-' . time();
                     $lines = [
                         ['account_id' => $toAccId, 'debit' => $amount, 'credit' => 0],
                         ['account_id' => $fromAccId, 'debit' => 0, 'credit' => $amount]
@@ -123,11 +119,7 @@ class BankingController extends Controller {
                         ];
                     }
 
-                    $db = new Database();
-                    $db->query("SELECT COUNT(id) as total FROM journal_entries");
-                    $countRow = $db->single();
-                    $nextId = $countRow ? ($countRow->total + 1) : 1;
-                    $reference = strtoupper($type) . '-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+                    $reference = strtoupper($type) . '-' . time();
 
                     if ($this->journalModel->postEntry($date, $reference, $description, $lines, $_SESSION['user_id'])) {
                         header('Location: ' . APP_URL . '/banking?success=quick_entry_completed');

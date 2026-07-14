@@ -37,17 +37,11 @@ class SupplierReturnController extends Controller {
     }
 
     public function create() {
-        $db = new Database();
-        $db->query("SELECT COUNT(id) as total FROM supplier_returns");
-        $countRow = $db->single();
-        $nextId = $countRow ? ($countRow->total + 1) : 1;
-        $returnNumber = 'RET-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
-
         $data = [
             'title' => 'Create Supplier Return',
             'content_view' => 'supplier_returns/create',
             'vendors' => $this->vendorModel->getAllVendors(),
-            'return_number' => $returnNumber,
+            'return_number' => 'RET-' . time(),
             'error' => ''
         ];
 

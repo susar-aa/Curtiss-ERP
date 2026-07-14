@@ -48,10 +48,7 @@ class Asset {
 
             // 1. Post Journal Entry Header
             $desc = "Depreciation Run for Asset: " . $asset->asset_name;
-            $this->db->query("SELECT COUNT(id) as total FROM depreciation_runs");
-            $countRow = $this->db->single();
-            $nextId = $countRow ? ($countRow->total + 1) : 1;
-            $ref = "DEP-" . $assetId . "-" . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+            $ref = "DEP-" . $assetId . "-" . time();
             $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
                               VALUES (:date, :ref, :desc, :user, 'Posted')");
             $this->db->bind(':date', $date);

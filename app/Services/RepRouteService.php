@@ -54,7 +54,7 @@ class RepRouteService {
                 $db->query("SELECT id FROM invoices ORDER BY id DESC LIMIT 1");
                 $lastRow = $db->single();
                 $nextId = $lastRow ? ($lastRow->id + 1) : 1;
-                $invoiceNumber = 'INV-' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
+                $invoiceNumber = 'INV-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
                 
                 $invoiceData = [
                     'customer_id' => $so->customer_id,
