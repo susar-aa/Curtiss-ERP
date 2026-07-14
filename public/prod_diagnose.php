@@ -41,6 +41,35 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
         PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true
     ]);
+    
+    echo "=== ACCOUNT 1020 (PETTY CASH) STATUS ===\n";
+    $stmt = $dbh->prepare("SELECT id, account_code, account_name, account_type, balance FROM chart_of_accounts WHERE account_code = '1020'");
+    $stmt->execute();
+    $coa = $stmt->fetch();
+    if ($coa) {
+        echo "ID: " . $coa->id . "\n";
+        echo "Code: " . $coa->account_code . "\n";
+        echo "Name: " . $coa->account_name . "\n";
+        echo "Type: " . $coa->account_type . "\n";
+        echo "Balance: " . $coa->balance . "\n";
+    } else {
+        echo "Account 1020 not found in chart_of_accounts!\n";
+    }
+    echo "\n";
+
+    echo "=== PETTY CASH CONFIGURATION ===\n";
+    $stmt = $dbh->prepare("SELECT * FROM petty_cash_config LIMIT 1");
+    $stmt->execute();
+    $config = $stmt->fetch();
+    if ($config) {
+        foreach ($config as $key => $val) {
+            echo "  $key: $val\n";
+        }
+    } else {
+        echo "No petty_cash_config row found!\n";
+    }
+    echo "\n";
+
     echo "Database Connection: SUCCESS\n\n";
 } catch (Exception $e) {
     echo "Database Connection: FAILED - " . $e->getMessage() . "\n\n";
