@@ -5,6 +5,7 @@ declare(strict_types=1);
 <script>
     // Tab switching logic
     window.switchTab = function(evt, tabId) {
+        console.log('switchTab called for ID:', tabId);
         // Hide all tab contents
         var tabcontents = document.getElementsByClassName("tab-content");
         for (var i = 0; i < tabcontents.length; i++) {
@@ -18,28 +19,44 @@ declare(strict_types=1);
         }
 
         // Show the current tab and activate the button
-        document.getElementById(tabId).classList.add("active");
-        evt.currentTarget.classList.add("active");
+        var tabElement = document.getElementById(tabId);
+        if (tabElement) {
+            tabElement.classList.add("active");
+            evt.currentTarget.classList.add("active");
+            console.log('Successfully activated tab:', tabId);
+        } else {
+            console.error('Tab element not found for ID:', tabId);
+        }
     };
 
     // Modal control logic
     window.openModal = function(modalId) {
+        console.log('openModal called for ID:', modalId);
         var modal = document.getElementById(modalId);
+        console.log('Found modal element:', modal);
         if (modal) {
             modal.style.display = 'flex';
+            console.log('Set style.display to flex');
             setTimeout(function() {
                 modal.classList.add('show');
+                console.log('Added show class. Current classList:', modal.classList.toString());
             }, 10);
+        } else {
+            console.error('Modal element not found for ID:', modalId);
         }
     };
 
     window.closeModal = function(modalId) {
+        console.log('closeModal called for ID:', modalId);
         var modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.remove('show');
             setTimeout(function() {
                 modal.style.display = 'none';
+                console.log('Hidden modal style.display');
             }, 250);
+        } else {
+            console.error('Modal element not found for ID:', modalId);
         }
     };
 
