@@ -126,12 +126,16 @@ class Customer {
             UNION ALL
             SELECT 'Credit Note' as type, id, credit_note_number as ref, note_date as date, 0 as debit, total_amount as credit, created_at 
             FROM credit_notes WHERE customer_id = :c3
+            UNION ALL
+            SELECT 'Cheque Returned' as type, id, CONCAT('Cheque #', cheque_number, ' (', bank_name, ') - ', status) as ref, banking_date as date, amount as debit, 0 as credit, created_at 
+            FROM cheques WHERE customer_id = :c4 AND status IN ('Returned', 'Rejected', 'Bounced')
             ORDER BY date ASC, created_at ASC
         ";
         $this->db->query($sql);
         $this->db->bind(':c1', $id);
         $this->db->bind(':c2', $id);
         $this->db->bind(':c3', $id);
+        $this->db->bind(':c4', $id);
         $ledger = $this->db->resultSet();
 
         $balance = 0;

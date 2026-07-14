@@ -172,15 +172,44 @@ class ChartOfAccount {
 
     public function clearTransactions($transactionIds) {
         if (empty($transactionIds)) return true;
+        
+        // Fetch the journal entry IDs associated with these transactions before clearing
         $placeholders = [];
         foreach($transactionIds as $key => $val) { $placeholders[] = ":id" . $key; }
         $placeholderString = implode(',', $placeholders);
-        
-        $this->db->query("UPDATE transactions SET is_cleared = 1 WHERE id IN ($placeholderString)");
-        foreach($transactionIds as $key => $val) { $this->db->bind(":id" . $key, $val); }
-        
-        try { return $this->db->execute(); } catch (PDOException $e) { return false; }
+
+        try {
+            $this->db->query("SELECT DISTINCT journal_entry_id FROM transactions WHERE id IN ($placeholderString)");
+            foreach($transactionIds as $key => $val) { $this->db->bind(":id" . $key, $val); }
+            $jeRows = $this->db->resultSet();
+            
+            $this->db->query("UPDATE transactions SET is_cleared = 1 WHERE id IN ($placeholderString)");
+            foreach($transactionIds as $key => $val) { $this->db->bind(":id" . $key, $val); }
+            $this->db->execute();
+
+            if (!empty($jeRows)) {
+                $jeIds = [];
+                foreach ($jeRows as $row) {
+                    if ($row->journal_entry_id) {
+                        $jeIds[] = intval($row->journal_entry_id);
+                    }
+                }
+                if (!empty($jeIds)) {
+                    $jePlaceholders = [];
+                    foreach ($jeIds as $k => $vid) { $jePlaceholders[] = ":jeid" . $k; }
+                    $jePlaceholderStr = implode(',', $jePlaceholders);
+                    
+                    $this->db->query("UPDATE deposits SET reconciliation_status = 'Reconciled' WHERE realization_journal_entry_id IN ($jePlaceholderStr)");
+                    foreach ($jeIds as $k => $vid) { $this->db->bind(":jeid" . $k, $vid); }
+                    $this->db->execute();
+                }
+            }
+            return true;
+        } catch (PDOException $e) { 
+            return false; 
+        }
     }
+
 
     public function selfHealBankAccounts() {
         $this->db->query("SELECT * FROM chart_of_accounts WHERE account_code = :parent_code");
