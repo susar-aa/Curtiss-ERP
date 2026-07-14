@@ -260,7 +260,7 @@ class PettyCashTransaction {
             // Fetch settings to check if approval is required
             $this->db->query("SELECT require_approval FROM petty_cash_config WHERE id = 1");
             $config = $this->db->single();
-            $requireApproval = $config ? (bool)$config->require_approval : true;
+            $requireApproval = $config ? (bool)$config->require_approval : false;
 
             if ($requireApproval) {
                 // Save as Pending transaction, no journal entry yet

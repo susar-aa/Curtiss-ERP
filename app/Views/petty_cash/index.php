@@ -950,10 +950,6 @@ declare(strict_types=1);
                     <label for="reimbursement_threshold">Reimbursement Alert Threshold (Spent Amount) *</label>
                     <input type="number" step="0.01" name="reimbursement_threshold" id="reimbursement_threshold" value="<?= ($data['config'] && isset($data['config']->reimbursement_threshold)) ? $data['config']->reimbursement_threshold : '10000.00' ?>" required>
                 </div>
-                <div class="form-group form-checkbox">
-                    <input type="checkbox" name="require_approval" id="require_approval" value="1" <?= (!$data['config'] || !isset($data['config']->require_approval) || $data['config']->require_approval) ? 'checked' : '' ?>>
-                    <label for="require_approval">Require Manager Approval for all Petty Cash Expenses</label>
-                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="window.closeModal('settingsModal')">Cancel</button>
@@ -1047,10 +1043,6 @@ declare(strict_types=1);
                 <div class="form-group">
                     <label for="exp_desc">Description *</label>
                     <textarea name="description" id="exp_desc" rows="2" placeholder="Describe the item or service purchased" required></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="attachment">Attach Receipt (PDF/Image)</label>
-                    <input type="file" name="attachment" id="attachment" accept="image/*,application/pdf">
                 </div>
             </div>
             <div class="modal-footer">

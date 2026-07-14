@@ -104,7 +104,7 @@ class PettyCashController extends Controller {
             $settingsData = [
                 'limit_amount' => floatval($_POST['limit_amount'] ?? 0),
                 'custodian_id' => intval($_POST['custodian_id'] ?? 0),
-                'require_approval' => isset($_POST['require_approval']) ? 1 : 0,
+                'require_approval' => 0,
                 'default_funding_account_id' => intval($_POST['default_funding_account_id'] ?? 0),
                 'reimbursement_threshold' => floatval($_POST['reimbursement_threshold'] ?? 0)
             ];
