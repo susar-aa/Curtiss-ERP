@@ -587,6 +587,13 @@ class RepDashboardController extends Controller {
             exit;
         }
 
+        // Log incoming payload details for tracing
+        $routesCount = isset($payload['routes']) ? count($payload['routes']) : 0;
+        $invoicesCount = isset($payload['invoices']) ? count($payload['invoices']) : 0;
+        $paymentsCount = isset($payload['payments']) ? count($payload['payments']) : 0;
+        $customersCount = isset($payload['customers']) ? count($payload['customers']) : 0;
+        error_log("SyncPush Received Payload: User ID = {$userId}, Raw Length = " . strlen($json) . " bytes. customers={$customersCount}, routes={$routesCount}, invoices={$invoicesCount}, payments={$paymentsCount}");
+
         if ($userId <= 0) {
             echo json_encode(['success' => false, 'message' => 'Missing or invalid user ID.']);
             exit;
@@ -891,7 +898,74 @@ class RepDashboardController extends Controller {
                 foreach ($mappings['routes'] as $map) {
                     if ($map['local_id'] == $localRouteId) return $map['server_id'];
                 }
-                return $localRouteId;
+                return 0; // Return 0 instead of falling back to $localRouteId directly
+            };
+
+            // Enforce strict route resolution and audit logging
+            $resolveRouteId = function($serverRouteIdFromApp, $routeUuid, $localRouteId, $userId, $itemDate = null) use (&$mappings, $getRouteServerId) {
+                $resolvedId = null;
+                $method = 'none';
+
+                // 1. Try server route ID from app if it actually exists on the server
+                if ($serverRouteIdFromApp > 0) {
+                    $this->db->query("SELECT id FROM rep_daily_routes WHERE id = :id LIMIT 1");
+                    $this->db->bind(':id', $serverRouteIdFromApp);
+                    $checkRow = $this->db->single();
+                    if ($checkRow) {
+                        $resolvedId = intval($checkRow->id);
+                        $method = 'server_route_id';
+                    }
+                }
+
+                // 2. Try route UUID if not empty
+                if (!$resolvedId && !empty($routeUuid)) {
+                    $this->db->query("SELECT id FROM rep_daily_routes WHERE uuid = :uuid LIMIT 1");
+                    $this->db->bind(':uuid', $routeUuid);
+                    $rRow = $this->db->single();
+                    if ($rRow) {
+                        $resolvedId = intval($rRow->id);
+                        $method = 'route_uuid';
+                    }
+                }
+
+                // 3. Try mappings from this sync payload
+                if (!$resolvedId && $localRouteId > 0) {
+                    $mappedId = $getRouteServerId($localRouteId);
+                    if ($mappedId > 0) {
+                        $resolvedId = $mappedId;
+                        $method = 'payload_mapping';
+                    }
+                }
+
+                // 4. Smart fallback: Look for a route covering the item's date/time for this rep
+                if (!$resolvedId && !empty($itemDate)) {
+                    $this->db->query("SELECT id FROM rep_daily_routes 
+                                      WHERE user_id = :user_id 
+                                        AND :item_date >= start_time 
+                                        AND (:item_date <= end_time OR end_time IS NULL OR end_time = '' OR status = 'Active') 
+                                      ORDER BY start_time DESC LIMIT 1");
+                    $this->db->bind(':user_id', $userId);
+                    $this->db->bind(':item_date', $itemDate);
+                    $rRow = $this->db->single();
+                    if ($rRow) {
+                        $resolvedId = intval($rRow->id);
+                        $method = 'date_range_fallback';
+                    }
+                }
+
+                // 5. Hard fallback: Look for any active route for this rep
+                if (!$resolvedId) {
+                    $this->db->query("SELECT id FROM rep_daily_routes WHERE user_id = :user_id AND status = 'Active' ORDER BY id DESC LIMIT 1");
+                    $this->db->bind(':user_id', $userId);
+                    $rRow = $this->db->single();
+                    if ($rRow) {
+                        $resolvedId = intval($rRow->id);
+                        $method = 'active_route_fallback';
+                    }
+                }
+
+                error_log("SyncPush Route Resolution: user_id={$userId}, local_route_id={$localRouteId}, server_route_id_from_app={$serverRouteIdFromApp}, route_uuid={$routeUuid}, item_date={$itemDate}, resolved_id=" . ($resolvedId ?: 'NULL') . " via method={$method}");
+                return $resolvedId;
             };
 
             // Resolve AR and Revenue accounting accounts
@@ -931,22 +1005,9 @@ class RepDashboardController extends Controller {
                     $localRouteId = intval($inv['local_route_id'] ?? 0);
                     $serverRouteIdFromApp = intval($inv['server_route_id'] ?? 0);
                     $routeUuid = $inv['route_uuid'] ?? '';
-                    $routeServerId = 0;
-
-                    if ($serverRouteIdFromApp > 0) {
-                        $routeServerId = $serverRouteIdFromApp;
-                    }
-                    if ($routeServerId <= 0 && !empty($routeUuid)) {
-                        $this->db->query("SELECT id FROM rep_daily_routes WHERE uuid = :uuid LIMIT 1");
-                        $this->db->bind(':uuid', $routeUuid);
-                        $rRow = $this->db->single();
-                        if ($rRow) {
-                            $routeServerId = intval($rRow->id);
-                        }
-                    }
-                    if ($routeServerId <= 0) {
-                        $routeServerId = $getRouteServerId($localRouteId);
-                    }
+                    $invoiceDate = $inv['invoice_date'] ?? null;
+                    
+                    $routeServerId = $resolveRouteId($serverRouteIdFromApp, $routeUuid, $localRouteId, $userId, $invoiceDate);
                     
                     // Generate new invoice number if sequence is used or keep what mobile generated
                     $invNo = $inv['invoice_number'];
@@ -1193,22 +1254,9 @@ class RepDashboardController extends Controller {
                     $localRouteId = intval($p['local_route_id'] ?? 0);
                     $serverRouteIdFromApp = intval($p['server_route_id'] ?? 0);
                     $routeUuid = $p['route_uuid'] ?? '';
-                    $routeServerId = 0;
-
-                    if ($serverRouteIdFromApp > 0) {
-                        $routeServerId = $serverRouteIdFromApp;
-                    }
-                    if ($routeServerId <= 0 && !empty($routeUuid)) {
-                        $this->db->query("SELECT id FROM rep_daily_routes WHERE uuid = :uuid LIMIT 1");
-                        $this->db->bind(':uuid', $routeUuid);
-                        $rRow = $this->db->single();
-                        if ($rRow) {
-                            $routeServerId = intval($rRow->id);
-                        }
-                    }
-                    if ($routeServerId <= 0) {
-                        $routeServerId = $getRouteServerId($localRouteId);
-                    }
+                    $paymentDate = $p['created_at'] ?? null;
+                    
+                    $routeServerId = $resolveRouteId($serverRouteIdFromApp, $routeUuid, $localRouteId, $userId, $paymentDate);
                     
                     // Idempotency: Check if this payment was already synced via UUID or mobile_local_id and mobile_rep_id
                     $existingPmt = null;
