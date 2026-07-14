@@ -1455,4 +1455,426 @@ class RepDashboardController extends Controller {
         echo json_encode(['success' => true, 'message' => 'Logged out successfully on server.']);
         exit;
     }
+
+    public function api_get_route_history() {
+        header('Content-Type: application/json');
+        
+        $userId = 0;
+        if (isset($_SERVER['HTTP_X_USER_ID'])) {
+            $userId = intval($_SERVER['HTTP_X_USER_ID']);
+        } elseif (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            if (isset($headers['X-User-ID'])) {
+                $userId = intval($headers['X-User-ID']);
+            } elseif (isset($headers['x-user-id'])) {
+                $userId = intval($headers['x-user-id']);
+            }
+        }
+        if ($userId <= 0 && isset($_GET['user_id'])) {
+            $userId = intval($_GET['user_id']);
+        }
+
+        if ($userId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Missing or invalid user ID.']);
+            exit;
+        }
+
+        // Validate user is active
+        $this->db->query("SELECT id FROM users WHERE id = :id AND (status = 'active' OR status = 'Active' OR status IS NULL)");
+        $this->db->bind(':id', $userId);
+        if (!$this->db->single()) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized or inactive user.']);
+            exit;
+        }
+
+        // Parameters
+        $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+        $limit = isset($_GET['limit']) ? max(1, intval($_GET['limit'])) : 10;
+        $offset = ($page - 1) * $limit;
+        
+        $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+        $startDate = isset($_GET['start_date']) ? trim($_GET['start_date']) : '';
+        $endDate = isset($_GET['end_date']) ? trim($_GET['end_date']) : '';
+
+        // Build WHERE clause
+        $where = "WHERE r.user_id = :user_id AND r.status != 'Bound' AND r.status != 'Bound Into Route'";
+        $binds = [':user_id' => $userId];
+
+        if ($search !== '') {
+            $where .= " AND (r.route_name LIKE :search 
+                        OR r.id IN (SELECT DISTINCT rep_route_id FROM invoices inv JOIN customers cust ON inv.customer_id = cust.id WHERE cust.name LIKE :search_cust AND inv.status != 'Voided'))";
+            $binds[':search'] = '%' . $search . '%';
+            $binds[':search_cust'] = '%' . $search . '%';
+        }
+
+        if ($startDate !== '') {
+            $where .= " AND DATE(r.start_time) >= :start_date";
+            $binds[':start_date'] = $startDate;
+        }
+
+        if ($endDate !== '') {
+            $where .= " AND DATE(r.start_time) <= :end_date";
+            $binds[':end_date'] = $endDate;
+        }
+
+        // Count total
+        $this->db->query("SELECT COUNT(DISTINCT r.id) as total FROM rep_daily_routes r $where");
+        foreach ($binds as $key => $val) {
+            $this->db->bind($key, $val);
+        }
+        $totalRow = $this->db->single();
+        $totalRecords = $totalRow ? intval($totalRow->total) : 0;
+        $totalPages = ceil($totalRecords / $limit);
+
+        // Fetch paginated
+        $sql = "SELECT r.id, r.route_name, r.start_time, r.end_time, r.start_meter, r.end_meter, r.status,
+                       (SELECT COUNT(*) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_bills,
+                       (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales
+                FROM rep_daily_routes r
+                $where
+                ORDER BY r.start_time DESC, r.id DESC
+                LIMIT :limit OFFSET :offset";
+        
+        $this->db->query($sql);
+        foreach ($binds as $key => $val) {
+            $this->db->bind($key, $val);
+        }
+        $this->db->bind(':limit', $limit);
+        $this->db->bind(':offset', $offset);
+        
+        $routes = $this->db->resultSet();
+
+        echo json_encode([
+            'success' => true,
+            'data' => $routes ?: [],
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total_records' => $totalRecords,
+                'total_pages' => $totalPages
+            ]
+        ]);
+        exit;
+    }
+
+    public function api_route_details() {
+        header('Content-Type: application/json');
+        
+        $userId = 0;
+        if (isset($_SERVER['HTTP_X_USER_ID'])) {
+            $userId = intval($_SERVER['HTTP_X_USER_ID']);
+        } elseif (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            if (isset($headers['X-User-ID'])) {
+                $userId = intval($headers['X-User-ID']);
+            } elseif (isset($headers['x-user-id'])) {
+                $userId = intval($headers['x-user-id']);
+            }
+        }
+        if ($userId <= 0 && isset($_GET['user_id'])) {
+            $userId = intval($_GET['user_id']);
+        }
+
+        $routeId = isset($_GET['route_id']) ? intval($_GET['route_id']) : 0;
+
+        if ($userId <= 0 || $routeId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Missing user ID or route ID.']);
+            exit;
+        }
+
+        // Fetch route details and verify owner
+        $this->db->query("SELECT id, route_name, start_time, end_time, start_meter, end_meter, status 
+                          FROM rep_daily_routes 
+                          WHERE id = :id AND user_id = :uid");
+        $this->db->bind(':id', $routeId);
+        $this->db->bind(':uid', $userId);
+        $route = $this->db->single();
+
+        if (!$route) {
+            echo json_encode(['success' => false, 'message' => 'Route not found or access denied.']);
+            exit;
+        }
+
+        // Calculate statistics
+        // Cash collections
+        $this->db->query("SELECT 
+            (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE rep_route_id = :rid1 AND status = 'Active' AND payment_method = 'Cash') +
+            (SELECT COALESCE(SUM(amount), 0) FROM pending_collections WHERE route_id = :rid2 AND status = 'Pending' AND payment_method = 'Cash') as cash_collections");
+        $this->db->bind(':rid1', $routeId);
+        $this->db->bind(':rid2', $routeId);
+        $cashRow = $this->db->single();
+        $cashCollections = $cashRow ? floatval($cashRow->cash_collections) : 0.0;
+
+        // Cheque collections
+        $this->db->query("SELECT 
+            (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE rep_route_id = :rid1 AND status = 'Active' AND payment_method = 'Cheque') +
+            (SELECT COALESCE(SUM(amount), 0) FROM pending_collections WHERE route_id = :rid2 AND status = 'Pending' AND payment_method = 'Cheque') as cheque_collections");
+        $this->db->bind(':rid1', $routeId);
+        $this->db->bind(':rid2', $routeId);
+        $chequeRow = $this->db->single();
+        $chequeCollections = $chequeRow ? floatval($chequeRow->cheque_collections) : 0.0;
+
+        // Bank collections
+        $this->db->query("SELECT 
+            (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE rep_route_id = :rid1 AND status = 'Active' AND payment_method = 'Bank Transfer') +
+            (SELECT COALESCE(SUM(amount), 0) FROM pending_collections WHERE route_id = :rid2 AND status = 'Pending' AND payment_method = 'Bank Transfer') as bank_collections");
+        $this->db->bind(':rid1', $routeId);
+        $this->db->bind(':rid2', $routeId);
+        $bankRow = $this->db->single();
+        $bankCollections = $bankRow ? floatval($bankRow->bank_collections) : 0.0;
+
+        $totalCollections = $cashCollections + $chequeCollections + $bankCollections;
+
+        // Fetch bills
+        $this->db->query("SELECT i.id, i.invoice_number, i.invoice_date, i.total_amount, i.global_discount_val, i.global_discount_type, i.tax_amount, i.status, i.customer_id,
+                                 c.name as customer_name, c.customer_code,
+                                 pt.name as payment_term_name,
+                                 COALESCE((SELECT SUM(amount) FROM customer_payment_allocations WHERE invoice_id = i.id AND is_reversed = 0), 0) as paid_amount,
+                                 COALESCE((SELECT GROUP_CONCAT(DISTINCT cp.payment_method SEPARATOR ', ') FROM customer_payment_allocations cpa JOIN customer_payments cp ON cpa.customer_payment_id = cp.id WHERE cpa.invoice_id = i.id AND cpa.is_reversed = 0), pt.name) as payment_method
+                          FROM invoices i
+                          JOIN customers c ON i.customer_id = c.id
+                          LEFT JOIN payment_terms pt ON i.payment_term_id = pt.id
+                          WHERE i.rep_route_id = :rid AND i.status != 'Voided'
+                          ORDER BY i.created_at ASC, i.id ASC");
+        $this->db->bind(':rid', $routeId);
+        $rawBills = $this->db->resultSet() ?: [];
+
+        $bills = [];
+        foreach ($rawBills as $bill) {
+            $discountVal = floatval($bill->global_discount_val);
+            if ($bill->global_discount_type === '%') {
+                $discountVal = floatval($bill->total_amount) * $discountVal / 100;
+            }
+            $grandTotal = floatval($bill->total_amount) - $discountVal + floatval($bill->tax_amount);
+
+            // Fetch pending collections for this customer on this route
+            $this->db->query("SELECT COALESCE(SUM(amount), 0) as pending_amt, payment_method 
+                              FROM pending_collections 
+                              WHERE route_id = :rid AND customer_id = :cid AND status = 'Pending' 
+                              GROUP BY payment_method");
+            $this->db->bind(':rid', $routeId);
+            $this->db->bind(':cid', $bill->customer_id);
+            $pendingRows = $this->db->resultSet() ?: [];
+
+            $pendingAmt = 0;
+            $pendingMethods = [];
+            foreach ($pendingRows as $pr) {
+                $pendingAmt += floatval($pr->pending_amt);
+                $pendingMethods[] = $pr->payment_method;
+            }
+
+            $totalPaid = floatval($bill->paid_amount) + $pendingAmt;
+            if ($totalPaid > $grandTotal) {
+                $totalPaid = $grandTotal;
+            }
+
+            $method = $bill->payment_method;
+            if (!empty($pendingMethods)) {
+                if ($method === $bill->payment_term_name || empty($method)) {
+                    $method = implode(', ', array_unique($pendingMethods));
+                }
+            }
+
+            $bills[] = [
+                'id' => intval($bill->id),
+                'invoice_number' => $bill->invoice_number,
+                'invoice_date' => $bill->invoice_date,
+                'customer_name' => $bill->customer_name,
+                'customer_code' => $bill->customer_code,
+                'total_amount' => $grandTotal,
+                'paid_amount' => $totalPaid,
+                'balance' => max(0.0, $grandTotal - $totalPaid),
+                'payment_method' => $method ?: 'Credit',
+                'status' => $bill->status
+            ];
+        }
+
+        // Calculate route sales total
+        $totalSales = 0.0;
+        foreach ($bills as $b) {
+            $totalSales += $b['total_amount'];
+        }
+
+        echo json_encode([
+            'success' => true,
+            'route' => [
+                'id' => intval($route->id),
+                'route_name' => $route->route_name,
+                'start_time' => $route->start_time,
+                'end_time' => $route->end_time,
+                'start_meter' => floatval($route->start_meter),
+                'end_meter' => $route->end_meter !== null ? floatval($route->end_meter) : null,
+                'status' => $route->status,
+                'total_bills' => count($bills),
+                'total_sales' => $totalSales,
+                'cash_collections' => $cashCollections,
+                'cheque_collections' => $chequeCollections,
+                'bank_collections' => $bankCollections,
+                'total_collections' => $totalCollections
+            ],
+            'bills' => $bills
+        ]);
+        exit;
+    }
+
+    public function api_invoice_details() {
+        header('Content-Type: application/json');
+        
+        $userId = 0;
+        if (isset($_SERVER['HTTP_X_USER_ID'])) {
+            $userId = intval($_SERVER['HTTP_X_USER_ID']);
+        } elseif (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            if (isset($headers['X-User-ID'])) {
+                $userId = intval($headers['X-User-ID']);
+            } elseif (isset($headers['x-user-id'])) {
+                $userId = intval($headers['x-user-id']);
+            }
+        }
+        if ($userId <= 0 && isset($_GET['user_id'])) {
+            $userId = intval($_GET['user_id']);
+        }
+
+        $invoiceId = isset($_GET['invoice_id']) ? intval($_GET['invoice_id']) : 0;
+
+        if ($userId <= 0 || $invoiceId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Missing user ID or invoice ID.']);
+            exit;
+        }
+
+        // Fetch invoice with security check: must belong to user or route owned by user
+        $sql = "SELECT i.*, 
+                       c.name as customer_name, c.customer_code, c.address as customer_address, c.phone as customer_phone,
+                       r.route_name,
+                       COALESCE(e.first_name, u.username) as rep_first_name, COALESCE(e.last_name, '') as rep_last_name,
+                       pt.name as payment_term_name
+                FROM invoices i
+                JOIN customers c ON i.customer_id = c.id
+                LEFT JOIN rep_daily_routes r ON i.rep_route_id = r.id
+                LEFT JOIN users u ON i.created_by = u.id
+                LEFT JOIN employees e ON u.email = e.email
+                LEFT JOIN payment_terms pt ON i.payment_term_id = pt.id
+                WHERE i.id = :invoice_id
+                  AND (i.created_by = :uid1 OR i.rep_route_id IN (SELECT id FROM rep_daily_routes WHERE user_id = :uid2))";
+        
+        $this->db->query($sql);
+        $this->db->bind(':invoice_id', $invoiceId);
+        $this->db->bind(':uid1', $userId);
+        $this->db->bind(':uid2', $userId);
+        $invoice = $this->db->single();
+
+        if (!$invoice) {
+            echo json_encode(['success' => false, 'message' => 'Invoice not found or access denied.']);
+            exit;
+        }
+
+        // Fetch invoice items
+        $this->db->query("SELECT ii.description as item_name, ii.quantity, ii.unit_price, ii.discount_value, ii.discount_type, ii.total,
+                                 it.item_code
+                          FROM invoice_items ii
+                          LEFT JOIN items it ON ii.item_id = it.id
+                          WHERE ii.invoice_id = :invoice_id");
+        $this->db->bind(':invoice_id', $invoiceId);
+        $items = $this->db->resultSet() ?: [];
+
+        // Fetch payments made (both finalized allocations AND pending collections on this route for this customer)
+        $this->db->query("SELECT cp.payment_date as date, cp.payment_method, cp.reference, cp.notes, cpa.amount
+                          FROM customer_payment_allocations cpa
+                          JOIN customer_payments cp ON cpa.customer_payment_id = cp.id
+                          WHERE cpa.invoice_id = :invoice_id AND cpa.is_reversed = 0");
+        $this->db->bind(':invoice_id', $invoiceId);
+        $finalizedPayments = $this->db->resultSet() ?: [];
+
+        $payments = [];
+        $allocatedSum = 0.0;
+        foreach ($finalizedPayments as $p) {
+            $allocatedSum += floatval($p->amount);
+            $payments[] = [
+                'date' => $p->date,
+                'method' => $p->payment_method,
+                'reference' => $p->reference ?: '-',
+                'notes' => $p->notes ?: '',
+                'amount' => floatval($p->amount),
+                'status' => 'Finalized'
+            ];
+        }
+
+        // Fetch pending collections for the route and customer if route is set
+        if ($invoice->rep_route_id) {
+            $this->db->query("SELECT created_at as date, payment_method, cheque_number as reference, notes, amount
+                              FROM pending_collections
+                              WHERE route_id = :rid AND customer_id = :cid AND status = 'Pending'");
+            $this->db->bind(':rid', $invoice->rep_route_id);
+            $this->db->bind(':cid', $invoice->customer_id);
+            $pendingCollections = $this->db->resultSet() ?: [];
+
+            foreach ($pendingCollections as $pc) {
+                $allocatedSum += floatval($pc->amount);
+                $payments[] = [
+                    'date' => $pc->date,
+                    'method' => $pc->payment_method,
+                    'reference' => $pc->reference ?: '-',
+                    'notes' => $pc->notes ?: '',
+                    'amount' => floatval($pc->amount),
+                    'status' => 'Pending Verification'
+                ];
+            }
+        }
+
+        // Calculate Totals
+        $subtotal = floatval($invoice->total_amount);
+        $discountVal = floatval($invoice->global_discount_val);
+        if ($invoice->global_discount_type === '%') {
+            $discountVal = $subtotal * $discountVal / 100;
+        }
+        $tax = floatval($invoice->tax_amount);
+        $grandTotal = $subtotal - $discountVal + $tax;
+
+        // Cap allocated sum at grand total
+        if ($allocatedSum > $grandTotal) {
+            $allocatedSum = $grandTotal;
+        }
+
+        $balance = max(0.0, $grandTotal - $allocatedSum);
+
+        // Determine main payment method string for display
+        $methodsList = [];
+        foreach ($payments as $p) {
+            $methodsList[] = $p['method'];
+        }
+        $paymentMethodStr = !empty($methodsList) ? implode(', ', array_unique($methodsList)) : ($invoice->payment_term_name ?: 'Credit');
+
+        echo json_encode([
+            'success' => true,
+            'invoice' => [
+                'id' => intval($invoice->id),
+                'invoice_number' => $invoice->invoice_number,
+                'invoice_date' => $invoice->invoice_date,
+                'customer_name' => $invoice->customer_name,
+                'customer_code' => $invoice->customer_code,
+                'customer_address' => $invoice->customer_address,
+                'customer_phone' => $invoice->customer_phone,
+                'route_name' => $invoice->route_name ?: 'Direct Sale',
+                'rep_name' => trim($invoice->rep_first_name . ' ' . $invoice->rep_last_name),
+                'payment_method' => $paymentMethodStr,
+                'status' => $invoice->status,
+                'subtotal' => $subtotal,
+                'discount' => $discountVal,
+                'discount_val' => floatval($invoice->global_discount_val),
+                'discount_type' => $invoice->global_discount_type,
+                'tax' => $tax,
+                'grand_total' => $grandTotal,
+                'paid_amount' => $allocatedSum,
+                'balance' => $balance,
+                'notes' => $invoice->notes ?: '',
+                'latitude' => $invoice->latitude !== null ? floatval($invoice->latitude) : null,
+                'longitude' => $invoice->longitude !== null ? floatval($invoice->longitude) : null,
+                'created_at' => $invoice->created_at
+            ],
+            'items' => $items,
+            'payments' => $payments
+        ]);
+        exit;
+    }
 }
+
