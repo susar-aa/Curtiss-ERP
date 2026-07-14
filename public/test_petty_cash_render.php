@@ -28,6 +28,12 @@ try {
     $controller->index();
     $html = ob_get_clean();
     echo "RENDER_SUCCESS: Size " . strlen($html) . " bytes\n";
+    
+    $ids = ['settingsModal', 'allocateModal', 'expenseModal', 'reimburseModal'];
+    foreach ($ids as $id) {
+        echo "ID '$id': " . (strpos($html, 'id="' . $id . '"') !== false ? 'YES' : 'NO') . "\n";
+    }
+    
     file_put_contents('rendered_petty_cash.html', $html);
     echo "Saved output to rendered_petty_cash.html\n";
 } catch (Throwable $e) {
