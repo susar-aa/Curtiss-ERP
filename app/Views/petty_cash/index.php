@@ -2,6 +2,55 @@
 declare(strict_types=1);
 ?>
 
+<script>
+    // Tab switching logic
+    window.switchTab = function(evt, tabId) {
+        // Hide all tab contents
+        var tabcontents = document.getElementsByClassName("tab-content");
+        for (var i = 0; i < tabcontents.length; i++) {
+            tabcontents[i].classList.remove("active");
+        }
+
+        // Deactivate all tab buttons
+        var tablinks = document.getElementsByClassName("tab-btn");
+        for (var i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove("active");
+        }
+
+        // Show the current tab and activate the button
+        document.getElementById(tabId).classList.add("active");
+        evt.currentTarget.classList.add("active");
+    };
+
+    // Modal control logic
+    window.openModal = function(modalId) {
+        var modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(function() {
+                modal.classList.add('show');
+            }, 10);
+        }
+    };
+
+    window.closeModal = function(modalId) {
+        var modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('show');
+            setTimeout(function() {
+                modal.style.display = 'none';
+            }, 250);
+        }
+    };
+
+    // Close modal when clicking outside the dialog content
+    window.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            window.closeModal(event.target.id);
+        }
+    });
+</script>
+
 <style>
     /* Styling for Petty Cash Module */
     .pc-container {
@@ -1055,51 +1104,4 @@ declare(strict_types=1);
     </div>
 </div>
 
-<script>
-    // Tab switching logic
-    window.switchTab = function(evt, tabId) {
-        // Hide all tab contents
-        const tabcontents = document.getElementsByClassName("tab-content");
-        for (let i = 0; i < tabcontents.length; i++) {
-            tabcontents[i].classList.remove("active");
-        }
 
-        // Deactivate all tab buttons
-        const tablinks = document.getElementsByClassName("tab-btn");
-        for (let i = 0; i < tablinks.length; i++) {
-            tablinks[i].classList.remove("active");
-        }
-
-        // Show the current tab and activate the button
-        document.getElementById(tabId).classList.add("active");
-        evt.currentTarget.classList.add("active");
-    };
-
-    // Modal control logic
-    window.openModal = function(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.style.display = 'flex';
-            setTimeout(() => {
-                modal.classList.add('show');
-            }, 10);
-        }
-    };
-
-    window.closeModal = function(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.remove('show');
-            setTimeout(() => {
-                modal.style.display = 'none';
-            }, 250);
-        }
-    };
-
-    // Close modal when clicking outside the dialog content
-    window.addEventListener('click', function(event) {
-        if (event.target.classList.contains('modal')) {
-            window.closeModal(event.target.id);
-        }
-    });
-</script>
