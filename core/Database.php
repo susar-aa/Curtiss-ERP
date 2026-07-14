@@ -22,11 +22,18 @@ class Database {
 
         try {
             if (self::$sharedDbh === null) {
-                self::$sharedDbh = new PDO($dsn, $this->user, $this->pass, $options);
+                // 1. Create a separate, temporary connection to run migrations
+                $migrationDbh = new PDO($dsn, $this->user, $this->pass, $options);
                 
                 // Centralized, cached migration management system
                 require_once __DIR__ . '/MigrationManager.php';
-                MigrationManager::run(self::$sharedDbh);
+                MigrationManager::run($migrationDbh);
+                
+                // 2. Explicitly close the migration connection
+                $migrationDbh = null;
+
+                // 3. Create a clean connection for the main application queries
+                self::$sharedDbh = new PDO($dsn, $this->user, $this->pass, $options);
             }
             
             $this->dbh = self::$sharedDbh;
