@@ -244,12 +244,6 @@ class PettyCashTransaction {
                 return "Expense amount must be greater than zero.";
             }
 
-            // Check against available balance to prevent negative balances
-            $available = $this->getAvailableBalance();
-            if ($amount > $available) {
-                return "Insufficient Petty Cash funds. Current available balance is " . number_format($available, 2) . ".";
-            }
-
             $expenseAccId = intval($data['account_id']);
             $date = $data['transaction_date'];
             $desc = $data['description'];
@@ -355,12 +349,6 @@ class PettyCashTransaction {
             }
             if ($tx->status !== 'Pending') {
                 return "Only pending expenses can be approved.";
-            }
-
-            // Verify Petty Cash has sufficient funds
-            $ledgerBal = $this->getLedgerBalance();
-            if ($tx->amount > $ledgerBal) {
-                return "Insufficient Petty Cash ledger balance. Current balance is " . number_format($ledgerBal, 2) . ".";
             }
 
             $date = $tx->transaction_date;
