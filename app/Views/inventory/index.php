@@ -916,10 +916,7 @@ if ($importResults) unset($_SESSION['import_results']);
 }
 
 /* ---- Variations Expandable Styles ---- */
-.variations-row {
-    background-color: var(--c-surface2) !important;
-}
-.variations-row.hidden {
+.variation-item-row.hidden {
     display: none !important;
 }
 .toggle-var-btn {
@@ -939,47 +936,17 @@ if ($importResults) unset($_SESSION['import_results']);
     background: var(--c-fill2);
     color: var(--t-primary);
 }
-.variation-card {
-    background: var(--c-surface);
-    border: 0.5px solid var(--c-separator);
-    border-radius: var(--r-md);
-    padding: 16px;
-    margin: 10px 0 12px 42px; /* Indent slightly under the thumbnail */
-    box-shadow: var(--shadow-sm);
+.has-variations-parent td {
+    background-color: rgba(0, 122, 255, 0.07) !important;
 }
-.variation-card-title {
-    font-weight: 700;
-    font-size: 13px;
-    color: var(--t-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.has-variations-parent td:first-child {
+    border-left: 4px solid var(--c-blue) !important;
 }
-.variation-tbl {
-    width: 100%;
-    border-collapse: collapse;
+.variation-item-row td {
+    background-color: rgba(0, 122, 255, 0.02) !important;
 }
-.variation-tbl th {
-    text-align: left;
-    padding: 6px 8px;
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--t-label);
-    text-transform: uppercase;
-    border-bottom: 1px solid var(--c-separator2);
-}
-.variation-tbl td {
-    padding: 8px 8px;
-    font-size: 13px;
-    color: var(--t-primary);
-    border-bottom: 0.5px solid var(--c-separator2);
-    vertical-align: middle;
-}
-.variation-tbl tr:last-child td {
-    border-bottom: none;
+.variation-item-row td:first-child {
+    border-left: 4px solid var(--c-blue) !important;
 }
 </style>
 
@@ -1301,7 +1268,7 @@ if ($importResults) unset($_SESSION['import_results']);
                                             }
                                         }
                                     ?>
-                                    <tr>
+                                    <tr <?= !empty($variations) ? 'class="has-variations-parent"' : '' ?>>
                                         <td class="txt-center">
                                             <input type="checkbox" name="selected_items[]" value="<?= $item->id ?>" class="item-select-checkbox sf-check" onchange="updateSelection()">
                                         </td>
@@ -1333,15 +1300,35 @@ if ($importResults) unset($_SESSION['import_results']);
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="txt-right"><span class="num"><?= number_format($price, 2) ?></span></td>
-                                        <td class="txt-right"><span class="num num-muted"><?= number_format($b2b, 2) ?></span></td>
+                                        <td class="txt-right">
+                                            <?php if (empty($variations)): ?>
+                                                <span class="num"><?= number_format($price, 2) ?></span>
+                                            <?php else: ?>
+                                                <span class="num-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="txt-right">
+                                            <?php if (empty($variations)): ?>
+                                                <span class="num num-muted"><?= number_format($b2b, 2) ?></span>
+                                            <?php else: ?>
+                                                <span class="num-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="txt-center">
-                                            <span class="num" style="color: <?= $qty <= 0 ? 'var(--c-red)' : ($qty <= 5 ? 'var(--c-orange)' : 'var(--t-primary)') ?>; font-weight: 700;"><?= $qty ?></span>
+                                            <?php if (empty($variations)): ?>
+                                                <span class="num" style="color: <?= $qty <= 0 ? 'var(--c-red)' : ($qty <= 5 ? 'var(--c-orange)' : 'var(--t-primary)') ?>; font-weight: 700;"><?= $qty ?></span>
+                                            <?php else: ?>
+                                                <span class="num-muted">-</span>
+                                            <?php endif; ?>
                                         </td>
                                         <td>
-                                            <span class="sf-badge <?= $badgeCls ?>">
-                                                <span class="dot"></span><?= $badgeTxt ?>
-                                            </span>
+                                            <?php if (empty($variations)): ?>
+                                                <span class="sf-badge <?= $badgeCls ?>">
+                                                    <span class="dot"></span><?= $badgeTxt ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="num-muted">-</span>
+                                            <?php endif; ?>
                                         </td>
                                         <td>
                                             <div class="row-acts">
@@ -1373,38 +1360,57 @@ if ($importResults) unset($_SESSION['import_results']);
                                         </td>
                                     </tr>
                                     <?php if (!empty($variations)): ?>
-                                    <tr id="variations_row_<?= $item->id ?>" class="variations-row hidden">
-                                        <td colspan="7" style="padding: 0;">
-                                            <div class="variation-card">
-                                                <div class="variation-card-title">
-                                                    <i class="fa-solid fa-tags" style="color: var(--c-blue);"></i>
-                                                    <span>Product Variations for <?= htmlspecialchars($item->name) ?></span>
+                                        <?php foreach ($variations as $var):
+                                            $vQty = intval($var->quantity_on_hand);
+                                            $vPrice = floatval($var->price ?? $price);
+                                            $vB2b = floatval($b2b);
+                                            $vSku = !empty($var->sku) ? $var->sku : $sku;
+
+                                            if ($itemStatus === 'inactive') {
+                                                $vBadgeCls = 'badge-out';
+                                                $vBadgeTxt = 'Inactive';
+                                            } elseif ($vQty <= 0) {
+                                                $vBadgeCls = 'badge-out';
+                                                $vBadgeTxt = 'Out of stock';
+                                            } elseif ($vQty <= 5) {
+                                                $vBadgeCls = 'badge-low';
+                                                $vBadgeTxt = 'Low stock';
+                                            } else {
+                                                $vBadgeCls = 'badge-active';
+                                                $vBadgeTxt = 'Active';
+                                            }
+                                        ?>
+                                        <tr class="variation-item-row variations_row_<?= $item->id ?> hidden">
+                                            <td class="txt-center">
+                                                <i class="fa-solid fa-arrow-turn-up-right" style="transform: rotate(90deg); color: var(--c-blue); opacity: 0.5;"></i>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex-row" style="align-items: center; gap: 8px; padding-left: 12px;">
+                                                    <div>
+                                                        <div class="prod-name" style="font-weight: 600; color: var(--t-primary);"><?= htmlspecialchars($var->value_name) ?></div>
+                                                        <div class="prod-meta"><?= htmlspecialchars($vSku) ?></div>
+                                                    </div>
                                                 </div>
-                                                <table class="variation-tbl">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>SKU</th>
-                                                            <th>Variation Option</th>
-                                                            <th style="text-align: right;">Retail Price</th>
-                                                            <th style="text-align: right; width: 120px;">Stock Qty</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <?php foreach ($variations as $var): ?>
-                                                            <tr>
-                                                                <td style="font-family: var(--f-mono); font-weight: 600; color: var(--c-blue);"><?= htmlspecialchars($var->sku ?: $sku) ?></td>
-                                                                <td style="font-weight: 600;"><?= htmlspecialchars($var->value_name) ?></td>
-                                                                <td style="text-align: right; font-family: var(--f-mono); font-weight: 600;"><?= number_format($var->price ?? $price, 2) ?></td>
-                                                                <td style="text-align: right; font-family: var(--f-mono); font-weight: 700; color: <?= $var->quantity_on_hand <= 0 ? 'var(--c-red)' : ($var->quantity_on_hand <= 5 ? 'var(--c-orange)' : 'var(--c-green)') ?>;">
-                                                                    <?= number_format($var->quantity_on_hand) ?>
-                                                                </td>
-                                                            </tr>
-                                                        <?php endforeach; ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                            </td>
+                                            <td class="txt-right"><span class="num"><?= number_format($vPrice, 2) ?></span></td>
+                                            <td class="txt-right"><span class="num num-muted"><?= number_format($vB2b, 2) ?></span></td>
+                                            <td class="txt-center">
+                                                <span class="num" style="color: <?= $vQty <= 0 ? 'var(--c-red)' : ($vQty <= 5 ? 'var(--c-orange)' : 'var(--t-primary)') ?>; font-weight: 700;"><?= $vQty ?></span>
+                                            </td>
+                                            <td>
+                                                <span class="sf-badge <?= $vBadgeCls ?>">
+                                                    <span class="dot"></span><?= $vBadgeTxt ?>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="row-acts">
+                                                    <a href="<?= APP_URL ?>/inventory/edit/<?= $item->id ?>" class="act-btn edit" title="Edit Parent Product" style="opacity: 0.6;">
+                                                        <i class="fa-solid fa-pen-to-square"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
                                     <?php endif; ?>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
@@ -1909,15 +1915,22 @@ function applyAjaxFilters() {
 }
 
 function toggleVariationsRow(itemId, btn) {
-    const row = document.getElementById('variations_row_' + itemId);
-    if (!row) return;
+    const rows = document.querySelectorAll('.variations_row_' + itemId);
+    if (!rows.length) return;
     
-    if (row.classList.contains('hidden')) {
-        row.classList.remove('hidden');
+    const isHidden = rows[0].classList.contains('hidden');
+    rows.forEach(row => {
+        if (isHidden) {
+            row.classList.remove('hidden');
+        } else {
+            row.classList.add('hidden');
+        }
+    });
+    
+    if (isHidden) {
         btn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
         btn.setAttribute('title', 'Hide Variations');
     } else {
-        row.classList.add('hidden');
         btn.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
         btn.setAttribute('title', 'Show Variations');
     }
