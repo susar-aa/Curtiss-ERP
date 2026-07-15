@@ -37,7 +37,7 @@
         
         .invoice-title { font-size: 34px; color: #7994b5; font-weight: bold; margin: 0 0 10px 0; letter-spacing: 1px; }
         .invoice-meta { font-size: 13px; color: #333; }
-        .invoice-meta strong { display: inline-block; width: 90px; }
+        .invoice-meta strong { display: inline-block; width: 110px; }
 
         .billing-grid { display: flex; justify-content: space-between; margin-bottom: 30px; font-size: 13px;}
         .bill-to h4 { margin: 0 0 8px 0; color: #fff; background: #7994b5; padding: 4px 10px; display: inline-block; text-transform: uppercase; font-size: 11px;}

@@ -172,29 +172,31 @@ if (!empty($data['invoice']->rep_route_id)) {
         }
 
         .meta-table {
-            width: 100%;
+            width: auto;
+            margin-left: auto;
             border-collapse: collapse;
         }
 
         .meta-table th, .meta-table td {
-            padding: 2px 0; 
+            padding: 3px 0; 
             font-size: 8.5pt;
-            text-align: right;
         }
 
         .meta-table th {
             font-weight: 700;
-            padding-right: 10px;
+            padding-right: 25px;
             color: #000;
             white-space: nowrap;
             text-transform: uppercase; 
             letter-spacing: 0.5px;
             font-size: 7.5pt;
+            text-align: left;
         }
 
         .meta-table td {
             font-weight: 500;
             font-variant-numeric: tabular-nums; 
+            text-align: right;
         }
 
         /* Customer Section */
