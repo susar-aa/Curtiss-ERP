@@ -271,7 +271,7 @@
         </div>
     <?php endif; ?>
 
-    <form method="POST" action="<?= APP_URL ?>/stockadjustment/store" enctype="multipart/form-data" id="adjForm">
+    <form method="POST" action="<?= APP_URL ?>/stockadjustment/store" id="adjForm">
         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
 
         <!-- Header Card -->
@@ -312,12 +312,6 @@
                 <div class="form-field form-field-full">
                     <label class="label">General Remarks</label>
                     <textarea name="remarks" class="textarea" placeholder="Describe the reason for this manual adjustment..."></textarea>
-                </div>
-
-                <!-- Attachment -->
-                <div class="form-field form-field-full">
-                    <label class="label">Attachment / Proof (e.g. Damage Photo, Police Report PDF)</label>
-                    <input type="file" name="attachment" class="input" style="background: transparent; padding: 0;">
                 </div>
             </div>
         </div>
@@ -430,11 +424,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function addProductToGrid(item) {
         if (!item) return;
 
-        console.log(`[Grid Action] Attempting to add product ID: ${item.id} | Code: ${item.item_code}`);
+        const rowKey = `${item.id}_${item.variation_option_id || 0}`;
+        console.log(`[Grid Action] Attempting to add product ID: ${item.id} | Variation Option ID: ${item.variation_option_id || 'None'} | Code: ${item.item_code}`);
 
         // Check if item already exists in the grid
-        if (document.getElementById(`grid_row_${item.id}`)) {
-            console.warn(`[Grid Action] Prevented duplicate: Item ID ${item.id} is already in the list.`);
+        if (document.getElementById(`grid_row_${rowKey}`)) {
+            console.warn(`[Grid Action] Prevented duplicate: Item row ${rowKey} is already in the list.`);
             alert('Item is already added to the list.');
             return;
         }
@@ -446,10 +441,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const cost = parseFloat(item.cost_price) || 0.00;
 
         const tr = document.createElement('tr');
-        tr.id = `grid_row_${item.id}`;
+        tr.id = `grid_row_${rowKey}`;
         tr.innerHTML = `
             <td style="font-family: var(--f-mono); font-weight: 600; color: var(--c-blue);">
                 <input type="hidden" name="item_ids[]" value="${item.id}">
+                <input type="hidden" name="variation_option_ids[]" value="${item.variation_option_id || ''}">
                 ${item.item_code}
             </td>
             <td>
@@ -463,7 +459,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <td style="text-align: right;">
                 <input type="number" step="0.01" name="unit_costs[]" class="cost-input grid-cost" value="${cost.toFixed(2)}" required>
             </td>
-            <td class="total-cell" id="total_val_${item.id}">
+            <td class="total-cell" id="total_val_${rowKey}">
                 ${cost.toFixed(2)}
             </td>
             <td>
@@ -475,7 +471,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         gridBody.appendChild(tr);
-        console.log(`[Grid Action] Product ID: ${item.id} successfully added to grid.`);
+        console.log(`[Grid Action] Product row ${rowKey} successfully added to grid.`);
 
         // Bind update triggers
         const qtyEl = tr.querySelector('.grid-qty');
@@ -485,8 +481,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const q = parseFloat(qtyEl.value) || 0;
             const c = parseFloat(costEl.value) || 0;
             const tot = Math.abs(q * c);
-            console.log(`[Grid Calculation] Row Total Updated: ID: ${item.id} | Qty: ${q} | Cost: ${c} | Total: ${tot.toFixed(2)}`);
-            document.getElementById(`total_val_${item.id}`).textContent = tot.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            console.log(`[Grid Calculation] Row Total Updated: Row: ${rowKey} | Qty: ${q} | Cost: ${c} | Total: ${tot.toFixed(2)}`);
+            document.getElementById(`total_val_${rowKey}`).textContent = tot.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
         qtyEl.addEventListener('input', updateRowTotal);
@@ -494,7 +490,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Bind delete button
         tr.querySelector('.remove-item-btn').addEventListener('click', function() {
-            console.log(`[Grid Action] Deleting row for product ID: ${item.id}`);
+            console.log(`[Grid Action] Deleting row for product Row: ${rowKey}`);
             tr.remove();
             if (gridBody.querySelectorAll('tr:not(#emptyGridRow)').length === 0) {
                 console.log("[Grid Action] Grid is empty. Displaying placeholder empty row.");

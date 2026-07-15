@@ -58,13 +58,43 @@ class StockAdjustmentController extends Controller {
      */
     public function create() {
         $warehouses = $this->warehouseModel->getAllWarehouses();
-        $items = $this->itemModel->getAllItems();
+        $allItems = $this->itemModel->getAllItems();
+
+        $adjustedItems = [];
+        foreach ($allItems as $item) {
+            $variations = $this->itemModel->getItemVariations($item->id);
+            if (!empty($variations)) {
+                foreach ($variations as $var) {
+                    $adjustedItems[] = (object)[
+                        'id' => $item->id,
+                        'variation_option_id' => $var->id,
+                        'item_code' => $var->sku ?: $item->item_code,
+                        'barcode' => $var->sku ?: $item->barcode,
+                        'name' => $item->name . ' - ' . $var->value_name,
+                        'category_name' => $item->category_name,
+                        'qty' => $var->quantity_on_hand,
+                        'cost_price' => $var->cost ?: $item->cost_price
+                    ];
+                }
+            } else {
+                $adjustedItems[] = (object)[
+                    'id' => $item->id,
+                    'variation_option_id' => null,
+                    'item_code' => $item->item_code,
+                    'barcode' => $item->barcode,
+                    'name' => $item->name,
+                    'category_name' => $item->category_name,
+                    'qty' => $item->qty,
+                    'cost_price' => $item->cost_price
+                ];
+            }
+        }
 
         $data = [
             'title' => 'Create Stock Adjustment',
             'content_view' => 'stock_adjustments/create',
             'warehouses' => $warehouses,
-            'items' => $items
+            'items' => $adjustedItems
         ];
 
         $this->view('layouts/main', $data);
@@ -85,6 +115,7 @@ class StockAdjustmentController extends Controller {
         $remarks = trim($_POST['remarks'] ?? '');
 
         $itemIds = $_POST['item_ids'] ?? [];
+        $variationOptionIds = $_POST['variation_option_ids'] ?? [];
         $quantities = $_POST['quantities'] ?? [];
         $unitCosts = $_POST['unit_costs'] ?? [];
         $itemRemarks = $_POST['item_remarks'] ?? [];
@@ -104,12 +135,14 @@ class StockAdjustmentController extends Controller {
         $adjustmentItems = [];
         for ($i = 0; $i < count($itemIds); $i++) {
             $itemId = intval($itemIds[$i]);
+            $varOptId = !empty($variationOptionIds[$i]) ? intval($variationOptionIds[$i]) : null;
             $qty = floatval($quantities[$i]);
             $unitCost = floatval($unitCosts[$i]);
 
             if ($itemId && $qty != 0.00) {
                 $adjustmentItems[] = [
                     'item_id' => $itemId,
+                    'variation_option_id' => $varOptId,
                     'quantity' => $qty,
                     'unit_cost' => $unitCost,
                     'remarks' => trim($itemRemarks[$i] ?? '')
@@ -123,27 +156,13 @@ class StockAdjustmentController extends Controller {
             exit;
         }
 
-        // Handle attachment file upload if present
-        $attachmentPath = null;
-        if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
-            $uploadDir = '../public/uploads/adjustments/';
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0777, true);
-            }
-            $fileName = time() . '_' . basename($_FILES['attachment']['name']);
-            $targetPath = $uploadDir . $fileName;
-            if (move_uploaded_file($_FILES['attachment']['tmp_name'], $targetPath)) {
-                $attachmentPath = 'uploads/adjustments/' . $fileName;
-            }
-        }
-
         $payload = [
             'warehouse_id' => $warehouseId,
             'reason' => $reason,
             'adjustment_date' => $adjustmentDate,
             'created_by' => $_SESSION['user_id'],
             'remarks' => $remarks,
-            'attachment_path' => $attachmentPath,
+            'attachment_path' => null,
             'items' => $adjustmentItems
         ];
 

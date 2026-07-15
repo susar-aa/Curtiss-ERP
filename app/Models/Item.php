@@ -582,7 +582,14 @@ class Item {
      * Increment or decrement stock by a delta in a schema-aware manner.
      * Prevents negative stock underflow using GREATEST(0, ...).
      */
-    public function updateStockDelta($id, $delta) {
+    public function updateStockDelta($id, $delta, $variationOptionId = null) {
+        if ($variationOptionId) {
+            $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :delta) WHERE id = :id");
+            $this->db->bind(':id', $variationOptionId);
+            $this->db->bind(':delta', $delta);
+            $this->db->execute();
+        }
+
         $qtyUpdates = [];
         if ($this->hasQtyColumn) {
             $qtyUpdates[] = "qty = GREATEST(0, CAST(qty AS SIGNED) + :delta)";

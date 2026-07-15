@@ -88,15 +88,37 @@ class StockAdjustment {
      */
     public function getAdjustmentItems($adjustmentId) {
         $this->db->query("
-            SELECT sai.*, i.name as item_name, i.item_code, i.barcode, i.unit, c.name as category_name
+            SELECT sai.*, 
+                   i.name as base_item_name, 
+                   i.item_code as base_item_code, 
+                   i.barcode as base_barcode,
+                   i.unit, 
+                   c.name as category_name,
+                   ivo.sku as variation_sku,
+                   vv.value_name as variation_value
             FROM stock_adjustment_items sai
             JOIN items i ON sai.item_id = i.id
             LEFT JOIN categories c ON i.category_id = c.id
+            LEFT JOIN item_variation_options ivo ON sai.variation_option_id = ivo.id
+            LEFT JOIN variation_values vv ON ivo.variation_value_id = vv.id
             WHERE sai.adjustment_id = :adjustment_id
             ORDER BY i.name ASC
         ");
         $this->db->bind(':adjustment_id', intval($adjustmentId));
-        return $this->db->resultSet() ?: [];
+        $items = $this->db->resultSet() ?: [];
+
+        foreach ($items as $item) {
+            if ($item->variation_option_id && $item->variation_value) {
+                $item->item_name = $item->base_item_name . ' - ' . $item->variation_value;
+                $item->item_code = $item->variation_sku ?: $item->base_item_code;
+                $item->barcode = $item->variation_sku ?: $item->base_barcode;
+            } else {
+                $item->item_name = $item->base_item_name;
+                $item->item_code = $item->base_item_code;
+                $item->barcode = $item->base_barcode;
+            }
+        }
+        return $items;
     }
 
     /**
@@ -136,11 +158,12 @@ class StockAdjustment {
                 $totalVal = abs($qty * $unitCost);
 
                 $this->db->query("
-                    INSERT INTO stock_adjustment_items (adjustment_id, item_id, quantity, unit_cost, total_value, remarks)
-                    VALUES (:adjustment_id, :item_id, :quantity, :unit_cost, :total_value, :remarks)
+                    INSERT INTO stock_adjustment_items (adjustment_id, item_id, variation_option_id, quantity, unit_cost, total_value, remarks)
+                    VALUES (:adjustment_id, :item_id, :variation_option_id, :quantity, :unit_cost, :total_value, :remarks)
                 ");
                 $this->db->bind(':adjustment_id', $adjustmentId);
                 $this->db->bind(':item_id', intval($item['item_id']));
+                $this->db->bind(':variation_option_id', !empty($item['variation_option_id']) ? intval($item['variation_option_id']) : null);
                 $this->db->bind(':quantity', $qty);
                 $this->db->bind(':unit_cost', $unitCost);
                 $this->db->bind(':total_value', $totalVal);
@@ -188,7 +211,7 @@ class StockAdjustment {
 
                 // 1. Update system stock quantity
                 // Note: updateStockDelta is schema-aware and prevents negative values
-                $itemModel->updateStockDelta($item->item_id, $qty);
+                $itemModel->updateStockDelta($item->item_id, $qty, $item->variation_option_id);
 
                 // 2. Log movement to trigger ledger & double entry
                 $ledgerType = ($qty > 0) ? 'Stock Adjustment Increase' : 'Stock Adjustment Decrease';
@@ -198,7 +221,7 @@ class StockAdjustment {
                 // Log movement (this inserts into stock_ledger and automatically posts the journal entry)
                 $ledgerModel->logMovement(
                     $item->item_id,
-                    null, // variation_option_id
+                    $item->variation_option_id, // variation_option_id
                     $qtyIn,
                     $qtyOut,
                     $ledgerType,
