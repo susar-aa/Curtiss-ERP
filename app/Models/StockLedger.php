@@ -104,17 +104,21 @@ class StockLedger {
             $inventoryAccId = null;
             $cogsAccId = null;
             $apAccId = null;
+            $gainAccId = null;
+            $lossAccId = null;
 
-            $this->db->query("SELECT id, account_code FROM chart_of_accounts WHERE account_code IN ('1300', '5000', '2000')");
+            $this->db->query("SELECT id, account_code FROM chart_of_accounts WHERE account_code IN ('1300', '5000', '2000', '4910', '5090')");
             $rows = $this->db->resultSet() ?: [];
             foreach ($rows as $r) {
                 if ($r->account_code === '1300') $inventoryAccId = $r->id;
                 if ($r->account_code === '5000') $cogsAccId = $r->id;
                 if ($r->account_code === '2000') $apAccId = $r->id;
+                if ($r->account_code === '4910') $gainAccId = $r->id;
+                if ($r->account_code === '5090') $lossAccId = $r->id;
             }
 
             $journalId = null;
-            if ($totalVal > 0.00 && $inventoryAccId && $cogsAccId && $apAccId) {
+            if ($totalVal > 0.00 && $inventoryAccId) {
                 $debitAccId = null;
                 $creditAccId = null;
 
@@ -132,6 +136,12 @@ class StockLedger {
                 } elseif (in_array($type, ['Sales Invoice Reversion', 'Invoice Deleted - Stock Reverted', 'Sales Invoice Variance Decrease', 'Sales Invoice Substitution Return', 'Sales Return'])) {
                     $debitAccId = $inventoryAccId;
                     $creditAccId = $cogsAccId;
+                } elseif (in_array($type, ['Stock Audit Increase', 'Stock Adjustment Increase'])) {
+                    $debitAccId = $inventoryAccId;
+                    $creditAccId = $gainAccId ?: $cogsAccId; // fallback
+                } elseif (in_array($type, ['Stock Audit Decrease', 'Stock Adjustment Decrease'])) {
+                    $debitAccId = $lossAccId ?: $cogsAccId; // fallback
+                    $creditAccId = $inventoryAccId;
                 } else {
                     if ($isStockIncrease) {
                         $debitAccId = $inventoryAccId;

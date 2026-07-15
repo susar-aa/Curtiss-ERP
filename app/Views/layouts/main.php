@@ -1379,6 +1379,20 @@ if (!function_exists('hasPermission')) {
                                 <div class="desc">Inventory audit trail</div>
                             </div>
                         </a>
+                        <a href="<?= APP_URL ?>/stockaudit" class="mega-list-item text-primary">
+                            <div class="icon-wrapper text-primary"><i class="ph ph-clipboard-text"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title text-primary">Stock Audit</div>
+                                <div class="desc">Physical stock count sheets</div>
+                            </div>
+                        </a>
+                        <a href="<?= APP_URL ?>/stockadjustment" class="mega-list-item text-primary">
+                            <div class="icon-wrapper text-primary"><i class="ph ph-sliders"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title text-primary">Stock Adjustment</div>
+                                <div class="desc">Manual write-offs & corrections</div>
+                            </div>
+                        </a>
                         <?php endif; ?>
                         <?php if (hasPermission('creditnote')): ?>
                         <a href="<?= APP_URL ?>/creditnote/damaged" class="mega-list-item">
@@ -1832,6 +1846,8 @@ if (!function_exists('hasPermission')) {
                             <a href="<?= APP_URL ?>/inventory/reserved" class="fs-link"><i class="ph ph-shield-check"></i> Reserved Stock</a>
                             <a href="<?= APP_URL ?>/inventory/history" class="fs-link"><i class="ph ph-chart-bar"></i> Pricing History</a>
                             <a href="<?= APP_URL ?>/stockledger" class="fs-link"><i class="ph ph-receipt"></i> Stock Ledger</a>
+                            <a href="<?= APP_URL ?>/stockaudit" class="fs-link"><i class="ph ph-clipboard-text"></i> Stock Audit</a>
+                            <a href="<?= APP_URL ?>/stockadjustment" class="fs-link"><i class="ph ph-sliders"></i> Stock Adjustment</a>
                         <?php endif; ?>
                         <?php if (hasPermission('purchase')): ?><a href="<?= APP_URL ?>/purchase" class="fs-link"><i class="ph ph-shopping-cart"></i> Purchase Orders</a><?php endif; ?>
                         <?php if (hasPermission('grn')): ?><a href="<?= APP_URL ?>/grn" class="fs-link"><i class="ph ph-tray-arrow-down"></i> GRN</a><?php endif; ?>

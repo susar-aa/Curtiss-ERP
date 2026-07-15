@@ -858,6 +858,95 @@ class MigrationManager {
                     }
                 }
                 return true;
+            },
+            'create_stock_audits_tables' => "
+                CREATE TABLE IF NOT EXISTS stock_audits (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    audit_number VARCHAR(50) UNIQUE NOT NULL,
+                    warehouse_id INT NOT NULL,
+                    status ENUM('Draft', 'In Progress', 'Completed', 'Approved', 'Cancelled') DEFAULT 'Draft',
+                    category_id INT NULL,
+                    brand VARCHAR(100) NULL,
+                    supplier_id INT NULL,
+                    created_by INT NOT NULL,
+                    counted_by INT NULL,
+                    reviewed_by INT NULL,
+                    approved_by INT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    completed_at DATETIME NULL,
+                    approved_at DATETIME NULL,
+                    remarks TEXT NULL,
+                    overall_remarks TEXT NULL,
+                    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ",
+            'create_stock_audit_items_table' => "
+                CREATE TABLE IF NOT EXISTS stock_audit_items (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    audit_id INT NOT NULL,
+                    item_id INT NOT NULL,
+                    variation_option_id INT NULL DEFAULT NULL,
+                    system_qty DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                    physical_qty DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                    difference DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                    unit_cost DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                    variance_value DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                    remarks VARCHAR(255) NULL,
+                    FOREIGN KEY (audit_id) REFERENCES stock_audits(id) ON DELETE CASCADE,
+                    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ",
+            'create_stock_adjustments_tables' => "
+                CREATE TABLE IF NOT EXISTS stock_adjustments (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    adjustment_number VARCHAR(50) UNIQUE NOT NULL,
+                    warehouse_id INT NOT NULL,
+                    reason VARCHAR(100) NOT NULL,
+                    adjustment_date DATE NOT NULL,
+                    status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+                    created_by INT NOT NULL,
+                    approved_by INT NULL,
+                    approved_at DATETIME NULL,
+                    remarks TEXT NULL,
+                    attachment_path VARCHAR(255) NULL,
+                    journal_entry_id INT NULL,
+                    stock_audit_id INT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE CASCADE,
+                    FOREIGN KEY (stock_audit_id) REFERENCES stock_audits(id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ",
+            'create_stock_adjustment_items_table' => "
+                CREATE TABLE IF NOT EXISTS stock_adjustment_items (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    adjustment_id INT NOT NULL,
+                    item_id INT NOT NULL,
+                    variation_option_id INT NULL DEFAULT NULL,
+                    quantity DECIMAL(15,2) NOT NULL,
+                    unit_cost DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                    total_value DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                    remarks VARCHAR(255) NULL,
+                    FOREIGN KEY (adjustment_id) REFERENCES stock_adjustments(id) ON DELETE CASCADE,
+                    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ",
+            'seed_stock_adjustment_accounts' => function(PDO $dbh) {
+                // Check and seed 4910 Stock Adjustment Gain
+                $stmt = $dbh->prepare("SELECT id FROM chart_of_accounts WHERE account_code = '4910'");
+                $stmt->execute();
+                if (!$stmt->fetch()) {
+                    $stmtInsert = $dbh->prepare("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('4910', 'Stock Adjustment Gain', 'Revenue', 'Revenue', 0.00, 1)");
+                    $stmtInsert->execute();
+                }
+                // Check and seed 5090 Stock Adjustment Loss
+                $stmt = $dbh->prepare("SELECT id FROM chart_of_accounts WHERE account_code = '5090'");
+                $stmt->execute();
+                if (!$stmt->fetch()) {
+                    $stmtInsert = $dbh->prepare("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('5090', 'Stock Adjustment Loss', 'Expense', 'Cost of Goods Sold', 0.00, 1)");
+                    $stmtInsert->execute();
+                }
+                return true;
             }
         ];
     }
