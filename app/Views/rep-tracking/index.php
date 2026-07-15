@@ -7,18 +7,58 @@
 <?php include __DIR__ . '/index.css.php'; ?>
 
 <?php if (isset($_SESSION['flash_success'])): ?>
-    <div style="background: #e2f0d9; border: 1px solid #2e7d32; color: #2e7d32; padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; font-size: 13px;">
-        <?= htmlspecialchars($_SESSION['flash_success']) ?>
+    <div class="ios-toast success" id="successToast">
+        <div class="ios-toast-content">
+            <i class="fa-solid fa-circle-check ios-toast-icon"></i>
+            <span class="ios-toast-message"><?= htmlspecialchars($_SESSION['flash_success']) ?></span>
+        </div>
+        <button class="ios-toast-close" onclick="closeToast('successToast')">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
     </div>
     <?php unset($_SESSION['flash_success']); ?>
 <?php endif; ?>
 
 <?php if (isset($_SESSION['flash_error'])): ?>
-    <div style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; font-size: 13px;">
-        <?= htmlspecialchars($_SESSION['flash_error']) ?>
+    <div class="ios-toast error" id="errorToast">
+        <div class="ios-toast-content">
+            <i class="fa-solid fa-circle-xmark ios-toast-icon"></i>
+            <span class="ios-toast-message"><?= htmlspecialchars($_SESSION['flash_error']) ?></span>
+        </div>
+        <button class="ios-toast-close" onclick="closeToast('errorToast')">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
     </div>
     <?php unset($_SESSION['flash_error']); ?>
 <?php endif; ?>
+
+<script>
+    function closeToast(id) {
+        const toast = document.getElementById(id);
+        if (toast) {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, -20px) scale(0.95)';
+            setTimeout(() => {
+                toast.remove();
+            }, 400);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const successToast = document.getElementById('successToast');
+        if (successToast) {
+            setTimeout(() => {
+                closeToast('successToast');
+            }, 5000);
+        }
+        const errorToast = document.getElementById('errorToast');
+        if (errorToast) {
+            setTimeout(() => {
+                closeToast('errorToast');
+            }, 5000);
+        }
+    });
+</script>
 
 <div class="header-actions" style="margin-bottom: 15px; display: flex; justify-content: <?= $isHistory ? 'flex-start' : 'flex-end' ?>; align-items: center; flex-wrap: wrap; gap: 10px;">
     <?php if ($isHistory): ?>

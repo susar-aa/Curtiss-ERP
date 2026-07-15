@@ -1124,4 +1124,106 @@
         background: var(--c-fill) !important;
         border-color: var(--t-tertiary) !important;
     }
+
+    /* iOS iMessage-style Toast Notifications */
+    .ios-toast {
+        position: fixed;
+        top: 24px;
+        left: 50%;
+        transform: translate(-50%, -20px);
+        opacity: 0;
+        z-index: 999999;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 10px 16px;
+        min-width: 320px;
+        max-width: 550px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(20px) saturate(190%);
+        -webkit-backdrop-filter: blur(20px) saturate(190%);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.02);
+        color: #1e293b;
+        font-family: var(--f-system);
+        font-size: 13.5px;
+        font-weight: 500;
+        transition: opacity 0.4s var(--ease-ios), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        animation: iosToastSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    
+    @keyframes iosToastSlideIn {
+        from {
+            transform: translate(-50%, -20px) scale(0.95);
+            opacity: 0;
+        }
+        to {
+            transform: translate(-50%, 0) scale(1);
+            opacity: 1;
+        }
+    }
+    
+    .ios-toast.success {
+        border-left: 4px solid var(--c-green);
+    }
+    
+    .ios-toast.error {
+        border-left: 4px solid var(--c-red);
+    }
+    
+    .ios-toast-content {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+    }
+    
+    .ios-toast-icon {
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+    
+    .ios-toast.success .ios-toast-icon {
+        color: var(--c-green);
+    }
+    
+    .ios-toast.error .ios-toast-icon {
+        color: var(--c-red);
+    }
+    
+    .ios-toast-message {
+        line-height: 1.4;
+        color: var(--t-primary);
+    }
+    
+    .ios-toast-close {
+        background: none;
+        border: none;
+        color: var(--t-secondary);
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        transition: background 0.2s, color 0.2s;
+        flex-shrink: 0;
+    }
+    
+    .ios-toast-close:hover {
+        background: var(--c-fill);
+        color: var(--t-primary);
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .ios-toast {
+            background: rgba(28, 28, 30, 0.85);
+            border-color: rgba(255, 255, 255, 0.1);
+            color: #f5f5f7;
+        }
+    }
 </style>
