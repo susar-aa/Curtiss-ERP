@@ -1228,7 +1228,7 @@ if ($importResults) unset($_SESSION['import_results']);
                                         $dbObj = new Database();
                                         $dbObj->query("
                                             SELECT ivo.id, ivo.sku, ivo.price, ivo.cost, ivo.quantity_on_hand,
-                                                   v.name as attribute_name, vv.value_name as value_name
+                                                   v.name as attribute_name, vv.value_name as value_name, vv.id as variation_value_id
                                             FROM item_variation_options ivo
                                             JOIN variations v ON ivo.variation_id = v.id
                                             JOIN variation_values vv ON ivo.variation_value_id = vv.id
@@ -1250,6 +1250,7 @@ if ($importResults) unset($_SESSION['import_results']);
                                                     $vObj->quantity_on_hand = $v->qty ?? $v->quantity_on_hand ?? $item->qty ?? 0;
                                                     $vObj->price = $v->price ?? $v->selling_price ?? $item->selling_price ?? 0.00;
                                                     $vObj->cost = $v->cost ?? $v->cost_price ?? $item->cost_price ?? 0.00;
+                                                    $vObj->image_path = $v->image_path ?? $v->image ?? '';
                                                     $variations[] = $vObj;
                                                 }
                                             }
@@ -1379,6 +1380,51 @@ if ($importResults) unset($_SESSION['import_results']);
                                                 $vBadgeCls = 'badge-active';
                                                 $vBadgeTxt = 'Active';
                                             }
+
+                                            // Resolve variation image
+                                            $vImgPath = $var->image_path ?? '';
+                                            if (empty($vImgPath) && !empty($var->variation_value_id)) {
+                                                $dbObj->query("
+                                                    SELECT image_path 
+                                                    FROM item_images 
+                                                    WHERE item_id = :item_id AND variation_value_id = :variation_value_id 
+                                                    ORDER BY is_primary DESC, id ASC 
+                                                    LIMIT 1
+                                                ");
+                                                $dbObj->bind(':item_id', $item->id);
+                                                $dbObj->bind(':variation_value_id', $var->variation_value_id);
+                                                $imgRow = $dbObj->single();
+                                                if ($imgRow && !empty($imgRow->image_path)) {
+                                                    $vImgPath = $imgRow->image_path;
+                                                }
+                                            }
+
+                                            if (empty($vImgPath) && !empty($item->variations_json)) {
+                                                $decodedJson = json_decode(html_entity_decode($item->variations_json, ENT_QUOTES, 'UTF-8'), true);
+                                                if (is_array($decodedJson)) {
+                                                    foreach ($decodedJson as $jsonVar) {
+                                                        $jsonSku = $jsonVar['sku'] ?? '';
+                                                        $jsonAttr = $jsonVar['attribute'] ?? $jsonVar['value'] ?? $jsonVar['value_name'] ?? '';
+                                                        if ((!empty($jsonSku) && $jsonSku === $vSku) || 
+                                                            (!empty($jsonAttr) && strtolower($jsonAttr) === strtolower($var->value_name))) {
+                                                            if (!empty($jsonVar['image_path'])) {
+                                                                $vImgPath = $jsonVar['image_path'];
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            if (empty($vImgPath)) {
+                                                $vImgSrc = $img_src;
+                                            } else {
+                                                if (strpos($vImgPath, 'http') === 0) {
+                                                    $vImgSrc = $vImgPath;
+                                                } else {
+                                                    $vImgSrc = APP_URL . '/uploads/products/' . basename($vImgPath);
+                                                }
+                                            }
                                         ?>
                                         <tr class="variation-item-row variations_row_<?= $item->id ?> hidden">
                                             <td class="txt-center">
@@ -1386,6 +1432,7 @@ if ($importResults) unset($_SESSION['import_results']);
                                             </td>
                                             <td>
                                                 <div class="d-flex-row" style="align-items: center; gap: 8px; padding-left: 12px;">
+                                                    <img src="<?= $vImgSrc ?>" class="prod-thumb" style="width: 28px; height: 28px; border-radius: var(--r-sm);" alt="" onerror="this.src='https://placehold.co/100x100/f2f2f7/8e8e93?text=?'">
                                                     <div>
                                                         <div class="prod-name" style="font-weight: 600; color: var(--t-primary);"><?= htmlspecialchars($var->value_name) ?></div>
                                                         <div class="prod-meta"><?= htmlspecialchars($vSku) ?></div>
