@@ -454,11 +454,27 @@ class RepDashboardController extends Controller {
             }
             $totalCustomers = intval($this->db->single()->cnt ?? 0);
 
+            // Fetch all active/existing product IDs
+            $this->db->query("SELECT id FROM items");
+            $allServerItems = $this->db->resultSet() ?: [];
+            $activeProductIds = array_map(function($item) {
+                return intval($item->id);
+            }, $allServerItems);
+
+            // Fetch all active/existing customer IDs
+            $this->db->query("SELECT id FROM customers");
+            $allServerCustomers = $this->db->resultSet() ?: [];
+            $activeCustomerIds = array_map(function($c) {
+                return intval($c->id);
+            }, $allServerCustomers);
+
             $responsePayload = [
                 'success' => true,
                 'total_customers' => $totalCustomers,
                 'products' => $productsJson,
-                'categories' => $categoriesJson
+                'categories' => $categoriesJson,
+                'active_product_ids' => $activeProductIds,
+                'active_customer_ids' => $activeCustomerIds
             ];
             if ($routesJson !== null) {
                 $responsePayload['routes'] = $routesJson;
