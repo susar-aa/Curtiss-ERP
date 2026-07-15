@@ -624,7 +624,7 @@ class RepTrackingController extends Controller {
         $db->query("
             SELECT c.id as customer_id, c.name as customer_name, m.name as mca_name,
                    (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) 
-                    FROM invoices WHERE customer_id = c.id AND status = 'Unpaid') as outstanding_amount
+                    FROM invoices WHERE customer_id = c.id AND status = 'Unpaid' AND (rep_route_id IS NULL OR rep_route_id NOT IN ($routeIdsStr))) as outstanding_amount
             FROM customers c
             JOIN mca_areas m ON c.mca_id = m.id
             WHERE m.main_area_id IN ($areaIdsStr)
@@ -640,7 +640,7 @@ class RepTrackingController extends Controller {
                        (SELECT route_name FROM rep_daily_routes WHERE id = i.rep_route_id) as route_name,
                        (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total
                 FROM invoices i
-                WHERE i.customer_id = :cid AND i.status = 'Unpaid'
+                WHERE i.customer_id = :cid AND i.status = 'Unpaid' AND (i.rep_route_id IS NULL OR i.rep_route_id NOT IN ($routeIdsStr))
                 ORDER BY i.invoice_date ASC
             ");
             $db->bind(':cid', $cust->customer_id);
