@@ -135,6 +135,8 @@ class StockAdjustmentController extends Controller {
 
         $itemIds = $_POST['item_ids'] ?? [];
         $variationOptionIds = $_POST['variation_option_ids'] ?? [];
+        $itemCodes = $_POST['item_codes'] ?? [];
+        $variationNames = $_POST['variation_names'] ?? [];
         $quantities = $_POST['quantities'] ?? [];
         $unitCosts = $_POST['unit_costs'] ?? [];
         $itemRemarks = $_POST['item_remarks'] ?? [];
@@ -151,12 +153,50 @@ class StockAdjustmentController extends Controller {
             exit;
         }
 
+        $db = new Database();
         $adjustmentItems = [];
         for ($i = 0; $i < count($itemIds); $i++) {
             $itemId = intval($itemIds[$i]);
             $varOptId = !empty($variationOptionIds[$i]) ? intval($variationOptionIds[$i]) : null;
             $qty = floatval($quantities[$i]);
             $unitCost = floatval($unitCosts[$i]);
+            $sku = trim($itemCodes[$i] ?? '');
+            $fullName = trim($variationNames[$i] ?? '');
+
+            if ($itemId && empty($varOptId)) {
+                // 1. Try to find variation_option_id by SKU in item_variation_options
+                if ($sku) {
+                    $db->query("SELECT id FROM item_variation_options WHERE item_id = :item_id AND sku = :sku LIMIT 1");
+                    $db->bind(':item_id', $itemId);
+                    $db->bind(':sku', $sku);
+                    $row = $db->single();
+                    if ($row) {
+                        $varOptId = $row->id;
+                    }
+                }
+
+                // 2. If still empty, try to resolve by attribute value name from name (e.g. "Test Variation - Green")
+                if (empty($varOptId) && $fullName) {
+                    if (strpos($fullName, ' - ') !== false) {
+                        $parts = explode(' - ', $fullName);
+                        $valName = trim(end($parts));
+
+                        $db->query("
+                            SELECT ivo.id 
+                            FROM item_variation_options ivo
+                            JOIN variation_values vv ON ivo.variation_value_id = vv.id
+                            WHERE ivo.item_id = :item_id AND vv.value_name = :val_name 
+                            LIMIT 1
+                        ");
+                        $db->bind(':item_id', $itemId);
+                        $db->bind(':val_name', $valName);
+                        $row = $db->single();
+                        if ($row) {
+                            $varOptId = $row->id;
+                        }
+                    }
+                }
+            }
 
             if ($itemId && $qty != 0.00) {
                 $adjustmentItems[] = [

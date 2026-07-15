@@ -424,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function addProductToGrid(item) {
         if (!item) return;
 
-        const rowKey = `${item.id}_${item.variation_option_id || 0}`;
+        const rowKey = `${item.id}_${item.variation_option_id || 0}_${(item.item_code || '').replace(/[^a-zA-Z0-9]/g, '_')}`;
         console.log(`[Grid Action] Attempting to add product ID: ${item.id} | Variation Option ID: ${item.variation_option_id || 'None'} | Code: ${item.item_code}`);
 
         // Check if item already exists in the grid
@@ -446,6 +446,8 @@ document.addEventListener('DOMContentLoaded', function() {
             <td style="font-family: var(--f-mono); font-weight: 600; color: var(--c-blue);">
                 <input type="hidden" name="item_ids[]" value="${item.id}">
                 <input type="hidden" name="variation_option_ids[]" value="${item.variation_option_id || ''}">
+                <input type="hidden" name="item_codes[]" value="${item.item_code || ''}">
+                <input type="hidden" name="variation_names[]" value="${item.name || ''}">
                 ${item.item_code}
             </td>
             <td>
