@@ -205,19 +205,12 @@ class RepRouteService {
             } 
             elseif ($mode === 'force_delete_all') {
                 // Mode 3: Delete payments, cheques, deliveries, collections
-                $db->query("SELECT id, payment_method, cheque_number, customer_id FROM customer_payments WHERE rep_route_id = :rid");
+                $db->query("SELECT id, payment_method, reference, customer_id FROM customer_payments WHERE rep_route_id = :rid");
                 $db->bind(':rid', $routeId);
                 $payments = $db->resultSet() ?: [];
 
                 foreach ($payments as $pmt) {
                     $paymentId = $pmt->id;
-                    
-                    if ($pmt->payment_method === 'Cheque' && !empty($pmt->cheque_number)) {
-                        $db->query("DELETE FROM cheques WHERE customer_id = :cid AND cheque_number = :cn");
-                        $db->bind(':cid', $pmt->customer_id);
-                        $db->bind(':cn', $pmt->cheque_number);
-                        $db->execute();
-                    }
 
                     // Get journal entry and transactions
                     $db->query("SELECT journal_entry_id FROM customer_payments WHERE id = :id");
@@ -240,6 +233,11 @@ class RepRouteService {
                     $db->bind(':id', $paymentId);
                     $db->execute();
                 }
+
+                // Delete associated cheques directly via rep_route_id
+                $db->query("DELETE FROM cheques WHERE rep_route_id = :rid");
+                $db->bind(':rid', $routeId);
+                $db->execute();
 
                 // Delete deliveries
                 $db->query("DELETE FROM deliveries WHERE rep_route_id = :rid OR secondary_rep_route_id = :rid");
