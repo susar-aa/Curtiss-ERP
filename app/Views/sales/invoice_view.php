@@ -19,6 +19,26 @@ $db->bind(':id', $data['invoice']->customer_id);
 $credited = $db->single()->total_credited ?? 0;
 
 $totalOutstanding = $billed - $paid - $credited;
+
+// Fetch sales representative information
+$repName = '';
+$repPhone = '';
+if (!empty($data['invoice']->rep_route_id)) {
+    $db->query("
+        SELECT CONCAT(e.first_name, ' ', e.last_name) as rep_name, e.phone as rep_phone 
+        FROM employees e 
+        JOIN users u ON u.employee_id = e.id 
+        JOIN rep_daily_routes r ON r.user_id = u.id 
+        WHERE r.id = :route_id 
+        LIMIT 1
+    ");
+    $db->bind(':route_id', $data['invoice']->rep_route_id);
+    $repRow = $db->single();
+    if ($repRow) {
+        $repName = $repRow->rep_name;
+        $repPhone = $repRow->rep_phone;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -218,7 +238,7 @@ $totalOutstanding = $billed - $paid - $credited;
 
         .table-items th, .table-items td {
             padding: 6px 4px; 
-            font-size: 8.5pt;
+            font-size: 10.5pt;
         }
 
         .table-items th {
@@ -227,7 +247,7 @@ $totalOutstanding = $billed - $paid - $credited;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            font-size: 7.5pt;
+            font-size: 9.5pt;
             text-align: left;
             color: #000;
         }
@@ -294,7 +314,7 @@ $totalOutstanding = $billed - $paid - $credited;
 
         .table-totals th, .table-totals td {
             padding: 4px 6px; 
-            font-size: 8.5pt;
+            font-size: 10.5pt;
             border-bottom: 1px solid #f0f0f0;
         }
 
@@ -317,7 +337,7 @@ $totalOutstanding = $billed - $paid - $credited;
             border-top: 2px solid #000; 
             border-bottom: 2px solid #000;
             font-weight: 800;
-            font-size: 9.5pt;
+            font-size: 11.5pt;
             color: #000;
         }
 
@@ -325,7 +345,7 @@ $totalOutstanding = $billed - $paid - $credited;
         .table-totals tr.due-row td {
             border-bottom: 2px solid #000;
             font-weight: 800;
-            font-size: 10pt;
+            font-size: 12.5pt;
             color: #000;
         }
 
@@ -442,8 +462,8 @@ $totalOutstanding = $billed - $paid - $credited;
                     
                     <div class="company-details">
                         <?php if(!empty($data['company']->address)) echo nl2br(htmlspecialchars($data['company']->address)) . '<br>'; ?>
-                        <?php if(!empty($data['company']->phone)) echo 'Tel: ' . htmlspecialchars($data['company']->phone) . '<br>'; ?>
-                        <?php if(!empty($data['company']->email)) echo 'Email: ' . htmlspecialchars($data['company']->email) . '<br>'; ?>
+                        <strong>Phone:</strong> 037 222 8025 &nbsp;|&nbsp; <strong>WhatsApp / Mobile:</strong> 077 362 3623<br>
+                        <strong>Website:</strong> <a href="http://www.falconstationery.com" target="_blank" style="color: #333; text-decoration: none;">www.falconstationery.com</a> &nbsp;|&nbsp; <strong>Email:</strong> <a href="mailto:falconstationary@gmail.com" style="color: #333; text-decoration: none;">falconstationary@gmail.com</a><br>
                         <?php if(!empty($data['company']->tax_number)) echo 'VAT/Tax Reg: ' . htmlspecialchars($data['company']->tax_number); ?>
                     </div>
                 </div>
@@ -473,6 +493,18 @@ $totalOutstanding = $billed - $paid - $credited;
                             <th>Status:</th>
                             <td><strong><?= strtoupper($data['invoice']->status) ?></strong></td>
                         </tr>
+                        <?php if(!empty($repName)): ?>
+                        <tr>
+                            <th>Sales Rep:</th>
+                            <td><?= htmlspecialchars($repName) ?></td>
+                        </tr>
+                        <?php endif; ?>
+                        <?php if(!empty($repPhone)): ?>
+                        <tr>
+                            <th>Rep Contact:</th>
+                            <td><?= htmlspecialchars($repPhone) ?></td>
+                        </tr>
+                        <?php endif; ?>
                     </table>
                 </div>
             </div>
@@ -656,8 +688,8 @@ $totalOutstanding = $billed - $paid - $credited;
                         <tr>
                             <td colspan="4" style="color: #444; border-bottom: 2px solid #000; padding-bottom: 10px;">
                                 <?php if(!empty($data['company']->address)) echo nl2br(htmlspecialchars($data['company']->address)) . '<br>'; ?>
-                                <?php if(!empty($data['company']->phone)) echo 'Tel: ' . htmlspecialchars($data['company']->phone) . '<br>'; ?>
-                                <?php if(!empty($data['company']->email)) echo 'Email: ' . htmlspecialchars($data['company']->email) . '<br>'; ?>
+                                <strong>Phone:</strong> 037 222 8025 &nbsp;|&nbsp; <strong>WhatsApp / Mobile:</strong> 077 362 3623<br>
+                                <strong>Website:</strong> www.falconstationery.com &nbsp;|&nbsp; <strong>Email:</strong> falconstationary@gmail.com<br>
                                 <?php if(!empty($data['company']->tax_number)) echo 'VAT/Tax Reg: ' . htmlspecialchars($data['company']->tax_number); ?>
                             </td>
                             <td colspan="2" style="text-align: right; border-bottom: 2px solid #000; padding-bottom: 10px;">
@@ -667,7 +699,13 @@ $totalOutstanding = $billed - $paid - $credited;
                                 <?php if(!empty($data['invoice']->cheque_date)): ?>
                                 <strong>Cheque Date:</strong> <?= date('d-M-Y', strtotime($data['invoice']->cheque_date)) ?><br>
                                 <?php endif; ?>
-                                <strong>Status:</strong> <?= strtoupper($data['invoice']->status) ?>
+                                <strong>Status:</strong> <?= strtoupper($data['invoice']->status) ?><br>
+                                <?php if(!empty($repName)): ?>
+                                <strong>Sales Rep:</strong> <?= htmlspecialchars($repName) ?><br>
+                                <?php endif; ?>
+                                <?php if(!empty($repPhone)): ?>
+                                <strong>Rep Contact:</strong> <?= htmlspecialchars($repPhone) ?><br>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <tr><td colspan="6"></td></tr>

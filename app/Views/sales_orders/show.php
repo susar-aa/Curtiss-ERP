@@ -44,15 +44,15 @@
         .bill-to p { margin: 0; line-height: 1.5; }
         
         /* Table */
-        table.items { width: 100%; text-align: left; border-collapse: collapse; margin-bottom: 30px; font-size: 13px;}
-        table.items th { background: #f0f4f8; padding: 10px; border-bottom: 2px solid #ccc; font-weight: bold; color: #333;}
+        table.items { width: 100%; text-align: left; border-collapse: collapse; margin-bottom: 30px; font-size: 15px;}
+        table.items th { background: #f0f4f8; padding: 10px; border-bottom: 2px solid #ccc; font-weight: bold; color: #333; font-size: 14px;}
         table.items td { padding: 10px; border-bottom: 1px solid #ddd; }
         table.items th.num, table.items td.num { text-align: right; }
         
         .totals-section { width: 100%; display: flex; justify-content: flex-end; }
-        .totals-box { width: 300px; font-size: 13px;}
+        .totals-box { width: 300px; font-size: 14px;}
         .totals-row { display: flex; justify-content: space-between; padding: 6px 0; }
-        .totals-row.grand-total { border-top: 2px solid #000; font-weight: bold; font-size: 16px; padding-top: 10px; margin-top: 5px;}
+        .totals-row.grand-total { border-top: 2px solid #000; font-weight: bold; font-size: 17px; padding-top: 10px; margin-top: 5px;}
         
         .footer-notes { position: absolute; bottom: 15mm; left: 20mm; right: 20mm; border-top: 1px solid #ccc; padding-top: 10mm; font-size: 11px; color: #666; text-align: center; }
 
@@ -86,8 +86,8 @@
                 
                 <div class="company-details">
                     <?php if(!empty($data['company']->address)) echo nl2br(htmlspecialchars($data['company']->address)) . '<br>'; ?>
-                    <?php if(!empty($data['company']->phone)) echo htmlspecialchars($data['company']->phone) . '<br>'; ?>
-                    <?php if(!empty($data['company']->email)) echo htmlspecialchars($data['company']->email) . '<br>'; ?>
+                    <strong>Phone:</strong> 037 222 8025 &nbsp;|&nbsp; <strong>WhatsApp / Mobile:</strong> 077 362 3623<br>
+                    <strong>Website:</strong> <a href="http://www.falconstationery.com" target="_blank" style="color: #333; text-decoration: none;">www.falconstationery.com</a> &nbsp;|&nbsp; <strong>Email:</strong> <a href="mailto:falconstationary@gmail.com" style="color: #333; text-decoration: none;">falconstationary@gmail.com</a>
                 </div>
             </div>
             
@@ -102,6 +102,20 @@
                     <?php endif; ?>
                     <?php if(!empty($data['order']->rep_name)): ?>
                         <div><strong>Sales Rep:</strong> <?= htmlspecialchars($data['order']->rep_name) ?></div>
+                    <?php endif; ?>
+                    <?php 
+                    $repPhone = !empty($data['order']->rep_tp) ? $data['order']->rep_tp : '';
+                    if (empty($repPhone) && !empty($data['order']->rep_name)) {
+                        $db = new Database();
+                        $db->query("SELECT phone FROM employees WHERE CONCAT(first_name, ' ', last_name) = :name LIMIT 1");
+                        $db->bind(':name', $data['order']->rep_name);
+                        $empRow = $db->single();
+                        if ($empRow) {
+                            $repPhone = $empRow->phone;
+                        }
+                    }
+                    if(!empty($repPhone)): ?>
+                        <div><strong>Rep Contact:</strong> <?= htmlspecialchars($repPhone) ?></div>
                     <?php endif; ?>
                 </div>
             </div>

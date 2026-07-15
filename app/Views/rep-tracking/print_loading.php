@@ -54,8 +54,8 @@
             align-items: center;
         }
         .stat-item { text-align: center; }
-        .stat-item span { display: block; font-size: 9px; text-transform: uppercase; color: #555; font-weight: bold; }
-        .stat-item strong { font-size: 13px; color: #000; font-family: monospace, sans-serif; }
+        .stat-item span { display: block; font-size: 10px; text-transform: uppercase; color: #555; font-weight: bold; }
+        .stat-item strong { font-size: 15px; color: #000; font-family: monospace, sans-serif; }
         table { 
             width: 100%; 
             border-collapse: collapse; 
@@ -65,21 +65,21 @@
             background-color: #eaeaea !important; 
             font-weight: bold; 
             text-transform: uppercase; 
-            font-size: 9px; 
+            font-size: 11px; 
             border: 1px solid #000;
-            padding: 5px 6px;
+            padding: 6px 8px;
         }
         td { 
             border: 1px solid #666; 
-            padding: 4px 6px;
-            font-size: 11px;
+            padding: 6px 8px;
+            font-size: 13px;
             line-height: 1.2;
         }
         tr:nth-child(even) { background-color: #fcfcfc; }
         .tick-box-placeholder {
             display: inline-block;
-            width: 12px;
-            height: 12px;
+            width: 14px;
+            height: 14px;
             border: 1px solid #444;
             border-radius: 2px;
             vertical-align: middle;
@@ -89,7 +89,7 @@
             display: inline-block;
             width: 90%;
             border-bottom: 1px dotted #444;
-            height: 12px;
+            height: 14px;
             vertical-align: bottom;
         }
         .no-print { 
@@ -181,9 +181,9 @@
                             <tr>
                                 <td style="text-align:center;"><?= $counter++ ?></td>
                                 <td style="font-weight: 500;"><?= htmlspecialchars($item->item_name) ?></td>
-                                <td style="text-align:center; font-family: monospace; font-size:11px; font-weight:bold;"><?= floatval($item->final_loaded_qty) ?></td>
-                                <td style="text-align:right; font-family: monospace; font-size:11px;"><?= number_format($item->unit_price, 2) ?></td>
-                                <td style="text-align:right; font-family: monospace; font-size:11px; font-weight:bold;"><?= number_format($itemTotal, 2) ?></td>
+                                <td style="text-align:center; font-family: monospace; font-size:13px; font-weight:bold;"><?= floatval($item->final_loaded_qty) ?></td>
+                                <td style="text-align:right; font-family: monospace; font-size:13px;"><?= number_format($item->unit_price, 2) ?></td>
+                                <td style="text-align:right; font-family: monospace; font-size:13px; font-weight:bold;"><?= number_format($itemTotal, 2) ?></td>
                                 <td style="text-align:right; padding-right: 15px;"><span class="tick-box-placeholder"></span></td>
                             </tr>
                         <?php endforeach; ?>
@@ -193,8 +193,8 @@
 
             <!-- Route Variance Summary Box -->
             <div style="margin-top: 20px; border: 1px solid #000; border-radius: 4px; padding: 10px; background: #fafafa;">
-                <h3 style="margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase;">Total Route Summary & Verification</h3>
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; font-size: 11px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 14px; text-transform: uppercase;">Total Route Summary & Verification</h3>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; font-size: 13px;">
                     <div>
                         <strong>Total Items Count:</strong><br>
                         <?= count($data['items']) ?> items
