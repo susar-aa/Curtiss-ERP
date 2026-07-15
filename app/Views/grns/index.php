@@ -400,20 +400,6 @@
 </style>
 
 <div class="inv-wrap">
-    <!-- Header -->
-    <div class="inv-header">
-        <div class="inv-eyebrow">Supply Chain</div>
-        <h1 class="inv-title">Goods Receipt Notes (GRN)</h1>
-    </div>
-
-    <!-- Quick Navigation Links -->
-    <div class="quick-links">
-        <span class="quick-links-label">Supply Chain:</span>
-        <a href="<?= APP_URL ?>/supplier" class="btn-quick">🏢 Suppliers</a>
-        <a href="<?= APP_URL ?>/purchase" class="btn-quick">🛒 Purchase Orders</a>
-        <a href="<?= APP_URL ?>/grn" class="btn-quick active">📦 Goods Receipts (GRN)</a>
-        <a href="<?= APP_URL ?>/inventory" class="btn-quick">🗄️ Inventory</a>
-    </div>
 
     <!-- Alert Messaging -->
     <?php if(!empty($data['error'])): ?>
