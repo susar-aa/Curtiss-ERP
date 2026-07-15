@@ -63,6 +63,25 @@ class StockAdjustmentController extends Controller {
         $adjustedItems = [];
         foreach ($allItems as $item) {
             $variations = $this->itemModel->getItemVariations($item->id);
+
+            // Fallback to variations_json if empty
+            if (empty($variations) && !empty($item->variations_json)) {
+                $decoded = json_decode($item->variations_json);
+                if (is_array($decoded)) {
+                    $variations = [];
+                    foreach ($decoded as $v) {
+                        $vObj = new stdClass();
+                        $vObj->id = $v->id ?? 0;
+                        $vObj->variation_name = 'Option';
+                        $vObj->value_name = $v->attribute ?? $v->value ?? $v->value_name ?? '';
+                        $vObj->sku = $v->sku ?? '';
+                        $vObj->quantity_on_hand = $v->qty ?? $v->quantity_on_hand ?? $item->qty ?? 0;
+                        $vObj->cost = $v->cost ?? $v->cost_price ?? $item->cost_price ?? 0.00;
+                        $variations[] = $vObj;
+                    }
+                }
+            }
+
             if (!empty($variations)) {
                 foreach ($variations as $var) {
                     $adjustedItems[] = (object)[
