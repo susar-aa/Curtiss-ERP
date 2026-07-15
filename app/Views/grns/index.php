@@ -58,7 +58,7 @@
 .inv-wrap {
     max-width: 1420px;
     margin: 0 auto;
-    padding: 24px 24px 140px;
+    padding: 0px 24px 140px;
     font-family: var(--f-system);
     color: var(--t-primary);
 }
