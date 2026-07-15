@@ -98,7 +98,7 @@ class StockAdjustment {
                    vv.value_name as variation_value
             FROM stock_adjustment_items sai
             JOIN items i ON sai.item_id = i.id
-            LEFT JOIN categories c ON i.category_id = c.id
+            LEFT JOIN item_categories c ON i.category_id = c.id
             LEFT JOIN item_variation_options ivo ON sai.variation_option_id = ivo.id
             LEFT JOIN variation_values vv ON ivo.variation_value_id = vv.id
             WHERE sai.adjustment_id = :adjustment_id
