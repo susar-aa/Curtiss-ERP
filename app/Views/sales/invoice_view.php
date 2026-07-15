@@ -481,20 +481,12 @@ if (!empty($data['invoice']->rep_route_id)) {
                             <th>Date:</th>
                             <td><?= date('d-M-Y', strtotime($data['invoice']->invoice_date)) ?></td>
                         </tr>
-                        <tr>
-                            <th>Due Date:</th>
-                            <td><?= date('d-M-Y', strtotime($data['invoice']->due_date)) ?></td>
-                        </tr>
                         <?php if(!empty($data['invoice']->cheque_date)): ?>
                         <tr>
                             <th>Cheque Date:</th>
                             <td><?= date('d-M-Y', strtotime($data['invoice']->cheque_date)) ?></td>
                         </tr>
                         <?php endif; ?>
-                        <tr>
-                            <th>Status:</th>
-                            <td><strong><?= strtoupper($data['invoice']->status) ?></strong></td>
-                        </tr>
                         <?php if(!empty($repName)): ?>
                         <tr>
                             <th>Sales Rep:</th>
@@ -697,11 +689,9 @@ if (!empty($data['invoice']->rep_route_id)) {
                             <td colspan="2" style="text-align: right; border-bottom: 2px solid #000; padding-bottom: 10px;">
                                 <strong>Invoice No:</strong> <?= htmlspecialchars($data['invoice']->invoice_number) ?><br>
                                 <strong>Date:</strong> <?= date('d-M-Y', strtotime($data['invoice']->invoice_date)) ?><br>
-                                <strong>Due Date:</strong> <?= date('d-M-Y', strtotime($data['invoice']->due_date)) ?><br>
                                 <?php if(!empty($data['invoice']->cheque_date)): ?>
                                 <strong>Cheque Date:</strong> <?= date('d-M-Y', strtotime($data['invoice']->cheque_date)) ?><br>
                                 <?php endif; ?>
-                                <strong>Status:</strong> <?= strtoupper($data['invoice']->status) ?><br>
                                 <?php if(!empty($repName)): ?>
                                 <strong>Sales Rep:</strong> <?= htmlspecialchars($repName) ?><br>
                                 <?php endif; ?>
