@@ -18,8 +18,14 @@ class Expense {
 
     public function createExpenseWithAccounting(array $data, int $expenseAccountId, int $paymentAccountId, int $userId): bool {
         try {
+            $ref = trim($data['reference'] ?? '');
+            if (empty($ref)) {
+                $this->db->query("SELECT id FROM expenses ORDER BY id DESC LIMIT 1");
+                $lastRow = $this->db->single();
+                $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+                $ref = str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
+            }
             $desc = "Expense recorded: " . $data['description'];
-            $ref = !empty($data['reference']) ? $data['reference'] : 'EXP-' . time();
 
             $lines = [
                 ['account_id' => $expenseAccountId, 'debit' => $data['amount'], 'credit' => 0, 'description' => $data['description']],

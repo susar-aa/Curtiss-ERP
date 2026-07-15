@@ -81,7 +81,7 @@ class EstimateController extends Controller {
                 $this->db->query("SELECT id FROM invoices ORDER BY id DESC LIMIT 1");
                 $lastRow = $this->db->single();
                 $nextId = $lastRow ? ($lastRow->id + 1) : 1;
-                $invoiceNumber = 'INV-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+                $invoiceNumber = str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
 
                 // Map estimate data to invoice data array
                 $invoiceData = [
@@ -114,12 +114,17 @@ class EstimateController extends Controller {
     }
 
     public function create() {
+        $db = new Database();
+        $db->query("SELECT id FROM estimates ORDER BY id DESC LIMIT 1");
+        $lastRow = $db->single();
+        $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+
         $data = [
             'title' => 'Create Estimate',
             'content_view' => 'estimates/create',
             'customers' => $this->customerModel->getAllCustomers(),
             'catalog_items' => $this->itemModel->getAllItems(), 
-            'estimate_number' => 'EST-' . time(),
+            'estimate_number' => str_pad((string)$nextId, 5, '0', STR_PAD_LEFT),
             'error' => ''
         ];
 

@@ -48,10 +48,10 @@ class ServiceProviderController extends Controller {
 
                 // Generate next bill number
                 $db = new Database();
-                $db->query("SELECT COUNT(id) as today_count FROM goods_receipt_notes WHERE service_provider_id IS NOT NULL AND DATE(created_at) = CURDATE()");
-                $countRow = $db->single();
-                $nextId = $countRow ? ($countRow->today_count + 1) : 1;
-                $nextBillNumber = 'SB-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+                $db->query("SELECT id FROM goods_receipt_notes ORDER BY id DESC LIMIT 1");
+                $lastRow = $db->single();
+                $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+                $nextBillNumber = str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
             }
         }
 
@@ -126,10 +126,10 @@ class ServiceProviderController extends Controller {
 
                 // Re-calculate / generate next unique bill number on insert
                 $db = new Database();
-                $db->query("SELECT COUNT(id) as today_count FROM goods_receipt_notes WHERE service_provider_id IS NOT NULL AND DATE(created_at) = CURDATE()");
-                $countRow = $db->single();
-                $nextId = $countRow ? ($countRow->today_count + 1) : 1;
-                $billNumber = 'SB-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+                $db->query("SELECT id FROM goods_receipt_notes ORDER BY id DESC LIMIT 1");
+                $lastRow = $db->single();
+                $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+                $billNumber = str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
                 
                 $attachmentPath = null;
                 if (!empty($_FILES['attachment']['name'])) {

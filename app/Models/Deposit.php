@@ -17,7 +17,7 @@ class Deposit {
         $this->db->query("SELECT id FROM deposits ORDER BY id DESC LIMIT 1");
         $lastRow = $this->db->single();
         $nextId = $lastRow ? ($lastRow->id + 1) : 1;
-        return 'DEP-' . date('Ymd') . '-' . str_pad((string)$nextId, 4, '0', STR_PAD_LEFT);
+        return str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
     }
 
     public function getAllDeposits() {

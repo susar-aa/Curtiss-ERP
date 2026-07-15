@@ -173,7 +173,13 @@ class PettyCashTransaction {
             $pettyAccId = $this->getPettyCashAccountId();
             $date = $data['transaction_date'];
             $desc = !empty($data['description']) ? $data['description'] : "Petty Cash Fund Allocation";
-            $ref = !empty($data['reference']) ? $data['reference'] : 'PC-AL-' . time();
+            $ref = !empty($data['reference']) ? $data['reference'] : '';
+            if (empty($ref)) {
+                $this->db->query("SELECT id FROM petty_cash_transactions ORDER BY id DESC LIMIT 1");
+                $lastRow = $this->db->single();
+                $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+                $ref = str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
+            }
 
             // Check if period is closed/locked
             $this->db->query("SELECT COUNT(*) as cnt FROM financial_years WHERE :entry_date BETWEEN start_date AND end_date");
@@ -248,7 +254,13 @@ class PettyCashTransaction {
             $date = $data['transaction_date'];
             $desc = $data['description'];
             $paidTo = $data['paid_to'] ?? '';
-            $ref = !empty($data['reference']) ? $data['reference'] : 'PC-EXP-' . time();
+            $ref = !empty($data['reference']) ? $data['reference'] : '';
+            if (empty($ref)) {
+                $this->db->query("SELECT id FROM petty_cash_transactions ORDER BY id DESC LIMIT 1");
+                $lastRow = $this->db->single();
+                $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+                $ref = str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
+            }
             $attachment = $data['attachment_path'] ?? null;
 
             // Fetch settings to check if approval is required

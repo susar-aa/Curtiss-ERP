@@ -132,7 +132,7 @@ class CustomerPaymentController extends Controller {
             $db->query("SELECT id FROM customer_payments ORDER BY id DESC LIMIT 1");
             $lastRow = $db->single();
             $nextId = $lastRow ? ($lastRow->id + 1) : 1;
-            $reference = 'RC-' . date('Ymd') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            $reference = str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
         }
 
         $paymentData = [

@@ -84,12 +84,17 @@ class GRNController extends Controller {
             $item->variations = $this->itemModel->getItemVariations($item->id);
         }
 
+        $db = new Database();
+        $db->query("SELECT id FROM goods_receipt_notes ORDER BY id DESC LIMIT 1");
+        $lastRow = $db->single();
+        $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+
         $data = [
             'title' => 'Create Goods Receipt Note (GRN)',
             'content_view' => 'grns/create',
             'vendors' => $this->vendorModel->getAllVendors(),
             'catalog_items' => $catalogItems,
-            'grn_number' => 'GRN-' . time(),
+            'grn_number' => str_pad((string)$nextId, 5, '0', STR_PAD_LEFT),
             'prefilled_vendor' => $prefilledVendor,
             'linked_po' => $linkedPO,
             'prefilled_items' => $prefilledItems,

@@ -124,27 +124,13 @@ class Database {
     }
 
     public function generateJournalReference($date = null) {
-        if (!$date) {
-            $date = date('Y-m-d');
-        }
-        $year = date('Y', strtotime($date));
-        
-        $stmt = $this->dbh->prepare("SELECT reference FROM journal_entries WHERE reference LIKE :pattern ORDER BY reference DESC LIMIT 1");
-        $pattern = $year . '%';
-        $stmt->bindValue(':pattern', $pattern, PDO::PARAM_STR);
+        $stmt = $this->dbh->prepare("SELECT id FROM journal_entries ORDER BY id DESC LIMIT 1");
         $stmt->execute();
         $row = $stmt->fetch(PDO::FETCH_OBJ);
         $stmt->closeCursor();
         
-        if ($row && !empty($row->reference)) {
-            $lastRef = $row->reference;
-            if (preg_match('/^' . $year . '(\d+)$/', $lastRef, $matches)) {
-                $seq = intval($matches[1]) + 1;
-                return $year . str_pad($seq, 3, '0', STR_PAD_LEFT);
-            }
-        }
-        
-        return $year . '001';
+        $nextId = $row ? (intval($row->id) + 1) : 1;
+        return str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
     }
 
     public function resultSet() {

@@ -150,7 +150,7 @@ class PettyCashReimbursement {
             $bankAccId = (int)$reim->bank_account_id;
             $pettyAccId = $this->pcTx->getPettyCashAccountId();
             $desc = "Reimbursement Replenishment: " . $reim->description;
-            $ref = 'PC-REIM-' . $reim->id;
+            $ref = str_pad((string)$reim->id, 5, '0', STR_PAD_LEFT);
 
             // Check if period is closed/locked
             $this->db->query("SELECT COUNT(*) as cnt FROM financial_years WHERE :entry_date BETWEEN start_date AND end_date");

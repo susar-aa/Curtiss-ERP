@@ -93,7 +93,11 @@ class WarehouseController extends Controller {
         }
 
         // Generate a standard unique transfer reference
-        $transferNum = 'TRF-' . strtoupper(substr(uniqid(), 5));
+        $db = new Database();
+        $db->query("SELECT id FROM warehouse_transfers ORDER BY id DESC LIMIT 1");
+        $lastRow = $db->single();
+        $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+        $transferNum = str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
 
         $transferModel = $this->model('WarehouseTransfer');
         $payload = [

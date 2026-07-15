@@ -107,7 +107,7 @@ class RecurringJournal {
         }
         $journalModel = new JournalEntry();
         
-        $reference = "REC-" . $templateId . "-" . date('Ymd', strtotime($date));
+        $reference = "";
         $description = "Recurring Entry: " . $template->template_name . " - " . $template->description;
         
         $postResult = $journalModel->postEntry($date, $reference, $description, $lines, $userId);

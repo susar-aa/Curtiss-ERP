@@ -31,13 +31,18 @@ class ExpensesController extends Controller {
         $expenses = array_filter($accounts, function($a) { return $a->account_type == 'Expense'; });
         $payment_accounts = array_filter($accounts, function($a) { return in_array($a->account_type, ['Asset', 'Liability']); });
 
+        $db = new Database();
+        $db->query("SELECT id FROM expenses ORDER BY id DESC LIMIT 1");
+        $lastRow = $db->single();
+        $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+
         $data = [
             'title' => 'Record Expense',
             'content_view' => 'expenses/create',
             'vendors' => $this->vendorModel->getAllVendors(),
             'expense_accounts' => $expenses,
             'payment_accounts' => $payment_accounts,
-            'reference' => 'EXP-' . time(),
+            'reference' => str_pad((string)$nextId, 5, '0', STR_PAD_LEFT),
             'error' => ''
         ];
 

@@ -86,11 +86,16 @@ class CreditNoteController extends Controller {
     }
 
     public function create() {
+        $db = new Database();
+        $db->query("SELECT id FROM credit_notes ORDER BY id DESC LIMIT 1");
+        $lastRow = $db->single();
+        $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+
         $data = [
             'title' => 'Issue Credit Note',
             'content_view' => 'credit_notes/create',
             'customers' => $this->customerModel->getAllCustomers(),
-            'credit_note_number' => 'CN-' . time(),
+            'credit_note_number' => str_pad((string)$nextId, 5, '0', STR_PAD_LEFT),
             'error' => ''
         ];
 

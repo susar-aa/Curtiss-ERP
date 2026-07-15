@@ -199,12 +199,17 @@ class PurchaseController extends Controller {
             }
         }
 
+        $db = new Database();
+        $db->query("SELECT id FROM purchase_orders ORDER BY id DESC LIMIT 1");
+        $lastRow = $db->single();
+        $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+
         $data = [
             'title' => 'Create Purchase Order',
             'content_view' => 'purchases/create',
             'vendors' => $this->vendorModel->getAllVendors(),
             'catalog_items' => $catalogItems,
-            'po_number' => 'PO-' . time(),
+            'po_number' => str_pad((string)$nextId, 5, '0', STR_PAD_LEFT),
             'prefilled_vendor' => $prefilledVendor,
             'prefilled_items' => $prefilledItems,
             'error' => ''
