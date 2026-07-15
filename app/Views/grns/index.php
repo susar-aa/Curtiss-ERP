@@ -1,130 +1,585 @@
-<?php
-?>
+<!-- Inter Font & FontAwesome Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
 <style>
-    .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .btn { padding: 8px 16px; background: #0066cc; color: #fff; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 14px;}
-    .btn-outline { background: transparent; border: 1px solid #0066cc; color: #0066cc; }
-    .btn-danger { background: #ffebee; color: #c62828; border: none; }
-    .btn-small { padding: 4px 8px; font-size: 11px; margin-right: 5px; cursor: pointer; border-radius: 4px;}
-    
-    .quick-links { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; background: rgba(0,0,0,0.02); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--mac-border); }
-    .btn-quick { padding: 6px 12px; background: #fff; color: #555; border: 1px solid var(--mac-border); border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; transition: 0.2s; }
-    .btn-quick:hover { background: rgba(0,102,204,0.05); color: #0066cc; border-color: #0066cc; }
-    .btn-quick.active { background: #0066cc; color: #fff; border-color: #0066cc; }
-    
-    .filter-panel { background: #fff; padding: 15px; border-radius: 8px; border: 1px solid var(--mac-border); margin-bottom: 15px; display: flex; gap: 15px; align-items: flex-end;}
-    @media (prefers-color-scheme: dark) { .filter-panel { background: #1e1e2d; } }
-    .search-bar { width: 100%; padding: 10px 15px; border: 1px solid var(--mac-border); border-radius: 8px; font-size: 14px; margin-bottom: 15px; background: transparent; color: var(--text-main); box-sizing: border-box; }
-    
-    .data-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);}
-    @media (prefers-color-scheme: dark) { .data-table { background: #1e1e2d; } }
-    .data-table th, .data-table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--mac-border); font-size: 13px;}
-    .data-table th { background-color: rgba(0,0,0,0.02); font-weight: 600; color:#555;}
-    
-    .pagination { display: flex; justify-content: flex-end; gap: 5px; margin-top: 15px; }
-    .page-btn { padding: 6px 12px; border: 1px solid var(--mac-border); border-radius: 4px; background: #fff; color: #333; text-decoration: none; font-size: 12px;}
-    .page-btn.active { background: #0066cc; color: #fff; border-color: #0066cc; }
-    
-    .form-group { margin:0; }
-    .form-group label { display: block; margin-bottom: 5px; font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; }
-    .form-control { width: 100%; padding: 8px 12px; border: 1px solid var(--mac-border); border-radius: 4px; background: transparent; color: var(--text-main); box-sizing: border-box;}
+/* ============================================================
+   SF PRO + APPLE DESIGN LANGUAGE — GOODS RECEIPT NOTES
+   ============================================================ */
+
+:root {
+    --c-bg:           #f2f2f7;
+    --c-surface:      #ffffff;
+    --c-surface2:     #f9f9fb;
+    --c-fill:         rgba(120,120,128,0.12);
+    --c-fill2:        rgba(120,120,128,0.16);
+    --c-separator:    rgba(60,60,67,0.12);
+    --c-separator2:   rgba(60,60,67,0.06);
+
+    --c-blue:         #007aff;
+    --c-blue-light:   #e5f2ff;
+    --c-blue-mid:     #b3d6ff;
+    --c-green:        #34c759;
+    --c-green-light:  #e6f9ec;
+    --c-orange:       #ff9500;
+    --c-orange-light: #fff4e5;
+    --c-red:          #ff3b30;
+    --c-red-light:    #fff0ef;
+    --c-purple:       #af52de;
+    --c-purple-light: #f5eeff;
+
+    --f-system: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', sans-serif;
+    --f-mono:   ui-monospace, 'SF Mono', 'Menlo', 'Monaco', monospace;
+
+    --t-primary:   #1c1c1e;
+    --t-secondary: #636366;
+    --t-tertiary:  #aeaeb2;
+    --t-label:     #8e8e93;
+
+    --shadow-xs:  0 1px 2px rgba(0,0,0,0.04);
+    --shadow-sm:  0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-md:  0 8px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+    --shadow-xl:  0 24px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.06);
+
+    --r-xs: 6px;
+    --r-sm: 10px;
+    --r-md: 14px;
+    --r-lg: 20px;
+    --r-xl: 26px;
+    --r-pill: 999px;
+
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-ios:    cubic-bezier(0.25, 0.1, 0.25, 1);
+    --dur-fast:    0.18s;
+    --dur-mid:     0.28s;
+    --dur-slow:    0.42s;
+}
+
+.inv-wrap {
+    max-width: 1420px;
+    margin: 0 auto;
+    padding: 24px 24px 140px;
+    font-family: var(--f-system);
+    color: var(--t-primary);
+}
+
+/* ---- Page Header ---- */
+.inv-header {
+    margin-bottom: 28px;
+}
+.inv-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-blue);
+    margin-bottom: 6px;
+}
+.inv-title {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--t-primary);
+}
+
+/* ---- Quick Links ---- */
+.quick-links {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+    align-items: center;
+    background: var(--c-surface);
+    padding: 8px 12px;
+    border-radius: var(--r-md);
+    border: 0.5px solid var(--c-separator);
+    box-shadow: var(--shadow-sm);
+    flex-wrap: wrap;
+}
+.quick-links-label {
+    font-size: 11px;
+    color: var(--t-label);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 8px;
+}
+.btn-quick {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--c-surface);
+    border: 0.5px solid var(--c-separator);
+    border-radius: var(--r-pill);
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--t-secondary);
+    text-decoration: none;
+    transition: all var(--dur-fast);
+}
+.btn-quick:hover {
+    background: var(--c-fill);
+    color: var(--t-primary);
+}
+.btn-quick.active {
+    background: var(--c-blue-light);
+    color: var(--c-blue);
+    border-color: var(--c-blue-mid);
+}
+
+/* ---- Alerts ---- */
+.sf-alert {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--c-surface);
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-xs);
+    border: 0.5px solid var(--c-separator);
+    border-left-width: 3px;
+    font-size: 14px;
+}
+.sf-alert.success { border-left-color: var(--c-green); }
+.sf-alert.error   { border-left-color: var(--c-red); }
+.sf-alert-icon { font-size: 18px; flex-shrink: 0; padding-top: 1px; }
+.sf-alert.success .sf-alert-icon { color: var(--c-green); }
+.sf-alert.error   .sf-alert-icon { color: var(--c-red); }
+.sf-alert-title { font-weight: 600; color: var(--t-primary); margin-bottom: 2px; }
+.sf-alert-msg   { color: var(--t-secondary); font-size: 13px; }
+
+/* ---- Filter Shelf ---- */
+.filter-shelf {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 18px;
+}
+.filter-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--c-surface);
+    border: 0.5px solid var(--c-separator);
+    border-radius: var(--r-pill);
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--t-secondary);
+    box-shadow: var(--shadow-xs);
+}
+.filter-chip-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--t-label);
+    text-transform: uppercase;
+}
+.pg-size-sel {
+    font-family: var(--f-system); font-size: 13px; font-weight: 600;
+    color: var(--t-primary);
+    background: var(--c-fill);
+    border: 0.5px solid var(--c-separator);
+    border-radius: var(--r-sm);
+    padding: 5px 9px;
+    outline: none; cursor: pointer;
+    transition: border-color var(--dur-fast);
+}
+.pg-size-sel:hover { border-color: var(--c-blue); }
+.filter-reset {
+    background: transparent;
+    border: 0.5px solid var(--c-separator);
+    border-radius: var(--r-pill);
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--t-secondary);
+    cursor: pointer;
+    transition: all var(--dur-fast);
+}
+.filter-reset:hover { background: var(--c-fill); color: var(--t-primary); }
+.filter-count {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--t-secondary);
+    font-weight: 500;
+}
+.filter-count strong { color: var(--t-primary); font-weight: 700; }
+
+/* ---- Table Panel ---- */
+.table-panel {
+    background: var(--c-surface);
+    border-radius: var(--r-xl);
+    border: 0.5px solid var(--c-separator);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+.inv-table { width: 100%; border-collapse: collapse; }
+.inv-table thead th {
+    padding: 13px 18px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--t-label);
+    background: var(--c-surface2);
+    border-bottom: 0.5px solid var(--c-separator);
+    white-space: nowrap;
+}
+.inv-table tbody tr {
+    transition: background var(--dur-fast);
+    border-bottom: 0.5px solid var(--c-separator2);
+}
+.inv-table tbody tr:last-child { border-bottom: none; }
+.inv-table tbody tr:hover { background: var(--c-fill2); }
+.inv-table td {
+    padding: 14px 18px;
+    font-size: 14px;
+    color: var(--t-primary);
+    vertical-align: middle;
+}
+
+/* ---- Badges ---- */
+.sf-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px;
+    border-radius: var(--r-pill);
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+.sf-badge .dot {
+    width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
+}
+.badge-active  { background: var(--c-green-light);  color: #1a7f3c; }
+.badge-active  .dot { background: var(--c-green); }
+.badge-low     { background: var(--c-orange-light); color: #c05d00; }
+.badge-low     .dot { background: var(--c-orange); }
+
+/* ---- Row Actions ---- */
+.row-acts { display: flex; gap: 6px; justify-content: flex-end; }
+.act-btn {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--c-fill);
+    color: var(--t-label);
+    border: none; cursor: pointer; text-decoration: none;
+    font-size: 13px;
+    transition: all var(--dur-fast) var(--ease-spring);
+}
+.act-btn:hover { transform: scale(1.12); }
+.act-btn.view:hover   { background: var(--c-blue-light);   color: var(--c-blue); }
+.act-btn.edit:hover   { background: var(--c-purple-light); color: var(--c-purple); }
+.act-btn.trash:hover  { background: var(--c-red-light);    color: var(--c-red); }
+
+/* ---- Command Bar (Dynamic Island style) ---- */
+.cmd-bar {
+    position: fixed;
+    bottom: 28px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(28, 28, 30, 0.92);
+    backdrop-filter: saturate(180%) blur(28px);
+    -webkit-backdrop-filter: saturate(180%) blur(28px);
+    border: 0.5px solid rgba(255,255,255,0.12);
+    border-radius: var(--r-pill);
+    padding: 7px 10px;
+    display: flex; align-items: center; gap: 4px;
+    box-shadow: var(--shadow-xl), 0 0 0 0.5px rgba(0,0,0,0.3);
+    z-index: 1000;
+}
+.cmd-search {
+    display: flex; align-items: center; gap: 9px;
+    background: rgba(255,255,255,0.1);
+    border-radius: var(--r-pill);
+    padding: 8px 14px;
+    width: 250px;
+    transition: width var(--dur-slow) var(--ease-ios),
+                background var(--dur-mid);
+}
+.cmd-search:focus-within {
+    width: 380px;
+    background: rgba(255,255,255,0.18);
+}
+.cmd-search i { color: rgba(255,255,255,0.55); font-size: 14px; flex-shrink: 0; }
+.cmd-search input {
+    background: transparent; border: none; outline: none;
+    color: #fff; font-size: 14px; font-weight: 500;
+    font-family: var(--f-system); width: 100%;
+}
+.cmd-search input::placeholder { color: rgba(255,255,255,0.45); }
+.cmd-divider { width: 0.5px; height: 22px; background: rgba(255,255,255,0.15); margin: 0 3px; }
+.cmd-cta {
+    display: flex; align-items: center; gap: 7px;
+    background: #fff; color: #1c1c1e;
+    border: none; border-radius: var(--r-pill);
+    padding: 0 18px; height: 38px;
+    font-size: 14px; font-weight: 700;
+    font-family: var(--f-system);
+    cursor: pointer; text-decoration: none;
+    transition: transform var(--dur-fast) var(--ease-spring),
+                background var(--dur-fast);
+    margin-left: 2px;
+}
+.cmd-cta:hover { background: #e5e5ea; transform: scale(0.97); }
+
+/* ---- Modals ---- */
+.modal-veil {
+    position: fixed; inset: 0; z-index: 2000;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: saturate(180%) blur(14px);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--dur-mid) var(--ease-ios);
+}
+.modal-veil:not(.hidden) { opacity: 1; pointer-events: auto; }
+.sf-modal {
+    background: var(--c-surface);
+    border-radius: var(--r-xl);
+    border: 0.5px solid var(--c-separator);
+    box-shadow: var(--shadow-xl);
+    width: 100%; max-width: 420px;
+    overflow: hidden;
+    transform: translateY(16px) scale(0.97);
+    transition: transform var(--dur-slow) var(--ease-spring);
+}
+.modal-veil:not(.hidden) .sf-modal { transform: translateY(0) scale(1); }
+.modal-head {
+    padding: 20px 22px 18px;
+    text-align: center;
+    border-bottom: 0.5px solid var(--c-separator);
+    position: relative;
+}
+.modal-title { font-size: 17px; font-weight: 700; color: var(--t-primary); }
+.modal-close {
+    position: absolute; right: 14px; top: 14px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--c-fill); border: none; cursor: pointer;
+    color: var(--t-label); font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background var(--dur-fast);
+}
+.modal-close:hover { background: var(--c-fill2); }
+.modal-body { padding: 22px; }
+.modal-foot {
+    padding: 14px 22px;
+    background: var(--c-surface2);
+    border-top: 0.5px solid var(--c-separator);
+    display: flex; gap: 10px;
+}
+.sf-btn {
+    flex: 1; padding: 12px;
+    border-radius: var(--r-md);
+    font-size: 15px; font-weight: 700;
+    font-family: var(--f-system); text-align: center;
+    cursor: pointer; border: none;
+    transition: transform var(--dur-fast) var(--ease-spring), filter var(--dur-fast);
+    text-decoration: none; display: flex; align-items: center; justify-content: center;
+}
+.sf-btn:hover { filter: brightness(0.94); }
+.sf-btn:active { transform: scale(0.97); }
+.sf-btn.neutral { background: var(--c-fill); color: var(--t-primary); }
+.sf-btn.primary { background: var(--t-primary); color: #fff; }
+
+.sf-input {
+    width: 100%; padding: 12px 14px;
+    background: var(--c-fill);
+    border: 0.5px solid var(--c-separator);
+    border-radius: var(--r-md);
+    font-size: 15px; font-weight: 500; font-family: var(--f-system);
+    color: var(--t-primary); outline: none;
+    transition: border-color var(--dur-fast), box-shadow var(--dur-fast), background var(--dur-fast);
+    box-sizing: border-box;
+}
+.sf-input:focus {
+    background: var(--c-surface);
+    border-color: var(--c-blue);
+    box-shadow: 0 0 0 3.5px rgba(0,122,255,0.14);
+}
 </style>
 
-<div class="header-actions">
-    <h2>Goods Receipt Notes (GRN)</h2>
-    <a href="<?= APP_URL ?>/grn/create" class="btn">+ Create Manual GRN</a>
-</div>
-
-<div class="quick-links">
-    <span style="font-size: 11px; color: #888; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Supply Chain:</span>
-    <a href="<?= APP_URL ?>/supplier" class="btn-quick">🏢 Suppliers</a>
-    <a href="<?= APP_URL ?>/purchase" class="btn-quick">🛒 Purchase Orders</a>
-    <a href="<?= APP_URL ?>/grn" class="btn-quick active">📦 Goods Receipts (GRN)</a>
-    <a href="<?= APP_URL ?>/inventory" class="btn-quick">🗄️ Inventory</a>
-</div>
-
-<?php if(!empty($data['error'])): ?><div style="padding: 10px; background:#ffebee; color:#c62828; border-radius:4px; margin-bottom:15px;"><?= $data['error'] ?></div><?php endif; ?>
-<?php if(!empty($data['success'])): ?><div style="padding: 15px; background:#e8f5e9; color:#2e7d32; border-radius:4px; margin-bottom:15px; font-weight:bold; font-size: 14px;">✓ <?= $data['success'] ?></div><?php endif; ?>
-
-<input type="text" id="searchInput" class="search-bar" placeholder="🔍 Search GRN Number, PO Number or Supplier Name..." value="<?= htmlspecialchars($data['search']) ?>">
-
-<div class="filter-panel">
-    <div class="form-group" style="flex: 1;">
-        <label>Filter by Supplier</label>
-        <select id="filterVendor" class="form-control" onchange="triggerSearch()">
-            <option value="">All Suppliers</option>
-            <?php foreach($data['vendors'] as $ven): ?>
-                <option value="<?= $ven->id ?>" <?= ($data['filters']['vendor_id'] == $ven->id) ? 'selected' : '' ?>><?= htmlspecialchars($ven->name) ?></option>
-            <?php endforeach; ?>
-        </select>
+<div class="inv-wrap">
+    <!-- Header -->
+    <div class="inv-header">
+        <div class="inv-eyebrow">Supply Chain</div>
+        <h1 class="inv-title">Goods Receipt Notes (GRN)</h1>
     </div>
-    <button class="btn btn-outline" style="padding: 8px 12px; border-color:#ccc; color:#666;" onclick="clearFilters()">Clear Filters</button>
+
+    <!-- Quick Navigation Links -->
+    <div class="quick-links">
+        <span class="quick-links-label">Supply Chain:</span>
+        <a href="<?= APP_URL ?>/supplier" class="btn-quick">🏢 Suppliers</a>
+        <a href="<?= APP_URL ?>/purchase" class="btn-quick">🛒 Purchase Orders</a>
+        <a href="<?= APP_URL ?>/grn" class="btn-quick active">📦 Goods Receipts (GRN)</a>
+        <a href="<?= APP_URL ?>/inventory" class="btn-quick">🗄️ Inventory</a>
+    </div>
+
+    <!-- Alert Messaging -->
+    <?php if(!empty($data['error'])): ?>
+    <div class="sf-alert error">
+        <i class="fa-solid fa-triangle-exclamation sf-alert-icon"></i>
+        <div style="flex:1;">
+            <div class="sf-alert-title">Operation Error</div>
+            <div class="sf-alert-msg"><?= htmlspecialchars($data['error']) ?></div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if(!empty($data['success'])): ?>
+    <div class="sf-alert success">
+        <i class="fa-solid fa-circle-check sf-alert-icon"></i>
+        <div style="flex:1;">
+            <div class="sf-alert-title">Success</div>
+            <div class="sf-alert-msg"><?= htmlspecialchars($data['success']) ?></div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Filter Shelf -->
+    <div class="filter-shelf">
+        <div class="filter-chip">
+            <span class="filter-chip-label">Supplier:</span>
+            <select id="filterVendor" class="pg-size-sel" onchange="triggerSearch()" style="border:none; background:transparent; font-weight:600; padding:0; outline:none; font-size:13px; color:var(--t-primary); cursor:pointer;">
+                <option value="">All Suppliers</option>
+                <?php foreach($data['vendors'] as $ven): ?>
+                    <option value="<?= $ven->id ?>" <?= ($data['filters']['vendor_id'] == $ven->id) ? 'selected' : '' ?>><?= htmlspecialchars($ven->name) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        
+        <button class="filter-reset" onclick="clearFilters()">Clear Filters</button>
+        
+        <div class="filter-count">
+            Showing <strong><?= count($data['grns']) ?></strong> GRN records
+        </div>
+    </div>
+
+    <!-- Table Container -->
+    <div class="table-panel">
+        <table class="inv-table">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">GRN Number & Date</th>
+                    <th style="width: 30%;">Supplier / Vendor</th>
+                    <th style="width: 15%;">Linked PO</th>
+                    <th style="text-align: right; width: 15%;">Total Amount</th>
+                    <th style="text-align: center; width: 15%;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <?php if(empty($data['grns'])): ?>
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--t-label); padding: 32px; font-style: italic;">
+                        No Goods Receipt Notes found.
+                    </td>
+                </tr>
+                <?php else: foreach($data['grns'] as $grn): ?>
+                <tr>
+                    <td>
+                        <strong style="font-family: var(--f-mono); font-size:14px;"><?= htmlspecialchars($grn->grn_number) ?></strong><br>
+                        <span style="font-size: 11px; color: var(--t-secondary); margin-top: 2px; display:inline-block;">
+                            Rcvd: <?= date('M d, Y', strtotime($grn->grn_date)) ?>
+                        </span>
+                        <?php if(!empty($grn->receipt_number)): ?>
+                            <br><span style="font-size: 11px; color: var(--c-green); font-weight: 500;">Inv: <?= htmlspecialchars($grn->receipt_number) ?></span>
+                        <?php endif; ?>
+                        <br>
+                        <?php if($grn->is_approved): ?>
+                            <span class="sf-badge badge-active" style="margin-top: 6px;"><span class="dot"></span>Approved</span>
+                            <?php if($grn->approver_name): ?>
+                                <br><span style="font-size: 10px; color: var(--t-label); margin-top:2px; display:inline-block;">by: <?= htmlspecialchars($grn->approver_name) ?></span>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <span class="sf-badge badge-low" style="margin-top: 6px;"><span class="dot"></span>Pending</span>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <span style="color: var(--c-blue); font-weight: 700;"><?= htmlspecialchars($grn->vendor_name) ?></span><br>
+                        <span style="font-size: 11px; color: var(--t-secondary); margin-top: 3px; display:inline-block;">Created by: <?= htmlspecialchars($grn->creator_name) ?></span>
+                    </td>
+                    <td>
+                        <?php if($grn->po_number): ?>
+                            <span style="background: var(--c-fill); padding: 4px 10px; border-radius: var(--r-xs); font-size: 12px; font-weight: 700; font-family: var(--f-mono); color: var(--t-primary);">
+                                🔗 <?= htmlspecialchars($grn->po_number) ?>
+                            </span>
+                        <?php else: ?>
+                            <span style="color: var(--t-tertiary); font-style: italic; font-size: 12px;">Manual GRN</span>
+                        <?php endif; ?>
+                    </td>
+                    <td style="text-align: right; font-weight: 700; font-family: var(--f-mono); font-size: 14px;">
+                        Rs: <?= number_format($grn->total_amount, 2) ?>
+                    </td>
+                    <td style="text-align: center;">
+                        <div class="row-acts" style="justify-content: center;">
+                            <a href="<?= APP_URL ?>/grn/show/<?= $grn->id ?>" class="act-btn view" title="Print/PDF" target="_blank">
+                                <i class="fa-solid fa-print"></i>
+                            </a>
+                            <?php if(!$grn->is_approved): ?>
+                                <a href="<?= APP_URL ?>/grn/edit/<?= $grn->id ?>" class="act-btn edit" title="Edit GRN">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                <form action="<?= APP_URL ?>/grn" method="POST" style="display:inline;" id="del-form-<?= $grn->id ?>">
+                                    <input type="hidden" name="action" value="delete_grn">
+                                    <input type="hidden" name="grn_id" value="<?= $grn->id ?>">
+                                    <button type="button" class="act-btn trash" title="Delete GRN" onclick="if(confirm('Delete this pending GRN?')) document.getElementById('del-form-<?= $grn->id ?>').submit();">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
+                                <?php if(strtolower($_SESSION['role'] ?? '') === 'admin'): ?>
+                                    <button class="act-btn view" style="background:var(--c-green-light); color:var(--c-green);" title="Approve GRN" onclick="showApprovalModal(<?= $grn->id ?>, '<?= htmlspecialchars($grn->grn_number) ?>')">
+                                        <i class="fa-solid fa-check"></i>
+                                    </button>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                </tr>
+                <?php endforeach; endif; ?>
+            </tbody>
+        </table>
+    </div>
 </div>
 
-<div id="tableContainer">
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>GRN Number & Date</th>
-                <th>Supplier / Vendor</th>
-                <th>Linked PO</th>
-                <th style="text-align: right; width: 15%;">Total Amount</th>
-                <th style="text-align: center; width: 25%;">Actions</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody">
-            <?php if(empty($data['grns'])): ?>
-            <tr><td colspan="5" style="text-align: center; color: #888; padding: 20px;">No Goods Receipt Notes found.</td></tr>
-            <?php else: foreach($data['grns'] as $grn): ?>
-            <tr>
-                <td>
-                    <strong><?= htmlspecialchars($grn->grn_number) ?></strong><br>
-                    <span style="font-size: 11px; color: #888;">Rcvd: <?= date('M d, Y', strtotime($grn->grn_date)) ?></span>
-                    <?php if(!empty($grn->receipt_number)): ?>
-                        <br><span style="font-size: 11px; color: #2e7d32;">Inv: <?= htmlspecialchars($grn->receipt_number) ?></span>
-                    <?php endif; ?>
-                    <br>
-                    <?php if($grn->is_approved): ?>
-                        <span class="badge" style="background:#e8f5e9; color:#2e7d32; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:bold; display:inline-block; margin-top:5px;">✓ Approved</span>
-                        <?php if($grn->approver_name): ?>
-                            <br><span style="font-size: 9px; color:#888;">Approved by: <?= htmlspecialchars($grn->approver_name) ?></span>
-                        <?php endif; ?>
-                    <?php else: ?>
-                        <span class="badge" style="background:#fff3e0; color:#ef6c00; padding:3px 6px; border-radius:4px; font-size:10px; font-weight:bold; display:inline-block; margin-top:5px;">⏳ Pending Approval</span>
-                    <?php endif; ?>
-                </td>
-                <td>
-                    <span style="color:#0066cc; font-weight:bold;"><?= htmlspecialchars($grn->vendor_name) ?></span><br>
-                    <span style="font-size: 10px; color:#888;">Created by: <?= htmlspecialchars($grn->creator_name) ?></span>
-                </td>
-                <td>
-                    <?php if($grn->po_number): ?>
-                        <span style="background: rgba(0,0,0,0.05); padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight:bold;">🔗 <?= htmlspecialchars($grn->po_number) ?></span>
-                    <?php else: ?>
-                        <span style="color: #aaa; font-style: italic; font-size: 11px;">Manual GRN</span>
-                    <?php endif; ?>
-                </td>
-                <td style="text-align: right; font-weight: bold; color: var(--text-main);">
-                    Rs: <?= number_format($grn->total_amount, 2) ?>
-                </td>
-                <td style="text-align: center;">
-                    <a href="<?= APP_URL ?>/grn/show/<?= $grn->id ?>" class="btn btn-small btn-outline" target="_blank">Print</a>
-                    <?php if(!$grn->is_approved): ?>
-                        <a href="<?= APP_URL ?>/grn/edit/<?= $grn->id ?>" class="btn btn-small btn-outline" style="border-color: #2e7d32; color: #2e7d32;">Edit</a>
-                        <form action="<?= APP_URL ?>/grn" method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="delete_grn">
-                            <input type="hidden" name="grn_id" value="<?= $grn->id ?>">
-                            <button type="submit" class="btn btn-small btn-danger" onclick="return confirm('Delete this pending GRN?');">Delete</button>
-                        </form>
-                        <?php if(strtolower($_SESSION['role'] ?? '') === 'admin'): ?>
-                            <button class="btn btn-small" style="background:#2e7d32; color:#fff; font-weight:bold; margin-left: 5px; border:none; cursor:pointer;" onclick="showApprovalModal(<?= $grn->id ?>, '<?= htmlspecialchars($grn->grn_number) ?>')">Approve</button>
-                        <?php endif; ?>
-                    <?php endif; ?>
-                </td>
-            </tr>
-            <?php endforeach; endif; ?>
-        </tbody>
-    </table>
+<!-- Command Bar (Dynamic Island style) -->
+<div class="cmd-bar">
+    <div class="cmd-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="Search GRN, PO, Supplier..." value="<?= htmlspecialchars($data['search']) ?>">
+    </div>
+    <div class="cmd-divider"></div>
+    <a href="<?= APP_URL ?>/grn/create" class="cmd-cta">
+        <i class="fa-solid fa-plus"></i> Create Manual GRN
+    </a>
+</div>
+
+<!-- Approval Password Modal -->
+<div id="approvalModal" class="modal-veil hidden" style="display:none;">
+    <div class="sf-modal" style="border-top: 4px solid var(--c-green);">
+        <div class="modal-head">
+            <h3 class="modal-title" id="approvalTitle">Approve GRN</h3>
+            <button class="modal-close" onclick="closeApprovalModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:13px; color:var(--t-secondary); margin-bottom:20px; line-height: 1.45;">
+                For security verification, please enter your administrator password to authorize this Goods Receipt Note and update inventory levels.
+            </p>
+            
+            <form id="approvalForm" method="POST" action="">
+                <input type="hidden" name="action" value="approve_grn">
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                    <div>
+                        <label style="display:block; margin-bottom:8px; font-size:11px; font-weight:600; color:var(--t-label); text-transform: uppercase;">Admin Password</label>
+                        <input type="password" name="password" id="approvalPassword" class="sf-input" required placeholder="••••••••">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="sf-btn neutral" onclick="closeApprovalModal()">Cancel</button>
+            <button type="submit" form="approvalForm" class="sf-btn primary" style="background:var(--c-green);">Confirm & Approve</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -149,29 +604,7 @@
         document.getElementById('filterVendor').value = '';
         triggerSearch();
     }
-</script>
 
-<!-- Approval Password Modal -->
-<div id="approvalModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; backdrop-filter: blur(2px);">
-    <div style="background:#fff; padding:25px; border-radius:12px; width:100%; max-width:400px; box-shadow:0 8px 30px rgba(0,0,0,0.3); box-sizing:border-box; border-top: 5px solid #2e7d32; animation: fadeIn 0.2s ease-out;">
-        <h3 style="margin-top:0; color:#333; font-size: 18px;" id="approvalTitle">Approve GRN</h3>
-        <p style="font-size:13px; color:#666; margin-bottom:20px; line-height: 1.4;">For security verification, please enter your administrator password to authorize this Goods Receipt Note and update inventory levels.</p>
-        
-        <form id="approvalForm" method="POST" action="">
-            <input type="hidden" name="action" value="approve_grn">
-            <div style="margin-bottom:20px;">
-                <label style="display:block; margin-bottom:8px; font-size:11px; font-weight:600; color:#888; text-transform: uppercase;">Admin Password</label>
-                <input type="password" name="password" id="approvalPassword" class="form-control" style="width:100%; padding:10px 12px; border:1px solid var(--mac-border); border-radius:6px; box-sizing:border-box; font-size: 14px;" required placeholder="••••••••">
-            </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px;">
-                <button type="button" class="btn btn-outline" style="border-color:#ccc; color:#666; padding:8px 16px; border-radius: 6px; font-weight: 500;" onclick="closeApprovalModal()">Cancel</button>
-                <button type="submit" class="btn" style="background:#2e7d32; color:#fff; padding:8px 16px; border-radius: 6px; font-weight: 600;">Confirm & Approve</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
     function showApprovalModal(grnId, grnNumber) {
         const modal = document.getElementById('approvalModal');
         const form = document.getElementById('approvalForm');
@@ -182,17 +615,13 @@
         form.action = `<?= APP_URL ?>/grn/approve/${grnId}`;
         passwordInput.value = '';
         modal.style.display = 'flex';
+        modal.classList.remove('hidden');
         setTimeout(() => passwordInput.focus(), 50);
     }
 
     function closeApprovalModal() {
-        document.getElementById('approvalModal').style.display = 'none';
+        const modal = document.getElementById('approvalModal');
+        modal.style.display = 'none';
+        modal.classList.add('hidden');
     }
 </script>
-
-<style>
-    @keyframes fadeIn {
-        from { opacity: 0; transform: scale(0.95); }
-        to { opacity: 1; transform: scale(1); }
-    }
-</style>
