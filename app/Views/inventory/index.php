@@ -914,6 +914,73 @@ if ($importResults) unset($_SESSION['import_results']);
     line-height: 1.25rem !important;
     font-weight: 400 !important;
 }
+
+/* ---- Variations Expandable Styles ---- */
+.variations-row {
+    background-color: var(--c-surface2) !important;
+}
+.variations-row.hidden {
+    display: none !important;
+}
+.toggle-var-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--t-secondary);
+    width: 24px;
+    height: 24px;
+    border-radius: var(--r-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--dur-fast), color var(--dur-fast);
+}
+.toggle-var-btn:hover {
+    background: var(--c-fill2);
+    color: var(--t-primary);
+}
+.variation-card {
+    background: var(--c-surface);
+    border: 0.5px solid var(--c-separator);
+    border-radius: var(--r-md);
+    padding: 16px;
+    margin: 10px 0 12px 42px; /* Indent slightly under the thumbnail */
+    box-shadow: var(--shadow-sm);
+}
+.variation-card-title {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--t-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.variation-tbl {
+    width: 100%;
+    border-collapse: collapse;
+}
+.variation-tbl th {
+    text-align: left;
+    padding: 6px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--t-label);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--c-separator2);
+}
+.variation-tbl td {
+    padding: 8px 8px;
+    font-size: 13px;
+    color: var(--t-primary);
+    border-bottom: 0.5px solid var(--c-separator2);
+    vertical-align: middle;
+}
+.variation-tbl tr:last-child td {
+    border-bottom: none;
+}
 </style>
 
 <div class="inv-root">
@@ -1189,17 +1256,80 @@ if ($importResults) unset($_SESSION['import_results']);
 
                                         $all_imgs = array_values(array_unique($all_imgs));
                                         $all_imgs_json = json_encode($all_imgs);
+
+                                        // Load item variations (database relational or variations_json fallback)
+                                        $dbObj = new Database();
+                                        $dbObj->query("
+                                            SELECT ivo.id, ivo.sku, ivo.price, ivo.cost, ivo.quantity_on_hand,
+                                                   v.name as attribute_name, vv.value_name as value_name
+                                            FROM item_variation_options ivo
+                                            JOIN variations v ON ivo.variation_id = v.id
+                                            JOIN variation_values vv ON ivo.variation_value_id = vv.id
+                                            WHERE ivo.item_id = :item_id
+                                            ORDER BY v.name ASC, vv.value_name ASC
+                                        ");
+                                        $dbObj->bind(':item_id', $item->id);
+                                        $variations = $dbObj->resultSet() ?: [];
+
+                                        if (empty($variations) && !empty($item->variations_json)) {
+                                            $decoded = json_decode(html_entity_decode($item->variations_json, ENT_QUOTES, 'UTF-8'));
+                                            if (is_array($decoded)) {
+                                                foreach ($decoded as $v) {
+                                                    $vObj = new stdClass();
+                                                    $vObj->id = $v->id ?? 0;
+                                                    $vObj->variation_name = 'Option';
+                                                    $vObj->value_name = $v->attribute ?? $v->value ?? $v->value_name ?? '';
+                                                    $vObj->sku = $v->sku ?? '';
+                                                    $vObj->quantity_on_hand = $v->qty ?? $v->quantity_on_hand ?? $item->qty ?? 0;
+                                                    $vObj->price = $v->price ?? $v->selling_price ?? $item->selling_price ?? 0.00;
+                                                    $vObj->cost = $v->cost ?? $v->cost_price ?? $item->cost_price ?? 0.00;
+                                                    $variations[] = $vObj;
+                                                }
+                                            }
+                                        }
+
+                                        $varSummary = '';
+                                        if (!empty($variations)) {
+                                            $varValues = [];
+                                            foreach ($variations as $var) {
+                                                if (!empty($var->value_name)) {
+                                                    $varValues[] = $var->value_name;
+                                                }
+                                            }
+                                            if (!empty($varValues)) {
+                                                $varSummary = implode(', ', array_unique($varValues));
+                                            }
+                                        }
                                     ?>
                                     <tr>
                                         <td class="txt-center">
                                             <input type="checkbox" name="selected_items[]" value="<?= $item->id ?>" class="item-select-checkbox sf-check" onchange="updateSelection()">
                                         </td>
                                         <td>
-                                            <div class="d-flex-row">
+                                            <div class="d-flex-row" style="align-items: center; gap: 8px;">
+                                                <?php if (!empty($variations)): ?>
+                                                    <button type="button" class="toggle-var-btn" onclick="toggleVariationsRow(<?= $item->id ?>, this)" title="Show Variations">
+                                                        <i class="fa-solid fa-chevron-down"></i>
+                                                    </button>
+                                                <?php else: ?>
+                                                    <span style="width: 24px; display: inline-block; flex-shrink: 0;"></span>
+                                                <?php endif; ?>
                                                 <img src="<?= $img_src ?>" class="prod-thumb" alt="" onerror="this.src='https://placehold.co/100x100/f2f2f7/8e8e93?text=?'">
                                                 <div>
-                                                    <div class="prod-name"><?= htmlspecialchars($item->name ?? 'Unnamed Item') ?></div>
+                                                    <div class="prod-name">
+                                                        <?= htmlspecialchars($item->name ?? 'Unnamed Item') ?>
+                                                        <?php if (!empty($variations)): ?>
+                                                            <span style="font-size: 10px; font-weight: 700; background: var(--c-blue-light); color: var(--c-blue); padding: 2px 6px; border-radius: var(--r-pill); margin-left: 6px;">
+                                                                <?= count($variations) ?> Variations
+                                                            </span>
+                                                        <?php endif; ?>
+                                                    </div>
                                                     <div class="prod-meta"><?= htmlspecialchars($sku) ?><?= !empty($item->sample_code) ? ' · ' . htmlspecialchars($item->sample_code) : '' ?></div>
+                                                    <?php if (!empty($varSummary)): ?>
+                                                        <div class="prod-vars" style="font-size: 11px; color: var(--c-blue); margin-top: 3px; font-weight: 600;">
+                                                            <i class="fa-solid fa-circle-nodes" style="font-size: 9px; margin-right: 4px;"></i><?= htmlspecialchars($varSummary) ?>
+                                                        </div>
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
                                         </td>
@@ -1242,6 +1372,40 @@ if ($importResults) unset($_SESSION['import_results']);
                                             </div>
                                         </td>
                                     </tr>
+                                    <?php if (!empty($variations)): ?>
+                                    <tr id="variations_row_<?= $item->id ?>" class="variations-row hidden">
+                                        <td colspan="7" style="padding: 0;">
+                                            <div class="variation-card">
+                                                <div class="variation-card-title">
+                                                    <i class="fa-solid fa-tags" style="color: var(--c-blue);"></i>
+                                                    <span>Product Variations for <?= htmlspecialchars($item->name) ?></span>
+                                                </div>
+                                                <table class="variation-tbl">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>SKU</th>
+                                                            <th>Variation Option</th>
+                                                            <th style="text-align: right;">Retail Price</th>
+                                                            <th style="text-align: right; width: 120px;">Stock Qty</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php foreach ($variations as $var): ?>
+                                                            <tr>
+                                                                <td style="font-family: var(--f-mono); font-weight: 600; color: var(--c-blue);"><?= htmlspecialchars($var->sku ?: $sku) ?></td>
+                                                                <td style="font-weight: 600;"><?= htmlspecialchars($var->value_name) ?></td>
+                                                                <td style="text-align: right; font-family: var(--f-mono); font-weight: 600;"><?= number_format($var->price ?? $price, 2) ?></td>
+                                                                <td style="text-align: right; font-family: var(--f-mono); font-weight: 700; color: <?= $var->quantity_on_hand <= 0 ? 'var(--c-red)' : ($var->quantity_on_hand <= 5 ? 'var(--c-orange)' : 'var(--c-green)') ?>;">
+                                                                    <?= number_format($var->quantity_on_hand) ?>
+                                                                </td>
+                                                            </tr>
+                                                        <?php endforeach; ?>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php endif; ?>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
                             </tbody>
@@ -1742,6 +1906,21 @@ function applyAjaxFilters() {
         })
         .catch(err => console.error('Filter error:', err))
         .finally(() => { if (loader) loader.classList.remove('active'); });
+}
+
+function toggleVariationsRow(itemId, btn) {
+    const row = document.getElementById('variations_row_' + itemId);
+    if (!row) return;
+    
+    if (row.classList.contains('hidden')) {
+        row.classList.remove('hidden');
+        btn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+        btn.setAttribute('title', 'Hide Variations');
+    } else {
+        row.classList.add('hidden');
+        btn.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+        btn.setAttribute('title', 'Show Variations');
+    }
 }
 
 function navigatePage(n) {
