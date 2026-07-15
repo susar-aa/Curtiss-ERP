@@ -318,7 +318,7 @@
             <label>Link Source (Stock Audit)</label>
             <span>
                 <?php if ($data['adjustment']->stock_audit_id): ?>
-                    <a href="<?= APP_URL ?>/stockaudit/view/<?= $data['adjustment']->stock_audit_id; ?>" style="color: var(--c-blue); text-decoration: none; font-weight: 600;">
+                    <a href="<?= APP_URL ?>/stockaudit/show/<?= $data['adjustment']->stock_audit_id; ?>" style="color: var(--c-blue); text-decoration: none; font-weight: 600;">
                         <?= htmlspecialchars($data['adjustment']->audit_number); ?>
                     </a>
                 <?php else: ?>

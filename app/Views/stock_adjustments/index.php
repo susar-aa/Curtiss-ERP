@@ -383,7 +383,7 @@
                             </td>
                             <td>
                                 <?php if ($adj->stock_audit_id): ?>
-                                    <a href="<?= APP_URL ?>/stockaudit/view/<?= $adj->stock_audit_id; ?>" style="color: var(--c-blue); text-decoration: none; font-weight: 500;">
+                                    <a href="<?= APP_URL ?>/stockaudit/show/<?= $adj->stock_audit_id; ?>" style="color: var(--c-blue); text-decoration: none; font-weight: 500;">
                                         <i class="fa-solid fa-file-invoice"></i> <?= htmlspecialchars($adj->audit_number); ?>
                                     </a>
                                 <?php else: ?>
@@ -391,7 +391,7 @@
                                 <?php endif; ?>
                             </td>
                             <td style="text-align: right;">
-                                <a href="<?= APP_URL ?>/stockadjustment/view/<?= $adj->id; ?>" class="btn-reset" style="padding: 6px 12px; font-size: 12px; text-decoration: none; background: var(--c-fill2);">View Details</a>
+                                <a href="<?= APP_URL ?>/stockadjustment/show/<?= $adj->id; ?>" class="btn-reset" style="padding: 6px 12px; font-size: 12px; text-decoration: none; background: var(--c-fill2);">View Details</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>

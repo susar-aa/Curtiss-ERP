@@ -118,7 +118,7 @@ class StockAuditController extends Controller {
         }
 
         if (in_array($audit->status, ['Approved', 'Completed', 'Cancelled'])) {
-            header('Location: ' . APP_URL . '/stockaudit/view/' . $id);
+            header('Location: ' . APP_URL . '/stockaudit/show/' . $id);
             exit;
         }
 
@@ -161,7 +161,7 @@ class StockAuditController extends Controller {
             if ($res) {
                 $this->logActivity('Complete Stock Count', 'Operations', "Completed stock count for Audit ID {$id}", $id);
                 $_SESSION['flash_success'] = 'Stock count completed successfully and pending approval.';
-                header('Location: ' . APP_URL . '/stockaudit/view/' . $id);
+                header('Location: ' . APP_URL . '/stockaudit/show/' . $id);
             } else {
                 $_SESSION['flash_error'] = 'Failed to complete count.';
                 header('Location: ' . APP_URL . '/stockaudit/wizard/' . $id);
@@ -184,7 +184,7 @@ class StockAuditController extends Controller {
     /**
      * View audit results and action approval
      */
-    public function view($id) {
+    public function show($id) {
         $audit = $this->auditModel->getAuditById($id);
         if (!$audit) {
             header('Location: ' . APP_URL . '/stockaudit?error=Audit not found');
@@ -208,14 +208,14 @@ class StockAuditController extends Controller {
      */
     public function approve($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: ' . APP_URL . '/stockaudit/view/' . $id);
+            header('Location: ' . APP_URL . '/stockaudit/show/' . $id);
             exit;
         }
 
         $audit = $this->auditModel->getAuditById($id);
         if (!$audit || $audit->status !== 'Completed') {
             $_SESSION['flash_error'] = 'Audit must be in Completed status to approve.';
-            header('Location: ' . APP_URL . '/stockaudit/view/' . $id);
+            header('Location: ' . APP_URL . '/stockaudit/show/' . $id);
             exit;
         }
 
@@ -244,7 +244,7 @@ class StockAuditController extends Controller {
 
             $this->logActivity('Approve Stock Audit', 'Operations', "Approved Stock Audit ID {$id} with zero variance", $id);
             $_SESSION['flash_success'] = 'Stock Audit approved. Zero stock variances found.';
-            header('Location: ' . APP_URL . '/stockaudit/view/' . $id);
+            header('Location: ' . APP_URL . '/stockaudit/show/' . $id);
             exit;
         }
 
@@ -274,7 +274,7 @@ class StockAuditController extends Controller {
             $_SESSION['flash_error'] = 'Failed to generate stock adjustment for variances.';
         }
 
-        header('Location: ' . APP_URL . '/stockaudit/view/' . $id);
+        header('Location: ' . APP_URL . '/stockaudit/show/' . $id);
         exit;
     }
 
@@ -283,7 +283,7 @@ class StockAuditController extends Controller {
      */
     public function cancel($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: ' . APP_URL . '/stockaudit/view/' . $id);
+            header('Location: ' . APP_URL . '/stockaudit/show/' . $id);
             exit;
         }
 
@@ -294,7 +294,7 @@ class StockAuditController extends Controller {
             $_SESSION['flash_error'] = 'Failed to cancel audit.';
         }
 
-        header('Location: ' . APP_URL . '/stockaudit/view/' . $id);
+        header('Location: ' . APP_URL . '/stockaudit/show/' . $id);
         exit;
     }
 

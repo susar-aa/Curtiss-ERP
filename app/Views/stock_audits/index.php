@@ -380,7 +380,7 @@
                                 <?php if (in_array($audit->status, ['Draft', 'In Progress'])): ?>
                                     <a href="<?= APP_URL ?>/stockaudit/wizard/<?= $audit->id; ?>" class="btn-submit" style="padding: 6px 12px; font-size: 12px; text-decoration: none;">Resume Count</a>
                                 <?php else: ?>
-                                    <a href="<?= APP_URL ?>/stockaudit/view/<?= $audit->id; ?>" class="btn-reset" style="padding: 6px 12px; font-size: 12px; text-decoration: none; background: var(--c-fill2);">View Details</a>
+                                    <a href="<?= APP_URL ?>/stockaudit/show/<?= $audit->id; ?>" class="btn-reset" style="padding: 6px 12px; font-size: 12px; text-decoration: none; background: var(--c-fill2);">View Details</a>
                                 <?php endif; ?>
                             </td>
                         </tr>

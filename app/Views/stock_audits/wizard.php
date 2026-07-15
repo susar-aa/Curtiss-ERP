@@ -439,6 +439,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnSaveDraft = document.getElementById('btnSaveDraft');
     const btnFinalize = document.getElementById('btnFinalize');
 
+    console.log("Stock Count Wizard loaded. Total count items in DOM: " + qtyInputs.length);
+
     // 1. Recalculate row differences & variances in real-time
     function updateRowValues(input) {
         const itemId = input.getAttribute('data-id');
@@ -452,6 +454,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const diff = physical - system;
         const varianceVal = diff * cost;
+
+        console.log(`[Audit Calculation] Item ID: ${itemId} | Physical: ${physical} | System: ${system} | Diff: ${diff.toFixed(2)} | Unit Cost: ${cost} | Variance Val: ${varianceVal.toFixed(2)}`);
 
         const diffEl = document.getElementById('diff_' + itemId);
         diffEl.textContent = (diff >= 0 ? '+' : '') + diff.toFixed(2);
@@ -486,7 +490,9 @@ document.addEventListener('DOMContentLoaded', function() {
         searchInput.addEventListener('input', function() {
             const term = searchInput.value.toLowerCase().trim();
             const rows = document.querySelectorAll('.wizard-row');
+            console.log(`[Search Filter] Searching for: "${term}"`);
 
+            let matchCount = 0;
             rows.forEach(row => {
                 const name = row.getAttribute('data-name').toLowerCase();
                 const code = row.getAttribute('data-code').toLowerCase();
@@ -494,10 +500,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (name.includes(term) || code.includes(term) || barcode.includes(term)) {
                     row.style.display = '';
+                    matchCount++;
                 } else {
                     row.style.display = 'none';
                 }
             });
+            console.log(`[Search Filter] Found ${matchCount} matches out of ${rows.length} rows.`);
         });
     }
 
@@ -509,10 +517,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const scannedBarcode = barcodeInput.value.trim();
                 barcodeInput.value = '';
 
+                console.log(`[Barcode Scanner] Scanned string received: "${scannedBarcode}"`);
                 if (!scannedBarcode) return;
 
                 const row = [...document.querySelectorAll('.wizard-row')].find(r => r.getAttribute('data-barcode') === scannedBarcode);
                 if (row) {
+                    console.log(`[Barcode Scanner] Matched row via barcode: ${scannedBarcode}`);
                     // Highlight the row
                     row.classList.add('highlighted');
                     setTimeout(() => row.classList.remove('highlighted'), 2000);
@@ -526,12 +536,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         qtyInput.focus();
                         let currentVal = parseFloat(qtyInput.value) || 0.00;
                         qtyInput.value = (currentVal + 1).toFixed(2);
+                        console.log(`[Barcode Scanner] Incremented quantity to ${(currentVal + 1).toFixed(2)}`);
                         updateRowValues(qtyInput);
                     }
                 } else {
                     // Try by item_code
                     const rowCode = [...document.querySelectorAll('.wizard-row')].find(r => r.getAttribute('data-code') === scannedBarcode);
                     if (rowCode) {
+                        console.log(`[Barcode Scanner] Matched row via item code: ${scannedBarcode}`);
                         rowCode.classList.add('highlighted');
                         setTimeout(() => rowCode.classList.remove('highlighted'), 2000);
                         rowCode.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -540,9 +552,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             qtyInput.focus();
                             let currentVal = parseFloat(qtyInput.value) || 0.00;
                             qtyInput.value = (currentVal + 1).toFixed(2);
+                            console.log(`[Barcode Scanner] Incremented quantity to ${(currentVal + 1).toFixed(2)}`);
                             updateRowValues(qtyInput);
                         }
                     } else {
+                        console.warn(`[Barcode Scanner] Code/Barcode not found in list: ${scannedBarcode}`);
                         alert('Scanned code not found in this audit list: ' + scannedBarcode);
                     }
                 }
@@ -553,15 +567,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // 4. Form Action Buttons
     if (btnSaveDraft) {
         btnSaveDraft.addEventListener('click', () => {
+            console.log("[Form Submission] Set action to save_draft");
             formActionField.value = 'save_draft';
         });
     }
 
     if (btnFinalize) {
         btnFinalize.addEventListener('click', (e) => {
+            console.log("[Form Submission] Finalize clicked. Prompting confirmation.");
             if (!confirm('Are you sure you want to finalize this stock count? This will lock edits and make it ready for approval.')) {
+                console.log("[Form Submission] Finalization cancelled by user.");
                 e.preventDefault();
             } else {
+                console.log("[Form Submission] Confirmed. Set action to complete.");
                 formActionField.value = 'complete';
             }
         });

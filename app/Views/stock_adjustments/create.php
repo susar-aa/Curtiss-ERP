@@ -375,12 +375,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const gridBody = document.getElementById('adjustmentGridBody');
     const emptyRow = document.getElementById('emptyGridRow');
 
+    console.log("Create Stock Adjustment view loaded. Auto-complete registry items: " + itemsList.length);
+
     let selectedItem = null;
 
     // 1. Search filter autocomplete dropdown
     searchInput.addEventListener('input', function() {
         const term = searchInput.value.toLowerCase().trim();
         dropdown.innerHTML = '';
+        console.log(`[Search autocomplete] User input: "${term}"`);
 
         if (!term) {
             dropdown.style.display = 'none';
@@ -394,12 +397,15 @@ document.addEventListener('DOMContentLoaded', function() {
             (item.barcode && item.barcode.toLowerCase().includes(term))
         ).slice(0, 10);
 
+        console.log(`[Search autocomplete] Found ${matches.length} matches.`);
+
         if (matches.length > 0) {
             matches.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'dropdown-item';
                 div.innerHTML = `<strong>${item.item_code}</strong> - ${item.name} (${item.qty} in stock)`;
                 div.addEventListener('click', function() {
+                    console.log(`[Search autocomplete] Item selected via click: ID: ${item.id} | Code: ${item.item_code} | Name: ${item.name}`);
                     searchInput.value = `${item.item_code} - ${item.name}`;
                     selectedItem = item;
                     dropdown.style.display = 'none';
@@ -424,8 +430,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function addProductToGrid(item) {
         if (!item) return;
 
+        console.log(`[Grid Action] Attempting to add product ID: ${item.id} | Code: ${item.item_code}`);
+
         // Check if item already exists in the grid
         if (document.getElementById(`grid_row_${item.id}`)) {
+            console.warn(`[Grid Action] Prevented duplicate: Item ID ${item.id} is already in the list.`);
             alert('Item is already added to the list.');
             return;
         }
@@ -466,6 +475,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         gridBody.appendChild(tr);
+        console.log(`[Grid Action] Product ID: ${item.id} successfully added to grid.`);
 
         // Bind update triggers
         const qtyEl = tr.querySelector('.grid-qty');
@@ -475,6 +485,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const q = parseFloat(qtyEl.value) || 0;
             const c = parseFloat(costEl.value) || 0;
             const tot = Math.abs(q * c);
+            console.log(`[Grid Calculation] Row Total Updated: ID: ${item.id} | Qty: ${q} | Cost: ${c} | Total: ${tot.toFixed(2)}`);
             document.getElementById(`total_val_${item.id}`).textContent = tot.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
@@ -483,8 +494,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Bind delete button
         tr.querySelector('.remove-item-btn').addEventListener('click', function() {
+            console.log(`[Grid Action] Deleting row for product ID: ${item.id}`);
             tr.remove();
             if (gridBody.querySelectorAll('tr:not(#emptyGridRow)').length === 0) {
+                console.log("[Grid Action] Grid is empty. Displaying placeholder empty row.");
                 emptyRow.style.display = '';
             }
         });
@@ -496,6 +509,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     btnAddSearched.addEventListener('click', function() {
         if (!selectedItem) {
+            console.warn("[Grid Action] Add clicked but no product is selected.");
             alert('Please select a product from the autocomplete dropdown list first.');
             return;
         }
@@ -507,9 +521,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.key === 'Enter') {
             e.preventDefault();
             if (selectedItem) {
+                console.log(`[Grid Action] Enter key pressed. Selected item: ID: ${selectedItem.id}`);
                 addProductToGrid(selectedItem);
             }
         }
+    });
+
+    // Log form submissions
+    document.getElementById('adjForm').addEventListener('submit', function() {
+        console.log("[Form Submission] Submitting stock adjustment request.");
     });
 });
 </script>

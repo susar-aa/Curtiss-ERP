@@ -151,7 +151,7 @@ class StockAdjustmentController extends Controller {
         if ($adjId) {
             $this->logActivity('Create Stock Adjustment', 'Operations', "Created manual Stock Adjustment ID {$adjId}", $adjId, null, $payload);
             $_SESSION['flash_success'] = 'Stock Adjustment request created and is pending approval.';
-            header('Location: ' . APP_URL . '/stockadjustment/view/' . $adjId);
+            header('Location: ' . APP_URL . '/stockadjustment/show/' . $adjId);
         } else {
             $_SESSION['flash_error'] = 'Failed to create stock adjustment.';
             header('Location: ' . APP_URL . '/stockadjustment/create');
@@ -162,7 +162,7 @@ class StockAdjustmentController extends Controller {
     /**
      * View adjustment details
      */
-    public function view($id) {
+    public function show($id) {
         $adjustment = $this->adjustmentModel->getAdjustmentById($id);
         if (!$adjustment) {
             header('Location: ' . APP_URL . '/stockadjustment?error=Adjustment not found');
@@ -186,7 +186,7 @@ class StockAdjustmentController extends Controller {
      */
     public function approve($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: ' . APP_URL . '/stockadjustment/view/' . $id);
+            header('Location: ' . APP_URL . '/stockadjustment/show/' . $id);
             exit;
         }
 
@@ -200,7 +200,7 @@ class StockAdjustmentController extends Controller {
             $_SESSION['flash_error'] = 'Failed to approve stock adjustment.';
         }
 
-        header('Location: ' . APP_URL . '/stockadjustment/view/' . $id);
+        header('Location: ' . APP_URL . '/stockadjustment/show/' . $id);
         exit;
     }
 
@@ -209,7 +209,7 @@ class StockAdjustmentController extends Controller {
      */
     public function reject($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: ' . APP_URL . '/stockadjustment/view/' . $id);
+            header('Location: ' . APP_URL . '/stockadjustment/show/' . $id);
             exit;
         }
 
@@ -221,7 +221,7 @@ class StockAdjustmentController extends Controller {
             $_SESSION['flash_error'] = 'Failed to reject stock adjustment.';
         }
 
-        header('Location: ' . APP_URL . '/stockadjustment/view/' . $id);
+        header('Location: ' . APP_URL . '/stockadjustment/show/' . $id);
         exit;
     }
 }
