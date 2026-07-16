@@ -85,7 +85,7 @@ class StockAudit {
             SELECT sai.*, i.name as item_name, i.item_code, i.barcode, i.unit, c.name as category_name
             FROM stock_audit_items sai
             JOIN items i ON sai.item_id = i.id
-            LEFT JOIN categories c ON i.category_id = c.id
+            LEFT JOIN item_categories c ON i.category_id = c.id
             WHERE sai.audit_id = :audit_id
             ORDER BY i.name ASC
         ");
