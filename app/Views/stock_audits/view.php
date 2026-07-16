@@ -224,6 +224,41 @@
 .btn-primary:hover { background: #0066cc; }
 .btn-success { background: var(--c-green); color: #fff; }
 .btn-success:hover { background: #2fb34f; }
+
+/* ---- Variations Expandable Styles ---- */
+.variation-item-row.hidden {
+    display: none !important;
+}
+.toggle-var-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--t-secondary);
+    width: 24px;
+    height: 24px;
+    border-radius: var(--r-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--dur-fast), color var(--dur-fast);
+    margin-right: 6px;
+}
+.toggle-var-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--t-primary);
+}
+.has-variations-parent td {
+    background-color: rgba(0, 122, 255, 0.04) !important;
+}
+.has-variations-parent td:first-child {
+    border-left: 4px solid var(--c-blue) !important;
+}
+.variation-item-row td {
+    background-color: rgba(0, 122, 255, 0.01) !important;
+}
+.variation-item-row td:first-child {
+    border-left: 4px solid var(--c-blue) !important;
+}
 </style>
 
 <div class="details-wrap">
@@ -236,6 +271,9 @@
         <div style="display: flex; gap: 10px;">
             <a href="<?= APP_URL ?>/stockaudit/printReport/<?= $data['audit']->id; ?>" target="_blank" class="btn btn-secondary">
                 <i class="fa-solid fa-print"></i> Print Audit Report
+            </a>
+            <a href="<?= APP_URL ?>/stockaudit/printReport/<?= $data['audit']->id; ?>?variance_only=1" target="_blank" class="btn btn-secondary" style="border: 1px solid var(--c-orange); color: var(--c-orange); background: transparent;">
+                <i class="fa-solid fa-print"></i> Print Variance Report
             </a>
         </div>
     </div>
@@ -342,7 +380,79 @@
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($data['items'] as $item): ?>
+                <?php 
+                // Group items by item_id
+                $groupedItems = [];
+                foreach ($data['items'] as $item) {
+                    $groupedItems[$item->item_id][] = $item;
+                }
+
+                foreach ($groupedItems as $itemId => $group): 
+                    $firstItem = $group[0];
+                    $hasVariations = (count($group) > 1 || !empty($firstItem->variation_option_id));
+                    
+                    if ($hasVariations):
+                        // Compute parent totals
+                        $parentSys = 0;
+                        $parentPhys = 0;
+                        $parentDiff = 0;
+                        $parentVarVal = 0;
+                        foreach ($group as $item) {
+                            $parentSys += floatval($item->system_qty);
+                            $parentPhys += floatval($item->physical_qty);
+                            $parentDiff += floatval($item->difference);
+                            $parentVarVal += floatval($item->variance_value);
+                        }
+                ?>
+                    <!-- Parent Product Header Row -->
+                    <tr class="has-variations-parent">
+                        <td style="font-family: var(--f-mono); font-weight: 600; color: var(--c-blue);">
+                            <button type="button" class="toggle-var-btn" onclick="toggleVariationsRow(<?= $itemId; ?>, this)" title="Show Variations">
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </button>
+                            <?= htmlspecialchars($firstItem->base_item_code); ?>
+                        </td>
+                        <td>
+                            <div style="font-weight: 700;"><?= htmlspecialchars($firstItem->base_item_name); ?></div>
+                            <div style="font-size: 11px; color: var(--t-secondary);"><?= htmlspecialchars($firstItem->category_name ?? 'General'); ?></div>
+                        </td>
+                        <td style="text-align: right; font-family: var(--f-mono);"><?= number_format($parentSys, 2); ?></td>
+                        <td style="text-align: right; font-family: var(--f-mono); font-weight: 600;"><?= number_format($parentPhys, 2); ?></td>
+                        <td style="text-align: right; font-family: var(--f-mono); font-weight: 700;" class="<?= $parentDiff >= 0 ? ($parentDiff > 0 ? 'val-positive' : '') : 'val-negative'; ?>">
+                            <?= ($parentDiff >= 0 ? '+' : '') . number_format($parentDiff, 2); ?>
+                        </td>
+                        <td style="text-align: right; font-family: var(--f-mono); color: var(--t-secondary);">-</td>
+                        <td style="text-align: right; font-family: var(--f-mono); font-weight: 700;" class="<?= $parentVarVal >= 0 ? ($parentVarVal > 0 ? 'val-positive' : '') : 'val-negative'; ?>">
+                            <?= ($parentVarVal >= 0 ? '+' : '') . number_format($parentVarVal, 2); ?>
+                        </td>
+                        <td><span style="font-size: 10px; font-weight: bold; color: var(--c-blue); background: var(--c-blue-light); padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">Variable Product</span></td>
+                    </tr>
+
+                    <!-- Variation Rows -->
+                    <?php foreach ($group as $item): ?>
+                        <tr class="variation-item-row hidden variations_row_<?= $itemId; ?>">
+                            <td style="padding-left: 36px; font-family: var(--f-mono); font-weight: 600; color: var(--c-blue);"><?= htmlspecialchars($item->item_code); ?></td>
+                            <td>
+                                <div style="font-weight: 600; padding-left: 8px;"><?= htmlspecialchars($item->item_name); ?></div>
+                                <div style="font-size: 11px; color: var(--t-secondary); padding-left: 8px;"><?= htmlspecialchars($item->category_name ?? 'General'); ?></div>
+                            </td>
+                            <td style="text-align: right; font-family: var(--f-mono);"><?= number_format($item->system_qty, 2); ?></td>
+                            <td style="text-align: right; font-family: var(--f-mono); font-weight: 600;"><?= number_format($item->physical_qty, 2); ?></td>
+                            <td style="text-align: right; font-family: var(--f-mono); font-weight: 700;" class="<?= floatval($item->difference) >= 0 ? (floatval($item->difference) > 0 ? 'val-positive' : '') : 'val-negative'; ?>">
+                                <?= (floatval($item->difference) >= 0 ? '+' : '') . number_format($item->difference, 2); ?>
+                            </td>
+                            <td style="text-align: right; font-family: var(--f-mono); color: var(--t-secondary);"><?= number_format($item->unit_cost, 2); ?></td>
+                            <td style="text-align: right; font-family: var(--f-mono); font-weight: 700;" class="<?= floatval($item->variance_value) >= 0 ? (floatval($item->variance_value) > 0 ? 'val-positive' : '') : 'val-negative'; ?>">
+                                <?= (floatval($item->variance_value) >= 0 ? '+' : '') . number_format($item->variance_value, 2); ?>
+                            </td>
+                            <td style="color: var(--t-secondary); font-size: 13px;"><?= htmlspecialchars($item->remarks ?: '-'); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+
+                <?php else: 
+                    $item = $firstItem;
+                ?>
+                    <!-- Simple Product Row -->
                     <tr>
                         <td style="font-family: var(--f-mono); font-weight: 600; color: var(--c-blue);"><?= htmlspecialchars($item->item_code); ?></td>
                         <td>
@@ -360,7 +470,10 @@
                         </td>
                         <td style="color: var(--t-secondary); font-size: 13px;"><?= htmlspecialchars($item->remarks ?: '-'); ?></td>
                     </tr>
-                <?php endforeach; ?>
+                <?php 
+                    endif;
+                endforeach; 
+                ?>
             </tbody>
         </table>
     </div>
@@ -386,3 +499,29 @@
         </div>
     </div>
 </div>
+
+<script>
+function toggleVariationsRow(itemId, btn) {
+    const rows = document.querySelectorAll('.variations_row_' + itemId);
+    if (!rows.length) return;
+    
+    const isHidden = rows[0].classList.contains('hidden') || rows[0].style.display === 'none';
+    rows.forEach(row => {
+        if (isHidden) {
+            row.classList.remove('hidden');
+            row.style.display = '';
+        } else {
+            row.classList.add('hidden');
+            row.style.display = 'none';
+        }
+    });
+    
+    if (isHidden) {
+        btn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+        btn.setAttribute('title', 'Hide Variations');
+    } else {
+        btn.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+        btn.setAttribute('title', 'Show Variations');
+    }
+}
+</script>

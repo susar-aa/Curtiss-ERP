@@ -299,6 +299,41 @@
 .btn-success:hover { background: #2fb34f; }
 .btn-danger { background: var(--c-red-light); color: var(--c-red); }
 .btn-danger:hover { background: rgba(255,59,48,0.15); }
+
+/* ---- Variations Expandable Styles ---- */
+.variation-item-row.hidden {
+    display: none !important;
+}
+.toggle-var-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--t-secondary);
+    width: 24px;
+    height: 24px;
+    border-radius: var(--r-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--dur-fast), color var(--dur-fast);
+    margin-right: 6px;
+}
+.toggle-var-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--t-primary);
+}
+.has-variations-parent td {
+    background-color: rgba(0, 122, 255, 0.04) !important;
+}
+.has-variations-parent td:first-child {
+    border-left: 4px solid var(--c-blue) !important;
+}
+.variation-item-row td {
+    background-color: rgba(0, 122, 255, 0.01) !important;
+}
+.variation-item-row td:first-child {
+    border-left: 4px solid var(--c-blue) !important;
+}
 </style>
 
 <div class="wizard-wrap">
@@ -378,9 +413,85 @@
                     </tr>
                 </thead>
                 <tbody id="wizardTableBody">
-                    <?php foreach ($data['items'] as $item): ?>
+                    <?php 
+                    // Group items by item_id
+                    $groupedItems = [];
+                    foreach ($data['items'] as $item) {
+                        $groupedItems[$item->item_id][] = $item;
+                    }
+
+                    foreach ($groupedItems as $itemId => $group): 
+                        $firstItem = $group[0];
+                        $hasVariations = (count($group) > 1 || !empty($firstItem->variation_option_id));
+                        
+                        if ($hasVariations):
+                    ?>
+                        <!-- Parent Product Header Row -->
+                        <tr class="wizard-row has-variations-parent" 
+                            id="parent_row_<?= $itemId; ?>" 
+                            data-code="<?= htmlspecialchars($firstItem->base_item_code); ?>" 
+                            data-name="<?= htmlspecialchars($firstItem->base_item_name); ?>" 
+                            data-barcode="">
+                            
+                            <td style="font-family: var(--f-mono); font-weight: 600; color: var(--c-blue);">
+                                <button type="button" class="toggle-var-btn" onclick="toggleVariationsRow(<?= $itemId; ?>, this)" title="Show Variations">
+                                    <i class="fa-solid fa-chevron-down"></i>
+                                </button>
+                                <?= htmlspecialchars($firstItem->base_item_code); ?>
+                            </td>
+                            <td>
+                                <div style="font-weight: 700;"><?= htmlspecialchars($firstItem->base_item_name); ?></div>
+                                <div style="font-size: 11px; color: var(--t-secondary);"><?= htmlspecialchars($firstItem->category_name ?? 'General'); ?></div>
+                            </td>
+                            <td style="font-family: var(--f-mono); font-size: 13px; text-align: center; color: var(--t-label);">-</td>
+                            <td style="text-align: right; font-family: var(--f-mono); font-weight: 500;" id="parent_sys_<?= $itemId; ?>">0.00</td>
+                            <td style="text-align: center; font-family: var(--f-mono); font-weight: 600;" id="parent_phys_<?= $itemId; ?>">0.00</td>
+                            <td style="text-align: right; font-family: var(--f-mono); font-weight: 700;" id="parent_diff_<?= $itemId; ?>">0.00</td>
+                            <td style="text-align: right; font-family: var(--f-mono); color: var(--t-secondary);">-</td>
+                            <td style="text-align: right; font-family: var(--f-mono); font-weight: 700;" id="parent_var_<?= $itemId; ?>">0.00</td>
+                            <td><span style="font-size: 10px; font-weight: bold; color: var(--c-blue); background: var(--c-blue-light); padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">Variable Product</span></td>
+                        </tr>
+
+                        <!-- Variation Rows -->
+                        <?php foreach ($group as $item): ?>
+                            <tr class="wizard-row variation-item-row hidden variations_row_<?= $itemId; ?>" 
+                                id="row_<?= $item->id; ?>" 
+                                data-code="<?= htmlspecialchars($item->item_code); ?>" 
+                                data-name="<?= htmlspecialchars($item->item_name); ?>" 
+                                data-barcode="<?= htmlspecialchars($item->barcode); ?>">
+                                
+                                <td style="padding-left: 36px; font-family: var(--f-mono); font-weight: 600; color: var(--c-blue);"><?= htmlspecialchars($item->item_code); ?></td>
+                                <td>
+                                    <div style="font-weight: 600; padding-left: 8px;"><?= htmlspecialchars($item->item_name); ?></div>
+                                    <div style="font-size: 11px; color: var(--t-secondary); padding-left: 8px;"><?= htmlspecialchars($item->category_name ?? 'General'); ?></div>
+                                </td>
+                                <td style="font-family: var(--f-mono); font-size: 13px;"><?= htmlspecialchars($item->barcode ?: '-'); ?></td>
+                                <td style="text-align: right; font-family: var(--f-mono); font-weight: 500;" id="sys_<?= $item->id; ?>"><?= number_format($item->system_qty, 2); ?></td>
+                                <td style="text-align: center;">
+                                    <input type="number" 
+                                           step="0.01" 
+                                           name="counts[<?= $item->id; ?>]" 
+                                           class="qty-input count-qty" 
+                                           data-id="<?= $item->id; ?>" 
+                                           data-parent-id="<?= $itemId; ?>"
+                                           value="<?= htmlspecialchars($item->physical_qty); ?>" 
+                                           autocomplete="off">
+                                </td>
+                                <td style="text-align: right; font-family: var(--f-mono); font-weight: 700;" id="diff_<?= $item->id; ?>">0.00</td>
+                                <td style="text-align: right; font-family: var(--f-mono); color: var(--t-secondary);" id="cost_<?= $item->id; ?>"><?= number_format($item->unit_cost, 2); ?></td>
+                                <td style="text-align: right; font-family: var(--f-mono); font-weight: 700;" id="var_<?= $item->id; ?>">0.00</td>
+                                <td>
+                                    <input type="text" name="remarks[<?= $item->id; ?>]" class="remarks-input" value="<?= htmlspecialchars($item->remarks ?? ''); ?>" placeholder="Remarks...">
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+
+                    <?php else: 
+                        $item = $firstItem;
+                    ?>
+                        <!-- Simple Product Row -->
                         <tr class="wizard-row" 
-                            id="row_<?= $item->item_id; ?>" 
+                            id="row_<?= $item->id; ?>" 
                             data-code="<?= htmlspecialchars($item->item_code); ?>" 
                             data-name="<?= htmlspecialchars($item->item_name); ?>" 
                             data-barcode="<?= htmlspecialchars($item->barcode); ?>">
@@ -391,24 +502,27 @@
                                 <div style="font-size: 11px; color: var(--t-secondary);"><?= htmlspecialchars($item->category_name ?? 'General'); ?></div>
                             </td>
                             <td style="font-family: var(--f-mono); font-size: 13px;"><?= htmlspecialchars($item->barcode ?: '-'); ?></td>
-                            <td style="text-align: right; font-family: var(--f-mono); font-weight: 500;" id="sys_<?= $item->item_id; ?>"><?= number_format($item->system_qty, 2); ?></td>
+                            <td style="text-align: right; font-family: var(--f-mono); font-weight: 500;" id="sys_<?= $item->id; ?>"><?= number_format($item->system_qty, 2); ?></td>
                             <td style="text-align: center;">
                                 <input type="number" 
                                        step="0.01" 
-                                       name="counts[<?= $item->item_id; ?>]" 
+                                       name="counts[<?= $item->id; ?>]" 
                                        class="qty-input count-qty" 
-                                       data-id="<?= $item->item_id; ?>" 
+                                       data-id="<?= $item->id; ?>" 
                                        value="<?= htmlspecialchars($item->physical_qty); ?>" 
                                        autocomplete="off">
                             </td>
-                            <td style="text-align: right; font-family: var(--f-mono); font-weight: 700;" id="diff_<?= $item->item_id; ?>">0.00</td>
-                            <td style="text-align: right; font-family: var(--f-mono); color: var(--t-secondary);" id="cost_<?= $item->item_id; ?>"><?= number_format($item->unit_cost, 2); ?></td>
-                            <td style="text-align: right; font-family: var(--f-mono); font-weight: 700;" id="var_<?= $item->item_id; ?>">0.00</td>
+                            <td style="text-align: right; font-family: var(--f-mono); font-weight: 700;" id="diff_<?= $item->id; ?>">0.00</td>
+                            <td style="text-align: right; font-family: var(--f-mono); color: var(--t-secondary);" id="cost_<?= $item->id; ?>"><?= number_format($item->unit_cost, 2); ?></td>
+                            <td style="text-align: right; font-family: var(--f-mono); font-weight: 700;" id="var_<?= $item->id; ?>">0.00</td>
                             <td>
-                                <input type="text" name="remarks[<?= $item->item_id; ?>]" class="remarks-input" value="<?= htmlspecialchars($item->remarks ?? ''); ?>" placeholder="Add remarks...">
+                                <input type="text" name="remarks[<?= $item->id; ?>]" class="remarks-input" value="<?= htmlspecialchars($item->remarks ?? ''); ?>" placeholder="Add remarks...">
                             </td>
                         </tr>
-                    <?php endforeach; ?>
+                    <?php 
+                        endif;
+                    endforeach; 
+                    ?>
                 </tbody>
             </table>
         </div>
@@ -430,6 +544,31 @@
 </div>
 
 <script>
+// Expandable Toggle Function
+function toggleVariationsRow(itemId, btn) {
+    const rows = document.querySelectorAll('.variations_row_' + itemId);
+    if (!rows.length) return;
+    
+    const isHidden = rows[0].classList.contains('hidden') || rows[0].style.display === 'none';
+    rows.forEach(row => {
+        if (isHidden) {
+            row.classList.remove('hidden');
+            row.style.display = '';
+        } else {
+            row.classList.add('hidden');
+            row.style.display = 'none';
+        }
+    });
+    
+    if (isHidden) {
+        btn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+        btn.setAttribute('title', 'Hide Variations');
+    } else {
+        btn.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+        btn.setAttribute('title', 'Show Variations');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const qtyInputs = document.querySelectorAll('.count-qty');
     const searchInput = document.getElementById('wizardSearch');
@@ -478,12 +617,85 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             varEl.className = 'val-text';
         }
+
+        const parentId = input.getAttribute('data-parent-id');
+        if (parentId) {
+            updateParentTotals(parentId);
+        }
+    }
+
+    // Recalculate parent row totals dynamically
+    function updateParentTotals(parentId) {
+        const varInputs = document.querySelectorAll(`input.count-qty[data-parent-id="${parentId}"]`);
+        let totalSys = 0;
+        let totalPhys = 0;
+        let totalDiff = 0;
+        let totalVarVal = 0;
+
+        varInputs.forEach(input => {
+            const itemId = input.getAttribute('data-id');
+            const physical = parseFloat(input.value) || 0.00;
+
+            const systemText = document.getElementById('sys_' + itemId).textContent.replace(/,/g, '');
+            const system = parseFloat(systemText) || 0.00;
+
+            const costText = document.getElementById('cost_' + itemId).textContent.replace(/,/g, '');
+            const cost = parseFloat(costText) || 0.00;
+
+            const diff = physical - system;
+            const varianceVal = diff * cost;
+
+            totalSys += system;
+            totalPhys += physical;
+            totalDiff += diff;
+            totalVarVal += varianceVal;
+        });
+
+        const parentSysEl = document.getElementById('parent_sys_' + parentId);
+        const parentPhysEl = document.getElementById('parent_phys_' + parentId);
+        const parentDiffEl = document.getElementById('parent_diff_' + parentId);
+        const parentVarEl = document.getElementById('parent_var_' + parentId);
+
+        if (parentSysEl) parentSysEl.textContent = totalSys.toFixed(2);
+        if (parentPhysEl) parentPhysEl.textContent = totalPhys.toFixed(2);
+        
+        if (parentDiffEl) {
+            parentDiffEl.textContent = (totalDiff >= 0 ? '+' : '') + totalDiff.toFixed(2);
+            if (totalDiff > 0) {
+                parentDiffEl.className = 'val-text val-positive';
+            } else if (totalDiff < 0) {
+                parentDiffEl.className = 'val-text val-negative';
+            } else {
+                parentDiffEl.className = 'val-text';
+            }
+        }
+
+        if (parentVarEl) {
+            parentVarEl.textContent = (totalVarVal >= 0 ? '+' : '') + totalVarVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (totalVarVal > 0) {
+                parentVarEl.className = 'val-text val-positive';
+            } else if (totalVarVal < 0) {
+                parentVarEl.className = 'val-text val-negative';
+            } else {
+                parentVarEl.className = 'val-text';
+            }
+        }
     }
 
     qtyInputs.forEach(input => {
         updateRowValues(input);
         input.addEventListener('input', () => updateRowValues(input));
     });
+
+    // Initialize parent totals on page load
+    const parentIds = new Set();
+    qtyInputs.forEach(input => {
+        const parentId = input.getAttribute('data-parent-id');
+        if (parentId) {
+            parentIds.add(parentId);
+        }
+    });
+    parentIds.forEach(parentId => updateParentTotals(parentId));
 
     // 2. Client-side instant filter search
     if (searchInput) {
@@ -492,20 +704,67 @@ document.addEventListener('DOMContentLoaded', function() {
             const rows = document.querySelectorAll('.wizard-row');
             console.log(`[Search Filter] Searching for: "${term}"`);
 
-            let matchCount = 0;
+            if (!term) {
+                // If search is cleared, restore standard collapsed/expanded state
+                rows.forEach(row => {
+                    if (row.classList.contains('variation-item-row')) {
+                        row.style.display = 'none'; // hide variations by default
+                        row.classList.add('hidden');
+                    } else {
+                        row.style.display = '';
+                    }
+                    // reset toggle buttons to down chevron
+                    const toggleBtn = row.querySelector('.toggle-var-btn');
+                    if (toggleBtn) {
+                        toggleBtn.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+                        toggleBtn.setAttribute('title', 'Show Variations');
+                    }
+                });
+                return;
+            }
+
+            // Group by parent relationship
+            // First hide everything
+            rows.forEach(row => {
+                row.style.display = 'none';
+            });
+
+            // Keep track of which parent rows need to be shown
+            const visibleParents = new Set();
+
             rows.forEach(row => {
                 const name = row.getAttribute('data-name').toLowerCase();
                 const code = row.getAttribute('data-code').toLowerCase();
-                const barcode = row.getAttribute('data-barcode').toLowerCase();
+                const barcode = (row.getAttribute('data-barcode') || '').toLowerCase();
 
                 if (name.includes(term) || code.includes(term) || barcode.includes(term)) {
                     row.style.display = '';
-                    matchCount++;
-                } else {
-                    row.style.display = 'none';
+                    if (row.classList.contains('variation-item-row')) {
+                        row.classList.remove('hidden');
+                        const classes = row.className.split(' ');
+                        classes.forEach(cls => {
+                            if (cls.startsWith('variations_row_')) {
+                                const parentId = cls.replace('variations_row_', '');
+                                visibleParents.add(parentId);
+                            }
+                        });
+                    }
                 }
             });
-            console.log(`[Search Filter] Found ${matchCount} matches out of ${rows.length} rows.`);
+
+            // Show all parent rows that have matching variations
+            visibleParents.forEach(parentId => {
+                const parentRow = document.getElementById('parent_row_' + parentId);
+                if (parentRow) {
+                    parentRow.style.display = '';
+                    // Set parent toggle button to up chevron since variations are visible
+                    const toggleBtn = parentRow.querySelector('.toggle-var-btn');
+                    if (toggleBtn) {
+                        toggleBtn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+                        toggleBtn.setAttribute('title', 'Hide Variations');
+                    }
+                }
+            });
         });
     }
 
@@ -523,6 +782,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 const row = [...document.querySelectorAll('.wizard-row')].find(r => r.getAttribute('data-barcode') === scannedBarcode);
                 if (row) {
                     console.log(`[Barcode Scanner] Matched row via barcode: ${scannedBarcode}`);
+                    
+                    // If it is a variation row, make sure it and its parent are visible and expanded
+                    if (row.classList.contains('variation-item-row')) {
+                        row.classList.remove('hidden');
+                        row.style.display = '';
+                        const classes = row.className.split(' ');
+                        classes.forEach(cls => {
+                            if (cls.startsWith('variations_row_')) {
+                                const parentId = cls.replace('variations_row_', '');
+                                const parentRow = document.getElementById('parent_row_' + parentId);
+                                if (parentRow) {
+                                    parentRow.style.display = '';
+                                    const toggleBtn = parentRow.querySelector('.toggle-var-btn');
+                                    if (toggleBtn) {
+                                        toggleBtn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+                                        toggleBtn.setAttribute('title', 'Hide Variations');
+                                    }
+                                }
+                            }
+                        });
+                    }
+
                     // Highlight the row
                     row.classList.add('highlighted');
                     setTimeout(() => row.classList.remove('highlighted'), 2000);
@@ -544,6 +825,27 @@ document.addEventListener('DOMContentLoaded', function() {
                     const rowCode = [...document.querySelectorAll('.wizard-row')].find(r => r.getAttribute('data-code') === scannedBarcode);
                     if (rowCode) {
                         console.log(`[Barcode Scanner] Matched row via item code: ${scannedBarcode}`);
+                        
+                        if (rowCode.classList.contains('variation-item-row')) {
+                            rowCode.classList.remove('hidden');
+                            rowCode.style.display = '';
+                            const classes = rowCode.className.split(' ');
+                            classes.forEach(cls => {
+                                if (cls.startsWith('variations_row_')) {
+                                    const parentId = cls.replace('variations_row_', '');
+                                    const parentRow = document.getElementById('parent_row_' + parentId);
+                                    if (parentRow) {
+                                        parentRow.style.display = '';
+                                        const toggleBtn = parentRow.querySelector('.toggle-var-btn');
+                                        if (toggleBtn) {
+                                            toggleBtn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+                                            toggleBtn.setAttribute('title', 'Hide Variations');
+                                        }
+                                    }
+                                }
+                            });
+                        }
+
                         rowCode.classList.add('highlighted');
                         setTimeout(() => rowCode.classList.remove('highlighted'), 2000);
                         rowCode.scrollIntoView({ behavior: 'smooth', block: 'center' });

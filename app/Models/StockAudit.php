@@ -82,15 +82,43 @@ class StockAudit {
      */
     public function getAuditItems($auditId) {
         $this->db->query("
-            SELECT sai.*, i.name as item_name, i.item_code, i.barcode, i.unit, c.name as category_name
+            SELECT sai.*, 
+                   i.name as base_item_name, 
+                   i.item_code as base_item_code, 
+                   i.barcode as base_barcode,
+                   i.unit, 
+                   c.name as category_name,
+                   ivo.sku as variation_sku,
+                   vv.value_name as variation_value
             FROM stock_audit_items sai
             JOIN items i ON sai.item_id = i.id
             LEFT JOIN item_categories c ON i.category_id = c.id
+            LEFT JOIN item_variation_options ivo ON sai.variation_option_id = ivo.id
+            LEFT JOIN variation_values vv ON ivo.variation_value_id = vv.id
             WHERE sai.audit_id = :audit_id
             ORDER BY i.name ASC
         ");
         $this->db->bind(':audit_id', intval($auditId));
-        return $this->db->resultSet() ?: [];
+        $items = $this->db->resultSet() ?: [];
+
+        foreach ($items as $item) {
+            $item->system_qty = floatval($item->system_qty);
+            $item->physical_qty = floatval($item->physical_qty);
+            $item->difference = floatval($item->difference);
+            $item->unit_cost = floatval($item->unit_cost);
+            $item->variance_value = floatval($item->variance_value);
+            
+            if ($item->variation_option_id && $item->variation_value) {
+                $item->item_name = $item->base_item_name . ' - ' . $item->variation_value;
+                $item->item_code = $item->variation_sku ?: $item->base_item_code;
+                $item->barcode = $item->variation_sku ?: $item->base_barcode;
+            } else {
+                $item->item_name = $item->base_item_name;
+                $item->item_code = $item->base_item_code;
+                $item->barcode = $item->base_barcode;
+            }
+        }
+        return $items;
     }
 
     /**
@@ -122,20 +150,24 @@ class StockAudit {
 
             $auditId = $this->db->lastInsertId();
 
-            // 3. Find items matching filters in this warehouse
-            $sql = "SELECT id, quantity_on_hand, cost_price FROM items WHERE warehouse_id = :warehouse_id";
+            // 3. Find items and variations matching filters in this warehouse
+            $sql = "SELECT i.id as item_id, i.quantity_on_hand as item_qty, i.cost_price as item_cost,
+                           ivo.id as variation_option_id, ivo.quantity_on_hand as variation_qty, ivo.cost as variation_cost
+                    FROM items i
+                    LEFT JOIN item_variation_options ivo ON i.id = ivo.item_id
+                    WHERE i.warehouse_id = :warehouse_id";
             $params = [':warehouse_id' => intval($data['warehouse_id'])];
 
             if (!empty($data['category_id'])) {
-                $sql .= " AND category_id = :category_id";
+                $sql .= " AND i.category_id = :category_id";
                 $params[':category_id'] = intval($data['category_id']);
             }
             if (!empty($data['brand'])) {
-                $sql .= " AND brand = :brand";
+                $sql .= " AND i.brand = :brand";
                 $params[':brand'] = $data['brand'];
             }
             if (!empty($data['supplier_id'])) {
-                $sql .= " AND vendor_id = :supplier_id"; // vendor_id holds the supplier in items table
+                $sql .= " AND i.vendor_id = :supplier_id"; // vendor_id holds the supplier in items table
                 $params[':supplier_id'] = intval($data['supplier_id']);
             }
 
@@ -147,18 +179,31 @@ class StockAudit {
 
             // 4. Insert matched items into stock_audit_items
             foreach ($items as $item) {
-                $systemQty = floatval($item->quantity_on_hand);
-                $unitCost = floatval($item->cost_price);
+                $itemId = intval($item->item_id);
+                $varOptId = $item->variation_option_id ? intval($item->variation_option_id) : null;
+                
+                if ($varOptId !== null) {
+                    $systemQty = floatval($item->variation_qty);
+                    $unitCost = floatval($item->variation_cost);
+                    if ($unitCost <= 0.00) {
+                        $unitCost = floatval($item->item_cost);
+                    }
+                } else {
+                    $systemQty = floatval($item->item_qty);
+                    $unitCost = floatval($item->item_cost);
+                }
+
                 // Difference is initially system_qty difference, so physical_qty = 0 initially
                 $diff = 0 - $systemQty; 
                 $varianceVal = $diff * $unitCost;
 
                 $this->db->query("
-                    INSERT INTO stock_audit_items (audit_id, item_id, system_qty, physical_qty, difference, unit_cost, variance_value)
-                    VALUES (:audit_id, :item_id, :system_qty, 0, :difference, :unit_cost, :variance_value)
+                    INSERT INTO stock_audit_items (audit_id, item_id, variation_option_id, system_qty, physical_qty, difference, unit_cost, variance_value)
+                    VALUES (:audit_id, :item_id, :variation_option_id, :system_qty, 0, :difference, :unit_cost, :variance_value)
                 ");
                 $this->db->bind(':audit_id', $auditId);
-                $this->db->bind(':item_id', $item->id);
+                $this->db->bind(':item_id', $itemId);
+                $this->db->bind(':variation_option_id', $varOptId);
                 $this->db->bind(':system_qty', $systemQty);
                 $this->db->bind(':difference', $diff);
                 $this->db->bind(':unit_cost', $unitCost);
@@ -183,14 +228,13 @@ class StockAudit {
             $this->db->beginTransaction();
 
             // Update items
-            foreach ($counts as $itemId => $physicalQty) {
+            foreach ($counts as $auditItemId => $physicalQty) {
                 $physicalQty = floatval($physicalQty);
-                $itemRemark = $remarks[$itemId] ?? '';
+                $itemRemark = $remarks[$auditItemId] ?? '';
 
                 // Get system qty & unit cost
-                $this->db->query("SELECT system_qty, unit_cost FROM stock_audit_items WHERE audit_id = :audit_id AND item_id = :item_id");
-                $this->db->bind(':audit_id', intval($auditId));
-                $this->db->bind(':item_id', intval($itemId));
+                $this->db->query("SELECT system_qty, unit_cost FROM stock_audit_items WHERE id = :id");
+                $this->db->bind(':id', intval($auditItemId));
                 $row = $this->db->single();
 
                 if ($row) {
@@ -202,14 +246,13 @@ class StockAudit {
                     $this->db->query("
                         UPDATE stock_audit_items 
                         SET physical_qty = :physical_qty, difference = :difference, variance_value = :variance_value, remarks = :remarks
-                        WHERE audit_id = :audit_id AND item_id = :item_id
+                        WHERE id = :id
                     ");
                     $this->db->bind(':physical_qty', $physicalQty);
                     $this->db->bind(':difference', $diff);
                     $this->db->bind(':variance_value', $varianceVal);
                     $this->db->bind(':remarks', $itemRemark);
-                    $this->db->bind(':audit_id', intval($auditId));
-                    $this->db->bind(':item_id', intval($itemId));
+                    $this->db->bind(':id', intval($auditItemId));
                     $this->db->execute();
                 }
             }
@@ -251,13 +294,12 @@ class StockAudit {
             $this->db->beginTransaction();
 
             // Update items
-            foreach ($counts as $itemId => $physicalQty) {
+            foreach ($counts as $auditItemId => $physicalQty) {
                 $physicalQty = floatval($physicalQty);
-                $itemRemark = $remarks[$itemId] ?? '';
+                $itemRemark = $remarks[$auditItemId] ?? '';
 
-                $this->db->query("SELECT system_qty, unit_cost FROM stock_audit_items WHERE audit_id = :audit_id AND item_id = :item_id");
-                $this->db->bind(':audit_id', intval($auditId));
-                $this->db->bind(':item_id', intval($itemId));
+                $this->db->query("SELECT system_qty, unit_cost FROM stock_audit_items WHERE id = :id");
+                $this->db->bind(':id', intval($auditItemId));
                 $row = $this->db->single();
 
                 if ($row) {
@@ -269,14 +311,13 @@ class StockAudit {
                     $this->db->query("
                         UPDATE stock_audit_items 
                         SET physical_qty = :physical_qty, difference = :difference, variance_value = :variance_value, remarks = :remarks
-                        WHERE audit_id = :audit_id AND item_id = :item_id
+                        WHERE id = :id
                     ");
                     $this->db->bind(':physical_qty', $physicalQty);
                     $this->db->bind(':difference', $diff);
                     $this->db->bind(':variance_value', $varianceVal);
                     $this->db->bind(':remarks', $itemRemark);
-                    $this->db->bind(':audit_id', intval($auditId));
-                    $this->db->bind(':item_id', intval($itemId));
+                    $this->db->bind(':id', intval($auditItemId));
                     $this->db->execute();
                 }
             }

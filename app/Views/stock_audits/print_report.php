@@ -117,7 +117,7 @@
 
     <div class="header">
         <h1>CURTISS ERP</h1>
-        <h2>Stock Audit Variance Report</h2>
+        <h2><?= (isset($_GET['variance_only']) && $_GET['variance_only'] == '1') ? 'Stock Audit Difference Report' : 'Stock Audit Variance Report'; ?></h2>
     </div>
 
     <table class="meta-table">

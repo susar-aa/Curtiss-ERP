@@ -160,11 +160,64 @@ class StockAuditController extends Controller {
             $res = $this->auditModel->completeCount($id, $counts, $remarks, $overallRemarks, $userId);
             if ($res) {
                 $this->logActivity('Complete Stock Count', 'Operations', "Completed stock count for Audit ID {$id}", $id);
-                $_SESSION['flash_success'] = 'Stock count completed successfully and pending approval.';
+                
+                // Auto-approve the completed audit immediately!
+                $audit = $this->auditModel->getAuditById($id);
+                $items = $this->auditModel->getAuditItems($id);
+                $adjustmentItems = [];
+
+                foreach ($items as $item) {
+                    $diff = floatval($item->difference);
+                    if ($diff != 0.00) {
+                        $adjustmentItems[] = [
+                            'item_id' => $item->item_id,
+                            'variation_option_id' => $item->variation_option_id ? intval($item->variation_option_id) : null,
+                            'quantity' => $diff,
+                            'unit_cost' => floatval($item->unit_cost),
+                            'remarks' => "Variance from Stock Audit: " . $audit->audit_number
+                        ];
+                    }
+                }
+
+                if (empty($adjustmentItems)) {
+                    $db = new Database();
+                    $db->query("UPDATE stock_audits SET status = 'Approved', approved_by = :approved_by, approved_at = CURRENT_TIMESTAMP WHERE id = :id");
+                    $db->bind(':approved_by', $userId);
+                    $db->bind(':id', $id);
+                    $db->execute();
+                    $this->logActivity('Approve Stock Audit', 'Operations', "Approved Stock Audit ID {$id} with zero variance", $id);
+                    $_SESSION['flash_success'] = 'Stock count finalized. Zero stock variances found.';
+                } else {
+                    $adjModel = $this->model('StockAdjustment');
+                    $adjPayload = [
+                        'warehouse_id' => $audit->warehouse_id,
+                        'reason' => 'Stock Audit Variance',
+                        'adjustment_date' => date('Y-m-d'),
+                        'created_by' => $userId,
+                        'stock_audit_id' => $audit->id,
+                        'remarks' => "Auto-generated adjustment for Stock Audit " . $audit->audit_number,
+                        'items' => $adjustmentItems
+                    ];
+
+                    $adjId = $adjModel->createAdjustment($adjPayload);
+                    if ($adjId) {
+                        $approved = $adjModel->approveAdjustment($adjId, $userId);
+                        if ($approved) {
+                            $this->logActivity('Approve Stock Audit', 'Operations', "Approved Stock Audit ID {$id} and auto-posted Adjustment ID {$adjId}", $id);
+                            $_SESSION['flash_success'] = 'Stock count finalized, inventory adjusted, and ledger entries posted successfully.';
+                        } else {
+                            $_SESSION['flash_error'] = 'Stock count completed but failed to auto-post inventory adjustments.';
+                        }
+                    } else {
+                        $_SESSION['flash_error'] = 'Stock count completed but failed to generate stock adjustment for variances.';
+                    }
+                }
                 header('Location: ' . APP_URL . '/stockaudit/show/' . $id);
+                exit;
             } else {
                 $_SESSION['flash_error'] = 'Failed to complete count.';
                 header('Location: ' . APP_URL . '/stockaudit/wizard/' . $id);
+                exit;
             }
         } else {
             // Default Save Draft
@@ -227,6 +280,7 @@ class StockAuditController extends Controller {
             if ($diff != 0.00) {
                 $adjustmentItems[] = [
                     'item_id' => $item->item_id,
+                    'variation_option_id' => $item->variation_option_id ? intval($item->variation_option_id) : null,
                     'quantity' => $diff,
                     'unit_cost' => floatval($item->unit_cost),
                     'remarks' => "Variance from Stock Audit: " . $audit->audit_number
@@ -325,6 +379,12 @@ class StockAuditController extends Controller {
             die("Audit not found.");
         }
         $items = $this->auditModel->getAuditItems($id);
+
+        if (isset($_GET['variance_only']) && $_GET['variance_only'] == '1') {
+            $items = array_values(array_filter($items, function($item) {
+                return floatval($item->difference) != 0.00;
+            }));
+        }
 
         $data = [
             'audit' => $audit,
