@@ -402,7 +402,33 @@ class Item {
                 ORDER BY v.name ASC, vv.value_name ASC
             ");
             $this->db->bind(':id', $itemId);
-            return $this->db->resultSet() ?: [];
+            $variations = $this->db->resultSet() ?: [];
+
+            if (empty($variations)) {
+                // Self-healing: check if variations_json exists and populate relation tables
+                $this->db->query("SELECT variations_json FROM items WHERE id = :id LIMIT 1");
+                $this->db->bind(':id', $itemId);
+                $itemRow = $this->db->single();
+                if ($itemRow && !empty($itemRow->variations_json)) {
+                    $decoded = json_decode($itemRow->variations_json);
+                    if (is_array($decoded) && !empty($decoded)) {
+                        $this->syncVariationOptions($itemId, $itemRow->variations_json);
+                        
+                        // Re-query
+                        $this->db->query("
+                            SELECT ivo.*, v.name AS variation_name, vv.value_name
+                            FROM item_variation_options ivo
+                            JOIN variations v ON ivo.variation_id = v.id
+                            JOIN variation_values vv ON ivo.variation_value_id = vv.id
+                            WHERE ivo.item_id = :id
+                            ORDER BY v.name ASC, vv.value_name ASC
+                        ");
+                        $this->db->bind(':id', $itemId);
+                        $variations = $this->db->resultSet() ?: [];
+                    }
+                }
+            }
+            return $variations;
         } catch (Exception $e) {
             return [];
         }
@@ -479,7 +505,14 @@ class Item {
         $this->db->bind(':retail_margin', $data['retail_margin'] ?? '0.00');
         $this->db->bind(':wholesale_margin', $data['wholesale_margin'] ?? '0.00');
 
-        return $this->db->execute();
+        if ($this->db->execute()) {
+            $newItemId = $this->db->lastInsertId();
+            if ($newItemId && !empty($data['variations_json'])) {
+                $this->syncVariationOptions($newItemId, $data['variations_json']);
+            }
+            return true;
+        }
+        return false;
     }
 
     public function updateItem($data) {
@@ -553,7 +586,13 @@ class Item {
         $this->db->bind(':retail_margin', $data['retail_margin'] ?? '0.00');
         $this->db->bind(':wholesale_margin', $data['wholesale_margin'] ?? '0.00');
 
-        return $this->db->execute();
+        if ($this->db->execute()) {
+            if (!empty($data['id'])) {
+                $this->syncVariationOptions($data['id'], $data['variations_json'] ?? '[]');
+            }
+            return true;
+        }
+        return false;
     }
 
     public function updateStockOnly($id, $newQty) {
@@ -588,24 +627,167 @@ class Item {
             $this->db->bind(':id', $variationOptionId);
             $this->db->bind(':delta', $delta);
             $this->db->execute();
+
+            // Calculate parent total stock as sum of variations to prevent drift
+            $this->db->query("SELECT SUM(quantity_on_hand) AS total_qty FROM item_variation_options WHERE item_id = :item_id");
+            $this->db->bind(':item_id', $id);
+            $totalRow = $this->db->single();
+            $newParentQty = floatval($totalRow->total_qty ?? 0);
+
+            $qtyUpdates = [];
+            if ($this->hasQtyColumn) {
+                $qtyUpdates[] = "qty = :qty";
+            }
+            if ($this->hasQuantityOnHandColumn) {
+                $qtyUpdates[] = "quantity_on_hand = :qty";
+            }
+            if (empty($qtyUpdates)) {
+                $qtyUpdates[] = "quantity_on_hand = :qty";
+            }
+            $qtyUpdatesStr = implode(', ', $qtyUpdates);
+
+            $this->db->query("UPDATE items SET {$qtyUpdatesStr} WHERE id = :id");
+            $this->db->bind(':id', $id);
+            $this->db->bind(':qty', $newParentQty);
+            return $this->db->execute();
+        } else {
+            $qtyUpdates = [];
+            if ($this->hasQtyColumn) {
+                $qtyUpdates[] = "qty = GREATEST(0, CAST(qty AS SIGNED) + :delta)";
+            }
+            if ($this->hasQuantityOnHandColumn) {
+                $qtyUpdates[] = "quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :delta)";
+            }
+            if (empty($qtyUpdates)) {
+                $qtyUpdates[] = "quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :delta)";
+            }
+            $qtyUpdatesStr = implode(', ', $qtyUpdates);
+
+            $this->db->query("UPDATE items SET {$qtyUpdatesStr} WHERE id = :id");
+            $this->db->bind(':id', $id);
+            $this->db->bind(':delta', $delta);
+            return $this->db->execute();
+        }
+    }
+
+    /**
+     * Synchronizes variations_json from items table to relational item_variation_options,
+     * variations, and variation_values tables.
+     */
+    public function syncVariationOptions($itemId, $variationsJson) {
+        $decoded = json_decode($variationsJson);
+        if (!is_array($decoded)) {
+            $decoded = [];
         }
 
-        $qtyUpdates = [];
-        if ($this->hasQtyColumn) {
-            $qtyUpdates[] = "qty = GREATEST(0, CAST(qty AS SIGNED) + :delta)";
-        }
-        if ($this->hasQuantityOnHandColumn) {
-            $qtyUpdates[] = "quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :delta)";
-        }
-        if (empty($qtyUpdates)) {
-            $qtyUpdates[] = "quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :delta)";
-        }
-        $qtyUpdatesStr = implode(', ', $qtyUpdates);
+        $activeOptionIds = [];
 
-        $this->db->query("UPDATE items SET {$qtyUpdatesStr} WHERE id = :id");
-        $this->db->bind(':id', $id);
-        $this->db->bind(':delta', $delta);
-        return $this->db->execute();
+        foreach ($decoded as $v) {
+            $valueName = $v->attribute ?? $v->value ?? $v->value_name ?? '';
+            if (empty($valueName)) {
+                continue;
+            }
+
+            $sku = $v->sku ?? '';
+            $price = floatval($v->price ?? 0);
+            $cost = floatval($v->cost ?? $v->cost_price ?? 0);
+
+            // 1. Resolve variation attribute group name
+            $attrName = 'Option';
+            $this->db->query("
+                SELECT pa.name 
+                FROM product_attribute_terms pat 
+                JOIN product_attributes pa ON pat.attribute_id = pa.id 
+                WHERE pat.name = :term_name 
+                LIMIT 1
+            ");
+            $this->db->bind(':term_name', $valueName);
+            $patRow = $this->db->single();
+            if ($patRow) {
+                $attrName = $patRow->name;
+            }
+
+            // 2. Get or create variation record
+            $this->db->query("SELECT id FROM variations WHERE name = :name LIMIT 1");
+            $this->db->bind(':name', $attrName);
+            $varRow = $this->db->single();
+            if ($varRow) {
+                $variationId = $varRow->id;
+            } else {
+                $this->db->query("INSERT INTO variations (name) VALUES (:name)");
+                $this->db->bind(':name', $attrName);
+                $this->db->execute();
+                $variationId = $this->db->lastInsertId();
+            }
+
+            // 3. Get or create variation value record
+            $this->db->query("SELECT id FROM variation_values WHERE variation_id = :var_id AND value_name = :val_name LIMIT 1");
+            $this->db->bind(':var_id', $variationId);
+            $this->db->bind(':val_name', $valueName);
+            $vvRow = $this->db->single();
+            if ($vvRow) {
+                $variationValueId = $vvRow->id;
+            } else {
+                $this->db->query("INSERT INTO variation_values (variation_id, value_name) VALUES (:var_id, :val_name)");
+                $this->db->bind(':var_id', $variationId);
+                $this->db->bind(':val_name', $valueName);
+                $this->db->execute();
+                $variationValueId = $this->db->lastInsertId();
+            }
+
+            // 4. Check if variation option exists in item_variation_options
+            $this->db->query("
+                SELECT id 
+                FROM item_variation_options 
+                WHERE item_id = :item_id AND variation_value_id = :val_id 
+                LIMIT 1
+            ");
+            $this->db->bind(':item_id', $itemId);
+            $this->db->bind(':val_id', $variationValueId);
+            $ivoRow = $this->db->single();
+
+            if ($ivoRow) {
+                $optionId = $ivoRow->id;
+                $this->db->query("
+                    UPDATE item_variation_options 
+                    SET sku = :sku, price = :price, cost = :cost 
+                    WHERE id = :id
+                ");
+                $this->db->bind(':sku', $sku);
+                $this->db->bind(':price', $price);
+                $this->db->bind(':cost', $cost);
+                $this->db->bind(':id', $optionId);
+                $this->db->execute();
+            } else {
+                $this->db->query("
+                    INSERT INTO item_variation_options 
+                    (item_id, variation_id, variation_value_id, sku, price, cost, quantity_on_hand, quantity_reserved) 
+                    VALUES (:item_id, :var_id, :val_id, :sku, :price, :cost, 0, 0)
+                ");
+                $this->db->bind(':item_id', $itemId);
+                $this->db->bind(':var_id', $variationId);
+                $this->db->bind(':val_id', $variationValueId);
+                $this->db->bind(':sku', $sku);
+                $this->db->bind(':price', $price);
+                $this->db->bind(':cost', $cost);
+                $this->db->execute();
+                $optionId = $this->db->lastInsertId();
+            }
+
+            $activeOptionIds[] = $optionId;
+        }
+
+        // 5. Delete removed variation options
+        if (!empty($activeOptionIds)) {
+            $idsPlaceholders = implode(',', array_map('intval', $activeOptionIds));
+            $this->db->query("DELETE FROM item_variation_options WHERE item_id = :item_id AND id NOT IN ($idsPlaceholders)");
+            $this->db->bind(':item_id', $itemId);
+            $this->db->execute();
+        } else {
+            $this->db->query("DELETE FROM item_variation_options WHERE item_id = :item_id");
+            $this->db->bind(':item_id', $itemId);
+            $this->db->execute();
+        }
     }
 
     /**
