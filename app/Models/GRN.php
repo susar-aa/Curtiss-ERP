@@ -194,7 +194,6 @@ class GRN {
                     SET quantity_on_hand = COALESCE(quantity_on_hand, 0) + :qty, 
                         price = :sprice, 
                         wholesale_price = :wprice, 
-                        cost = :cost, 
                         cost_price = :cost, 
                         retail_margin = :rmargin, 
                         wholesale_margin = :wmargin 
