@@ -284,4 +284,93 @@ class StockAdjustment {
         $this->db->bind(':id', intval($id));
         return $this->db->execute();
     }
+
+    /**
+     * Delete/cancel stock adjustment and reverse any stock/journal changes if approved
+     */
+    public function deleteAdjustment($id, $userId) {
+        try {
+            $this->db->beginTransaction();
+
+            $adj = $this->getAdjustmentById($id);
+            if (!$adj) {
+                throw new Exception("Adjustment not found.");
+            }
+
+            if ($adj->status === 'Pending' || $adj->status === 'Rejected') {
+                // Delete items
+                $this->db->query("DELETE FROM stock_adjustment_items WHERE adjustment_id = :id");
+                $this->db->bind(':id', intval($id));
+                $this->db->execute();
+
+                // Delete header
+                $this->db->query("DELETE FROM stock_adjustments WHERE id = :id");
+                $this->db->bind(':id', intval($id));
+                $this->db->execute();
+
+                $this->db->commit();
+                return true;
+            }
+
+            if ($adj->status === 'Approved') {
+                // To undo:
+                // 1. Fetch items
+                $items = $this->getAdjustmentItems($id);
+                if (empty($items)) {
+                    throw new Exception("No items found for adjustment.");
+                }
+
+                require_once __DIR__ . '/Item.php';
+                require_once __DIR__ . '/StockLedger.php';
+                $itemModel = new Item();
+                $ledgerModel = new StockLedger();
+
+                foreach ($items as $item) {
+                    $qty = floatval($item->quantity);
+                    $unitCost = floatval($item->unit_cost);
+
+                    // Revert the stock qty
+                    $undoQty = -$qty;
+                    $itemModel->updateStockDelta($item->item_id, $undoQty, $item->variation_option_id);
+
+                    // Revert ledger & double entry
+                    $ledgerType = ($undoQty > 0) ? 'Stock Adjustment Increase' : 'Stock Adjustment Decrease';
+                    $qtyIn = ($undoQty > 0) ? $undoQty : 0.00;
+                    $qtyOut = ($undoQty < 0) ? abs($undoQty) : 0.00;
+
+                    $ledgerModel->logMovement(
+                        $item->item_id,
+                        $item->variation_option_id,
+                        $qtyIn,
+                        $qtyOut,
+                        $ledgerType,
+                        $adj->adjustment_number . '-REV',
+                        $adj->warehouse_id,
+                        $userId,
+                        "Stock Adjustment Reversal: " . $adj->reason . " - " . ($item->remarks ?: $adj->remarks),
+                        $unitCost
+                    );
+                }
+
+                // Delete items
+                $this->db->query("DELETE FROM stock_adjustment_items WHERE adjustment_id = :id");
+                $this->db->bind(':id', intval($id));
+                $this->db->execute();
+
+                // Delete header
+                $this->db->query("DELETE FROM stock_adjustments WHERE id = :id");
+                $this->db->bind(':id', intval($id));
+                $this->db->execute();
+
+                $this->db->commit();
+                return true;
+            }
+
+            throw new Exception("Unsupported status for deletion.");
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            error_log("Error deleting stock adjustment: " . $e->getMessage());
+            return false;
+        }
+    }
 }

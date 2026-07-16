@@ -331,18 +331,20 @@
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th style="width: 15%;">SKU / Code</th>
-                        <th style="width: 35%;">Product Name</th>
+                        <th style="width: 12%;">SKU / Code</th>
+                        <th style="width: 25%;">Product Name</th>
+                        <th style="width: 10%; text-align: center;">Current Qty</th>
+                        <th style="width: 12%; text-align: center;">New Qty</th>
                         <th style="width: 12%; text-align: center;">Adjustment Qty</th>
-                        <th style="width: 15%; text-align: right;">Unit Cost</th>
-                        <th style="width: 15%; text-align: right;">Total Value</th>
-                        <th style="width: 20%;">Item Remarks</th>
+                        <th style="width: 12%; text-align: right;">Unit Cost</th>
+                        <th style="width: 12%; text-align: right;">Total Value</th>
+                        <th style="width: 15%;">Item Remarks</th>
                         <th style="width: 5%; text-align: center;"></th>
                     </tr>
                 </thead>
                 <tbody id="adjustmentGridBody">
                     <tr id="emptyGridRow">
-                        <td colspan="7" style="text-align: center; color: var(--t-secondary); padding: 30px;">
+                        <td colspan="9" style="text-align: center; color: var(--t-secondary); padding: 30px;">
                             No items added yet. Search and select products above to adjust.
                         </td>
                     </tr>
@@ -439,6 +441,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const cost = parseFloat(item.cost_price) || 0.00;
+        const currentQty = parseFloat(item.qty) || 0.00;
 
         const tr = document.createElement('tr');
         tr.id = `grid_row_${rowKey}`;
@@ -454,14 +457,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div style="font-weight: 600;">${item.name}</div>
                 <div style="font-size: 11px; color: var(--t-secondary);">${item.category_name || 'General'}</div>
             </td>
+            <td style="text-align: center; font-weight: 600; color: var(--t-secondary);">
+                ${currentQty.toFixed(2)}
+            </td>
+            <td style="text-align: center;">
+                <input type="number" step="0.01" class="qty-input grid-new-qty" value="${(currentQty + 1).toFixed(2)}" style="width: 80px;" required>
+            </td>
             <td style="text-align: center;">
                 <!-- Qty can be positive or negative -->
-                <input type="number" step="0.01" name="quantities[]" class="qty-input grid-qty" value="1.00" required>
+                <input type="number" step="0.01" name="quantities[]" class="qty-input grid-qty" value="1.00" style="width: 80px;" required>
             </td>
             <td style="text-align: right;">
-                <input type="number" step="0.01" name="unit_costs[]" class="cost-input grid-cost" value="${cost.toFixed(2)}" required>
+                <input type="number" step="0.01" name="unit_costs[]" class="cost-input grid-cost" value="${cost.toFixed(2)}" style="text-align: right;" required>
             </td>
-            <td class="total-cell" id="total_val_${rowKey}">
+            <td class="total-cell" id="total_val_${rowKey}" style="text-align: right;">
                 ${cost.toFixed(2)}
             </td>
             <td>
@@ -476,6 +485,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(`[Grid Action] Product row ${rowKey} successfully added to grid.`);
 
         // Bind update triggers
+        const newQtyEl = tr.querySelector('.grid-new-qty');
         const qtyEl = tr.querySelector('.grid-qty');
         const costEl = tr.querySelector('.grid-cost');
         
@@ -487,7 +497,20 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById(`total_val_${rowKey}`).textContent = tot.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
-        qtyEl.addEventListener('input', updateRowTotal);
+        newQtyEl.addEventListener('input', function() {
+            const newQty = parseFloat(newQtyEl.value) || 0;
+            const diff = newQty - currentQty;
+            qtyEl.value = diff.toFixed(2);
+            updateRowTotal();
+        });
+
+        qtyEl.addEventListener('input', function() {
+            const diff = parseFloat(qtyEl.value) || 0;
+            const newQty = currentQty + diff;
+            newQtyEl.value = newQty.toFixed(2);
+            updateRowTotal();
+        });
+
         costEl.addEventListener('input', updateRowTotal);
 
         // Bind delete button

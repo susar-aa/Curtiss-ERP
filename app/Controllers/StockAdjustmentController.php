@@ -302,4 +302,37 @@ class StockAdjustmentController extends Controller {
         header('Location: ' . APP_URL . '/stockadjustment/show/' . $id);
         exit;
     }
+
+    /**
+     * Delete/cancel stock adjustment
+     */
+    public function delete($id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . APP_URL . '/stockadjustment');
+            exit;
+        }
+
+        // 1. Verify CSRF Token
+        $this->validateCsrfOrDie();
+
+        // 2. Verify Admin Role
+        if (strtolower($_SESSION['role'] ?? '') !== 'admin') {
+            $_SESSION['flash_error'] = 'Access Denied: Only Administrators can delete stock adjustments.';
+            header('Location: ' . APP_URL . '/stockadjustment');
+            exit;
+        }
+
+        $userId = $_SESSION['user_id'];
+        $res = $this->adjustmentModel->deleteAdjustment($id, $userId);
+
+        if ($res) {
+            $this->logActivity('Delete Stock Adjustment', 'Operations', "Deleted Stock Adjustment ID {$id}", $id);
+            $_SESSION['flash_success'] = 'Stock Adjustment deleted and reversed successfully.';
+        } else {
+            $_SESSION['flash_error'] = 'Failed to delete stock adjustment.';
+        }
+
+        header('Location: ' . APP_URL . '/stockadjustment');
+        exit;
+    }
 }
