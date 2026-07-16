@@ -350,4 +350,54 @@ class StockAudit {
         $this->db->bind(':id', intval($auditId));
         return $this->db->execute();
     }
+
+    /**
+     * Delete/cancel stock audit and reverse any adjustments
+     */
+    public function deleteStockAudit($auditId, $userId) {
+        $this->db->beginTransaction();
+        try {
+            // 1. Fetch the audit details
+            $audit = $this->getAuditById($auditId);
+            if (!$audit) {
+                throw new Exception("Stock Audit not found.");
+            }
+
+            if (!in_array($audit->status, ['Completed', 'Approved'])) {
+                throw new Exception("Only Completed or Approved stock audits can be deleted.");
+            }
+
+            // 2. Find associated stock adjustments
+            $this->db->query("SELECT id FROM stock_adjustments WHERE stock_audit_id = :audit_id");
+            $this->db->bind(':audit_id', intval($auditId));
+            $adjustments = $this->db->resultSet() ?: [];
+
+            // 3. For each adjustment, call deleteAdjustment to reverse stock/journal/ledger
+            require_once __DIR__ . '/StockAdjustment.php';
+            $adjModel = new StockAdjustment();
+            foreach ($adjustments as $adj) {
+                $deleted = $adjModel->deleteAdjustment($adj->id, $userId);
+                if (!$deleted) {
+                    throw new Exception("Failed to reverse stock adjustment ID {$adj->id}.");
+                }
+            }
+
+            // 4. Delete audit items
+            $this->db->query("DELETE FROM stock_audit_items WHERE audit_id = :id");
+            $this->db->bind(':id', intval($auditId));
+            $this->db->execute();
+
+            // 5. Delete audit header
+            $this->db->query("DELETE FROM stock_audits WHERE id = :id");
+            $this->db->bind(':id', intval($auditId));
+            $this->db->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            error_log("Error deleting stock audit: " . $e->getMessage());
+            return false;
+        }
+    }
 }

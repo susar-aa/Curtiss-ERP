@@ -289,8 +289,11 @@ class StockAdjustment {
      * Delete/cancel stock adjustment and reverse any stock/journal changes if approved
      */
     public function deleteAdjustment($id, $userId) {
+        $manageTransaction = !$this->db->inTransaction();
         try {
-            $this->db->beginTransaction();
+            if ($manageTransaction) {
+                $this->db->beginTransaction();
+            }
 
             $adj = $this->getAdjustmentById($id);
             if (!$adj) {
@@ -308,7 +311,9 @@ class StockAdjustment {
                 $this->db->bind(':id', intval($id));
                 $this->db->execute();
 
-                $this->db->commit();
+                if ($manageTransaction) {
+                    $this->db->commit();
+                }
                 return true;
             }
 
@@ -362,13 +367,17 @@ class StockAdjustment {
                 $this->db->bind(':id', intval($id));
                 $this->db->execute();
 
-                $this->db->commit();
+                if ($manageTransaction) {
+                    $this->db->commit();
+                }
                 return true;
             }
 
             throw new Exception("Unsupported status for deletion.");
         } catch (Exception $e) {
-            $this->db->rollBack();
+            if ($manageTransaction) {
+                $this->db->rollBack();
+            }
             error_log("Error deleting stock adjustment: " . $e->getMessage());
             return false;
         }

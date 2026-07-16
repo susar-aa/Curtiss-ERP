@@ -224,6 +224,8 @@
 .btn-primary:hover { background: #0066cc; }
 .btn-success { background: var(--c-green); color: #fff; }
 .btn-success:hover { background: #2fb34f; }
+.btn-danger { background: var(--c-red); color: #fff; }
+.btn-danger:hover { background: #e02e24; }
 
 /* ---- Variations Expandable Styles ---- */
 .variation-item-row.hidden {
@@ -490,10 +492,17 @@
     <div class="btn-row">
         <a href="<?= APP_URL ?>/stockaudit" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Back to Audits</a>
 
-        <div style="display: flex; gap: 12px;">
+        <div style="display: flex; gap: 12px; align-items: center;">
             <?php if ($data['audit']->status === 'Completed' && strtolower($_SESSION['role'] ?? '') === 'admin'): ?>
                 <form method="POST" action="<?= APP_URL ?>/stockaudit/approve/<?= $data['audit']->id; ?>" onsubmit="return confirm('Approving this audit will automatically adjust the warehouse inventory quantities and post balanced double-entry journal postings in the General Ledger. Proceed?');">
                     <button type="submit" class="btn btn-success"><i class="fa-solid fa-file-invoice-dollar"></i> Approve Audit &amp; Post Adjustments</button>
+                </form>
+            <?php endif; ?>
+
+            <?php if (in_array($data['audit']->status, ['Completed', 'Approved']) && strtolower($_SESSION['role'] ?? '') === 'admin'): ?>
+                <form method="POST" action="<?= APP_URL ?>/stockaudit/delete/<?= $data['audit']->id; ?>" onsubmit="return confirm('WARNING: Deleting this completed/approved audit will permanently delete all its records and completely REVERSE all stock adjustments and ledger double-entries. This action cannot be undone. Are you sure you want to proceed?');">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? ''; ?>">
+                    <button type="submit" class="btn btn-danger"><i class="fa-solid fa-trash"></i> Delete &amp; Reverse Audit</button>
                 </form>
             <?php endif; ?>
         </div>

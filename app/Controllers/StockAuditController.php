@@ -393,4 +393,29 @@ class StockAuditController extends Controller {
 
         $this->view('stock_audits/print_report', $data);
     }
+
+    /**
+     * Delete/cancel stock audit and reverse all adjustments
+     */
+    public function delete($id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . APP_URL . '/stockaudit/show/' . $id);
+            exit;
+        }
+
+        $this->checkPermission('inventory', 'delete');
+        $this->validateCsrfOrDie();
+
+        $userId = $_SESSION['user_id'];
+
+        if ($this->auditModel->deleteStockAudit($id, $userId)) {
+            $this->logActivity('Delete Stock Audit', 'Operations', "Deleted Stock Audit ID {$id} and reversed all adjustments", $id);
+            $_SESSION['flash_success'] = 'Stock Audit and associated stock adjustments were successfully deleted and reverted.';
+            header('Location: ' . APP_URL . '/stockaudit');
+        } else {
+            $_SESSION['flash_error'] = 'Failed to delete Stock Audit.';
+            header('Location: ' . APP_URL . '/stockaudit/show/' . $id);
+        }
+        exit;
+    }
 }
