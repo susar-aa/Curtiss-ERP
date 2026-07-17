@@ -691,6 +691,7 @@ class Item {
             $sku = $v->sku ?? '';
             $price = floatval($v->price ?? 0);
             $cost = floatval($v->cost ?? $v->cost_price ?? 0);
+            $qty = floatval($v->qty ?? $v->quantity_on_hand ?? 0);
 
             // 1. Resolve variation attribute group name
             $attrName = 'Option';
@@ -762,7 +763,7 @@ class Item {
                 $this->db->query("
                     INSERT INTO item_variation_options 
                     (item_id, variation_id, variation_value_id, sku, price, cost, quantity_on_hand, quantity_reserved) 
-                    VALUES (:item_id, :var_id, :val_id, :sku, :price, :cost, 0, 0)
+                    VALUES (:item_id, :var_id, :val_id, :sku, :price, :cost, :qty, 0)
                 ");
                 $this->db->bind(':item_id', $itemId);
                 $this->db->bind(':var_id', $variationId);
@@ -770,6 +771,7 @@ class Item {
                 $this->db->bind(':sku', $sku);
                 $this->db->bind(':price', $price);
                 $this->db->bind(':cost', $cost);
+                $this->db->bind(':qty', $qty);
                 $this->db->execute();
                 $optionId = $this->db->lastInsertId();
             }
