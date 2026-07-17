@@ -798,7 +798,7 @@ declare(strict_types=1);
                                     <a href="<?= APP_URL ?>/pettycash/reject_expense/<?= $tx->id ?>" class="btn btn-danger btn-sm" onclick="return confirm('Reject this expense?')"><i class="ph ph-x"></i> Reject</a>
                                 <?php endif; ?>
                                 <?php 
-                                require_once ROOT_DIR . '/core/RbacService.php';
+                                require_once __DIR__ . '/../../../core/RbacService.php';
                                 if (RbacService::getInstance()->check($_SESSION['user_id'], 'petty_cash', 'delete') && empty($tx->reimbursement_id) && $tx->type !== 'reimbursement'): 
                                 ?>
                                     <a href="<?= APP_URL ?>/pettycash/delete/<?= $tx->id ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this transaction? This will completely undo the transaction and reverse its journal entries.')" style="margin-left: 4px;"><i class="ph ph-trash"></i> Delete</a>
