@@ -2330,7 +2330,7 @@
         const receipt = document.getElementById('expReceiptNumber').value;
 
         if (!type || !source || isNaN(amount) || amount <= 0 || !desc) {
-            Swal.fire('Validation Error', 'Please fill in all required fields.', 'error');
+            alert('Please fill in all required fields.');
             return;
         }
 
@@ -2356,7 +2356,7 @@
         .then(data => {
             document.getElementById('btnSubmitRouteExpense').disabled = false;
             if (data.status === 'success') {
-                Swal.fire('Success', data.message, 'success');
+                alert(data.message);
                 // Clear inputs
                 document.getElementById('expAmount').value = '';
                 document.getElementById('expReceiptNumber').value = '';
@@ -2378,50 +2378,41 @@
                         });
                 }
             } else {
-                Swal.fire('Error', data.message, 'error');
+                alert(data.message);
             }
         })
         .catch(err => {
             document.getElementById('btnSubmitRouteExpense').disabled = false;
-            Swal.fire('Error', 'An unexpected error occurred.', 'error');
+            alert('An unexpected error occurred.');
         });
     }
 
     function deleteRouteExpense(expenseId) {
-        Swal.fire({
-            title: 'Delete Expense',
-            text: 'Are you sure you want to delete this expense? This will reverse the journal entry and restore the balance.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            confirmButtonText: 'Yes, delete it'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                fetchSecure('<?= APP_URL ?>/RepTracking/api_delete_route_expense/' + expenseId, {
-                    method: 'POST'
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        Swal.fire('Deleted!', data.message, 'success');
-                        loadTabExpenses(currentRouteId);
-                        
-                        // Fetch fresh delivery details to update reconciliation
-                        const rdata = document.getElementById('route_data_' + currentRouteId);
-                        const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
-                        if (delId && delId !== '0') {
-                            fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
-                                .then(res => res.json())
-                                .then(dData => {
-                                    currentDeliveryDetails = dData;
-                                });
-                        }
-                    } else {
-                        Swal.fire('Error', data.message, 'error');
+        if (confirm('Are you sure you want to delete this expense? This will reverse the journal entry and restore the balance.')) {
+            fetchSecure('<?= APP_URL ?>/RepTracking/api_delete_route_expense/' + expenseId, {
+                method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                    loadTabExpenses(currentRouteId);
+                    
+                    // Fetch fresh delivery details to update reconciliation
+                    const rdata = document.getElementById('route_data_' + currentRouteId);
+                    const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
+                    if (delId && delId !== '0') {
+                        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
+                            .then(res => res.json())
+                            .then(dData => {
+                                currentDeliveryDetails = dData;
+                            });
                     }
-                });
-            }
-        });
+                } else {
+                    alert(data.message);
+                }
+            });
+        }
     }
 
     // Expose delete function to global scope

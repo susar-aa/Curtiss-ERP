@@ -138,6 +138,8 @@
         --c-red:          #ff3b30;
         --c-red-light:    #fff0ef;
 
+        --primary:        #007aff;
+
         --f-system: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', sans-serif;
         --f-mono:   ui-monospace, 'SF Mono', 'Menlo', 'Monaco', monospace;
 
@@ -178,6 +180,7 @@
             --t-secondary: #a1a1aa;
             --t-tertiary:  #71717a;
             --t-label:     #52525b;
+            --primary:        #0a84ff;
         }
     }
 
