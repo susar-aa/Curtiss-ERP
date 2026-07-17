@@ -1265,6 +1265,20 @@
                                 <div class="desc">Inventory audit trail</div>
                             </div>
                         </a>
+                        <a href="https://curtiss.suzxlabs.com/stockaudit" class="mega-list-item text-primary">
+                            <div class="icon-wrapper text-primary"><i class="ph ph-clipboard-text"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title text-primary">Stock Audit</div>
+                                <div class="desc">Physical stock count sheets</div>
+                            </div>
+                        </a>
+                        <a href="https://curtiss.suzxlabs.com/stockadjustment" class="mega-list-item text-primary">
+                            <div class="icon-wrapper text-primary"><i class="ph ph-sliders"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title text-primary">Stock Adjustment</div>
+                                <div class="desc">Manual write-offs & corrections</div>
+                            </div>
+                        </a>
                                                                         <a href="https://curtiss.suzxlabs.com/creditnote/damaged" class="mega-list-item">
                             <div class="icon-wrapper text-warning"><i class="ph ph-warning-circle"></i></div>
                             <div class="mega-list-item-content">
@@ -1420,6 +1434,13 @@
                             <div class="mega-list-item-content">
                                 <div class="title">Banking & Registers</div>
                                 <div class="desc">Accounts and recons</div>
+                            </div>
+                        </a>
+                        <a href="https://curtiss.suzxlabs.com/deposit" class="mega-list-item">
+                            <div class="icon-wrapper" style="color: #2e7d32;"><i class="ph ph-receipt"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title" style="color: #2e7d32;">Bank Deposits</div>
+                                <div class="desc">Cash & cheque bank deposits</div>
                             </div>
                         </a>
                                                                         <a href="https://curtiss.suzxlabs.com/pettycash" class="mega-list-item">
@@ -1620,6 +1641,8 @@
                                                                             <a href="https://curtiss.suzxlabs.com/inventory/reserved" class="fs-link"><i class="ph ph-shield-check"></i> Reserved Stock</a>
                             <a href="https://curtiss.suzxlabs.com/inventory/history" class="fs-link"><i class="ph ph-chart-bar"></i> Pricing History</a>
                             <a href="https://curtiss.suzxlabs.com/stockledger" class="fs-link"><i class="ph ph-receipt"></i> Stock Ledger</a>
+                            <a href="https://curtiss.suzxlabs.com/stockaudit" class="fs-link"><i class="ph ph-clipboard-text"></i> Stock Audit</a>
+                            <a href="https://curtiss.suzxlabs.com/stockadjustment" class="fs-link"><i class="ph ph-sliders"></i> Stock Adjustment</a>
                                                 <a href="https://curtiss.suzxlabs.com/purchase" class="fs-link"><i class="ph ph-shopping-cart"></i> Purchase Orders</a>                        <a href="https://curtiss.suzxlabs.com/grn" class="fs-link"><i class="ph ph-tray-arrow-down"></i> GRN</a>                        <a href="https://curtiss.suzxlabs.com/supplier-return" class="fs-link"><i class="ph ph-arrow-counter-clockwise"></i> Returns</a>                        <a href="https://curtiss.suzxlabs.com/expenses" class="fs-link"><i class="ph ph-receipt"></i> Expenses &amp; AP</a>                    </div>
                 </div>
                 
@@ -1641,6 +1664,7 @@
                             <a href="https://curtiss.suzxlabs.com/accounting/recurring" class="fs-link"><i class="ph ph-arrows-clockwise"></i> Recurring Entries</a>
                             <a href="https://curtiss.suzxlabs.com/accounting/close_year" class="fs-link"><i class="ph ph-lock"></i> Close Financial Year</a>
                             <a href="https://curtiss.suzxlabs.com/banking" class="fs-link"><i class="ph ph-bank"></i> Banking</a>
+                            <a href="https://curtiss.suzxlabs.com/deposit" class="fs-link"><i class="ph ph-receipt"></i> Bank Deposits</a>
                                                 <a href="https://curtiss.suzxlabs.com/customerpayment" class="fs-link"><i class="ph ph-hand-coins"></i> Customer Payments</a>                        <a href="https://curtiss.suzxlabs.com/payment" class="fs-link"><i class="ph ph-hand-deposit"></i> Payments</a>                        <a href="https://curtiss.suzxlabs.com/asset" class="fs-link"><i class="ph ph-buildings"></i> Fixed Assets</a>                    </div>
                 </div>
                 
@@ -2307,11 +2331,11 @@
                     <span>Petty Cash Balance</span>
                     <span class="badge badge-info">Ledger 1020</span>
                 </div>
-                <div class="kpi-value">Rs: 75,150.00</div>
+                <div class="kpi-value">Rs: 100,150.00</div>
             </div>
             <div>
                                 <div class="kpi-footer">
-                    <span>150% of limit (Rs: 50,000.00)</span>
+                    <span>200% of limit (Rs: 50,000.00)</span>
                 </div>
                 <div class="progress-bar-container">
                     <div class="progress-bar" style="width: 100%; background: var(--text-accent);"></div>
@@ -2341,7 +2365,7 @@
                 <div class="kpi-header">
                     <span>Available to Spend</span>
                 </div>
-                <div class="kpi-value" style="color: inherit;">Rs: 73,150.00</div>
+                <div class="kpi-value" style="color: inherit;">Rs: 92,150.00</div>
             </div>
             <div class="kpi-footer">
                 <span>Excluding pending approvals</span>
@@ -2424,6 +2448,180 @@
                     </tr>
                 </thead>
                 <tbody>
+                                            <tr>
+                            <td>17-Jul-2026</td>
+                            <td>
+                                <strong>00015</strong>
+                                                                    <br><span style="font-size: 11px; color: var(--text-muted);">J/E ID: 52</span>
+                                                            </td>
+                            <td>
+                                                                    <span class="badge badge-info">Allocation</span>
+                                                            </td>
+                            <td>N/A</td>
+                            <td>
+                                Test Float Allocation from Cash in Hand                                                                    <br><span style="font-size: 11px; color: var(--text-accent);">Acct: 1000 - Cash in Hand</span>
+                                                            </td>
+                            <td style="text-align: right; font-weight: bold; color: #10b981;">
+                                +Rs: 25,000.00                            </td>
+                            <td>
+                                                                    <span class="badge badge-success">Approved</span>
+                                                            </td>
+                            <td style="text-align: center;">
+                                                                    <span style="color: var(--text-muted); font-size: 11px;">None</span>
+                                                            </td>
+                            <td style="text-align: right;">
+                                                            </td>
+                        </tr>
+                                            <tr>
+                            <td>17-Jul-2026</td>
+                            <td>
+                                <strong>00014</strong>
+                                                            </td>
+                            <td>
+                                                                    <span class="badge badge-warning">Expense</span>
+                                                            </td>
+                            <td>chandana</td>
+                            <td>
+                                Dunna                                                                    <br><span style="font-size: 11px; color: var(--text-accent);">Acct: 6900 - Meals & Entertainment</span>
+                                                            </td>
+                            <td style="text-align: right; font-weight: bold; color: #ef6868;">
+                                -Rs: 1,000.00                            </td>
+                            <td>
+                                                                    <span class="badge badge-warning">Pending</span>
+                                                            </td>
+                            <td style="text-align: center;">
+                                                                    <span style="color: var(--text-muted); font-size: 11px;">None</span>
+                                                            </td>
+                            <td style="text-align: right;">
+                                                                    <a href="https://curtiss.suzxlabs.com/pettycash/approve_expense/14" class="btn btn-primary btn-sm"><i class="ph ph-check"></i> Approve</a>
+                                    <a href="https://curtiss.suzxlabs.com/pettycash/reject_expense/14" class="btn btn-danger btn-sm" onclick="return confirm('Reject this expense?')"><i class="ph ph-x"></i> Reject</a>
+                                                            </td>
+                        </tr>
+                                            <tr>
+                            <td>17-Jul-2026</td>
+                            <td>
+                                <strong>00013</strong>
+                                                            </td>
+                            <td>
+                                                                    <span class="badge badge-warning">Expense</span>
+                                                            </td>
+                            <td>chandana</td>
+                            <td>
+                                Dunna                                                                    <br><span style="font-size: 11px; color: var(--text-accent);">Acct: 6900 - Meals & Entertainment</span>
+                                                            </td>
+                            <td style="text-align: right; font-weight: bold; color: #ef6868;">
+                                -Rs: 1,000.00                            </td>
+                            <td>
+                                                                    <span class="badge badge-warning">Pending</span>
+                                                            </td>
+                            <td style="text-align: center;">
+                                                                    <span style="color: var(--text-muted); font-size: 11px;">None</span>
+                                                            </td>
+                            <td style="text-align: right;">
+                                                                    <a href="https://curtiss.suzxlabs.com/pettycash/approve_expense/13" class="btn btn-primary btn-sm"><i class="ph ph-check"></i> Approve</a>
+                                    <a href="https://curtiss.suzxlabs.com/pettycash/reject_expense/13" class="btn btn-danger btn-sm" onclick="return confirm('Reject this expense?')"><i class="ph ph-x"></i> Reject</a>
+                                                            </td>
+                        </tr>
+                                            <tr>
+                            <td>17-Jul-2026</td>
+                            <td>
+                                <strong>00012</strong>
+                                                            </td>
+                            <td>
+                                                                    <span class="badge badge-warning">Expense</span>
+                                                            </td>
+                            <td>chandana</td>
+                            <td>
+                                Dunna                                                                    <br><span style="font-size: 11px; color: var(--text-accent);">Acct: 6900 - Meals & Entertainment</span>
+                                                            </td>
+                            <td style="text-align: right; font-weight: bold; color: #ef6868;">
+                                -Rs: 1,000.00                            </td>
+                            <td>
+                                                                    <span class="badge badge-warning">Pending</span>
+                                                            </td>
+                            <td style="text-align: center;">
+                                                                    <span style="color: var(--text-muted); font-size: 11px;">None</span>
+                                                            </td>
+                            <td style="text-align: right;">
+                                                                    <a href="https://curtiss.suzxlabs.com/pettycash/approve_expense/12" class="btn btn-primary btn-sm"><i class="ph ph-check"></i> Approve</a>
+                                    <a href="https://curtiss.suzxlabs.com/pettycash/reject_expense/12" class="btn btn-danger btn-sm" onclick="return confirm('Reject this expense?')"><i class="ph ph-x"></i> Reject</a>
+                                                            </td>
+                        </tr>
+                                            <tr>
+                            <td>17-Jul-2026</td>
+                            <td>
+                                <strong>00011</strong>
+                                                            </td>
+                            <td>
+                                                                    <span class="badge badge-warning">Expense</span>
+                                                            </td>
+                            <td>chandana</td>
+                            <td>
+                                Dunna                                                                    <br><span style="font-size: 11px; color: var(--text-accent);">Acct: 6900 - Meals & Entertainment</span>
+                                                            </td>
+                            <td style="text-align: right; font-weight: bold; color: #ef6868;">
+                                -Rs: 1,000.00                            </td>
+                            <td>
+                                                                    <span class="badge badge-warning">Pending</span>
+                                                            </td>
+                            <td style="text-align: center;">
+                                                                    <span style="color: var(--text-muted); font-size: 11px;">None</span>
+                                                            </td>
+                            <td style="text-align: right;">
+                                                                    <a href="https://curtiss.suzxlabs.com/pettycash/approve_expense/11" class="btn btn-primary btn-sm"><i class="ph ph-check"></i> Approve</a>
+                                    <a href="https://curtiss.suzxlabs.com/pettycash/reject_expense/11" class="btn btn-danger btn-sm" onclick="return confirm('Reject this expense?')"><i class="ph ph-x"></i> Reject</a>
+                                                            </td>
+                        </tr>
+                                            <tr>
+                            <td>17-Jul-2026</td>
+                            <td>
+                                <strong>00010</strong>
+                                                            </td>
+                            <td>
+                                                                    <span class="badge badge-warning">Expense</span>
+                                                            </td>
+                            <td>chandana</td>
+                            <td>
+                                Dunna                                                                    <br><span style="font-size: 11px; color: var(--text-accent);">Acct: 6900 - Meals & Entertainment</span>
+                                                            </td>
+                            <td style="text-align: right; font-weight: bold; color: #ef6868;">
+                                -Rs: 1,000.00                            </td>
+                            <td>
+                                                                    <span class="badge badge-warning">Pending</span>
+                                                            </td>
+                            <td style="text-align: center;">
+                                                                    <span style="color: var(--text-muted); font-size: 11px;">None</span>
+                                                            </td>
+                            <td style="text-align: right;">
+                                                                    <a href="https://curtiss.suzxlabs.com/pettycash/approve_expense/10" class="btn btn-primary btn-sm"><i class="ph ph-check"></i> Approve</a>
+                                    <a href="https://curtiss.suzxlabs.com/pettycash/reject_expense/10" class="btn btn-danger btn-sm" onclick="return confirm('Reject this expense?')"><i class="ph ph-x"></i> Reject</a>
+                                                            </td>
+                        </tr>
+                                            <tr>
+                            <td>14-Jul-2026</td>
+                            <td>
+                                <strong>aa</strong>
+                                                            </td>
+                            <td>
+                                                                    <span class="badge badge-warning">Expense</span>
+                                                            </td>
+                            <td>aaa</td>
+                            <td>
+                                aaa                                                                    <br><span style="font-size: 11px; color: var(--text-accent);">Acct: 6000 - Operating Expenses</span>
+                                                            </td>
+                            <td style="text-align: right; font-weight: bold; color: #ef6868;">
+                                -Rs: 1,000.00                            </td>
+                            <td>
+                                                                    <span class="badge badge-warning">Pending</span>
+                                                            </td>
+                            <td style="text-align: center;">
+                                                                    <span style="color: var(--text-muted); font-size: 11px;">None</span>
+                                                            </td>
+                            <td style="text-align: right;">
+                                                                    <a href="https://curtiss.suzxlabs.com/pettycash/approve_expense/9" class="btn btn-primary btn-sm"><i class="ph ph-check"></i> Approve</a>
+                                    <a href="https://curtiss.suzxlabs.com/pettycash/reject_expense/9" class="btn btn-danger btn-sm" onclick="return confirm('Reject this expense?')"><i class="ph ph-x"></i> Reject</a>
+                                                            </td>
+                        </tr>
                                             <tr>
                             <td>14-Jul-2026</td>
                             <td>
@@ -2692,7 +2890,7 @@
 <div id="settingsModal" class="modal">
     <div class="modal-dialog">
         <form method="POST" action="https://curtiss.suzxlabs.com/pettycash/settings">
-            <input type="hidden" name="csrf_token" value="7172ad5b8692ee50b7c981b27144ce4fa5f73ff1fc58f3121b4372b62cb36f60">
+            <input type="hidden" name="csrf_token" value="719680269fcc7e1b7075f9ec8b606483f0b1c2ebbab3bc783f63ad0fbb898b2f">
             <div class="modal-header">
                 <h3><i class="ph ph-gear"></i> Petty Cash Configuration</h3>
                 <button type="button" class="close-btn" onclick="window.closeModal('settingsModal')">&times;</button>
@@ -2711,6 +2909,10 @@
                                 1000 - Cash in Hand                            </option>
                                                     <option value="47" selected>
                                 1010 - Cheque in Hand                            </option>
+                                                    <option value="65" >
+                                1030 - Deposit in Transit - Cash                            </option>
+                                                    <option value="66" >
+                                1040 - Deposit in Transit - Cheques                            </option>
                                                     <option value="49" >
                                 1090 - Driver Transit Collections (Temp)                            </option>
                                                     <option value="11" >
@@ -2754,7 +2956,7 @@
 <div id="allocateModal" class="modal">
     <div class="modal-dialog">
         <form method="POST" action="https://curtiss.suzxlabs.com/pettycash/allocate">
-            <input type="hidden" name="csrf_token" value="7172ad5b8692ee50b7c981b27144ce4fa5f73ff1fc58f3121b4372b62cb36f60">
+            <input type="hidden" name="csrf_token" value="719680269fcc7e1b7075f9ec8b606483f0b1c2ebbab3bc783f63ad0fbb898b2f">
             <div class="modal-header">
                 <h3><i class="ph ph-bank"></i> Fund Petty Cash Float</h3>
                 <button type="button" class="close-btn" onclick="window.closeModal('allocateModal')">&times;</button>
@@ -2772,6 +2974,10 @@
                                 1000 - Cash in Hand                            </option>
                                                     <option value="47" selected>
                                 1010 - Cheque in Hand                            </option>
+                                                    <option value="65" >
+                                1030 - Deposit in Transit - Cash                            </option>
+                                                    <option value="66" >
+                                1040 - Deposit in Transit - Cheques                            </option>
                                                     <option value="49" >
                                 1090 - Driver Transit Collections (Temp)                            </option>
                                                     <option value="11" >
@@ -2800,11 +3006,11 @@
                 </div>
                 <div class="form-group">
                     <label for="alloc_date">Transfer Date *</label>
-                    <input type="date" name="transaction_date" id="alloc_date" value="2026-07-14" required>
+                    <input type="date" name="transaction_date" id="alloc_date" value="2026-07-17" required>
                 </div>
                 <div class="form-group">
                     <label for="alloc_ref">Reference / Slip Number</label>
-                    <input type="text" name="reference" id="alloc_ref" placeholder="PC-AL-1784015192">
+                    <input type="text" name="reference" id="alloc_ref" placeholder="PC-AL-1784285156">
                 </div>
                 <div class="form-group">
                     <label for="alloc_desc">Remarks / Description</label>
@@ -2823,7 +3029,7 @@
 <div id="expenseModal" class="modal">
     <div class="modal-dialog">
         <form method="POST" action="https://curtiss.suzxlabs.com/pettycash/expense" enctype="multipart/form-data">
-            <input type="hidden" name="csrf_token" value="7172ad5b8692ee50b7c981b27144ce4fa5f73ff1fc58f3121b4372b62cb36f60">
+            <input type="hidden" name="csrf_token" value="719680269fcc7e1b7075f9ec8b606483f0b1c2ebbab3bc783f63ad0fbb898b2f">
             <div class="modal-header">
                 <h3><i class="ph ph-plus"></i> Record Petty Cash Expense</h3>
                 <button type="button" class="close-btn" onclick="window.closeModal('expenseModal')">&times;</button>
@@ -2839,6 +3045,7 @@
                         <option value="">-- Select Category --</option>
                                                     <option value="33">5000 - Cost of Goods Sold (COGS)</option>
                                                     <option value="64">5010 - Office Supplies Expense</option>
+                                                    <option value="68">5090 - Stock Adjustment Loss</option>
                                                     <option value="34">6000 - Operating Expenses</option>
                                                     <option value="35">6010 - Advertising &amp; Marketing</option>
                                                     <option value="36">6100 - Bank Fees &amp; Charges</option>
@@ -2863,7 +3070,7 @@
                 </div>
                 <div class="form-group">
                     <label for="exp_date">Expense Date *</label>
-                    <input type="date" name="transaction_date" id="exp_date" value="2026-07-14" required>
+                    <input type="date" name="transaction_date" id="exp_date" value="2026-07-17" required>
                 </div>
                 <div class="form-group">
                     <label for="exp_ref">Receipt / Reference Number</label>
@@ -2886,7 +3093,7 @@
 <div id="reimburseModal" class="modal">
     <div class="modal-dialog">
         <form method="POST" action="https://curtiss.suzxlabs.com/pettycash/reimburse">
-            <input type="hidden" name="csrf_token" value="7172ad5b8692ee50b7c981b27144ce4fa5f73ff1fc58f3121b4372b62cb36f60">
+            <input type="hidden" name="csrf_token" value="719680269fcc7e1b7075f9ec8b606483f0b1c2ebbab3bc783f63ad0fbb898b2f">
             <div class="modal-header">
                 <h3><i class="ph ph-arrows-clockwise"></i> Generate Reimbursement Request</h3>
                 <button type="button" class="close-btn" onclick="window.closeModal('reimburseModal')">&times;</button>
@@ -2906,6 +3113,10 @@
                                 1000 - Cash in Hand                            </option>
                                                     <option value="47" selected>
                                 1010 - Cheque in Hand                            </option>
+                                                    <option value="65" >
+                                1030 - Deposit in Transit - Cash                            </option>
+                                                    <option value="66" >
+                                1040 - Deposit in Transit - Cheques                            </option>
                                                     <option value="49" >
                                 1090 - Driver Transit Collections (Temp)                            </option>
                                                     <option value="11" >
@@ -2934,7 +3145,7 @@
                 </div>
                 <div class="form-group">
                     <label for="reim_date">Reimbursement Date *</label>
-                    <input type="date" name="reimbursement_date" id="reim_date" value="2026-07-14" required>
+                    <input type="date" name="reimbursement_date" id="reim_date" value="2026-07-17" required>
                 </div>
                 <div class="form-group">
                     <label for="reim_desc">Remarks / Description</label>
@@ -3450,7 +3661,7 @@
     <!-- Automatic CSRF Injections for forms and AJAX requests -->
     <script>
         (function() {
-            const csrfToken = '7172ad5b8692ee50b7c981b27144ce4fa5f73ff1fc58f3121b4372b62cb36f60';
+            const csrfToken = '719680269fcc7e1b7075f9ec8b606483f0b1c2ebbab3bc783f63ad0fbb898b2f';
             if (!csrfToken) return;
 
             // 1. Function to inject into forms
@@ -3603,7 +3814,7 @@ document.addEventListener('submit', function(e) {
     }
 
     // Fail-safe inject CSRF token if not already in FormData
-    const resilientCsrfToken = '7172ad5b8692ee50b7c981b27144ce4fa5f73ff1fc58f3121b4372b62cb36f60';
+    const resilientCsrfToken = '719680269fcc7e1b7075f9ec8b606483f0b1c2ebbab3bc783f63ad0fbb898b2f';
     if (resilientCsrfToken && !formData.has('csrf_token')) {
         formData.append('csrf_token', resilientCsrfToken);
     }

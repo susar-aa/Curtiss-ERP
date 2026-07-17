@@ -121,7 +121,7 @@ class PettyCashController extends Controller {
             } elseif ($settingsData['default_funding_account_id'] <= 0) {
                 $_SESSION['flash_error'] = 'Please select a default funding account.';
             } else {
-                if ($this->pcConfigModel->updateConfig($settingsData, $_SESSION['user_id'])) {
+                if ($this->pcConfigModel->updateConfig($settingsData, (int)$_SESSION['user_id'])) {
                     $_SESSION['flash_success'] = 'Petty Cash configuration updated successfully.';
                 } else {
                     $_SESSION['flash_error'] = 'Failed to update configuration.';
@@ -150,7 +150,7 @@ class PettyCashController extends Controller {
             } elseif ($allocationData['bank_account_id'] <= 0) {
                 $_SESSION['flash_error'] = 'Please select a source bank/cash account.';
             } else {
-                $result = $this->pcTxModel->recordAllocation($allocationData, $_SESSION['user_id']);
+                $result = $this->pcTxModel->recordAllocation($allocationData, (int)$_SESSION['user_id']);
                 if ($result === true) {
                     $_SESSION['flash_success'] = 'Funds allocated to Petty Cash successfully.';
                 } else {
@@ -195,7 +195,7 @@ class PettyCashController extends Controller {
             } elseif ($expenseData['account_id'] <= 0) {
                 $_SESSION['flash_error'] = 'Please select a valid expense category account.';
             } else {
-                $result = $this->pcTxModel->recordExpense($expenseData, $_SESSION['user_id']);
+                $result = $this->pcTxModel->recordExpense($expenseData, (int)$_SESSION['user_id']);
                 if ($result === true) {
                     $_SESSION['flash_success'] = 'Expense recorded successfully.';
                 } else {
@@ -210,7 +210,7 @@ class PettyCashController extends Controller {
     public function approve_expense($id) {
         $this->checkPermission('petty_cash', 'create_edit');
         
-        $result = $this->pcTxModel->approveExpense(intval($id), $_SESSION['user_id']);
+        $result = $this->pcTxModel->approveExpense(intval($id), (int)$_SESSION['user_id']);
         if ($result === true) {
             $_SESSION['flash_success'] = 'Petty Cash expense approved and journal entries posted successfully.';
         } else {
@@ -224,7 +224,7 @@ class PettyCashController extends Controller {
     public function reject_expense($id) {
         $this->checkPermission('petty_cash', 'create_edit');
         
-        $result = $this->pcTxModel->rejectExpense(intval($id), $_SESSION['user_id']);
+        $result = $this->pcTxModel->rejectExpense(intval($id), (int)$_SESSION['user_id']);
         if ($result === true) {
             $_SESSION['flash_success'] = 'Petty Cash expense rejected.';
         } else {
@@ -249,7 +249,7 @@ class PettyCashController extends Controller {
             if ($reimburseData['bank_account_id'] <= 0) {
                 $_SESSION['flash_error'] = 'Please select a bank account to fund the reimbursement.';
             } else {
-                $result = $this->pcReimModel->createRequest($reimburseData, $_SESSION['user_id']);
+                $result = $this->pcReimModel->createRequest($reimburseData, (int)$_SESSION['user_id']);
                 if ($result === true) {
                     $_SESSION['flash_success'] = 'Reimbursement request generated successfully.';
                 } else {
@@ -264,7 +264,7 @@ class PettyCashController extends Controller {
     public function approve_reimbursement($id) {
         $this->checkPermission('petty_cash', 'create_edit');
         
-        $result = $this->pcReimModel->approveRequest(intval($id), $_SESSION['user_id']);
+        $result = $this->pcReimModel->approveRequest(intval($id), (int)$_SESSION['user_id']);
         if ($result === true) {
             $_SESSION['flash_success'] = 'Reimbursement request approved and disbursed successfully. Petty Cash replenished.';
         } else {
@@ -278,7 +278,7 @@ class PettyCashController extends Controller {
     public function reject_reimbursement($id) {
         $this->checkPermission('petty_cash', 'create_edit');
         
-        $result = $this->pcReimModel->rejectRequest(intval($id), $_SESSION['user_id']);
+        $result = $this->pcReimModel->rejectRequest(intval($id), (int)$_SESSION['user_id']);
         if ($result === true) {
             $_SESSION['flash_success'] = 'Reimbursement request rejected. Linked expenses unlocked.';
         } else {
