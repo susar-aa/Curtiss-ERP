@@ -767,10 +767,18 @@ class RepTrackingController extends Controller {
                 $db->query("
                     SELECT ps.*, 
                            COALESCE(oi.name, 'Deleted Product') as original_item_name, 
-                           COALESCE(ri.name, 'Deleted Product') as replacement_item_name
+                           COALESCE(ri.name, 'Deleted Product') as replacement_item_name,
+                           CONCAT(ov.name, ': ', ovv.value_name) as original_variation_name,
+                           CONCAT(rv.name, ': ', rvv.value_name) as replacement_variation_name
                     FROM product_substitutions ps
                     LEFT JOIN items oi ON ps.original_item_id = oi.id
                     LEFT JOIN items ri ON ps.replacement_item_id = ri.id
+                    LEFT JOIN item_variation_options oivo ON ps.original_variation_option_id = oivo.id
+                    LEFT JOIN variations ov ON oivo.variation_id = ov.id
+                    LEFT JOIN variation_values ovv ON oivo.variation_value_id = ovv.id
+                    LEFT JOIN item_variation_options rivo ON ps.replacement_variation_option_id = rivo.id
+                    LEFT JOIN variations rv ON rivo.variation_id = rv.id
+                    LEFT JOIN variation_values rvv ON rivo.variation_value_id = rvv.id
                     WHERE ps.delivery_id = :delivery_id
                 ");
                 $db->bind(':delivery_id', $del->id);
@@ -798,12 +806,23 @@ class RepTrackingController extends Controller {
                     $item->replaces_name = null;
 
                     foreach ($deliverySubs as $ds) {
-                        if (intval($ds->original_item_id) === intval($item->item_id)) {
-                            $item->replaced_by_name = $ds->replacement_item_name;
+                        $origName = $ds->original_item_name;
+                        if ($ds->original_variation_name) {
+                            $origName .= " ({$ds->original_variation_name})";
+                        }
+                        $replName = $ds->replacement_item_name;
+                        if ($ds->replacement_variation_name) {
+                            $replName .= " ({$ds->replacement_variation_name})";
+                        }
+                        if (intval($ds->original_item_id) === intval($item->item_id)
+                            && (empty($ds->original_variation_option_id) || intval($ds->original_variation_option_id) === intval($item->variation_option_id))) {
+                            $item->replaced_by_name = $replName;
                             $item->replacement_qty = floatval($ds->loaded_qty);
                         }
-                        if (intval($ds->replacement_item_id) === intval($item->item_id) && floatval($item->required_qty) === 0.0) {
-                            $item->replaces_name = $ds->original_item_name;
+                        if (intval($ds->replacement_item_id) === intval($item->item_id) 
+                            && (empty($ds->replacement_variation_option_id) || intval($ds->replacement_variation_option_id) === intval($item->variation_option_id))
+                            && floatval($item->required_qty) === 0.0) {
+                            $item->replaces_name = $origName;
                         }
                     }
                 }
@@ -826,16 +845,32 @@ class RepTrackingController extends Controller {
                 SELECT ps.*, 
                        COALESCE(oi.name, 'Deleted Product') as original_item_name, 
                        COALESCE(ri.name, 'Deleted Product') as replacement_item_name,
+                       CONCAT(ov.name, ': ', ovv.value_name) as original_variation_name,
+                       CONCAT(rv.name, ': ', rvv.value_name) as replacement_variation_name,
                        u.username as creator_name
                 FROM product_substitutions ps
                 LEFT JOIN items oi ON ps.original_item_id = oi.id
                 LEFT JOIN items ri ON ps.replacement_item_id = ri.id
+                LEFT JOIN item_variation_options oivo ON ps.original_variation_option_id = oivo.id
+                LEFT JOIN variations ov ON oivo.variation_id = ov.id
+                LEFT JOIN variation_values ovv ON oivo.variation_value_id = ovv.id
+                LEFT JOIN item_variation_options rivo ON ps.replacement_variation_option_id = rivo.id
+                LEFT JOIN variations rv ON rivo.variation_id = rv.id
+                LEFT JOIN variation_values rvv ON rivo.variation_value_id = rvv.id
                 LEFT JOIN users u ON ps.user_id = u.id
                 WHERE ps.route_id = :rid
                 ORDER BY ps.created_at DESC
             ");
             $db->bind(':rid', $routeId);
             $substitutions = $db->resultSet() ?: [];
+            foreach ($substitutions as $sub) {
+                if ($sub->original_variation_name) {
+                    $sub->original_item_name .= " ({$sub->original_variation_name})";
+                }
+                if ($sub->replacement_variation_name) {
+                    $sub->replacement_item_name .= " ({$sub->replacement_variation_name})";
+                }
+            }
 
             $loadingItems = $this->trackingModel->getRouteLoadingItems($routeId) ?: [];
             foreach ($loadingItems as $li) {
@@ -1694,16 +1729,32 @@ class RepTrackingController extends Controller {
             SELECT ps.*, 
                    COALESCE(oi.name, 'Deleted Product') as original_item_name, 
                    COALESCE(ri.name, 'Deleted Product') as replacement_item_name,
+                   CONCAT(ov.name, ': ', ovv.value_name) as original_variation_name,
+                   CONCAT(rv.name, ': ', rvv.value_name) as replacement_variation_name,
                    u.username as creator_name
             FROM product_substitutions ps
             LEFT JOIN items oi ON ps.original_item_id = oi.id
             LEFT JOIN items ri ON ps.replacement_item_id = ri.id
+            LEFT JOIN item_variation_options oivo ON ps.original_variation_option_id = oivo.id
+            LEFT JOIN variations ov ON oivo.variation_id = ov.id
+            LEFT JOIN variation_values ovv ON oivo.variation_value_id = ovv.id
+            LEFT JOIN item_variation_options rivo ON ps.replacement_variation_option_id = rivo.id
+            LEFT JOIN variations rv ON rivo.variation_id = rv.id
+            LEFT JOIN variation_values rvv ON rivo.variation_value_id = rvv.id
             LEFT JOIN users u ON ps.user_id = u.id
             WHERE ps.route_id = :rid
             ORDER BY ps.created_at DESC
         ");
         $db->bind(':rid', $routeId);
         $subs = $db->resultSet() ?: [];
+        foreach ($subs as $sub) {
+            if ($sub->original_variation_name) {
+                $sub->original_item_name .= " ({$sub->original_variation_name})";
+            }
+            if ($sub->replacement_variation_name) {
+                $sub->replacement_item_name .= " ({$sub->replacement_variation_name})";
+            }
+        }
 
         header('Content-Type: application/json');
         echo json_encode(['status' => 'success', 'substitutions' => $subs]);

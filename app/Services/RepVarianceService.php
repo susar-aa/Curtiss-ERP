@@ -455,16 +455,25 @@ class RepVarianceService {
         $placeholdersStr = implode(',', $placeholders);
 
         // Fetch affected invoices
-        $db->query("
+        $sql = "
             SELECT DISTINCT i.id, i.invoice_number, i.total_amount
             FROM invoices i
             JOIN invoice_items ii ON i.id = ii.invoice_id
             WHERE i.rep_route_id IN ($placeholdersStr) AND ii.item_id = :oid AND i.status != 'Voided'
-        ");
+        ";
+        if ($sub->original_variation_option_id) {
+            $sql .= " AND ii.variation_option_id = :ovar_id";
+        } else {
+            $sql .= " AND (ii.variation_option_id IS NULL OR ii.variation_option_id = 0)";
+        }
+        $db->query($sql);
         foreach ($routeIds as $index => $id) {
             $db->bind(":rid_sub_" . $index, intval($id));
         }
         $db->bind(':oid', $sub->original_item_id);
+        if ($sub->original_variation_option_id) {
+            $db->bind(':ovar_id', $sub->original_variation_option_id);
+        }
         $invoices = $db->resultSet() ?: [];
 
         if (empty($invoices)) {
@@ -495,7 +504,49 @@ class RepVarianceService {
             throw new Exception("Replacement product not found in the master data.");
         }
 
-        $priceChoice = ($pricingChoice === 'original') ? floatval($origProduct->selling_price) : floatval($replProduct->selling_price);
+        if ($sub->replacement_variation_option_id) {
+            $db->query("SELECT price_override FROM item_variation_options WHERE id = :rvar_id LIMIT 1");
+            $db->bind(':rvar_id', $sub->replacement_variation_option_id);
+            $rvarRow = $db->single();
+            if ($rvarRow && floatval($rvarRow->price_override) > 0) {
+                $replPrice = floatval($rvarRow->price_override);
+            } else {
+                $replPrice = floatval($replProduct->selling_price);
+            }
+        } else {
+            $replPrice = floatval($replProduct->selling_price);
+        }
+
+        if ($sub->original_variation_option_id) {
+            $db->query("SELECT price_override FROM item_variation_options WHERE id = :ovar_id LIMIT 1");
+            $db->bind(':ovar_id', $sub->original_variation_option_id);
+            $ovarRow = $db->single();
+            if ($ovarRow && floatval($ovarRow->price_override) > 0) {
+                $origPrice = floatval($ovarRow->price_override);
+            } else {
+                $origPrice = floatval($origProduct->selling_price);
+            }
+        } else {
+            $origPrice = floatval($origProduct->selling_price);
+        }
+
+        $priceChoice = ($pricingChoice === 'original') ? $origPrice : $replPrice;
+
+        $replDescription = $replProduct->name;
+        if ($sub->replacement_variation_option_id) {
+            $db->query("
+                SELECT v.name AS variation_name, vv.value_name
+                FROM item_variation_options ivo
+                JOIN variations v ON ivo.variation_id = v.id
+                JOIN variation_values vv ON ivo.variation_value_id = vv.id
+                WHERE ivo.id = :rvar_id LIMIT 1
+            ");
+            $db->bind(':rvar_id', $sub->replacement_variation_option_id);
+            $vRow = $db->single();
+            if ($vRow) {
+                $replDescription .= " (" . $vRow->variation_name . ": " . $vRow->value_name . ")";
+            }
+        }
 
         // Fetch accounts for billing adjustments
         $db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1200' OR account_name LIKE '%Receivable%' LIMIT 1");
@@ -512,9 +563,18 @@ class RepVarianceService {
 
         foreach ($invoices as $invoice) {
             // Find the item details in this invoice
-            $db->query("SELECT id, quantity, discount_value, discount_type, total FROM invoice_items WHERE invoice_id = :iid AND item_id = :item_id");
+            $sql = "SELECT id, quantity, discount_value, discount_type, total FROM invoice_items WHERE invoice_id = :iid AND item_id = :item_id";
+            if ($sub->original_variation_option_id) {
+                $sql .= " AND variation_option_id = :ovar_id";
+            } else {
+                $sql .= " AND (variation_option_id IS NULL OR variation_option_id = 0)";
+            }
+            $db->query($sql);
             $db->bind(':iid', $invoice->id);
             $db->bind(':item_id', $sub->original_item_id);
+            if ($sub->original_variation_option_id) {
+                $db->bind(':ovar_id', $sub->original_variation_option_id);
+            }
             $invoiceItem = $db->single();
 
             if ($invoiceItem) {
@@ -531,10 +591,11 @@ class RepVarianceService {
 
                 // Update the invoice item to refer to the new product description and ID
                 $db->query("UPDATE invoice_items 
-                            SET item_id = :new_item_id, description = :desc, unit_price = :price, total = :total
+                            SET item_id = :new_item_id, variation_option_id = :new_var_id, description = :desc, unit_price = :price, total = :total
                             WHERE id = :id");
                 $db->bind(':new_item_id', $sub->replacement_item_id);
-                $db->bind(':desc', $replProduct->name);
+                $db->bind(':new_var_id', $sub->replacement_variation_option_id);
+                $db->bind(':desc', $replDescription);
                 $db->bind(':price', $priceChoice);
                 $db->bind(':total', $newTotal);
                 $db->bind(':id', $invoiceItem->id);

@@ -311,10 +311,14 @@ class PickingController extends Controller {
         $this->db->query("
             SELECT dpi.*, 
                    COALESCE(c.name, 'Uncategorized') as category_name,
-                   COALESCE(it.image_path, (SELECT image_path FROM item_images WHERE item_id = it.id AND is_primary = 1 LIMIT 1)) as image_path
+                   COALESCE(it.image_path, (SELECT image_path FROM item_images WHERE item_id = it.id AND is_primary = 1 LIMIT 1)) as image_path,
+                   CONCAT(v.name, ': ', vv.value_name) as variation_name
             FROM delivery_picking_items dpi
             LEFT JOIN items it ON dpi.item_id = it.id
             LEFT JOIN item_categories c ON it.category_id = c.id
+            LEFT JOIN item_variation_options ivo ON dpi.variation_option_id = ivo.id
+            LEFT JOIN variations v ON ivo.variation_id = v.id
+            LEFT JOIN variation_values vv ON ivo.variation_value_id = vv.id
             WHERE dpi.delivery_id = :delivery_id
         ");
         $this->db->bind(':delivery_id', $deliveryId);
@@ -324,10 +328,18 @@ class PickingController extends Controller {
         $this->db->query("
             SELECT ps.*, 
                    oi.name as original_item_name, 
-                   ri.name as replacement_item_name
+                   ri.name as replacement_item_name,
+                   CONCAT(ov.name, ': ', ovv.value_name) as original_variation_name,
+                   CONCAT(rv.name, ': ', rvv.value_name) as replacement_variation_name
             FROM product_substitutions ps
             JOIN items oi ON ps.original_item_id = oi.id
             JOIN items ri ON ps.replacement_item_id = ri.id
+            LEFT JOIN item_variation_options oivo ON ps.original_variation_option_id = oivo.id
+            LEFT JOIN variations ov ON oivo.variation_id = ov.id
+            LEFT JOIN variation_values ovv ON oivo.variation_value_id = ovv.id
+            LEFT JOIN item_variation_options rivo ON ps.replacement_variation_option_id = rivo.id
+            LEFT JOIN variations rv ON rivo.variation_id = rv.id
+            LEFT JOIN variation_values rvv ON rivo.variation_value_id = rvv.id
             WHERE ps.delivery_id = :delivery_id
         ");
         $this->db->bind(':delivery_id', $deliveryId);
@@ -353,12 +365,23 @@ class PickingController extends Controller {
             $item->replaces_name = null;
 
             foreach ($substitutions as $sub) {
-                if (intval($sub->original_item_id) === $item->item_id) {
-                    $item->replaced_by_name = $sub->replacement_item_name;
+                $origName = $sub->original_item_name;
+                if ($sub->original_variation_name) {
+                    $origName .= " ({$sub->original_variation_name})";
+                }
+                $replName = $sub->replacement_item_name;
+                if ($sub->replacement_variation_name) {
+                    $replName .= " ({$sub->replacement_variation_name})";
+                }
+                if (intval($sub->original_item_id) === $item->item_id 
+                    && (empty($sub->original_variation_option_id) || intval($sub->original_variation_option_id) === $item->variation_option_id)) {
+                    $item->replaced_by_name = $replName;
                     $item->replacement_qty = floatval($sub->loaded_qty);
                 }
-                if (intval($sub->replacement_item_id) === $item->item_id && floatval($item->required_qty) === 0.0) {
-                    $item->replaces_name = $sub->original_item_name;
+                if (intval($sub->replacement_item_id) === $item->item_id 
+                    && (empty($sub->replacement_variation_option_id) || intval($sub->replacement_variation_option_id) === $item->variation_option_id)
+                    && floatval($item->required_qty) === 0.0) {
+                    $item->replaces_name = $origName;
                 }
             }
         }
@@ -653,7 +676,9 @@ class PickingController extends Controller {
         $input = json_decode(file_get_contents('php://input'), true);
         $deliveryId = intval($input['delivery_id'] ?? 0);
         $originalItemId = intval($input['original_item_id'] ?? 0);
+        $originalVarOptId = isset($input['original_variation_option_id']) && $input['original_variation_option_id'] !== '' && $input['original_variation_option_id'] !== 'null' ? intval($input['original_variation_option_id']) : null;
         $replacementItemId = intval($input['replacement_item_id'] ?? 0);
+        $replacementVarOptId = isset($input['replacement_variation_option_id']) && $input['replacement_variation_option_id'] !== '' && $input['replacement_variation_option_id'] !== 'null' ? intval($input['replacement_variation_option_id']) : null;
         $replacementQty = floatval($input['replacement_qty'] ?? 0);
         $userId = intval($input['user_id'] ?? 0);
 
@@ -667,9 +692,19 @@ class PickingController extends Controller {
         $origItem = $this->db->single();
 
         if (!$origItem) {
-            $this->db->query("SELECT item_name as name FROM delivery_picking_items WHERE delivery_id = :did AND item_id = :item_id LIMIT 1");
+            $sql = "SELECT item_name as name FROM delivery_picking_items WHERE delivery_id = :did AND item_id = :item_id";
+            if ($originalVarOptId) {
+                $sql .= " AND variation_option_id = :var_id";
+            } else {
+                $sql .= " AND (variation_option_id IS NULL OR variation_option_id = 0)";
+            }
+            $sql .= " LIMIT 1";
+            $this->db->query($sql);
             $this->db->bind(':did', $deliveryId);
             $this->db->bind(':item_id', $originalItemId);
+            if ($originalVarOptId) {
+                $this->db->bind(':var_id', $originalVarOptId);
+            }
             $dpiItem = $this->db->single();
             if ($dpiItem) {
                 $origItem = (object)[
@@ -697,21 +732,33 @@ class PickingController extends Controller {
         $del = $this->db->single();
         $routeId = $del ? intval($del->rep_route_id) : 0;
 
-        $this->db->query("SELECT * FROM delivery_picking_items WHERE delivery_id = :did AND item_id = :item_id LIMIT 1");
+        $sql = "SELECT * FROM delivery_picking_items WHERE delivery_id = :did AND item_id = :item_id";
+        if ($originalVarOptId) {
+            $sql .= " AND variation_option_id = :var_id";
+        } else {
+            $sql .= " AND (variation_option_id IS NULL OR variation_option_id = 0)";
+        }
+        $sql .= " LIMIT 1";
+        $this->db->query($sql);
         $this->db->bind(':did', $deliveryId);
         $this->db->bind(':item_id', $originalItemId);
+        if ($originalVarOptId) {
+            $this->db->bind(':var_id', $originalVarOptId);
+        }
         $pickingItem = $this->db->single();
 
         $requiredQty = $pickingItem ? floatval($pickingItem->required_qty) : 0;
 
         $this->db->beginTransaction();
         try {
-            $this->db->query("INSERT INTO product_substitutions (delivery_id, route_id, original_item_id, replacement_item_id, required_qty, loaded_qty, user_id, status)
-                              VALUES (:did, :rid, :oid, :rid2, :req_qty, :load_qty, :uid, 'Pending Bill Update')");
+            $this->db->query("INSERT INTO product_substitutions (delivery_id, route_id, original_item_id, original_variation_option_id, replacement_item_id, replacement_variation_option_id, required_qty, loaded_qty, user_id, status)
+                              VALUES (:did, :rid, :oid, :ovar_id, :rid2, :rvar_id, :req_qty, :load_qty, :uid, 'Pending Bill Update')");
             $this->db->bind(':did', $deliveryId);
             $this->db->bind(':rid', $routeId);
             $this->db->bind(':oid', $originalItemId);
+            $this->db->bind(':ovar_id', $originalVarOptId);
             $this->db->bind(':rid2', $replacementItemId);
+            $this->db->bind(':rvar_id', $replacementVarOptId);
             $this->db->bind(':req_qty', $requiredQty);
             $this->db->bind(':load_qty', $replacementQty);
             $this->db->bind(':uid', $userId ? $userId : null);
@@ -726,9 +773,19 @@ class PickingController extends Controller {
                 $this->db->execute();
             }
 
-            $this->db->query("SELECT * FROM delivery_picking_items WHERE delivery_id = :did AND item_id = :item_id LIMIT 1");
+            $sql = "SELECT * FROM delivery_picking_items WHERE delivery_id = :did AND item_id = :item_id";
+            if ($replacementVarOptId) {
+                $sql .= " AND variation_option_id = :var_id";
+            } else {
+                $sql .= " AND (variation_option_id IS NULL OR variation_option_id = 0)";
+            }
+            $sql .= " LIMIT 1";
+            $this->db->query($sql);
             $this->db->bind(':did', $deliveryId);
             $this->db->bind(':item_id', $replacementItemId);
+            if ($replacementVarOptId) {
+                $this->db->bind(':var_id', $replacementVarOptId);
+            }
             $replPicking = $this->db->single();
 
             if ($replPicking) {
@@ -744,10 +801,11 @@ class PickingController extends Controller {
                 $this->db->execute();
             } else {
                 $this->db->query("INSERT INTO delivery_picking_items (delivery_id, item_name, item_id, variation_option_id, required_qty, loaded_qty, final_loaded_qty, variance, is_picked, is_verified, verified_at, verified_by)
-                                  VALUES (:did, :name, :item_id, NULL, 0, :qty, :qty, :qty, 1, 1, NOW(), :uid)");
+                                  VALUES (:did, :name, :item_id, :var_id, 0, :qty, :qty, :qty, 1, 1, NOW(), :uid)");
                 $this->db->bind(':did', $deliveryId);
                 $this->db->bind(':name', $replItem->name);
                 $this->db->bind(':item_id', $replacementItemId);
+                $this->db->bind(':var_id', $replacementVarOptId);
                 $this->db->bind(':qty', $replacementQty);
                 $this->db->bind(':uid', $userId ? $userId : null);
                 $this->db->execute();
@@ -772,14 +830,25 @@ class PickingController extends Controller {
             exit;
         }
 
-        $this->db->query("SELECT id, name, item_code, price AS selling_price FROM items 
-                          WHERE (name LIKE :q OR item_code LIKE :q) AND status != 'Inactive' LIMIT 20");
+        $this->db->query("
+            SELECT i.id, i.name, i.item_code, i.price AS selling_price,
+                   ivo.id as variation_option_id,
+                   CONCAT(v.name, ': ', vv.value_name) as variation_name,
+                   COALESCE(ivo.sku, i.item_code) as variation_sku
+            FROM items i
+            LEFT JOIN item_variation_options ivo ON i.id = ivo.item_id
+            LEFT JOIN variations v ON ivo.variation_id = v.id
+            LEFT JOIN variation_values vv ON ivo.variation_value_id = vv.id
+            WHERE (i.name LIKE :q OR i.item_code LIKE :q OR ivo.sku LIKE :q) AND i.status != 'Inactive'
+            LIMIT 40
+        ");
         $this->db->bind(':q', "%$q%");
         $products = $this->db->resultSet() ?: [];
 
         foreach ($products as $p) {
             $p->id = intval($p->id);
             $p->selling_price = floatval($p->selling_price);
+            $p->variation_option_id = $p->variation_option_id ? intval($p->variation_option_id) : null;
         }
 
         echo json_encode(['success' => true, 'products' => $products]);
