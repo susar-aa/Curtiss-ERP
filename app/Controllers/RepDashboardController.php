@@ -1032,16 +1032,24 @@ class RepDashboardController extends Controller {
                     // Idempotency: Check if an invoice with the same uuid or invoice_number already exists
                     $existingInv = null;
                     if (!empty($inv['uuid'])) {
-                        $this->db->query("SELECT id, invoice_number, invoice_date, stock_status FROM invoices WHERE uuid = :uuid LIMIT 1");
+                        $this->db->query("SELECT id, invoice_number, invoice_date, stock_status, uuid FROM invoices WHERE uuid = :uuid LIMIT 1");
                         $this->db->bind(':uuid', $inv['uuid']);
                         $existingInv = $this->db->single();
                     }
                     if (!$existingInv) {
-                        $this->db->query("SELECT id, invoice_number, invoice_date, stock_status FROM invoices WHERE invoice_number = :invoice_number LIMIT 1");
+                        $this->db->query("SELECT id, invoice_number, invoice_date, stock_status, uuid FROM invoices WHERE invoice_number = :invoice_number LIMIT 1");
                         $this->db->bind(':invoice_number', $invNo);
                         $existingInv = $this->db->single();
                     }
                     if ($existingInv) {
+                        // Update existing invoice's UUID if it is empty/different, to ensure verification matches correctly
+                        if (!empty($inv['uuid']) && (empty($existingInv->uuid) || $existingInv->uuid !== $inv['uuid'])) {
+                            $this->db->query("UPDATE invoices SET uuid = :uuid WHERE id = :id");
+                            $this->db->bind(':uuid', $inv['uuid']);
+                            $this->db->bind(':id', $existingInv->id);
+                            $this->db->execute();
+                            $existingInv->uuid = $inv['uuid'];
+                        }
                         $isReserved = (isset($existingInv->stock_status) && $existingInv->stock_status === 'reserved');
                         if ($isReserved) {
                             // Invoice exists but is not finalized, allow updating it
@@ -1309,6 +1317,14 @@ class RepDashboardController extends Controller {
                     
                     if ($existingPmt) {
                         $serverId = intval($existingPmt->id);
+                        if (!empty($p['uuid']) && (empty($existingPmt->uuid) || $existingPmt->uuid !== $p['uuid'])) {
+                            $this->db->query("UPDATE pending_collections SET uuid = :uuid WHERE id = :id");
+                            $this->db->bind(':uuid', $p['uuid']);
+                            $this->db->bind(':id', $serverId);
+                            $this->db->execute();
+                            $existingPmt->uuid = $p['uuid'];
+                            $paymentUuid = $p['uuid'];
+                        }
                     } else {
                         $this->db->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, status, notes, mobile_local_id, mobile_rep_id, uuid, latitude, longitude) 
                                           VALUES (:customer_id, :route_id, :payment_method, :amount, :bank_name, :cheque_number, :cheque_date, 'Pending', 'Synced from mobile app', :mobile_local_id, :mobile_rep_id, :uuid, :latitude, :longitude)");
