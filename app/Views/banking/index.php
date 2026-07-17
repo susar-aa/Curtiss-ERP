@@ -307,7 +307,12 @@ if (isset($_GET['success'])) {
                 <?php endif; ?>
                 
                 <div class="bank-header">
-                    <div class="bank-title"><?= htmlspecialchars($acc->bank_name ?? $acc->account_name) ?></div>
+                    <div class="bank-title">
+                        <?= htmlspecialchars($acc->bank_name ?? $acc->account_name) ?>
+                        <?php if (!empty($acc->nickname)): ?>
+                            <span style="font-size:12px; font-weight: normal; color: #64748b; margin-left: 5px;">("<?= htmlspecialchars($acc->nickname) ?>")</span>
+                        <?php endif; ?>
+                    </div>
                     <span class="bank-tag <?= $tagClass ?>"><?= $tagText ?></span>
                 </div>
                 <div class="bank-code" style="margin-bottom: 5px;">GL Account Code: <strong><?= htmlspecialchars($acc->account_code) ?></strong></div>
@@ -403,10 +408,14 @@ if (isset($_GET['success'])) {
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div>
                         <label>Account Holder Name *</label>
                         <input type="text" name="account_holder_name" placeholder="e.g. Curtiss Enterprises (Pvt) Ltd" required>
+                    </div>
+                    <div>
+                        <label>Nickname</label>
+                        <input type="text" name="nickname" placeholder="e.g. Primary Operating Account">
                     </div>
                 </div>
 
@@ -416,6 +425,8 @@ if (isset($_GET['success'])) {
                         <select name="account_type" required>
                             <option value="Current">Current</option>
                             <option value="Savings">Savings</option>
+                            <option value="Personal">Personal</option>
+                            <option value="Company">Company</option>
                             <option value="Other">Other</option>
                         </select>
                     </div>
@@ -489,10 +500,14 @@ if (isset($_GET['success'])) {
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 15px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div>
                         <label>Account Holder Name *</label>
                         <input type="text" name="account_holder_name" id="editHolderName" required>
+                    </div>
+                    <div>
+                        <label>Nickname</label>
+                        <input type="text" name="nickname" id="editNickname" placeholder="e.g. Primary Operating Account">
                     </div>
                 </div>
 
@@ -502,6 +517,8 @@ if (isset($_GET['success'])) {
                         <select name="account_type" id="editAccountType" required>
                             <option value="Current">Current</option>
                             <option value="Savings">Savings</option>
+                            <option value="Personal">Personal</option>
+                            <option value="Company">Company</option>
                             <option value="Other">Other</option>
                         </select>
                     </div>
@@ -702,6 +719,7 @@ if (isset($_GET['success'])) {
                     document.getElementById('editBranchCode').value = data.branch_code || '';
                     document.getElementById('editHolderName').value = data.account_holder_name;
                     document.getElementById('editAccountNumber').value = data.account_number;
+                    document.getElementById('editNickname').value = data.nickname || '';
                     document.getElementById('editAccountType').value = data.account_type;
                     document.getElementById('editCurrency').value = data.currency || 'LKR';
                     document.getElementById('editOpeningDate').value = data.opening_balance_date;

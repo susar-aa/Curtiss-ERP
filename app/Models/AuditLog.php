@@ -20,6 +20,18 @@ class AuditLog {
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
         $browserDevice = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
         
+        // Failsafe: Validate that user exists in database to prevent foreign key constraint violation
+        if ($userId) {
+            $this->db->query("SELECT id FROM users WHERE id = :uid");
+            $this->db->bind(':uid', $userId);
+            $userExists = $this->db->single();
+            if (!$userExists) {
+                $userId = null;
+            }
+        } else {
+            $userId = null;
+        }
+        
         $oldJson = $oldValues !== null ? (is_string($oldValues) ? $oldValues : json_encode($oldValues)) : null;
         $newJson = $newValues !== null ? (is_string($newValues) ? $newValues : json_encode($newValues)) : null;
         

@@ -242,7 +242,7 @@ class ChartOfAccount {
 
     public function getBankAccounts($parentId) {
         $this->db->query("SELECT coa.*, ba.id as bank_account_id, ba.bank_name, ba.branch_name, ba.branch_code, 
-                                 ba.account_holder_name, ba.account_number, ba.account_type, ba.currency, 
+                                 ba.account_holder_name, ba.account_number, ba.nickname, ba.account_type, ba.currency, 
                                  ba.opening_balance, ba.opening_balance_date, ba.status as bank_status
                           FROM chart_of_accounts coa 
                           LEFT JOIN bank_accounts ba ON coa.id = ba.chart_of_account_id
@@ -254,7 +254,7 @@ class ChartOfAccount {
 
     public function getBankAccountDetails($coaId) {
         $this->db->query("SELECT coa.*, ba.id as bank_account_id, ba.bank_name, ba.branch_name, ba.branch_code, 
-                                 ba.account_holder_name, ba.account_number, ba.account_type, ba.currency, 
+                                 ba.account_holder_name, ba.account_number, ba.nickname, ba.account_type, ba.currency, 
                                  ba.opening_balance, ba.opening_balance_date, ba.status as bank_status
                           FROM chart_of_accounts coa 
                           LEFT JOIN bank_accounts ba ON coa.id = ba.chart_of_account_id
@@ -279,14 +279,15 @@ class ChartOfAccount {
             $coaId = $this->db->lastInsertId();
             
             // Insert into bank_accounts
-            $this->db->query("INSERT INTO bank_accounts (chart_of_account_id, bank_name, branch_name, branch_code, account_holder_name, account_number, account_type, currency, opening_balance, opening_balance_date, status)
-                              VALUES (:coa_id, :bank_name, :branch_name, :branch_code, :holder_name, :acc_num, :acc_type, :currency, :opening_balance, :opening_date, :status)");
+            $this->db->query("INSERT INTO bank_accounts (chart_of_account_id, bank_name, branch_name, branch_code, account_holder_name, account_number, nickname, account_type, currency, opening_balance, opening_balance_date, status)
+                              VALUES (:coa_id, :bank_name, :branch_name, :branch_code, :holder_name, :acc_num, :nickname, :acc_type, :currency, :opening_balance, :opening_date, :status)");
             $this->db->bind(':coa_id', $coaId);
             $this->db->bind(':bank_name', $details['bank_name']);
             $this->db->bind(':branch_name', $details['branch_name']);
             $this->db->bind(':branch_code', !empty($details['branch_code']) ? $details['branch_code'] : null);
             $this->db->bind(':holder_name', $details['account_holder_name']);
             $this->db->bind(':acc_num', $details['account_number']);
+            $this->db->bind(':nickname', !empty($details['nickname']) ? $details['nickname'] : null);
             $this->db->bind(':acc_type', $details['account_type']);
             $this->db->bind(':currency', $details['currency'] ?? 'LKR');
             $this->db->bind(':opening_balance', floatval($details['opening_balance'] ?? 0.00));
@@ -370,13 +371,13 @@ class ChartOfAccount {
                 // Update bank_accounts metadata
                 $this->db->query("UPDATE bank_accounts 
                                   SET bank_name = :bank_name, branch_name = :branch_name, branch_code = :branch_code, 
-                                      account_holder_name = :holder_name, account_number = :acc_num, account_type = :acc_type, 
-                                      currency = :currency, opening_balance_date = :opening_date, status = :status
+                                      account_holder_name = :holder_name, account_number = :acc_num, nickname = :nickname,
+                                      account_type = :acc_type, currency = :currency, opening_balance_date = :opening_date, status = :status
                                   WHERE chart_of_account_id = :coa_id");
             } else {
                 // Insert bank_accounts metadata
-                $this->db->query("INSERT INTO bank_accounts (chart_of_account_id, bank_name, branch_name, branch_code, account_holder_name, account_number, account_type, currency, opening_balance, opening_balance_date, status)
-                                  VALUES (:coa_id, :bank_name, :branch_name, :branch_code, :holder_name, :acc_num, :acc_type, :currency, 0.00, :opening_date, :status)");
+                $this->db->query("INSERT INTO bank_accounts (chart_of_account_id, bank_name, branch_name, branch_code, account_holder_name, account_number, nickname, account_type, currency, opening_balance, opening_balance_date, status)
+                                  VALUES (:coa_id, :bank_name, :branch_name, :branch_code, :holder_name, :acc_num, :nickname, :acc_type, :currency, 0.00, :opening_date, :status)");
             }
             
             $this->db->bind(':bank_name', $details['bank_name']);
@@ -384,6 +385,7 @@ class ChartOfAccount {
             $this->db->bind(':branch_code', !empty($details['branch_code']) ? $details['branch_code'] : null);
             $this->db->bind(':holder_name', $details['account_holder_name']);
             $this->db->bind(':acc_num', $details['account_number']);
+            $this->db->bind(':nickname', !empty($details['nickname']) ? $details['nickname'] : null);
             $this->db->bind(':acc_type', $details['account_type']);
             $this->db->bind(':currency', $details['currency'] ?? 'LKR');
             $this->db->bind(':opening_date', $details['opening_balance_date']);
