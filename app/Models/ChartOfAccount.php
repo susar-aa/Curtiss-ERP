@@ -241,9 +241,206 @@ class ChartOfAccount {
     }
 
     public function getBankAccounts($parentId) {
-        $this->db->query("SELECT * FROM chart_of_accounts WHERE parent_id = :pid ORDER BY account_code ASC");
+        $this->db->query("SELECT coa.*, ba.id as bank_account_id, ba.bank_name, ba.branch_name, ba.branch_code, 
+                                 ba.account_holder_name, ba.account_number, ba.account_type, ba.currency, 
+                                 ba.opening_balance, ba.opening_balance_date, ba.status as bank_status
+                          FROM chart_of_accounts coa 
+                          LEFT JOIN bank_accounts ba ON coa.id = ba.chart_of_account_id
+                          WHERE coa.parent_id = :pid 
+                          ORDER BY coa.account_code ASC");
         $this->db->bind(':pid', $parentId);
         return $this->db->resultSet() ?: [];
+    }
+
+    public function getBankAccountDetails($coaId) {
+        $this->db->query("SELECT coa.*, ba.id as bank_account_id, ba.bank_name, ba.branch_name, ba.branch_code, 
+                                 ba.account_holder_name, ba.account_number, ba.account_type, ba.currency, 
+                                 ba.opening_balance, ba.opening_balance_date, ba.status as bank_status
+                          FROM chart_of_accounts coa 
+                          LEFT JOIN bank_accounts ba ON coa.id = ba.chart_of_account_id
+                          WHERE coa.id = :id");
+        $this->db->bind(':id', $coaId);
+        return $this->db->single();
+    }
+
+    public function addBankAccountDetailed($code, $details, $parentId) {
+        try {
+            $this->db->beginTransaction();
+            
+            // Insert into chart_of_accounts
+            $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, parent_id, balance, is_active) 
+                              VALUES (:code, :name, :type_asset, :pid, :opening_balance, 1)");
+            $this->db->bind(':code', (string)$code);
+            $this->db->bind(':name', $details['bank_name'] . ' - ' . $details['account_number']);
+            $this->db->bind(':type_asset', COA_TYPE_ASSET);
+            $this->db->bind(':pid', $parentId);
+            $this->db->bind(':opening_balance', floatval($details['opening_balance'] ?? 0.00));
+            $this->db->execute();
+            $coaId = $this->db->lastInsertId();
+            
+            // Insert into bank_accounts
+            $this->db->query("INSERT INTO bank_accounts (chart_of_account_id, bank_name, branch_name, branch_code, account_holder_name, account_number, account_type, currency, opening_balance, opening_balance_date, status)
+                              VALUES (:coa_id, :bank_name, :branch_name, :branch_code, :holder_name, :acc_num, :acc_type, :currency, :opening_balance, :opening_date, :status)");
+            $this->db->bind(':coa_id', $coaId);
+            $this->db->bind(':bank_name', $details['bank_name']);
+            $this->db->bind(':branch_name', $details['branch_name']);
+            $this->db->bind(':branch_code', !empty($details['branch_code']) ? $details['branch_code'] : null);
+            $this->db->bind(':holder_name', $details['account_holder_name']);
+            $this->db->bind(':acc_num', $details['account_number']);
+            $this->db->bind(':acc_type', $details['account_type']);
+            $this->db->bind(':currency', $details['currency'] ?? 'LKR');
+            $this->db->bind(':opening_balance', floatval($details['opening_balance'] ?? 0.00));
+            $this->db->bind(':opening_date', $details['opening_balance_date']);
+            $this->db->bind(':status', $details['status'] ?? 'Active');
+            $this->db->execute();
+            
+            // If opening balance > 0, post an opening journal entry to keep double-entry system balanced!
+            $openingBal = floatval($details['opening_balance'] ?? 0.00);
+            if ($openingBal > 0.00) {
+                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '3000' LIMIT 1");
+                $capRow = $this->db->single();
+                $capitalAccId = $capRow ? intval($capRow->id) : 25; // Owner Capital / Equity
+                
+                $ref = 'OB-' . str_pad($coaId, 4, '0', STR_PAD_LEFT);
+                $desc = "Opening Balance for Bank Account: " . $details['bank_name'] . " - " . $details['account_number'];
+                
+                $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
+                                  VALUES (:date, :ref, :desc, :uid, 'Posted')");
+                $this->db->bind(':date', $details['opening_balance_date']);
+                $this->db->bind(':ref', $ref);
+                $this->db->bind(':desc', $desc);
+                $this->db->bind(':uid', $_SESSION['user_id'] ?? 1);
+                $this->db->execute();
+                $jeId = $this->db->lastInsertId();
+                
+                // Debit Bank
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit, description) 
+                                  VALUES (:jid, :aid, :deb, 0.00, :desc)");
+                $this->db->bind(':jid', $jeId);
+                $this->db->bind(':aid', $coaId);
+                $this->db->bind(':deb', $openingBal);
+                $this->db->bind(':desc', 'Opening Balance Debit');
+                $this->db->execute();
+                
+                // Credit Capital / Equity
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit, description) 
+                                  VALUES (:jid, :aid, 0.00, :cred, :desc)");
+                $this->db->bind(':jid', $jeId);
+                $this->db->bind(':aid', $capitalAccId);
+                $this->db->bind(':cred', $openingBal);
+                $this->db->bind(':desc', 'Opening Balance Credit');
+                $this->db->execute();
+                
+                // Update capital account balance
+                $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :id");
+                $this->db->bind(':amt', $openingBal);
+                $this->db->bind(':id', $capitalAccId);
+                $this->db->execute();
+            }
+            
+            $this->db->commit();
+            return $coaId;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            error_log("addBankAccountDetailed error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function updateBankAccountDetailed($coaId, $details) {
+        try {
+            $this->db->beginTransaction();
+            
+            // Update chart_of_accounts name and status
+            $is_active = ($details['status'] === 'Active') ? 1 : 0;
+            $this->db->query("UPDATE chart_of_accounts 
+                              SET account_name = :name, is_active = :is_active 
+                              WHERE id = :id");
+            $this->db->bind(':name', $details['bank_name'] . ' - ' . $details['account_number']);
+            $this->db->bind(':is_active', $is_active);
+            $this->db->bind(':id', $coaId);
+            $this->db->execute();
+            
+            // Check if metadata exists
+            $this->db->query("SELECT id FROM bank_accounts WHERE chart_of_account_id = :coa_id");
+            $this->db->bind(':coa_id', $coaId);
+            $exists = $this->db->single();
+            
+            if ($exists) {
+                // Update bank_accounts metadata
+                $this->db->query("UPDATE bank_accounts 
+                                  SET bank_name = :bank_name, branch_name = :branch_name, branch_code = :branch_code, 
+                                      account_holder_name = :holder_name, account_number = :acc_num, account_type = :acc_type, 
+                                      currency = :currency, opening_balance_date = :opening_date, status = :status
+                                  WHERE chart_of_account_id = :coa_id");
+            } else {
+                // Insert bank_accounts metadata
+                $this->db->query("INSERT INTO bank_accounts (chart_of_account_id, bank_name, branch_name, branch_code, account_holder_name, account_number, account_type, currency, opening_balance, opening_balance_date, status)
+                                  VALUES (:coa_id, :bank_name, :branch_name, :branch_code, :holder_name, :acc_num, :acc_type, :currency, 0.00, :opening_date, :status)");
+            }
+            
+            $this->db->bind(':bank_name', $details['bank_name']);
+            $this->db->bind(':branch_name', $details['branch_name']);
+            $this->db->bind(':branch_code', !empty($details['branch_code']) ? $details['branch_code'] : null);
+            $this->db->bind(':holder_name', $details['account_holder_name']);
+            $this->db->bind(':acc_num', $details['account_number']);
+            $this->db->bind(':acc_type', $details['account_type']);
+            $this->db->bind(':currency', $details['currency'] ?? 'LKR');
+            $this->db->bind(':opening_date', $details['opening_balance_date']);
+            $this->db->bind(':status', $details['status']);
+            $this->db->bind(':coa_id', $coaId);
+            $this->db->execute();
+            
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            error_log("updateBankAccountDetailed error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function isBankAccountLinked($coaId) {
+        // Check transactions
+        $this->db->query("SELECT COUNT(*) as cnt FROM transactions WHERE account_id = :id");
+        $this->db->bind(':id', $coaId);
+        $row = $this->db->single();
+        if ($row && $row->cnt > 0) return 'transactions';
+        
+        // Check deposits
+        $this->db->query("SELECT COUNT(*) as cnt FROM deposits WHERE destination_bank_account_id = :id");
+        $this->db->bind(':id', $coaId);
+        $row = $this->db->single();
+        if ($row && $row->cnt > 0) return 'deposits';
+        
+        // Check cheques
+        $this->db->query("SELECT COUNT(*) as cnt FROM cheques WHERE bank_account_id = :id");
+        $this->db->bind(':id', $coaId);
+        $row = $this->db->single();
+        if ($row && $row->cnt > 0) return 'cheques';
+        
+        return false;
+    }
+
+    public function deleteBankAccountDetailed($coaId) {
+        try {
+            $this->db->beginTransaction();
+            
+            $this->db->query("DELETE FROM bank_accounts WHERE chart_of_account_id = :id");
+            $this->db->bind(':id', $coaId);
+            $this->db->execute();
+            
+            $this->db->query("DELETE FROM chart_of_accounts WHERE id = :id");
+            $this->db->bind(':id', $coaId);
+            $this->db->execute();
+            
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            error_log("deleteBankAccountDetailed error: " . $e->getMessage());
+            return false;
+        }
     }
 
     public function getCashAccounts($parentId) {

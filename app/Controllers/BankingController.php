@@ -27,13 +27,26 @@ class BankingController extends Controller {
             $action = $_POST['action'];
             
             if ($action == 'add_bank') {
-                $name = trim($_POST['account_name']);
-                if (empty($name)) {
-                    $data['error'] = 'Bank Account Name is required.';
+                $details = [
+                    'bank_name' => trim($_POST['bank_name'] ?? ''),
+                    'branch_name' => trim($_POST['branch_name'] ?? ''),
+                    'branch_code' => trim($_POST['branch_code'] ?? ''),
+                    'account_holder_name' => trim($_POST['account_holder_name'] ?? ''),
+                    'account_number' => trim($_POST['account_number'] ?? ''),
+                    'account_type' => trim($_POST['account_type'] ?? 'Current'),
+                    'currency' => trim($_POST['currency'] ?? 'LKR'),
+                    'opening_balance' => floatval($_POST['opening_balance'] ?? 0.00),
+                    'opening_balance_date' => trim($_POST['opening_balance_date'] ?? date('Y-m-d')),
+                    'status' => trim($_POST['status'] ?? 'Active')
+                ];
+                
+                if (empty($details['bank_name']) || empty($details['account_holder_name']) || empty($details['account_number']) || empty($details['opening_balance_date'])) {
+                    $data['error'] = 'Required fields missing: Bank Name, Account Holder, Account Number, and Opening Balance Date are required.';
                 } else {
                     $nextCode = $this->coaModel->getNextBankCode();
-                    
-                    if ($this->coaModel->addBankAccount($nextCode, $name, $parentId)) {
+                    $coaId = $this->coaModel->addBankAccountDetailed($nextCode, $details, $parentId);
+                    if ($coaId) {
+                        $this->logActivity('Create Bank Account', 'Banking', "Created bank account '{$details['bank_name']} - {$details['account_number']}' with opening balance Rs. " . number_format($details['opening_balance'], 2), $coaId, null, $details);
                         header('Location: ' . APP_URL . '/banking?success=bank_added');
                         exit;
                     } else {
@@ -43,11 +56,24 @@ class BankingController extends Controller {
             }
             elseif ($action == 'edit_bank') {
                 $id = intval($_POST['bank_id']);
-                $name = trim($_POST['account_name']);
-                if (empty($name)) {
-                    $data['error'] = 'Bank Account Name is required.';
+                $details = [
+                    'bank_name' => trim($_POST['bank_name'] ?? ''),
+                    'branch_name' => trim($_POST['branch_name'] ?? ''),
+                    'branch_code' => trim($_POST['branch_code'] ?? ''),
+                    'account_holder_name' => trim($_POST['account_holder_name'] ?? ''),
+                    'account_number' => trim($_POST['account_number'] ?? ''),
+                    'account_type' => trim($_POST['account_type'] ?? 'Current'),
+                    'currency' => trim($_POST['currency'] ?? 'LKR'),
+                    'opening_balance_date' => trim($_POST['opening_balance_date'] ?? date('Y-m-d')),
+                    'status' => trim($_POST['status'] ?? 'Active')
+                ];
+                
+                if (empty($details['bank_name']) || empty($details['account_holder_name']) || empty($details['account_number']) || empty($details['opening_balance_date'])) {
+                    $data['error'] = 'Required fields missing: Bank Name, Account Holder, Account Number, and Opening Balance Date are required.';
                 } else {
-                    if ($this->coaModel->editBankAccountName($id, $name)) {
+                    $oldDetails = $this->coaModel->getBankAccountDetails($id);
+                    if ($this->coaModel->updateBankAccountDetailed($id, $details)) {
+                        $this->logActivity('Edit Bank Account', 'Banking', "Updated bank account ID {$id} details", $id, $oldDetails, $details);
                         header('Location: ' . APP_URL . '/banking?success=bank_edited');
                         exit;
                     } else {
@@ -57,16 +83,26 @@ class BankingController extends Controller {
             }
             elseif ($action == 'delete_bank') {
                 $id = intval($_POST['bank_id']);
-                $txCount = $this->coaModel->getAccountTransactionCount($id);
+                $password = trim($_POST['confirm_password'] ?? '');
                 
-                if ($txCount > 0) {
-                    $data['error'] = 'Audit Protection: Bank accounts with transaction history cannot be deleted to preserve financial audit history.';
+                $userModel = $this->model('User');
+                $user = $userModel->findUserByUsername($_SESSION['username']);
+                
+                if (!$user || !password_verify($password, $user->password_hash)) {
+                    $data['error'] = 'Authentication Failed: Incorrect user password.';
                 } else {
-                    if ($this->coaModel->deleteAccount($id)) {
-                        header('Location: ' . APP_URL . '/banking?success=bank_deleted');
-                        exit;
+                    $linkType = $this->coaModel->isBankAccountLinked($id);
+                    if ($linkType) {
+                        $data['error'] = 'Audit Protection: This bank account is linked to ' . $linkType . ' and cannot be deleted. You must mark it as Inactive instead.';
                     } else {
-                        $data['error'] = 'Failed to delete bank account.';
+                        $bankDetails = $this->coaModel->getBankAccountDetails($id);
+                        if ($this->coaModel->deleteBankAccountDetailed($id)) {
+                            $this->logActivity('Delete Bank Account', 'Banking', "Deleted bank account '{$bankDetails->bank_name} - {$bankDetails->account_number}' (ID: {$id})", $id, $bankDetails, null);
+                            header('Location: ' . APP_URL . '/banking?success=bank_deleted');
+                            exit;
+                        } else {
+                            $data['error'] = 'Failed to delete bank account.';
+                        }
                     }
                 }
             }
@@ -242,5 +278,13 @@ class BankingController extends Controller {
         }
 
         $this->view('layouts/main', $data);
+    }
+
+    public function get_bank_details_json($id) {
+        $id = intval($id);
+        $details = $this->coaModel->getBankAccountDetails($id);
+        header('Content-Type: application/json');
+        echo json_encode($details ?: ['success' => false]);
+        exit;
     }
 }

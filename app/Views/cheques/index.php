@@ -123,14 +123,19 @@
                             <span style="font-size:10px; color:#ef6c00; display:block; font-weight:600;">Supplier Payment</span>
                         <?php endif; ?>
                     </td>
-                    <td><?= htmlspecialchars($chk->bank_name) ?></td>
+                    <td>
+                        <?= htmlspecialchars($chk->bank_name) ?>
+                        <?php if (!empty($chk->drawn_bank_name)): ?>
+                            <br><span style="font-size: 11px; color: #4b5563;">🏦 Ledger: <?= htmlspecialchars($chk->drawn_bank_name) ?></span>
+                        <?php endif; ?>
+                    </td>
                     <td style="font-family: monospace; font-size: 14px;"><?= htmlspecialchars($chk->cheque_number) ?></td>
                     <td class="status-<?= $chk->status ?>"><?= $chk->status ?></td>
                     <td style="text-align: right; font-weight: bold;"><?= number_format($chk->amount, 2) ?></td>
                     <td style="text-align: center;">
                         <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;" onclick="viewCheque('<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->banking_date)) ?>', '<?= htmlspecialchars(addslashes($chk->amount)) ?>', '<?= htmlspecialchars(addslashes($chk->customer_name ?: ($chk->vendor_name ?: ''))) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">👁️ View</button>
                         
-                        <button class="btn" style="padding: 4px 8px; font-size: 11px; margin: 0 4px;" onclick="openEditModal(<?= $chk->id ?>, <?= $chk->customer_id ?: 'null' ?>, <?= $chk->vendor_id ?: 'null' ?>, '<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>', <?= $chk->amount ?>, '<?= $chk->banking_date ?>', '<?= $chk->status ?>')">✏️ Edit</button>
+                        <button class="btn" style="padding: 4px 8px; font-size: 11px; margin: 0 4px;" onclick="openEditModal(<?= $chk->id ?>, <?= $chk->customer_id ?: 'null' ?>, <?= $chk->vendor_id ?: 'null' ?>, '<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>', <?= $chk->amount ?>, '<?= $chk->banking_date ?>', '<?= $chk->status ?>', <?= $chk->bank_account_id ?: 'null' ?>)">✏️ Edit</button>
                         
                         <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="openDeleteModal(<?= $chk->id ?>, '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">🗑️</button>
                     </td>
@@ -160,6 +165,15 @@
                 <select name="vendor_id" class="form-control">
                     <option value="">-- Select Supplier --</option>
                     <?php foreach($data['suppliers'] as $supp): ?><option value="<?= $supp->id ?>"><?= htmlspecialchars($supp->name) ?></option><?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Drawn/Deposit Bank Account (Required for Supplier Payments)</label>
+                <select name="bank_account_id" class="form-control">
+                    <option value="">-- Select Bank Account --</option>
+                    <?php foreach($data['bank_accounts'] as $acc): ?>
+                        <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->account_name) ?> (<?= htmlspecialchars($acc->account_code) ?>)</option>
+                    <?php endforeach; ?>
                 </select>
             </div>
             <div class="grid-2">
@@ -198,6 +212,15 @@
                 <select name="vendor_id" id="edit_vendor" class="form-control">
                     <option value="">-- None --</option>
                     <?php foreach($data['suppliers'] as $supp): ?><option value="<?= $supp->id ?>"><?= htmlspecialchars($supp->name) ?></option><?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Drawn/Deposit Bank Account (Required for Supplier Payments)</label>
+                <select name="bank_account_id" id="edit_bank_account_id" class="form-control">
+                    <option value="">-- None --</option>
+                    <?php foreach($data['bank_accounts'] as $acc): ?>
+                        <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->account_name) ?> (<?= htmlspecialchars($acc->account_code) ?>)</option>
+                    <?php endforeach; ?>
                 </select>
             </div>
             <div class="grid-2">
@@ -276,7 +299,7 @@
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-    function openEditModal(id, cid, vid, bank, cnum, amt, date, status) {
+    function openEditModal(id, cid, vid, bank, cnum, amt, date, status, bankAccountId) {
         document.getElementById('edit_id').value = id;
         document.getElementById('edit_customer').value = cid || '';
         document.getElementById('edit_vendor').value = vid || '';
@@ -285,6 +308,7 @@
         document.getElementById('edit_amt').value = amt;
         document.getElementById('edit_date').value = date;
         document.getElementById('edit_status').value = status;
+        document.getElementById('edit_bank_account_id').value = bankAccountId || '';
         openModal('editModal');
     }
 

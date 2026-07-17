@@ -307,10 +307,19 @@ if (isset($_GET['success'])) {
                 <?php endif; ?>
                 
                 <div class="bank-header">
-                    <div class="bank-title"><?= htmlspecialchars($acc->account_name) ?></div>
+                    <div class="bank-title"><?= htmlspecialchars($acc->bank_name ?? $acc->account_name) ?></div>
                     <span class="bank-tag <?= $tagClass ?>"><?= $tagText ?></span>
                 </div>
-                <div class="bank-code">GL Account Code: <strong><?= htmlspecialchars($acc->account_code) ?></strong></div>
+                <div class="bank-code" style="margin-bottom: 5px;">GL Account Code: <strong><?= htmlspecialchars($acc->account_code) ?></strong></div>
+                
+                <?php if (!empty($acc->account_number)): ?>
+                    <div style="font-size: 12px; margin-bottom: 5px; color: #475569;">
+                        💳 No: <strong><?= htmlspecialchars($acc->account_number) ?></strong> (<?= htmlspecialchars($acc->account_type) ?>)
+                    </div>
+                    <div style="font-size: 11px; margin-bottom: 12px; color: #64748b;">
+                        📍 Branch: <?= htmlspecialchars($acc->branch_name) ?> <?= !empty($acc->branch_code) ? '(' . htmlspecialchars($acc->branch_code) . ')' : '' ?> | <?= htmlspecialchars($acc->currency) ?>
+                    </div>
+                <?php endif; ?>
                 
                 <div class="bank-balance-wrapper">
                     <div class="balance-label">Current Ledger Balance</div>
@@ -364,20 +373,79 @@ if (isset($_GET['success'])) {
 
 <!-- MODAL 1: Add Bank Account -->
 <div class="modal-backdrop" id="addBankModal">
-    <div class="modal-panel">
+    <div class="modal-panel" style="max-width: 550px;">
         <div class="modal-header">
             <span>🏦 Add Bank Account</span>
-            <button onclick="closeModal('addBankModal')" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
+            <button type="button" onclick="closeModal('addBankModal')" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
         </div>
         <form action="<?= APP_URL ?>/banking" method="POST">
             <input type="hidden" name="action" value="add_bank">
-            <div class="modal-body">
-                <div>
-                    <label>Bank Name / Account Title *</label>
-                    <input type="text" name="account_name" placeholder="e.g. Commercial Bank - Main Account" required>
+            <div class="modal-body" style="max-height: 480px; overflow-y: auto;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Bank Name *</label>
+                        <input type="text" name="bank_name" placeholder="e.g. Commercial Bank" required>
+                    </div>
+                    <div>
+                        <label>Branch Name *</label>
+                        <input type="text" name="branch_name" placeholder="e.g. Colombo Fort" required>
+                    </div>
                 </div>
-                <div style="font-size: 12px; color: #64748b; line-height: 1.4; padding: 10px; background: rgba(0,0,0,0.02); border-radius: 6px;">
-                    ℹ️ <strong>System Note:</strong> Creating this bank account will automatically create a new general ledger asset sub-account under parent <strong>1600 - Bank Current Account</strong>.
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Branch Code (Optional)</label>
+                        <input type="text" name="branch_code" placeholder="e.g. 018">
+                    </div>
+                    <div>
+                        <label>Account Number *</label>
+                        <input type="text" name="account_number" placeholder="e.g. 100293810" required>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+                    <div>
+                        <label>Account Holder Name *</label>
+                        <input type="text" name="account_holder_name" placeholder="e.g. Curtiss Enterprises (Pvt) Ltd" required>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Account Type *</label>
+                        <select name="account_type" required>
+                            <option value="Current">Current</option>
+                            <option value="Savings">Savings</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Currency *</label>
+                        <input type="text" name="currency" value="LKR" placeholder="e.g. LKR" required>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Opening Balance *</label>
+                        <input type="number" name="opening_balance" step="0.01" value="0.00" required>
+                    </div>
+                    <div>
+                        <label>Opening Balance Date *</label>
+                        <input type="date" name="opening_balance_date" value="<?= date('Y-m-d') ?>" required>
+                    </div>
+                </div>
+                
+                <div>
+                    <label>Account Status *</label>
+                    <select name="status" required>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
+                
+                <div style="font-size: 11px; color: #64748b; line-height: 1.4; padding: 10px; background: rgba(0,0,0,0.02); border-radius: 6px;">
+                    ℹ️ <strong>Accounting Note:</strong> An opening balance journal entry will be automatically posted to debit this bank ledger account and credit <strong>3000 - Owner Capital / Equity</strong>.
                 </div>
             </div>
             <div class="modal-footer">
@@ -390,34 +458,107 @@ if (isset($_GET['success'])) {
 
 <!-- MODAL 2: Edit Bank Account -->
 <div class="modal-backdrop" id="editBankModal">
-    <div class="modal-panel">
+    <div class="modal-panel" style="max-width: 550px;">
         <div class="modal-header" style="background: #0066cc;">
             <span>✏️ Edit Bank Account</span>
-            <button onclick="closeModal('editBankModal')" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
+            <button type="button" onclick="closeModal('editBankModal')" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
         </div>
         <form action="<?= APP_URL ?>/banking" method="POST">
             <input type="hidden" name="action" value="edit_bank">
             <input type="hidden" name="bank_id" id="editBankId">
-            <div class="modal-body">
-                <div>
-                    <label>Bank Name / Account Title *</label>
-                    <input type="text" name="account_name" id="editBankName" required>
+            <div class="modal-body" style="max-height: 480px; overflow-y: auto;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Bank Name *</label>
+                        <input type="text" name="bank_name" id="editBankName" required>
+                    </div>
+                    <div>
+                        <label>Branch Name *</label>
+                        <input type="text" name="branch_name" id="editBranchName" required>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Branch Code (Optional)</label>
+                        <input type="text" name="branch_code" id="editBranchCode">
+                    </div>
+                    <div>
+                        <label>Account Number *</label>
+                        <input type="text" name="account_number" id="editAccountNumber" required>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 15px;">
+                    <div>
+                        <label>Account Holder Name *</label>
+                        <input type="text" name="account_holder_name" id="editHolderName" required>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Account Type *</label>
+                        <select name="account_type" id="editAccountType" required>
+                            <option value="Current">Current</option>
+                            <option value="Savings">Savings</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Currency *</label>
+                        <input type="text" name="currency" id="editCurrency" required>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Opening Balance Date *</label>
+                        <input type="date" name="opening_balance_date" id="editOpeningDate" required>
+                    </div>
+                    <div>
+                        <label>Account Status *</label>
+                        <select name="status" id="editStatus" required>
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer" style="justify-content: space-between;">
-                <!-- Option to delete bank -->
-                <button type="button" class="btn btn-danger" onclick="confirmDeleteBank()" style="background: #9a1f1f;">🗑️ Delete Bank</button>
+                <button type="button" class="btn btn-danger" onclick="openDeleteConfirmation()" style="background: #9a1f1f;">🗑️ Delete Bank</button>
                 <div style="display: flex; gap: 8px;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('editBankModal')">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
             </div>
         </form>
-        
-        <!-- Hidden delete form to bypass double submit issues -->
-        <form id="deleteBankForm" action="<?= APP_URL ?>/banking" method="POST" style="display: none;">
+    </div>
+</div>
+
+<!-- MODAL: Delete Bank Account Confirmation -->
+<div class="modal-backdrop" id="deleteBankModal">
+    <div class="modal-panel" style="max-width: 400px;">
+        <div class="modal-header" style="background: #9a1f1f;">
+            <span>⚠️ Confirm Bank Deletion</span>
+            <button type="button" onclick="closeModal('deleteBankModal')" style="background:transparent; border:none; color:#fff; font-size:18px; cursor:pointer; font-weight:bold;">✕</button>
+        </div>
+        <form action="<?= APP_URL ?>/banking" method="POST">
             <input type="hidden" name="action" value="delete_bank">
-            <input type="hidden" name="bank_id" id="deleteBankId">
+            <input type="hidden" name="bank_id" id="deleteBankIdInput">
+            <div class="modal-body">
+                <p style="margin-top: 0; font-size: 13px; line-height: 1.5; color: #c62828; font-weight: 500;">
+                    Warning: Deleting a bank account requires administrator/user verification. It will also ensure there are no transactions or active linkages.
+                </p>
+                <div>
+                    <label>Enter Password to Verify Identity *</label>
+                    <input type="password" name="confirm_password" placeholder="Verify password to confirm" required style="margin-top: 5px;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('deleteBankModal')">Cancel</button>
+                <button type="submit" class="btn btn-danger" style="background: #9a1f1f;">Verify & Delete</button>
+            </div>
         </form>
     </div>
 </div>
@@ -550,15 +691,35 @@ if (isset($_GET['success'])) {
     
     function openEditBankModal(id, name) {
         document.getElementById('editBankId').value = id;
-        document.getElementById('deleteBankId').value = id;
-        document.getElementById('editBankName').value = name;
+        
+        // Fetch details from the API
+        fetch('<?= APP_URL ?>/banking/get_bank_details_json/' + id)
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.bank_name) {
+                    document.getElementById('editBankName').value = data.bank_name;
+                    document.getElementById('editBranchName').value = data.branch_name;
+                    document.getElementById('editBranchCode').value = data.branch_code || '';
+                    document.getElementById('editHolderName').value = data.account_holder_name;
+                    document.getElementById('editAccountNumber').value = data.account_number;
+                    document.getElementById('editAccountType').value = data.account_type;
+                    document.getElementById('editCurrency').value = data.currency || 'LKR';
+                    document.getElementById('editOpeningDate').value = data.opening_balance_date;
+                    document.getElementById('editStatus').value = data.bank_status || 'Active';
+                }
+            })
+            .catch(err => {
+                console.error("Error loading bank details:", err);
+            });
+            
         openModal('editBankModal');
     }
     
-    function confirmDeleteBank() {
-        if (confirm("⚠️ Are you sure you want to delete this bank account? This action will permanently remove it from your Chart of Accounts and cannot be undone.")) {
-            document.getElementById('deleteBankForm').submit();
-        }
+    function openDeleteConfirmation() {
+        const bankId = document.getElementById('editBankId').value;
+        document.getElementById('deleteBankIdInput').value = bankId;
+        closeModal('editBankModal');
+        openModal('deleteBankModal');
     }
     
     function openTransferModal() {

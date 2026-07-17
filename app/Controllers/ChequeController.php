@@ -11,11 +11,14 @@ class ChequeController extends Controller {
         $this->customerModel = $this->model('Customer');
         $this->supplierModel = $this->model('Supplier');
         $this->companyModel = $this->model('Company');
+        $this->coaModel = $this->model('ChartOfAccount');
     }
 
     public function index() {
         $cheques = $this->chequeModel->getAllCheques();
         $company = $this->companyModel->getSettings();
+        $parentId = $this->coaModel->selfHealBankAccounts();
+        $bankAccounts = $this->coaModel->getBankAccounts($parentId);
         
         // Calculate KPIs
         $totalPending = 0;
@@ -51,6 +54,7 @@ class ChequeController extends Controller {
             'grouped_cheques' => $groupedCheques,
             'customers' => $this->customerModel->getAllCustomers() ?: [],
             'suppliers' => $this->supplierModel->getAllSuppliers() ?: [],
+            'bank_accounts' => $bankAccounts,
             'company_name' => $company->company_name,
             'kpi_pending' => $totalPending,
             'kpi_cleared' => $totalCleared,
@@ -69,6 +73,7 @@ class ChequeController extends Controller {
                     'cheque_number' => trim($_POST['cheque_number']),
                     'amount' => floatval($_POST['amount']),
                     'banking_date' => $_POST['banking_date'],
+                    'bank_account_id' => !empty($_POST['bank_account_id']) ? intval($_POST['bank_account_id']) : null,
                     'created_by' => $_SESSION['user_id']
                 ];
                 if ($this->chequeModel->addCheque($chkData)) {
@@ -85,6 +90,7 @@ class ChequeController extends Controller {
                     'cheque_number' => trim($_POST['cheque_number']),
                     'amount' => floatval($_POST['amount']),
                     'banking_date' => $_POST['banking_date'],
+                    'bank_account_id' => !empty($_POST['bank_account_id']) ? intval($_POST['bank_account_id']) : null,
                     'status' => $_POST['status']
                 ];
                 if ($this->chequeModel->updateCheque($chkData)) {
