@@ -98,7 +98,7 @@ class JournalEntry {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
-            return 'Database Error: Failed to post entry.';
+            return 'Database Error: Failed to post entry. ' . $e->getMessage();
         }
     }
 

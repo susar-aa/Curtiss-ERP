@@ -68,3 +68,8 @@ SQL:
 #1 C:\Users\Susara Senarathne\.gemini\antigravity\brain\e0deb26c-8efe-4b0a-94ef-3601e2a364e3\scratch\check_column_types.php(6): Database->__construct()
 #2 {main}
 
+[2026-07-17 14:51:19] Database initialization failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+#0 C:\xampp\htdocs\CURTISS\Curtiss-ERP\core\Database.php(26): PDO->__construct('mysql:host=loca...', 'root', '', Array)
+#1 C:\Users\Susara Senarathne\.gemini\antigravity\brain\e0deb26c-8efe-4b0a-94ef-3601e2a364e3\scratch\inspect_financial_years.php(8): Database->__construct()
+#2 {main}
+

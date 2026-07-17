@@ -178,7 +178,7 @@ class PettyCashTransaction {
                 $this->db->query("SELECT id FROM petty_cash_transactions ORDER BY id DESC LIMIT 1");
                 $lastRow = $this->db->single();
                 $nextId = $lastRow ? ($lastRow->id + 1) : 1;
-                $ref = str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
+                $ref = 'PC-AL-' . str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
             }
 
             // Check if period is closed/locked
@@ -259,7 +259,7 @@ class PettyCashTransaction {
                 $this->db->query("SELECT id FROM petty_cash_transactions ORDER BY id DESC LIMIT 1");
                 $lastRow = $this->db->single();
                 $nextId = $lastRow ? ($lastRow->id + 1) : 1;
-                $ref = str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
+                $ref = 'PC-EXP-' . str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
             }
             $attachment = $data['attachment_path'] ?? null;
 
