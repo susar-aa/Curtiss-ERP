@@ -266,6 +266,20 @@
         if (!currentRouteId) return;
         loadLoadingStage(currentRouteId);
         loadVarianceAdjustmentStage(currentRouteId);
+
+        // Fetch fresh delivery details to keep sidebar and local cache updated
+        const d = document.getElementById('route_data_' + currentRouteId);
+        const delId = d ? d.getAttribute('data-delivery-id') : null;
+        if (delId && delId !== '0' && delId !== '') {
+            fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
+                .then(res => res.json())
+                .then(data => {
+                    if (currentRouteId === data.delivery.rep_route_id || currentRouteId === data.delivery.secondary_rep_route_id) {
+                        currentDeliveryDetails = data;
+                        updateSidebarProgress();
+                    }
+                });
+        }
     }
 
     function updateSidebarProgress() {
@@ -317,16 +331,27 @@
                 // Inside Finalizing, sub-stages can have completion heuristics:
                 const d = document.getElementById('route_data_' + currentRouteId);
                 const delId = d ? d.getAttribute('data-delivery-id') : null;
-                const delStatus = d ? d.getAttribute('data-delivery-status') : null;
+                let delStatus = d ? d.getAttribute('data-delivery-status') : null;
+                if (currentDeliveryDetails && currentDeliveryDetails.delivery && currentDeliveryDetails.delivery.status) {
+                    delStatus = currentDeliveryDetails.delivery.status;
+                }
 
                 if (step.id === 6 && delId && delId !== '0' && delId !== '') {
                     isStepCompleted = true; // Arranged is completed if delivery ID exists
                 } else if (step.id === 7) {
                     // Check if reconciliation draft was saved
+                    let isReconciled = false;
                     const cashVal = parseFloat(document.getElementById('reconActualCash')?.value || 0);
-                    if (cashVal > 0) isStepCompleted = true;
-                } else if (step.id === 8 && (delStatus === 'Finalizing' || delStatus === 'Completed')) {
-                    isStepCompleted = true; // Delivery is completed if delivery status is Completed or Finalizing (meaning driver ended the route)
+                    if (cashVal > 0) {
+                        isReconciled = true;
+                    } else if (currentDeliveryDetails && currentDeliveryDetails.delivery && currentDeliveryDetails.delivery.reconciliation_json !== null && currentDeliveryDetails.delivery.reconciliation_json !== '') {
+                        isReconciled = true;
+                    }
+                    if (isReconciled) {
+                        isStepCompleted = true;
+                    }
+                } else if (step.id === 8 && (delStatus === 'Finalizing' || delStatus === 'Finalized')) {
+                    isStepCompleted = true; // Delivery is completed if delivery status is Finalizing (meaning driver ended the route) or Finalized
                 } else if (step.id === 9) {
                     // Check if stock verified checkbox is checked OR return stock has been saved in delivery details
                     const verifyStockCheck = document.getElementById('settleVerifyStock');
@@ -344,10 +369,21 @@
                 } else if (step.id === 10) {
                     let allCollectionsApproved = true;
                     let hasChks = false;
-                    document.querySelectorAll('.settle-payment-chk').forEach(chk => {
+                    const settlePaymentChks = document.querySelectorAll('.settle-payment-chk');
+                    if (settlePaymentChks.length > 0) {
                         hasChks = true;
-                        if (!chk.checked) allCollectionsApproved = false;
-                    });
+                        settlePaymentChks.forEach(chk => {
+                            if (!chk.checked) allCollectionsApproved = false;
+                        });
+                    } else if (currentDeliveryDetails && currentDeliveryDetails.balancing && currentDeliveryDetails.balancing.payments) {
+                        const payments = currentDeliveryDetails.balancing.payments;
+                        if (payments.length > 0) {
+                            hasChks = true;
+                            payments.forEach(p => {
+                                if (parseInt(p.is_verified) !== 1) allCollectionsApproved = false;
+                            });
+                        }
+                    }
                     if (hasChks && allCollectionsApproved) {
                         isStepCompleted = true;
                     }
@@ -373,6 +409,7 @@
 
     function loadRouteDetails(routeId, el) {
         currentRouteId = routeId;
+        currentDeliveryDetails = null; // Reset to prevent stale values from other routes
         
         document.querySelectorAll('.route-item').forEach(i => i.classList.remove('active'));
         if (el) el.classList.add('active');
@@ -387,8 +424,20 @@
         const status = d.getAttribute('data-status');
         const bindingId = d.getAttribute('data-binding-id');
         const isBound = d.getAttribute('data-bound') === '1';
+        const delId = d ? d.getAttribute('data-delivery-id') : null;
 
         currentRouteStatus = status;
+
+        if (delId && delId !== '0' && delId !== '') {
+            fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
+                .then(res => res.json())
+                .then(data => {
+                    if (currentRouteId === routeId) {
+                        currentDeliveryDetails = data;
+                        updateSidebarProgress();
+                    }
+                });
+        }
 
         document.getElementById('mhRouteName').innerText = routeName;
         document.getElementById('mhRepName').innerText = repName;
