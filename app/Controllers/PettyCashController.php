@@ -288,4 +288,18 @@ class PettyCashController extends Controller {
         header('Location: ' . APP_URL . '/pettycash');
         exit;
     }
+
+    public function delete($id) {
+        $this->checkPermission('petty_cash', 'delete');
+        
+        $result = $this->pcTxModel->deleteTransaction(intval($id), (int)$_SESSION['user_id']);
+        if ($result === true) {
+            $_SESSION['flash_success'] = 'Transaction deleted and reversed successfully.';
+        } else {
+            $_SESSION['flash_error'] = is_string($result) ? $result : 'Failed to delete transaction.';
+        }
+        
+        header('Location: ' . APP_URL . '/pettycash');
+        exit;
+    }
 }

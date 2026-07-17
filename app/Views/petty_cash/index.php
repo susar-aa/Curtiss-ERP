@@ -792,10 +792,16 @@ declare(strict_types=1);
                                     <span style="color: var(--text-muted); font-size: 11px;">None</span>
                                 <?php endif; ?>
                             </td>
-                            <td style="text-align: right;">
+                            <td style="text-align: right; white-space: nowrap;">
                                 <?php if ($tx->status === 'Pending' && $tx->type === 'expense'): ?>
                                     <a href="<?= APP_URL ?>/pettycash/approve_expense/<?= $tx->id ?>" class="btn btn-primary btn-sm"><i class="ph ph-check"></i> Approve</a>
                                     <a href="<?= APP_URL ?>/pettycash/reject_expense/<?= $tx->id ?>" class="btn btn-danger btn-sm" onclick="return confirm('Reject this expense?')"><i class="ph ph-x"></i> Reject</a>
+                                <?php endif; ?>
+                                <?php 
+                                require_once ROOT_DIR . '/core/RbacService.php';
+                                if (RbacService::getInstance()->check($_SESSION['user_id'], 'petty_cash', 'delete') && empty($tx->reimbursement_id) && $tx->type !== 'reimbursement'): 
+                                ?>
+                                    <a href="<?= APP_URL ?>/pettycash/delete/<?= $tx->id ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this transaction? This will completely undo the transaction and reverse its journal entries.')" style="margin-left: 4px;"><i class="ph ph-trash"></i> Delete</a>
                                 <?php endif; ?>
                             </td>
                         </tr>

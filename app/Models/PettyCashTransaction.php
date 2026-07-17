@@ -454,4 +454,83 @@ class PettyCashTransaction {
             return "Error: " . $e->getMessage();
         }
     }
+
+    /**
+     * Delete a Petty Cash Transaction and reverse its journal entries and account balances
+     */
+    public function deleteTransaction(int $id, int $userId): string|bool {
+        try {
+            $tx = $this->getTransactionById($id);
+            if (!$tx) {
+                return "Transaction not found.";
+            }
+
+            // Check if period is closed/locked
+            $date = $tx->transaction_date;
+            $this->db->query("SELECT COUNT(*) as cnt FROM financial_years WHERE :entry_date BETWEEN start_date AND end_date");
+            $this->db->bind(':entry_date', $date);
+            $res = $this->db->single();
+            if ($res && $res->cnt > 0) {
+                return "The accounting period containing date {$date} is closed and locked.";
+            }
+
+            if (!empty($tx->reimbursement_id)) {
+                return "Cannot delete a transaction that has already been reimbursed.";
+            }
+
+            if ($tx->type === 'reimbursement') {
+                return "Cannot delete a reimbursement transaction directly. Please manage via the Reimbursement module.";
+            }
+
+            $this->db->beginTransaction();
+
+            // Revert journal entry and account balances if it was approved
+            if ($tx->status === 'Approved') {
+                $amount = floatval($tx->amount);
+                $pettyAccId = $this->getPettyCashAccountId();
+
+                if ($tx->type === 'allocation') {
+                    $sourceAccId = intval($tx->account_id);
+                    // Reverse allocation: credit Petty Cash, debit Funding account
+                    $this->db->updateAccountBalance($pettyAccId, 0.0, $amount);
+                    $this->db->updateAccountBalance($sourceAccId, $amount, 0.0);
+                } elseif ($tx->type === 'expense') {
+                    $expenseAccId = intval($tx->account_id);
+                    // Reverse expense: credit Expense category, debit Petty Cash
+                    $this->db->updateAccountBalance($expenseAccId, 0.0, $amount);
+                    $this->db->updateAccountBalance($pettyAccId, $amount, 0.0);
+                }
+
+                // Delete associated journal entry
+                if (!empty($tx->journal_entry_id)) {
+                    $jid = intval($tx->journal_entry_id);
+                    $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
+                    $this->db->bind(':jid', $jid);
+                    $this->db->execute();
+
+                    $this->db->query("DELETE FROM journal_entries WHERE id = :jid");
+                    $this->db->bind(':jid', $jid);
+                    $this->db->execute();
+                }
+            }
+
+            // Delete petty cash transaction record
+            $this->db->query("DELETE FROM petty_cash_transactions WHERE id = :id");
+            $this->db->bind(':id', $id);
+            $this->db->execute();
+
+            $this->db->commit();
+
+            // Log action in audit trail
+            $auditDesc = "Deleted Petty Cash transaction ID {$id} (Type: {$tx->type}, Amount: {$tx->amount}) and reversed its journal entries.";
+            $this->audit->logAction($userId, 'DELETE', 'accounting', $auditDesc, $id, (array)$tx, null);
+
+            return true;
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            return "Error: " . $e->getMessage();
+        }
+    }
 }
