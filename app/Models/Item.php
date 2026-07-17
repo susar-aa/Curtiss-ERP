@@ -649,7 +649,9 @@ class Item {
             $this->db->query("UPDATE items SET {$qtyUpdatesStr} WHERE id = :id");
             $this->db->bind(':id', $id);
             $this->db->bind(':qty', $newParentQty);
-            return $this->db->execute();
+            $res = $this->db->execute();
+            $this->syncVariationsJsonColumn($id);
+            return $res;
         } else {
             $qtyUpdates = [];
             if ($this->hasQtyColumn) {
@@ -789,6 +791,48 @@ class Item {
             $this->db->query("DELETE FROM item_variation_options WHERE item_id = :item_id");
             $this->db->bind(':item_id', $itemId);
             $this->db->execute();
+        }
+    }
+
+    /**
+     * Synchronize the `variations_json` column of the `items` table
+     * with the current values in `item_variation_options` and `variation_values`.
+     */
+    public function syncVariationsJsonColumn($itemId) {
+        $itemId = intval($itemId);
+        try {
+            $this->db->query("
+                SELECT ivo.id, ivo.sku, ivo.price, ivo.cost, ivo.quantity_on_hand, vv.value_name AS attribute
+                FROM item_variation_options ivo
+                LEFT JOIN variation_values vv ON ivo.variation_value_id = vv.id
+                WHERE ivo.item_id = :id
+            ");
+            $this->db->bind(':id', $itemId);
+            $options = $this->db->resultSet() ?: [];
+            
+            $jsonArray = [];
+            foreach ($options as $opt) {
+                $jsonArray[] = [
+                    'id' => intval($opt->id),
+                    'sku' => $opt->sku,
+                    'price' => floatval($opt->price),
+                    'cost' => floatval($opt->cost),
+                    'qty' => intval($opt->quantity_on_hand),
+                    'quantity_on_hand' => intval($opt->quantity_on_hand),
+                    'attribute' => $opt->attribute
+                ];
+            }
+            
+            $jsonStr = json_encode($jsonArray);
+            
+            $this->db->query("UPDATE items SET variations_json = :variations_json WHERE id = :id");
+            $this->db->bind(':variations_json', $jsonStr);
+            $this->db->bind(':id', $itemId);
+            $this->db->execute();
+            return true;
+        } catch (Exception $e) {
+            error_log("Error in syncVariationsJsonColumn: " . $e->getMessage());
+            return false;
         }
     }
 
