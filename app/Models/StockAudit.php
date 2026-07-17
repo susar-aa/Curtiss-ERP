@@ -193,18 +193,19 @@ class StockAudit {
                     $unitCost = floatval($item->item_cost);
                 }
 
-                // Difference is initially system_qty difference, so physical_qty = 0 initially
-                $diff = 0 - $systemQty; 
-                $varianceVal = $diff * $unitCost;
+                // Difference is initially 0.00, physical_qty = system_qty by default to prevent zeroing unmodified stocks
+                $diff = 0.00; 
+                $varianceVal = 0.00;
 
                 $this->db->query("
                     INSERT INTO stock_audit_items (audit_id, item_id, variation_option_id, system_qty, physical_qty, difference, unit_cost, variance_value)
-                    VALUES (:audit_id, :item_id, :variation_option_id, :system_qty, 0, :difference, :unit_cost, :variance_value)
+                    VALUES (:audit_id, :item_id, :variation_option_id, :system_qty, :physical_qty, :difference, :unit_cost, :variance_value)
                 ");
                 $this->db->bind(':audit_id', $auditId);
                 $this->db->bind(':item_id', $itemId);
                 $this->db->bind(':variation_option_id', $varOptId);
                 $this->db->bind(':system_qty', $systemQty);
+                $this->db->bind(':physical_qty', $systemQty);
                 $this->db->bind(':difference', $diff);
                 $this->db->bind(':unit_cost', $unitCost);
                 $this->db->bind(':variance_value', $varianceVal);
@@ -229,7 +230,6 @@ class StockAudit {
 
             // Update items
             foreach ($counts as $auditItemId => $physicalQty) {
-                $physicalQty = floatval($physicalQty);
                 $itemRemark = $remarks[$auditItemId] ?? '';
 
                 // Get system qty & unit cost
@@ -240,6 +240,14 @@ class StockAudit {
                 if ($row) {
                     $systemQty = floatval($row->system_qty);
                     $unitCost = floatval($row->unit_cost);
+                    
+                    // Default to system quantity if blank/null to avoid resetting unmodified stock
+                    if ($physicalQty === '' || $physicalQty === null) {
+                        $physicalQty = $systemQty;
+                    } else {
+                        $physicalQty = floatval($physicalQty);
+                    }
+                    
                     $diff = $physicalQty - $systemQty;
                     $varianceVal = $diff * $unitCost;
 
@@ -295,7 +303,6 @@ class StockAudit {
 
             // Update items
             foreach ($counts as $auditItemId => $physicalQty) {
-                $physicalQty = floatval($physicalQty);
                 $itemRemark = $remarks[$auditItemId] ?? '';
 
                 $this->db->query("SELECT system_qty, unit_cost FROM stock_audit_items WHERE id = :id");
@@ -305,6 +312,14 @@ class StockAudit {
                 if ($row) {
                     $systemQty = floatval($row->system_qty);
                     $unitCost = floatval($row->unit_cost);
+                    
+                    // Default to system quantity if blank/null to avoid resetting unmodified stock
+                    if ($physicalQty === '' || $physicalQty === null) {
+                        $physicalQty = $systemQty;
+                    } else {
+                        $physicalQty = floatval($physicalQty);
+                    }
+                    
                     $diff = $physicalQty - $systemQty;
                     $varianceVal = $diff * $unitCost;
 
