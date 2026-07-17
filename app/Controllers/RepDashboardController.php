@@ -408,6 +408,7 @@ class RepDashboardController extends Controller {
                     $activeRouteItemsJson[] = [
                         'invoice_id' => intval($item->invoice_id),
                         'item_id' => intval($item->item_id),
+                        'variation_option_id' => intval($item->variation_option_id ?? 0),
                         'description' => $item->description,
                         'quantity' => intval($item->quantity),
                         'unit_price' => floatval($item->unit_price),
@@ -1176,8 +1177,23 @@ class RepDashboardController extends Controller {
                                 $itemDiscountType = 'Rs';
                             }
 
+                            $varId = intval($item['variation_option_id'] ?? 0);
+                            if ($varId <= 0 && strpos($prodName, ' - ') !== false) {
+                                $parts = explode(' - ', $prodName);
+                                $optName = trim(end($parts));
+                                $this->db->query("SELECT ivo.id FROM item_variation_options ivo 
+                                                  LEFT JOIN variation_values vv ON ivo.variation_value_id = vv.id 
+                                                  WHERE ivo.item_id = :item_id AND vv.value_name = :val_name LIMIT 1");
+                                $this->db->bind(':item_id', $prodId);
+                                $this->db->bind(':val_name', $optName);
+                                $varRow = $this->db->single();
+                                if ($varRow) {
+                                    $varId = intval($varRow->id);
+                                }
+                            }
+
                             $itemsPayload[] = [
-                                'item_selection' => $prodId . '|0', // format: "product_id|var_id"
+                                'item_selection' => $prodId . '|' . $varId, // format: "product_id|var_id"
                                 'description' => $prodName,
                                 'quantity' => intval($item['quantity']),
                                 'unit_price' => floatval($item['unit_price']),
