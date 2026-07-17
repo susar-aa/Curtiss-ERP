@@ -1424,6 +1424,8 @@
             return;
         }
 
+        console.log("Applying product substitution:", { substitution_id: subId, pricing_choice: choice });
+
         fetchSecure('<?= APP_URL ?>/RepTracking/api_apply_substitution', {
             method: 'POST',
             headers: {
@@ -1541,6 +1543,8 @@
             adjustments: adjustments,
             force: force ? 1 : 0
         };
+
+        console.log("Submitting variance adjustments payload:", payload);
 
         fetchSecure('<?= APP_URL ?>/RepTracking/api_adjust_variance_billing', {
             method: 'POST',

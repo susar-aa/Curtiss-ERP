@@ -220,7 +220,7 @@ class RepVarianceService {
                             if ($varId !== null) {
                                 // Fetch variation details
                                 $db->query("
-                                    SELECT ivo.price_override, v.name AS variation_name, vv.value_name
+                                    SELECT ivo.price, v.name AS variation_name, vv.value_name
                                     FROM item_variation_options ivo
                                     JOIN variations v ON ivo.variation_id = v.id
                                     JOIN variation_values vv ON ivo.variation_value_id = vv.id
@@ -230,8 +230,8 @@ class RepVarianceService {
                                 $varRow = $db->single();
                                 if ($varRow) {
                                     $itemName .= " (" . $varRow->variation_name . ": " . $varRow->value_name . ")";
-                                    if (floatval($varRow->price_override) > 0) {
-                                        $unitPrice = floatval($varRow->price_override);
+                                    if (floatval($varRow->price) > 0) {
+                                        $unitPrice = floatval($varRow->price);
                                     }
                                     $varOptionIdBind = $varId;
                                 }
@@ -505,11 +505,11 @@ class RepVarianceService {
         }
 
         if ($sub->replacement_variation_option_id) {
-            $db->query("SELECT price_override FROM item_variation_options WHERE id = :rvar_id LIMIT 1");
+            $db->query("SELECT price FROM item_variation_options WHERE id = :rvar_id LIMIT 1");
             $db->bind(':rvar_id', $sub->replacement_variation_option_id);
             $rvarRow = $db->single();
-            if ($rvarRow && floatval($rvarRow->price_override) > 0) {
-                $replPrice = floatval($rvarRow->price_override);
+            if ($rvarRow && floatval($rvarRow->price) > 0) {
+                $replPrice = floatval($rvarRow->price);
             } else {
                 $replPrice = floatval($replProduct->selling_price);
             }
@@ -518,11 +518,11 @@ class RepVarianceService {
         }
 
         if ($sub->original_variation_option_id) {
-            $db->query("SELECT price_override FROM item_variation_options WHERE id = :ovar_id LIMIT 1");
+            $db->query("SELECT price FROM item_variation_options WHERE id = :ovar_id LIMIT 1");
             $db->bind(':ovar_id', $sub->original_variation_option_id);
             $ovarRow = $db->single();
-            if ($ovarRow && floatval($ovarRow->price_override) > 0) {
-                $origPrice = floatval($ovarRow->price_override);
+            if ($ovarRow && floatval($ovarRow->price) > 0) {
+                $origPrice = floatval($ovarRow->price);
             } else {
                 $origPrice = floatval($origProduct->selling_price);
             }
