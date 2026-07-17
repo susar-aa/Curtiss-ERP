@@ -533,4 +533,21 @@ function toggleVariationsRow(itemId, btn) {
         btn.setAttribute('title', 'Show Variations');
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Read and print debug log from localStorage if present
+    const debugLogs = localStorage.getItem('stock_audit_debug_logs');
+    if (debugLogs) {
+        localStorage.removeItem('stock_audit_debug_logs');
+        try {
+            const data = JSON.parse(debugLogs);
+            console.group(`[DEBUG] Last Submitted Audit Data - ${data.timestamp} (${data.action})`);
+            console.log("Action:", data.action);
+            console.table(data.items);
+            console.groupEnd();
+        } catch (err) {
+            console.error("Error reading debug logs:", err);
+        }
+    }
+});
 </script>

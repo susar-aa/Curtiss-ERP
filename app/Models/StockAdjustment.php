@@ -209,6 +209,8 @@ class StockAdjustment {
                 $qty = floatval($item->quantity);
                 $unitCost = floatval($item->unit_cost);
 
+                error_log("[DEBUG StockAdjustment::approveAdjustment] Processing item: Item ID = " . $item->item_id . " | Var ID = " . ($item->variation_option_id ?: 'NULL') . " | Delta = " . $qty);
+
                 // 1. Update system stock quantity
                 // Note: updateStockDelta is schema-aware and prevents negative values
                 $itemModel->updateStockDelta($item->item_id, $qty, $item->variation_option_id);

@@ -886,5 +886,54 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Intercept form submission to log all inputs and save to localStorage
+    form.addEventListener('submit', function(e) {
+        console.log("=== FORM SUBMISSION START ===");
+        console.log("Form Action Field value:", formActionField.value);
+        
+        const inputs = form.querySelectorAll('.count-qty');
+        console.log("Total inputs found in form:", inputs.length);
+        
+        const submittedCounts = [];
+        inputs.forEach(input => {
+            const id = input.getAttribute('data-id');
+            const parentId = input.getAttribute('data-parent-id');
+            const val = input.value;
+            const isVariation = !!parentId;
+            
+            submittedCounts.push({
+                inputName: input.name,
+                auditItemId: id,
+                parentId: parentId || 'none (simple)',
+                isVariation: isVariation,
+                value: val
+            });
+        });
+        
+        console.table(submittedCounts);
+        console.log("=== FORM SUBMISSION END ===");
+        
+        localStorage.setItem('stock_audit_debug_logs', JSON.stringify({
+            timestamp: new Date().toLocaleTimeString(),
+            action: formActionField.value,
+            items: submittedCounts
+        }));
+    });
+
+    // Read and print debug log from localStorage if present
+    const debugLogs = localStorage.getItem('stock_audit_debug_logs');
+    if (debugLogs) {
+        localStorage.removeItem('stock_audit_debug_logs');
+        try {
+            const data = JSON.parse(debugLogs);
+            console.group(`[DEBUG] Last Submitted Audit Data - ${data.timestamp} (${data.action})`);
+            console.log("Action:", data.action);
+            console.table(data.items);
+            console.groupEnd();
+        } catch (err) {
+            console.error("Error reading debug logs:", err);
+        }
+    }
 });
 </script>

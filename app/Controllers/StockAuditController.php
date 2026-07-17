@@ -154,6 +154,10 @@ class StockAuditController extends Controller {
         $overallRemarks = trim($_POST['overall_remarks'] ?? '');
         $action = $_POST['action'] ?? 'save_draft';
 
+        error_log("[DEBUG StockAuditController::saveCount] Audit ID: " . $id . " | Action: " . $action);
+        error_log("[DEBUG StockAuditController::saveCount] Counts POST: " . json_encode($counts));
+        error_log("[DEBUG StockAuditController::saveCount] Remarks POST: " . json_encode($remarks));
+
         $userId = $_SESSION['user_id'];
 
         if ($action === 'complete') {
@@ -168,6 +172,7 @@ class StockAuditController extends Controller {
 
                 foreach ($items as $item) {
                     $diff = floatval($item->difference);
+                    error_log("[DEBUG StockAuditController::saveCount] Item ID: " . $item->item_id . " | Var ID: " . ($item->variation_option_id ?: 'NULL') . " | Diff: " . $diff);
                     if ($diff != 0.00) {
                         $adjustmentItems[] = [
                             'item_id' => $item->item_id,
