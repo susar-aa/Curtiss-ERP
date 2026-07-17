@@ -947,7 +947,29 @@ class MigrationManager {
                     $stmtInsert->execute();
                 }
                 return true;
-            }
+            },
+            'create_route_expenses' => "
+                CREATE TABLE IF NOT EXISTS route_expenses (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    rep_route_id INT NOT NULL,
+                    vehicle_number VARCHAR(50) NULL,
+                    rep_user_id INT NOT NULL,
+                    expense_date DATETIME NOT NULL,
+                    expense_type VARCHAR(50) NOT NULL,
+                    amount DECIMAL(15,2) NOT NULL,
+                    description TEXT NOT NULL,
+                    payment_source VARCHAR(50) NOT NULL,
+                    receipt_number VARCHAR(50) NULL,
+                    petty_cash_transaction_id INT NULL,
+                    journal_entry_id INT NULL,
+                    created_by INT NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    INDEX (rep_route_id),
+                    INDEX (rep_user_id),
+                    INDEX (petty_cash_transaction_id),
+                    INDEX (journal_entry_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            "
         ];
     }
 

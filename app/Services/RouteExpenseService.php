@@ -1,6 +1,10 @@
 <?php
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/Models/JournalEntry.php';
+require_once dirname(__DIR__) . '/Models/PettyCashTransaction.php';
+require_once dirname(__DIR__) . '/Models/AuditLog.php';
+
 class RouteExpenseService {
     private Database $db;
     private JournalEntry $journal;
