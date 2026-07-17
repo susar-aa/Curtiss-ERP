@@ -396,6 +396,8 @@
     <form id="countingForm" method="POST" action="<?= APP_URL ?>/stockaudit/saveCount/<?= $data['audit']->id; ?>">
         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
         <input type="hidden" id="formActionField" name="action" value="save_draft">
+        <input type="hidden" id="auditDataField" name="audit_data" value="">
+
 
         <div class="sheet-card">
             <table class="sheet-table">
@@ -895,12 +897,21 @@ document.addEventListener('DOMContentLoaded', function() {
         const inputs = form.querySelectorAll('.count-qty');
         console.log("Total inputs found in form:", inputs.length);
         
+        const auditData = {};
         const submittedCounts = [];
         inputs.forEach(input => {
             const id = input.getAttribute('data-id');
             const parentId = input.getAttribute('data-parent-id');
             const val = input.value;
             const isVariation = !!parentId;
+            
+            const remarkInput = form.querySelector(`input[name="remarks[${id}]"]`);
+            const remark = remarkInput ? remarkInput.value : '';
+            
+            auditData[id] = {
+                qty: val,
+                remark: remark
+            };
             
             submittedCounts.push({
                 inputName: input.name,
@@ -909,6 +920,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 isVariation: isVariation,
                 value: val
             });
+        });
+        
+        // Put in hidden field
+        const auditDataField = document.getElementById('auditDataField');
+        if (auditDataField) {
+            auditDataField.value = JSON.stringify(auditData);
+        }
+        
+        // Remove names from individual inputs so they don't count towards max_input_vars
+        inputs.forEach(input => {
+            input.removeAttribute('name');
+        });
+        const remarkInputs = form.querySelectorAll('.remarks-input');
+        remarkInputs.forEach(input => {
+            input.removeAttribute('name');
         });
         
         console.table(submittedCounts);

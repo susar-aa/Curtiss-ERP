@@ -149,10 +149,25 @@ class StockAuditController extends Controller {
             exit;
         }
 
-        $counts = $_POST['counts'] ?? [];
-        $remarks = $_POST['remarks'] ?? [];
+        $counts = [];
+        $remarks = [];
+
+        if (!empty($_POST['audit_data'])) {
+            $decoded = json_decode($_POST['audit_data'], true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $itemId => $itemVal) {
+                    $counts[$itemId] = $itemVal['qty'];
+                    $remarks[$itemId] = $itemVal['remark'] ?? '';
+                }
+            }
+        } else {
+            $counts = $_POST['counts'] ?? [];
+            $remarks = $_POST['remarks'] ?? [];
+        }
+
         $overallRemarks = trim($_POST['overall_remarks'] ?? '');
         $action = $_POST['action'] ?? 'save_draft';
+
 
         error_log("[DEBUG StockAuditController::saveCount] Audit ID: " . $id . " | Action: " . $action);
         error_log("[DEBUG StockAuditController::saveCount] Counts POST: " . json_encode($counts));
