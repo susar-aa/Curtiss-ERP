@@ -156,6 +156,12 @@ class RouteExpenseService {
         $pettyCashTxId = null;
         if ($source === 'Petty Cash') {
             try {
+                // Get Representative user details or name first to prevent overwriting active query
+                $this->db->query("SELECT first_name, last_name FROM employees WHERE email = (SELECT email FROM users WHERE id = :uid)");
+                $this->db->bind(':uid', $repUserId);
+                $emp = $this->db->single();
+                $repName = $emp ? $emp->first_name . ' ' . $emp->last_name : 'Rep User';
+
                 $this->db->beginTransaction();
                 $this->db->query("INSERT INTO petty_cash_transactions (transaction_date, type, amount, reference, description, paid_to, account_id, status, created_by, approved_by, approved_at, journal_entry_id) 
                                   VALUES (:date, 'expense', :amount, :ref, :desc, :paid_to, :acc_id, 'Approved', :uid, :uid, NOW(), :jid)");
@@ -163,13 +169,6 @@ class RouteExpenseService {
                 $this->db->bind(':amount', $amount);
                 $this->db->bind(':ref', $ref);
                 $this->db->bind(':desc', $journalDesc);
-                
-                // Get Representative user details or name
-                $this->db->query("SELECT first_name, last_name FROM employees WHERE email = (SELECT email FROM users WHERE id = :uid)");
-                $this->db->bind(':uid', $repUserId);
-                $emp = $this->db->single();
-                $repName = $emp ? $emp->first_name . ' ' . $emp->last_name : 'Rep User';
-                
                 $this->db->bind(':paid_to', $repName);
                 $this->db->bind(':acc_id', $expenseAccountId);
                 $this->db->bind(':uid', $userId);
