@@ -424,20 +424,27 @@ class Delivery {
         ");
         $payments = $this->db->resultSet() ?: [];
 
+        // Query route expenses paid from collected cash
+        $this->db->query("SELECT COALESCE(SUM(amount), 0.0) as amt FROM route_expenses WHERE rep_route_id IN ($ridsStr) AND payment_source = 'Collected Cash'");
+        $collectedCashExpensesTotal = floatval($this->db->single()->amt ?? 0.0);
+        $adjustedCashCollections = floatval($collectionsStats->cash_collections) - $collectedCashExpensesTotal;
+
         return [
             'delivery' => $delivery,
             'cash_sales' => floatval($cash_sales),
             'cheque_sales' => floatval($cheque_sales),
             'bank_sales' => floatval($bank_sales),
             'credit_sales' => floatval($credit_sales),
-            'cash_collections' => floatval($collectionsStats->cash_collections),
+            'cash_collections' => max(0.0, $adjustedCashCollections),
+            'raw_cash_collections' => floatval($collectionsStats->cash_collections),
             'cheque_collections' => floatval($collectionsStats->cheque_collections),
             'bank_collections' => floatval($collectionsStats->bank_collections),
             'stock_items' => $stockItems,
             'cheques' => $chequesCollected,
             'all_accounts' => $allAccounts,
             'bank_accounts' => $bankAccounts,
-            'payments' => $payments
+            'payments' => $payments,
+            'collected_cash_expenses_total' => $collectedCashExpensesTotal
         ];
     }
 

@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/Services/RepBindingService.php';
 require_once dirname(__DIR__) . '/Services/RepVarianceService.php';
 require_once dirname(__DIR__) . '/Services/RepRouteService.php';
+require_once dirname(__DIR__) . '/Services/RouteExpenseService.php';
 
 class RepTrackingController extends Controller {
     private $trackingModel;
@@ -2806,5 +2807,82 @@ class RepTrackingController extends Controller {
         } catch (Exception $e) {
             $errorResponse('Failed to delete route: ' . $e->getMessage());
         }
+    }
+
+    public function api_get_route_expenses($routeId) {
+        $this->checkPermission('rep_tracking', 'view');
+        
+        $db = new Database();
+        $db->query("SELECT e.*, u.username as creator_name
+                    FROM route_expenses e
+                    LEFT JOIN users u ON e.created_by = u.id
+                    WHERE e.rep_route_id = :rid
+                    ORDER BY e.expense_date DESC, e.id DESC");
+        $db->bind(':rid', intval($routeId));
+        $expenses = $db->resultSet() ?: [];
+
+        $expenseService = new RouteExpenseService();
+        $pettyCashModel = new PettyCashTransaction();
+        $availPC = $pettyCashModel->getAvailableBalance();
+        $availRC = $expenseService->getAvailableRouteCash(intval($routeId));
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'success',
+            'expenses' => $expenses,
+            'available_petty_cash' => $availPC,
+            'available_route_cash' => $availRC
+        ]);
+        exit;
+    }
+
+    public function api_add_route_expense() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Invalid request method.']);
+            exit;
+        }
+        $this->validateCsrf();
+        $this->checkPermission('rep_tracking', 'edit');
+
+        $input = file_get_contents('php://input');
+        $payload = json_decode($input, true);
+        if (!$payload) {
+            $payload = $_POST;
+        }
+
+        $userId = $_SESSION['user_id'];
+        $expenseService = new RouteExpenseService();
+        $res = $expenseService->recordExpense($payload, $userId);
+
+        header('Content-Type: application/json');
+        if ($res === true) {
+            echo json_encode(['status' => 'success', 'message' => 'Expense recorded successfully.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => $res ?: 'Failed to record expense.']);
+        }
+        exit;
+    }
+
+    public function api_delete_route_expense($expenseId) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Invalid request method.']);
+            exit;
+        }
+        $this->validateCsrf();
+        $this->checkPermission('rep_tracking', 'edit');
+
+        $userId = $_SESSION['user_id'];
+        $expenseService = new RouteExpenseService();
+        $res = $expenseService->deleteExpense(intval($expenseId), $userId);
+
+        header('Content-Type: application/json');
+        if ($res === true) {
+            echo json_encode(['status' => 'success', 'message' => 'Expense deleted successfully.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => $res ?: 'Failed to delete expense.']);
+        }
+        exit;
     }
 }

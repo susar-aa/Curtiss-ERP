@@ -289,11 +289,12 @@
             { id: 4, num: 3, name: 'Loading', statusKey: 'Loading' },
             { id: 5, num: 4, name: 'Variance Audit', statusKey: 'Variance Adjustment' },
             { id: 6, num: 5, name: 'Delivery Arrange', statusKey: 'Finalizing' },
-            { id: 7, num: 6, name: 'Reconciliation', statusKey: 'Finalizing' },
-            { id: 8, num: 7, name: 'Delivery Execution', statusKey: 'Finalizing' },
-            { id: 9, num: 8, name: 'Return Stock', statusKey: 'Finalizing' },
-            { id: 10, num: 9, name: 'Payments', statusKey: 'Finalizing' },
-            { id: 11, num: 10, name: 'Finalize', statusKey: 'Finalizing' }
+            { id: 8, num: 6, name: 'Delivery Execution', statusKey: 'Finalizing' },
+            { id: 12, num: 7, name: 'Expenses', statusKey: 'Finalizing' },
+            { id: 7, num: 8, name: 'Reconciliation', statusKey: 'Finalizing' },
+            { id: 9, num: 9, name: 'Return Stock', statusKey: 'Finalizing' },
+            { id: 10, num: 10, name: 'Payments', statusKey: 'Finalizing' },
+            { id: 11, num: 11, name: 'Finalize', statusKey: 'Finalizing' }
         ];
 
         const statusSequence = ['Active', 'Pending GL', 'Adjustments', 'Loading', 'Variance Adjustment', 'Finalizing', 'Completed', 'Finalized'];
@@ -332,12 +333,18 @@
                 const d = document.getElementById('route_data_' + currentRouteId);
                 const delId = d ? d.getAttribute('data-delivery-id') : null;
                 let delStatus = d ? d.getAttribute('data-delivery-status') : null;
-                if (currentDeliveryDetails && currentDeliveryDetails.delivery && currentDeliveryDetails.delivery.status) {
+                let vehicleNum = d ? d.getAttribute('data-vehicle-number') : null;
+                if (currentDeliveryDetails && currentDeliveryDetails.delivery) {
                     delStatus = currentDeliveryDetails.delivery.status;
+                    vehicleNum = currentDeliveryDetails.delivery.vehicle_number;
                 }
 
-                if (step.id === 6 && delId && delId !== '0' && delId !== '') {
-                    isStepCompleted = true; // Arranged is completed if delivery ID exists
+                const isArranged = delId && delId !== '0' && delId !== '' && vehicleNum && vehicleNum !== 'Pending Vehicle' && vehicleNum !== '';
+
+                if (step.id === 6) {
+                    if (isArranged) {
+                        isStepCompleted = true;
+                    }
                 } else if (step.id === 7) {
                     // Check if reconciliation draft was saved
                     let isReconciled = false;
@@ -387,6 +394,8 @@
                     if (hasChks && allCollectionsApproved) {
                         isStepCompleted = true;
                     }
+                } else if (step.id === 12) {
+                    isStepCompleted = true;
                 } else if (step.id === 11) {
                     if (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized') {
                         isStepCompleted = true;
@@ -513,8 +522,33 @@
         closeInvoiceSlider();
 
         // Auto-advance active tab if entering a route that is in Finalizing/Completed/Finalized status
-        if ((status === 'Finalizing' || status === 'Completed' || status === 'Finalized') && currentTabIndex < 7) {
-            currentTabIndex = 7; // Land on Reconciliation
+        if (status === 'Finalizing' || status === 'Completed' || status === 'Finalized') {
+            const d = document.getElementById('route_data_' + currentRouteId);
+            const delId = d ? d.getAttribute('data-delivery-id') : null;
+            let delStatus = d ? d.getAttribute('data-delivery-status') : null;
+            let vehicleNum = d ? d.getAttribute('data-vehicle-number') : null;
+            if (currentDeliveryDetails && currentDeliveryDetails.delivery) {
+                delStatus = currentDeliveryDetails.delivery.status;
+                vehicleNum = currentDeliveryDetails.delivery.vehicle_number;
+            }
+            
+            const isArranged = delId && delId !== '0' && delId !== '' && vehicleNum && vehicleNum !== 'Pending Vehicle' && vehicleNum !== '';
+            const isDeliveryCompleted = delStatus === 'Finalizing' || delStatus === 'Finalized';
+            
+            if (status === 'Finalizing') {
+                if (!isArranged) {
+                    currentTabIndex = 6; // Land on Delivery Arrange
+                } else if (!isDeliveryCompleted) {
+                    currentTabIndex = 8; // Land on Delivery Execution
+                } else if (currentTabIndex < 7) {
+                    currentTabIndex = 12; // Land on Expenses
+                }
+            } else {
+                // Completed or Finalized
+                if (currentTabIndex < 7) {
+                    currentTabIndex = 7; // Land on Reconciliation
+                }
+            }
         }
 
         // Switch to the last selected index, default to 1 (Details)
@@ -539,7 +573,8 @@
             8: 'auto-evt-button-11',
             9: 'auto-evt-button-12',
             10: 'auto-evt-button-13',
-            11: 'btnTabFinalize'
+            11: 'btnTabFinalize',
+            12: 'btnTabExpenses'
         };
         document.querySelectorAll('#routeWorkspaceTabs .scroll-tab-btn').forEach(btn => {
             btn.classList.remove('active');
@@ -592,6 +627,9 @@
                 break;
             case 11:
                 loadTab11Finalize(currentRouteId);
+                break;
+            case 12:
+                loadTabExpenses(currentRouteId);
                 break;
         }
     }
@@ -2156,6 +2194,241 @@
             return false;
         }
     }
+
+    function loadTabExpenses(routeId) {
+        const rdata = document.getElementById('route_data_' + routeId);
+        if (!rdata) return;
+
+        const routeName = rdata.getAttribute('data-rname') || '';
+        const repName = rdata.getAttribute('data-rep') || '';
+        const formattedRouteNo = '#RT-' + String(routeId).padStart(5, '0');
+
+        document.getElementById('expRouteNumber').value = formattedRouteNo + ' - ' + routeName;
+        document.getElementById('expRepName').value = repName;
+        document.getElementById('expDateTime').value = new Date().toLocaleString();
+
+        let vehicleNum = 'No Vehicle Assigned';
+        if (currentDeliveryDetails && currentDeliveryDetails.delivery && currentDeliveryDetails.delivery.vehicle_number) {
+            vehicleNum = currentDeliveryDetails.delivery.vehicle_number;
+        }
+        document.getElementById('expVehicleNumber').value = vehicleNum;
+
+        // Fetch recorded expenses and available balances
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_route_expenses/' + routeId)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update balances labels
+                    document.getElementById('lblAvailPettyCash').innerText = 'Rs ' + parseFloat(data.available_petty_cash).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    document.getElementById('lblAvailRouteCash').innerText = 'Rs ' + parseFloat(data.available_route_cash).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                    // Render expenses list
+                    const listContainer = document.getElementById('listRecordedExpenses');
+                    listContainer.innerHTML = '';
+
+                    const isReadOnly = (currentRouteStatus === 'Completed' || currentRouteStatus === 'Finalized');
+
+                    if (data.expenses.length === 0) {
+                        listContainer.innerHTML = `
+                            <div style="text-align:center; padding: 40px 20px; color:var(--t-secondary);">
+                                <i class="ph ph-receipt" style="font-size:36px; color:#94a3b8; margin-bottom: 8px;"></i>
+                                <p style="margin:0; font-size: 13px;">No expenses recorded for this route.</p>
+                            </div>
+                        `;
+                    } else {
+                        let html = `
+                            <table style="width:100%; border-collapse:collapse;">
+                                <thead>
+                                    <tr style="border-bottom:1.5px solid var(--c-separator); color:var(--t-label); font-weight:700; text-transform:uppercase; font-size:10px;">
+                                        <th style="padding:8px 4px; text-align:left;">Type / Ref</th>
+                                        <th style="padding:8px 4px; text-align:left;">Source</th>
+                                        <th style="padding:8px 4px; text-align:right;">Amount</th>
+                                        <th style="padding:8px 4px; text-align:center;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                        `;
+                        data.expenses.forEach(exp => {
+                            const dateStr = new Date(exp.expense_date).toLocaleDateString();
+                            const amt = parseFloat(exp.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            
+                            html += `
+                                <tr style="border-bottom:1px solid var(--c-separator); font-size:12px;">
+                                    <td style="padding:8px 4px;">
+                                        <div style="font-weight:600; color:var(--t-primary);">${exp.expense_type}</div>
+                                        <div style="font-size:9px; color:#64748b; font-family:monospace; margin-top:2px;">${exp.receipt_number ? 'Rec: ' + exp.receipt_number : exp.description.substring(0, 25) + '...'}</div>
+                                    </td>
+                                    <td style="padding:8px 4px; color:#475569;">
+                                        ${exp.payment_source}
+                                    </td>
+                                    <td style="padding:8px 4px; text-align:right; font-weight:bold; font-family:monospace; color:#ef4444;">
+                                        Rs ${amt}
+                                    </td>
+                                    <td style="padding:8px 4px; text-align:center;">
+                                        ${isReadOnly ? `
+                                            <span style="font-size:10px; color:#94a3b8; font-style:italic;">Posted</span>
+                                        ` : `
+                                            <button type="button" onclick="deleteRouteExpense(${exp.id})" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:4px;" title="Delete Expense">
+                                                <i class="ph ph-trash" style="font-size:16px;"></i>
+                                            </button>
+                                        `}
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        html += '</tbody></table>';
+                        listContainer.innerHTML = html;
+                    }
+
+                    // Apply read-only styling to form if route is completed
+                    const form = document.getElementById('formRecordRouteExpense');
+                    const elements = form.elements;
+                    for (let i = 0; i < elements.length; i++) {
+                        if (elements[i].id !== 'expRouteNumber' && elements[i].id !== 'expRepName' && elements[i].id !== 'expDateTime' && elements[i].id !== 'expVehicleNumber') {
+                            elements[i].disabled = isReadOnly;
+                        }
+                    }
+                    const submitBtn = document.getElementById('btnSubmitRouteExpense');
+                    if (submitBtn) {
+                        submitBtn.disabled = isReadOnly;
+                        submitBtn.style.opacity = isReadOnly ? '0.5' : '1';
+                        submitBtn.style.cursor = isReadOnly ? 'not-allowed' : 'pointer';
+                    }
+                }
+            });
+    }
+
+    function onExpenseSourceChanged() {
+        const source = document.getElementById('expSource').value;
+        const type = document.getElementById('expType').value;
+        const vehicle = document.getElementById('expVehicleNumber').value;
+        const descInput = document.getElementById('expDescription');
+
+        // Autofill description
+        if (type) {
+            let autofillDesc = type + ' expense on route';
+            if (type === 'Fuel') {
+                autofillDesc = 'Fuel allowance for vehicle ' + vehicle;
+            } else if (type === 'Vehicle Maintenance') {
+                autofillDesc = 'Routine maintenance for vehicle ' + vehicle;
+            }
+            descInput.value = autofillDesc;
+        }
+    }
+
+    // Attach type change listener as well
+    document.getElementById('expType')?.addEventListener('change', onExpenseSourceChanged);
+
+    function submitRouteExpense(event) {
+        event.preventDefault();
+
+        const routeId = currentRouteId;
+        const amount = parseFloat(document.getElementById('expAmount').value);
+        const type = document.getElementById('expType').value;
+        const source = document.getElementById('expSource').value;
+        const desc = document.getElementById('expDescription').value;
+        const receipt = document.getElementById('expReceiptNumber').value;
+
+        if (!type || !source || isNaN(amount) || amount <= 0 || !desc) {
+            Swal.fire('Validation Error', 'Please fill in all required fields.', 'error');
+            return;
+        }
+
+        const payload = {
+            rep_route_id: routeId,
+            amount: amount,
+            expense_type: type,
+            payment_source: source,
+            description: desc,
+            receipt_number: receipt
+        };
+
+        document.getElementById('btnSubmitRouteExpense').disabled = true;
+
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_add_route_expense', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('btnSubmitRouteExpense').disabled = false;
+            if (data.status === 'success') {
+                Swal.fire('Success', data.message, 'success');
+                // Clear inputs
+                document.getElementById('expAmount').value = '';
+                document.getElementById('expReceiptNumber').value = '';
+                document.getElementById('expDescription').value = '';
+                document.getElementById('expType').selectedIndex = 0;
+                document.getElementById('expSource').selectedIndex = 0;
+                
+                // Reload
+                loadTabExpenses(routeId);
+                
+                // Fetch fresh delivery details so Reconciliation gets updated expected cash handover!
+                const rdata = document.getElementById('route_data_' + routeId);
+                const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
+                if (delId && delId !== '0') {
+                    fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
+                        .then(res => res.json())
+                        .then(dData => {
+                            currentDeliveryDetails = dData;
+                        });
+                }
+            } else {
+                Swal.fire('Error', data.message, 'error');
+            }
+        })
+        .catch(err => {
+            document.getElementById('btnSubmitRouteExpense').disabled = false;
+            Swal.fire('Error', 'An unexpected error occurred.', 'error');
+        });
+    }
+
+    function deleteRouteExpense(expenseId) {
+        Swal.fire({
+            title: 'Delete Expense',
+            text: 'Are you sure you want to delete this expense? This will reverse the journal entry and restore the balance.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Yes, delete it'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetchSecure('<?= APP_URL ?>/RepTracking/api_delete_route_expense/' + expenseId, {
+                    method: 'POST'
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire('Deleted!', data.message, 'success');
+                        loadTabExpenses(currentRouteId);
+                        
+                        // Fetch fresh delivery details to update reconciliation
+                        const rdata = document.getElementById('route_data_' + currentRouteId);
+                        const delId = rdata ? rdata.getAttribute('data-delivery-id') : null;
+                        if (delId && delId !== '0') {
+                            fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
+                                .then(res => res.json())
+                                .then(dData => {
+                                    currentDeliveryDetails = dData;
+                                });
+                        }
+                    } else {
+                        Swal.fire('Error', data.message, 'error');
+                    }
+                });
+            }
+        });
+    }
+
+    // Expose delete function to global scope
+    window.deleteRouteExpense = deleteRouteExpense;
+    window.loadTabExpenses = loadTabExpenses;
+    window.onExpenseSourceChanged = onExpenseSourceChanged;
+    window.submitRouteExpense = submitRouteExpense;
 
     function loadTab8Reconciliation(routeId) {
         const rdata = document.getElementById('route_data_' + routeId);
@@ -4065,8 +4338,9 @@
         document.getElementById('auto-evt-button-7')?.addEventListener('click', function(event) { switchRouteTab(4, this); });
         document.getElementById('auto-evt-button-8')?.addEventListener('click', function(event) { switchRouteTab(5, this); });
         document.getElementById('auto-evt-button-9')?.addEventListener('click', function(event) { switchRouteTab(6, this); });
-        document.getElementById('auto-evt-button-10')?.addEventListener('click', function(event) { switchRouteTab(7, this); });
         document.getElementById('auto-evt-button-11')?.addEventListener('click', function(event) { switchRouteTab(8, this); });
+        document.getElementById('btnTabExpenses')?.addEventListener('click', function(event) { switchRouteTab(12, this); });
+        document.getElementById('auto-evt-button-10')?.addEventListener('click', function(event) { switchRouteTab(7, this); });
         document.getElementById('auto-evt-button-12')?.addEventListener('click', function(event) { switchRouteTab(9, this); });
         document.getElementById('auto-evt-button-13')?.addEventListener('click', function(event) { switchRouteTab(10, this); });
         document.getElementById('btnTabFinalize')?.addEventListener('click', function(event) { switchRouteTab(11, this); });
@@ -4076,8 +4350,9 @@
         document.getElementById('sb-step-4')?.addEventListener('click', (event) => { switchRouteTab(4); });
         document.getElementById('sb-step-5')?.addEventListener('click', (event) => { switchRouteTab(5); });
         document.getElementById('sb-step-6')?.addEventListener('click', (event) => { switchRouteTab(6); });
-        document.getElementById('sb-step-7')?.addEventListener('click', (event) => { switchRouteTab(7); });
         document.getElementById('sb-step-8')?.addEventListener('click', (event) => { switchRouteTab(8); });
+        document.getElementById('sb-step-12')?.addEventListener('click', (event) => { switchRouteTab(12); });
+        document.getElementById('sb-step-7')?.addEventListener('click', (event) => { switchRouteTab(7); });
         document.getElementById('sb-step-9')?.addEventListener('click', (event) => { switchRouteTab(9); });
         document.getElementById('sb-step-10')?.addEventListener('click', (event) => { switchRouteTab(10); });
         document.getElementById('sb-step-11')?.addEventListener('click', (event) => { switchRouteTab(11); });

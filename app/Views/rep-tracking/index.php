@@ -217,11 +217,12 @@
             <button id="auto-evt-button-7" class="scroll-tab-btn" ><i class="ph ph-truck"></i> 3. Loading</button>
             <button id="auto-evt-button-8" class="scroll-tab-btn" ><i class="ph ph-scales"></i> 4. Variance Audit</button>
             <button id="auto-evt-button-9" class="scroll-tab-btn" ><i class="ph ph-map-trifold"></i> 5. Delivery Arrangement</button>
-            <button id="auto-evt-button-10" class="scroll-tab-btn" ><i class="ph ph-currency-dollar"></i> 6. Reconciliation</button>
-            <button id="auto-evt-button-11" class="scroll-tab-btn" ><i class="ph ph-steering-wheel"></i> 7. Delivery</button>
-            <button id="auto-evt-button-12" class="scroll-tab-btn" ><i class="ph ph-package"></i> 8. Return Stock Verification</button>
-            <button id="auto-evt-button-13" class="scroll-tab-btn" ><i class="ph ph-briefcase"></i> 9. Payments</button>
-            <button id="btnTabFinalize" class="scroll-tab-btn" ><i class="ph ph-flag-checkered"></i> 10. Finalize</button>
+            <button id="auto-evt-button-11" class="scroll-tab-btn" ><i class="ph ph-steering-wheel"></i> 6. Delivery</button>
+            <button id="btnTabExpenses" class="scroll-tab-btn" ><i class="ph ph-receipt"></i> 7. Expenses</button>
+            <button id="auto-evt-button-10" class="scroll-tab-btn" ><i class="ph ph-currency-dollar"></i> 8. Reconciliation</button>
+            <button id="auto-evt-button-12" class="scroll-tab-btn" ><i class="ph ph-package"></i> 9. Return Stock Verification</button>
+            <button id="auto-evt-button-13" class="scroll-tab-btn" ><i class="ph ph-briefcase"></i> 10. Payments</button>
+            <button id="btnTabFinalize" class="scroll-tab-btn" ><i class="ph ph-flag-checkered"></i> 11. Finalize</button>
         </div>
 
         <!-- Workspace Layout Container (Sidebar + Content Body) -->
@@ -269,36 +270,43 @@
                             <span class="step-desc">Assign driver & vehicle</span>
                         </div>
                     </div>
-                    <div class="sidebar-step-item" id="sb-step-7" >
-                        <div class="step-dot">6</div>
-                        <div class="step-info">
-                            <span class="step-title">Reconciliation</span>
-                            <span class="step-desc">Discrepancies & cash</span>
-                        </div>
-                    </div>
                     <div class="sidebar-step-item" id="sb-step-8" >
-                        <div class="step-dot">7</div>
+                        <div class="step-dot">6</div>
                         <div class="step-info">
                             <span class="step-title">Delivery Execution</span>
                             <span class="step-desc">Track live status</span>
                         </div>
                     </div>
-                    <div class="sidebar-step-item" id="sb-step-9" >
+                    <div class="sidebar-step-item" id="sb-step-12" >
+                        <div class="step-dot">7</div>
+                        <div class="step-info">
+                            <span class="step-title">Expenses</span>
+                            <span class="step-desc">Record route expenses</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-step-item" id="sb-step-7" >
                         <div class="step-dot">8</div>
+                        <div class="step-info">
+                            <span class="step-title">Reconciliation</span>
+                            <span class="step-desc">Discrepancies & cash</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-step-item" id="sb-step-9" >
+                        <div class="step-dot">9</div>
                         <div class="step-info">
                             <span class="step-title">Return Stock</span>
                             <span class="step-desc">Verify returned items</span>
                         </div>
                     </div>
                     <div class="sidebar-step-item" id="sb-step-10" >
-                        <div class="step-dot">9</div>
+                        <div class="step-dot">10</div>
                         <div class="step-info">
                             <span class="step-title">Payments</span>
                             <span class="step-desc">Verify & approve payments</span>
                         </div>
                     </div>
                     <div class="sidebar-step-item" id="sb-step-11" >
-                        <div class="step-dot">10</div>
+                        <div class="step-dot">11</div>
                         <div class="step-info">
                             <span class="step-title">Finalize</span>
                             <span class="step-desc">Settle & Close Route</span>
@@ -561,6 +569,127 @@
                                 <!-- Populated dynamically -->
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- TAB 12: EXPENSES (NEW STAGE) -->
+                <div class="workspace-tab-panel" id="tabpanel-12" style="display:none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div>
+                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Route Expenses Management</h3>
+                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Record and manage trip-related expenses. Balances and journal entries are automatically updated in real-time.</p>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1.1fr 0.9fr; gap:20px;">
+                        <!-- Left: Form to record expense -->
+                        <div>
+                            <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); margin-bottom:20px;">
+                                <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-plus-circle"></i> Record Route Expense</h4>
+                                
+                                <form id="formRecordRouteExpense" onsubmit="submitRouteExpense(event)">
+                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                                        <div>
+                                            <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Related Route / Trip</label>
+                                            <input type="text" id="expRouteNumber" readonly style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); background:#f8fafc; font-family:monospace; font-weight:bold;">
+                                        </div>
+                                        <div>
+                                            <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Assigned Vehicle</label>
+                                            <input type="text" id="expVehicleNumber" readonly style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); background:#f8fafc; font-weight:bold;">
+                                        </div>
+                                    </div>
+
+                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                                        <div>
+                                            <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Representative</label>
+                                            <input type="text" id="expRepName" readonly style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); background:#f8fafc; font-weight:500;">
+                                        </div>
+                                        <div>
+                                            <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Date & Time</label>
+                                            <input type="text" id="expDateTime" readonly style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); background:#f8fafc; font-weight:500;">
+                                        </div>
+                                    </div>
+
+                                    <div style="border-top: 1px solid #e2e8f0; margin: 15px 0; padding-top: 15px;"></div>
+
+                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                                        <div>
+                                            <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Expense Type <span style="color:red;">*</span></label>
+                                            <select id="expType" required style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); outline:none;">
+                                                <option value="" disabled selected>Select Type</option>
+                                                <option value="Fuel">Fuel</option>
+                                                <option value="Meals">Meals</option>
+                                                <option value="Accommodation">Accommodation</option>
+                                                <option value="Parking">Parking</option>
+                                                <option value="Vehicle Maintenance">Vehicle Maintenance</option>
+                                                <option value="Toll Charges">Toll Charges</option>
+                                                <option value="Other Expenses">Other Expenses</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Payment Source <span style="color:red;">*</span></label>
+                                            <select id="expSource" required onchange="onExpenseSourceChanged()" style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); outline:none;">
+                                                <option value="" disabled selected>Select Source</option>
+                                                <option value="Petty Cash">Petty Cash</option>
+                                                <option value="Collected Cash">Collected Cash on Route</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                                        <div>
+                                            <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Amount (Rs.) <span style="color:red;">*</span></label>
+                                            <input type="number" step="0.01" min="0.01" id="expAmount" required style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); font-weight:bold; font-family:monospace;">
+                                        </div>
+                                        <div>
+                                            <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Receipt / Voucher No</label>
+                                            <input type="text" id="expReceiptNumber" style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs);">
+                                        </div>
+                                    </div>
+
+                                    <div style="margin-bottom: 20px;">
+                                        <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Description <span style="color:red;">*</span></label>
+                                        <textarea id="expDescription" required rows="2" style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); outline:none; resize:none;"></textarea>
+                                    </div>
+
+                                    <button type="submit" id="btnSubmitRouteExpense" style="width:100%; background:var(--primary); color:#fff; border:none; padding:10px; border-radius:var(--r-md); font-weight:bold; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+                                        <i class="ph ph-floppy-disk"></i> Record Expense
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Right: Balances and Live List -->
+                        <div>
+                            <!-- Available Balances Card -->
+                            <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); margin-bottom:20px;">
+                                <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-bank"></i> Funding Source Balances</h4>
+                                <div style="display:flex; flex-direction:column; gap:12px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+                                        <div>
+                                            <span style="font-weight:600; font-size:13px; color:#334155;">Available Petty Cash Balance</span>
+                                            <p style="margin:2px 0 0 0; font-size:11px; color:#64748b;">Current system petty cash ledger</p>
+                                        </div>
+                                        <span id="lblAvailPettyCash" style="font-family:monospace; font-weight:bold; font-size:14px; color:#2e7d32;">Rs 0.00</span>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:4px;">
+                                        <div>
+                                            <span style="font-weight:600; font-size:13px; color:#334155;">Available Route Cash Collections</span>
+                                            <p style="margin:2px 0 0 0; font-size:11px; color:#64748b;">Collected route payments minus expenses</p>
+                                        </div>
+                                        <span id="lblAvailRouteCash" style="font-family:monospace; font-weight:bold; font-size:14px; color:#2e7d32;">Rs 0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Recorded Expenses list -->
+                            <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); height: 290px; display: flex; flex-direction: column;">
+                                <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-list-bullets"></i> Recorded Expenses</h4>
+                                <div style="flex:1; overflow-y:auto; font-size:12px;" id="listRecordedExpenses">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

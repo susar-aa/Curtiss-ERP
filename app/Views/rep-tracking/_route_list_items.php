@@ -88,6 +88,7 @@
          data-binding-id="<?= $route->route_binding_id ?: '' ?>"
          data-delivery-id="<?= $route->delivery_id ?: '' ?>"
          data-delivery-status="<?= $route->delivery_status ?: '' ?>"
+         data-vehicle-number="<?= htmlspecialchars($route->vehicle_number ?? '') ?>"
          data-merged="<?= $route->is_merged_route ? '1' : '0' ?>">
     </div>
 <?php endforeach; ?>
