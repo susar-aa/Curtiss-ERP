@@ -3694,14 +3694,14 @@
     function updateBindingSlotDropdowns() {
         // Collect all currently selected route IDs (excluding empty)
         const selectedIds = [];
-        document.querySelectorAll('.rb-slot-select').forEach(select => {
+        document.querySelectorAll('select.rb-slot-select').forEach(select => {
             if (select.value) {
                 selectedIds.push(select.value);
             }
         });
 
         // Update each select dropdown
-        document.querySelectorAll('.rb-slot-select').forEach(select => {
+        document.querySelectorAll('select.rb-slot-select').forEach(select => {
             const currentValue = select.value;
             // Iterate over all options in this select
             Array.from(select.options).forEach(option => {
@@ -3846,7 +3846,7 @@
         if (!boundName) { alert("Please enter a custom name for the bound route."); return; }
         
         const routeIds = [];
-        document.querySelectorAll('.rb-slot-select').forEach(select => {
+        document.querySelectorAll('select.rb-slot-select').forEach(select => {
             if (select.value) { routeIds.push(parseInt(select.value)); }
         });
         
