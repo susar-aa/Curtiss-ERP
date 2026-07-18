@@ -3675,11 +3675,44 @@
                 const id = item.id.replace('route_', '');
                 const dataDiv = document.getElementById('route_data_' + id);
                 if (dataDiv) {
-                    routes.push({ id: parseInt(id), name: dataDiv.getAttribute('data-rname'), rep: dataDiv.getAttribute('data-rep') });
+                    routes.push({ 
+                        id: parseInt(id), 
+                        name: dataDiv.getAttribute('data-rname'), 
+                        rep: dataDiv.getAttribute('data-rep'),
+                        date: dataDiv.getAttribute('data-date') || ''
+                    });
                 }
             }
         });
         return routes;
+    }
+
+    function updateBindingSlotDropdowns() {
+        // Collect all currently selected route IDs (excluding empty)
+        const selectedIds = [];
+        document.querySelectorAll('.rb-slot-select').forEach(select => {
+            if (select.value) {
+                selectedIds.push(select.value);
+            }
+        });
+
+        // Update each select dropdown
+        document.querySelectorAll('.rb-slot-select').forEach(select => {
+            const currentValue = select.value;
+            // Iterate over all options in this select
+            Array.from(select.options).forEach(option => {
+                if (!option.value) return; // Skip placeholder option
+                
+                // If this option is selected in another dropdown, hide/disable it
+                if (selectedIds.includes(option.value) && option.value !== currentValue) {
+                    option.disabled = true;
+                    option.style.display = 'none';
+                } else {
+                    option.disabled = false;
+                    option.style.display = 'block';
+                }
+            });
+        });
     }
 
     function openRouteBindingModal() {
@@ -3689,6 +3722,7 @@
         addBindingSlot();
         addBindingSlot();
         document.getElementById('routeBindingModal').style.display = 'flex';
+        updateBindingSlotDropdowns();
     }
 
     function closeRouteBindingModal() {
@@ -3702,7 +3736,8 @@
         
         let optionsHtml = '<option value="">-- Choose Route --</option>';
         eligibleRoutes.forEach(r => {
-            optionsHtml += `<option value="${r.id}">${r.name} (Rep: ${r.rep})</option>`;
+            const displayDate = r.date ? ` - ${r.date}` : '';
+            optionsHtml += `<option value="${r.id}">${r.name} (Rep: ${r.rep})${displayDate}</option>`;
         });
         
         const slotHtml = `
@@ -3719,11 +3754,13 @@
             </div>
         `;
         document.getElementById('rbSlotsContainer').insertAdjacentHTML('beforeend', slotHtml);
+        updateBindingSlotDropdowns();
     }
 
     function removeBindingSlot(index) {
         const el = document.getElementById(`rb_slot_col_${index}`);
         if (el) el.remove();
+        updateBindingSlotDropdowns();
     }
 
     function onBindingSlotRouteSelect(index, select) {
@@ -3735,6 +3772,7 @@
             billsContainer.style.display = 'none';
             billsContainer.innerHTML = '';
             icon.innerText = '+';
+            updateBindingSlotDropdowns();
             return;
         }
         
@@ -3796,6 +3834,7 @@
                 previewHtml += '</div>';
                 billsContainer.innerHTML = previewHtml;
             });
+        updateBindingSlotDropdowns();
     }
 
     function submitRouteBinding() {
