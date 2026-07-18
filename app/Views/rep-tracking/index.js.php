@@ -3669,18 +3669,22 @@
     // --- Route Binding Handlers ---
     function getEligibleBindingRoutes() {
         const routes = [];
+        const seenIds = new Set();
         document.querySelectorAll('.route-item').forEach(item => {
             const rType = item.getAttribute('data-route-type');
             if (rType && rType !== 'completed') {
-                const id = item.id.replace('route_', '');
-                const dataDiv = document.getElementById('route_data_' + id);
-                if (dataDiv) {
-                    routes.push({ 
-                        id: parseInt(id), 
-                        name: dataDiv.getAttribute('data-rname'), 
-                        rep: dataDiv.getAttribute('data-rep'),
-                        date: dataDiv.getAttribute('data-date') || ''
-                    });
+                const id = parseInt(item.id.replace('route_', ''));
+                if (id && !seenIds.has(id)) {
+                    seenIds.add(id);
+                    const dataDiv = document.getElementById('route_data_' + id);
+                    if (dataDiv) {
+                        routes.push({ 
+                            id: id, 
+                            name: dataDiv.getAttribute('data-rname'), 
+                            rep: dataDiv.getAttribute('data-rep'),
+                            date: dataDiv.getAttribute('data-date') || ''
+                        });
+                    }
                 }
             }
         });
@@ -3848,7 +3852,10 @@
         
         const uniqueRouteIds = [...new Set(routeIds)];
         if (uniqueRouteIds.length < 2) { alert("Please select at least 2 distinct routes to bind."); return; }
-        if (uniqueRouteIds.length !== routeIds.length) { alert("Please make sure you do not select the same route in multiple slots."); return; }
+        if (uniqueRouteIds.length !== routeIds.length) { 
+            alert("Please make sure you do not select the same route in multiple slots.\n\nAll Selected IDs: " + routeIds.join(', ') + "\nUnique IDs: " + uniqueRouteIds.join(', ')); 
+            return; 
+        }
         
         if (!confirm(`Are you sure you want to bind these ${uniqueRouteIds.length} routes together under "${boundName}"?`)) { return; }
         
