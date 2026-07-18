@@ -206,6 +206,96 @@ class RouteExpenseService {
             $this->db->execute();
             
             $expenseId = intval($this->db->lastInsertId());
+
+            // If type is 'Fuel', also create a record in fuel_records
+            if ($type === 'Fuel') {
+                $vehicleId = null;
+                $fuelTypeId = null;
+                $odo = 0;
+                if (!empty($vehicleNumber)) {
+                    $this->db->query("SELECT id, fuel_type_id, current_odometer FROM vehicles WHERE vehicle_number = :num LIMIT 1");
+                    $this->db->bind(':num', $vehicleNumber);
+                    $vRow = $this->db->single();
+                    if ($vRow) {
+                        $vehicleId = intval($vRow->id);
+                        $fuelTypeId = $vRow->fuel_type_id;
+                        $odo = intval($vRow->current_odometer);
+                    }
+                }
+                
+                if ($vehicleId) {
+                    $driverId = null;
+                    if ($repUserId > 0) {
+                        $this->db->query("SELECT id FROM employees WHERE email = (SELECT email FROM users WHERE id = :uid) LIMIT 1");
+                        $this->db->bind(':uid', $repUserId);
+                        $empRow = $this->db->single();
+                        if ($empRow) {
+                            $driverId = intval($empRow->id);
+                        }
+                    }
+
+                    if (empty($fuelTypeId)) {
+                        $this->db->query("SELECT id FROM fuel_types ORDER BY id ASC LIMIT 1");
+                        $ftRow = $this->db->single();
+                        $fuelTypeId = $ftRow ? intval($ftRow->id) : null;
+                    }
+
+                    $pricePerLiter = 370.00;
+                    if ($fuelTypeId) {
+                        $this->db->query("SELECT price_per_liter FROM fuel_types WHERE id = :id LIMIT 1");
+                        $this->db->bind(':id', $fuelTypeId);
+                        $priceRow = $this->db->single();
+                        if ($priceRow && floatval($priceRow->price_per_liter) > 0) {
+                            $pricePerLiter = floatval($priceRow->price_per_liter);
+                        }
+                    }
+
+                    $quantity = $amount / $pricePerLiter;
+                    $odometerReading = $odo;
+                    if ($route && floatval($route->start_meter) > $odometerReading) {
+                        $odometerReading = intval($route->start_meter);
+                    }
+
+                    // Insert into fuel_records
+                    $this->db->query("INSERT INTO fuel_records (vehicle_id, driver_id, odometer_reading, fuel_type_id, quantity, price_per_liter, total_amount, fuel_station, payment_source, bank_account_id, petty_cash_transaction_id, journal_entry_id, rep_route_id, remarks, created_by) 
+                                      VALUES (:vehicle_id, :driver_id, :odometer_reading, :fuel_type_id, :quantity, :price_per_liter, :total_amount, 'Route Fuel Station', :payment_source, NULL, :petty_cash_transaction_id, :journal_entry_id, :rep_route_id, 'Synced from route tracking expense', :created_by)");
+                    $this->db->bind(':vehicle_id', $vehicleId);
+                    $this->db->bind(':driver_id', $driverId);
+                    $this->db->bind(':odometer_reading', $odometerReading);
+                    $this->db->bind(':fuel_type_id', $fuelTypeId);
+                    $this->db->bind(':quantity', $quantity);
+                    $this->db->bind(':price_per_liter', $pricePerLiter);
+                    $this->db->bind(':total_amount', $amount);
+                    $this->db->bind(':payment_source', $source === 'Petty Cash' ? 'Petty Cash' : 'Cash in Hand');
+                    $this->db->bind(':petty_cash_transaction_id', $pettyCashTxId);
+                    $this->db->bind(':journal_entry_id', $journalEntryId);
+                    $this->db->bind(':rep_route_id', $routeId);
+                    $this->db->bind(':created_by', $userId);
+                    $this->db->execute();
+
+                    // Update Vehicle odometer if route end meter or start meter is higher than vehicle current odometer
+                    $newOdo = $odometerReading;
+                    if ($route && floatval($route->end_meter) > $newOdo) {
+                        $newOdo = intval($route->end_meter);
+                    }
+                    if ($newOdo > $odo) {
+                        $this->db->query("UPDATE vehicles SET current_odometer = :odo WHERE id = :id");
+                        $this->db->bind(':odo', $newOdo);
+                        $this->db->bind(':id', $vehicleId);
+                        $this->db->execute();
+                    }
+
+                    // Log vehicle history
+                    $vHistDesc = "Fuel filled during Route #RT-" . str_pad((string)$routeId, 5, '0', STR_PAD_LEFT) . ": " . number_format($quantity, 2) . " Liters.";
+                    $this->db->query("INSERT INTO vehicle_history (vehicle_id, event_type, description, created_by) 
+                                      VALUES (:vid, 'Fuel Refill', :desc, :uid)");
+                    $this->db->bind(':vid', $vehicleId);
+                    $this->db->bind(':desc', $vHistDesc);
+                    $this->db->bind(':uid', $userId);
+                    $this->db->execute();
+                }
+            }
+
             $this->db->commit();
 
             // Log Audit
@@ -253,6 +343,44 @@ class RouteExpenseService {
                     $this->db->rollBack();
                 }
                 return "Failed to delete linked petty cash transaction.";
+            }
+        }
+
+        // Delete from fuel_records if type is Fuel
+        if ($expense->expense_type === 'Fuel') {
+            try {
+                $this->db->beginTransaction();
+                
+                // Fetch vehicle_id from the fuel record to update odometer later
+                $this->db->query("SELECT vehicle_id FROM fuel_records WHERE journal_entry_id = :jid LIMIT 1");
+                $this->db->bind(':jid', $expense->journal_entry_id);
+                $frRow = $this->db->single();
+                
+                $this->db->query("DELETE FROM fuel_records WHERE journal_entry_id = :jid");
+                $this->db->bind(':jid', $expense->journal_entry_id);
+                $this->db->execute();
+
+                if ($frRow) {
+                    $vid = intval($frRow->vehicle_id);
+                    // Recompute vehicle odometer (revert to previous highest odometer reading from remaining fuel records)
+                    $this->db->query("SELECT MAX(odometer_reading) as max_odo FROM fuel_records WHERE vehicle_id = :vid");
+                    $this->db->bind(':vid', $vid);
+                    $maxRow = $this->db->single();
+                    $newOdo = $maxRow && $maxRow->max_odo ? intval($maxRow->max_odo) : 0;
+
+                    // If odometer was updated, also update vehicle table
+                    $this->db->query("UPDATE vehicles SET current_odometer = :odo WHERE id = :id");
+                    $this->db->bind(':odo', $newOdo);
+                    $this->db->bind(':id', $vid);
+                    $this->db->execute();
+                }
+
+                $this->db->commit();
+            } catch (Exception $ex) {
+                if ($this->db->inTransaction()) {
+                    $this->db->rollBack();
+                }
+                // Log/proceed
             }
         }
 

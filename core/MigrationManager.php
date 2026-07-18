@@ -969,6 +969,105 @@ class MigrationManager {
                     INDEX (petty_cash_transaction_id),
                     INDEX (journal_entry_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'create_fuel_types' => "
+                CREATE TABLE IF NOT EXISTS fuel_types (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    fuel_type VARCHAR(100) NOT NULL UNIQUE,
+                    price_per_liter DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'seed_fuel_types' => function(PDO $dbh) {
+                $stmt = $dbh->prepare("SELECT COUNT(*) as count FROM fuel_types");
+                $stmt->execute();
+                $count = intval($stmt->fetch(PDO::FETCH_OBJ)->count ?? 0);
+                if ($count === 0) {
+                    $defaultTypes = [
+                        ['Petrol 92', 310.00],
+                        ['Petrol 95', 365.00],
+                        ['Auto Diesel', 320.00],
+                        ['Super Diesel', 350.00]
+                    ];
+                    foreach ($defaultTypes as $ft) {
+                        $stmtInsert = $dbh->prepare("INSERT INTO fuel_types (fuel_type, price_per_liter) VALUES (?, ?)");
+                        $stmtInsert->execute($ft);
+                    }
+                }
+                return true;
+            },
+            'create_fuel_price_history' => "
+                CREATE TABLE IF NOT EXISTS fuel_price_history (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    fuel_type_id INT NOT NULL,
+                    price_per_liter DECIMAL(10,2) NOT NULL,
+                    effective_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_by INT NULL,
+                    INDEX (fuel_type_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'alter_vehicles_table_v2' => function(PDO $dbh) {
+                $alters = [
+                    'registration_number' => "ALTER TABLE vehicles ADD COLUMN registration_number VARCHAR(100) NULL AFTER vehicle_number",
+                    'chassis_number' => "ALTER TABLE vehicles ADD COLUMN chassis_number VARCHAR(100) NULL AFTER registration_number",
+                    'engine_number' => "ALTER TABLE vehicles ADD COLUMN engine_number VARCHAR(100) NULL AFTER chassis_number",
+                    'assigned_driver_id' => "ALTER TABLE vehicles ADD COLUMN assigned_driver_id INT NULL AFTER engine_number",
+                    'fuel_type_id' => "ALTER TABLE vehicles ADD COLUMN fuel_type_id INT NULL AFTER assigned_driver_id",
+                    'fuel_tank_capacity' => "ALTER TABLE vehicles ADD COLUMN fuel_tank_capacity DECIMAL(10,2) NULL AFTER fuel_type_id",
+                    'avg_fuel_consumption' => "ALTER TABLE vehicles ADD COLUMN avg_fuel_consumption DECIMAL(10,2) NULL AFTER fuel_tank_capacity",
+                    'current_odometer' => "ALTER TABLE vehicles ADD COLUMN current_odometer INT NOT NULL DEFAULT 0 AFTER avg_fuel_consumption",
+                    'next_service_mileage' => "ALTER TABLE vehicles ADD COLUMN next_service_mileage INT NULL AFTER current_odometer",
+                    'insurance_expiry' => "ALTER TABLE vehicles ADD COLUMN insurance_expiry DATE NULL AFTER next_service_mileage",
+                    'license_expiry' => "ALTER TABLE vehicles ADD COLUMN license_expiry DATE NULL AFTER insurance_expiry"
+                ];
+                foreach ($alters as $col => $sql) {
+                    $stmt = $dbh->prepare("SHOW COLUMNS FROM vehicles LIKE ?");
+                    $stmt->execute([$col]);
+                    if (!$stmt->fetch()) {
+                        $dbh->exec($sql);
+                    }
+                }
+                $dbh->exec("ALTER TABLE vehicles MODIFY COLUMN status ENUM('Active', 'Inactive', 'Under Maintenance') DEFAULT 'Active'");
+                return true;
+            },
+            'create_fuel_records' => "
+                CREATE TABLE IF NOT EXISTS fuel_records (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    vehicle_id INT NOT NULL,
+                    driver_id INT NULL,
+                    odometer_reading INT NOT NULL,
+                    fuel_type_id INT NOT NULL,
+                    quantity DECIMAL(10,2) NOT NULL,
+                    price_per_liter DECIMAL(10,2) NOT NULL,
+                    total_amount DECIMAL(10,2) NOT NULL,
+                    fuel_station VARCHAR(255) NULL,
+                    payment_source ENUM('Petty Cash', 'Cash in Hand', 'Bank Account') NOT NULL DEFAULT 'Petty Cash',
+                    bank_account_id INT NULL,
+                    petty_cash_transaction_id INT NULL,
+                    journal_entry_id INT NULL,
+                    rep_route_id INT NULL,
+                    remarks TEXT NULL,
+                    created_by INT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX (vehicle_id),
+                    INDEX (driver_id),
+                    INDEX (fuel_type_id),
+                    INDEX (bank_account_id),
+                    INDEX (petty_cash_transaction_id),
+                    INDEX (journal_entry_id),
+                    INDEX (rep_route_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'create_vehicle_history' => "
+                CREATE TABLE IF NOT EXISTS vehicle_history (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    vehicle_id INT NOT NULL,
+                    event_type VARCHAR(100) NOT NULL,
+                    description TEXT NOT NULL,
+                    created_by INT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX (vehicle_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             "
         ];
     }
