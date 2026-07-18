@@ -120,7 +120,7 @@ class RepBindingService {
             // Write Audit Log
             $routesDescription = implode(', ', array_map(function($r) { return "{$r->route_name} (#{$r->id})"; }, $originalRoutes));
             $auditDesc = "Bound routes [{$routesDescription}] into combined route '{$bindingName}' (#{$newRouteId})";
-            $db->query("INSERT INTO audit_logs (user_id, action, module, description, reference_id, ip_address) 
+            $db->query("INSERT INTO audit_logs (user_id, action, module, description, record_id, ip_address) 
                         VALUES (:uid, 'ROUTE_BIND', 'Logistics', :desc, :ref, :ip)");
             $db->bind(':uid', $userId);
             $db->bind(':desc', $auditDesc);
@@ -237,7 +237,7 @@ class RepBindingService {
             // Write Audit Log
             $routesDescription = implode(', ', array_map(function($r) { return "{$r['route_name']} (#{$r['id']})"; }, $snapshot['original_routes']));
             $auditDesc = "Undid route binding '{$binding->name}' (#{$bindingId}), restoring constituent routes [{$routesDescription}]";
-            $db->query("INSERT INTO audit_logs (user_id, action, module, description, reference_id, ip_address) 
+            $db->query("INSERT INTO audit_logs (user_id, action, module, description, record_id, ip_address) 
                         VALUES (:uid, 'ROUTE_UNBIND', 'Logistics', :desc, :ref, :ip)");
             $db->bind(':uid', $userId);
             $db->bind(':desc', $auditDesc);

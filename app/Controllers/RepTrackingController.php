@@ -1154,7 +1154,7 @@ class RepTrackingController extends Controller {
                     // Log the bypass action in audit_logs
                     $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
                     $bypassReason = $hasTimeout ? "Escalation/Timeout Bypass (>24h)" : "Manual Administrative Override";
-                    $db->query("INSERT INTO audit_logs (user_id, action, module, description, reference_id, ip_address) 
+                    $db->query("INSERT INTO audit_logs (user_id, action, module, description, record_id, ip_address) 
                                 VALUES (:uid, 'ADMIN_OVERRIDE_COLLECTIONS', 'Logistics', :desc, :ref, :ip)");
                     $db->bind(':uid', $_SESSION['user_id'] ?? null);
                     $db->bind(':desc', "$bypassReason bypassed unverified collections check for route ID: " . $routeId . " moving to status: " . $targetStatus);
@@ -1231,7 +1231,7 @@ class RepTrackingController extends Controller {
     private function logRouteActivity($action, $module, $desc, $refId = null) {
         try {
             $db = new Database();
-            $db->query("INSERT INTO audit_logs (user_id, action, module, description, reference_id, ip_address) 
+            $db->query("INSERT INTO audit_logs (user_id, action, module, description, record_id, ip_address) 
                         VALUES (:uid, :action, :module, :desc, :ref, :ip)");
             $db->bind(':uid', $_SESSION['user_id'] ?? null);
             $db->bind(':action', $action);

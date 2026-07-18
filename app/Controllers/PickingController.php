@@ -653,7 +653,7 @@ class PickingController extends Controller {
 
     protected function logPickingActivity($action, $module, $desc, $refId = null) {
         try {
-            $this->db->query("INSERT INTO audit_logs (user_id, action, module, description, reference_id, ip_address) 
+            $this->db->query("INSERT INTO audit_logs (user_id, action, module, description, record_id, ip_address) 
                               VALUES (:uid, :action, :module, :desc, :ref, :ip)");
             $this->db->bind(':uid', null); // System/PWA action
             $this->db->bind(':action', $action);
