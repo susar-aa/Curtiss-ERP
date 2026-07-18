@@ -384,7 +384,7 @@
                     <select name="fuel_type_id" id="f_fuel_type" class="form-control">
                         <option value="">-- None --</option>
                         <?php foreach ($data['fuel_types'] as $ft): ?>
-                            <option value="<?= $ft->id ?>"><?= htmlspecialchars($ft->name) ?> (Rs. <?= number_format($ft->price_per_liter, 2) ?>/L)</option>
+                            <option value="<?= $ft->id ?>"><?= htmlspecialchars($ft->fuel_type) ?> (Rs. <?= number_format($ft->price_per_liter, 2) ?>/L)</option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -461,7 +461,7 @@
                     <select id="entry_fuel_type" class="form-control" required onchange="onFuelTypeChanged()">
                         <option value="" disabled selected>Select Type</option>
                         <?php foreach ($data['fuel_types'] as $ft): ?>
-                            <option value="<?= $ft->id ?>" data-price="<?= $ft->price_per_liter ?>"><?= htmlspecialchars($ft->name) ?></option>
+                            <option value="<?= $ft->id ?>" data-price="<?= $ft->price_per_liter ?>"><?= htmlspecialchars($ft->fuel_type) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -800,7 +800,7 @@
                         <div style="margin-bottom:10px;"><strong style="color:var(--c-text-sub);">Assigned Driver:</strong><br>${escapeHtml(v.driver_name || '--')}</div>
                     </div>
                     <div>
-                        <div style="margin-bottom:10px;"><strong style="color:var(--c-text-sub);">Fuel Type:</strong><br>${escapeHtml(v.fuel_name || '--')}</div>
+                        <div style="margin-bottom:10px;"><strong style="color:var(--c-text-sub);">Fuel Type:</strong><br>${escapeHtml(v.fuel_type_name || '--')}</div>
                         <div style="margin-bottom:10px;"><strong style="color:var(--c-text-sub);">Tank Capacity:</strong><br>${v.fuel_tank_capacity ? v.fuel_tank_capacity + ' Liters' : '--'}</div>
                         <div style="margin-bottom:10px;"><strong style="color:var(--c-text-sub);">Odometer:</strong><br>${numberFormat(v.current_odometer)} Km</div>
                         <div style="margin-bottom:10px;"><strong style="color:var(--c-text-sub);">Next Service Mileage:</strong><br>${v.next_service_mileage ? numberFormat(v.next_service_mileage) + ' Km' : '--'}</div>
@@ -1003,11 +1003,11 @@
                         const date = ft.updated_at ? new Date(ft.updated_at).toLocaleString() : '--';
                         html += `
                             <tr>
-                                <td><strong>${escapeHtml(ft.name)}</strong></td>
+                                <td><strong>${escapeHtml(ft.fuel_type)}</strong></td>
                                 <td>Rs. ${parseFloat(ft.price_per_liter).toFixed(2)}</td>
                                 <td>${date}</td>
                                 <td style="text-align:center;">
-                                    <button class="btn btn-outline btn-small" onclick="editFuelType(${ft.id}, '${escapeHtml(ft.name)}', ${ft.price_per_liter})"><i class="ph ph-pencil"></i></button>
+                                    <button class="btn btn-outline btn-small" onclick="editFuelType(${ft.id}, '${escapeHtml(ft.fuel_type)}', ${ft.price_per_liter})"><i class="ph ph-pencil"></i></button>
                                     <button class="btn btn-danger btn-small" onclick="deleteFuelType(${ft.id})"><i class="ph ph-trash"></i></button>
                                 </td>
                             </tr>
@@ -1024,7 +1024,7 @@
         event.preventDefault();
         const payload = {
             id: document.getElementById('ft_id').value ? parseInt(document.getElementById('ft_id').value) : null,
-            name: document.getElementById('ft_name').value,
+            fuel_type: document.getElementById('ft_name').value,
             price_per_liter: parseFloat(document.getElementById('ft_price').value)
         };
 
