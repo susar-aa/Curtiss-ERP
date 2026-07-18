@@ -520,7 +520,7 @@
 <script>
     const CSRF_TOKEN = '<?= $_SESSION['csrf_token'] ?? '' ?>';
     
-    // fetch wrapper
+    // fetch wrapper with diagnostic console logging
     function fetchSecure(url, options = {}) {
         options.headers = options.headers || {};
         options.headers['X-CSRF-TOKEN'] = CSRF_TOKEN;
@@ -534,7 +534,31 @@
                 }
             } catch (e) {}
         }
-        return fetch(url, options);
+        
+        console.log(`[AJAX Request] URL: ${url}`, {
+            method: options.method || 'GET',
+            headers: options.headers,
+            body: options.body ? JSON.parse(options.body) : null
+        });
+
+        return fetch(url, options)
+            .then(res => {
+                console.log(`[AJAX Response Status] ${res.status} (${res.statusText}) for URL: ${url}`);
+                const resClone = res.clone();
+                resClone.text().then(text => {
+                    try {
+                        const parsed = JSON.parse(text);
+                        console.log(`[AJAX Response JSON] URL: ${url}`, parsed);
+                    } catch (e) {
+                        console.warn(`[AJAX Response Text] URL: ${url} (non-JSON)`, text.substring(0, 1000));
+                    }
+                });
+                return res;
+            })
+            .catch(err => {
+                console.error(`[AJAX Error] URL: ${url}`, err);
+                throw err;
+            });
     }
 
     // Tab Switching
@@ -563,13 +587,21 @@
         searchTimeout = setTimeout(() => {
             const query = encodeURIComponent(e.target.value);
             const url = `?search=${query}&page=1`;
+            console.log(`[Fleet Search Request] Query: ${e.target.value}, URL: ${url}`);
             fetch(url)
-                .then(response => response.text())
+                .then(response => {
+                    console.log(`[Fleet Search Response] Status: ${response.status} for URL: ${url}`);
+                    return response.text();
+                })
                 .then(html => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
                     document.getElementById('vehicleListBody').innerHTML = doc.getElementById('vehicleListBody').innerHTML;
                     document.getElementById('paginationContainer').innerHTML = doc.getElementById('paginationContainer').innerHTML;
+                    console.log(`[Fleet Search DOM Update Success]`);
+                })
+                .catch(err => {
+                    console.error(`[Fleet Search Error]`, err);
                 });
         }, 300);
     });
