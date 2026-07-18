@@ -4,15 +4,16 @@ class RepBindingService {
         $db = new Database();
         $db->beginTransaction();
         try {
-            // Validate Route Name uniqueness
-            $db->query("SELECT id FROM rep_daily_routes WHERE route_name = :name LIMIT 1");
-            $db->bind(':name', $bindingName);
-            if ($db->single()) {
-                throw new Exception("The route name '{$bindingName}' is already taken. Please enter a unique route name.");
-            }
-
             // Fetch original routes details
             $routeIdsList = implode(',', array_map('intval', $routeIds));
+
+            // Validate Route Name uniqueness (excluding the routes being bound and any completed/finalized/bound ones)
+            $db->query("SELECT id FROM rep_daily_routes WHERE route_name = :name AND status NOT IN ('Completed', 'Finalized', 'Bound') AND id NOT IN ($routeIdsList) LIMIT 1");
+            $db->bind(':name', $bindingName);
+            if ($db->single()) {
+                throw new Exception("The route name '{$bindingName}' is already taken by another active route. Please enter a unique route name.");
+            }
+
             $db->query("SELECT id, user_id, route_name, start_meter, start_time, status, route_binding_id, bound_to_route_id FROM rep_daily_routes WHERE id IN ($routeIdsList)");
             $originalRoutes = $db->resultSet() ?: [];
             if (count($originalRoutes) < 2) {
