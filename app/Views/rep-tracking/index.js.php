@@ -476,11 +476,18 @@
                 .then(res => res.json())
                 .then(resData => {
                     if (resData.status === 'success') {
-                        document.getElementById('brsConstituentsList').innerText = resData.constituents.map(c => `${c.route_name} (ID: #${c.id})`).join(', ');
-                        document.getElementById('brsTotalCustomers').innerText = resData.total_customers;
-                        document.getElementById('brsTotalInvoices').innerText = resData.total_invoices;
-                        document.getElementById('brsTotalValue').innerText = 'Rs ' + parseFloat(resData.total_value).toLocaleString('en-IN', {minimumFractionDigits:2});
-                        document.getElementById('brsTotalProducts').innerText = `${resData.unique_products} unique items (Total Qty: ${resData.total_products_qty})`;
+                        const elConstituents = document.getElementById('brsConstituentsList');
+                        const elTotalCustomers = document.getElementById('brsTotalCustomers');
+                        const elTotalInvoices = document.getElementById('brsTotalInvoices');
+                        const elTotalValue = document.getElementById('brsTotalValue');
+                        const elTotalProducts = document.getElementById('brsTotalProducts');
+
+                        if (elConstituents) elConstituents.innerText = resData.constituents.map(c => `${c.route_name} (ID: #${c.id})`).join(', ');
+                        if (elTotalCustomers) elTotalCustomers.innerText = resData.total_customers;
+                        if (elTotalInvoices) elTotalInvoices.innerText = resData.total_invoices;
+                        if (elTotalValue) elTotalValue.innerText = 'Rs ' + parseFloat(resData.total_value).toLocaleString('en-IN', {minimumFractionDigits:2});
+                        if (elTotalProducts) elTotalProducts.innerText = `${resData.unique_products} unique items (Total Qty: ${resData.total_products_qty})`;
+                        
                         if (boundSummary) {
                             boundSummary.style.display = 'block';
                         }

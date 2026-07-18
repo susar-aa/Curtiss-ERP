@@ -342,6 +342,40 @@
 
                 <!-- TAB 1: DETAILS -->
                 <div class="workspace-tab-panel" id="tabpanel-1" style="display:none;">
+                    <!-- Bound Route Summary Card -->
+                    <div id="boundRouteSummaryContainer" style="display:none; border: 1px solid #bfdbfe; border-radius: 8px; padding: 20px; background: #eff6ff; margin-bottom: 20px; box-shadow: var(--shadow-sm);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                            <div>
+                                <h4 style="margin: 0; font-size: 15px; font-weight: bold; color: #1e40af; display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-solid fa-link"></i> Bound Route Summary Information
+                                </h4>
+                                <p style="margin: 5px 0 0 0; font-size: 12px; color: #1e3a8a;">This is a merged route containing multiple bound routes. System actions apply to all constituent routes.</p>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; background: #fff; padding: 15px; border-radius: 6px; border: 0.5px solid #dbeafe;">
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Constituent Routes</span>
+                                <strong id="brsConstituentsList" style="font-size: 13px; color: #1e293b; margin-top: 2px;">-</strong>
+                            </div>
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Customers</span>
+                                <strong id="brsTotalCustomers" style="font-size: 13px; color: #1e293b; margin-top: 2px;">-</strong>
+                            </div>
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Invoices</span>
+                                <strong id="brsTotalInvoices" style="font-size: 13px; color: #1e293b; margin-top: 2px;">-</strong>
+                            </div>
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Merged Value</span>
+                                <strong id="brsTotalValue" style="font-size: 13px; color: #10b981; margin-top: 2px;">-</strong>
+                            </div>
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Items Breakdown</span>
+                                <strong id="brsTotalProducts" style="font-size: 13px; color: #1e293b; margin-top: 2px;">-</strong>
+                            </div>
+                        </div>
+                    </div>
+
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
                         <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff;">
                             <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-clipboard-text"></i> Route & Representative Info</h4>
