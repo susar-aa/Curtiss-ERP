@@ -1258,13 +1258,16 @@ if ($inv && isset($inv->id)) {
                     <button type="submit" name="save_action" value="new" class="btn btn-sm">
                         <i class="ph ph-plus"></i> Save &amp; New
                     </button>
-                    <?php if (!$inv): ?>
-                        <button type="submit" name="save_action" value="print" class="btn btn-sm">
-                            <i class="ph ph-printer"></i> Save &amp; Print
-                        </button>
-                        <button type="submit" name="save_action" value="whatsapp" class="btn btn-sm btn-wa">
-                            <i class="ph ph-whatsapp-logo"></i> Save &amp; WhatsApp
-                        </button>
+                    <button type="submit" name="save_action" value="print" class="btn btn-sm">
+                        <i class="ph ph-printer"></i> Save &amp; Print
+                    </button>
+                    <button type="submit" name="save_action" value="whatsapp" class="btn btn-sm btn-wa">
+                        <i class="ph ph-whatsapp-logo"></i> Save &amp; WhatsApp
+                    </button>
+                    <?php if ($inv): ?>
+                        <a href="<?= APP_URL ?>/<?= ($type === 'sales_order') ? 'salesorder' : 'sales' ?>/show/<?= $inv->id ?>" target="_blank" class="btn btn-sm">
+                            <i class="ph ph-printer"></i> Print
+                        </a>
                     <?php endif; ?>
                     <?php if ($inv): ?>
                         <button type="button" class="btn btn-sm btn-danger" onclick="promptDeleteInvoice(<?= $inv->id ?>)">
@@ -1587,7 +1590,7 @@ if ($inv && isset($inv->id)) {
         const waPhone = "<?= htmlspecialchars($_GET['wa_phone']) ?>";
         const waName = "<?= htmlspecialchars($_GET['wa_name']) ?>";
         const waId = "<?= htmlspecialchars($_GET['wa_id']) ?>";
-        const publicInvoiceLink = "<?= APP_URL ?>/sales/show/" + waId;
+        const publicInvoiceLink = "<?= APP_URL ?>/<?= ($type === 'sales_order') ? 'salesorder' : 'sales' ?>/show/" + waId;
 
         if (waPhone && waPhone.trim() !== '') {
             let cleanPhone = waPhone.replace(/[^\d+]/g, '');
@@ -1608,7 +1611,7 @@ if ($inv && isset($inv->id)) {
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         const printId = "<?= htmlspecialchars($_GET['print_id']) ?>";
-        const printUrl = "<?= APP_URL ?>/sales/show/" + printId;
+        const printUrl = "<?= APP_URL ?>/<?= ($type === 'sales_order') ? 'salesorder' : 'sales' ?>/show/" + printId;
         window.open(printUrl, '_blank');
     });
 </script>

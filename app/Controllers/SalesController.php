@@ -546,6 +546,23 @@ class SalesController extends Controller {
                             $newUrl .= '&back_url=' . urlencode($backUrl);
                         }
                         header('Location: ' . $newUrl);
+                    } else if ($saveAction === 'print') {
+                        $printUrl = ($editingId > 0) ? (APP_URL . '/sales/edit/' . $editingId . '?print_id=' . $orderId . '&type=sales_order') : (APP_URL . '/sales/create?print_id=' . $orderId . '&type=sales_order');
+                        if (!empty($backUrl)) {
+                            $printUrl .= '&back_url=' . urlencode($backUrl);
+                        }
+                        header('Location: ' . $printUrl);
+                    } else if ($saveAction === 'whatsapp') {
+                        $this->db->query("SELECT phone, name FROM customers WHERE id = :id");
+                        $this->db->bind(':id', $customerId);
+                        $custRow = $this->db->single();
+                        $custPhone = $custRow ? $custRow->phone : '';
+                        $custName = $custRow ? $custRow->name : '';
+                        $waUrl = ($editingId > 0) ? (APP_URL . '/sales/edit/' . $editingId . '?wa_id=' . $orderId . '&wa_phone=' . urlencode($custPhone) . '&wa_name=' . urlencode($custName) . '&type=sales_order') : (APP_URL . '/sales/create?wa_id=' . $orderId . '&wa_phone=' . urlencode($custPhone) . '&wa_name=' . urlencode($custName) . '&type=sales_order');
+                        if (!empty($backUrl)) {
+                            $waUrl .= '&back_url=' . urlencode($backUrl);
+                        }
+                        header('Location: ' . $waUrl);
                     } else {
                         if (!empty($backUrl)) {
                             header('Location: ' . $backUrl);
@@ -713,6 +730,29 @@ class SalesController extends Controller {
                                     $newUrl .= '&back_url=' . urlencode($backUrl);
                                 }
                                 header('Location: ' . $newUrl);
+                            } else if ($saveAction === 'print') {
+                                $printUrl = APP_URL . '/sales/edit/' . $editingId . '?print_id=' . $editingId . '&type=' . urlencode($_POST['type'] ?? 'invoice');
+                                if ($routeId) {
+                                    $printUrl .= '&route_id=' . $routeId;
+                                }
+                                if (!empty($backUrl)) {
+                                    $printUrl .= '&back_url=' . urlencode($backUrl);
+                                }
+                                header('Location: ' . $printUrl);
+                            } elseif ($saveAction === 'whatsapp') {
+                                $this->db->query("SELECT phone, name FROM customers WHERE id = :id");
+                                $this->db->bind(':id', $customerId);
+                                $custRow = $this->db->single();
+                                $custPhone = $custRow ? $custRow->phone : '';
+                                $custName = $custRow ? $custRow->name : '';
+                                $waUrl = APP_URL . '/sales/edit/' . $editingId . '?wa_id=' . $editingId . '&wa_phone=' . urlencode($custPhone) . '&wa_name=' . urlencode($custName) . '&type=' . urlencode($_POST['type'] ?? 'invoice');
+                                if ($routeId) {
+                                    $waUrl .= '&route_id=' . $routeId;
+                                }
+                                if (!empty($backUrl)) {
+                                    $waUrl .= '&back_url=' . urlencode($backUrl);
+                                }
+                                header('Location: ' . $waUrl);
                             } else {
                                 if (!empty($backUrl)) {
                                     header('Location: ' . $backUrl);
