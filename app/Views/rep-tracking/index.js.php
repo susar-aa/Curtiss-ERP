@@ -50,6 +50,11 @@
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
         iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34]
     });
+    const pathOrangeIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34]
+    });
 
     let isFetchingRoutes = false;
     function fetchRoutesList(pageNumber = 1) {
@@ -3654,12 +3659,16 @@
             let stepClass = 'path-step-invoice';
             if (wp.type === 'start') { icon = pathGreenIcon; stepClass = 'path-step-start'; }
             else if (wp.type === 'end') { icon = pathRedIcon; stepClass = 'path-step-end'; }
+            else if (wp.type === 'unproductive') { icon = pathOrangeIcon; stepClass = 'path-step-unproductive'; }
+
+            const wpTitle = wp.label || wp.name || '';
+            const wpDesc = wp.detail || wp.description || '';
 
             const marker = L.marker(latlng, { icon: icon }).addTo(routeMap);
-            marker.bindPopup(`<strong>${wp.name}</strong><br>${wp.description}<br><span style="font-size:10px; color:#666;">${wp.time}</span>`);
+            marker.bindPopup(`<strong>${wpTitle}</strong><br>${wpDesc}<br><span style="font-size:10px; color:#666;">${wp.time}</span>`);
             routeMapLayers.push(marker);
 
-            stepOl.innerHTML += `<li class="${stepClass}"><strong>${wp.time}</strong> - ${wp.name} (${wp.description})</li>`;
+            stepOl.innerHTML += `<li class="${stepClass}"><strong>${wp.time}</strong> - ${wpTitle} (${wpDesc})</li>`;
         });
 
         if (latlngs.length > 1) {

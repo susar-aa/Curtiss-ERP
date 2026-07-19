@@ -267,6 +267,35 @@ class RepTracking {
                 ];
             }
 
+            $this->db->query("
+                SELECT uv.id, uv.reason, uv.custom_reason, uv.visit_time, uv.latitude, uv.longitude, c.name as customer_name
+                FROM unproductive_visits uv
+                JOIN customers c ON uv.customer_id = c.id
+                WHERE uv.route_id = :rid
+                  AND uv.latitude IS NOT NULL AND uv.longitude IS NOT NULL
+                ORDER BY uv.visit_time ASC
+            ");
+            $this->db->bind(':rid', $rid);
+            $unprodVisits = $this->db->resultSet() ?: [];
+
+            foreach ($unprodVisits as $uv) {
+                $reasonStr = $uv->reason;
+                if ($reasonStr === 'Other' && !empty($uv->custom_reason)) {
+                    $reasonStr .= ' (' . $uv->custom_reason . ')';
+                }
+                $waypoints[] = [
+                    'type' => 'unproductive',
+                    'id' => (int) $uv->id,
+                    'lat' => (float) $uv->latitude,
+                    'lng' => (float) $uv->longitude,
+                    'time' => $uv->visit_time,
+                    'label' => 'Unproductive: ' . $reasonStr,
+                    'detail' => $uv->customer_name,
+                    'reason' => $reasonStr,
+                    'custom_reason' => $uv->custom_reason
+                ];
+            }
+
             if (!empty($route->end_lat) && !empty($route->end_lng)) {
                 $waypoints[] = [
                     'type' => 'end',

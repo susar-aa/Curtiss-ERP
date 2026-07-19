@@ -636,7 +636,8 @@ class RepDashboardController extends Controller {
             'customers' => [],
             'routes' => [],
             'invoices' => [],
-            'payments' => []
+            'payments' => [],
+            'unproductive_visits' => []
         ];
 
         try {
@@ -1410,6 +1411,39 @@ class RepDashboardController extends Controller {
                         'local_id' => $localId,
                         'server_id' => $serverId,
                         'uuid' => $paymentUuid
+                    ];
+                }
+            }
+
+            // 5. Process Unproductive Visits
+            if (isset($payload['unproductive_visits']) && is_array($payload['unproductive_visits'])) {
+                require_once dirname(__DIR__) . '/Models/UnproductiveVisit.php';
+                foreach ($payload['unproductive_visits'] as $uv) {
+                    $uuid = $uv['uuid'] ?? null;
+                    if (empty($uuid)) continue;
+
+                    $custServerId = $getCustomerServerId(intval($uv['customer_id']));
+                    $localRouteId = intval($uv['local_route_id'] ?? 0);
+                    $serverRouteIdFromApp = intval($uv['server_route_id'] ?? 0);
+                    $visitTime = $uv['visit_time'] ?? date('Y-m-d H:i:s');
+
+                    $routeServerId = $resolveRouteId($serverRouteIdFromApp, '', $localRouteId, $userId, $visitTime);
+
+                    $insertId = \App\Models\UnproductiveVisit::createOrUpdate([
+                        'uuid' => $uuid,
+                        'rep_id' => $userId,
+                        'route_id' => $routeServerId ?: null,
+                        'customer_id' => $custServerId,
+                        'reason' => $uv['reason'] ?? 'Other',
+                        'custom_reason' => $uv['custom_reason'] ?? '',
+                        'latitude' => isset($uv['latitude']) ? floatval($uv['latitude']) : null,
+                        'longitude' => isset($uv['longitude']) ? floatval($uv['longitude']) : null,
+                        'visit_time' => $visitTime
+                    ]);
+
+                    $mappings['unproductive_visits'][] = [
+                        'uuid' => $uuid,
+                        'server_id' => $insertId
                     ];
                 }
             }
