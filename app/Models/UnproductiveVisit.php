@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
-use Core\Model;
 use PDO;
 
-class UnproductiveVisit extends Model
+class UnproductiveVisit
 {
     protected static $table = 'unproductive_visits';
+
+    protected static function getDB()
+    {
+        $db = new \Database();
+        return $db->getDbHandler();
+    }
 
     /**
      * Create or update unproductive visit record by UUID
@@ -15,6 +20,9 @@ class UnproductiveVisit extends Model
     public static function createOrUpdate(array $data)
     {
         $db = static::getDB();
+
+        $repUserId = $data['rep_user_id'] ?? $data['rep_id'] ?? null;
+        $repRouteId = $data['rep_route_id'] ?? $data['route_id'] ?? null;
 
         // Check if uuid exists
         $stmt = $db->prepare("SELECT id FROM unproductive_visits WHERE uuid = :uuid");
@@ -24,8 +32,8 @@ class UnproductiveVisit extends Model
         if ($existing) {
             $updateStmt = $db->prepare("
                 UPDATE unproductive_visits SET 
-                    rep_id = :rep_id,
-                    route_id = :route_id,
+                    rep_user_id = :rep_user_id,
+                    rep_route_id = :rep_route_id,
                     customer_id = :customer_id,
                     reason = :reason,
                     custom_reason = :custom_reason,
@@ -35,8 +43,8 @@ class UnproductiveVisit extends Model
                 WHERE uuid = :uuid
             ");
             $updateStmt->execute([
-                ':rep_id' => $data['rep_id'],
-                ':route_id' => $data['route_id'] ?? null,
+                ':rep_user_id' => $repUserId,
+                ':rep_route_id' => $repRouteId,
                 ':customer_id' => $data['customer_id'],
                 ':reason' => $data['reason'],
                 ':custom_reason' => $data['custom_reason'] ?? '',
@@ -49,15 +57,15 @@ class UnproductiveVisit extends Model
         } else {
             $insertStmt = $db->prepare("
                 INSERT INTO unproductive_visits (
-                    uuid, rep_id, route_id, customer_id, reason, custom_reason, latitude, longitude, visit_time, created_at
+                    uuid, rep_user_id, rep_route_id, customer_id, reason, custom_reason, latitude, longitude, visit_time, sync_status, created_at
                 ) VALUES (
-                    :uuid, :rep_id, :route_id, :customer_id, :reason, :custom_reason, :latitude, :longitude, :visit_time, NOW()
+                    :uuid, :rep_user_id, :rep_route_id, :customer_id, :reason, :custom_reason, :latitude, :longitude, :visit_time, 'Synced', NOW()
                 )
             ");
             $insertStmt->execute([
                 ':uuid' => $data['uuid'],
-                ':rep_id' => $data['rep_id'],
-                ':route_id' => $data['route_id'] ?? null,
+                ':rep_user_id' => $repUserId,
+                ':rep_route_id' => $repRouteId,
                 ':customer_id' => $data['customer_id'],
                 ':reason' => $data['reason'],
                 ':custom_reason' => $data['custom_reason'] ?? '',
@@ -79,8 +87,8 @@ class UnproductiveVisit extends Model
             SELECT uv.*, c.name as customer_name, c.address as customer_address, u.username as rep_name
             FROM unproductive_visits uv
             LEFT JOIN customers c ON uv.customer_id = c.id
-            LEFT JOIN users u ON uv.rep_id = u.id
-            WHERE uv.route_id = :route_id
+            LEFT JOIN users u ON uv.rep_user_id = u.id
+            WHERE uv.rep_route_id = :route_id
             ORDER BY uv.visit_time ASC
         ");
         $stmt->execute([':route_id' => $routeId]);
@@ -93,7 +101,7 @@ class UnproductiveVisit extends Model
     public static function getCountByRouteId($routeId)
     {
         $db = static::getDB();
-        $stmt = $db->prepare("SELECT COUNT(*) FROM unproductive_visits WHERE route_id = :route_id");
+        $stmt = $db->prepare("SELECT COUNT(*) FROM unproductive_visits WHERE rep_route_id = :route_id");
         $stmt->execute([':route_id' => $routeId]);
         return (int)$stmt->fetchColumn();
     }
@@ -107,8 +115,8 @@ class UnproductiveVisit extends Model
         $stmt = $db->prepare("
             SELECT uv.*, dr.route_name, u.username as rep_name
             FROM unproductive_visits uv
-            LEFT JOIN daily_routes dr ON uv.route_id = dr.id
-            LEFT JOIN users u ON uv.rep_id = u.id
+            LEFT JOIN rep_daily_routes dr ON uv.rep_route_id = dr.id
+            LEFT JOIN users u ON uv.rep_user_id = u.id
             WHERE uv.customer_id = :customer_id
             ORDER BY uv.visit_time DESC
         ");
@@ -131,8 +139,8 @@ class UnproductiveVisit extends Model
                    dr.route_name
             FROM unproductive_visits uv
             LEFT JOIN customers c ON uv.customer_id = c.id
-            LEFT JOIN users u ON uv.rep_id = u.id
-            LEFT JOIN daily_routes dr ON uv.route_id = dr.id
+            LEFT JOIN users u ON uv.rep_user_id = u.id
+            LEFT JOIN rep_daily_routes dr ON uv.rep_route_id = dr.id
             WHERE 1=1
         ";
         $params = [];
@@ -148,7 +156,7 @@ class UnproductiveVisit extends Model
         }
 
         if (!empty($filters['rep_id'])) {
-            $sql .= " AND uv.rep_id = :rep_id";
+            $sql .= " AND uv.rep_user_id = :rep_id";
             $params[':rep_id'] = $filters['rep_id'];
         }
 
@@ -169,3 +177,4 @@ class UnproductiveVisit extends Model
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }
+

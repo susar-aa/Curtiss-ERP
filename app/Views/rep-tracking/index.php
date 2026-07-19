@@ -388,6 +388,7 @@
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">End Time</td><td style="padding:10px 0;" id="tab1EndTime">-</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Total Sales Value</td><td style="padding:10px 0; font-weight:bold; color:var(--c-green);" id="tab1SalesValue">-</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Total Bills Count</td><td style="padding:10px 0; font-weight:bold;" id="tab1BillsCount">-</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:10px 0; color:#64748b; font-weight:bold;">Unproductive Visits</td><td style="padding:10px 0; font-weight:bold; color:#ea580c;" id="tab1UnproductiveCount">0</td></tr>
                             </table>
                             <div style="display: flex; gap: 8px; margin-top: 15px;">
                                 <button id="auto-evt-button-19" type="button"  style="flex:1; justify-content:center; display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border:0.5px solid var(--c-blue-mid); background:var(--c-surface); color:var(--c-blue); border-radius:var(--r-sm); font-weight:600; cursor:pointer; font-size:12px; box-shadow:var(--shadow-xs);">
@@ -410,6 +411,35 @@
                             </table>
                         </div>
                     </div>
+                    
+                    <!-- Unproductive Sales Log -->
+                    <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h4 style="margin:0; color:var(--primary); font-size:15px; font-weight:bold; display:flex; align-items:center; gap:8px;">
+                                <i class="ph ph-x-circle" style="color: #ea580c;"></i> Unproductive Sales & Visits Log
+                            </h4>
+                            <span id="tab1UnproductiveBadge" style="background:#fff7ed; color:#c2410c; border:1px solid #ffedd5; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:bold;">0 Visits</span>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="data-table" style="margin-top:0; width:100%; font-size:12px;">
+                                <thead>
+                                    <tr>
+                                        <th>Visit Time</th>
+                                        <th>Customer</th>
+                                        <th>Reason</th>
+                                        <th>GPS Location</th>
+                                        <th style="text-align:center;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tab1UnproductiveTbody">
+                                    <tr>
+                                        <td colspan="5" style="text-align:center; color:#888; padding:15px;">No unproductive visits recorded for this route.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <div style="border:1px solid #cbd5e1; border-radius:8px; padding:20px; background:#fff; margin-bottom:20px;">
                         <h4 style="margin:0 0 10px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-note-pencil"></i> Route General Notes</h4>
                         <textarea id="tab1RouteNotes" style="width:100%; height:100px; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; resize:vertical;" placeholder="Write any remarks or observations regarding this route..."></textarea>

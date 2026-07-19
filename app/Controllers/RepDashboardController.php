@@ -1431,13 +1431,13 @@ class RepDashboardController extends Controller {
 
                     $insertId = \App\Models\UnproductiveVisit::createOrUpdate([
                         'uuid' => $uuid,
-                        'rep_id' => $userId,
-                        'route_id' => $routeServerId ?: null,
+                        'rep_user_id' => $userId,
+                        'rep_route_id' => $routeServerId ?: null,
                         'customer_id' => $custServerId,
                         'reason' => $uv['reason'] ?? 'Other',
                         'custom_reason' => $uv['custom_reason'] ?? '',
-                        'latitude' => isset($uv['latitude']) ? floatval($uv['latitude']) : null,
-                        'longitude' => isset($uv['longitude']) ? floatval($uv['longitude']) : null,
+                        'latitude' => isset($uv['latitude']) && $uv['latitude'] !== null ? floatval($uv['latitude']) : null,
+                        'longitude' => isset($uv['longitude']) && $uv['longitude'] !== null ? floatval($uv['longitude']) : null,
                         'visit_time' => $visitTime
                     ]);
 

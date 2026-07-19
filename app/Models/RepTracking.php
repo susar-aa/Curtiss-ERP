@@ -271,7 +271,7 @@ class RepTracking {
                 SELECT uv.id, uv.reason, uv.custom_reason, uv.visit_time, uv.latitude, uv.longitude, c.name as customer_name
                 FROM unproductive_visits uv
                 JOIN customers c ON uv.customer_id = c.id
-                WHERE uv.route_id = :rid
+                WHERE uv.rep_route_id = :rid
                   AND uv.latitude IS NOT NULL AND uv.longitude IS NOT NULL
                 ORDER BY uv.visit_time ASC
             ");

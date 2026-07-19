@@ -485,14 +485,69 @@ class RepTrackingController extends Controller {
 
 
     public function api_get_route_path($routeId) {
-        $path = $this->trackingModel->getRoutePath($routeId);
         header('Content-Type: application/json');
-        if (!$path) {
-            echo json_encode(['status' => 'error', 'message' => 'Route not found']);
+        try {
+            $path = $this->trackingModel->getRoutePath($routeId);
+            if (!$path) {
+                echo json_encode(['status' => 'error', 'message' => 'Route not found or no path data available']);
+                exit;
+            }
+            echo json_encode(['status' => 'success', 'path' => $path]);
+            exit;
+        } catch (Exception $e) {
+            error_log('[RepTrackingController] api_get_route_path error: ' . $e->getMessage());
+            echo json_encode(['status' => 'error', 'message' => 'Failed to load route path: ' . $e->getMessage()]);
             exit;
         }
-        echo json_encode(['status' => 'success', 'path' => $path]);
-        exit;
+    }
+
+    public function api_get_unproductive_visits($routeId) {
+        header('Content-Type: application/json');
+        try {
+            $db = new Database();
+            $routeIds = [intval($routeId)];
+            
+            // Check for bound routes
+            $db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
+            $db->bind(':rid', $routeId);
+            $routeRow = $db->single();
+            if ($routeRow && $routeRow->route_binding_id) {
+                $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
+                $db->bind(':bid', $routeRow->route_binding_id);
+                $boundRoutes = $db->resultSet() ?: [];
+                foreach ($boundRoutes as $br) {
+                    $routeIds[] = intval($br->id);
+                }
+            }
+            $routeIds = array_unique($routeIds);
+            
+            $inClause = implode(',', array_map('intval', $routeIds));
+            $db->query("
+                SELECT uv.*, c.name as customer_name, c.code as customer_code, u.username as rep_name
+                FROM unproductive_visits uv
+                LEFT JOIN customers c ON uv.customer_id = c.id
+                LEFT JOIN users u ON uv.rep_user_id = u.id
+                WHERE uv.rep_route_id IN ($inClause)
+                ORDER BY uv.visit_time DESC
+            ");
+            $visits = $db->resultSet() ?: [];
+            
+            echo json_encode([
+                'status' => 'success',
+                'visits' => $visits,
+                'count' => count($visits)
+            ]);
+            exit;
+        } catch (Exception $e) {
+            error_log('[RepTrackingController] api_get_unproductive_visits error: ' . $e->getMessage());
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Failed to fetch unproductive visits: ' . $e->getMessage(),
+                'visits' => [],
+                'count' => 0
+            ]);
+            exit;
+        }
     }
 
     public function api_get_outstanding_bills($routeId) {

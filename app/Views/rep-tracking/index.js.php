@@ -691,6 +691,70 @@
             .then(data => {
                 notesTextarea.value = data.notes || '';
             });
+
+        // Load Unproductive Visits for Route Details Tab
+        loadTab1UnproductiveVisits(routeId);
+    }
+
+    function loadTab1UnproductiveVisits(routeId) {
+        const tbody = document.getElementById('tab1UnproductiveTbody');
+        const badge = document.getElementById('tab1UnproductiveBadge');
+        const countEl = document.getElementById('tab1UnproductiveCount');
+
+        if (!tbody) return;
+
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888; padding:15px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading unproductive visits...</td></tr>';
+
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_get_unproductive_visits/' + routeId)
+            .then(res => res.json())
+            .then(data => {
+                console.log('[Route Details] Unproductive visits loaded:', data);
+                const visits = data.visits || [];
+                const count = visits.length;
+
+                if (countEl) countEl.innerText = count;
+                if (badge) badge.innerText = count + (count === 1 ? ' Visit' : ' Visits');
+
+                if (count === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888; padding:15px;">No unproductive visits recorded for this route.</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                visits.forEach(v => {
+                    let reasonDisplay = v.reason || 'Other';
+                    if (v.reason === 'Other' && v.custom_reason) {
+                        reasonDisplay += ' (' + v.custom_reason + ')';
+                    } else if (v.custom_reason) {
+                        reasonDisplay += ' - ' + v.custom_reason;
+                    }
+
+                    let locationDisplay = 'N/A';
+                    let mapBtnHtml = '';
+                    if (v.latitude && v.longitude) {
+                        locationDisplay = `${parseFloat(v.latitude).toFixed(5)}, ${parseFloat(v.longitude).toFixed(5)}`;
+                        mapBtnHtml = `<button type="button" onclick="openMapModal(${routeId})" style="padding:3px 8px; background:#fff7ed; color:#c2410c; border:1px solid #ffedd5; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-map-pin"></i> View Map</button>`;
+                    }
+
+                    const custName = v.customer_name ? `${v.customer_name} ${v.customer_code ? '(' + v.customer_code + ')' : ''}` : 'Unknown Customer';
+                    const visitTime = v.visit_time || 'N/A';
+
+                    html += `
+                        <tr style="border-bottom:1px solid #f1f5f9;">
+                            <td style="padding:10px; font-weight:500; font-family:monospace; color:#475569;">${visitTime}</td>
+                            <td style="padding:10px; font-weight:bold; color:#1e293b;">${custName}</td>
+                            <td style="padding:10px;"><span style="background:#fff7ed; color:#c2410c; padding:3px 8px; border-radius:4px; font-weight:600; font-size:11px; border:0.5px solid #fed7aa;">${reasonDisplay}</span></td>
+                            <td style="padding:10px; font-family:monospace; color:#64748b; font-size:11px;">${locationDisplay}</td>
+                            <td style="padding:10px; text-align:center;">${mapBtnHtml}</td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            })
+            .catch(err => {
+                console.error('[Route Details] Error loading unproductive visits:', err);
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#dc2626; padding:15px;">Failed to load unproductive visits.</td></tr>';
+            });
     }
 
     function saveRouteNotes() {
@@ -3610,6 +3674,7 @@
     }
 
     function loadRoutePath(routeId) {
+        console.log('[Map Tracking] Loading route path for routeId:', routeId);
         document.getElementById('mapEmptyOverlay').style.display = 'flex';
         document.getElementById('mapEmptyOverlay').innerText = 'Loading route path...';
         document.getElementById('pathStepList').style.display = 'none';
@@ -3618,20 +3683,28 @@
         clearRoutePathMap();
 
         fetch('<?= APP_URL ?>/RepTracking/api_get_route_path/' + routeId)
-            .then(r => r.json())
+            .then(r => {
+                console.log('[Map Tracking] Response HTTP Status:', r.status);
+                return r.json();
+            })
             .then(data => {
+                console.log('[Map Tracking] Received payload:', data);
                 if (data.status !== 'success' || !data.path) {
-                    document.getElementById('mapEmptyOverlay').innerText = 'Could not load route path.';
+                    const errMsg = data.message || 'Could not load route path.';
+                    console.warn('[Map Tracking] Failed to load route path:', errMsg);
+                    document.getElementById('mapEmptyOverlay').innerText = errMsg;
                     return;
                 }
                 renderRoutePath(data.path);
             })
-            .catch(() => {
+            .catch(err => {
+                console.error('[Map Tracking] Fetch exception:', err);
                 document.getElementById('mapEmptyOverlay').innerText = 'Failed to load route path.';
             });
     }
 
     function renderRoutePath(path) {
+        console.log('[Map Tracking] Rendering route path waypoints:', path);
         const wps = path.waypoints || [];
         document.getElementById('pathPointCount').innerText = wps.length ? `(${wps.length} points)` : '(no GPS)';
         document.getElementById('modalRouteName').innerText = path.route_name || '';
@@ -3640,6 +3713,7 @@
         stepOl.innerHTML = '';
 
         if (wps.length === 0) {
+            console.warn('[Map Tracking] 0 waypoints found for route.');
             document.getElementById('mapEmptyOverlay').style.display = 'flex';
             document.getElementById('mapEmptyOverlay').innerHTML = 'No GPS points recorded for this route.';
             document.getElementById('pathStepList').style.display = 'none';
