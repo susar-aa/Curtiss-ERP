@@ -107,8 +107,9 @@ class StockLedger {
             $apAccId = null;
             $gainAccId = null;
             $lossAccId = null;
+            $promoAccId = null;
 
-            $this->db->query("SELECT id, account_code FROM chart_of_accounts WHERE account_code IN ('1300', '5000', '2000', '4910', '5090')");
+            $this->db->query("SELECT id, account_code FROM chart_of_accounts WHERE account_code IN ('1300', '5000', '2000', '4910', '5090', '6020') OR account_name LIKE '%Promotional%'");
             $rows = $this->db->resultSet() ?: [];
             foreach ($rows as $r) {
                 if ($r->account_code === '1300') $inventoryAccId = $r->id;
@@ -116,6 +117,7 @@ class StockLedger {
                 if ($r->account_code === '2000') $apAccId = $r->id;
                 if ($r->account_code === '4910') $gainAccId = $r->id;
                 if ($r->account_code === '5090') $lossAccId = $r->id;
+                if ($r->account_code === '6020' || strpos($r->account_name ?? '', 'Promotional') !== false) $promoAccId = $r->id;
             }
 
             $journalId = null;
@@ -125,12 +127,24 @@ class StockLedger {
 
                 $isStockIncrease = ($qtyIn > 0);
 
+                $isFreeIssueMovement = in_array($type, ['Promotional Free Issue', 'Free Issue', 'Sales Promotion']) 
+                                    || (strpos($remarks, 'Free Issue') !== false || strpos($remarks, 'Free Offer') !== false || strpos($remarks, 'Promotional') !== false);
+
+                $isFreeIssueReversion = in_array($type, ['Promotional Free Issue Reversion', 'Free Issue Reversion'])
+                                     || (strpos($remarks, 'Free Issue Stock Reverted') !== false);
+
                 if ($type === 'GRN') {
                     $debitAccId = $inventoryAccId;
                     $creditAccId = $apAccId;
                 } elseif (in_array($type, ['Purchase Return', 'Supplier Return'])) {
                     $debitAccId = $apAccId;
                     $creditAccId = $inventoryAccId;
+                } elseif ($isFreeIssueMovement) {
+                    $debitAccId = $promoAccId ?: $cogsAccId;
+                    $creditAccId = $inventoryAccId;
+                } elseif ($isFreeIssueReversion) {
+                    $debitAccId = $inventoryAccId;
+                    $creditAccId = $promoAccId ?: $cogsAccId;
                 } elseif (in_array($type, ['Sales Invoice', 'Sales Invoice Variance Increase', 'Sales Invoice Substitution Supply', 'Delivery Finalized - Stock Deducted'])) {
                     $debitAccId = $cogsAccId;
                     $creditAccId = $inventoryAccId;

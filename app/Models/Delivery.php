@@ -573,17 +573,15 @@ class Delivery {
                             // Log stock movement in ledger (depletion)
                             require_once '../app/Models/StockLedger.php';
                             $ledger = new StockLedger();
-                            $this->db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
-                            $this->db->bind(':id', $itemId);
-                            $itemRow = $this->db->single();
-                            $whId = $itemRow ? $itemRow->warehouse_id : null;
-                            $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
-                            
-                            $this->db->query("SELECT invoice_number FROM invoices WHERE id = :iid");
-                            $this->db->bind(':iid', $invoice->id);
-                            $invRow = $this->db->single();
-                            $invNum = $invRow ? $invRow->invoice_number : '';
-                            $ledger->logMovement($itemId, $varId ?: null, 0, $qty, 'Sales Invoice', $invNum, $whId, $adminUserId, 'Delivery Finalized - Stock Deducted', $itemCost);
+                            $isFreeIssue = (floatval($item->unit_price ?? 0) <= 0 
+                                            || floatval($item->total ?? 0) <= 0 
+                                            || (isset($item->discount_type) && in_array($item->discount_type, ['Free Issue', 'Free']))
+                                            || strpos($item->description ?? '', '(Free') !== false);
+
+                            $movType = $isFreeIssue ? 'Promotional Free Issue' : 'Sales Invoice';
+                            $remarks = $isFreeIssue ? 'Delivery Finalized - Free Issue Stock Deducted' : 'Delivery Finalized - Stock Deducted';
+
+                            $ledger->logMovement($itemId, $varId ?: null, 0, $qty, $movType, $invNum, $whId, $adminUserId, $remarks, $itemCost);
                         }
                         $this->db->query("UPDATE invoices SET stock_status = 'deducted' WHERE id = :iid");
                         $this->db->bind(':iid', $invoice->id);

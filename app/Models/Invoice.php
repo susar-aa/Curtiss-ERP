@@ -40,6 +40,44 @@ class Invoice {
             $stockStatus = $invoiceData['stock_status'] ?? 'deducted';
             $jeStatus = ($stockStatus === 'reserved') ? 'Draft' : 'Posted';
 
+            // Calculate Item Gross Total and Item Discount Total
+            $itemGrossTotal = 0.0;
+            $itemDiscountTotal = 0.0;
+
+            foreach ($items as $item) {
+                $qty = floatval($item['quantity'] ?? 0);
+                $unitPrice = floatval($item['unit_price'] ?? 0);
+                $lineGross = $qty * $unitPrice;
+                
+                $discVal = floatval($item['discount_value'] ?? 0);
+                $discType = $item['discount_type'] ?? 'Rs';
+                $lineDisc = ($discType === '%') ? ($lineGross * $discVal / 100) : $discVal;
+
+                $itemGrossTotal += $lineGross;
+                $itemDiscountTotal += $lineDisc;
+            }
+
+            $subtotal = floatval($invoiceData['subtotal'] ?? 0);
+            $globalDiscVal = floatval($invoiceData['global_discount_val'] ?? 0);
+            $globalDiscType = $invoiceData['global_discount_type'] ?? 'Rs';
+            $globalDiscAmount = ($globalDiscType === '%') ? ($subtotal * $globalDiscVal / 100) : $globalDiscVal;
+
+            $totalDiscountAmount = $itemDiscountTotal + $globalDiscAmount;
+            $grossRevenue = ($itemGrossTotal > 0) ? $itemGrossTotal : ($subtotal + $itemDiscountTotal);
+            $netGrandTotal = floatval($invoiceData['grand_total'] ?? ($subtotal - $globalDiscAmount));
+
+            // Resolve Discounts Allowed Account (Code 4050 / Name Discounts Allowed)
+            $discountAccountId = null;
+            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '4050' OR account_name LIKE '%Discount%' LIMIT 1");
+            $discRow = $this->db->single();
+            if ($discRow) {
+                $discountAccountId = $discRow->id;
+            } else {
+                $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('4050', 'Discounts Allowed', 'Expense', 'Discounts', 0.00, 1)");
+                $this->db->execute();
+                $discountAccountId = $this->db->lastInsertId();
+            }
+
             $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
                               VALUES (:entry_date, :reference, :description, :created_by, :status)");
             $this->db->bind(':entry_date', $invoiceData['invoice_date']);
@@ -50,26 +88,39 @@ class Invoice {
             $this->db->execute();
             $journalEntryId = $this->db->lastInsertId();
 
+            // 1. DEBIT: Accounts Receivable (Asset) = Net Grand Total
             $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, :debit, 0)");
             $this->db->bind(':journal_id', $journalEntryId);
             $this->db->bind(':account_id', $arAccountId);
-            $this->db->bind(':debit', $invoiceData['grand_total']);
+            $this->db->bind(':debit', $netGrandTotal);
             $this->db->execute();
 
             if ($jeStatus === 'Posted') {
-                // ACCT-2 FIX: Use account-type-aware balance update (AR is an Asset: debit increases)
-                $this->db->updateAccountBalance($arAccountId, $invoiceData['grand_total'], 0);
+                $this->db->updateAccountBalance($arAccountId, $netGrandTotal, 0);
             }
 
+            // 2. DEBIT: Discounts Allowed (Expense / Contra-Revenue) = Total Discount Amount (if > 0)
+            if ($totalDiscountAmount > 0.001 && $discountAccountId) {
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, :debit, 0)");
+                $this->db->bind(':journal_id', $journalEntryId);
+                $this->db->bind(':account_id', $discountAccountId);
+                $this->db->bind(':debit', $totalDiscountAmount);
+                $this->db->execute();
+
+                if ($jeStatus === 'Posted') {
+                    $this->db->updateAccountBalance($discountAccountId, $totalDiscountAmount, 0);
+                }
+            }
+
+            // 3. CREDIT: Sales Revenue (Revenue) = Gross Revenue
             $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, 0, :credit)");
             $this->db->bind(':journal_id', $journalEntryId);
             $this->db->bind(':account_id', $revenueAccountId);
-            $this->db->bind(':credit', $invoiceData['grand_total']);
+            $this->db->bind(':credit', $grossRevenue);
             $this->db->execute();
 
             if ($jeStatus === 'Posted') {
-                // ACCT-2 FIX: Use account-type-aware balance update (Revenue: credit increases)
-                $this->db->updateAccountBalance($revenueAccountId, 0, $invoiceData['grand_total']);
+                $this->db->updateAccountBalance($revenueAccountId, 0, $grossRevenue);
             }
 
             $stockStatus = $invoiceData['stock_status'] ?? 'deducted';
@@ -154,8 +205,8 @@ class Invoice {
                         $this->db->execute();
                     }
 
-                    // Deplete via FIFO batches
-                    $fifo->depleteStock($itemId, $varId, $item['quantity'], $invoiceItemId, null);
+                    // Deplete via FIFO batches & capture unit cost
+                    $avgCost = $fifo->depleteStock($itemId, $varId, $item['quantity'], $invoiceItemId, null);
 
                     // Log stock movement in ledger
                     require_once '../app/Models/StockLedger.php';
@@ -164,8 +215,17 @@ class Invoice {
                     $this->db->bind(':id', $itemId);
                     $itemRow = $this->db->single();
                     $whId = $itemRow ? $itemRow->warehouse_id : null;
-                    $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
-                    $ledger->logMovement($itemId, $varId, 0, $item['quantity'], 'Sales Invoice', $invoiceData['invoice_number'], $whId, $userId, 'Sales Invoice Direct Deduction', $itemCost);
+                    $itemCost = ($avgCost > 0) ? $avgCost : floatval($itemRow->cost_price ?? 0.00);
+
+                    $isFreeIssue = (floatval($item['unit_price'] ?? 0) <= 0 
+                                    || floatval($item['total'] ?? 0) <= 0 
+                                    || (isset($item['discount_type']) && in_array($item['discount_type'], ['Free Issue', 'Free']))
+                                    || strpos($item['description'] ?? '', '(Free') !== false);
+
+                    $movType = $isFreeIssue ? 'Promotional Free Issue' : 'Sales Invoice';
+                    $remarks = $isFreeIssue ? 'Free Issue Promotional Stock Deduction' : 'Sales Invoice Direct Deduction';
+
+                    $ledger->logMovement($itemId, $varId, 0, $item['quantity'], $movType, $invoiceData['invoice_number'], $whId, $userId, $remarks, $itemCost);
                 }
             }
 
@@ -248,8 +308,20 @@ class Invoice {
                     $this->db->bind(':id', $itemId);
                     $itemRow = $this->db->single();
                     $whId = $itemRow ? $itemRow->warehouse_id : null;
-                    $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
-                    $ledger->logMovement($itemId, $varId, $oldItem->quantity, 0, 'Sales Invoice Reversion', $oldInvoice->invoice_number, $whId, $userId, 'Invoice Updated - Stock Reverted', $itemCost);
+                    $itemCost = floatval($oldItem->cost_at_sale ?? 0.00);
+                    if ($itemCost <= 0 && $itemRow) {
+                        $itemCost = floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00);
+                    }
+
+                    $isFreeIssue = (floatval($oldItem->unit_price ?? 0) <= 0 
+                                    || floatval($oldItem->total ?? 0) <= 0 
+                                    || (isset($oldItem->discount_type) && in_array($oldItem->discount_type, ['Free Issue', 'Free']))
+                                    || strpos($oldItem->description ?? '', '(Free') !== false);
+
+                    $movType = $isFreeIssue ? 'Promotional Free Issue Reversion' : 'Sales Invoice Reversion';
+                    $remarks = $isFreeIssue ? 'Invoice Updated - Free Issue Stock Reverted' : 'Invoice Updated - Stock Reverted';
+
+                    $ledger->logMovement($itemId, $varId, $oldItem->quantity, 0, $movType, $oldInvoice->invoice_number, $whId, $userId, $remarks, $itemCost);
                 }
             }
 
@@ -258,8 +330,7 @@ class Invoice {
             $this->db->bind(':id', $invoiceId);
             $this->db->execute();
 
-            // 2. ADJUST LEDGER BALANCE COALESCE
-            // BUG-1 FIX: Only update account balances if the journal entry is Posted
+            // 2. ADJUST LEDGER BALANCE & RE-POST REVISED TRANSACTIONS
             $jid = $oldInvoice->journal_entry_id;
             $isPosted = false;
             if ($jid) {
@@ -269,32 +340,97 @@ class Invoice {
                 $isPosted = ($jeRow && $jeRow->status === 'Posted');
             }
 
-            if ($isPosted) {
-                $diff = $invoiceData['grand_total'] - $oldGrandTotal;
-                if (abs($diff) > 0.001) {
-                    $this->db->updateAccountBalance($arAccountId, ($diff > 0 ? $diff : 0), ($diff < 0 ? abs($diff) : 0));
-                    $this->db->updateAccountBalance($revenueAccountId, 0, ($diff > 0 ? $diff : 0));
-                    // If diff is negative (reduced invoice), debit revenue to reduce it
-                    if ($diff < 0) {
-                        $this->db->updateAccountBalance($revenueAccountId, abs($diff), 0);
+            if ($isPosted && $jid) {
+                // Revert all existing transaction balance impacts
+                $this->db->query("SELECT account_id, debit, credit FROM transactions WHERE journal_entry_id = :jid");
+                $this->db->bind(':jid', $jid);
+                $oldTxns = $this->db->resultSet() ?: [];
+                foreach ($oldTxns as $tx) {
+                    $aId = intval($tx->account_id);
+                    $d = floatval($tx->debit);
+                    $c = floatval($tx->credit);
+                    if ($d > 0) {
+                        $this->db->updateAccountBalance($aId, 0, $d);
+                    }
+                    if ($c > 0) {
+                        $this->db->updateAccountBalance($aId, $c, 0);
                     }
                 }
             }
 
             // 3. RE-POST REVISED JOURNAL ENTRIES
-            $jid = $oldInvoice->journal_entry_id;
             if ($jid) {
-                $this->db->query("UPDATE transactions SET debit = :new_amt WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
-                $this->db->bind(':new_amt', $invoiceData['grand_total']);
+                $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
                 $this->db->bind(':jid', $jid);
-                $this->db->bind(':aid', $arAccountId);
                 $this->db->execute();
 
-                $this->db->query("UPDATE transactions SET credit = :new_amt WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
-                $this->db->bind(':new_amt', $invoiceData['grand_total']);
-                $this->db->bind(':jid', $jid);
-                $this->db->bind(':aid', $revenueAccountId);
+                // Calculate new item-wise and global discounts
+                $itemGrossTotal = 0.0;
+                $itemDiscountTotal = 0.0;
+                foreach ($items as $item) {
+                    $qty = floatval($item['quantity'] ?? 0);
+                    $unitPrice = floatval($item['unit_price'] ?? 0);
+                    $lineGross = $qty * $unitPrice;
+                    
+                    $discVal = floatval($item['discount_value'] ?? 0);
+                    $discType = $item['discount_type'] ?? 'Rs';
+                    $lineDisc = ($discType === '%') ? ($lineGross * $discVal / 100) : $discVal;
+
+                    $itemGrossTotal += $lineGross;
+                    $itemDiscountTotal += $lineDisc;
+                }
+
+                $subtotal = floatval($invoiceData['subtotal'] ?? 0);
+                $globalDiscVal = floatval($invoiceData['global_discount_val'] ?? 0);
+                $globalDiscType = $invoiceData['global_discount_type'] ?? 'Rs';
+                $globalDiscAmount = ($globalDiscType === '%') ? ($subtotal * $globalDiscVal / 100) : $globalDiscVal;
+
+                $totalDiscountAmount = $itemDiscountTotal + $globalDiscAmount;
+                $grossRevenue = ($itemGrossTotal > 0) ? $itemGrossTotal : ($subtotal + $itemDiscountTotal);
+                $netGrandTotal = floatval($invoiceData['grand_total'] ?? ($subtotal - $globalDiscAmount));
+
+                $discountAccountId = null;
+                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '4050' OR account_name LIKE '%Discount%' LIMIT 1");
+                $discRow = $this->db->single();
+                if ($discRow) {
+                    $discountAccountId = $discRow->id;
+                } else {
+                    $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('4050', 'Discounts Allowed', 'Expense', 'Discounts', 0.00, 1)");
+                    $this->db->execute();
+                    $discountAccountId = $this->db->lastInsertId();
+                }
+
+                // 1. DEBIT: Accounts Receivable (Asset) = Net Grand Total
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, :debit, 0)");
+                $this->db->bind(':journal_id', $jid);
+                $this->db->bind(':account_id', $arAccountId);
+                $this->db->bind(':debit', $netGrandTotal);
                 $this->db->execute();
+                if ($isPosted) {
+                    $this->db->updateAccountBalance($arAccountId, $netGrandTotal, 0);
+                }
+
+                // 2. DEBIT: Discounts Allowed (Expense / Contra-Revenue) = Total Discount Amount (if > 0)
+                if ($totalDiscountAmount > 0.001 && $discountAccountId) {
+                    $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, :debit, 0)");
+                    $this->db->bind(':journal_id', $jid);
+                    $this->db->bind(':account_id', $discountAccountId);
+                    $this->db->bind(':debit', $totalDiscountAmount);
+                    $this->db->execute();
+                    if ($isPosted) {
+                        $this->db->updateAccountBalance($discountAccountId, $totalDiscountAmount, 0);
+                    }
+                }
+
+                // 3. CREDIT: Sales Revenue (Revenue) = Gross Revenue
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, 0, :credit)");
+                $this->db->bind(':journal_id', $jid);
+                $this->db->bind(':account_id', $revenueAccountId);
+                $this->db->bind(':credit', $grossRevenue);
+                $this->db->execute();
+                if ($isPosted) {
+                    $this->db->updateAccountBalance($revenueAccountId, 0, $grossRevenue);
+                }
             }
 
             // 4. UPDATE TOP-LEVEL RECORD & PRESERVE stock_status
@@ -369,8 +505,8 @@ class Invoice {
                         $this->db->execute();
                     }
 
-                    // Deplete new items via FIFO batches
-                    $fifo->depleteStock($itemId, $varId, $item['quantity'], $newInvoiceItemId, null);
+                    // Deplete new items via FIFO batches & capture unit cost
+                    $avgCost = $fifo->depleteStock($itemId, $varId, $item['quantity'], $newInvoiceItemId, null);
 
                     // Log stock movement in ledger (new deduction)
                     require_once '../app/Models/StockLedger.php';
@@ -379,8 +515,17 @@ class Invoice {
                     $this->db->bind(':id', $itemId);
                     $itemRow = $this->db->single();
                     $whId = $itemRow ? $itemRow->warehouse_id : null;
-                    $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
-                    $ledger->logMovement($itemId, $varId, 0, $item['quantity'], 'Sales Invoice', $invoiceData['invoice_number'], $whId, $userId, 'Invoice Updated - New Stock Deducted', $itemCost);
+                    $itemCost = ($avgCost > 0) ? $avgCost : floatval($itemRow->cost_price ?? 0.00);
+
+                    $isFreeIssue = (floatval($item['unit_price'] ?? 0) <= 0 
+                                    || floatval($item['total'] ?? 0) <= 0 
+                                    || (isset($item['discount_type']) && in_array($item['discount_type'], ['Free Issue', 'Free']))
+                                    || strpos($item['description'] ?? '', '(Free') !== false);
+
+                    $movType = $isFreeIssue ? 'Promotional Free Issue' : 'Sales Invoice';
+                    $remarks = $isFreeIssue ? 'Invoice Updated - New Free Issue Stock Deducted' : 'Invoice Updated - New Stock Deducted';
+
+                    $ledger->logMovement($itemId, $varId, 0, $item['quantity'], $movType, $invoiceData['invoice_number'], $whId, $userId, $remarks, $itemCost);
                 }
             }
 
@@ -466,13 +611,24 @@ class Invoice {
                     $this->db->bind(':id', $itemId);
                     $itemRow = $this->db->single();
                     $whId = $itemRow ? $itemRow->warehouse_id : null;
-                    $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
-                    $ledger->logMovement($itemId, $varId, $oldItem->quantity, 0, 'Sales Invoice Deletion', $oldInvoice->invoice_number, $whId, $userId, 'Invoice Deleted - Stock Reverted', $itemCost);
+                    $itemCost = floatval($oldItem->cost_at_sale ?? 0.00);
+                    if ($itemCost <= 0 && $itemRow) {
+                        $itemCost = floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00);
+                    }
+
+                    $isFreeIssue = (floatval($oldItem->unit_price ?? 0) <= 0 
+                                    || floatval($oldItem->total ?? 0) <= 0 
+                                    || (isset($oldItem->discount_type) && in_array($oldItem->discount_type, ['Free Issue', 'Free']))
+                                    || strpos($oldItem->description ?? '', '(Free') !== false);
+
+                    $movType = $isFreeIssue ? 'Promotional Free Issue Reversion' : 'Sales Invoice Deletion';
+                    $remarks = $isFreeIssue ? 'Invoice Deleted - Free Issue Stock Reverted' : 'Invoice Deleted - Stock Reverted';
+
+                    $ledger->logMovement($itemId, $varId, $oldItem->quantity, 0, $movType, $oldInvoice->invoice_number, $whId, $userId, $remarks, $itemCost);
                 }
             }
 
-            // 2. ADJUST LEDGER ACCOUNTS BALANCE
-            // BUG-1 FIX: Only adjust account balances if the journal entry was Posted
+            // 2. ADJUST LEDGER ACCOUNTS BALANCE & REMOVE JOURNAL ENTRIES
             $jid = $oldInvoice->journal_entry_id;
             $isPosted = false;
             if ($jid) {
@@ -482,30 +638,25 @@ class Invoice {
                 $isPosted = ($jeRow && $jeRow->status === 'Posted');
             }
 
-            if ($isPosted) {
-                $arAccountId = null;
-                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' AND (account_name LIKE '%Receivable%' OR account_code LIKE '1100%') LIMIT 1");
-                $arRow = $this->db->single();
-                $arAccountId = $arRow ? $arRow->id : null;
-
-                $revenueAccountId = null;
-                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' AND (account_name LIKE '%Sales%' OR account_name LIKE '%Revenue%' OR account_code LIKE '4000%') LIMIT 1");
-                $revRow = $this->db->single();
-                $revenueAccountId = $revRow ? $revRow->id : null;
-
-                if ($arAccountId) {
-                    // ACCT-2 FIX: Use account-type-aware balance update (reversal: credit AR to reduce asset)
-                    $this->db->updateAccountBalance($arAccountId, 0, $oldGrandTotal);
-                }
-
-                if ($revenueAccountId) {
-                    // ACCT-2 FIX: Use account-type-aware balance update (reversal: debit Revenue to reduce income)
-                    $this->db->updateAccountBalance($revenueAccountId, $oldGrandTotal, 0);
+            if ($isPosted && $jid) {
+                // Dynamic reversal of all transactions associated with this journal entry
+                $this->db->query("SELECT account_id, debit, credit FROM transactions WHERE journal_entry_id = :jid");
+                $this->db->bind(':jid', $jid);
+                $oldTxns = $this->db->resultSet() ?: [];
+                foreach ($oldTxns as $tx) {
+                    $aId = intval($tx->account_id);
+                    $d = floatval($tx->debit);
+                    $c = floatval($tx->credit);
+                    if ($d > 0) {
+                        $this->db->updateAccountBalance($aId, 0, $d);
+                    }
+                    if ($c > 0) {
+                        $this->db->updateAccountBalance($aId, $c, 0);
+                    }
                 }
             }
 
             // 3. REMOVE JOURNAL ENTRIES & TRANSACTIONS
-            $jid = $oldInvoice->journal_entry_id;
             if ($jid) {
                 $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
                 $this->db->bind(':jid', $jid);
