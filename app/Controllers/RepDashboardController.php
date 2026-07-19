@@ -1028,25 +1028,70 @@ class RepDashboardController extends Controller {
                     
                     // Generate new invoice number if sequence is used or keep what mobile generated
                     $invNo = $inv['invoice_number'];
-                    
-                    // Idempotency: Check if an invoice with the same uuid or invoice_number already exists
+
+                    // ── COLLISION HARDENING LAYER 1: UUID-first, owner-scoped lookup ──────────
+                    // UUID matches MUST belong to the same user. A UUID from rep A must never
+                    // resolve to rep B's invoice, which was the cause of the July 17 data loss.
                     $existingInv = null;
                     if (!empty($inv['uuid'])) {
-                        $this->db->query("SELECT id, invoice_number, invoice_date, stock_status, uuid FROM invoices WHERE uuid = :uuid LIMIT 1");
+                        $this->db->query("SELECT id, invoice_number, invoice_date, stock_status, uuid, created_by FROM invoices WHERE uuid = :uuid AND created_by = :user_id LIMIT 1");
                         $this->db->bind(':uuid', $inv['uuid']);
+                        $this->db->bind(':user_id', $userId);
                         $existingInv = $this->db->single();
+
+                        // If a UUID matches but belongs to a DIFFERENT user, it is a ghost UUID
+                        // collision. Assign a fresh server-generated number so we create a new
+                        // invoice instead of overwriting the other user's data.
+                        if (!$existingInv) {
+                            $this->db->query("SELECT id FROM invoices WHERE uuid = :uuid LIMIT 1");
+                            $this->db->bind(':uuid', $inv['uuid']);
+                            $ghostMatch = $this->db->single();
+                            if ($ghostMatch) {
+                                // UUID taken by another user — rewrite the invoice number to be unique
+                                $invNo = $invNo . 'U' . $userId;
+                                $this->logActivity('Sync Collision Avoided', 'Billing', "UUID {$inv['uuid']} already owned by another user. Remapped invoice number to {$invNo} for User {$userId}.", null);
+                            }
+                        }
                     }
+
+                    // ── COLLISION HARDENING LAYER 2: Invoice-number fallback, owner-scoped ────
                     if (!$existingInv) {
-                        $this->db->query("SELECT id, invoice_number, invoice_date, stock_status, uuid FROM invoices WHERE invoice_number = :invoice_number LIMIT 1");
+                        $this->db->query("SELECT id, invoice_number, invoice_date, stock_status, uuid, created_by FROM invoices WHERE invoice_number = :invoice_number AND created_by = :user_id LIMIT 1");
                         $this->db->bind(':invoice_number', $invNo);
+                        $this->db->bind(':user_id', $userId);
                         $existingInv = $this->db->single();
                     }
+
+                    // ── COLLISION HARDENING LAYER 3: Cross-user number conflict guard ─────────
+                    // If invoice_number exists but belongs to a DIFFERENT user, auto-suffix the
+                    // number with the user ID to make it unique, then fall through to CREATE.
+                    if (!$existingInv) {
+                        $this->db->query("SELECT id, created_by FROM invoices WHERE invoice_number = :invoice_number AND created_by != :user_id LIMIT 1");
+                        $this->db->bind(':invoice_number', $invNo);
+                        $this->db->bind(':user_id', $userId);
+                        $crossUserConflict = $this->db->single();
+                        if ($crossUserConflict) {
+                            $remappedNo = $invNo . 'U' . $userId;
+                            $this->logActivity('Sync Collision Avoided', 'Billing', "Invoice number {$invNo} already owned by User {$crossUserConflict->created_by}. Remapped to {$remappedNo} for User {$userId}.", null);
+                            $invNo = $remappedNo;
+                        }
+                    }
+
                     if ($existingInv) {
-                        // Update existing invoice's UUID if it is empty/different, to ensure verification matches correctly
+                        // ── OWNERSHIP GUARD: Never allow updates across user boundaries ────────
+                        // Verify that this invoice actually belongs to the syncing user before
+                        // allowing any mutation. This is the final firewall against overwrites.
+                        if (isset($existingInv->created_by) && intval($existingInv->created_by) !== intval($userId)) {
+                            $this->logActivity('Sync Collision Blocked', 'Billing', "BLOCKED: User {$userId} attempted to update Invoice {$existingInv->invoice_number} (ID:{$existingInv->id}) owned by User {$existingInv->created_by}.", $existingInv->id);
+                            continue; // Skip this invoice entirely — it belongs to another rep
+                        }
+
+                        // Update existing invoice's UUID if it is empty/different
                         if (!empty($inv['uuid']) && (empty($existingInv->uuid) || $existingInv->uuid !== $inv['uuid'])) {
-                            $this->db->query("UPDATE invoices SET uuid = :uuid WHERE id = :id");
+                            $this->db->query("UPDATE invoices SET uuid = :uuid WHERE id = :id AND created_by = :user_id");
                             $this->db->bind(':uuid', $inv['uuid']);
                             $this->db->bind(':id', $existingInv->id);
+                            $this->db->bind(':user_id', $userId);
                             $this->db->execute();
                             $existingInv->uuid = $inv['uuid'];
                         }
@@ -1081,8 +1126,23 @@ class RepDashboardController extends Controller {
                                         $itemDiscountType = 'Rs';
                                     }
 
+                                    $varId = intval($item['variation_option_id'] ?? 0);
+                                    if ($varId <= 0 && strpos($prodName, ' - ') !== false) {
+                                        $parts = explode(' - ', $prodName);
+                                        $optName = trim(end($parts));
+                                        $this->db->query("SELECT ivo.id FROM item_variation_options ivo 
+                                                          LEFT JOIN variation_values vv ON ivo.variation_value_id = vv.id 
+                                                          WHERE ivo.item_id = :item_id AND vv.value_name = :val_name LIMIT 1");
+                                        $this->db->bind(':item_id', $prodId);
+                                        $this->db->bind(':val_name', $optName);
+                                        $varRow = $this->db->single();
+                                        if ($varRow) {
+                                            $varId = intval($varRow->id);
+                                        }
+                                    }
+
                                     $itemsPayload[] = [
-                                        'item_selection' => $prodId . '|0',
+                                        'item_selection' => $prodId . '|' . $varId,
                                         'description' => $prodName,
                                         'quantity' => intval($item['quantity']),
                                         'unit_price' => floatval($item['unit_price']),

@@ -97,24 +97,20 @@ class Delivery {
             $rids = $this->resolveAllBoundRouteIds($rids);
             $ridsStr = !empty($rids) ? implode(',', array_map('intval', $rids)) : '0';
             
-            // 1. Fetch invoice draft JEs
-            $this->db->query("SELECT id FROM invoices WHERE rep_route_id IN ($ridsStr) AND status != 'Voided'");
+            // 1. Fetch invoice JEs (reading directly from primary journal entry)
+            $this->db->query("SELECT id, journal_entry_id FROM invoices WHERE rep_route_id IN ($ridsStr) AND status != 'Voided'");
             $routeInvoices = $this->db->resultSet() ?: [];
             foreach ($routeInvoices as $inv) {
-                $ref = "INV-SALES-DRAFT-" . $inv->id;
-                $this->db->query("SELECT id FROM journal_entries WHERE reference = :ref AND status = 'Draft' LIMIT 1");
-                $this->db->bind(':ref', $ref);
-                $je = $this->db->single();
-                if ($je) {
+                if (!empty($inv->journal_entry_id)) {
                     $this->db->query("SELECT account_id FROM transactions WHERE journal_entry_id = :jid AND debit > 0 LIMIT 1");
-                    $this->db->bind(':jid', $je->id);
+                    $this->db->bind(':jid', $inv->journal_entry_id);
                     $tDeb = $this->db->single();
                     if ($tDeb) {
                         $dynDebit["inv_" . $inv->id] = intval($tDeb->account_id);
                     }
                     
                     $this->db->query("SELECT account_id FROM transactions WHERE journal_entry_id = :jid AND credit > 0 LIMIT 1");
-                    $this->db->bind(':jid', $je->id);
+                    $this->db->bind(':jid', $inv->journal_entry_id);
                     $tCred = $this->db->single();
                     if ($tCred) {
                         $dynCredit["inv_" . $inv->id] = intval($tCred->account_id);
@@ -592,6 +588,56 @@ class Delivery {
                         $this->db->query("UPDATE invoices SET stock_status = 'deducted' WHERE id = :iid");
                         $this->db->bind(':iid', $invoice->id);
                         $this->db->execute();
+
+                        // BUG-1 FIX: Promote Draft JE to Posted upon physical delivery finalization
+                        $jid = $invoice->journal_entry_id;
+                        if ($jid) {
+                            $this->db->query("SELECT status FROM journal_entries WHERE id = :jid");
+                            $this->db->bind(':jid', $jid);
+                            $jeRow = $this->db->single();
+                            if ($jeRow && $jeRow->status === 'Draft') {
+                                // 1. Promote JE status to Posted
+                                $this->db->query("UPDATE journal_entries SET status = 'Posted' WHERE id = :jid");
+                                $this->db->bind(':jid', $jid);
+                                $this->db->execute();
+
+                                // 2. Calculate true current grand total
+                                $subTotal = floatval($invoice->total_amount ?? 0);
+                                $globalDiscVal = floatval($invoice->global_discount_val ?? 0);
+                                $globalDiscType = $invoice->global_discount_type ?? 'Rs';
+                                $globalDisc = ($globalDiscType === '%') ? ($subTotal * $globalDiscVal / 100) : $globalDiscVal;
+                                $grandTotal = max(0, $subTotal - $globalDisc) + floatval($invoice->tax_amount ?? 0);
+
+                                // 3. Resolve AR and Revenue transaction account IDs from the JE
+                                $this->db->query("SELECT account_id FROM transactions WHERE journal_entry_id = :jid AND debit > 0 LIMIT 1");
+                                $this->db->bind(':jid', $jid);
+                                $arTx = $this->db->single();
+
+                                $this->db->query("SELECT account_id FROM transactions WHERE journal_entry_id = :jid AND credit > 0 LIMIT 1");
+                                $this->db->bind(':jid', $jid);
+                                $revTx = $this->db->single();
+
+                                if ($arTx) {
+                                    $this->db->query("UPDATE transactions SET debit = :amt WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
+                                    $this->db->bind(':amt', $grandTotal);
+                                    $this->db->bind(':jid', $jid);
+                                    $this->db->bind(':aid', $arTx->account_id);
+                                    $this->db->execute();
+
+                                    $this->db->updateAccountBalance($arTx->account_id, $grandTotal, 0);
+                                }
+
+                                if ($revTx) {
+                                    $this->db->query("UPDATE transactions SET credit = :amt WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
+                                    $this->db->bind(':amt', $grandTotal);
+                                    $this->db->bind(':jid', $jid);
+                                    $this->db->bind(':aid', $revTx->account_id);
+                                    $this->db->execute();
+
+                                    $this->db->updateAccountBalance($revTx->account_id, 0, $grandTotal);
+                                }
+                            }
+                        }
                     }
                 } else {
                     if ($invoice->stock_status === 'reserved') {
@@ -623,6 +669,19 @@ class Delivery {
                         $this->db->query("UPDATE invoices SET stock_status = 'returned' WHERE id = :iid");
                         $this->db->bind(':iid', $invoice->id);
                         $this->db->execute();
+
+                        // BUG-1 FIX: Void Draft JE if delivery is Cancelled / Postponed
+                        $jid = $invoice->journal_entry_id;
+                        if ($jid) {
+                            $this->db->query("SELECT status FROM journal_entries WHERE id = :jid");
+                            $this->db->bind(':jid', $jid);
+                            $jeRow = $this->db->single();
+                            if ($jeRow && $jeRow->status === 'Draft') {
+                                $this->db->query("UPDATE journal_entries SET status = 'Voided' WHERE id = :jid");
+                                $this->db->bind(':jid', $jid);
+                                $this->db->execute();
+                            }
+                        }
                     }
                 }
             }
@@ -681,8 +740,89 @@ class Delivery {
             }
 
 
-            // 3. Redundant sales JE creation loop removed to prevent revenue double-counting (CRIT-1).
-            // Invoices already have their posted JEs and account balances updated at creation time in Invoice::createInvoiceWithAccounting().
+            // 3. Finalize Reserved Sales Order Journal Entries (BUG-1 Fix)
+            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1200' LIMIT 1");
+            $arAcc = $this->db->single();
+            $defaultArId = $arAcc ? intval($arAcc->id) : 0;
+
+            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '4000' LIMIT 1");
+            $revAcc = $this->db->single();
+            $defaultRevId = $revAcc ? intval($revAcc->id) : 0;
+
+            foreach ($invoices as $invoice) {
+                $jeId = $invoice->journal_entry_id ? intval($invoice->journal_entry_id) : 0;
+                $jeRow = null;
+
+                if ($jeId > 0) {
+                    $this->db->query("SELECT id, status FROM journal_entries WHERE id = :jid");
+                    $this->db->bind(':jid', $jeId);
+                    $jeRow = $this->db->single();
+                }
+
+                if (!$jeRow && !empty($invoice->invoice_number)) {
+                    $this->db->query("SELECT id, status FROM journal_entries WHERE reference = :ref LIMIT 1");
+                    $this->db->bind(':ref', $invoice->invoice_number);
+                    $jeRow = $this->db->single();
+                    if ($jeRow) {
+                        $jeId = intval($jeRow->id);
+                        $this->db->query("UPDATE invoices SET journal_entry_id = :jid WHERE id = :iid");
+                        $this->db->bind(':jid', $jeId);
+                        $this->db->bind(':iid', $invoice->id);
+                        $this->db->execute();
+                    }
+                }
+
+                if ($jeRow && $jeRow->status === 'Draft') {
+                    // Promote Journal Entry status from Draft to Posted
+                    $this->db->query("UPDATE journal_entries SET status = 'Posted' WHERE id = :jid");
+                    $this->db->bind(':jid', $jeId);
+                    $this->db->execute();
+
+                    // Update Chart of Accounts balances for linked transactions
+                    $this->db->query("SELECT account_id, debit, credit FROM transactions WHERE journal_entry_id = :jid");
+                    $this->db->bind(':jid', $jeId);
+                    $txs = $this->db->resultSet() ?: [];
+                    foreach ($txs as $tx) {
+                        $this->db->updateAccountBalance(intval($tx->account_id), floatval($tx->debit), floatval($tx->credit));
+                    }
+
+                    // Update invoice stock status to deducted
+                    $this->db->query("UPDATE invoices SET stock_status = 'deducted' WHERE id = :iid");
+                    $this->db->bind(':iid', $invoice->id);
+                    $this->db->execute();
+                } elseif (!$jeRow && $defaultArId > 0 && $defaultRevId > 0) {
+                    // Create and post Journal Entry if missing
+                    $grandTotal = $this->getTrueGrandTotal($invoice);
+                    if ($grandTotal > 0) {
+                        $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
+                                          VALUES (NOW(), :reference, :description, :created_by, 'Posted')");
+                        $this->db->bind(':reference', $invoice->invoice_number);
+                        $this->db->bind(':description', 'Invoice Finalized - ' . $invoice->invoice_number);
+                        $this->db->bind(':created_by', $adminUserId);
+                        $this->db->execute();
+                        $newJeId = intval($this->db->lastInsertId());
+
+                        $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :acc, :debit, 0)");
+                        $this->db->bind(':jid', $newJeId);
+                        $this->db->bind(':acc', $defaultArId);
+                        $this->db->bind(':debit', $grandTotal);
+                        $this->db->execute();
+                        $this->db->updateAccountBalance($defaultArId, $grandTotal, 0);
+
+                        $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :acc, 0, :credit)");
+                        $this->db->bind(':jid', $newJeId);
+                        $this->db->bind(':acc', $defaultRevId);
+                        $this->db->bind(':credit', $grandTotal);
+                        $this->db->execute();
+                        $this->db->updateAccountBalance($defaultRevId, 0, $grandTotal);
+
+                        $this->db->query("UPDATE invoices SET journal_entry_id = :jid, stock_status = 'deducted' WHERE id = :iid");
+                        $this->db->bind(':jid', $newJeId);
+                        $this->db->bind(':iid', $invoice->id);
+                        $this->db->execute();
+                    }
+                }
+            }
 
             // 4. Financial Clearance collections balancing
             // ACCT-1 FIX: Delegate to the canonical RepTracking::finalizePayments() method
@@ -778,6 +918,79 @@ class Delivery {
                         $this->db->query("UPDATE customer_payments SET journal_entry_id = NULL WHERE id = :pid AND journal_entry_id IN (SELECT id FROM journal_entries WHERE status = 'Draft')");
                         $this->db->bind(':pid', $pay->id);
                         $this->db->execute();
+                    }
+                }
+            }
+
+            // Post unposted route expenses to GL during route finalization
+            $this->db->query("SELECT * FROM route_expenses WHERE rep_route_id IN ($ridsStr) AND journal_entry_id IS NULL");
+            $unpostedExpenses = $this->db->resultSet() ?: [];
+
+            if (!empty($unpostedExpenses)) {
+                require_once __DIR__ . '/../Services/RouteExpenseService.php';
+                require_once __DIR__ . '/JournalEntry.php';
+                $expenseService = new RouteExpenseService();
+                $journalModel = new JournalEntry();
+
+                foreach ($unpostedExpenses as $exp) {
+                    $amount = floatval($exp->amount);
+                    if ($amount <= 0) continue;
+
+                    $expType = $exp->expense_type ?: 'Other';
+                    $expSource = $exp->payment_source ?: 'Collected Cash';
+                    $vehicleNum = $exp->vehicle_number ?: null;
+                    $expenseAccountId = $expenseService->getOrCreateExpenseAccount($expType, $vehicleNum);
+                    if (!$expenseAccountId) continue;
+
+                    $creditAccountId = 0;
+                    if ($expSource === 'Petty Cash') {
+                        require_once __DIR__ . '/PettyCashTransaction.php';
+                        $pcModel = new PettyCashTransaction();
+                        $creditAccountId = $pcModel->getPettyCashAccountId();
+                    } else {
+                        // Collected Cash or Cash: Use 1090 Driver Transit Collections (Temp)
+                        $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1090' LIMIT 1");
+                        $clearingRow = $this->db->single();
+                        if ($clearingRow) {
+                            $creditAccountId = intval($clearingRow->id);
+                        } else {
+                            $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, balance, parent_id) 
+                                              VALUES ('1090', 'Driver Transit Collections (Temp)', 'Asset', 0.00, NULL)");
+                            $this->db->execute();
+                            $creditAccountId = intval($this->db->lastInsertId());
+                        }
+                    }
+
+                    $ref = 'RT-EXP-' . str_pad((string)$exp->rep_route_id, 5, '0', STR_PAD_LEFT) . '-' . $exp->id;
+                    $journalDesc = "Route Expense [{$expType}] for Route #RT-" . str_pad((string)$exp->rep_route_id, 5, '0', STR_PAD_LEFT) . " - " . $exp->description;
+
+                    $lines = [
+                        [
+                            'account_id' => $expenseAccountId,
+                            'debit' => $amount,
+                            'credit' => 0.0,
+                            'description' => $journalDesc
+                        ],
+                        [
+                            'account_id' => $creditAccountId,
+                            'debit' => 0.0,
+                            'credit' => $amount,
+                            'description' => $journalDesc
+                        ]
+                    ];
+
+                    $postRes = $journalModel->postEntry(date('Y-m-d', strtotime($exp->expense_date ?: 'now')), $ref, $journalDesc, $lines, $adminUserId);
+                    if ($postRes === true) {
+                        $this->db->query("SELECT id FROM journal_entries WHERE reference = :ref LIMIT 1");
+                        $this->db->bind(':ref', $ref);
+                        $jeRow = $this->db->single();
+                        if ($jeRow) {
+                            $newJid = intval($jeRow->id);
+                            $this->db->query("UPDATE route_expenses SET journal_entry_id = :jid WHERE id = :eid");
+                            $this->db->bind(':jid', $newJid);
+                            $this->db->bind(':eid', $exp->id);
+                            $this->db->execute();
+                        }
                     }
                 }
             }

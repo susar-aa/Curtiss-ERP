@@ -37,12 +37,16 @@ class Invoice {
         try {
             $this->db->beginTransaction();
 
+            $stockStatus = $invoiceData['stock_status'] ?? 'deducted';
+            $jeStatus = ($stockStatus === 'reserved') ? 'Draft' : 'Posted';
+
             $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
-                              VALUES (:entry_date, :reference, :description, :created_by, 'Posted')");
+                              VALUES (:entry_date, :reference, :description, :created_by, :status)");
             $this->db->bind(':entry_date', $invoiceData['invoice_date']);
             $this->db->bind(':reference', $invoiceData['invoice_number']);
             $this->db->bind(':description', 'Invoice Entry - ' . $invoiceData['invoice_number']);
             $this->db->bind(':created_by', $userId);
+            $this->db->bind(':status', $jeStatus);
             $this->db->execute();
             $journalEntryId = $this->db->lastInsertId();
 
@@ -52,8 +56,10 @@ class Invoice {
             $this->db->bind(':debit', $invoiceData['grand_total']);
             $this->db->execute();
 
-            // ACCT-2 FIX: Use account-type-aware balance update (AR is an Asset: debit increases)
-            $this->db->updateAccountBalance($arAccountId, $invoiceData['grand_total'], 0);
+            if ($jeStatus === 'Posted') {
+                // ACCT-2 FIX: Use account-type-aware balance update (AR is an Asset: debit increases)
+                $this->db->updateAccountBalance($arAccountId, $invoiceData['grand_total'], 0);
+            }
 
             $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, 0, :credit)");
             $this->db->bind(':journal_id', $journalEntryId);
@@ -61,8 +67,10 @@ class Invoice {
             $this->db->bind(':credit', $invoiceData['grand_total']);
             $this->db->execute();
 
-            // ACCT-2 FIX: Use account-type-aware balance update (Revenue: credit increases)
-            $this->db->updateAccountBalance($revenueAccountId, 0, $invoiceData['grand_total']);
+            if ($jeStatus === 'Posted') {
+                // ACCT-2 FIX: Use account-type-aware balance update (Revenue: credit increases)
+                $this->db->updateAccountBalance($revenueAccountId, 0, $invoiceData['grand_total']);
+            }
 
             $stockStatus = $invoiceData['stock_status'] ?? 'deducted';
             $uuid = $invoiceData['uuid'] ?? null;
@@ -121,6 +129,17 @@ class Invoice {
                         $this->db->bind(':id', $varId);
                         $this->db->execute();
                     }
+
+                    // Log reserved stock placement in ledger
+                    require_once '../app/Models/StockLedger.php';
+                    $ledger = new StockLedger();
+                    $this->db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
+                    $this->db->bind(':id', $itemId);
+                    $itemRow = $this->db->single();
+                    $whId = $itemRow ? $itemRow->warehouse_id : null;
+                    $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
+                    $remarks = 'Sales Order - Reserved Stock Placed (Qty: ' . $item['quantity'] . ')';
+                    $ledger->logMovement($itemId, $varId, 0, $item['quantity'], 'Reserved Stock Placement', $invoiceData['invoice_number'], $whId, $userId, $remarks, $itemCost);
                 } else {
                     // Direct creation deducts from Physical stock immediately (with unsigned underflow safety)
                     if ($itemId) {
@@ -240,14 +259,25 @@ class Invoice {
             $this->db->execute();
 
             // 2. ADJUST LEDGER BALANCE COALESCE
-            // ACCT-2 FIX: Use account-type-aware balance update for delta adjustments
-            $diff = $invoiceData['grand_total'] - $oldGrandTotal;
-            if (abs($diff) > 0.001) {
-                $this->db->updateAccountBalance($arAccountId, ($diff > 0 ? $diff : 0), ($diff < 0 ? abs($diff) : 0));
-                $this->db->updateAccountBalance($revenueAccountId, 0, ($diff > 0 ? $diff : 0));
-                // If diff is negative (reduced invoice), debit revenue to reduce it
-                if ($diff < 0) {
-                    $this->db->updateAccountBalance($revenueAccountId, abs($diff), 0);
+            // BUG-1 FIX: Only update account balances if the journal entry is Posted
+            $jid = $oldInvoice->journal_entry_id;
+            $isPosted = false;
+            if ($jid) {
+                $this->db->query("SELECT status FROM journal_entries WHERE id = :jid");
+                $this->db->bind(':jid', $jid);
+                $jeRow = $this->db->single();
+                $isPosted = ($jeRow && $jeRow->status === 'Posted');
+            }
+
+            if ($isPosted) {
+                $diff = $invoiceData['grand_total'] - $oldGrandTotal;
+                if (abs($diff) > 0.001) {
+                    $this->db->updateAccountBalance($arAccountId, ($diff > 0 ? $diff : 0), ($diff < 0 ? abs($diff) : 0));
+                    $this->db->updateAccountBalance($revenueAccountId, 0, ($diff > 0 ? $diff : 0));
+                    // If diff is negative (reduced invoice), debit revenue to reduce it
+                    if ($diff < 0) {
+                        $this->db->updateAccountBalance($revenueAccountId, abs($diff), 0);
+                    }
                 }
             }
 
@@ -413,7 +443,8 @@ class Invoice {
                     $itemRow = $this->db->single();
                     $whId = $itemRow ? $itemRow->warehouse_id : null;
                     $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
-                    $ledger->logMovement($itemId, $varId, 0, 0, 'Reserved Stock Release', $oldInvoice->invoice_number, $whId, $userId, 'Invoice Deleted - Reserved Stock Released', $itemCost);
+                    $remarks = 'Invoice Deleted - Reserved Stock Released (Qty: ' . $oldItem->quantity . ')';
+                    $ledger->logMovement($itemId, $varId, $oldItem->quantity, 0, 'Reserved Stock Release', $oldInvoice->invoice_number, $whId, $userId, $remarks, $itemCost);
                 } else {
                     if ($itemId) {
                         require_once '../app/Models/Item.php';
@@ -441,24 +472,36 @@ class Invoice {
             }
 
             // 2. ADJUST LEDGER ACCOUNTS BALANCE
-            $arAccountId = null;
-            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' AND (account_name LIKE '%Receivable%' OR account_code LIKE '1100%') LIMIT 1");
-            $arRow = $this->db->single();
-            $arAccountId = $arRow ? $arRow->id : null;
-
-            $revenueAccountId = null;
-            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' AND (account_name LIKE '%Sales%' OR account_name LIKE '%Revenue%' OR account_code LIKE '4000%') LIMIT 1");
-            $revRow = $this->db->single();
-            $revenueAccountId = $revRow ? $revRow->id : null;
-
-            if ($arAccountId) {
-                // ACCT-2 FIX: Use account-type-aware balance update (reversal: credit AR to reduce asset)
-                $this->db->updateAccountBalance($arAccountId, 0, $oldGrandTotal);
+            // BUG-1 FIX: Only adjust account balances if the journal entry was Posted
+            $jid = $oldInvoice->journal_entry_id;
+            $isPosted = false;
+            if ($jid) {
+                $this->db->query("SELECT status FROM journal_entries WHERE id = :jid");
+                $this->db->bind(':jid', $jid);
+                $jeRow = $this->db->single();
+                $isPosted = ($jeRow && $jeRow->status === 'Posted');
             }
 
-            if ($revenueAccountId) {
-                // ACCT-2 FIX: Use account-type-aware balance update (reversal: debit Revenue to reduce income)
-                $this->db->updateAccountBalance($revenueAccountId, $oldGrandTotal, 0);
+            if ($isPosted) {
+                $arAccountId = null;
+                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' AND (account_name LIKE '%Receivable%' OR account_code LIKE '1100%') LIMIT 1");
+                $arRow = $this->db->single();
+                $arAccountId = $arRow ? $arRow->id : null;
+
+                $revenueAccountId = null;
+                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' AND (account_name LIKE '%Sales%' OR account_name LIKE '%Revenue%' OR account_code LIKE '4000%') LIMIT 1");
+                $revRow = $this->db->single();
+                $revenueAccountId = $revRow ? $revRow->id : null;
+
+                if ($arAccountId) {
+                    // ACCT-2 FIX: Use account-type-aware balance update (reversal: credit AR to reduce asset)
+                    $this->db->updateAccountBalance($arAccountId, 0, $oldGrandTotal);
+                }
+
+                if ($revenueAccountId) {
+                    // ACCT-2 FIX: Use account-type-aware balance update (reversal: debit Revenue to reduce income)
+                    $this->db->updateAccountBalance($revenueAccountId, $oldGrandTotal, 0);
+                }
             }
 
             // 3. REMOVE JOURNAL ENTRIES & TRANSACTIONS

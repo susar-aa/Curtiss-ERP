@@ -73,6 +73,14 @@ class RepTrackingController extends Controller {
     }
 
     public function index() {
+        $this->renderRouteDashboard(false);
+    }
+
+    public function history() {
+        $this->renderRouteDashboard(true);
+    }
+
+    private function loadRouteDashboardData(): array {
         $vehicleModel = $this->model('Vehicle');
         $employeeModel = $this->model('Employee');
 
@@ -105,92 +113,29 @@ class RepTrackingController extends Controller {
         $db->query("SELECT id, name FROM mca_areas WHERE status = 'active' OR status IS NULL ORDER BY name ASC");
         $mcaAreas = $db->resultSet() ?: [];
 
-        $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-        $limit = 20;
-        $routesData = $this->getUnifiedRoutes($page, $limit);
-
-        // AJAX response for pagination and search
-        if (isset($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')) {
-            header('Content-Type: application/json');
-            ob_start();
-            $routes = $routesData['routes'];
-            $isHistory = false;
-            include dirname(__DIR__) . '/Views/rep-tracking/_route_list_items.php';
-            $routesHtml = ob_get_clean();
-
-            ob_start();
-            $pagination = $routesData['pagination'];
-            include dirname(__DIR__) . '/Views/rep-tracking/_pagination.php';
-            $paginationHtml = ob_get_clean();
-
-            echo json_encode([
-                'status' => 'success',
-                'routes_html' => $routesHtml,
-                'pagination_html' => $paginationHtml
-            ]);
-            exit;
-        }
-
-        $data = [
-            'title' => 'Master Route Control Panel',
-            'content_view' => 'rep-tracking/index',
-            'routes' => $routesData['routes'],
-            'pagination' => $routesData['pagination'],
+        return [
             'vehicles' => $vehicles,
-            'drivers' => $drivers,
             'employees' => $allEmployees,
+            'drivers' => $drivers,
             'bank_accounts' => $bankAccounts,
             'all_accounts' => $allAccounts,
             'reps' => $repsList,
             'mca_areas' => $mcaAreas
         ];
-        
-        $this->view('layouts/main', $data);
     }
 
-    public function history() {
-        $vehicleModel = $this->model('Vehicle');
-        $employeeModel = $this->model('Employee');
-
-        $vehicles = $vehicleModel->getAllVehicles();
-        $allEmployees = $employeeModel->getAllEmployees();
-
-        $drivers = $this->resolveDrivers($allEmployees);
-
-        $db = new Database();
-        $db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1600'");
-        $parent = $db->single();
-        $parentId = $parent ? $parent->id : 0;
-        
-        $db->query("SELECT * FROM chart_of_accounts WHERE parent_id = :pid ORDER BY account_code ASC");
-        $db->bind(':pid', $parentId);
-        $bankAccounts = $db->resultSet() ?: [];
-
-        $db->query("SELECT id, account_code, account_name FROM chart_of_accounts ORDER BY account_code ASC");
-        $allAccounts = $db->resultSet() ?: [];
-
-        // Fetch active reps (users with role = 'rep')
-        $db->query("SELECT DISTINCT u.id, u.username, e.first_name, e.last_name 
-                    FROM users u 
-                    INNER JOIN employees e ON u.employee_id = e.id OR (e.email IS NOT NULL AND e.email != '' AND LOWER(u.email) = LOWER(e.email))
-                    WHERE (e.job_title = 'Rep' OR u.role = 'rep') AND e.status = 'Active' AND (u.status IS NULL OR u.status = 'Active') 
-                    ORDER BY e.first_name ASC, u.username ASC");
-        $repsList = $db->resultSet() ?: [];
-
-        // Fetch active MCA areas (territories)
-        $db->query("SELECT id, name FROM mca_areas WHERE status = 'active' OR status IS NULL ORDER BY name ASC");
-        $mcaAreas = $db->resultSet() ?: [];
+    private function renderRouteDashboard($isHistory = false) {
+        $baseData = $this->loadRouteDashboardData();
 
         $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
         $limit = 20;
-        $routesData = $this->getCompletedRoutes($page, $limit);
+        $routesData = $isHistory ? $this->getCompletedRoutes($page, $limit) : $this->getUnifiedRoutes($page, $limit);
 
         // AJAX response for pagination and search
         if (isset($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')) {
             header('Content-Type: application/json');
             ob_start();
             $routes = $routesData['routes'];
-            $isHistory = true;
             include dirname(__DIR__) . '/Views/rep-tracking/_route_list_items.php';
             $routesHtml = ob_get_clean();
 
@@ -207,21 +152,17 @@ class RepTrackingController extends Controller {
             exit;
         }
 
-        $data = [
-            'title' => 'Route History',
+        $data = array_merge($baseData, [
+            'title' => $isHistory ? 'Route History' : 'Master Route Control Panel',
             'content_view' => 'rep-tracking/index',
             'routes' => $routesData['routes'],
-            'pagination' => $routesData['pagination'],
-            'vehicles' => $vehicles,
-            'drivers' => $drivers,
-            'employees' => $allEmployees,
-            'bank_accounts' => $bankAccounts,
-            'all_accounts' => $allAccounts,
-            'reps' => $repsList,
-            'mca_areas' => $mcaAreas,
-            'is_history' => true
-        ];
+            'pagination' => $routesData['pagination']
+        ]);
         
+        if ($isHistory) {
+            $data['is_history'] = true;
+        }
+
         $this->view('layouts/main', $data);
     }
 
@@ -399,7 +340,7 @@ class RepTrackingController extends Controller {
             LEFT JOIN users u ON r.user_id = u.id
             LEFT JOIN employees e ON u.email = e.email
             LEFT JOIN route_bindings rb ON r.route_binding_id = rb.id
-            WHERE r.status != 'Bound' AND r.status != 'Bound Into Route'
+            WHERE r.status IN ('Completed', 'Finalized')
               $filterSql
         ";
         $db->query($countQuery);
@@ -466,7 +407,7 @@ class RepTrackingController extends Controller {
                 FROM delivery_picking_items
                 GROUP BY delivery_id
             ) dpi ON dpi.delivery_id = d.id
-            WHERE r.status != 'Bound' AND r.status != 'Bound Into Route'
+            WHERE r.status IN ('Completed', 'Finalized')
               $filterSql
             ORDER BY r.start_time DESC
             LIMIT :limit OFFSET :offset
@@ -600,39 +541,62 @@ class RepTrackingController extends Controller {
             }
         }
         
+        $mainAreaIds = array_values(array_unique(array_filter(array_map('intval', $mainAreaIds))));
+        $routeIds = array_values(array_unique(array_filter(array_map('intval', $routeIds))));
+        
         if (empty($mainAreaIds)) {
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'bills' => []]);
             exit;
         }
-        
-        $areaIdsStr = implode(',', array_unique($mainAreaIds));
+
+        $areaPlaceholders = [];
+        foreach ($mainAreaIds as $idx => $id) {
+            $areaPlaceholders[] = ":maid_" . $idx;
+        }
+        $areaPlaceholdersStr = implode(',', $areaPlaceholders);
+
+        $routePlaceholders = [];
+        foreach ($routeIds as $idx => $id) {
+            $routePlaceholders[] = ":rids_" . $idx;
+        }
+        $routePlaceholdersStr = implode(',', $routePlaceholders);
+        $routeCondition = !empty($routePlaceholders) ? "AND (rep_route_id IS NULL OR rep_route_id NOT IN ($routePlaceholdersStr))" : "";
         
         $db->query("
             SELECT DISTINCT c.id
             FROM customers c
             JOIN mca_areas m ON c.mca_id = m.id
             JOIN invoices i ON i.customer_id = c.id
-            WHERE m.main_area_id IN ($areaIdsStr) AND i.status != 'Voided'
+            WHERE m.main_area_id IN ($areaPlaceholdersStr) AND i.status != 'Voided'
         ");
-        $custs = $db->resultSet();
+        foreach ($mainAreaIds as $idx => $id) {
+            $db->bind(":maid_" . $idx, $id);
+        }
+        $custs = $db->resultSet() ?: [];
         foreach ($custs as $c) {
             $this->autoApplyPaymentsToInvoices($c->id);
         }
         
-        $routeIdsStr = implode(',', array_map('intval', $routeIds));
-        
         $db->query("
             SELECT c.id as customer_id, c.name as customer_name, m.name as mca_name,
                    (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) 
-                    FROM invoices WHERE customer_id = c.id AND status = 'Unpaid' AND (rep_route_id IS NULL OR rep_route_id NOT IN ($routeIdsStr))) as outstanding_amount
+                    FROM invoices WHERE customer_id = c.id AND status = 'Unpaid' {$routeCondition}) as outstanding_amount
             FROM customers c
             JOIN mca_areas m ON c.mca_id = m.id
-            WHERE m.main_area_id IN ($areaIdsStr)
+            WHERE m.main_area_id IN ($areaPlaceholdersStr)
             HAVING outstanding_amount > 0
             ORDER BY c.name ASC
         ");
-        $outstandingCustomers = $db->resultSet();
+        foreach ($mainAreaIds as $idx => $id) {
+            $db->bind(":maid_" . $idx, $id);
+        }
+        if (!empty($routePlaceholders)) {
+            foreach ($routeIds as $idx => $id) {
+                $db->bind(":rids_" . $idx, $id);
+            }
+        }
+        $outstandingCustomers = $db->resultSet() ?: [];
         
         $customersWithBills = [];
         foreach ($outstandingCustomers as $cust) {
@@ -641,10 +605,15 @@ class RepTrackingController extends Controller {
                        (SELECT route_name FROM rep_daily_routes WHERE id = i.rep_route_id) as route_name,
                        (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total
                 FROM invoices i
-                WHERE i.customer_id = :cid AND i.status = 'Unpaid' AND (i.rep_route_id IS NULL OR i.rep_route_id NOT IN ($routeIdsStr))
+                WHERE i.customer_id = :cid AND i.status = 'Unpaid' {$routeCondition}
                 ORDER BY i.invoice_date ASC
             ");
             $db->bind(':cid', $cust->customer_id);
+            if (!empty($routePlaceholders)) {
+                foreach ($routeIds as $idx => $id) {
+                    $db->bind(":rids_" . $idx, $id);
+                }
+            }
             $bills = $db->resultSet() ?: [];
             
             if (!empty($bills)) {
@@ -671,14 +640,6 @@ class RepTrackingController extends Controller {
         $dbToUse->bind(':cid', $customerId);
         $rowPaid = $dbToUse->single();
         $totalPaid = $rowPaid ? floatval($rowPaid->total_paid) : 0.0;
-        
-        // Sum pending route collections (in transit/not yet finalized)
-        $dbToUse->query("SELECT COALESCE(SUM(amount), 0) as total_pending FROM pending_collections WHERE customer_id = :cid AND status = 'Pending'");
-        $dbToUse->bind(':cid', $customerId);
-        $rowPending = $dbToUse->single();
-        $totalPending = $rowPending ? floatval($rowPending->total_pending) : 0.0;
-        
-        $totalPaid += $totalPending;
         
         $dbToUse->query("
             SELECT id, 
@@ -1308,7 +1269,8 @@ class RepTrackingController extends Controller {
             $items = [];
             foreach ($rawItems as $ri) {
                 $item = new stdClass();
-                $item->item_id = null;
+                $item->item_id = $ri->item_id ?? null;
+                $item->variation_option_id = $ri->variation_option_id ?? null;
                 $item->item_name = $ri->item_name;
                 $item->required_qty = floatval($ri->total_qty);
                 $item->pre_loaded_qty = floatval($ri->total_qty);
@@ -1920,7 +1882,8 @@ class RepTrackingController extends Controller {
                     $whId = $itemRow ? $itemRow->warehouse_id : null;
                     $itemCost = $itemRow ? floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00) : 0.00;
                     
-                    $ledger->logMovement($itemId, $varId, 0, 0, 'Reserved Stock Release', $invNumber, $whId, $_SESSION['user_id'] ?? 1, 'Invoice Deleted - Reserved Stock Released', $itemCost);
+                    $remarks = 'Sales Order Deleted - Reserved Stock Released (Qty: ' . $qty . ')';
+                    $ledger->logMovement($itemId, $varId, $qty, 0, 'Reserved Stock Release', $invNumber, $whId, $_SESSION['user_id'] ?? 1, $remarks, $itemCost);
                 }
             }
             $db->query("DELETE FROM invoice_items WHERE invoice_id = :iid");
@@ -2518,8 +2481,8 @@ class RepTrackingController extends Controller {
                         if (!$credAcc) $credAcc = $defaultSalesAcc;
 
                         if ($debAcc && $credAcc) {
-                            // Find and clean up any existing draft JEs for this invoice
-                            $db->query("SELECT id FROM journal_entries WHERE reference = :ref AND status = 'Draft'");
+                            // 1. Delete legacy standalone orphan INV-SALES-DRAFT- JEs if any exist
+                            $db->query("SELECT id FROM journal_entries WHERE reference = :ref");
                             $db->bind(':ref', "INV-SALES-DRAFT-" . $invId);
                             $oldJEs = $db->resultSet();
                             foreach ($oldJEs as $oldJE) {
@@ -2532,28 +2495,23 @@ class RepTrackingController extends Controller {
                                 $db->execute();
                             }
 
-                            // Insert new Draft Journal Entry
-                            $db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
-                                              VALUES (CURDATE(), :ref, :desc, :uid, 'Draft')");
-                            $db->bind(':ref', "INV-SALES-DRAFT-" . $invId);
-                            $db->bind(':desc', "Sales Invoice Delivery Revenue Posting (" . $invoice->invoice_number . ") [Draft]");
-                            $db->bind(':uid', $_SESSION['user_id']);
-                            $db->execute();
-                            $jid = $db->lastInsertId();
+                            // 2. Update mapped accounts directly on the invoice's official primary journal entry
+                            $officialJid = $invoice->journal_entry_id;
+                            if ($officialJid) {
+                                // Update Debit transaction (AR) account ID & amount
+                                $db->query("UPDATE transactions SET account_id = :aid, debit = :deb WHERE journal_entry_id = :jid AND debit > 0");
+                                $db->bind(':aid', $debAcc);
+                                $db->bind(':deb', $gTotal);
+                                $db->bind(':jid', $officialJid);
+                                $db->execute();
 
-                            // Debit transaction
-                            $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, 0)");
-                            $db->bind(':jid', $jid);
-                            $db->bind(':aid', $debAcc);
-                            $db->bind(':deb', $gTotal);
-                            $db->execute();
-
-                            // Credit transaction
-                            $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :cred)");
-                            $db->bind(':jid', $jid);
-                            $db->bind(':aid', $credAcc);
-                            $db->bind(':cred', $gTotal);
-                            $db->execute();
+                                // Update Credit transaction (Revenue) account ID & amount
+                                $db->query("UPDATE transactions SET account_id = :aid, credit = :cred WHERE journal_entry_id = :jid AND credit > 0");
+                                $db->bind(':aid', $credAcc);
+                                $db->bind(':cred', $gTotal);
+                                $db->bind(':jid', $officialJid);
+                                $db->execute();
+                            }
                         }
                     }
                 }
@@ -2618,7 +2576,12 @@ class RepTrackingController extends Controller {
     }
 
     public function api_detach_invoice() {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { die("Invalid Request"); }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            http_response_code(405);
+            echo json_encode(['status' => 'error', 'message' => 'Invalid Request Method']);
+            exit;
+        }
         $this->validateCsrf();
         $payload = json_decode(file_get_contents('php://input'), true);
         $invoiceId = intval($payload['invoice_id'] ?? 0);
@@ -2629,9 +2592,44 @@ class RepTrackingController extends Controller {
         }
         try {
             $db = new Database();
+            $db->query("
+                SELECT i.id, i.invoice_number, i.rep_route_id, i.status as invoice_status, i.delivery_status, 
+                       r.status as route_status
+                FROM invoices i
+                LEFT JOIN rep_daily_routes r ON i.rep_route_id = r.id
+                WHERE i.id = :id
+            ");
+            $db->bind(':id', $invoiceId);
+            $invoice = $db->single();
+
+            if (!$invoice) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Invoice not found.']);
+                exit;
+            }
+
+            if (empty($invoice->rep_route_id)) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Invoice is not attached to any route.']);
+                exit;
+            }
+
+            if (in_array($invoice->route_status, ['Completed', 'Finalized'])) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Cannot detach invoice from a completed or finalized route.']);
+                exit;
+            }
+
+            if (in_array($invoice->delivery_status, ['Delivered', 'Finalized'])) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Cannot detach an invoice that has already been delivered or finalized.']);
+                exit;
+            }
+
             $db->query("UPDATE invoices SET rep_route_id = NULL WHERE id = :id");
             $db->bind(':id', $invoiceId);
             $db->execute();
+
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'message' => 'Invoice detached successfully!']);
             exit;

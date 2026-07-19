@@ -128,31 +128,67 @@ class Cheque {
             }
         }
         
-        // Status Transition: Pending -> Cleared (direct manual clear)
-        if ($oldStatus === 'Pending' && $newStatus === 'Cleared') {
+        // Status Transition: -> Cleared (direct manual clear)
+        if ($newStatus === 'Cleared' && $oldStatus !== 'Cleared') {
             if ($chk->customer_id && $chk->bank_account_id) {
-                // Manually clear customer cheque directly to a bank
+                // Manually clear customer cheque directly to a bank account
                 $ref = 'CQ-CLR-' . $chequeNum;
                 $desc = "Cleared Customer Cheque #" . $chequeNum;
+                $creditAccount = ($oldStatus === 'Deposited' || $oldStatus === 'Sent to Bank') 
+                    ? ($this->getAccountIdByCode('1040') ?: $chequeInHandId) 
+                    : $chequeInHandId;
                 $lines = [
                     ['account_id' => $chk->bank_account_id, 'debit' => $amount, 'credit' => 0.00, 'description' => $desc],
-                    ['account_id' => $chequeInHandId, 'debit' => 0.00, 'credit' => $amount, 'description' => $desc]
+                    ['account_id' => $creditAccount, 'debit' => 0.00, 'credit' => $amount, 'description' => $desc]
                 ];
                 $this->insertJournalEntry($bankingDate, $ref, $desc, $lines, $uid);
             }
         }
         
-        // Status Transition: Pending -> Bounced (direct manual bounce)
-        if ($oldStatus === 'Pending' && $newStatus === 'Bounced') {
+        // Status Transition: -> Bounced / Returned (direct manual bounce)
+        if (($newStatus === 'Bounced' || $newStatus === 'Returned') && $oldStatus !== $newStatus) {
             if ($chk->customer_id) {
-                // Bounced customer cheque
+                // Bounced customer cheque: Re-open Accounts Receivable
                 $ref = 'CQ-BNC-' . $chequeNum;
                 $desc = "Bounced Customer Cheque #" . $chequeNum;
+                $creditAccount = ($oldStatus === 'Deposited' || $oldStatus === 'Sent to Bank') 
+                    ? ($this->getAccountIdByCode('1040') ?: $chequeInHandId) 
+                    : $chequeInHandId;
                 $lines = [
                     ['account_id' => $arAccountId, 'debit' => $amount, 'credit' => 0.00, 'description' => $desc],
-                    ['account_id' => $chequeInHandId, 'debit' => 0.00, 'credit' => $amount, 'description' => $desc]
+                    ['account_id' => $creditAccount, 'debit' => 0.00, 'credit' => $amount, 'description' => $desc]
                 ];
                 $this->insertJournalEntry($bankingDate, $ref, $desc, $lines, $uid);
+
+                // Reverse corresponding active customer payment and re-open invoices to Unpaid
+                $this->db->query("SELECT p.* FROM customer_payments p
+                                  WHERE p.customer_id = :cid AND p.amount = :amt AND p.payment_method = 'Cheque' AND p.status = 'Active' 
+                                  ORDER BY p.id DESC LIMIT 1");
+                $this->db->bind(':cid', $chk->customer_id);
+                $this->db->bind(':amt', $amount);
+                $payment = $this->db->single();
+
+                if ($payment) {
+                    $this->db->query("UPDATE customer_payments SET status = 'Bounced', reversed_by = :uid, reversed_at = CURRENT_TIMESTAMP() WHERE id = :pid");
+                    $this->db->bind(':uid', intval($uid));
+                    $this->db->bind(':pid', intval($payment->id));
+                    $this->db->execute();
+
+                    $this->db->query("SELECT invoice_id FROM customer_payment_allocations WHERE customer_payment_id = :pid AND is_reversed = 0");
+                    $this->db->bind(':pid', intval($payment->id));
+                    $allocs = $this->db->resultSet() ?: [];
+
+                    $this->db->query("UPDATE customer_payment_allocations SET is_reversed = 1, reversed_by = :uid, reversed_at = CURRENT_TIMESTAMP() WHERE customer_payment_id = :pid");
+                    $this->db->bind(':uid', intval($uid));
+                    $this->db->bind(':pid', intval($payment->id));
+                    $this->db->execute();
+
+                    foreach ($allocs as $a) {
+                        $this->db->query("UPDATE invoices SET status = 'Unpaid' WHERE id = :id");
+                        $this->db->bind(':id', intval($a->invoice_id));
+                        $this->db->execute();
+                    }
+                }
             } elseif ($chk->vendor_id && $chk->bank_account_id) {
                 // Bounced/Cancelled supplier cheque (reverses the payment)
                 $ref = 'CQ-CAN-' . $chequeNum;

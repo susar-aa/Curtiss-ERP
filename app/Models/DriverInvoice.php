@@ -271,29 +271,71 @@ class DriverInvoice {
         $salesAcc = $accMap['4000'] ?? null;
 
         if ($arAcc && $salesAcc) {
-            // ACCT-2 FIX: Use account-type-aware balance update for delta adjustments
-            $diff = $newGrandTotal - $oldGrandTotal;
-            if (abs($diff) > 0.001) {
-                // AR (Asset): positive diff means debit increase, negative means credit decrease
-                $this->db->updateAccountBalance($arAcc, ($diff > 0 ? $diff : 0), ($diff < 0 ? abs($diff) : 0));
-                // Sales (Revenue): positive diff means credit increase, negative means debit decrease
-                $this->db->updateAccountBalance($salesAcc, ($diff < 0 ? abs($diff) : 0), ($diff > 0 ? $diff : 0));
-            }
-
-            // Update journal transactions
             $jid = $invoice->journal_entry_id;
             if ($jid) {
-                $this->db->query("UPDATE transactions SET debit = :new_amt WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
-                $this->db->bind(':new_amt', $newGrandTotal);
+                $this->db->query("SELECT status, reference FROM journal_entries WHERE id = :jid");
                 $this->db->bind(':jid', $jid);
-                $this->db->bind(':aid', $arAcc);
-                $this->db->execute();
+                $jeRow = $this->db->single();
+                $jeStatus = $jeRow ? $jeRow->status : 'Draft';
+                $invNum = $jeRow ? $jeRow->reference : ($invoice->invoice_number ?? $invoice->id);
 
-                $this->db->query("UPDATE transactions SET credit = :new_amt WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
-                $this->db->bind(':new_amt', $newGrandTotal);
-                $this->db->bind(':jid', $jid);
-                $this->db->bind(':aid', $salesAcc);
-                $this->db->execute();
+                $diff = $newGrandTotal - $oldGrandTotal;
+
+                if ($jeStatus === 'Posted') {
+                    if (abs($diff) > 0.001) {
+                        $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
+                                          VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
+                        $this->db->bind(':ref', 'VAR-ADJ-' . $invNum);
+                        $this->db->bind(':desc', 'Sales Invoice Adjustment - Invoice #' . $invNum);
+                        $this->db->bind(':uid', $_SESSION['user_id'] ?? 1);
+                        $this->db->execute();
+                        $adjJid = $this->db->lastInsertId();
+
+                        if ($diff > 0) {
+                            $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :amt, 0)");
+                            $this->db->bind(':jid', $adjJid);
+                            $this->db->bind(':aid', $arAcc);
+                            $this->db->bind(':amt', $diff);
+                            $this->db->execute();
+                            $this->db->updateAccountBalance($arAcc, $diff, 0);
+
+                            $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :amt)");
+                            $this->db->bind(':jid', $adjJid);
+                            $this->db->bind(':aid', $salesAcc);
+                            $this->db->bind(':amt', $diff);
+                            $this->db->execute();
+                            $this->db->updateAccountBalance($salesAcc, 0, $diff);
+                        } else {
+                            $absDiff = abs($diff);
+                            $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :amt, 0)");
+                            $this->db->bind(':jid', $adjJid);
+                            $this->db->bind(':aid', $salesAcc);
+                            $this->db->bind(':amt', $absDiff);
+                            $this->db->execute();
+                            $this->db->updateAccountBalance($salesAcc, $absDiff, 0);
+
+                            $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :amt)");
+                            $this->db->bind(':jid', $adjJid);
+                            $this->db->bind(':aid', $arAcc);
+                            $this->db->bind(':amt', $absDiff);
+                            $this->db->execute();
+                            $this->db->updateAccountBalance($arAcc, 0, $absDiff);
+                        }
+                    }
+                } else {
+                    // Draft JE: update draft transaction amounts directly
+                    $this->db->query("UPDATE transactions SET debit = :new_amt WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
+                    $this->db->bind(':new_amt', $newGrandTotal);
+                    $this->db->bind(':jid', $jid);
+                    $this->db->bind(':aid', $arAcc);
+                    $this->db->execute();
+
+                    $this->db->query("UPDATE transactions SET credit = :new_amt WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
+                    $this->db->bind(':new_amt', $newGrandTotal);
+                    $this->db->bind(':jid', $jid);
+                    $this->db->bind(':aid', $salesAcc);
+                    $this->db->execute();
+                }
             }
         }
     }

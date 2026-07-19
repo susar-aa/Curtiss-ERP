@@ -96,7 +96,8 @@ class StockLedger {
 
             $qtyIn = floatval($qtyIn);
             $qtyOut = floatval($qtyOut);
-            $newBalance = $prevBalance + $qtyIn - $qtyOut;
+            $isReservedMovement = in_array($type, ['Reserved Stock Placement', 'Reserved Stock Release', 'Reserved Stock Variance Adjustment']);
+            $newBalance = $isReservedMovement ? $prevBalance : ($prevBalance + $qtyIn - $qtyOut);
             $unitCost = floatval($unitCost);
             $totalVal = ($qtyIn > 0 ? $qtyIn : $qtyOut) * $unitCost;
 
@@ -118,7 +119,7 @@ class StockLedger {
             }
 
             $journalId = null;
-            if ($totalVal > 0.00 && $inventoryAccId) {
+            if (!$isReservedMovement && $totalVal > 0.00 && $inventoryAccId) {
                 $debitAccId = null;
                 $creditAccId = null;
 

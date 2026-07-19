@@ -173,6 +173,16 @@ class RepVarianceService {
                                 $db->bind(':item_id', $itemId);
                                 $db->execute();
                             }
+
+                            require_once dirname(__DIR__) . '/Models/StockLedger.php';
+                            $ledger = new StockLedger();
+                            $db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
+                            $db->bind(':id', $itemId);
+                            $itemMeta = $db->single();
+                            $whId = $itemMeta ? $itemMeta->warehouse_id : null;
+                            $itemCost = $itemMeta ? floatval($itemMeta->cost_price > 0 ? $itemMeta->cost_price : 0.00) : 0.00;
+                            $remarks = 'Variance Audit Adjust - Reserved Stock (Delta: ' . $diff . ')';
+                            $ledger->logMovement($itemId, $varId, ($diff < 0 ? abs($diff) : 0), ($diff > 0 ? $diff : 0), 'Reserved Stock Variance Adjustment', $line->invoice_number, $whId, $userId, $remarks, $itemCost);
                         } else {
                             if ($varId !== null) {
                                 $db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :diff) WHERE id = :var_id");
@@ -275,6 +285,13 @@ class RepVarianceService {
                                     $db->bind(':item_id', $itemId);
                                     $db->execute();
                                 }
+
+                                require_once dirname(__DIR__) . '/Models/StockLedger.php';
+                                $ledger = new StockLedger();
+                                $whId = $itemRow->warehouse_id;
+                                $itemCost = floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00);
+                                $remarks = 'Variance Audit Adjust - Reserved Stock Added (Qty: ' . $newQty . ')';
+                                $ledger->logMovement($itemId, $varId, 0, $newQty, 'Reserved Stock Variance Adjustment', $invNum, $whId, $userId, $remarks, $itemCost);
                             } else {
                                 if ($varId !== null) {
                                     $db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :var_id");
@@ -345,30 +362,80 @@ class RepVarianceService {
 
                     $jid = $invRow->journal_entry_id;
                     if ($jid) {
-                        if ($arAccId) {
-                            $db->query("UPDATE transactions SET debit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
-                            $db->bind(':grand', $grandTotal);
-                            $db->bind(':jid', $jid);
-                            $db->bind(':aid', $arAccId);
-                            $db->execute();
-                        }
-                        if ($revAccId) {
-                            $db->query("UPDATE transactions SET credit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
-                            $db->bind(':grand', $grandTotal);
-                            $db->bind(':jid', $jid);
-                            $db->bind(':aid', $revAccId);
-                            $db->execute();
-                        }
+                        $db->query("SELECT status, reference FROM journal_entries WHERE id = :jid");
+                        $db->bind(':jid', $jid);
+                        $jeRow = $db->single();
+                        $jeStatus = $jeRow ? $jeRow->status : 'Draft';
+                        $invNum = $jeRow ? $jeRow->reference : ($invRow->invoice_number ?? $invId);
 
                         $diffGrand = $grandTotal - $oldGrand;
-                        if (abs($diffGrand) > 0.001) {
+
+                        if ($jeStatus === 'Posted') {
+                            // BUG-3 FIX: Never mutate posted transaction rows directly.
+                            // Create a new formal Reversing/Adjustment Journal Entry for the delta.
+                            if (abs($diffGrand) > 0.001) {
+                                $db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
+                                                  VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
+                                $db->bind(':ref', 'VAR-ADJ-' . $invNum);
+                                $db->bind(':desc', 'Sales Invoice Variance Adjustment - Invoice #' . $invNum);
+                                $db->bind(':uid', $userId);
+                                $db->execute();
+                                $adjJid = $db->lastInsertId();
+
+                                if ($diffGrand > 0) {
+                                    // Net increase: Debit AR, Credit Revenue
+                                    if ($arAccId) {
+                                        $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :amt, 0)");
+                                        $db->bind(':jid', $adjJid);
+                                        $db->bind(':aid', $arAccId);
+                                        $db->bind(':amt', $diffGrand);
+                                        $db->execute();
+                                        $db->updateAccountBalance($arAccId, $diffGrand, 0);
+                                    }
+                                    if ($revAccId) {
+                                        $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :amt)");
+                                        $db->bind(':jid', $adjJid);
+                                        $db->bind(':aid', $revAccId);
+                                        $db->bind(':amt', $diffGrand);
+                                        $db->execute();
+                                        $db->updateAccountBalance($revAccId, 0, $diffGrand);
+                                    }
+                                } else {
+                                    // Net reduction (short delivery/returns): Debit Revenue, Credit AR
+                                    $absDiff = abs($diffGrand);
+                                    if ($revAccId) {
+                                        $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :amt, 0)");
+                                        $db->bind(':jid', $adjJid);
+                                        $db->bind(':aid', $revAccId);
+                                        $db->bind(':amt', $absDiff);
+                                        $db->execute();
+                                        $db->updateAccountBalance($revAccId, $absDiff, 0);
+                                    }
+                                    if ($arAccId) {
+                                        $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :amt)");
+                                        $db->bind(':jid', $adjJid);
+                                        $db->bind(':aid', $arAccId);
+                                        $db->bind(':amt', $absDiff);
+                                        $db->execute();
+                                        $db->updateAccountBalance($arAccId, 0, $absDiff);
+                                    }
+                                }
+                            }
+                        } else {
+                            // Entry is Draft: update draft transaction amounts directly so when it posts at delivery, it posts the right total
                             if ($arAccId) {
-                                // ACCT-2 FIX: AR (Asset): positive diff = debit, negative = credit
-                                $db->updateAccountBalance($arAccId, ($diffGrand > 0 ? $diffGrand : 0), ($diffGrand < 0 ? abs($diffGrand) : 0));
+                                $db->query("UPDATE transactions SET debit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
+                                $db->bind(':grand', $grandTotal);
+                                $db->bind(':jid', $jid);
+                                $db->bind(':aid', $arAccId);
+                                $db->execute();
                             }
                             if ($revAccId) {
-                                // ACCT-2 FIX: Revenue: positive diff = credit increase, negative = debit decrease
-                                $db->updateAccountBalance($revAccId, ($diffGrand < 0 ? abs($diffGrand) : 0), ($diffGrand > 0 ? $diffGrand : 0));
+                                $db->query("UPDATE transactions SET credit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
+                                $db->bind(':grand', $grandTotal);
+                                $db->bind(':jid', $jid);
+                                $db->bind(':aid', $revAccId);
+                                $db->execute();
                             }
                         }
                     }
@@ -396,7 +463,24 @@ class RepVarianceService {
             }
             $placeholdersStr = implode(',', $placeholders);
 
-            $db->query("UPDATE rep_daily_routes SET status = 'Finalizing' WHERE id IN ($placeholdersStr)");
+            // Check if all associated deliveries are already Finalized
+            $db->query("
+                SELECT COUNT(*) as total_dels,
+                       SUM(CASE WHEN status = 'Finalized' THEN 1 ELSE 0 END) as finalized_dels
+                FROM deliveries 
+                WHERE rep_route_id IN ($placeholdersStr) OR secondary_rep_route_id IN ($placeholdersStr)
+            ");
+            foreach ($routeIds as $index => $id) {
+                $db->bind(":rid_fin_" . $index, intval($id));
+            }
+            $delMeta = $db->single();
+            $totalDels = $delMeta ? intval($delMeta->total_dels) : 0;
+            $finalizedDels = $delMeta ? intval($delMeta->finalized_dels) : 0;
+
+            $targetRouteStatus = ($totalDels > 0 && $totalDels === $finalizedDels) ? 'Finalized' : 'Finalizing';
+
+            $db->query("UPDATE rep_daily_routes SET status = :st WHERE id IN ($placeholdersStr)");
+            $db->bind(':st', $targetRouteStatus);
             foreach ($routeIds as $index => $id) {
                 $db->bind(":rid_fin_" . $index, intval($id));
             }
@@ -640,30 +724,80 @@ class RepVarianceService {
 
                     $jid = $invRow->journal_entry_id;
                     if ($jid) {
-                        if ($arAccId) {
-                            $db->query("UPDATE transactions SET debit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
-                            $db->bind(':grand', $grandTotal);
-                            $db->bind(':jid', $jid);
-                            $db->bind(':aid', $arAccId);
-                            $db->execute();
-                        }
-                        if ($revAccId) {
-                            $db->query("UPDATE transactions SET credit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
-                            $db->bind(':grand', $grandTotal);
-                            $db->bind(':jid', $jid);
-                            $db->bind(':aid', $revAccId);
-                            $db->execute();
-                        }
+                        $db->query("SELECT status, reference FROM journal_entries WHERE id = :jid");
+                        $db->bind(':jid', $jid);
+                        $jeRow = $db->single();
+                        $jeStatus = $jeRow ? $jeRow->status : 'Draft';
+                        $invNum = $jeRow ? $jeRow->reference : ($invRow->invoice_number ?? $invoice->id);
 
                         $diffGrand = $grandTotal - $oldGrand;
-                        if (abs($diffGrand) > 0.001) {
+
+                        if ($jeStatus === 'Posted') {
+                            // BUG-3 FIX: Never mutate posted transaction rows directly.
+                            // Create a new formal Reversing/Adjustment Journal Entry for the delta.
+                            if (abs($diffGrand) > 0.001) {
+                                $db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
+                                                  VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
+                                $db->bind(':ref', 'VAR-ADJ-' . $invNum);
+                                $db->bind(':desc', 'Sales Invoice Variance Adjustment - Invoice #' . $invNum);
+                                $db->bind(':uid', $userId);
+                                $db->execute();
+                                $adjJid = $db->lastInsertId();
+
+                                if ($diffGrand > 0) {
+                                    // Net increase: Debit AR, Credit Revenue
+                                    if ($arAccId) {
+                                        $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :amt, 0)");
+                                        $db->bind(':jid', $adjJid);
+                                        $db->bind(':aid', $arAccId);
+                                        $db->bind(':amt', $diffGrand);
+                                        $db->execute();
+                                        $db->updateAccountBalance($arAccId, $diffGrand, 0);
+                                    }
+                                    if ($revAccId) {
+                                        $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :amt)");
+                                        $db->bind(':jid', $adjJid);
+                                        $db->bind(':aid', $revAccId);
+                                        $db->bind(':amt', $diffGrand);
+                                        $db->execute();
+                                        $db->updateAccountBalance($revAccId, 0, $diffGrand);
+                                    }
+                                } else {
+                                    // Net reduction (short delivery/returns): Debit Revenue, Credit AR
+                                    $absDiff = abs($diffGrand);
+                                    if ($revAccId) {
+                                        $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :amt, 0)");
+                                        $db->bind(':jid', $adjJid);
+                                        $db->bind(':aid', $revAccId);
+                                        $db->bind(':amt', $absDiff);
+                                        $db->execute();
+                                        $db->updateAccountBalance($revAccId, $absDiff, 0);
+                                    }
+                                    if ($arAccId) {
+                                        $db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :amt)");
+                                        $db->bind(':jid', $adjJid);
+                                        $db->bind(':aid', $arAccId);
+                                        $db->bind(':amt', $absDiff);
+                                        $db->execute();
+                                        $db->updateAccountBalance($arAccId, 0, $absDiff);
+                                    }
+                                }
+                            }
+                        } else {
+                            // Entry is Draft: update draft transaction amounts directly so when it posts at delivery, it posts the right total
                             if ($arAccId) {
-                                // ACCT-2 FIX: AR (Asset): positive diff = debit, negative = credit
-                                $db->updateAccountBalance($arAccId, ($diffGrand > 0 ? $diffGrand : 0), ($diffGrand < 0 ? abs($diffGrand) : 0));
+                                $db->query("UPDATE transactions SET debit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
+                                $db->bind(':grand', $grandTotal);
+                                $db->bind(':jid', $jid);
+                                $db->bind(':aid', $arAccId);
+                                $db->execute();
                             }
                             if ($revAccId) {
-                                // ACCT-2 FIX: Revenue: positive diff = credit increase, negative = debit decrease
-                                $db->updateAccountBalance($revAccId, ($diffGrand < 0 ? abs($diffGrand) : 0), ($diffGrand > 0 ? $diffGrand : 0));
+                                $db->query("UPDATE transactions SET credit = :grand WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
+                                $db->bind(':grand', $grandTotal);
+                                $db->bind(':jid', $jid);
+                                $db->bind(':aid', $revAccId);
+                                $db->execute();
                             }
                         }
                     }

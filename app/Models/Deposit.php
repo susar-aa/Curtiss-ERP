@@ -444,11 +444,11 @@ class Deposit {
                         $this->db->execute();
 
                         // REVERSE CUSTOMER PAYMENT & Ledger
-                        // 1. Fetch corresponding customer payment record
-                        // We query by amount, customer, payment method, and matching cheque details
+                        // 1. Fetch corresponding customer payment record by customer, amount, and payment method
                         $this->db->query("SELECT p.* FROM customer_payments p
-                                          JOIN cheques ch ON ch.customer_id = p.customer_id AND ch.amount = p.amount AND ABS(TIMESTAMPDIFF(SECOND, ch.created_at, p.created_at)) < 60
-                                          WHERE ch.id = :cid AND p.status = 'Active' LIMIT 1");
+                                          JOIN cheques ch ON ch.customer_id = p.customer_id AND ch.amount = p.amount
+                                          WHERE ch.id = :cid AND p.payment_method = 'Cheque' AND p.status = 'Active' 
+                                          ORDER BY p.id DESC LIMIT 1");
                         $this->db->bind(':cid', $chequeId);
                         $payment = $this->db->single();
 
