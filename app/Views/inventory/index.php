@@ -1227,7 +1227,7 @@ if ($importResults) unset($_SESSION['import_results']);
                                         // Load item variations (database relational or variations_json fallback)
                                         $dbObj = new Database();
                                         $dbObj->query("
-                                            SELECT ivo.id, ivo.sku, ivo.price, ivo.cost, ivo.quantity_on_hand,
+                                            SELECT ivo.id, ivo.sku, ivo.price, ivo.wholesale_price, ivo.cost, ivo.quantity_on_hand,
                                                    v.name as attribute_name, vv.value_name as value_name, vv.id as variation_value_id
                                             FROM item_variation_options ivo
                                             JOIN variations v ON ivo.variation_id = v.id
@@ -1249,6 +1249,7 @@ if ($importResults) unset($_SESSION['import_results']);
                                                     $vObj->sku = $v->sku ?? '';
                                                     $vObj->quantity_on_hand = $v->qty ?? $v->quantity_on_hand ?? $item->qty ?? 0;
                                                     $vObj->price = $v->price ?? $v->selling_price ?? $item->selling_price ?? 0.00;
+                                                    $vObj->wholesale_price = $v->wholesale_price ?? 0.00;
                                                     $vObj->cost = $v->cost ?? $v->cost_price ?? $item->cost_price ?? 0.00;
                                                     $vObj->image_path = $v->image_path ?? $v->image ?? '';
                                                     $variations[] = $vObj;
@@ -1364,7 +1365,7 @@ if ($importResults) unset($_SESSION['import_results']);
                                         <?php foreach ($variations as $var):
                                             $vQty = intval($var->quantity_on_hand);
                                             $vPrice = floatval($var->price ?? $price);
-                                            $vB2b = floatval($b2b);
+                                            $vB2b = floatval($var->wholesale_price ?? $b2b);
                                             $vSku = !empty($var->sku) ? $var->sku : $sku;
 
                                             if ($itemStatus === 'inactive') {

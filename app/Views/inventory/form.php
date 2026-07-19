@@ -1179,12 +1179,12 @@ if (!function_exists('erp_safe_json_encode')) {
             const defaultWholePrice = document.getElementById('wholesalePriceInput').value || '0.00';
 
             const rowData = {
-                id: existing ? (existing.id || '') : '',
+                id: existing ? (existing.id !== undefined ? existing.id : '') : '',
                 attribute: existing ? (existing.attribute || '') : '',
                 sku: existing ? (existing.sku || `${mainSku}-${index + 1}`) : `${mainSku}-${index + 1}`,
-                cost_price: existing ? (existing.cost_price || defaultCostPrice) : defaultCostPrice,
-                price: existing ? (existing.price || defaultSellPrice) : defaultSellPrice,
-                wholesale_price: existing ? (existing.wholesale_price || defaultWholePrice) : defaultWholePrice,
+                cost_price: existing ? (existing.cost !== undefined ? existing.cost : (existing.cost_price !== undefined ? existing.cost_price : defaultCostPrice)) : defaultCostPrice,
+                price: existing ? (existing.price !== undefined ? existing.price : defaultSellPrice) : defaultSellPrice,
+                wholesale_price: existing ? (existing.wholesale_price !== undefined ? existing.wholesale_price : defaultWholePrice) : defaultWholePrice,
                 retail_margin: existing ? (existing.retail_margin || '') : '',
                 wholesale_margin: existing ? (existing.wholesale_margin || '') : '',
                 image_path: existing ? (existing.image_path || '') : '',

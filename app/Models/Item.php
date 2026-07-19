@@ -692,6 +692,7 @@ class Item {
 
             $sku = $v->sku ?? '';
             $price = floatval($v->price ?? 0);
+            $wholesalePrice = floatval($v->wholesale_price ?? 0);
             $cost = floatval($v->cost ?? $v->cost_price ?? 0);
             $qty = floatval($v->qty ?? $v->quantity_on_hand ?? 0);
 
@@ -753,25 +754,27 @@ class Item {
                 $optionId = $ivoRow->id;
                 $this->db->query("
                     UPDATE item_variation_options 
-                    SET sku = :sku, price = :price, cost = :cost 
+                    SET sku = :sku, price = :price, wholesale_price = :wholesale_price, cost = :cost 
                     WHERE id = :id
                 ");
                 $this->db->bind(':sku', $sku);
                 $this->db->bind(':price', $price);
+                $this->db->bind(':wholesale_price', $wholesalePrice);
                 $this->db->bind(':cost', $cost);
                 $this->db->bind(':id', $optionId);
                 $this->db->execute();
             } else {
                 $this->db->query("
                     INSERT INTO item_variation_options 
-                    (item_id, variation_id, variation_value_id, sku, price, cost, quantity_on_hand, quantity_reserved) 
-                    VALUES (:item_id, :var_id, :val_id, :sku, :price, :cost, :qty, 0)
+                    (item_id, variation_id, variation_value_id, sku, price, wholesale_price, cost, quantity_on_hand, quantity_reserved) 
+                    VALUES (:item_id, :var_id, :val_id, :sku, :price, :wholesale_price, :cost, :qty, 0)
                 ");
                 $this->db->bind(':item_id', $itemId);
                 $this->db->bind(':var_id', $variationId);
                 $this->db->bind(':val_id', $variationValueId);
                 $this->db->bind(':sku', $sku);
                 $this->db->bind(':price', $price);
+                $this->db->bind(':wholesale_price', $wholesalePrice);
                 $this->db->bind(':cost', $cost);
                 $this->db->bind(':qty', $qty);
                 $this->db->execute();
@@ -802,7 +805,7 @@ class Item {
         $itemId = intval($itemId);
         try {
             $this->db->query("
-                SELECT ivo.id, ivo.sku, ivo.price, ivo.cost, ivo.quantity_on_hand, vv.value_name AS attribute
+                SELECT ivo.id, ivo.sku, ivo.price, ivo.wholesale_price, ivo.cost, ivo.quantity_on_hand, vv.value_name AS attribute
                 FROM item_variation_options ivo
                 LEFT JOIN variation_values vv ON ivo.variation_value_id = vv.id
                 WHERE ivo.item_id = :id
@@ -816,6 +819,7 @@ class Item {
                     'id' => intval($opt->id),
                     'sku' => $opt->sku,
                     'price' => floatval($opt->price),
+                    'wholesale_price' => floatval($opt->wholesale_price ?? 0),
                     'cost' => floatval($opt->cost),
                     'qty' => intval($opt->quantity_on_hand),
                     'quantity_on_hand' => intval($opt->quantity_on_hand),

@@ -1023,7 +1023,9 @@ class MigrationManager {
                 foreach ($alters as $col => $sql) {
                     $stmt = $dbh->prepare("SHOW COLUMNS FROM vehicles LIKE ?");
                     $stmt->execute([$col]);
-                    if (!$stmt->fetch()) {
+                    $exists = $stmt->fetch();
+                    $stmt->closeCursor();
+                    if (!$exists) {
                         $dbh->exec($sql);
                     }
                 }
@@ -1068,7 +1070,8 @@ class MigrationManager {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     INDEX (vehicle_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            "
+            ",
+            'item_variation_options_wholesale_price' => "ALTER TABLE item_variation_options ADD COLUMN wholesale_price DECIMAL(15,2) DEFAULT 0.00 AFTER price"
         ];
     }
 
