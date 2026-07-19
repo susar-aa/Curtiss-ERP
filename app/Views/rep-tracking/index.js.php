@@ -736,7 +736,7 @@
                         mapBtnHtml = `<button type="button" onclick="openMapModal(${routeId})" style="padding:3px 8px; background:#fff7ed; color:#c2410c; border:1px solid #ffedd5; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><i class="ph ph-map-pin"></i> View Map</button>`;
                     }
 
-                    const custName = v.customer_name ? `${v.customer_name} ${v.customer_code ? '(' + v.customer_code + ')' : ''}` : 'Unknown Customer';
+                    const custName = v.customer_name ? `${v.customer_name} ${v.customer_phone ? '(' + v.customer_phone + ')' : ''}` : 'Unknown Customer';
                     const visitTime = v.visit_time || 'N/A';
 
                     html += `

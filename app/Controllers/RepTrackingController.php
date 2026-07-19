@@ -523,7 +523,7 @@ class RepTrackingController extends Controller {
             
             $inClause = implode(',', array_map('intval', $routeIds));
             $db->query("
-                SELECT uv.*, c.name as customer_name, c.code as customer_code, u.username as rep_name
+                SELECT uv.*, c.name as customer_name, c.phone as customer_phone, u.username as rep_name
                 FROM unproductive_visits uv
                 LEFT JOIN customers c ON uv.customer_id = c.id
                 LEFT JOIN users u ON uv.rep_user_id = u.id
