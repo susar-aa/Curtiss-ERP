@@ -347,10 +347,13 @@
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
                             <div>
                                 <h4 style="margin: 0; font-size: 15px; font-weight: bold; color: #1e40af; display: flex; align-items: center; gap: 8px;">
-                                    <i class="fa-solid fa-link"></i> Bound Route Summary Information
+                                    <i class="ph ph-link"></i> Bound Route Summary Information
                                 </h4>
                                 <p style="margin: 5px 0 0 0; font-size: 12px; color: #1e3a8a;">This is a merged route containing multiple bound routes. System actions apply to all constituent routes.</p>
                             </div>
+                            <button type="button" onclick="unbindCombinedRoute()" style="padding: 8px 14px; background: #dc2626; color: #fff; border: none; border-radius: var(--r-sm); font-weight: 700; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; box-shadow: var(--shadow-xs);">
+                                <i class="ph ph-link-break"></i> Undo Route Binding
+                            </button>
                         </div>
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; background: #fff; padding: 15px; border-radius: 6px; border: 0.5px solid #dbeafe;">
                             <div style="display: flex; flex-direction: column;">
@@ -396,6 +399,9 @@
                                 </button>
                                 <button type="button" id="btnViewMapDetails"  style="flex:1; justify-content:center; display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border:none; background:var(--c-orange); color:#fff; border-radius:var(--r-sm); font-weight:600; cursor:pointer; font-size:12px; box-shadow:var(--shadow-xs);">
                                     <i class="ph ph-map-pin"></i> View Map
+                                </button>
+                                <button type="button" id="btnUnbindRouteTab1" onclick="unbindCombinedRoute()" style="flex:1; justify-content:center; display:none; align-items:center; gap:6px; padding:8px 12px; border:none; background:#dc2626; color:#fff; border-radius:var(--r-sm); font-weight:600; cursor:pointer; font-size:12px; box-shadow:var(--shadow-xs);">
+                                    <i class="ph ph-link-break"></i> Undo Bind
                                 </button>
                                 <button id="auto-evt-button-20" type="button"  style="flex:1; justify-content:center; display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border:none; background:#dc2626; color:#fff; border-radius:var(--r-sm); font-weight:600; cursor:pointer; font-size:12px; box-shadow:var(--shadow-xs);">
                                     <i class="ph ph-trash"></i> Delete Route

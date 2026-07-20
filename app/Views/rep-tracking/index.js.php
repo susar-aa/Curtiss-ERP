@@ -506,12 +506,23 @@
         document.getElementById('btnViewMap').style.display = 'inline-flex';
 
         const btnUnbind = document.getElementById('btnUnbindRoute');
+        const btnUnbindTab1 = document.getElementById('btnUnbindRouteTab1');
+        const hasBinding = isMerged || isBound || (bindingId && bindingId !== '0' && bindingId !== '');
+        
         if (btnUnbind) {
-            if (isBound && bindingId) {
+            if (hasBinding) {
                 btnUnbind.style.display = 'inline-flex';
-                btnUnbind.setAttribute('data-binding-id', bindingId);
+                if (bindingId) btnUnbind.setAttribute('data-binding-id', bindingId);
             } else {
                 btnUnbind.style.display = 'none';
+            }
+        }
+        if (btnUnbindTab1) {
+            if (hasBinding) {
+                btnUnbindTab1.style.display = 'inline-flex';
+                if (bindingId) btnUnbindTab1.setAttribute('data-binding-id', bindingId);
+            } else {
+                btnUnbindTab1.style.display = 'none';
             }
         }
 
@@ -3968,16 +3979,27 @@
     }
 
     function unbindActiveRoute() {
-        const btnUnbind = document.getElementById('btnUnbindRoute');
+        unbindCombinedRoute();
+    }
+
+    function unbindCombinedRoute() {
+        if (!currentRouteId) {
+            alert("No active route selected.");
+            return;
+        }
+        const btnUnbind = document.getElementById('btnUnbindRouteTab1') || document.getElementById('btnUnbindRoute');
         const bindingId = btnUnbind ? btnUnbind.getAttribute('data-binding-id') : null;
-        if (!bindingId) { alert("No active route binding identified."); return; }
 
-        if (!confirm("Are you sure you want to undo this route binding? The routes will be separated back to their original states and listed individually.")) { return; }
-
-        fetch('<?= APP_URL ?>/RepTracking/api_unbind_route', {
+        if (!confirm("Are you sure you want to Undo this route binding? All invoices, loading data, and collections will be restored to their original separate routes, and this combined route will be removed.")) {
+            return;
+        }
+        
+        fetchSecure('<?= APP_URL ?>/RepTracking/api_unbind_route', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ binding_id: parseInt(bindingId) })
+            body: JSON.stringify({
+                route_id: parseInt(currentRouteId),
+                binding_id: bindingId ? parseInt(bindingId) : 0
+            })
         })
         .then(res => res.json())
         .then(data => {
@@ -3987,30 +4009,10 @@
             } else {
                 alert("Error: " + data.message);
             }
-        });
-    }
-
-    function unbindCombinedRoute() {
-        if (!currentRouteId) return;
-        if (!confirm("Are you sure you want to Undo this route binding? All invoices, loading data, and collections will be restored to their original separate routes, and this combined route will be removed.")) {
-            return;
-        }
-        
-        fetch('<?= APP_URL ?>/RepTracking/api_unbind_route', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ route_id: currentRouteId })
         })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                alert(data.message);
-                window.location.href = window.location.pathname + `?filter=adjustments`;
-            } else {
-                alert("Error: " + data.message);
-            }
+        .catch(err => {
+            console.error('[Unbind Route Error]', err);
+            alert("Failed to process undo route binding: " + err.message);
         });
     }
 

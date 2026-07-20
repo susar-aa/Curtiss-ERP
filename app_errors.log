@@ -11896,3 +11896,13 @@ SQL:
 [2026-07-19 22:48:06] Migration 'item_variation_options_wholesale_price' failed: SQLSTATE[HY000]: General error: 2014 Cannot execute queries while other unbuffered queries are active.  Consider using PDOStatement::fetchAll().  Alternatively, if your code is only ever going to run against mysql, you may enable query buffering by setting the PDO::MYSQL_ATTR_USE_BUFFERED_QUERY attribute.
 SQL: ALTER TABLE item_variation_options ADD COLUMN wholesale_price DECIMAL(15,2) DEFAULT 0.00 AFTER price
 
+[2026-07-20 20:22:11] Database initialization failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+#0 C:\xampp\htdocs\CURTISS\Curtiss-ERP\core\Database.php(26): PDO->__construct('mysql:host=loca...', 'root', '', Array)
+#1 C:\Users\Susara Senarathne\.gemini\antigravity\brain\efbfb5ca-99be-4737-aa34-a1932fa300a2\scratch\test_binding_flow.php(7): Database->__construct()
+#2 {main}
+
+[2026-07-20 20:22:36] Database initialization failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+#0 C:\xampp\htdocs\CURTISS\Curtiss-ERP\core\Database.php(26): PDO->__construct('mysql:host=127....', 'root', '', Array)
+#1 C:\Users\Susara Senarathne\.gemini\antigravity\brain\efbfb5ca-99be-4737-aa34-a1932fa300a2\scratch\test_binding_flow.php(11): Database->__construct()
+#2 {main}
+
