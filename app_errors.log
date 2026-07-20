@@ -11916,3 +11916,8 @@ SQL: ALTER TABLE item_variation_options ADD COLUMN wholesale_price DECIMAL(15,2)
 #1 C:\Users\Susara Senarathne\.gemini\antigravity\brain\efbfb5ca-99be-4737-aa34-a1932fa300a2\scratch\check_users_roles.php(5): Database->__construct()
 #2 {main}
 
+[2026-07-20 21:36:09] Database initialization failed: SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it
+#0 C:\xampp\htdocs\CURTISS\Curtiss-ERP\core\Database.php(26): PDO->__construct('mysql:host=loca...', 'root', '', Array)
+#1 C:\Users\Susara Senarathne\.gemini\antigravity\brain\efbfb5ca-99be-4737-aa34-a1932fa300a2\scratch\migrate_item_suppliers.php(7): Database->__construct()
+#2 {main}
+

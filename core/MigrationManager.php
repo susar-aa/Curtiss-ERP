@@ -1071,7 +1071,26 @@ class MigrationManager {
                     INDEX (vehicle_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             ",
-            'item_variation_options_wholesale_price' => "ALTER TABLE item_variation_options ADD COLUMN wholesale_price DECIMAL(15,2) DEFAULT 0.00 AFTER price"
+            'item_variation_options_wholesale_price' => "ALTER TABLE item_variation_options ADD COLUMN wholesale_price DECIMAL(15,2) DEFAULT 0.00 AFTER price",
+            'create_item_suppliers_table' => "
+                CREATE TABLE IF NOT EXISTS item_suppliers (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    item_id INT NOT NULL,
+                    supplier_id INT NOT NULL,
+                    supplier_sku VARCHAR(100) NULL,
+                    last_cost_price DECIMAL(15,2) DEFAULT 0.00,
+                    is_primary TINYINT(1) DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY item_supplier_unique (item_id, supplier_id),
+                    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+                    FOREIGN KEY (supplier_id) REFERENCES vendors(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ",
+            'seed_initial_item_suppliers' => "
+                INSERT IGNORE INTO item_suppliers (item_id, supplier_id, last_cost_price, is_primary)
+                SELECT id, vendor_id, cost_price, 1 FROM items WHERE vendor_id IS NOT NULL AND vendor_id > 0
+            "
         ];
     }
 

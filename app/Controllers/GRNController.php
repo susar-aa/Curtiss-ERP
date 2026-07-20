@@ -89,11 +89,14 @@ class GRNController extends Controller {
         $lastRow = $db->single();
         $nextId = $lastRow ? ($lastRow->id + 1) : 1;
 
+        $itemSupplierMappings = $this->itemModel->getAllItemSupplierMappings();
+
         $data = [
             'title' => 'Create Goods Receipt Note (GRN)',
             'content_view' => 'grns/create',
             'vendors' => $this->vendorModel->getAllVendors(),
             'catalog_items' => $catalogItems,
+            'item_supplier_mappings' => $itemSupplierMappings,
             'grn_number' => str_pad((string)$nextId, 5, '0', STR_PAD_LEFT),
             'prefilled_vendor' => $prefilledVendor,
             'linked_po' => $linkedPO,
@@ -137,12 +140,19 @@ class GRNController extends Controller {
                  try {
                      $grnId = $this->grnModel->createGRN($grnData, $items, $_SESSION['user_id']);
                      if ($grnId) {
+                         // Auto-link / update supplier item relationship for future purchases
+                         foreach ($items as $itm) {
+                             if (!empty($itm['item_id'])) {
+                                 $this->itemModel->linkItemToSupplier($itm['item_id'], $grnData['vendor_id'], $itm['price']);
+                             }
+                         }
+
                          $newValues = [
                              'grn' => $grnData,
                              'items' => $items
                          ];
                           $this->logActivity('GRN Created', 'Inventory', "GRN '{$grnData['grn_number']}' created, pending approval.", $grnId, null, $newValues);
-                          header('Location: ' . APP_URL . '/grn?success=' . urlencode('GRN created successfully. Pending admin approval.')); exit; 
+                          header('Location: ' . APP_URL . '/grn?success=' . urlencode('GRN created successfully. Supplier-product links updated. Pending admin approval.')); exit; 
                       } else { $data['error'] = 'Database Error: Failed to create GRN.'; }
                  } catch (Exception $e) {
                      $data['error'] = 'Database Error: Failed to create GRN. Details: ' . $e->getMessage();
@@ -165,12 +175,14 @@ class GRNController extends Controller {
         foreach($catalogItems as $item) {
             $item->variations = $this->itemModel->getItemVariations($item->id);
         }
+        $itemSupplierMappings = $this->itemModel->getAllItemSupplierMappings();
 
         $data = [
             'title' => 'Edit Goods Receipt Note (GRN)',
             'content_view' => 'grns/create',
             'vendors' => $this->vendorModel->getAllVendors(),
             'catalog_items' => $catalogItems,
+            'item_supplier_mappings' => $itemSupplierMappings,
             'grn' => $grn,
             'prefilled_vendor' => $grn->vendor_id,
             'prefilled_items' => $this->grnModel->getGRNItems($id),
@@ -213,12 +225,19 @@ class GRNController extends Controller {
             } else {
                 try {
                     if ($this->grnModel->updateGRN($id, $grnData, $items, $_SESSION['user_id'])) {
+                        // Auto-link / update supplier item relationship
+                        foreach ($items as $itm) {
+                            if (!empty($itm['item_id'])) {
+                                $this->itemModel->linkItemToSupplier($itm['item_id'], $grnData['vendor_id'], $itm['price']);
+                            }
+                        }
+
                         $newValues = [
                             'grn' => $grnData,
                             'items' => $items
                         ];
                         $this->logActivity('GRN Updated', 'Inventory', "GRN '{$grn->grn_number}' updated.", $id, null, $newValues);
-                        header('Location: ' . APP_URL . '/grn?success=' . urlencode('GRN updated successfully.')); exit;
+                        header('Location: ' . APP_URL . '/grn?success=' . urlencode('GRN updated successfully. Supplier-product links updated.')); exit;
                     } else {
                         $data['error'] = 'Database Error: Failed to update GRN.';
                     }

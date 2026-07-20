@@ -925,4 +925,41 @@ class Item {
     public function getWholesalePriceColumn() {
         return $this->wholesalePriceColumn;
     }
+
+    /**
+     * Fetch all item-supplier relationships for multi-supplier GRN product filtering
+     */
+    public function getAllItemSupplierMappings() {
+        try {
+            $this->db->query("SELECT item_id, supplier_id, last_cost_price, is_primary FROM item_suppliers");
+            return $this->db->resultSet() ?: [];
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Link an item to a supplier or update the supplier-specific last cost price
+     */
+    public function linkItemToSupplier($itemId, $supplierId, $lastCostPrice = 0.00) {
+        if (!$itemId || !$supplierId) {
+            return false;
+        }
+        try {
+            $this->db->query("
+                INSERT INTO item_suppliers (item_id, supplier_id, last_cost_price, is_primary)
+                VALUES (:item_id, :supplier_id, :last_cost_price, 0)
+                ON DUPLICATE KEY UPDATE 
+                    last_cost_price = CASE WHEN :last_cost_price_dup > 0 THEN :last_cost_price_dup ELSE last_cost_price END,
+                    updated_at = CURRENT_TIMESTAMP
+            ");
+            $this->db->bind(':item_id', intval($itemId));
+            $this->db->bind(':supplier_id', intval($supplierId));
+            $this->db->bind(':last_cost_price', floatval($lastCostPrice));
+            $this->db->bind(':last_cost_price_dup', floatval($lastCostPrice));
+            return $this->db->execute();
+        } catch (Exception $e) {
+            return false;
+        }
+    }
 }

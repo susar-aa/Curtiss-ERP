@@ -507,8 +507,21 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
 </div>
 
 <script>
-    // Injected catalog items with preloaded variations
+    // Injected catalog items with preloaded variations & supplier mappings
     var catalogItems = <?= json_encode($data['catalog_items']) ?>;
+    var itemSupplierMappings = <?= json_encode($data['item_supplier_mappings'] ?? []) ?>;
+
+    // Fast lookup dictionary for supplier-item relationships: "itemId_supplierId" -> { last_cost_price, is_primary }
+    var itemSupplierMap = {};
+    if (Array.isArray(itemSupplierMappings)) {
+        itemSupplierMappings.forEach(mapping => {
+            const key = `${mapping.item_id}_${mapping.supplier_id}`;
+            itemSupplierMap[key] = {
+                last_cost_price: parseFloat(mapping.last_cost_price ?? 0),
+                is_primary: parseInt(mapping.is_primary ?? 0) === 1
+            };
+        });
+    }
     
     // Generate flattened list of searchable elements (main items + variation options)
     var searchableItems = [];
@@ -558,12 +571,12 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
 
         input.addEventListener('input', function() {
             const query = this.value.toLowerCase().trim();
-            const vendorId = document.getElementById('vendorSelect').value;
+            const selectedVendorId = parseInt(document.getElementById('vendorSelect').value || 0);
             
             wrapper.innerHTML = '';
             
-            if (!vendorId) {
-                wrapper.innerHTML = '<div style="padding: 8px 12px; font-size:12px; color:var(--c-red); font-weight:600; text-align:center;">⚠️ Select Supplier / Vendor first</div>';
+            if (!selectedVendorId) {
+                wrapper.innerHTML = '<div style="padding: 10px 12px; font-size:12px; color:var(--c-red); font-weight:600; text-align:center;">⚠️ Select Supplier / Vendor first</div>';
                 wrapper.style.display = 'block';
                 return;
             }
@@ -573,34 +586,83 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                 return;
             }
 
-            // Filter by selected vendor and search string
-            const matches = searchableItems.filter(item => 
-                parseInt(item.vendor_id) === parseInt(vendorId) && 
-                (item.display_name.toLowerCase().includes(query) || item.sku.toLowerCase().includes(query))
-            ).slice(0, 10);
+            // Search ALL active catalog items
+            let matches = searchableItems.filter(item => 
+                item.display_name.toLowerCase().includes(query) || item.sku.toLowerCase().includes(query)
+            );
 
             if (matches.length === 0) {
-                wrapper.innerHTML = '<div style="padding: 8px 12px; font-size:12px; color:var(--t-tertiary); text-align:center; font-style:italic;">No supplier products found</div>';
+                wrapper.innerHTML = '<div style="padding: 10px 12px; font-size:12px; color:var(--t-tertiary); text-align:center; font-style:italic;">No products found</div>';
                 wrapper.style.display = 'block';
                 return;
             }
 
+            // Annotate each match with supplier link status
+            matches = matches.map(m => {
+                const mapKey = `${m.item_id}_${selectedVendorId}`;
+                const supplierInfo = itemSupplierMap[mapKey];
+                const isDirectVendor = parseInt(m.vendor_id) === selectedVendorId;
+                const isLinked = isDirectVendor || Boolean(supplierInfo);
+                const isPreferred = isDirectVendor || (supplierInfo && supplierInfo.is_primary);
+
+                let applicableCost = m.cost;
+                if (supplierInfo && supplierInfo.last_cost_price > 0) {
+                    applicableCost = supplierInfo.last_cost_price;
+                }
+
+                return {
+                    ...m,
+                    is_linked: isLinked,
+                    is_preferred: isPreferred,
+                    supplier_cost: applicableCost
+                };
+            });
+
+            // Sort: Preferred / Linked products first, then non-linked products
+            matches.sort((a, b) => {
+                if (a.is_preferred && !b.is_preferred) return -1;
+                if (!a.is_preferred && b.is_preferred) return 1;
+                if (a.is_linked && !b.is_linked) return -1;
+                if (!a.is_linked && b.is_linked) return 1;
+                return a.display_name.localeCompare(b.display_name);
+            });
+
+            // Limit to top 15 results
+            matches = matches.slice(0, 15);
+
             matches.forEach(m => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'autocomplete-suggestion-item';
+                itemDiv.style.padding = '8px 12px';
+                itemDiv.style.borderBottom = '0.5px solid var(--c-separator2)';
+
+                let badgeHtml = '';
+                if (m.is_preferred) {
+                    badgeHtml = '<span style="font-size:10px; font-weight:700; background:var(--c-green-light); color:var(--c-green); padding:2px 6px; border-radius:4px; border:0.5px solid rgba(52,199,89,0.3);"><i class="fa-solid fa-star" style="font-size:9px;"></i> Preferred Supplier</span>';
+                } else if (m.is_linked) {
+                    badgeHtml = '<span style="font-size:10px; font-weight:700; background:var(--c-blue-light); color:var(--c-blue); padding:2px 6px; border-radius:4px; border:0.5px solid rgba(0,122,255,0.3);"><i class="fa-solid fa-check" style="font-size:9px;"></i> Linked Supplier</span>';
+                } else {
+                    badgeHtml = '<span style="font-size:10px; font-weight:700; background:var(--c-orange-light); color:var(--c-orange); padding:2px 6px; border-radius:4px; border:0.5px solid rgba(255,149,0,0.3);"><i class="fa-solid fa-plus-circle" style="font-size:9px;"></i> New Supplier Product</span>';
+                }
                 
                 itemDiv.innerHTML = `
-                    <span style="font-weight: 600; color: var(--t-primary);">${escapeHtml(m.display_name)}</span>
-                    <span style="font-size: 11px; color:var(--t-label); font-family:var(--f-mono);">${escapeHtml(m.sku)}</span>
+                    <div style="display:flex; flex-direction:column; gap:2px; flex:1;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                            <span style="font-weight: 600; color: var(--t-primary); font-size:13px;">${escapeHtml(m.display_name)}</span>
+                            ${badgeHtml}
+                        </div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; font-size: 11px; color:var(--t-label); font-family:var(--f-mono);">
+                            <span>SKU: ${escapeHtml(m.sku || 'N/A')}</span>
+                            <span>Cost: Rs. ${m.supplier_cost.toFixed(2)}</span>
+                        </div>
+                    </div>
                 `;
                 
                 itemDiv.addEventListener('mouseover', () => {
-                    itemDiv.style.background = 'var(--c-blue-light)';
-                    itemDiv.style.color = 'var(--c-blue)';
+                    itemDiv.style.background = 'var(--c-fill2)';
                 });
                 itemDiv.addEventListener('mouseout', () => {
                     itemDiv.style.background = '';
-                    itemDiv.style.color = '';
                 });
 
                 itemDiv.addEventListener('click', () => {
@@ -610,7 +672,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                     wrapper.style.display = 'none';
 
                     // Populate prices, margins and costs
-                    row.querySelector('input[name="price[]"]').value = m.cost.toFixed(2);
+                    row.querySelector('input[name="price[]"]').value = m.supplier_cost.toFixed(2);
                     row.querySelector('input[name="retail_margin[]"]').value = m.retail_margin.toFixed(1);
                     row.querySelector('input[name="wholesale_margin[]"]').value = m.wholesale_margin.toFixed(1);
                     
