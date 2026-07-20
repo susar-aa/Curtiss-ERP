@@ -386,7 +386,11 @@
         <a href="<?= APP_URL ?>/stockadjustment" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Back to Adjustments</a>
 
         <div style="display: flex; gap: 12px;">
-            <?php if ($data['adjustment']->status === 'Pending' && strtolower($_SESSION['role'] ?? '') === 'admin'): ?>
+            <?php 
+                $userRole = strtolower($_SESSION['role'] ?? '');
+                $isAdminUser = in_array($userRole, ['admin', 'administrator', 'super admin', 'superadmin', 'manager']) || (function_exists('hasPermission') && hasPermission('inventory', 'create_edit'));
+            ?>
+            <?php if ($data['adjustment']->status === 'Pending' && $isAdminUser): ?>
                 <form method="POST" action="<?= APP_URL ?>/stockadjustment/reject/<?= $data['adjustment']->id; ?>" style="display: inline;" onsubmit="return confirm('Reject this stock adjustment request?');">
                     <button type="submit" class="btn btn-danger"><i class="fa-solid fa-ban"></i> Reject Request</button>
                 </form>

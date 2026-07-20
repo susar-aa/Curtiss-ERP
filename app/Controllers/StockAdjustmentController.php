@@ -268,6 +268,15 @@ class StockAdjustmentController extends Controller {
             exit;
         }
 
+        $userRole = strtolower($_SESSION['role'] ?? '');
+        $isAdminUser = in_array($userRole, ['admin', 'administrator', 'super admin', 'superadmin', 'manager']) || (function_exists('hasPermission') && hasPermission('inventory', 'create_edit'));
+
+        if (!$isAdminUser) {
+            $_SESSION['flash_error'] = 'Access Denied: Only authorized Administrative users can approve stock adjustments.';
+            header('Location: ' . APP_URL . '/stockadjustment/show/' . $id);
+            exit;
+        }
+
         $userId = $_SESSION['user_id'];
         $res = $this->adjustmentModel->approveAdjustment($id, $userId);
 
@@ -287,6 +296,15 @@ class StockAdjustmentController extends Controller {
      */
     public function reject($id) {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . APP_URL . '/stockadjustment/show/' . $id);
+            exit;
+        }
+
+        $userRole = strtolower($_SESSION['role'] ?? '');
+        $isAdminUser = in_array($userRole, ['admin', 'administrator', 'super admin', 'superadmin', 'manager']) || (function_exists('hasPermission') && hasPermission('inventory', 'create_edit'));
+
+        if (!$isAdminUser) {
+            $_SESSION['flash_error'] = 'Access Denied: Only authorized Administrative users can reject stock adjustments.';
             header('Location: ' . APP_URL . '/stockadjustment/show/' . $id);
             exit;
         }
@@ -316,7 +334,10 @@ class StockAdjustmentController extends Controller {
         $this->validateCsrfOrDie();
 
         // 2. Verify Admin Role
-        if (strtolower($_SESSION['role'] ?? '') !== 'admin') {
+        $userRole = strtolower($_SESSION['role'] ?? '');
+        $isAdminUser = in_array($userRole, ['admin', 'administrator', 'super admin', 'superadmin', 'manager']) || (function_exists('hasPermission') && hasPermission('inventory', 'delete'));
+
+        if (!$isAdminUser) {
             $_SESSION['flash_error'] = 'Access Denied: Only Administrators can delete stock adjustments.';
             header('Location: ' . APP_URL . '/stockadjustment');
             exit;

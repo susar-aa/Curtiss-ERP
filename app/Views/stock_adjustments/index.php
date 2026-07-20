@@ -392,7 +392,11 @@
                             </td>
                             <td style="text-align: right; white-space: nowrap;">
                                 <a href="<?= APP_URL ?>/stockadjustment/show/<?= $adj->id; ?>" class="btn-reset" style="padding: 6px 12px; font-size: 12px; text-decoration: none; background: var(--c-fill2);">View Details</a>
-                                <?php if (strtolower($_SESSION['role'] ?? '') === 'admin'): ?>
+                                <?php 
+                                    $userRole = strtolower($_SESSION['role'] ?? '');
+                                    $canDeleteAdj = in_array($userRole, ['admin', 'administrator', 'super admin', 'superadmin', 'manager']) || (function_exists('hasPermission') && hasPermission('inventory', 'delete'));
+                                ?>
+                                <?php if ($canDeleteAdj): ?>
                                     <form action="<?= APP_URL ?>/stockadjustment/delete/<?= $adj->id; ?>" method="POST" onsubmit="return confirm('Are you sure you want to delete this adjustment? This will undo any stock changes and journal/ledger entries if it is already approved.');" style="display: inline-block; margin-left: 5px;">
                                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                                         <button type="submit" class="btn-reset" style="padding: 6px 12px; font-size: 12px; background: var(--c-red-light); color: var(--c-red); border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-trash-can"></i> Delete</button>
