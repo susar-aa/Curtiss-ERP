@@ -167,7 +167,19 @@
                 </thead>
                 <tbody>
                     <?php 
-                    if (empty($data['items'])): 
+                    $printableItems = [];
+                    foreach ($data['items'] as $item) {
+                        $qty = floatval($item->final_loaded_qty);
+                        if ($qty <= 0 && floatval($item->required_qty) > 0 && intval($item->is_verified ?? 0) === 0) {
+                            $qty = floatval($item->required_qty);
+                        }
+                        if ($qty > 0) {
+                            $item->printable_qty = $qty;
+                            $printableItems[] = $item;
+                        }
+                    }
+                    
+                    if (empty($printableItems)): 
                     ?>
                         <tr>
                             <td colspan="6" style="text-align:center; padding: 15px; color: #555;">No items found for loading on this route.</td>
@@ -175,15 +187,14 @@
                     <?php else: ?>
                         <?php 
                         $counter = 1;
-                        foreach ($data['items'] as $item): 
-                            $qty = floatval($item->final_loaded_qty);
-                            if ($qty <= 0 && floatval($item->required_qty) <= 0) continue;
+                        foreach ($printableItems as $item): 
+                            $qty = $item->printable_qty;
                             $itemTotal = $qty * floatval($item->unit_price);
                         ?>
                             <tr>
                                 <td style="text-align:center;"><?= $counter++ ?></td>
                                 <td style="font-weight: 500;"><?= htmlspecialchars($item->item_name) ?></td>
-                                <td style="text-align:center; font-family: monospace; font-size:13px; font-weight:bold;"><?= floatval($item->final_loaded_qty) ?></td>
+                                <td style="text-align:center; font-family: monospace; font-size:13px; font-weight:bold;"><?= floatval($qty) ?></td>
                                 <td style="text-align:right; font-family: monospace; font-size:13px;"><?= number_format($item->unit_price, 2) ?></td>
                                 <td style="text-align:right; font-family: monospace; font-size:13px; font-weight:bold;"><?= number_format($itemTotal, 2) ?></td>
                                 <td style="text-align:right; padding-right: 15px;"><span class="tick-box-placeholder"></span></td>
@@ -199,7 +210,7 @@
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; font-size: 13px;">
                     <div>
                         <strong>Total Items Count:</strong><br>
-                        <?= count($data['items']) ?> items
+                        <?= count($printableItems) ?> items
                     </div>
                     <div>
                         <strong>Total Shortages:</strong><br>

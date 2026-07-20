@@ -191,6 +191,7 @@ class RepTracking {
                    SUM(dpi.loaded_qty) as pre_loaded_qty,
                    SUM(COALESCE(dpi.final_loaded_qty, dpi.required_qty)) as final_loaded_qty,
                    SUM(dpi.variance) as variance,
+                   MAX(dpi.is_verified) as is_verified,
                    COALESCE(ic.name, 'Uncategorized') as category_name,
                    COALESCE(
                        (SELECT AVG(ii.unit_price) 

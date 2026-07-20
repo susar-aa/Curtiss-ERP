@@ -1,560 +1,302 @@
----------------------------- PROCESS STARTED (9889) for package com.example.curtiss ----------------------------
-2026-07-19 14:13:03.266  9889-9889  example.curtiss         com.example.curtiss                  I  Using CollectorTypeCMC GC.
-2026-07-19 14:13:03.284  9889-9889  nativeloader            com.example.curtiss                  D  Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
-2026-07-19 14:13:03.296  9889-9889  ActivityThread          com.example.curtiss                  I  Current dynamic renderEngine type=0
-2026-07-19 14:13:03.338  9889-9903  MiuiDownscaleImpl       com.example.curtiss                  D  set override inverted scale : 1.0
-2026-07-19 14:13:03.342  9889-9889  RENDER_TURBO            com.example.curtiss                  I  onActivityThreadCreate not in white list, pkg=com.example.curtiss, type=koto
-2026-07-19 14:13:03.342  9889-9889  CompatChangeReporter    com.example.curtiss                  D  Compat change id reported: 242716250; UID 10300; state: ENABLED
-2026-07-19 14:13:03.352  9889-9903  AppScoutStateMachine    com.example.curtiss                  D  9889-ScoutStateMachinecreated
-2026-07-19 14:13:03.388  9889-9889  ActivityThread          com.example.curtiss                  D  setEmbeddedParam packageName=com.example.curtiss processName=com.example.curtiss isEmbedded=false isIsolated=false
-2026-07-19 14:13:03.736  9889-9889  nativeloader            com.example.curtiss                  D  Configuring clns-10 for other apk /data/app/~~41CdvJOaMXAJy4b4OeDbRA==/com.example.curtiss-GLxjvV-I_vT-O4RZkyH7hA==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~41CdvJOaMXAJy4b4OeDbRA==/com.example.curtiss-GLxjvV-I_vT-O4RZkyH7hA==/lib/arm64, permitted_path=/data:/mnt/expand:/data/user/0/com.example.curtiss
-2026-07-19 14:13:03.749  9889-9889  example.curtiss         com.example.curtiss                  I  AssetManager2(0xb4000079d66170b8) locale list changing from [] to [en-GB]
-2026-07-19 14:13:03.752  9889-9889  MiuiPreloadClassImpl    com.example.curtiss                  E  invoke error.
-2026-07-19 14:13:03.753  9889-9889  MiuiMonitorThread       com.example.curtiss                  D  Shared singleton Thread for stability monitor start
-2026-07-19 14:13:03.757  9889-9889  HWUI                    com.example.curtiss                  D  [HWUI] Flag vulkan_enhance_pipeline_cache enabled
-2026-07-19 14:13:03.758  9889-9889  HWUI                    com.example.curtiss                  D  [HWUI] EnhanceVkPipelineCache is disabled
-2026-07-19 14:13:03.758  9889-9889  HWUI                    com.example.curtiss                  D  [HWUI] Flag ddre enabled
-2026-07-19 14:13:03.759  9889-9889  GraphicsEnvironment     com.example.curtiss                  V  Currently set values for:
-2026-07-19 14:13:03.759  9889-9889  GraphicsEnvironment     com.example.curtiss                  V    angle_gl_driver_selection_pkgs=[]
-2026-07-19 14:13:03.759  9889-9889  GraphicsEnvironment     com.example.curtiss                  V    angle_gl_driver_selection_values=[]
-2026-07-19 14:13:03.759  9889-9889  GraphicsEnvironment     com.example.curtiss                  V  com.example.curtiss is not listed in per-application setting
-2026-07-19 14:13:03.759  9889-9889  GraphicsEnvironment     com.example.curtiss                  V  ANGLE allowlist from config: com.dreamgames.royalmatch com.dts.freefiremax com.dxx.firenow com.gramgames.mergedragons com.ludo.king com.mojang.minecraftpe com.my.defense com.nintendo.zaka com.os.airforce com.playrix.fishdomdd.gplay io.teslatech.callbreak jp.konami.prospia net.peakgames.toonblast
-2026-07-19 14:13:03.759  9889-9889  GraphicsEnvironment     com.example.curtiss                  V  com.example.curtiss is not listed in ANGLE allowlist or settings, returning default
-2026-07-19 14:13:03.759  9889-9889  GraphicsEnvironment     com.example.curtiss                  V  Neither updatable production driver nor prerelease driver is supported.
-2026-07-19 14:13:03.766  9889-9904  ActivityThread          com.example.curtiss                  I  TrafficStats init done
-2026-07-19 14:13:03.774  9889-9889  ResMonitorStub          com.example.curtiss                  D  The current process type is: third_party_app, process name is: com.example.curtiss
-2026-07-19 14:13:03.778  9889-9904  ashmem                  com.example.curtiss                  E  Pinning is deprecated since Android Q. Please use trim or other methods.
-2026-07-19 14:13:03.779  9889-9904  ForceDarkHelperStubImpl com.example.curtiss                  I  initialize for com.example.curtiss , ForceDarkOrigin
-2026-07-19 14:13:03.780  9889-9904  nativeloader            com.example.curtiss                  D  Load libforcedarkimpl.so using system ns (caller=/system_ext/framework/miui-framework.jar): ok
-2026-07-19 14:13:03.780  9889-9904  HWUI                    com.example.curtiss                  D  JNI_OnLoad success
-2026-07-19 14:13:03.780  9889-9904  MiuiForceDarkConfig     com.example.curtiss                  I  setConfig density:2.250000, mainRule:0, secondaryRule:0, tertiaryRule:0
-2026-07-19 14:13:03.786  9889-9889  WM-WrkMgrInitializer    com.example.curtiss                  D  Initializing WorkManager with default configuration.
-2026-07-19 14:13:03.811  9889-9904  ActivityThread          com.example.curtiss                  I  Miui Feature Init done
-2026-07-19 14:13:03.830  9889-9889  WM-PackageManagerHelper com.example.curtiss                  D  Skipping component enablement for androidx.work.impl.background.systemjob.SystemJobService
-2026-07-19 14:13:03.830  9889-9889  WM-Schedulers           com.example.curtiss                  D  Created SystemJobScheduler and enabled SystemJobService
-2026-07-19 14:13:03.873  9889-9889  libc                    com.example.curtiss                  W  Access denied finding property "ro.vendor.perf.scroll_opt"
-2026-07-19 14:13:03.884  9889-9889  nativeloader            com.example.curtiss                  D  Load libpowerhalwrap_jni.so using system ns (caller=/system_ext/framework/mediatek-framework.jar): ok
-2026-07-19 14:13:03.884  9889-9889  PowerHalWrapper         com.example.curtiss                  I  PowerHalWrapper.getInstance 
-2026-07-19 14:13:03.885  9889-9889  PowerHalWrapper         com.example.curtiss                  I  PowerHalWrapper.getInstance 
-2026-07-19 14:13:03.886  9889-9889  M-ProMotion             com.example.curtiss                  I  M-ProMotion is disabled
-2026-07-19 14:13:03.892  9889-9889  HWUI                    com.example.curtiss                  D  [HWUI] Flag vulkan_enhance_pipeline_cache enabled
-2026-07-19 14:13:03.892  9889-9889  HWUI                    com.example.curtiss                  D  [HWUI] EnhanceVkPipelineCache is disabled
-2026-07-19 14:13:03.892  9889-9889  HWUI                    com.example.curtiss                  D  [HWUI] Flag ddre enabled
-2026-07-19 14:13:03.892  9889-9889  example.curtiss         com.example.curtiss                  D  blurUtils, initBackgroundBlurMinInterval processName(com.example.curtiss), inWhiteLists(0)
-2026-07-19 14:13:03.892  9889-9904  ActivityThread          com.example.curtiss                  I  HardwareRenderer preload  done
-2026-07-19 14:13:03.893  9889-9889  MIUIAutoUIImpl          com.example.curtiss                  D  MIUIAutoUIImpl has been initialized !!
-2026-07-19 14:13:03.894  9889-9919  DisplayManager          com.example.curtiss                  I  Choreographer implicitly registered for the refresh rate.
-2026-07-19 14:13:03.896  9889-9889  example.curtiss         com.example.curtiss                  I  AssetManager2(0xb4000079d66157b8) locale list changing from [] to [en-GB]
-2026-07-19 14:13:03.911  9889-9919  libc                    com.example.curtiss                  W  Access denied finding property "vendor.mivk.log.debug"
-2026-07-19 14:13:03.913  9889-9919  mali                    com.example.curtiss                  I  Successfully parsed 2 environment variable(s) from /vendor/etc/mali_platform.config.
-2026-07-19 14:13:03.918  9889-9919  mali                    com.example.curtiss                  I  Successfully parsed 2 environment variable(s) from /vendor/etc/mali_platform.config.
-2026-07-19 14:13:03.924  9889-9889  AppCompatDelegate       com.example.curtiss                  D  Checking for metadata for AppLocalesMetadataHolderService : Service not found
-2026-07-19 14:13:03.924  9889-9919  libEGL                  com.example.curtiss                  I  shader cache num entries: 39
-2026-07-19 14:13:03.924  9889-9919  HWUI                    com.example.curtiss                  D  [HWUI] Flag vulkan_enhance_pipeline_cache enabled
-2026-07-19 14:13:03.924  9889-9919  HWUI                    com.example.curtiss                  D  [HWUI] EnhanceVkPipelineCache is disabled
-2026-07-19 14:13:03.924  9889-9919  HWUI                    com.example.curtiss                  D  [HWUI] Flag ddre enabled
-2026-07-19 14:13:03.925  9889-9889  example.curtiss         com.example.curtiss                  I  AssetManager2(0xb4000079d661bbb8) locale list changing from [] to [en-GB]
-2026-07-19 14:13:03.925  9889-9919  SKIA                    com.example.curtiss                  D  [Skia] Flag vulkan_enhance_pipeline_cache enabled
-2026-07-19 14:13:03.925  9889-9919  SKIA                    com.example.curtiss                  D  [Skia] EnhanceVkPipelineCache is false
-2026-07-19 14:13:03.962  9889-9889  DesktopModeFlags        com.example.curtiss                  D  Toggle override initialized to: OVERRIDE_UNSET
-2026-07-19 14:13:03.965  9889-9914  JobInfo                 com.example.curtiss                  W  Requested important-while-foreground flag for job6 is ignored and takes no effect
-2026-07-19 14:13:03.966  9889-9914  CompatChangeReporter    com.example.curtiss                  D  Compat change id reported: 253665015; UID 10300; state: ENABLED
-2026-07-19 14:13:03.978  9889-9889  DecorView               com.example.curtiss                  D  updateFreeformOutlineFromActivity, inFreeform=false,inFreeformWindowMode=false
-2026-07-19 14:13:03.988  9889-9889  example.curtiss         com.example.curtiss                  I  hiddenapi: Accessing hidden method Landroid/view/View;->computeFitSystemWindows(Landroid/graphics/Rect;Landroid/graphics/Rect;)Z (runtime_flags=0, domain=platform, api=unsupported) from Landroidx/appcompat/widget/ViewUtils; (domain=app) using reflection: allowed
-2026-07-19 14:13:03.988  9889-9889  example.curtiss         com.example.curtiss                  I  hiddenapi: Accessing hidden method Landroid/view/ViewGroup;->makeOptionalFitsSystemWindows()V (runtime_flags=0, domain=platform, api=unsupported) from Landroidx/appcompat/widget/ViewUtils; (domain=app) using reflection: allowed
-2026-07-19 14:13:03.998  9889-9889  IconCustomizer          com.example.curtiss                  I  load icon config path M 0 42.7 C 0 27.7 0 20.3 2.9 14.6 C 5.5 9.5 9.5 5.5 14.6 2.9 C 20.3 0 27.7 0 42.7 0 L 57.3 0 C 72.3 0 79.7 0 85.4 2.9 C 90.5 5.5 94.5 9.5 97.1 14.6 C 100 20.3 100 27.7 100 42.7 V 57.3 C 100 72.3 100 79.7 97.1 85.4 C 94.5 90.5 90.5 94.5 85.4 97.1 C 79.7 100 72.3 100 57.3 100 H 42.7 C 27.7 100 20.3 100 14.6 97.1 C 9.5 94.5 5.5 90.5 2.9 85.4 C 0 79.7 0 72.3 0 57.3 L 0 42.7 Z, valid rect RectF(0.0, 0.0, 100.0, 100.0), isFullMask true
-2026-07-19 14:13:03.998  9889-9889  IconCustomizer          com.example.curtiss                  W  getCustomizedIconW 151
-2026-07-19 14:13:04.004  9889-9889  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 243, height = 243, encodedFormat = 4
-2026-07-19 14:13:04.006  9889-9889  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
-2026-07-19 14:13:04.084  9889-9889  NativeTurboSchedManager com.example.curtiss                  I  Load libmiui_runtime
-2026-07-19 14:13:04.090  9889-9889  TurboSchedMonitor       com.example.curtiss                  E  failed to find setSchedAffinity method com.example.curtiss
-2026-07-19 14:13:04.157  9889-9942  CompatChangeReporter    com.example.curtiss                  D  Compat change id reported: 263076149; UID 10300; state: ENABLED
-2026-07-19 14:13:04.173  9889-9889  EngineFactory           com.example.curtiss                  I  Provider GmsCore_OpenSSL not available
-2026-07-19 14:13:04.181  9889-9889  CurtissUpdate           com.example.curtiss                  I  Checking for updates via API: https://curtiss.suzxlabs.com/rep/release/api_latest_version
-2026-07-19 14:13:04.191  9889-9889  Activity                com.example.curtiss                  D  Activity = ActivityInfo{de53947 com.example.curtiss.SplashActivity}, Resume onConfigurationChanged = {1.0 ?mcc0mnc [en_GB] ldltr sw711dp w711dp h1091dp 360dpi lrg port finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 1600, 2560) mAppBounds=Rect(0, 0 - 1600, 2524) mMaxBounds=Rect(0, 0 - 1600, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.2 s.3 fontWeightAdjustment=0/d/0 themeChanged=0 themeChangedFlags=0 display=0 extraData = Bundle[{}] screenType=0/0}
-2026-07-19 14:13:04.203  9889-9917  PowerHalWrapper         com.example.curtiss                  I  PowerHalWrapper.getInstance 
-2026-07-19 14:13:04.205  9889-9889  SurfaceFactory          com.example.curtiss                  I  [static] sSurfaceFactory = com.mediatek.view.impl.SurfaceFactoryImpl@8523055
-2026-07-19 14:13:04.210  9889-9889  RenderLite              com.example.curtiss                  D  trim renderNode enable: false
-2026-07-19 14:13:04.215  9889-9889  FramePredict            com.example.curtiss                  D  FramePredict init: false
-2026-07-19 14:13:04.215  9889-9889  FramePredict            com.example.curtiss                  D  init success
-2026-07-19 14:13:04.218  9889-9946  FramePredict            com.example.curtiss                  E  registerContentObserver fail
-2026-07-19 14:13:04.219  9889-9889  example.curtiss         com.example.curtiss                  D  MiuiProcessManagerServiceStub setSchedFifo
-2026-07-19 14:13:04.219  9889-9889  MiuiProcessManagerImpl  com.example.curtiss                  I  setSchedFifo pid:9889, mode:3
-2026-07-19 14:13:04.220  9889-9889  HWUI                    com.example.curtiss                  W  Unknown dataspace 0
-2026-07-19 14:13:04.215  9889-9889  RenderThread            com.example.curtiss                  W  type=1400 audit(0.0:89607): avc:  denied  { read } for  name="u:object_r:vendor_displayfeature_prop:s0" dev="tmpfs" ino=594 scontext=u:r:untrusted_app:s0:c44,c257,c512,c768 tcontext=u:object_r:vendor_displayfeature_prop:s0 tclass=file permissive=0 app=com.example.curtiss
-2026-07-19 14:13:04.221  9889-9919  libc                    com.example.curtiss                  W  Access denied finding property "ro.vendor.display.iris_x7.support"
-2026-07-19 14:13:04.221  9889-9919  pwIrisCR                com.example.curtiss                  I  isCnVersion = 0, isSupportIris = 0
-2026-07-19 14:13:04.224  9889-9919  HWUI                    com.example.curtiss                  D  TAG_DDRE, CanvasContext::setDdreActivities: 
-2026-07-19 14:13:04.232  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.232  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.234  9889-9889  InputEventReceiver      com.example.curtiss                  D  Input log is disabled in InputEventReceiver.
-2026-07-19 14:13:04.244  9889-9889  DecorViewImmersiveImpl  com.example.curtiss                  D  onAttachedToWindow. pkg: com.example.curtiss
-2026-07-19 14:13:04.244  9889-9889  ComputilityLevel        com.example.curtiss                  I  getComputilityLevel(): 1
-2026-07-19 14:13:04.246  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.246  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.246  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.246  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.246  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.246  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.287  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.287  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.287  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.287  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.289  9889-9889  example.curtiss         com.example.curtiss                  E  [perfctl] 9889 9889 FPSGO ver:7
-2026-07-19 14:13:04.289  9889-9889  example.curtiss         com.example.curtiss                  E  [perfctl] 1 1 1 0
-2026-07-19 14:13:04.289  9889-9889  BufferQueueConsumer     com.example.curtiss                  D  [](id:26a100000000,api:0,p:-1,c:9889) connect: controlledByApp=false
-2026-07-19 14:13:04.290  9889-9889  BLASTBufferQueue        com.example.curtiss                  D  [VRI[SplashActivity]#0](f:0,a:0) constructor()
-2026-07-19 14:13:04.290  9889-9889  BLASTBufferQueue        com.example.curtiss                  D  registerFramerateFineControlListener, PID = 9889, name = VRI[SplashActivity]
-2026-07-19 14:13:04.291  9889-9889  FramerateFineControl    com.example.curtiss                  I  registerListener failed: 0
-2026-07-19 14:13:04.291  9889-9889  BLASTBufferQueue        com.example.curtiss                  D  [VRI[SplashActivity]#0](f:0,a:0) update width=1600 height=2560 format=-1 mTransformHint=3
-2026-07-19 14:13:04.297  9889-9889  VRI[SplashActivity]     com.example.curtiss                  D  vri.Setup new sync=wmsSync-VRI[SplashActivity]#0
-2026-07-19 14:13:04.334  9889-9919  GrallocExtra            com.example.curtiss                  I  gralloc_extra_query:is_SW3D 0
-2026-07-19 14:13:04.342  9889-9919  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.40 ms.
-2026-07-19 14:13:04.342  9889-9919  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.16 ms.
-2026-07-19 14:13:04.343  9889-9919  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.18 ms.
-2026-07-19 14:13:04.343  9889-9919  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.16 ms.
-2026-07-19 14:13:04.344  9889-9919  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.13 ms.
-2026-07-19 14:13:04.344  9889-9919  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.14 ms.
-2026-07-19 14:13:04.348  9889-9919  GrallocExtra            com.example.curtiss                  I  gralloc_extra_query:is_SW3D 0
-2026-07-19 14:13:04.349  9889-9919  libc                    com.example.curtiss                  W  Access denied finding property "ro.vendor.display.iris_x7.support"
-2026-07-19 14:13:04.343  9889-9889  RenderThread            com.example.curtiss                  W  type=1400 audit(0.0:89608): avc:  denied  { read } for  name="u:object_r:vendor_displayfeature_prop:s0" dev="tmpfs" ino=594 scontext=u:r:untrusted_app:s0:c44,c257,c512,c768 tcontext=u:object_r:vendor_displayfeature_prop:s0 tclass=file permissive=0 app=com.example.curtiss
-2026-07-19 14:13:04.349  9889-9919  BLASTBufferQueue        com.example.curtiss                  D  [VRI[SplashActivity]#0](f:0,a:1) acquireNextBufferLocked size=1600x2560 mFrameNumber=1 applyTransaction=true mTimestamp=49093426692541(auto) mPendingTransactions.size=0 graphicBufferId=42472931590145 transform=3
-2026-07-19 14:13:04.351  9889-9889  VRI[SplashActivity]     com.example.curtiss                  D  vri.reportDrawFinished 0 0 Rect(0, 0 - 1600, 2560)
-2026-07-19 14:13:04.356  9889-9919  HWUI                    com.example.curtiss                  D  [HWUI] Flag vulkan_enhance_pipeline_cache enabled
-2026-07-19 14:13:04.356  9889-9919  HWUI                    com.example.curtiss                  D  [HWUI] EnhanceVkPipelineCache is disabled
-2026-07-19 14:13:04.356  9889-9919  HWUI                    com.example.curtiss                  D  [HWUI] Flag ddre enabled
-2026-07-19 14:13:04.361  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.361  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.361  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.361  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.394  9889-9889  HandWritingStubImpl     com.example.curtiss                  I  refreshLastKeyboardType: 1
-2026-07-19 14:13:04.395  9889-9889  HandWritingStubImpl     com.example.curtiss                  I  getCurrentKeyboardType: 1
-2026-07-19 14:13:04.404  9889-9889  InsetsController        com.example.curtiss                  D  hide(ime(), fromIme=false)
-2026-07-19 14:13:04.405  9889-9889  ImeTracker              com.example.curtiss                  I  com.example.curtiss:405bc292: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
-2026-07-19 14:13:04.419  9889-9889  HandWritingStubImpl     com.example.curtiss                  I  getCurrentKeyboardType: 1
-2026-07-19 14:13:04.457  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.457  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.457  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.457  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:04.465  9889-9919  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.17 ms.
-2026-07-19 14:13:04.509  9889-9958  SyncWorker              com.example.curtiss                  D  SyncWorker: Initiating persistent background pull sync for user 20
-2026-07-19 14:13:04.582  9889-9944  CurtissUpdate           com.example.curtiss                  I  Server API responded with HTTP code: 200
-2026-07-19 14:13:04.586  9889-9889  CurtissUpdate           com.example.curtiss                  I  Raw API Response JSON: {"latestVersion":"1.12.0","latestVersionCode":12,"latestVersionCodeNormalized":12,"apkUrl":"https:\/\/curtiss.suzxlabs.com\/releases\/latest.apk?v=1.12.0&t=1784450583","forceUpdate":true,"releaseNotes":["Introducing the new Product Variation System, making it easier to Bill multiple variations of your products.","New Features","\u2022 Product Variation System \u2013 Create and manage product variations such as size, color, or other attributes with improved flexibility and organization.","Improvements","\u2022 Performance improvements and optimizations for a smoother experience.","Bug Fixes","\u2022 Fixed various issues to improve overall stability and reliability."],"apkMd5":"90727d2d7208ceda618d0ec28633d7f0","packageName":"com.example.curtiss"}
-2026-07-19 14:13:04.589  9889-9889  CurtissUpdate           com.example.curtiss                  I  Resolved APK URL: https://curtiss.suzxlabs.com/releases/latest.apk
-2026-07-19 14:13:04.590  9889-9889  CurtissUpdate           com.example.curtiss                  I  Current installed app version name: 1.12.0
-2026-07-19 14:13:04.590  9889-9889  CurtissUpdate           com.example.curtiss                  I  --- Update Diagnostics ---
-2026-07-19 14:13:04.590  9889-9889  CurtissUpdate           com.example.curtiss                  I  Local Package: com.example.curtiss | Server Package: com.example.curtiss
-2026-07-19 14:13:04.590  9889-9889  CurtissUpdate           com.example.curtiss                  I  Local Version Name: 1.12.0 | Server Version Name: 1.12.0
-2026-07-19 14:13:04.590  9889-9889  CurtissUpdate           com.example.curtiss                  I  Local Version Code (Build): 12 | Server Version Code (Build): 12
-2026-07-19 14:13:04.590  9889-9889  CurtissUpdate           com.example.curtiss                  I  No update needed: Server build version code 12 <= installed 12
-2026-07-19 14:13:04.613  9889-9889  VRI[SplashActivity]     com.example.curtiss                  D  getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
-2026-07-19 14:13:04.616  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync attempt 1 of 3 to URL: https://curtiss.suzxlabs.com/rep/RepDashboard/sync_pull?api_sync=1&last_sync=2026-07-19+13%3A41%3A36
-2026-07-19 14:13:04.617  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Request Method: GET
-2026-07-19 14:13:04.725  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Code: 200
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: null = [HTTP/1.1 200 OK]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Headers = [Content-Type, Authorization, X-Requested-With, X-User-ID]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Methods = [GET, POST, OPTIONS, PUT, DELETE]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Origin = [*]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Cache-Control = [no-store, no-cache, must-revalidate]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Connection = [keep-alive]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Content-Type = [application/json]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Date = [Sun, 19 Jul 2026 08:43:03 GMT]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Expires = [Thu, 19 Nov 1981 08:52:00 GMT]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Pragma = [no-cache]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Server = [nginx]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Set-Cookie = [PHPSESSID=htcita5lnrsia5js4ogf5gu8fb; path=/; domain=.suzxlabs.com; secure; HttpOnly; SameSite=Lax]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Transfer-Encoding = [chunked]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Received-Millis = [1784450584725]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Response-Source = [NETWORK 200]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Selected-Protocol = [http/1.1]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Sent-Millis = [1784450584622]
-2026-07-19 14:13:04.726  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Powered-By = [PHP/8.3.32, PleskLin]
-2026-07-19 14:13:04.934  9889-9958  SQLiteLog               com.example.curtiss                  E  (1) table discount_rules has no column named start_date in "INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?
-2026-07-19 14:13:04.941  9889-9958  SyncManager             com.example.curtiss                  E  Error in incremental sync: table discount_rules has no column named start_date (code 1 SQLITE_ERROR): , while compiling: INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?,?,?,?,?,?,?,?,?,?)
-                                                                                                    android.database.sqlite.SQLiteException: table discount_rules has no column named start_date (code 1 SQLITE_ERROR): , while compiling: INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?,?,?,?,?,?,?,?,?,?)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.nativePrepareStatement(Native Method)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.-$$Nest$smnativePrepareStatement(Unknown Source:0)
-                                                                                                    	at android.database.sqlite.SQLiteConnection$PreparedStatementCache.createStatement(SQLiteConnection.java:1671)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.acquirePreparedStatementLI(SQLiteConnection.java:1116)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.acquirePreparedStatement(SQLiteConnection.java:1144)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.prepare(SQLiteConnection.java:704)
-                                                                                                    	at android.database.sqlite.SQLiteSession.prepare(SQLiteSession.java:625)
-                                                                                                    	at android.database.sqlite.SQLiteProgram.<init>(SQLiteProgram.java:65)
-                                                                                                    	at android.database.sqlite.SQLiteStatement.<init>(SQLiteStatement.java:34)
-                                                                                                    	at android.database.sqlite.SQLiteDatabase.insertWithOnConflict(SQLiteDatabase.java:2038)
-                                                                                                    	at com.example.curtiss.SyncManager.parseAndSaveSyncData(SyncManager.java:830)
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:156)
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:107)
-                                                                                                    	at com.example.curtiss.SyncWorker.doWork(SyncWorker.java:38)
-                                                                                                    	at androidx.work.Worker$1.run(Worker.java:82)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
-                                                                                                    	at java.lang.Thread.run(Thread.java:1119)
-2026-07-19 14:13:04.943  9889-9958  SyncManager             com.example.curtiss                  E  Pull Sync connection attempt 1 failed: Incremental streaming database save failed.
-                                                                                                    java.lang.Exception: Incremental streaming database save failed.
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:216)
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:107)
-                                                                                                    	at com.example.curtiss.SyncWorker.doWork(SyncWorker.java:38)
-                                                                                                    	at androidx.work.Worker$1.run(Worker.java:82)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
-                                                                                                    	at java.lang.Thread.run(Thread.java:1119)
-2026-07-19 14:13:05.654  9889-9895  example.curtiss         com.example.curtiss                  I  Compiler allocated 6743KB to compile void android.view.ViewRootImpl.performTraversals()
-2026-07-19 14:13:06.385  9889-9919  LB                      com.example.curtiss                  E  fail to open file: No such file or directory
-2026-07-19 14:13:06.379  9889-9889  RenderThread            com.example.curtiss                  W  type=1400 audit(0.0:89610): avc:  denied  { getattr } for  path="/sys/module/metis/parameters/minor_window_app" dev="sysfs" ino=83207 scontext=u:r:untrusted_app:s0:c44,c257,c512,c768 tcontext=u:object_r:sysfs_migt:s0 tclass=file permissive=0 app=com.example.curtiss
-2026-07-19 14:13:06.945  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync attempt 2 of 3 to URL: https://curtiss.suzxlabs.com/rep/RepDashboard/sync_pull?api_sync=1&last_sync=2026-07-19+13%3A41%3A36
-2026-07-19 14:13:06.945  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Request Method: GET
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Code: 200
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: null = [HTTP/1.1 200 OK]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Headers = [Content-Type, Authorization, X-Requested-With, X-User-ID]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Methods = [GET, POST, OPTIONS, PUT, DELETE]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Origin = [*]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Cache-Control = [no-store, no-cache, must-revalidate]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Connection = [keep-alive]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Content-Type = [application/json]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Date = [Sun, 19 Jul 2026 08:43:05 GMT]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Expires = [Thu, 19 Nov 1981 08:52:00 GMT]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Pragma = [no-cache]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Server = [nginx]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Set-Cookie = [PHPSESSID=ndllt4ht71c4q0cf0i39sa7ugi; path=/; domain=.suzxlabs.com; secure; HttpOnly; SameSite=Lax]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Transfer-Encoding = [chunked]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Received-Millis = [1784450587151]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Response-Source = [NETWORK 200]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Selected-Protocol = [http/1.1]
-2026-07-19 14:13:07.151  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Sent-Millis = [1784450587035]
-2026-07-19 14:13:07.152  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Powered-By = [PHP/8.3.32, PleskLin]
-2026-07-19 14:13:07.170  9889-9958  SQLiteLog               com.example.curtiss                  E  (1) table discount_rules has no column named start_date in "INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?
-2026-07-19 14:13:07.170  9889-9958  SyncManager             com.example.curtiss                  E  Error in incremental sync: table discount_rules has no column named start_date (code 1 SQLITE_ERROR): , while compiling: INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?,?,?,?,?,?,?,?,?,?)
-                                                                                                    android.database.sqlite.SQLiteException: table discount_rules has no column named start_date (code 1 SQLITE_ERROR): , while compiling: INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?,?,?,?,?,?,?,?,?,?)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.nativePrepareStatement(Native Method)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.-$$Nest$smnativePrepareStatement(Unknown Source:0)
-                                                                                                    	at android.database.sqlite.SQLiteConnection$PreparedStatementCache.createStatement(SQLiteConnection.java:1671)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.acquirePreparedStatementLI(SQLiteConnection.java:1116)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.acquirePreparedStatement(SQLiteConnection.java:1144)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.prepare(SQLiteConnection.java:704)
-                                                                                                    	at android.database.sqlite.SQLiteSession.prepare(SQLiteSession.java:625)
-                                                                                                    	at android.database.sqlite.SQLiteProgram.<init>(SQLiteProgram.java:65)
-                                                                                                    	at android.database.sqlite.SQLiteStatement.<init>(SQLiteStatement.java:34)
-                                                                                                    	at android.database.sqlite.SQLiteDatabase.insertWithOnConflict(SQLiteDatabase.java:2038)
-                                                                                                    	at com.example.curtiss.SyncManager.parseAndSaveSyncData(SyncManager.java:830)
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:156)
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:107)
-                                                                                                    	at com.example.curtiss.SyncWorker.doWork(SyncWorker.java:38)
-                                                                                                    	at androidx.work.Worker$1.run(Worker.java:82)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
-                                                                                                    	at java.lang.Thread.run(Thread.java:1119)
-2026-07-19 14:13:07.170  9889-9958  SyncManager             com.example.curtiss                  E  Pull Sync connection attempt 2 failed: Incremental streaming database save failed.
-                                                                                                    java.lang.Exception: Incremental streaming database save failed.
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:216)
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:107)
-                                                                                                    	at com.example.curtiss.SyncWorker.doWork(SyncWorker.java:38)
-                                                                                                    	at androidx.work.Worker$1.run(Worker.java:82)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
-                                                                                                    	at java.lang.Thread.run(Thread.java:1119)
-2026-07-19 14:13:07.351  9889-9919  example.curtiss         com.example.curtiss                  E  DynamicFPS DF open fail: No such file or directory
-2026-07-19 14:13:09.171  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync attempt 3 of 3 to URL: https://curtiss.suzxlabs.com/rep/RepDashboard/sync_pull?api_sync=1&last_sync=2026-07-19+13%3A41%3A36
-2026-07-19 14:13:09.171  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Request Method: GET
-2026-07-19 14:13:09.351  9889-9919  example.curtiss         com.example.curtiss                  E  FrameInsert open fail: No such file or directory
-2026-07-19 14:13:09.408  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Code: 200
-2026-07-19 14:13:09.409  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: null = [HTTP/1.1 200 OK]
-2026-07-19 14:13:09.409  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Headers = [Content-Type, Authorization, X-Requested-With, X-User-ID]
-2026-07-19 14:13:09.409  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Methods = [GET, POST, OPTIONS, PUT, DELETE]
-2026-07-19 14:13:09.409  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Origin = [*]
-2026-07-19 14:13:09.409  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Cache-Control = [no-store, no-cache, must-revalidate]
-2026-07-19 14:13:09.409  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Connection = [keep-alive]
-2026-07-19 14:13:09.409  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Content-Type = [application/json]
-2026-07-19 14:13:09.409  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Date = [Sun, 19 Jul 2026 08:43:07 GMT]
-2026-07-19 14:13:09.409  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Expires = [Thu, 19 Nov 1981 08:52:00 GMT]
-2026-07-19 14:13:09.409  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Pragma = [no-cache]
-2026-07-19 14:13:09.409  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Server = [nginx]
-2026-07-19 14:13:09.409  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Set-Cookie = [PHPSESSID=u8jgicbqpol8goedke6ebmq87f; path=/; domain=.suzxlabs.com; secure; HttpOnly; SameSite=Lax]
-2026-07-19 14:13:09.409  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Transfer-Encoding = [chunked]
-2026-07-19 14:13:09.410  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Received-Millis = [1784450589408]
-2026-07-19 14:13:09.410  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Response-Source = [NETWORK 200]
-2026-07-19 14:13:09.410  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Selected-Protocol = [http/1.1]
-2026-07-19 14:13:09.410  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Sent-Millis = [1784450589261]
-2026-07-19 14:13:09.411  9889-9958  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Powered-By = [PHP/8.3.32, PleskLin]
-2026-07-19 14:13:09.433  9889-9958  SQLiteLog               com.example.curtiss                  E  (1) table discount_rules has no column named start_date in "INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?
-2026-07-19 14:13:09.434  9889-9958  SyncManager             com.example.curtiss                  E  Error in incremental sync: table discount_rules has no column named start_date (code 1 SQLITE_ERROR): , while compiling: INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?,?,?,?,?,?,?,?,?,?)
-                                                                                                    android.database.sqlite.SQLiteException: table discount_rules has no column named start_date (code 1 SQLITE_ERROR): , while compiling: INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?,?,?,?,?,?,?,?,?,?)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.nativePrepareStatement(Native Method)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.-$$Nest$smnativePrepareStatement(Unknown Source:0)
-                                                                                                    	at android.database.sqlite.SQLiteConnection$PreparedStatementCache.createStatement(SQLiteConnection.java:1671)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.acquirePreparedStatementLI(SQLiteConnection.java:1116)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.acquirePreparedStatement(SQLiteConnection.java:1144)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.prepare(SQLiteConnection.java:704)
-                                                                                                    	at android.database.sqlite.SQLiteSession.prepare(SQLiteSession.java:625)
-                                                                                                    	at android.database.sqlite.SQLiteProgram.<init>(SQLiteProgram.java:65)
-                                                                                                    	at android.database.sqlite.SQLiteStatement.<init>(SQLiteStatement.java:34)
-                                                                                                    	at android.database.sqlite.SQLiteDatabase.insertWithOnConflict(SQLiteDatabase.java:2038)
-                                                                                                    	at com.example.curtiss.SyncManager.parseAndSaveSyncData(SyncManager.java:830)
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:156)
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:107)
-                                                                                                    	at com.example.curtiss.SyncWorker.doWork(SyncWorker.java:38)
-                                                                                                    	at androidx.work.Worker$1.run(Worker.java:82)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
-                                                                                                    	at java.lang.Thread.run(Thread.java:1119)
-2026-07-19 14:13:09.434  9889-9958  SyncManager             com.example.curtiss                  E  Pull Sync connection attempt 3 failed: Incremental streaming database save failed.
-                                                                                                    java.lang.Exception: Incremental streaming database save failed.
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:216)
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:107)
-                                                                                                    	at com.example.curtiss.SyncWorker.doWork(SyncWorker.java:38)
-                                                                                                    	at androidx.work.Worker$1.run(Worker.java:82)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
-                                                                                                    	at java.lang.Thread.run(Thread.java:1119)
-2026-07-19 14:13:09.434  9889-9958  SyncWorker              com.example.curtiss                  E  SyncWorker: executePull failed.
-2026-07-19 14:13:09.437  9889-9938  WM-WorkerWrapper        com.example.curtiss                  I  Worker result RETRY for Work [ id=572796e5-5c26-4d02-a2ba-692fd61ce432, tags={ com.example.curtiss.SyncWorker } ]
-2026-07-19 14:13:09.473  9889-9970  ProfileInstaller        com.example.curtiss                  D  Installing profile for com.example.curtiss
-2026-07-19 14:13:09.505  9889-9895  example.curtiss         com.example.curtiss                  I  Compiler allocated 8621KB to compile boolean com.example.curtiss.SyncManager.parseAndSaveSyncData(android.content.Context, java.io.InputStream, int, com.example.curtiss.SyncManager$SyncListener)
-2026-07-19 14:13:09.528  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync attempt 1 of 3 to URL: https://curtiss.suzxlabs.com/rep/RepDashboard/sync_pull?api_sync=1&last_sync=2026-07-19+13%3A41%3A36
-2026-07-19 14:13:09.528  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Request Method: GET
-2026-07-19 14:13:09.727  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Code: 200
-2026-07-19 14:13:09.727  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: null = [HTTP/1.1 200 OK]
-2026-07-19 14:13:09.727  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Headers = [Content-Type, Authorization, X-Requested-With, X-User-ID]
-2026-07-19 14:13:09.727  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Methods = [GET, POST, OPTIONS, PUT, DELETE]
-2026-07-19 14:13:09.727  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Origin = [*]
-2026-07-19 14:13:09.727  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Cache-Control = [no-store, no-cache, must-revalidate]
-2026-07-19 14:13:09.727  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Connection = [keep-alive]
-2026-07-19 14:13:09.727  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Content-Type = [application/json]
-2026-07-19 14:13:09.728  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Date = [Sun, 19 Jul 2026 08:43:08 GMT]
-2026-07-19 14:13:09.728  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Expires = [Thu, 19 Nov 1981 08:52:00 GMT]
-2026-07-19 14:13:09.728  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Pragma = [no-cache]
-2026-07-19 14:13:09.728  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Server = [nginx]
-2026-07-19 14:13:09.728  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Set-Cookie = [PHPSESSID=kuifc8sntraeh5g7lkifpegsbc; path=/; domain=.suzxlabs.com; secure; HttpOnly; SameSite=Lax]
-2026-07-19 14:13:09.728  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Transfer-Encoding = [chunked]
-2026-07-19 14:13:09.728  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Received-Millis = [1784450589726]
-2026-07-19 14:13:09.728  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Response-Source = [NETWORK 200]
-2026-07-19 14:13:09.728  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Selected-Protocol = [http/1.1]
-2026-07-19 14:13:09.728  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Sent-Millis = [1784450589607]
-2026-07-19 14:13:09.728  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Powered-By = [PHP/8.3.32, PleskLin]
-2026-07-19 14:13:09.754  9889-9962  SQLiteLog               com.example.curtiss                  E  (1) table discount_rules has no column named start_date in "INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?
-2026-07-19 14:13:09.754  9889-9962  SyncManager             com.example.curtiss                  E  Error in incremental sync: table discount_rules has no column named start_date (code 1 SQLITE_ERROR): , while compiling: INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?,?,?,?,?,?,?,?,?,?)
-                                                                                                    android.database.sqlite.SQLiteException: table discount_rules has no column named start_date (code 1 SQLITE_ERROR): , while compiling: INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?,?,?,?,?,?,?,?,?,?)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.nativePrepareStatement(Native Method)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.-$$Nest$smnativePrepareStatement(Unknown Source:0)
-                                                                                                    	at android.database.sqlite.SQLiteConnection$PreparedStatementCache.createStatement(SQLiteConnection.java:1671)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.acquirePreparedStatementLI(SQLiteConnection.java:1116)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.acquirePreparedStatement(SQLiteConnection.java:1144)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.prepare(SQLiteConnection.java:704)
-                                                                                                    	at android.database.sqlite.SQLiteSession.prepare(SQLiteSession.java:625)
-                                                                                                    	at android.database.sqlite.SQLiteProgram.<init>(SQLiteProgram.java:65)
-                                                                                                    	at android.database.sqlite.SQLiteStatement.<init>(SQLiteStatement.java:34)
-                                                                                                    	at android.database.sqlite.SQLiteDatabase.insertWithOnConflict(SQLiteDatabase.java:2038)
-                                                                                                    	at com.example.curtiss.SyncManager.parseAndSaveSyncData(SyncManager.java:830)
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:156)
-                                                                                                    	at com.example.curtiss.SyncManager$2.run(SyncManager.java:1865)
-                                                                                                    	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:524)
-                                                                                                    	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
-                                                                                                    	at java.lang.Thread.run(Thread.java:1119)
-2026-07-19 14:13:09.754  9889-9962  SyncManager             com.example.curtiss                  E  Pull Sync connection attempt 1 failed: Incremental streaming database save failed.
-                                                                                                    java.lang.Exception: Incremental streaming database save failed.
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:216)
-                                                                                                    	at com.example.curtiss.SyncManager$2.run(SyncManager.java:1865)
-                                                                                                    	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:524)
-                                                                                                    	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
-                                                                                                    	at java.lang.Thread.run(Thread.java:1119)
-2026-07-19 14:13:11.755  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync attempt 2 of 3 to URL: https://curtiss.suzxlabs.com/rep/RepDashboard/sync_pull?api_sync=1&last_sync=2026-07-19+13%3A41%3A36
-2026-07-19 14:13:11.756  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Request Method: GET
-2026-07-19 14:13:11.966  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Code: 200
-2026-07-19 14:13:11.966  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: null = [HTTP/1.1 200 OK]
-2026-07-19 14:13:11.967  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Headers = [Content-Type, Authorization, X-Requested-With, X-User-ID]
-2026-07-19 14:13:11.967  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Methods = [GET, POST, OPTIONS, PUT, DELETE]
-2026-07-19 14:13:11.967  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Origin = [*]
-2026-07-19 14:13:11.967  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Cache-Control = [no-store, no-cache, must-revalidate]
-2026-07-19 14:13:11.967  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Connection = [keep-alive]
-2026-07-19 14:13:11.967  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Content-Type = [application/json]
-2026-07-19 14:13:11.967  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Date = [Sun, 19 Jul 2026 08:43:10 GMT]
-2026-07-19 14:13:11.967  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Expires = [Thu, 19 Nov 1981 08:52:00 GMT]
-2026-07-19 14:13:11.967  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Pragma = [no-cache]
-2026-07-19 14:13:11.967  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Server = [nginx]
-2026-07-19 14:13:11.967  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Set-Cookie = [PHPSESSID=vs0813p3hv59oj7k47v8nh5no4; path=/; domain=.suzxlabs.com; secure; HttpOnly; SameSite=Lax]
-2026-07-19 14:13:11.967  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Transfer-Encoding = [chunked]
-2026-07-19 14:13:11.967  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Received-Millis = [1784450591966]
-2026-07-19 14:13:11.968  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Response-Source = [NETWORK 200]
-2026-07-19 14:13:11.968  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Selected-Protocol = [http/1.1]
-2026-07-19 14:13:11.968  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Sent-Millis = [1784450591845]
-2026-07-19 14:13:11.968  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Powered-By = [PHP/8.3.32, PleskLin]
-2026-07-19 14:13:11.994  9889-9962  SQLiteLog               com.example.curtiss                  E  (1) table discount_rules has no column named start_date in "INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?
-2026-07-19 14:13:11.995  9889-9962  SyncManager             com.example.curtiss                  E  Error in incremental sync: table discount_rules has no column named start_date (code 1 SQLITE_ERROR): , while compiling: INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?,?,?,?,?,?,?,?,?,?)
-                                                                                                    android.database.sqlite.SQLiteException: table discount_rules has no column named start_date (code 1 SQLITE_ERROR): , while compiling: INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?,?,?,?,?,?,?,?,?,?)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.nativePrepareStatement(Native Method)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.-$$Nest$smnativePrepareStatement(Unknown Source:0)
-                                                                                                    	at android.database.sqlite.SQLiteConnection$PreparedStatementCache.createStatement(SQLiteConnection.java:1671)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.acquirePreparedStatementLI(SQLiteConnection.java:1116)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.acquirePreparedStatement(SQLiteConnection.java:1144)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.prepare(SQLiteConnection.java:704)
-                                                                                                    	at android.database.sqlite.SQLiteSession.prepare(SQLiteSession.java:625)
-                                                                                                    	at android.database.sqlite.SQLiteProgram.<init>(SQLiteProgram.java:65)
-                                                                                                    	at android.database.sqlite.SQLiteStatement.<init>(SQLiteStatement.java:34)
-                                                                                                    	at android.database.sqlite.SQLiteDatabase.insertWithOnConflict(SQLiteDatabase.java:2038)
-                                                                                                    	at com.example.curtiss.SyncManager.parseAndSaveSyncData(SyncManager.java:830)
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:156)
-                                                                                                    	at com.example.curtiss.SyncManager$2.run(SyncManager.java:1865)
-                                                                                                    	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:524)
-                                                                                                    	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
-                                                                                                    	at java.lang.Thread.run(Thread.java:1119)
-2026-07-19 14:13:11.995  9889-9962  SyncManager             com.example.curtiss                  E  Pull Sync connection attempt 2 failed: Incremental streaming database save failed.
-                                                                                                    java.lang.Exception: Incremental streaming database save failed.
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:216)
-                                                                                                    	at com.example.curtiss.SyncManager$2.run(SyncManager.java:1865)
-                                                                                                    	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:524)
-                                                                                                    	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
-                                                                                                    	at java.lang.Thread.run(Thread.java:1119)
-2026-07-19 14:13:13.996  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync attempt 3 of 3 to URL: https://curtiss.suzxlabs.com/rep/RepDashboard/sync_pull?api_sync=1&last_sync=2026-07-19+13%3A41%3A36
-2026-07-19 14:13:13.996  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Request Method: GET
-2026-07-19 14:13:14.252  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Code: 200
-2026-07-19 14:13:14.252  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: null = [HTTP/1.1 200 OK]
-2026-07-19 14:13:14.252  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Headers = [Content-Type, Authorization, X-Requested-With, X-User-ID]
-2026-07-19 14:13:14.252  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Methods = [GET, POST, OPTIONS, PUT, DELETE]
-2026-07-19 14:13:14.252  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Access-Control-Allow-Origin = [*]
-2026-07-19 14:13:14.252  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Cache-Control = [no-store, no-cache, must-revalidate]
-2026-07-19 14:13:14.252  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Connection = [keep-alive]
-2026-07-19 14:13:14.252  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Content-Type = [application/json]
-2026-07-19 14:13:14.252  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Date = [Sun, 19 Jul 2026 08:43:12 GMT]
-2026-07-19 14:13:14.252  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Expires = [Thu, 19 Nov 1981 08:52:00 GMT]
-2026-07-19 14:13:14.252  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Pragma = [no-cache]
-2026-07-19 14:13:14.252  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Server = [nginx]
-2026-07-19 14:13:14.253  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Set-Cookie = [PHPSESSID=prsr0ro36frt13og922t7aj046; path=/; domain=.suzxlabs.com; secure; HttpOnly; SameSite=Lax]
-2026-07-19 14:13:14.253  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: Transfer-Encoding = [chunked]
-2026-07-19 14:13:14.253  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Received-Millis = [1784450594251]
-2026-07-19 14:13:14.253  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Response-Source = [NETWORK 200]
-2026-07-19 14:13:14.253  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Selected-Protocol = [http/1.1]
-2026-07-19 14:13:14.253  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Android-Sent-Millis = [1784450594104]
-2026-07-19 14:13:14.253  9889-9962  SyncManager             com.example.curtiss                  D  Pull Sync Response Header: X-Powered-By = [PHP/8.3.32, PleskLin]
-2026-07-19 14:13:14.277  9889-9962  SQLiteLog               com.example.curtiss                  E  (1) table discount_rules has no column named start_date in "INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?
-2026-07-19 14:13:14.278  9889-9962  SyncManager             com.example.curtiss                  E  Error in incremental sync: table discount_rules has no column named start_date (code 1 SQLITE_ERROR): , while compiling: INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?,?,?,?,?,?,?,?,?,?)
-                                                                                                    android.database.sqlite.SQLiteException: table discount_rules has no column named start_date (code 1 SQLITE_ERROR): , while compiling: INSERT OR REPLACE  INTO discount_rules(rule_type,start_date,target_category_id,target_item_id,status,id,name,discount_cap,reward_type,end_date) VALUES (?,?,?,?,?,?,?,?,?,?)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.nativePrepareStatement(Native Method)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.-$$Nest$smnativePrepareStatement(Unknown Source:0)
-                                                                                                    	at android.database.sqlite.SQLiteConnection$PreparedStatementCache.createStatement(SQLiteConnection.java:1671)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.acquirePreparedStatementLI(SQLiteConnection.java:1116)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.acquirePreparedStatement(SQLiteConnection.java:1144)
-                                                                                                    	at android.database.sqlite.SQLiteConnection.prepare(SQLiteConnection.java:704)
-                                                                                                    	at android.database.sqlite.SQLiteSession.prepare(SQLiteSession.java:625)
-                                                                                                    	at android.database.sqlite.SQLiteProgram.<init>(SQLiteProgram.java:65)
-                                                                                                    	at android.database.sqlite.SQLiteStatement.<init>(SQLiteStatement.java:34)
-                                                                                                    	at android.database.sqlite.SQLiteDatabase.insertWithOnConflict(SQLiteDatabase.java:2038)
-                                                                                                    	at com.example.curtiss.SyncManager.parseAndSaveSyncData(SyncManager.java:830)
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:156)
-                                                                                                    	at com.example.curtiss.SyncManager$2.run(SyncManager.java:1865)
-                                                                                                    	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:524)
-                                                                                                    	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
-                                                                                                    	at java.lang.Thread.run(Thread.java:1119)
-2026-07-19 14:13:14.278  9889-9962  SyncManager             com.example.curtiss                  E  Pull Sync connection attempt 3 failed: Incremental streaming database save failed.
-                                                                                                    java.lang.Exception: Incremental streaming database save failed.
-                                                                                                    	at com.example.curtiss.SyncManager.executePull(SyncManager.java:216)
-                                                                                                    	at com.example.curtiss.SyncManager$2.run(SyncManager.java:1865)
-                                                                                                    	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:524)
-                                                                                                    	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
-                                                                                                    	at java.lang.Thread.run(Thread.java:1119)
-2026-07-19 14:13:14.310  9889-9889  VRI[SplashActivity]     com.example.curtiss                  D  getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
-2026-07-19 14:13:16.347  9889-9889  PowerHalMgrImpl         com.example.curtiss                  I  perfLockAcq is supported. 
-2026-07-19 14:13:16.375  9889-9904  ActivityThread          com.example.curtiss                  I  HardwareRenderer preload  done
-2026-07-19 14:13:16.383  9889-9889  example.curtiss         com.example.curtiss                  I  AssetManager2(0xb4000079d6626dd8) locale list changing from [] to [en-GB]
-2026-07-19 14:13:16.393  9889-9889  DecorView               com.example.curtiss                  D  updateFreeformOutlineFromActivity, inFreeform=false,inFreeformWindowMode=false
-2026-07-19 14:13:16.422  9889-9889  ScrollerOp...ionManager com.example.curtiss                  D  registerConfigChangedListener
-2026-07-19 14:13:16.432  9889-9889  libc                    com.example.curtiss                  W  Access denied finding property "ro.vendor.mi_sf.new_dynamic_refresh_rate"
-2026-07-19 14:13:16.432  9889-9889  SplineOverScroller      com.example.curtiss                  D  dynamic params is false
-2026-07-19 14:13:16.427  9889-9889  example.curtiss         com.example.curtiss                  W  type=1400 audit(0.0:89612): avc:  denied  { read } for  name="u:object_r:vendor_displayfeature_prop:s0" dev="tmpfs" ino=594 scontext=u:r:untrusted_app:s0:c44,c257,c512,c768 tcontext=u:object_r:vendor_displayfeature_prop:s0 tclass=file permissive=0 app=com.example.curtiss
-2026-07-19 14:13:16.484  9889-9889  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 100, height = 100, encodedFormat = 4
-2026-07-19 14:13:16.484  9889-9889  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
-2026-07-19 14:13:16.551  9889-9889  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 50, height = 50, encodedFormat = 4
-2026-07-19 14:13:16.551  9889-9889  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
-2026-07-19 14:13:16.560  9889-9889  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 64, height = 64, encodedFormat = 4
-2026-07-19 14:13:16.560  9889-9889  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
-2026-07-19 14:13:16.569  9889-9889  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 48, height = 48, encodedFormat = 4
-2026-07-19 14:13:16.569  9889-9889  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
-2026-07-19 14:13:16.577  9889-9889  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 48, height = 48, encodedFormat = 4
-2026-07-19 14:13:16.577  9889-9889  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
-2026-07-19 14:13:16.585  9889-9889  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 50, height = 50, encodedFormat = 4
-2026-07-19 14:13:16.585  9889-9889  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
-2026-07-19 14:13:16.720  9889-9889  Activity                com.example.curtiss                  D  Activity = ActivityInfo{5d2502f com.example.curtiss.MainActivity}, Resume onConfigurationChanged = {1.0 ?mcc0mnc [en_GB] ldltr sw711dp w711dp h1091dp 360dpi lrg port finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 1600, 2560) mAppBounds=Rect(0, 0 - 1600, 2524) mMaxBounds=Rect(0, 0 - 1600, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.2 s.3 fontWeightAdjustment=0/d/0 themeChanged=0 themeChangedFlags=0 display=0 extraData = Bundle[{}] screenType=0/0}
-2026-07-19 14:13:16.724  9889-9889  MaterialCardView        com.example.curtiss                  I  Setting a custom background is not supported.
-2026-07-19 14:13:16.728  9889-9919  HWUI                    com.example.curtiss                  D  TAG_DDRE, CanvasContext::setDdreActivities: 
-2026-07-19 14:13:16.732  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.732  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.733  9889-9889  InputEventReceiver      com.example.curtiss                  D  Input log is disabled in InputEventReceiver.
-2026-07-19 14:13:16.734  9889-9889  MainActivity            com.example.curtiss                  D  Network available. Sync deferred to user manual initiation.
-2026-07-19 14:13:16.735  9889-9919  HWUI                    com.example.curtiss                  D  [HWUI] Flag vulkan_enhance_pipeline_cache enabled
-2026-07-19 14:13:16.735  9889-9919  HWUI                    com.example.curtiss                  D  [HWUI] EnhanceVkPipelineCache is disabled
-2026-07-19 14:13:16.735  9889-9919  HWUI                    com.example.curtiss                  D  [HWUI] Flag ddre enabled
-2026-07-19 14:13:16.737  9889-9889  DecorViewImmersiveImpl  com.example.curtiss                  D  onAttachedToWindow. pkg: com.example.curtiss
-2026-07-19 14:13:16.737  9889-9889  ComputilityLevel        com.example.curtiss                  I  getComputilityLevel(): 1
-2026-07-19 14:13:16.746  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.746  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.746  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.746  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.746  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.746  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.787  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.787  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.787  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.787  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.788  9889-9889  BufferQueueConsumer     com.example.curtiss                  D  [](id:26a100000001,api:0,p:-1,c:9889) connect: controlledByApp=false
-2026-07-19 14:13:16.789  9889-9889  BLASTBufferQueue        com.example.curtiss                  D  [VRI[MainActivity]#1](f:0,a:0) constructor()
-2026-07-19 14:13:16.789  9889-9889  BLASTBufferQueue        com.example.curtiss                  D  registerFramerateFineControlListener, PID = 9889, name = VRI[MainActivity]
-2026-07-19 14:13:16.789  9889-9889  FramerateFineControl    com.example.curtiss                  I  registerListener failed: 0
-2026-07-19 14:13:16.789  9889-9889  BLASTBufferQueue        com.example.curtiss                  D  [VRI[MainActivity]#1](f:0,a:0) update width=1600 height=2560 format=-1 mTransformHint=3
-2026-07-19 14:13:16.814  9889-9889  VRI[MainActivity]       com.example.curtiss                  D  vri.Setup new sync=wmsSync-VRI[MainActivity]#2
-2026-07-19 14:13:16.886  9889-9919  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.18 ms.
-2026-07-19 14:13:16.886  9889-9919  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.16 ms.
-2026-07-19 14:13:16.886  9889-9919  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.16 ms.
-2026-07-19 14:13:16.887  9889-9919  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.19 ms.
-2026-07-19 14:13:16.887  9889-9919  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.15 ms.
-2026-07-19 14:13:16.888  9889-9919  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.19 ms.
-2026-07-19 14:13:16.888  9889-9919  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.15 ms.
-2026-07-19 14:13:16.891  9889-9919  BLASTBufferQueue        com.example.curtiss                  D  [VRI[MainActivity]#1](f:0,a:1) acquireNextBufferLocked size=1600x2560 mFrameNumber=1 applyTransaction=true mTimestamp=49105968980465(auto) mPendingTransactions.size=0 graphicBufferId=42472931590151 transform=3
-2026-07-19 14:13:16.892  9889-9889  VRI[MainActivity]       com.example.curtiss                  D  vri.reportDrawFinished 0 0 Rect(0, 0 - 1600, 2560)
-2026-07-19 14:13:16.915  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.915  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.915  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.915  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.917  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.917  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.917  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.917  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.933  9889-9889  HandWritingStubImpl     com.example.curtiss                  I  refreshLastKeyboardType: 1
-2026-07-19 14:13:16.934  9889-9889  HandWritingStubImpl     com.example.curtiss                  I  getCurrentKeyboardType: 1
-2026-07-19 14:13:16.940  9889-9889  InsetsController        com.example.curtiss                  D  hide(ime(), fromIme=false)
-2026-07-19 14:13:16.940  9889-9889  ImeTracker              com.example.curtiss                  I  com.example.curtiss:d6f2d0a8: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
-2026-07-19 14:13:16.973  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.973  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.973  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.973  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.973  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.973  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.973  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:16.973  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:17.442  9889-9889  VRI[SplashActivity]     com.example.curtiss                  D  visibilityChanged oldVisibility=true newVisibility=false
-2026-07-19 14:13:17.464  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:17.464  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:17.464  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:17.464  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:17.465  9889-9889  example.curtiss         com.example.curtiss                  W  Binder 0xb40000794662d080 destroyed after setInheritRt before being parceled.
-2026-07-19 14:13:17.465  9889-9889  BLASTBufferQueue        com.example.curtiss                  D  unRegisterFramerateFineControlListener, PID = 9889, name = VRI[SplashActivity]#0
-2026-07-19 14:13:17.465  9889-9889  FramerateFineControl    com.example.curtiss                  I  unregisterListener failed: 0
-2026-07-19 14:13:17.465  9889-9889  BLASTBufferQueue        com.example.curtiss                  D  [VRI[SplashActivity]#0](f:0,a:1) destructor()
-2026-07-19 14:13:17.465  9889-9889  BufferQueueConsumer     com.example.curtiss                  D  [VRI[SplashActivity]#0(BLAST Consumer)0](id:26a100000000,api:0,p:-1,c:9889) disconnect: caller 9889
-2026-07-19 14:13:17.471  9889-9889  WindowOnBackDispatcher  com.example.curtiss                  W  sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda16@a30012f
-2026-07-19 14:13:17.472  9889-9889  DecorViewImmersiveImpl  com.example.curtiss                  D  onDetachedFromWindow
-2026-07-19 14:13:17.472  9889-9889  ViewRootImpl            com.example.curtiss                  D  Skipping stats log for color mode
-2026-07-19 14:13:17.477  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:17.477  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:17.477  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
-2026-07-19 14:13:17.477  9889-9889  InsetsSource            com.example.curtiss                  W  Has no intersection or mTmpFrame.height(), return Insets.NONE mTmpFrame.height() =0 hasIntersection =false
+ Print Document Close Window
+Route Loading Sheet
+Route Name: Kurunegala To Hettipola
+
+Assigned Rep: Abdul Raheem
+
+Printed On: 2026-07-20 6:51 PM
+
+Active Bills
+17
+Total Route Value
+Rs. 308,062.82
+No	Product Name	Qty	Unit Price	Total	
+1	1206 Water Color Tube 6ml	0	460.00	0.00	
+2	Color Pencil Tin 12 Half	36	260.00	9,360.00	
+3	Cosmo Color Pencil 12 half	36	150.00	5,400.00	
+4	Doms Color Pencil Tin 12Pcs	18	440.00	7,920.00	
+5	Master Water Color Tube 6ml	0	250.00	0.00	
+6	Pastel Pentium 13Pcs	144	185.00	26,640.00	
+7	Pastel Pentium 24Pcs	18	315.00	5,670.00	
+8	Pastel Pentium 6Pcs	144	90.00	12,960.00	
+9	Platignum Yalong 6Pcs	18	220.00	3,960.00	
+10	Vneed Platignum 6Pcs	72	160.00	11,520.00	
+11	Vneed Water Color Tube 6ml	99	300.00	29,700.00	
+12	Plain Balloon 20Pcs Black	174	160.00	27,840.00	
+13	Plain Balloon 20Pcs Blue	12	160.00	1,920.00	
+14	Plain Balloon 20Pcs Gold	126	200.00	25,200.00	
+15	Plain Balloon 20Pcs Green	12	160.00	1,920.00	
+16	Plain Balloon 20Pcs L Blue	48	160.00	7,680.00	
+17	Plain Balloon 20Pcs L Green	12	160.00	1,920.00	
+18	Plain Balloon 20Pcs Magenta	12	160.00	1,920.00	
+19	Plain Balloon 20Pcs Orange	12	160.00	1,920.00	
+20	Plain Balloon 20Pcs Pink	42	160.00	6,720.00	
+21	Plain Balloon 20Pcs Red	42	160.00	6,720.00	
+22	Plain Balloon 20Pcs Silver	126	200.00	25,200.00	
+23	Plain Balloon 20Pcs White	174	160.00	27,840.00	
+24	Plain Balloon 20Pcs Yellow	18	160.00	2,880.00	
+25	Plain Balloon Assorted Balloon 20Pcs	108	160.00	17,280.00	
+26	Plain Balloon Assorted No 09 100Pcs	12	580.00	6,960.00	
+27	Plain Balloon Assorted No 12 100Pcs	6	730.00	4,380.00	
+28	Plain Balloon No 09 100Pcs Blue	6	580.00	3,480.00	
+29	Plain Balloon No 09 100Pcs Gold	36	770.00	27,720.00	
+30	Plain Balloon No 09 100Pcs Pink	6	580.00	3,480.00	
+31	Plain Balloon No 09 100Pcs Red	18	580.00	10,440.00	
+32	Plain Balloon No 09 100Pcs Silver	36	770.00	27,720.00	
+33	Plain Balloon No 09 100Pcs White	6	580.00	3,480.00	
+34	Plain Balloon No 09 100Pcs Yellow	6	580.00	3,480.00	
+35	B Day Party Balloon 72Pcs	12	1,490.00	17,880.00	
+36	B Day Party Balloon 7Pcs	54	310.00	16,740.00	
+37	B Day Party Candle 0013	54	90.00	4,860.00	
+38	B Day Party Candle 0085	96	100.00	9,600.00	
+39	B Day Party Candle 0252	102	135.00	13,770.00	
+40	B Day Party Candle 0313	54	155.00	8,370.00	
+41	B Day Party Candle 0856	48	145.00	6,960.00	
+42	B Day Party Candle 1179	102	145.00	14,790.00	
+43	B Day Party Candle 3622	36	125.00	4,500.00	
+44	B Day Party Candle 8661	36	145.00	5,220.00	
+45	B Day Party Candle Mini 0025	36	190.00	6,840.00	
+46	B Day Party Candle Mini 1279UE	0	35.00	0.00	
+47	B Day Party Candle Mini 1279YF	0	45.00	0.00	
+48	Birthday Banner 0146	72	215.00	15,480.00	
+49	Birthday Banner frozen 7857	54	240.00	12,960.00	
+50	Birthday Banner Gliter 0209	120	275.00	33,000.00	
+51	Birthday Cake Topper 1735	36	115.00	4,140.00	
+52	Birthday Cake Topper Butterfly	36	175.00	6,300.00	
+53	Birthday Cake Topper Characters	18	155.00	2,790.00	
+54	Birthday Crown	126	120.00	15,120.00	
+55	Birthday Foil Banner 1316	24	280.00	6,720.00	
+56	Birthday Hat Balls	72	145.00	10,440.00	
+57	Birthday Hat Foil	72	145.00	10,440.00	
+58	Birthday Letter Candle 0556	18	190.00	3,420.00	
+59	Birthday Plate 10Pcs	36	180.00	6,480.00	
+60	Bow Design Number Candles Mix	288	50.00	14,400.00	
+61	Number Candles NO 1	0	35.00	0.00	
+62	Number Candles NO 2	0	35.00	0.00	
+63	Number Candles NO 3	0	35.00	0.00	
+64	Number Candles NO 4	216	35.00	7,560.00	
+65	Number Candles NO 5	0	35.00	0.00	
+66	Number Candles NO 6	0	35.00	0.00	
+67	Number Candles NO 7	0	35.00	0.00	
+68	Number Candles NO 9	144	35.00	5,040.00	
+69	Party Candle 3066	18	200.00	3,600.00	
+70	Party Candle 6694	0	160.00	0.00	
+71	Envelop Clear Bag 2316 A6	72	130.00	9,360.00	
+72	Envelop Clear Bag 2318 A4	144	190.00	27,360.00	
+73	Envelop Clear Bag FC	0	240.00	0.00	
+74	Fabric Zipper Bag A6	66	140.00	9,240.00	
+75	Handle Bag With Cartoon	108	390.00	42,120.00	
+76	My Clear Bag FC-Blue	72	60.00	4,320.00	
+77	My Clear Bag FC-Design	120	80.00	9,600.00	
+78	My Clear Bag FC-Green	72	60.00	4,320.00	
+79	My Clear Bag FC-Red	72	60.00	4,320.00	
+80	My Clear Bag FC-White	288	60.00	17,280.00	
+81	My Clear Bag FC-Yellow	72	60.00	4,320.00	
+82	Rainbow Mesh Bag A5	72	80.00	5,760.00	
+83	Rainbow Mesh Bag A6	216	65.52	14,152.32	
+84	Ring Zipper Clear Bag A6	72	130.00	9,360.00	
+85	FALCON Color A4 Cyber Red 100	6	770.00	4,620.00	
+86	Light A4 170 Pink 500 Sheets	0	2,360.00	0.00	
+87	White Paper 70gsm 100 Sheets	36	225.00	8,100.00	
+88	Cutter Knife Heavy Duty Small	36	90.00	3,240.00	
+89	Falcon Paper Cutter Large	12	410.00	4,920.00	
+90	Falcon Paper Cutter Small	12	290.00	3,480.00	
+91	Scissors 120mm	30	130.00	3,900.00	
+92	Scissors 190mm	18	330.00	5,940.00	
+93	Scissors Kangaroo 185mm	0	800.00	0.00	
+94	Color Crepe Paper 10Pcs	12	850.00	10,200.00	
+95	Glitter Paper Cream 10Pcs	0	390.00	0.00	
+96	Glitter Pipe Cleaners BLUE 50Pcs	12	120.00	1,440.00	
+97	Glitter Pipe Cleaners GOLD 50Pcs	6	120.00	720.00	
+98	Glitter Pipe Cleaners GREEN 50Pcs	12	120.00	1,440.00	
+99	Glitter Pipe Cleaners MAGENTA 50Pcs	6	120.00	720.00	
+100	Glitter Pipe Cleaners PINK 50Pcs	6	120.00	720.00	
+101	Glitter Pipe Cleaners PURPLE 50Pcs	12	120.00	1,440.00	
+102	Glitter Pipe Cleaners SILVER 50Pcs	12	120.00	1,440.00	
+103	Glitter Pipe Cleaners WHITE 50Pcs	12	120.00	1,440.00	
+104	Pipe Cleaners BLACK 50Pcs	6	115.00	690.00	
+105	Pipe Cleaners BLUE 50Pcs	5	115.00	575.00	
+106	Pipe Cleaners BROWN 50Pcs	6	115.00	690.00	
+107	Pipe Cleaners GREEN 100Pcs	30	225.00	6,750.00	
+108	Pipe Cleaners LIGHT BLUE 100Pcs	36	225.00	8,100.00	
+109	Pipe Cleaners LIGHT GREEN 50Pcs	12	115.00	1,380.00	
+110	Pipe Cleaners ORANGE 50Pcs	6	115.00	690.00	
+111	Pipe Cleaners PINK 100Pcs	25	225.00	5,625.00	
+112	Pipe Cleaners PINK 50Pcs	12	115.00	1,380.00	
+113	Pipe Cleaners PURPLE 100Pcs	30	225.00	6,750.00	
+114	Pipe Cleaners PURPLE 50Pcs	6	115.00	690.00	
+115	Pipe Cleaners RED 50Pcs	12	115.00	1,380.00	
+116	Pipe Cleaners WHITE 50Pcs	12	115.00	1,380.00	
+117	Pipe Cleaners YELLOW 100Pcs	20	225.00	4,500.00	
+118	Pipe Cleaners YELLOW 50Pcs	10	115.00	1,150.00	
+119	Sequins 12Pcs	12	750.00	9,000.00	
+120	4 Hole File With Lase	12	160.00	1,920.00	
+121	Box Clip Board BJ810	12	660.00	7,920.00	
+122	Business File A4 BLUE	144	57.50	8,280.00	
+123	Business File A4 RED	72	55.00	3,960.00	
+124	Business File FC L BLUE	72	70.00	5,040.00	
+125	Business File FC Mix	72	70.00	5,040.00	
+126	Business File FC PINK	72	70.00	5,040.00	
+127	Business File FC RED	72	70.00	5,040.00	
+128	Campus File A4 801A	0	480.00	0.00	
+129	Campus File FC 802F	18	540.00	9,720.00	
+130	Design Clip Board A4 6595	12	200.00	2,400.00	
+131	Design Clip Board A4 6854	12	200.00	2,400.00	
+132	Paper File Cover Blue 100Pcs	6	1,190.00	7,140.00	
+133	Paper File Cover Pink 100Pcs	6	1,190.00	7,140.00	
+134	Plastic Clip Board A4	18	275.00	4,950.00	
+135	Stylish Pocket File Separate B812	0	900.00	0.00	
+136	Wooden Clip Board A4	12	235.00	2,820.00	
+137	Stationery Set 6605	18	260.00	4,680.00	
+138	Stationery Set 6608	18	260.00	4,680.00	
+139	Glue Gun Small	36	250.00	9,000.00	
+140	Redy Binder Gum 500ml	36	170.00	6,120.00	
+141	Redy Binder Gum 50ml	126	55.00	6,930.00	
+142	Redy Clear Glue 500ml	18	170.00	3,060.00	
+143	Building Blocks 24Pcs	18	170.00	3,060.00	
+144	Building Blocks 40Pcs	18	220.00	3,960.00	
+145	Enlightenment Sound Book	6	3,500.00	21,000.00	
+146	Ice Stick Pack Color	0	130.00	0.00	
+147	Ice Stick Pack White	0	130.00	0.00	
+148	Kids Lerning Board DZ 5077	18	720.00	12,960.00	
+149	Magic Cube 357 12Pcs	6	3,850.00	23,100.00	
+150	Magnet Set Box Mini	36	240.00	8,640.00	
+151	Magnetic White Board 200x300mm	30	620.00	18,600.00	
+152	Magnetic White Board 250x350mm	18	730.00	13,140.00	
+153	Magnetic White Board 300x400mm	18	830.00	14,940.00	
+154	Modeling Clay 6 Color 2023	198	250.00	49,500.00	
+155	Painting Card with WC Cup	24	110.00	2,640.00	
+156	Scratch Book Large	0	240.00	0.00	
+157	Scratch Book Small	12	135.00	1,620.00	
+158	ID Pouch	120	30.00	3,600.00	
+159	Lunch Box Crisper	0	770.00	0.00	
+160	Lunch Box Dayana	12	220.00	2,640.00	
+161	Steel Lunch Box Large	12	660.00	7,920.00	
+162	Steel Water Bottle (780) 1000ML	98	665.00	65,170.00	
+163	Cello CD Marker Black	60	78.88	4,732.80	
+164	Highlighter 6 Pcs	18	445.00	8,010.00	
+165	Highlighter Gxin 6Pcs	36	490.00	17,640.00	
+166	Stamper Marker 6Pcs	18	280.00	5,040.00	
+167	White Board Ink Black	0	170.00	0.00	
+168	White Board Ink Blue	0	170.00	0.00	
+169	White Board Ink Red	12	170.00	2,040.00	
+170	Chalk White 100Pcs	6	212.80	1,276.80	
+171	Envelop 16*12 Manila	900	13.80	12,420.00	
+172	Push Pin Single	24	110.00	2,640.00	
+173	Key Tag Wool Bear	6	210.00	1,260.00	
+174	Key Tag Wool Kitty	6	210.00	1,260.00	
+175	Key Tag Wool Kuromi	6	210.00	1,260.00	
+176	Key Tag Wool Phoo	6	210.00	1,260.00	
+177	Key Tag Wool Rat	6	210.00	1,260.00	
+178	Polythene 1 Kg	30	1,000.00	30,000.00	
+179	Fabric Paint 15ml 6Pcs Baby Pink	6	580.00	3,480.00	
+180	Fabric Paint 15ml 6Pcs BLACK	0	580.00	0.00	
+181	Fabric Paint 15ml 6Pcs Blue	6	580.00	3,480.00	
+182	Fabric Paint 15ml 6Pcs CHROME YELLOW	0	580.00	0.00	
+183	Fabric Paint 15ml 6Pcs DARK GREEN	6	580.00	3,480.00	
+184	Fabric Paint 15ml 6Pcs GRAY	6	580.00	3,480.00	
+185	Fabric Paint 15ml 6Pcs MAGENTA	6	580.00	3,480.00	
+186	Fabric Paint 15ml 6Pcs RICH RED	0	580.00	0.00	
+187	Fabric Paint 15ml 6Pcs VERMILION	0	580.00	0.00	
+188	Fabric Paint 15ml 6Pcs VIOLET	0	580.00	0.00	
+189	Fabric Paint 15ml 6Pcs WHITE	0	580.00	0.00	
+190	Fabric Paint 6 Colors	0	720.00	0.00	
+191	Pen Holder Metal 9922	18	160.00	2,880.00	
+192	Pen Holder Wooden Large	18	250.00	4,500.00	
+193	Pen Holders Bunny (FS33-36)	0	160.00	0.00	
+194	Magnet Box 1153	0	330.00	0.00	
+195	Magnet Box 1230	60	225.00	13,500.00	
+196	Magnet Box 1488	0	415.00	0.00	
+197	Magnet Box 6825	0	395.00	0.00	
+198	Magnet Box BH002	0	495.00	0.00	
+199	Magnet Box QY30	12	520.00	6,240.00	
+200	Metal Pencil Box 1701A	18	217.40	3,913.20	
+201	Metal Pencil Box 8702	0	350.00	0.00	
+202	Pencil Design Purse A6	18	140.00	2,520.00	
+203	Pencil Purse 1199	12	520.00	6,240.00	
+204	Pencil Purse 2523	0	650.00	0.00	
+205	Pencil Purse 2528	0	650.00	0.00	
+206	Pencil Purse 5335	36	320.00	11,520.00	
+207	Pencil Purse 5338	18	325.00	5,850.00	
+208	Pencil Purse 5501	36	325.00	11,700.00	
+209	Pencil Purse Y 106	30	650.00	19,500.00	
+210	Erasable Pen	6	900.00	5,400.00	
+211	Supra B & G Blue Pen 10 Pcs	0	800.00	0.00	
+212	Supra B & G White Pen 10 Pcs	0	800.00	0.00	
+213	Supra Play Smart Pen 10 Pcs	0	800.00	0.00	
+214	Ten Color Pen 5Pcs	0	110.00	0.00	
+215	Ten Plus Pen Black 50Pcs	24	852.50	20,460.00	
+216	Ten Plus Pen Blue 50Pcs	66	852.50	56,265.00	
+217	Ten Plus Pen Red 50Pcs	18	852.50	15,345.00	
+218	Color Book Covers EX 10Pcs D Blue	6	250.00	1,500.00	
+219	Color Book Covers EX 10Pcs L Green	6	250.00	1,500.00	
+220	Color Book Covers EX 10Pcs Orange	6	250.00	1,500.00	
+221	Color Book Covers EX 10Pcs Pink	6	250.00	1,500.00	
+222	Color Book Covers EX 10Pcs Purple	6	250.00	1,500.00	
+223	Color Book Covers EX 10Pcs Red	6	250.00	1,500.00	
+224	Color Book Covers EX 10Pcs Yellow	6	250.00	1,500.00	
+225	Compass Single 9005	144	110.00	15,840.00	
+226	Design Ruler 30cm 8930	72	80.00	5,760.00	
+227	Game Ruler 15CM	60	90.00	5,400.00	
+228	Game Ruler 20CM	60	110.00	6,600.00	
+229	Meter Ruler Plastic	0	114.75	0.00	
+230	Rotating Ruler 15cm	72	45.00	3,240.00	
+231	Ruler 15CM 12Pcs	6	390.00	2,340.00	
+232	Ruler 30CM 12Pcs	6	620.00	3,720.00	
+233	Vneed Artist Brushes 6Pcs	36	300.00	10,800.00	
+234	Water Color Palette Set DY 1	0	334.05	0.00	
+235	Water Color Pallet Small 288	30	110.00	3,300.00	
+236	Name Sticker Bike 10Pcs (NEW)	6	200.00	1,200.00	
+237	Punch Wall Sticker Large Mix	60	185.00	11,100.00	
+238	Punch Wall Sticker Medium Mix	0	110.00	0.00	
+239	Punch Wall Sticker Small Mix	72	60.00	4,320.00	
+240	Room Decor W12 Mix	18	740.00	13,320.00	
+241	Star Sticker Small 10Pcs GOLD	5	120.00	600.00	
+242	Star Sticker Small 10Pcs GREEN	6	120.00	720.00	
+243	Star Sticker Small 10Pcs PINK	0	120.00	0.00	
+244	Star Sticker Small 10Pcs PURPLE	0	120.00	0.00	
+245	Star Sticker Small 10Pcs RED	1	120.00	120.00	
+246	Star Sticker Small 10Pcs SILVER	6	120.00	720.00	
+247	Sticker A4 Bat Man	60	26.03	1,561.80	
+248	Sticker A4 Dora	60	30.00	1,800.00	
+249	Sticker LYQ Mix	18	185.00	3,330.00	
+250	Fancy Note Book	36	250.00	9,000.00	
+251	Sticky Notes Multy Color 76*51	36	90.00	3,240.00	
+252	Binding Tape 25mm*20mt BLACK	36	130.00	4,680.00	
+253	Cello Tape 48mm*100mt	72	225.00	16,200.00	
+254	Cello Tape 48mm*25mt	36	70.00	2,520.00	
+255	Cello Tape 48mm*50mt	36	125.00	4,500.00	
+256	Double Side Tape 12mm*10mt	72	60.00	4,320.00	
+257	Easy Tear Tape 1/2mm*20mt	6	170.00	1,020.00	
+258	Masking Tape 25mm*20mt	108	80.00	8,640.00	
+259	Steel Water Bottle 1000ml-SPORT POT	69	660.00	45,540.00	
+260	Steel Water Bottle 750ml-SPORT POT	0	600.00	0.00	
+261	Vacuum Water Bottle 500ml 4017	15	1,375.00	20,625.00	
+262	Water Bottle 4024	0	675.00	0.00	
+263	Water Bottle 4054	36	760.00	27,360.00	
+264	Water Bottle 4055	36	835.00	30,060.00	
+Total Route Summary & Verification
+Total Items Count:
+264 items
+Total Shortages:
+663 pcs
+Total Overages:
+64 pcs
+Physical Verification:
+Prepared By:
+
+___________________________
+
+Logistics / Admin
+
+Verified By (OIC):
+
+___________________________
+
+Warehouse Keeper
+
+Acknowledged By:
+
+___________________________
+
+Driver / Representative
