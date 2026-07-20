@@ -171,11 +171,12 @@ class PickingController extends Controller {
     // API: Fetch all loading sheets (deliveries) in Loading stage
     public function api_get_sheets() {
         $this->checkAuth();
-        // Auto-create deliveries for any routes in non-completed status that don't have one
+        // Auto-create deliveries for any routes in non-completed status that don't have one (excluding bound source routes)
         $this->db->query("
             SELECT r.id
             FROM rep_daily_routes r
-            WHERE r.status NOT IN ('Completed', 'Finalized') 
+            WHERE r.status NOT IN ('Completed', 'Finalized', 'Bound') 
+              AND r.bound_to_route_id IS NULL
               AND r.id NOT IN (SELECT rep_route_id FROM deliveries WHERE rep_route_id IS NOT NULL)
               AND r.id NOT IN (SELECT secondary_rep_route_id FROM deliveries WHERE secondary_rep_route_id IS NOT NULL)
         ");
@@ -188,7 +189,7 @@ class PickingController extends Controller {
         $this->db->query("
             SELECT d.id, d.delivery_date, d.vehicle_number, d.driver_name, d.status as db_status, 
                    r.route_name, r.id as route_id, d.secondary_rep_route_id,
-                   r.status as route_status,
+                   r.status as route_status, r.is_merged_route, r.route_binding_id, r.bound_to_route_id,
                    COALESCE(e.first_name, u.username) as rep_first_name, COALESCE(e.last_name, '') as rep_last_name,
                    COALESCE(dpi.total_items, 0) as total_items,
                    COALESCE(dpi.picked_items, 0) as picked_items
@@ -203,10 +204,22 @@ class PickingController extends Controller {
                 FROM delivery_picking_items
                 GROUP BY delivery_id
             ) dpi ON dpi.delivery_id = d.id
-            WHERE r.status NOT IN ('Completed', 'Finalized') OR d.status NOT IN ('Completed', 'Finalized')
+            WHERE (r.status NOT IN ('Completed', 'Finalized', 'Bound') AND r.bound_to_route_id IS NULL)
+              AND d.status NOT IN ('Completed', 'Finalized')
             ORDER BY d.delivery_date DESC, d.id DESC
         ");
-        $sheets = $this->db->resultSet() ?: [];
+        $rawSheets = $this->db->resultSet() ?: [];
+
+        // Deduplicate sheets by primary route ID (keep only the latest delivery record per active route)
+        $sheets = [];
+        $seenRouteIds = [];
+        foreach ($rawSheets as $sheet) {
+            if (in_array($sheet->route_id, $seenRouteIds)) {
+                continue;
+            }
+            $seenRouteIds[] = $sheet->route_id;
+            $sheets[] = $sheet;
+        }
 
         foreach ($sheets as $sheet) {
             $repName = trim(($sheet->rep_first_name ?? '') . ' ' . ($sheet->rep_last_name ?? ''));
@@ -248,6 +261,27 @@ class PickingController extends Controller {
                 $sheet->total_bills = 0;
                 $sheet->total_sales = 0.0;
             }
+
+            // Detect bound / merged route metadata
+            $isBound = false;
+            $boundRouteNames = [];
+            if (!empty($sheet->route_binding_id)) {
+                $this->db->query("SELECT route_name FROM rep_daily_routes WHERE route_binding_id = :bid AND id != :rid");
+                $this->db->bind(':bid', $sheet->route_binding_id);
+                $this->db->bind(':rid', $sheet->route_id);
+                $bRoutes = $this->db->resultSet() ?: [];
+                if (!empty($bRoutes)) {
+                    $isBound = true;
+                    foreach ($bRoutes as $br) {
+                        $boundRouteNames[] = $br->route_name;
+                    }
+                }
+            } else if (!empty($sheet->is_merged_route)) {
+                $isBound = true;
+            }
+
+            $sheet->is_bound = $isBound;
+            $sheet->bound_route_names = !empty($boundRouteNames) ? implode(' + ', array_unique($boundRouteNames)) : '';
 
             // Determine picking status based on actual items picking progress
             if (in_array($sheet->db_status, ['Completed', 'Finalized'])) {
