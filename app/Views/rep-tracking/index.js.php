@@ -1175,6 +1175,7 @@
                         del.items.forEach(item => {
                             const req = parseFloat(item.required_qty);
                             const loaded = item.final_loaded_qty !== null ? parseFloat(item.final_loaded_qty) : parseFloat(item.pre_loaded_qty);
+                            if (req <= 0 && loaded <= 0 && !item.replaced_by_name && !item.replaces_name) return;
                             const diff = loaded - req;
 
                             let rowBg = '';

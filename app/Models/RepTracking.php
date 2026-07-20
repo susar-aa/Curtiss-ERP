@@ -206,6 +206,7 @@ class RepTracking {
             LEFT JOIN item_categories ic ON it.category_id = ic.id
             WHERE d.rep_route_id IN ($placeholdersStr) OR d.secondary_rep_route_id IN ($placeholdersStr)
             GROUP BY dpi.item_id, COALESCE(dpi.variation_option_id, 0), dpi.item_name, COALESCE(ic.name, 'Uncategorized')
+            HAVING (SUM(COALESCE(dpi.final_loaded_qty, dpi.required_qty)) > 0 OR SUM(dpi.required_qty) > 0)
             ORDER BY category_name ASC, dpi.item_name ASC
         ");
         foreach ($routeIds as $index => $id) {

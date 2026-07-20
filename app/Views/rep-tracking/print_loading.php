@@ -176,7 +176,9 @@
                         <?php 
                         $counter = 1;
                         foreach ($data['items'] as $item): 
-                            $itemTotal = floatval($item->final_loaded_qty) * floatval($item->unit_price);
+                            $qty = floatval($item->final_loaded_qty);
+                            if ($qty <= 0 && floatval($item->required_qty) <= 0) continue;
+                            $itemTotal = $qty * floatval($item->unit_price);
                         ?>
                             <tr>
                                 <td style="text-align:center;"><?= $counter++ ?></td>

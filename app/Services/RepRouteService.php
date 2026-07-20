@@ -377,6 +377,7 @@ class RepRouteService {
             JOIN invoices i ON ii.invoice_id = i.id
             WHERE i.rep_route_id IN ($placeholdersStr3) AND i.status != 'Voided'
             GROUP BY ii.item_id, COALESCE(ii.variation_option_id, 0), ii.description
+            HAVING required_qty > 0
         ");
         foreach ($rids as $index => $id) {
             $db->bind(":rid3_" . $index, intval($id));
