@@ -269,8 +269,34 @@ class RepRouteService {
     }
 
     public static function ensureDeliveryAndPickingPopulated($db, $routeId) {
-        $db->query("SELECT id FROM deliveries WHERE rep_route_id = :rid OR secondary_rep_route_id = :rid ORDER BY id DESC LIMIT 1");
+        $routeIds = [intval($routeId)];
+        $db->query("SELECT route_binding_id, bound_to_route_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
         $db->bind(':rid', $routeId);
+        $routeRow = $db->single();
+        if ($routeRow) {
+            if ($routeRow->route_binding_id) {
+                $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
+                $db->bind(':bid', $routeRow->route_binding_id);
+                $boundRoutes = $db->resultSet() ?: [];
+                foreach ($boundRoutes as $br) {
+                    $routeIds[] = intval($br->id);
+                }
+            }
+            if ($routeRow->bound_to_route_id) {
+                $routeIds[] = intval($routeRow->bound_to_route_id);
+            }
+        }
+        $routeIds = array_unique(array_filter(array_map('intval', $routeIds)));
+        $placeholders = [];
+        foreach ($routeIds as $index => $id) {
+            $placeholders[] = ":rid_" . $index;
+        }
+        $placeholdersStr = implode(',', $placeholders);
+
+        $db->query("SELECT id FROM deliveries WHERE rep_route_id IN ($placeholdersStr) OR secondary_rep_route_id IN ($placeholdersStr) ORDER BY id DESC LIMIT 1");
+        foreach ($routeIds as $index => $id) {
+            $db->bind(":rid_" . $index, intval($id));
+        }
         $del = $db->single();
         
         $deliveryId = null;
@@ -295,19 +321,13 @@ class RepRouteService {
         }
 
         if ($deliveryId) {
-            self::ensurePickingItemsPopulated($db, $deliveryId);
+            self::populatePickingItems($db, $deliveryId);
         }
         return $deliveryId;
     }
 
     public static function ensurePickingItemsPopulated($db, $deliveryId) {
-        $db->query("SELECT COUNT(*) as cnt FROM delivery_picking_items WHERE delivery_id = :did");
-        $db->bind(':did', $deliveryId);
-        $check = $db->single();
-
-        if (!$check || intval($check->cnt) === 0) {
-            self::populatePickingItems($db, $deliveryId);
-        }
+        self::populatePickingItems($db, $deliveryId);
     }
 
     public static function populatePickingItems($db, $deliveryId) {
@@ -325,41 +345,25 @@ class RepRouteService {
             return;
         }
 
-        $placeholders1 = [];
-        foreach ($rids as $index => $id) {
-            $placeholders1[] = ":rid1_" . $index;
-        }
-        $placeholdersStr1 = implode(',', $placeholders1);
-
-        $db->query("SELECT DISTINCT route_binding_id FROM rep_daily_routes WHERE id IN ($placeholdersStr1) AND route_binding_id IS NOT NULL");
-        foreach ($rids as $index => $id) {
-            $db->bind(":rid1_" . $index, intval($id));
-        }
+        $ridsStr1 = implode(',', array_map('intval', $rids));
+        $db->query("SELECT DISTINCT route_binding_id, bound_to_route_id FROM rep_daily_routes WHERE id IN ($ridsStr1)");
         $bindings = $db->resultSet() ?: [];
         
-        if (!empty($bindings)) {
-            $bindingIds = [];
-            foreach ($bindings as $b) {
-                $bindingIds[] = intval($b->route_binding_id);
-            }
-            
-            $placeholders2 = [];
-            foreach ($bindingIds as $index => $id) {
-                $placeholders2[] = ":bid_" . $index;
-            }
-            $placeholdersStr2 = implode(',', $placeholders2);
-            
-            $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id IN ($placeholdersStr2)");
-            foreach ($bindingIds as $index => $id) {
-                $db->bind(":bid_" . $index, intval($id));
-            }
+        $bindingIds = [];
+        foreach ($bindings as $b) {
+            if (!empty($b->route_binding_id)) $bindingIds[] = intval($b->route_binding_id);
+            if (!empty($b->bound_to_route_id)) $rids[] = intval($b->bound_to_route_id);
+        }
+        if (!empty($bindingIds)) {
+            $bindingIdsStr = implode(',', array_unique($bindingIds));
+            $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id IN ($bindingIdsStr)");
             $allRoutes = $db->resultSet() ?: [];
             foreach ($allRoutes as $r) {
                 $rids[] = intval($r->id);
             }
         }
-        $rids = array_unique($rids);
-        
+        $rids = array_unique(array_filter(array_map('intval', $rids)));
+
         $placeholders3 = [];
         foreach ($rids as $index => $id) {
             $placeholders3[] = ":rid3_" . $index;
@@ -372,26 +376,65 @@ class RepRouteService {
             FROM invoice_items ii
             JOIN invoices i ON ii.invoice_id = i.id
             WHERE i.rep_route_id IN ($placeholdersStr3) AND i.status != 'Voided'
-            GROUP BY ii.item_id, ii.variation_option_id, ii.description
+            GROUP BY ii.item_id, COALESCE(ii.variation_option_id, 0), ii.description
         ");
         foreach ($rids as $index => $id) {
             $db->bind(":rid3_" . $index, intval($id));
         }
         $invoiceItems = $db->resultSet() ?: [];
 
-        // Populate delivery_picking_items
+        // Existing delivery_picking_items map
+        $db->query("SELECT id, item_id, variation_option_id, item_name, is_verified FROM delivery_picking_items WHERE delivery_id = :did");
+        $db->bind(':did', $deliveryId);
+        $existingRows = $db->resultSet() ?: [];
+        $existingItemsMap = [];
+        foreach ($existingRows as $row) {
+            $key = intval($row->item_id) . '_' . intval($row->variation_option_id ?? 0);
+            $existingItemsMap[$key] = $row;
+        }
+
+        $validKeys = [];
         foreach ($invoiceItems as $item) {
-            $db->query("
-                INSERT INTO delivery_picking_items (delivery_id, item_name, item_id, variation_option_id, required_qty, loaded_qty, is_picked)
-                VALUES (:delivery_id, :item_name, :item_id, :variation_option_id, :required_qty, :loaded_qty, 0)
-            ");
-            $db->bind(':delivery_id', $deliveryId);
-            $db->bind(':item_name', $item->item_name);
-            $db->bind(':item_id', $item->item_id);
-            $db->bind(':variation_option_id', $item->variation_option_id);
-            $db->bind(':required_qty', $item->required_qty);
-            $db->bind(':loaded_qty', $item->required_qty);
-            $db->execute();
+            $key = intval($item->item_id) . '_' . intval($item->variation_option_id ?? 0);
+            $validKeys[$key] = true;
+
+            if (isset($existingItemsMap[$key])) {
+                $ex = $existingItemsMap[$key];
+                if (intval($ex->is_verified) === 0) {
+                    $db->query("
+                        UPDATE delivery_picking_items 
+                        SET required_qty = :req_qty, 
+                            loaded_qty = CASE WHEN is_verified = 0 THEN :req_qty ELSE loaded_qty END,
+                            item_name = :item_name
+                        WHERE id = :id
+                    ");
+                    $db->bind(':req_qty', floatval($item->required_qty));
+                    $db->bind(':item_name', $item->item_name);
+                    $db->bind(':id', $ex->id);
+                    $db->execute();
+                }
+            } else {
+                $db->query("
+                    INSERT INTO delivery_picking_items (delivery_id, item_name, item_id, variation_option_id, required_qty, loaded_qty, is_picked)
+                    VALUES (:delivery_id, :item_name, :item_id, :variation_option_id, :required_qty, :loaded_qty, 0)
+                ");
+                $db->bind(':delivery_id', $deliveryId);
+                $db->bind(':item_name', $item->item_name);
+                $db->bind(':item_id', $item->item_id);
+                $db->bind(':variation_option_id', $item->variation_option_id);
+                $db->bind(':required_qty', floatval($item->required_qty));
+                $db->bind(':loaded_qty', floatval($item->required_qty));
+                $db->execute();
+            }
+        }
+
+        // Remove unverified items no longer present in invoices
+        foreach ($existingItemsMap as $key => $ex) {
+            if (!isset($validKeys[$key]) && intval($ex->is_verified) === 0) {
+                $db->query("DELETE FROM delivery_picking_items WHERE id = :id");
+                $db->bind(':id', $ex->id);
+                $db->execute();
+            }
         }
     }
 }

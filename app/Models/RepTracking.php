@@ -77,21 +77,29 @@ class RepTracking {
         return $finalRoutes;
     }
 
-    public function getRouteBills($routeId) {
+    public function resolveAllBoundRouteIds($routeId) {
         $routeIds = [intval($routeId)];
-        $this->db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
+        $this->db->query("SELECT route_binding_id, bound_to_route_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
         $this->db->bind(':rid', $routeId);
         $routeRow = $this->db->single();
-        if ($routeRow && $routeRow->route_binding_id) {
-            $this->db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
-            $this->db->bind(':bid', $routeRow->route_binding_id);
-            $boundRoutes = $this->db->resultSet();
-            foreach ($boundRoutes as $br) {
-                $routeIds[] = intval($br->id);
+        if ($routeRow) {
+            if ($routeRow->route_binding_id) {
+                $this->db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
+                $this->db->bind(':bid', $routeRow->route_binding_id);
+                $boundRoutes = $this->db->resultSet() ?: [];
+                foreach ($boundRoutes as $br) {
+                    $routeIds[] = intval($br->id);
+                }
+            }
+            if ($routeRow->bound_to_route_id) {
+                $routeIds[] = intval($routeRow->bound_to_route_id);
             }
         }
-        $routeIds = array_unique($routeIds);
-        
+        return array_unique(array_filter(array_map('intval', $routeIds)));
+    }
+
+    public function getRouteBills($routeId) {
+        $routeIds = $this->resolveAllBoundRouteIds($routeId);
         $placeholders = [];
         foreach ($routeIds as $index => $id) {
             $placeholders[] = ":rid_" . $index;
@@ -114,35 +122,32 @@ class RepTracking {
 
     // UPDATED: Now fetches live high-level statistics for the printable report header block
     public function getRouteById($routeId) {
+        $routeIds = $this->resolveAllBoundRouteIds($routeId);
+        $placeholders = [];
+        foreach ($routeIds as $index => $id) {
+            $placeholders[] = ":rid_" . $index;
+        }
+        $placeholdersStr = implode(',', $placeholders);
+
         $this->db->query("
             SELECT r.*, COALESCE(e.first_name, u.username) as first_name, COALESCE(e.last_name, '') as last_name,
-                (SELECT COUNT(*) FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as bill_count,
+                (SELECT COUNT(*) FROM invoices WHERE rep_route_id IN ($placeholdersStr) AND status != 'Voided') as bill_count,
                 (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) 
-                 FROM invoices WHERE rep_route_id = r.id AND status != 'Voided') as total_sales
+                 FROM invoices WHERE rep_route_id IN ($placeholdersStr) AND status != 'Voided') as total_sales
             FROM rep_daily_routes r
             LEFT JOIN users u ON r.user_id = u.id
             LEFT JOIN employees e ON u.email = e.email
             WHERE r.id = :rid
         ");
         $this->db->bind(':rid', $routeId);
+        foreach ($routeIds as $index => $id) {
+            $this->db->bind(":rid_" . $index, intval($id));
+        }
         return $this->db->single();
     }
 
     public function getRouteLoadingItems($routeId) {
-        $routeIds = [intval($routeId)];
-        $this->db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid LIMIT 1");
-        $this->db->bind(':rid', $routeId);
-        $routeRow = $this->db->single();
-        if ($routeRow && $routeRow->route_binding_id) {
-            $this->db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
-            $this->db->bind(':bid', $routeRow->route_binding_id);
-            $boundRoutes = $this->db->resultSet();
-            foreach ($boundRoutes as $br) {
-                $routeIds[] = intval($br->id);
-            }
-        }
-        $routeIds = array_unique($routeIds);
-        
+        $routeIds = $this->resolveAllBoundRouteIds($routeId);
         $placeholders = [];
         foreach ($routeIds as $index => $id) {
             $placeholders[] = ":rid_" . $index;
@@ -171,20 +176,27 @@ class RepTracking {
     }
 
     public function getRouteFinalLoadingItems($routeId) {
+        $routeIds = $this->resolveAllBoundRouteIds($routeId);
+        $placeholders = [];
+        foreach ($routeIds as $index => $id) {
+            $placeholders[] = ":rid_" . $index;
+        }
+        $placeholdersStr = implode(',', $placeholders);
+
         $this->db->query("
             SELECT dpi.item_id,
                    dpi.variation_option_id,
                    dpi.item_name,
-                   dpi.required_qty,
-                   dpi.loaded_qty as pre_loaded_qty,
-                   dpi.final_loaded_qty,
-                   dpi.variance,
+                   SUM(dpi.required_qty) as required_qty,
+                   SUM(dpi.loaded_qty) as pre_loaded_qty,
+                   SUM(COALESCE(dpi.final_loaded_qty, dpi.required_qty)) as final_loaded_qty,
+                   SUM(dpi.variance) as variance,
                    COALESCE(ic.name, 'Uncategorized') as category_name,
                    COALESCE(
                        (SELECT AVG(ii.unit_price) 
                         FROM invoice_items ii 
                         JOIN invoices i ON ii.invoice_id = i.id 
-                        WHERE i.rep_route_id = :rid AND ii.item_id = dpi.item_id AND i.status != 'Voided'),
+                        WHERE i.rep_route_id IN ($placeholdersStr) AND ii.item_id = dpi.item_id AND i.status != 'Voided'),
                        (SELECT price FROM items WHERE id = dpi.item_id),
                        0
                    ) as unit_price
@@ -192,10 +204,13 @@ class RepTracking {
             JOIN deliveries d ON dpi.delivery_id = d.id
             LEFT JOIN items it ON dpi.item_id = it.id
             LEFT JOIN item_categories ic ON it.category_id = ic.id
-            WHERE d.rep_route_id = :rid OR d.secondary_rep_route_id = :rid
+            WHERE d.rep_route_id IN ($placeholdersStr) OR d.secondary_rep_route_id IN ($placeholdersStr)
+            GROUP BY dpi.item_id, COALESCE(dpi.variation_option_id, 0), dpi.item_name, COALESCE(ic.name, 'Uncategorized')
             ORDER BY category_name ASC, dpi.item_name ASC
         ");
-        $this->db->bind(':rid', $routeId);
+        foreach ($routeIds as $index => $id) {
+            $this->db->bind(":rid_" . $index, intval($id));
+        }
         return $this->db->resultSet() ?: [];
     }
 

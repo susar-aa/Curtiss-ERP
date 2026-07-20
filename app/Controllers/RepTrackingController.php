@@ -736,12 +736,21 @@ class RepTrackingController extends Controller {
             $db->bind(':id', $routeId);
             $route = $db->single();
 
+            $routeIds = $this->trackingModel->resolveAllBoundRouteIds($routeId);
+            $placeholders = [];
+            foreach ($routeIds as $index => $id) {
+                $placeholders[] = ":rid_" . $index;
+            }
+            $placeholdersStr = implode(',', $placeholders);
+
             $db->query("
                 SELECT d.id as id, d.vehicle_number, d.driver_name, d.status
                 FROM deliveries d
-                WHERE d.rep_route_id = :rid OR d.secondary_rep_route_id = :rid
+                WHERE d.rep_route_id IN ($placeholdersStr) OR d.secondary_rep_route_id IN ($placeholdersStr)
             ");
-            $db->bind(':rid', $routeId);
+            foreach ($routeIds as $index => $id) {
+                $db->bind(":rid_" . $index, intval($id));
+            }
             $deliveries = $db->resultSet() ?: [];
 
             // If no delivery exists but route status is 'Loading', auto-create it
@@ -753,9 +762,11 @@ class RepTrackingController extends Controller {
                 $db->query("
                     SELECT d.id as id, d.vehicle_number, d.driver_name, d.status
                     FROM deliveries d
-                    WHERE d.rep_route_id = :rid OR d.secondary_rep_route_id = :rid
+                    WHERE d.rep_route_id IN ($placeholdersStr) OR d.secondary_rep_route_id IN ($placeholdersStr)
                 ");
-                    $db->bind(':rid', $routeId);
+                foreach ($routeIds as $index => $id) {
+                    $db->bind(":rid_" . $index, intval($id));
+                }
                 $deliveries = $db->resultSet() ?: [];
             }
 
@@ -1315,6 +1326,25 @@ class RepTrackingController extends Controller {
     public function print_loading($routeId) {
         $type = $_GET['type'] ?? 'final';
         
+        $routeIds = $this->trackingModel->resolveAllBoundRouteIds($routeId);
+        $placeholders = [];
+        foreach ($routeIds as $index => $id) {
+            $placeholders[] = ":rid_" . $index;
+        }
+        $placeholdersStr = implode(',', $placeholders);
+
+        $db = new Database();
+        $db->query("SELECT * FROM deliveries WHERE rep_route_id IN ($placeholdersStr) OR secondary_rep_route_id IN ($placeholdersStr) ORDER BY id DESC LIMIT 1");
+        foreach ($routeIds as $index => $id) {
+            $db->bind(":rid_" . $index, intval($id));
+        }
+        $delivery = $db->single();
+        
+        if ($delivery) {
+            require_once dirname(__DIR__) . '/Services/RepRouteService.php';
+            RepRouteService::populatePickingItems($db, $delivery->id);
+        }
+
         // Always try to fetch final loading items first (from delivery verification)
         $items = $this->trackingModel->getRouteFinalLoadingItems($routeId);
         
@@ -1347,11 +1377,6 @@ class RepTrackingController extends Controller {
 
         $companyModel = $this->model('Company');
         $company = $companyModel->getSettings();
-
-        $db = new Database();
-        $db->query("SELECT * FROM deliveries WHERE rep_route_id = :rid ORDER BY id DESC LIMIT 1");
-        $db->bind(':rid', $routeId);
-        $delivery = $db->single();
 
         $data = [
             'type' => $type === 'summary' ? 'summary' : 'loading',

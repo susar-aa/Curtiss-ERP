@@ -128,6 +128,15 @@ class RepBindingService {
             $db->bind(':ip', $ipAddress);
             $db->execute();
 
+            // Sync picking items for any deliveries under the new combined route
+            require_once __DIR__ . '/RepRouteService.php';
+            $db->query("SELECT id FROM deliveries WHERE rep_route_id = :rid OR secondary_rep_route_id = :rid");
+            $db->bind(':rid', $newRouteId);
+            $delRows = $db->resultSet() ?: [];
+            foreach ($delRows as $dr) {
+                RepRouteService::populatePickingItems($db, $dr->id);
+            }
+
             $db->commit();
             return ['status' => 'success', 'message' => 'Routes successfully bound under "' . $bindingName . '"!'];
         } catch (Exception $e) {
@@ -244,6 +253,12 @@ class RepBindingService {
             $db->bind(':ref', $bindingId);
             $db->bind(':ip', $ipAddress);
             $db->execute();
+
+            // Sync picking items for restored deliveries
+            require_once __DIR__ . '/RepRouteService.php';
+            foreach ($snapshot['deliveries'] as $del) {
+                RepRouteService::populatePickingItems($db, $del['id']);
+            }
 
             $db->commit();
             return ['status' => 'success', 'message' => 'Route binding successfully undone! Routes are now separated.'];
