@@ -108,7 +108,10 @@ class DriverInvoice {
     }
 
     public function updateInvoiceItemQty($itemId, $newQty) {
-        $this->db->beginTransaction();
+        $manageTx = !$this->db->inTransaction();
+        if ($manageTx) {
+            $this->db->beginTransaction();
+        }
         try {
             // 1. Fetch item
             $this->db->query("SELECT * FROM invoice_items WHERE id = :id");
@@ -160,17 +163,24 @@ class DriverInvoice {
             // 5. Recalculate invoice totals
             $this->recalculateInvoiceTotals($invoiceId);
 
-            $this->db->commit();
+            if ($manageTx) {
+                $this->db->commit();
+            }
             return true;
         } catch (Exception $e) {
-            $this->db->rollBack();
+            if ($manageTx) {
+                $this->db->rollBack();
+            }
             error_log("updateInvoiceItemQty error: " . $e->getMessage());
             return false;
         }
     }
 
     public function deleteInvoiceItem($itemId) {
-        $this->db->beginTransaction();
+        $manageTx = !$this->db->inTransaction();
+        if ($manageTx) {
+            $this->db->beginTransaction();
+        }
         try {
             // 1. Fetch item
             $this->db->query("SELECT * FROM invoice_items WHERE id = :id");
@@ -203,10 +213,14 @@ class DriverInvoice {
             // 4. Recalculate invoice totals
             $this->recalculateInvoiceTotals($invoiceId);
 
-            $this->db->commit();
+            if ($manageTx) {
+                $this->db->commit();
+            }
             return true;
         } catch (Exception $e) {
-            $this->db->rollBack();
+            if ($manageTx) {
+                $this->db->rollBack();
+            }
             error_log("deleteInvoiceItem error: " . $e->getMessage());
             return false;
         }
@@ -389,15 +403,15 @@ class DriverInvoice {
                 try {
                     file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] Inserting pending collection: method=$methodStr, amount=$amount\n", FILE_APPEND);
                     
-                    $dbToUse->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, status, created_by, is_verified, created_at) 
-                                      VALUES (:cid, :route_id, :method, :amt, :bn, :cn, :cdate, 'Pending', :uid, 0, NOW())");
+                    $dbToUse->query("INSERT INTO pending_collections (customer_id, route_id, payment_method, amount, bank_name, cheque_number, cheque_date, status, created_by, created_at) 
+                                      VALUES (:cid, :route_id, :method, :amt, :bn, :cn, :cdate, 'Pending', :uid, NOW())");
                     $dbToUse->bind(':cid', $customerId);
                     $dbToUse->bind(':route_id', $routeId);
                     $dbToUse->bind(':method', $methodStr);
                     $dbToUse->bind(':amt', $amount);
-                    $dbToUse->bind(':bn', $chequeDetails['bank'] ?? 'Unknown');
-                    $dbToUse->bind(':cn', $chequeDetails['number'] ?? 'Unknown');
-                    $dbToUse->bind(':cdate', $chequeDetails['date'] ?: date('Y-m-d'));
+                    $dbToUse->bind(':bn', is_array($chequeDetails) ? ($chequeDetails['bank'] ?? 'Unknown') : 'Unknown');
+                    $dbToUse->bind(':cn', is_array($chequeDetails) ? ($chequeDetails['number'] ?? 'Unknown') : 'Unknown');
+                    $dbToUse->bind(':cdate', (is_array($chequeDetails) && !empty($chequeDetails['date'])) ? $chequeDetails['date'] : date('Y-m-d'));
                     $dbToUse->bind(':uid', $userId);
                     $result = $dbToUse->execute();
                     if (!$result) {

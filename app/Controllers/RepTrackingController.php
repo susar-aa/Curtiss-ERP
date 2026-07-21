@@ -2283,7 +2283,7 @@ class RepTrackingController extends Controller {
         $payload = json_decode(file_get_contents('php://input'), true);
         $routeId = intval($payload['route_id'] ?? 0);
         $customerId = intval($payload['customer_id'] ?? 0);
-        $userId = $_SESSION['user_id'];
+        $userId = $_SESSION['user_id'] ?? 1;
         
         if ($routeId <= 0 || $customerId <= 0) {
             header('Content-Type: application/json');
@@ -2372,8 +2372,10 @@ class RepTrackingController extends Controller {
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success', 'message' => 'Delivery visit processed successfully!']);
             exit;
-        } catch (Exception $e) {
-            $db->rollBack();
+        } catch (Throwable $e) {
+            if (isset($db) && $db->inTransaction()) {
+                $db->rollBack();
+            }
             header('Content-Type: application/json');
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
             exit;
