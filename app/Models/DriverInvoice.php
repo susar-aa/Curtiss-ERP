@@ -1,6 +1,10 @@
 <?php
 class DriverInvoice {
-    private $db;
+    public $db;
+
+    public function getDb() {
+        return $this->db;
+    }
 
     public function __construct() {
         $this->db = new Database();
