@@ -218,6 +218,7 @@ class InventoryController extends Controller {
         // Write CSV Header
         fputcsv($output, [
             'SKU',
+            'Parent SKU',
             'Name',
             'Selling Price',
             'Wholesale Price',
@@ -236,7 +237,7 @@ class InventoryController extends Controller {
             'Retail Margin',
             'Wholesale Margin',
             'Sample Code',
-            'Variations'
+            'Variation Attribute'
         ]);
 
         // Query all items resolving relation names
@@ -254,13 +255,52 @@ class InventoryController extends Controller {
         $items = $this->db->resultSet() ?: [];
 
         foreach ($items as $item) {
+            // Fetch variations for this item
+            $variations = [];
+            if (!empty($item->variations_json)) {
+                $decoded = json_decode(html_entity_decode($item->variations_json, ENT_QUOTES, 'UTF-8'), true);
+                if (is_array($decoded) && !empty($decoded)) {
+                    $variations = $decoded;
+                }
+            }
+
+            if (empty($variations)) {
+                $dbVars = $this->itemModel->getItemVariations($item->id);
+                if (!empty($dbVars)) {
+                    foreach ($dbVars as $v) {
+                        $variations[] = [
+                            'id' => $v->id,
+                            'sku' => $v->sku,
+                            'price' => $v->price,
+                            'wholesale_price' => $v->wholesale_price,
+                            'cost' => $v->cost,
+                            'qty' => $v->quantity_on_hand,
+                            'quantity_on_hand' => $v->quantity_on_hand,
+                            'attribute' => $v->value_name ?? $v->variation_name ?? ''
+                        ];
+                    }
+                }
+            }
+
+            // Calculate parent stock (sum of variation stock if variable product, or quantity_on_hand)
+            $parentQty = intval($item->quantity_on_hand ?? 0);
+            if (!empty($variations)) {
+                $totalVarQty = 0;
+                foreach ($variations as $var) {
+                    $totalVarQty += intval($var['qty'] ?? $var['quantity_on_hand'] ?? 0);
+                }
+                $parentQty = $totalVarQty;
+            }
+
+            // 1. Export Parent Product Row
             fputcsv($output, [
                 $item->item_code,
+                '', // Parent SKU is empty for parent
                 $item->name,
                 number_format(floatval($item->price ?? 0), 2, '.', ''),
                 number_format(floatval($item->wholesale_price ?? 0), 2, '.', ''),
                 number_format(floatval($item->cost_price ?? 0), 2, '.', ''),
-                intval($item->quantity_on_hand ?? 0),
+                $parentQty,
                 $item->description ?? '',
                 $item->barcode ?? '',
                 $item->category_name ?? '',
@@ -274,8 +314,47 @@ class InventoryController extends Controller {
                 number_format(floatval($item->retail_margin ?? 0), 2, '.', ''),
                 number_format(floatval($item->wholesale_margin ?? 0), 2, '.', ''),
                 $item->sample_code ?? '',
-                $item->variations_json ?? '[]'
+                '' // Variation Attribute is empty for parent
             ]);
+
+            // 2. Export Variation Rows
+            if (!empty($variations)) {
+                foreach ($variations as $varIndex => $var) {
+                    $varAttr = $var['attribute'] ?? $var['value'] ?? $var['value_name'] ?? '';
+                    if (empty($varAttr)) continue;
+
+                    $varSku = !empty($var['sku']) ? $var['sku'] : ($item->item_code . '-' . ($varIndex + 1));
+                    $varName = $item->name . ' - ' . $varAttr;
+                    $varPrice = isset($var['price']) ? floatval($var['price']) : floatval($item->price ?? 0);
+                    $varWholesalePrice = isset($var['wholesale_price']) ? floatval($var['wholesale_price']) : floatval($item->wholesale_price ?? 0);
+                    $varCost = isset($var['cost']) ? floatval($var['cost']) : (isset($var['cost_price']) ? floatval($var['cost_price']) : floatval($item->cost_price ?? 0));
+                    $varQty = isset($var['qty']) ? intval($var['qty']) : (isset($var['quantity_on_hand']) ? intval($var['quantity_on_hand']) : 0);
+
+                    fputcsv($output, [
+                        $varSku,
+                        $item->item_code, // Parent SKU
+                        $varName,
+                        number_format($varPrice, 2, '.', ''),
+                        number_format($varWholesalePrice, 2, '.', ''),
+                        number_format($varCost, 2, '.', ''),
+                        $varQty,
+                        $item->description ?? '',
+                        $item->barcode ?? '',
+                        $item->category_name ?? '',
+                        $item->brand ?? '',
+                        $item->warehouse_name ?? $item->warehouse ?? '',
+                        $item->vendor_name ?? '',
+                        intval($item->alert_qty ?? 5),
+                        $item->unit ?? 'pcs',
+                        $item->status ?? 'active',
+                        $item->weight ?? '',
+                        number_format(floatval($item->retail_margin ?? 0), 2, '.', ''),
+                        number_format(floatval($item->wholesale_margin ?? 0), 2, '.', ''),
+                        $item->sample_code ?? '',
+                        $varAttr
+                    ]);
+                }
+            }
         }
 
         fclose($output);
@@ -284,18 +363,13 @@ class InventoryController extends Controller {
 
     /**
      * Import custom ERP CSV file.
-     * Updates products if SKU matches; inserts new products otherwise.
-     * Category, Warehouse, and Vendor names are matched or created automatically on-the-fly.
+     * Supports both flattened variation rows (Parent SKU + Variation Attribute) and legacy single-cell variations_json.
+     * Automatically links variations to parent products, calculates aggregate stock, and syncs relational tables.
      */
     public function importERPCSV() {
-        // Debug logging - write to error_log
         error_log('[CSV Import] === CSV Import Started ===');
         error_log('[CSV Import] Request Method: ' . $_SERVER['REQUEST_METHOD']);
         error_log('[CSV Import] Files count: ' . count($_FILES));
-        error_log('[CSV Import] CSV file error: ' . ($_FILES['csv_file']['error'] ?? 'N/A'));
-        error_log('[CSV Import] CSV file tmp_name: ' . ($_FILES['csv_file']['tmp_name'] ?? 'N/A'));
-        error_log('[CSV Import] CSV file name: ' . ($_FILES['csv_file']['name'] ?? 'N/A'));
-        error_log('[CSV Import] CSV file size: ' . ($_FILES['csv_file']['size'] ?? 'N/A'));
         
         $this->checkPermission('inventory', 'create_edit');
         
@@ -314,8 +388,6 @@ class InventoryController extends Controller {
         }
 
         $filepath = $_FILES['csv_file']['tmp_name'];
-        error_log('[CSV Import] File path: ' . $filepath);
-        error_log('[CSV Import] File exists: ' . (file_exists($filepath) ? 'Yes' : 'No'));
 
         @set_time_limit(0);
         @ini_set('memory_limit', '1024M');
@@ -327,15 +399,12 @@ class InventoryController extends Controller {
         $updatedCount = 0;
 
         if (($handle = fopen($filepath, "r")) !== FALSE) {
-            error_log('[CSV Import] File opened successfully');
-            
             // Auto-detect delimiter
             $firstLine = fgets($handle);
             rewind($handle);
             $commaCount = substr_count($firstLine, ',');
             $semicolonCount = substr_count($firstLine, ';');
             $delimiter = ($semicolonCount > $commaCount) ? ';' : ',';
-            error_log('[CSV Import] Auto-detected delimiter: ' . $delimiter);
 
             // Read headers
             $headers = fgetcsv($handle, 10000, $delimiter);
@@ -350,15 +419,13 @@ class InventoryController extends Controller {
                 exit;
             }
 
-            // Clean headers (remove BOM and force lower)
+            // Clean headers
             $headers = array_map(function($h) {
-                // Strip UTF-8 BOM if present
                 $bom = pack('H*', 'EFBBBF');
                 $h = preg_replace("/^$bom/", '', $h);
                 return strtolower(trim(preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $h)));
             }, $headers);
 
-            // Helper to find column index matching multiple possible candidate aliases
             $findHeaderIdx = function($candidates) use ($headers) {
                 foreach ($candidates as $candidate) {
                     $idx = array_search(strtolower(trim($candidate)), $headers);
@@ -369,37 +436,35 @@ class InventoryController extends Controller {
                 return FALSE;
             };
 
-            // Locate columns using candidate aliases
-            $skuIdx = $findHeaderIdx(['sku', 'item_code', 'item code', 'code', 'product_code', 'product code']);
-            $nameIdx = $findHeaderIdx(['name', 'title', 'product_name', 'product name', 'item_name', 'item name']);
-            $sellingPriceIdx = $findHeaderIdx(['selling price', 'selling_price', 'price', 'unit_price', 'unit price', 'rate']);
+            // Locate columns
+            $skuIdx            = $findHeaderIdx(['sku', 'item_code', 'item code', 'code', 'product_code', 'product code']);
+            $parentSkuIdx      = $findHeaderIdx(['parent sku', 'parent_sku', 'parent code', 'parent_code', 'master_sku', 'master sku']);
+            $nameIdx           = $findHeaderIdx(['name', 'title', 'product_name', 'product name', 'item_name', 'item name']);
+            $sellingPriceIdx   = $findHeaderIdx(['selling price', 'selling_price', 'price', 'unit_price', 'unit price', 'rate']);
             $wholesalePriceIdx = $findHeaderIdx(['wholesale price', 'wholesale_price', 'wholesale', 'b2b_price', 'b2b price', 'trade_price', 'trade price']);
-            $costPriceIdx = $findHeaderIdx(['cost price', 'cost_price', 'cost', 'purchase_price', 'purchase price', 'buy_price', 'buy price']);
-            $qtyIdx = $findHeaderIdx(['quantity', 'qty', 'stock', 'stock_qty', 'stock qty', 'stock_quantity', 'stock quantity']);
-            $descIdx = $findHeaderIdx(['description', 'desc', 'product_description', 'product description', 'details']);
-            $barcodeIdx = $findHeaderIdx(['barcode', 'bar_code', 'upc', 'ean']);
-            $categoryIdx = $findHeaderIdx(['category', 'category_name', 'category name', 'cat']);
-            $brandIdx = $findHeaderIdx(['brand', 'brand_name', 'brand name', 'manufacturer']);
-            $warehouseIdx = $findHeaderIdx(['warehouse', 'warehouse_name', 'warehouse name', 'location']);
-            $vendorIdx = $findHeaderIdx(['vendor', 'vendor_name', 'vendor name', 'supplier', 'supplier_name', 'supplier name']);
-            $alertQtyIdx = $findHeaderIdx(['alert qty', 'alert_qty', 'alert_quantity', 'alert quantity', 'min_stock', 'min stock']);
-            $unitIdx = $findHeaderIdx(['unit', 'uom', 'measurement']);
-            $statusIdx = $findHeaderIdx(['status', 'item_status', 'state']);
-            $weightIdx = $findHeaderIdx(['weight', 'item_weight', 'mass']);
-            $retailMarginIdx = $findHeaderIdx(['retail margin', 'retail_margin', 'retail_markup', 'retail markup']);
-            $wholesaleMarginIdx = $findHeaderIdx(['wholesale margin', 'wholesale_margin', 'wholesale_markup', 'wholesale markup']);
-            $sampleCodeIdx = $findHeaderIdx(['sample code', 'sample_code', 'sample_no', 'sample no']);
-            $variationsIdx = $findHeaderIdx(['variations', 'variations_json', 'variation', 'options']);
+            $costPriceIdx      = $findHeaderIdx(['cost price', 'cost_price', 'cost', 'purchase_price', 'purchase price', 'buy_price', 'buy price']);
+            $qtyIdx            = $findHeaderIdx(['quantity', 'qty', 'stock', 'stock_qty', 'stock qty', 'stock_quantity', 'stock quantity']);
+            $descIdx           = $findHeaderIdx(['description', 'desc', 'product_description', 'product description', 'details']);
+            $barcodeIdx        = $findHeaderIdx(['barcode', 'bar_code', 'upc', 'ean']);
+            $categoryIdx       = $findHeaderIdx(['category', 'category_name', 'category name', 'cat']);
+            $brandIdx          = $findHeaderIdx(['brand', 'brand_name', 'brand name', 'manufacturer']);
+            $warehouseIdx      = $findHeaderIdx(['warehouse', 'warehouse_name', 'warehouse name', 'location']);
+            $vendorIdx         = $findHeaderIdx(['vendor', 'vendor_name', 'vendor name', 'supplier', 'supplier_name', 'supplier name']);
+            $alertQtyIdx       = $findHeaderIdx(['alert qty', 'alert_qty', 'alert_quantity', 'alert quantity', 'min_stock', 'min stock']);
+            $unitIdx           = $findHeaderIdx(['unit', 'uom', 'measurement']);
+            $statusIdx         = $findHeaderIdx(['status', 'item_status', 'state']);
+            $weightIdx         = $findHeaderIdx(['weight', 'item_weight', 'mass']);
+            $retailMarginIdx   = $findHeaderIdx(['retail margin', 'retail_margin', 'retail_markup', 'retail markup']);
+            $wholesaleMarginIdx= $findHeaderIdx(['wholesale margin', 'wholesale_margin', 'wholesale_markup', 'wholesale markup']);
+            $sampleCodeIdx     = $findHeaderIdx(['sample code', 'sample_code', 'sample_no', 'sample no']);
+            $variationAttrIdx  = $findHeaderIdx(['variation attribute', 'variation_attribute', 'attribute', 'variation_value', 'variation value', 'option', 'variant']);
+            $variationsIdx     = $findHeaderIdx(['variations', 'variations_json', 'variation', 'options']);
 
             if ($skuIdx === FALSE || $nameIdx === FALSE) {
-                error_log('[CSV Import] ERROR: Missing SKU (' . ($skuIdx === FALSE ? 'No' : 'Yes') . ') or Name (' . ($nameIdx === FALSE ? 'No' : 'Yes') . ') headers in: ' . implode(', ', $headers));
                 $_SESSION['flash_error'] = "Invalid CSV structure. Could not find required 'SKU' and 'Name' headers.";
                 if ($isAjax) {
                     header('Content-Type: application/json');
-                    echo json_encode([
-                        'success' => false,
-                        'errors' => ["Invalid CSV structure. Could not find required 'SKU' and 'Name' headers. Detected headers: " . implode(', ', $headers)]
-                    ]);
+                    echo json_encode(['success' => false, 'errors' => ["Invalid CSV structure. Could not find required 'SKU' and 'Name' headers."]]);
                     exit;
                 }
                 header('Location: ' . APP_URL . '/inventory');
@@ -411,7 +476,6 @@ class InventoryController extends Controller {
             $warehouseMap = [];
             $vendorMap = [];
 
-            // Fetch current lookup maps
             $this->db->query("SELECT id, name FROM item_categories");
             foreach ($this->db->resultSet() as $r) {
                 $categoryMap[strtolower(trim($r->name))] = $r->id;
@@ -427,93 +491,50 @@ class InventoryController extends Controller {
                 $vendorMap[strtolower(trim($r->name))] = $r->id;
             }
 
-            $seenSKUs = [];
-            $seenSampleCodes = [];
-            $seenNames = [];
-            $rowsData = [];
-            $validationFailed = false;
-
-            // Load existing products from DB for lookup
-            $dbSkuToId = [];
+            // DB product lookups
+            $dbSkuToItem = [];
             $dbSampleCodeToId = [];
-            $this->db->query("SELECT id, item_code, sample_code FROM items");
+            $this->db->query("SELECT * FROM items");
             foreach ($this->db->resultSet() as $r) {
                 $skuKey = strtolower(trim($r->item_code));
                 $sampleCodeKey = !empty($r->sample_code) ? strtolower(trim($r->sample_code)) : '';
                 if ($skuKey !== '') {
-                    $dbSkuToId[$skuKey] = intval($r->id);
+                    $dbSkuToItem[$skuKey] = $r;
                 }
                 if ($sampleCodeKey !== '') {
                     $dbSampleCodeToId[$sampleCodeKey] = intval($r->id);
                 }
             }
 
+            $seenParentSKUs = [];
+            $seenSampleCodes = [];
+            $groupedParents = [];
+            $groupedVariations = [];
+            $lastSeenParentSku = '';
+            $validationFailed = false;
+
             $rowCount = 0;
             while (($row = fgetcsv($handle, 10000, $delimiter)) !== FALSE) {
                 $rowCount++;
 
-                $rawSku = ($skuIdx !== FALSE && isset($row[$skuIdx])) ? trim($row[$skuIdx]) : '';
-                $rawName = ($nameIdx !== FALSE && isset($row[$nameIdx])) ? trim($row[$nameIdx]) : '';
+                $rawSku        = ($skuIdx !== FALSE && isset($row[$skuIdx])) ? trim($row[$skuIdx]) : '';
+                $rawParentSku  = ($parentSkuIdx !== FALSE && isset($row[$parentSkuIdx])) ? trim($row[$parentSkuIdx]) : '';
+                $rawName       = ($nameIdx !== FALSE && isset($row[$nameIdx])) ? trim($row[$nameIdx]) : '';
+                $rawAttr       = ($variationAttrIdx !== FALSE && isset($row[$variationAttrIdx])) ? trim($row[$variationAttrIdx]) : '';
                 $rawSampleCode = ($sampleCodeIdx !== FALSE && isset($row[$sampleCodeIdx])) ? trim($row[$sampleCodeIdx]) : '';
 
-                $cleanSku = strtolower($rawSku);
-                $cleanSampleCode = !empty($rawSampleCode) ? strtolower($rawSampleCode) : '';
+                // Is this a variation row?
+                $isVariationRow = (!empty($rawParentSku) || !empty($rawAttr));
 
+                // If Parent SKU is empty on variation row, fallback to last seen parent SKU
+                if ($isVariationRow && empty($rawParentSku) && !empty($lastSeenParentSku)) {
+                    $rawParentSku = $lastSeenParentSku;
+                }
+
+                // Parse Numeric & Standard Fields
                 $rowErrors = [];
                 $rowWarnings = [];
 
-                // 1. SKU validation
-                if ($rawSku === '') {
-                    $rowErrors[] = "SKU / Item Code is missing or empty.";
-                } elseif (strlen($rawSku) > 50) {
-                    $rowErrors[] = "SKU is too long (maximum 50 characters, got " . strlen($rawSku) . ").";
-                } else {
-                    if (isset($seenSKUs[$cleanSku])) {
-                        $rowErrors[] = "Duplicate SKU '{$rawSku}' found in the import file (previously defined on row " . $seenSKUs[$cleanSku] . ").";
-                    } else {
-                        $seenSKUs[$cleanSku] = $rowCount;
-                    }
-                }
-
-                // 2. Sample Code validation
-                if ($cleanSampleCode !== '') {
-                    if (isset($seenSampleCodes[$cleanSampleCode])) {
-                        $rowErrors[] = "Duplicate Sample Code '{$rawSampleCode}' found in the import file (previously defined on row " . $seenSampleCodes[$cleanSampleCode] . ").";
-                    } else {
-                        $seenSampleCodes[$cleanSampleCode] = $rowCount;
-                    }
-                }
-
-                // 3. Name validation
-                if ($rawName === '') {
-                    $rowErrors[] = "Product Name is missing or empty.";
-                } elseif (strlen($rawName) > 255) {
-                    $rowErrors[] = "Product Name is too long (maximum 255 characters, got " . strlen($rawName) . ").";
-                } else {
-                    $nameKey = strtolower($rawName);
-                    if (isset($seenNames[$nameKey])) {
-                        $rowWarnings[] = "Duplicate Product Name '{$rawName}' in the import file (previously defined on row " . $seenNames[$nameKey] . ").";
-                    } else {
-                        $seenNames[$nameKey] = $rowCount;
-                    }
-                }
-
-                // 4. DB Uniqueness check
-                // Find if SKU matches an existing product ID
-                $skuProductId = isset($dbSkuToId[$cleanSku]) ? $dbSkuToId[$cleanSku] : null;
-
-                // Check if Sample Code belongs to another product
-                if ($cleanSampleCode !== '') {
-                    $sampleCodeProductId = isset($dbSampleCodeToId[$cleanSampleCode]) ? $dbSampleCodeToId[$cleanSampleCode] : null;
-                    if ($sampleCodeProductId !== null) {
-                        // If it belongs to a different product than the one identified by SKU
-                        if ($skuProductId === null || $skuProductId !== $sampleCodeProductId) {
-                            $rowErrors[] = "Sample Code '{$rawSampleCode}' already exists in database for another product.";
-                        }
-                    }
-                }
-
-                // 5. Numeric Fields validation
                 $sellingPrice = 0.00;
                 $rawSellingPrice = ($sellingPriceIdx !== FALSE && isset($row[$sellingPriceIdx])) ? trim($row[$sellingPriceIdx]) : '';
                 if ($rawSellingPrice !== '') {
@@ -521,7 +542,7 @@ class InventoryController extends Controller {
                     if (!is_numeric($cleanVal)) {
                         $rowErrors[] = "Selling Price '{$rawSellingPrice}' is not a valid number.";
                     } elseif (floatval($cleanVal) < 0) {
-                        $rowErrors[] = "Selling Price cannot be negative (" . $cleanVal . ").";
+                        $rowErrors[] = "Selling Price cannot be negative.";
                     } else {
                         $sellingPrice = floatval($cleanVal);
                     }
@@ -534,7 +555,7 @@ class InventoryController extends Controller {
                     if (!is_numeric($cleanVal)) {
                         $rowErrors[] = "Wholesale Price '{$rawWholesalePrice}' is not a valid number.";
                     } elseif (floatval($cleanVal) < 0) {
-                        $rowErrors[] = "Wholesale Price cannot be negative (" . $cleanVal . ").";
+                        $rowErrors[] = "Wholesale Price cannot be negative.";
                     } else {
                         $wholesalePrice = floatval($cleanVal);
                     }
@@ -547,7 +568,7 @@ class InventoryController extends Controller {
                     if (!is_numeric($cleanVal)) {
                         $rowErrors[] = "Cost Price '{$rawCostPrice}' is not a valid number.";
                     } elseif (floatval($cleanVal) < 0) {
-                        $rowErrors[] = "Cost Price cannot be negative (" . $cleanVal . ").";
+                        $rowErrors[] = "Cost Price cannot be negative.";
                     } else {
                         $costPrice = floatval($cleanVal);
                     }
@@ -560,7 +581,7 @@ class InventoryController extends Controller {
                     if (!is_numeric($cleanVal)) {
                         $rowErrors[] = "Quantity '{$rawQty}' is not a valid number.";
                     } elseif (intval($cleanVal) < 0) {
-                        $rowErrors[] = "Quantity cannot be negative (" . $cleanVal . ").";
+                        $rowErrors[] = "Quantity cannot be negative.";
                     } else {
                         $qty = intval($cleanVal);
                     }
@@ -573,7 +594,7 @@ class InventoryController extends Controller {
                     if (!is_numeric($cleanVal)) {
                         $rowErrors[] = "Alert Quantity '{$rawAlertQty}' is not a valid number.";
                     } elseif (intval($cleanVal) < 0) {
-                        $rowErrors[] = "Alert Quantity cannot be negative (" . $cleanVal . ").";
+                        $rowErrors[] = "Alert Quantity cannot be negative.";
                     } else {
                         $alertQty = intval($cleanVal);
                     }
@@ -583,9 +604,7 @@ class InventoryController extends Controller {
                 $rawRetailMargin = ($retailMarginIdx !== FALSE && isset($row[$retailMarginIdx])) ? trim($row[$retailMarginIdx]) : '';
                 if ($rawRetailMargin !== '') {
                     $cleanVal = str_replace(',', '', $rawRetailMargin);
-                    if (!is_numeric($cleanVal)) {
-                        $rowErrors[] = "Retail Margin '{$rawRetailMargin}' is not a valid number.";
-                    } else {
+                    if (is_numeric($cleanVal)) {
                         $retailMargin = floatval($cleanVal);
                     }
                 }
@@ -594,77 +613,120 @@ class InventoryController extends Controller {
                 $rawWholesaleMargin = ($wholesaleMarginIdx !== FALSE && isset($row[$wholesaleMarginIdx])) ? trim($row[$wholesaleMarginIdx]) : '';
                 if ($rawWholesaleMargin !== '') {
                     $cleanVal = str_replace(',', '', $rawWholesaleMargin);
-                    if (!is_numeric($cleanVal)) {
-                        $rowErrors[] = "Wholesale Margin '{$rawWholesaleMargin}' is not a valid number.";
-                    } else {
+                    if (is_numeric($cleanVal)) {
                         $wholesaleMargin = floatval($cleanVal);
                     }
                 }
 
-                $description = ($descIdx !== FALSE && isset($row[$descIdx])) ? trim($row[$descIdx]) : '';
-                $barcode = ($barcodeIdx !== FALSE && isset($row[$barcodeIdx])) ? trim($row[$barcodeIdx]) : '';
-                $categoryName = ($categoryIdx !== FALSE && isset($row[$categoryIdx])) ? trim($row[$categoryIdx]) : '';
-                $brand = ($brandIdx !== FALSE && isset($row[$brandIdx])) ? trim($row[$brandIdx]) : '';
+                $description   = ($descIdx !== FALSE && isset($row[$descIdx])) ? trim($row[$descIdx]) : '';
+                $barcode       = ($barcodeIdx !== FALSE && isset($row[$barcodeIdx])) ? trim($row[$barcodeIdx]) : '';
+                $categoryName  = ($categoryIdx !== FALSE && isset($row[$categoryIdx])) ? trim($row[$categoryIdx]) : '';
+                $brand         = ($brandIdx !== FALSE && isset($row[$brandIdx])) ? trim($row[$brandIdx]) : '';
                 $warehouseName = ($warehouseIdx !== FALSE && isset($row[$warehouseIdx])) ? trim($row[$warehouseIdx]) : '';
-                $vendorName = ($vendorIdx !== FALSE && isset($row[$vendorIdx])) ? trim($row[$vendorIdx]) : '';
-                $unit = ($unitIdx !== FALSE && isset($row[$unitIdx])) ? trim($row[$unitIdx]) : 'pcs';
+                $vendorName    = ($vendorIdx !== FALSE && isset($row[$vendorIdx])) ? trim($row[$vendorIdx]) : '';
+                $unit          = ($unitIdx !== FALSE && isset($row[$unitIdx])) ? trim($row[$unitIdx]) : 'pcs';
 
                 $status = ($statusIdx !== FALSE && isset($row[$statusIdx])) ? strtolower(trim($row[$statusIdx])) : 'active';
                 if ($status !== 'active' && $status !== 'inactive') {
                     $status = 'active';
                 }
 
-                $weight = ($weightIdx !== FALSE && isset($row[$weightIdx])) ? trim($row[$weightIdx]) : '';
+                $weight         = ($weightIdx !== FALSE && isset($row[$weightIdx])) ? trim($row[$weightIdx]) : '';
                 $variationsJson = ($variationsIdx !== FALSE && isset($row[$variationsIdx])) ? trim($row[$variationsIdx]) : '[]';
+
+                if ($isVariationRow) {
+                    $cleanParentKey = strtolower($rawParentSku);
+                    if (empty($cleanParentKey)) {
+                        $rowErrors[] = "Variation row is missing a valid Parent SKU association.";
+                    } else {
+                        $varSku = !empty($rawSku) ? $rawSku : ($rawParentSku . '-' . $rawAttr);
+                        $groupedVariations[$cleanParentKey][] = [
+                            'sku' => $varSku,
+                            'attribute' => $rawAttr,
+                            'price' => $sellingPrice,
+                            'wholesale_price' => $wholesalePrice,
+                            'cost' => $costPrice,
+                            'qty' => $qty,
+                            'quantity_on_hand' => $qty
+                        ];
+                    }
+                } else {
+                    // Parent / Standalone Product Row
+                    $cleanSku = strtolower($rawSku);
+                    $cleanSampleCode = !empty($rawSampleCode) ? strtolower($rawSampleCode) : '';
+
+                    if ($rawSku === '') {
+                        $rowErrors[] = "SKU / Item Code is missing or empty.";
+                    } elseif (strlen($rawSku) > 50) {
+                        $rowErrors[] = "SKU is too long (maximum 50 characters).";
+                    } else {
+                        if (isset($seenParentSKUs[$cleanSku])) {
+                            $rowErrors[] = "Duplicate Parent SKU '{$rawSku}' found in the import file (row " . $seenParentSKUs[$cleanSku] . ").";
+                        } else {
+                            $seenParentSKUs[$cleanSku] = $rowCount;
+                        }
+                    }
+
+                    if ($cleanSampleCode !== '') {
+                        if (isset($seenSampleCodes[$cleanSampleCode])) {
+                            $rowErrors[] = "Duplicate Sample Code '{$rawSampleCode}' found in the import file (row " . $seenSampleCodes[$cleanSampleCode] . ").";
+                        } else {
+                            $seenSampleCodes[$cleanSampleCode] = $rowCount;
+                        }
+
+                        $sampleCodeProductId = isset($dbSampleCodeToId[$cleanSampleCode]) ? $dbSampleCodeToId[$cleanSampleCode] : null;
+                        $existingParentItem = isset($dbSkuToItem[$cleanSku]) ? $dbSkuToItem[$cleanSku] : null;
+                        if ($sampleCodeProductId !== null && ($existingParentItem === null || intval($existingParentItem->id) !== $sampleCodeProductId)) {
+                            $rowErrors[] = "Sample Code '{$rawSampleCode}' already exists in database for another product.";
+                        }
+                    }
+
+                    if ($rawName === '') {
+                        $rowErrors[] = "Product Name is missing or empty.";
+                    }
+
+                    $lastSeenParentSku = $rawSku;
+
+                    $groupedParents[$cleanSku] = [
+                        'row' => $rowCount,
+                        'sku' => $rawSku,
+                        'name' => $rawName,
+                        'selling_price' => $sellingPrice,
+                        'wholesale_price' => $wholesalePrice,
+                        'cost_price' => $costPrice,
+                        'qty' => $qty,
+                        'alert_qty' => $alertQty,
+                        'retail_margin' => $retailMargin,
+                        'wholesale_margin' => $wholesaleMargin,
+                        'description' => $description,
+                        'barcode' => $barcode,
+                        'category_name' => $categoryName,
+                        'brand' => $brand,
+                        'warehouse_name' => $warehouseName,
+                        'vendor_name' => $vendorName,
+                        'unit' => $unit,
+                        'status' => $status,
+                        'weight' => $weight,
+                        'sample_code' => $rawSampleCode,
+                        'variations_json' => $variationsJson
+                    ];
+                }
 
                 if (!empty($rowErrors)) {
                     $validationFailed = true;
                     $errors[] = [
                         'row' => $rowCount,
-                        'sku' => $rawSku ?: '(Missing)',
+                        'sku' => $rawSku ?: ($rawParentSku ?: '(Missing)'),
                         'name' => $rawName ?: '(Missing)',
                         'type' => 'error',
                         'messages' => array_merge($rowErrors, $rowWarnings)
                     ];
-                } elseif (!empty($rowWarnings)) {
-                    $errors[] = [
-                        'row' => $rowCount,
-                        'sku' => $rawSku,
-                        'name' => $rawName,
-                        'type' => 'warning',
-                        'messages' => $rowWarnings
-                    ];
                 }
-
-                $rowsData[] = [
-                    'row' => $row,
-                    'sku' => $rawSku,
-                    'name' => $rawName,
-                    'selling_price' => $sellingPrice,
-                    'wholesale_price' => $wholesalePrice,
-                    'cost_price' => $costPrice,
-                    'qty' => $qty,
-                    'alert_qty' => $alertQty,
-                    'retail_margin' => $retailMargin,
-                    'wholesale_margin' => $wholesaleMargin,
-                    'description' => $description,
-                    'barcode' => $barcode,
-                    'category_name' => $categoryName,
-                    'brand' => $brand,
-                    'warehouse_name' => $warehouseName,
-                    'vendor_name' => $vendorName,
-                    'unit' => $unit,
-                    'status' => $status,
-                    'weight' => $weight,
-                    'sample_code' => $rawSampleCode,
-                    'variations_json' => $variationsJson
-                ];
             }
 
             fclose($handle);
 
             if ($validationFailed) {
-                // Store outcomes in session
                 $_SESSION['import_results'] = [
                     'added' => 0,
                     'updated' => 0,
@@ -674,17 +736,7 @@ class InventoryController extends Controller {
 
                 if ($isAjax) {
                     header('Content-Type: application/json');
-                    $ajaxErrors = [];
-                    foreach ($errors as $err) {
-                        $ajaxErrors[] = "Row {$err['row']} (SKU: {$err['sku']}): " . implode(', ', $err['messages']);
-                    }
-                    echo json_encode([
-                        'success' => false,
-                        'added' => 0,
-                        'updated' => 0,
-                        'errors' => $ajaxErrors,
-                        'success_logs' => []
-                    ]);
+                    echo json_encode(['success' => false, 'errors' => $errors]);
                     exit;
                 }
 
@@ -692,67 +744,139 @@ class InventoryController extends Controller {
                 exit;
             }
 
-            // Validation passed! Perform updates inside a transaction
+            // Resolve variations for parents that only exist in DB or lack explicit parent row
+            foreach ($groupedVariations as $parentKey => $varsList) {
+                if (!isset($groupedParents[$parentKey])) {
+                    if (isset($dbSkuToItem[$parentKey])) {
+                        $dbItem = $dbSkuToItem[$parentKey];
+                        $groupedParents[$parentKey] = [
+                            'row' => 0,
+                            'sku' => $dbItem->item_code,
+                            'name' => $dbItem->name,
+                            'selling_price' => floatval($dbItem->price ?? 0),
+                            'wholesale_price' => floatval($dbItem->wholesale_price ?? 0),
+                            'cost_price' => floatval($dbItem->cost_price ?? 0),
+                            'qty' => intval($dbItem->quantity_on_hand ?? 0),
+                            'alert_qty' => intval($dbItem->alert_qty ?? 5),
+                            'retail_margin' => floatval($dbItem->retail_margin ?? 0),
+                            'wholesale_margin' => floatval($dbItem->wholesale_margin ?? 0),
+                            'description' => $dbItem->description ?? '',
+                            'barcode' => $dbItem->barcode ?? '',
+                            'category_name' => '',
+                            'brand' => $dbItem->brand ?? '',
+                            'warehouse_name' => $dbItem->warehouse ?? '',
+                            'vendor_name' => '',
+                            'unit' => $dbItem->unit ?? 'pcs',
+                            'status' => $dbItem->status ?? 'active',
+                            'weight' => $dbItem->weight ?? '',
+                            'sample_code' => $dbItem->sample_code ?? '',
+                            'variations_json' => '[]'
+                        ];
+                    } else {
+                        // Auto-create parent metadata from first variation row
+                        $firstVar = $varsList[0];
+                        $groupedParents[$parentKey] = [
+                            'row' => 0,
+                            'sku' => strtoupper($parentKey),
+                            'name' => strtoupper($parentKey) . ' Variable Product',
+                            'selling_price' => $firstVar['price'],
+                            'wholesale_price' => $firstVar['wholesale_price'],
+                            'cost_price' => $firstVar['cost'],
+                            'qty' => 0,
+                            'alert_qty' => 5,
+                            'retail_margin' => 0.00,
+                            'wholesale_margin' => 0.00,
+                            'description' => '',
+                            'barcode' => '',
+                            'category_name' => '',
+                            'brand' => '',
+                            'warehouse_name' => '',
+                            'vendor_name' => '',
+                            'unit' => 'pcs',
+                            'status' => 'active',
+                            'weight' => '',
+                            'sample_code' => '',
+                            'variations_json' => '[]'
+                        ];
+                    }
+                }
+            }
+
+            // Aggregate variation stock & build variations_json for each parent
+            foreach ($groupedParents as $parentKey => &$parentData) {
+                if (isset($groupedVariations[$parentKey]) && !empty($groupedVariations[$parentKey])) {
+                    $varsList = $groupedVariations[$parentKey];
+                    $totalStock = 0;
+                    foreach ($varsList as $v) {
+                        $totalStock += intval($v['qty']);
+                    }
+                    $parentData['qty'] = $totalStock;
+                    $parentData['variations_json'] = json_encode($varsList);
+                } else if (!empty($parentData['variations_json'])) {
+                    $decodedVars = json_decode(html_entity_decode($parentData['variations_json'], ENT_QUOTES, 'UTF-8'), true);
+                    if (is_array($decodedVars) && !empty($decodedVars)) {
+                        $totalStock = 0;
+                        foreach ($decodedVars as $v) {
+                            $totalStock += intval($v['qty'] ?? $v['quantity_on_hand'] ?? 0);
+                        }
+                        $parentData['qty'] = $totalStock;
+                    }
+                }
+            }
+            unset($parentData);
+
+            // Execute DB Operations in Transaction
             $this->db->beginTransaction();
             try {
-                foreach ($rowsData as $itemData) {
+                foreach ($groupedParents as $cleanSku => $itemData) {
                     $rawSku = $itemData['sku'];
                     $rawName = $itemData['name'];
-                    $categoryName = $itemData['category_name'];
-                    $warehouseName = $itemData['warehouse_name'];
-                    $vendorName = $itemData['vendor_name'];
 
-                    // Resolve category on-the-fly
+                    // Resolve Category
                     $categoryId = null;
-                    if (!empty($categoryName)) {
-                        $catKey = strtolower($categoryName);
+                    if (!empty($itemData['category_name'])) {
+                        $catKey = strtolower(trim($itemData['category_name']));
                         if (isset($categoryMap[$catKey])) {
                             $categoryId = $categoryMap[$catKey];
                         } else {
-                            $this->db->query("INSERT INTO item_categories (name, description) VALUES (:name, :desc)");
-                            $this->db->bind(':name', $categoryName);
-                            $this->db->bind(':desc', 'Auto-created during CSV import');
+                            $this->db->query("INSERT INTO item_categories (name, description) VALUES (:name, 'Auto-created during CSV import')");
+                            $this->db->bind(':name', $itemData['category_name']);
                             if ($this->db->execute()) {
-                                $newCatId = $this->db->lastInsertId();
-                                $categoryMap[$catKey] = $newCatId;
-                                $categoryId = $newCatId;
-                                $successLogs[] = "Auto-created Category '{$categoryName}'";
+                                $categoryId = $this->db->lastInsertId();
+                                $categoryMap[$catKey] = $categoryId;
                             }
                         }
                     }
 
-                    // Resolve warehouse on-the-fly
+                    // Resolve Warehouse
                     $warehouseId = null;
-                    if (!empty($warehouseName)) {
-                        $whKey = strtolower($warehouseName);
+                    $warehouseText = $itemData['warehouse_name'];
+                    if (!empty($itemData['warehouse_name'])) {
+                        $whKey = strtolower(trim($itemData['warehouse_name']));
                         if (isset($warehouseMap[$whKey])) {
                             $warehouseId = $warehouseMap[$whKey];
                         } else {
                             $this->db->query("INSERT INTO warehouses (name, location, is_default) VALUES (:name, 'Auto-created', 0)");
-                            $this->db->bind(':name', $warehouseName);
+                            $this->db->bind(':name', $itemData['warehouse_name']);
                             if ($this->db->execute()) {
-                                $newWhId = $this->db->lastInsertId();
-                                $warehouseMap[$whKey] = $newWhId;
-                                $warehouseId = $newWhId;
-                                $successLogs[] = "Auto-created Warehouse '{$warehouseName}'";
+                                $warehouseId = $this->db->lastInsertId();
+                                $warehouseMap[$whKey] = $warehouseId;
                             }
                         }
                     }
 
-                    // Resolve vendor on-the-fly
+                    // Resolve Vendor
                     $vendorId = null;
-                    if (!empty($vendorName)) {
-                        $vKey = strtolower($vendorName);
-                        if (isset($vendorMap[$vKey])) {
-                            $vendorId = $vendorMap[$vKey];
+                    if (!empty($itemData['vendor_name'])) {
+                        $venKey = strtolower(trim($itemData['vendor_name']));
+                        if (isset($vendorMap[$venKey])) {
+                            $vendorId = $vendorMap[$venKey];
                         } else {
                             $this->db->query("INSERT INTO vendors (name, email, phone, address) VALUES (:name, '', '', '')");
-                            $this->db->bind(':name', $vendorName);
+                            $this->db->bind(':name', $itemData['vendor_name']);
                             if ($this->db->execute()) {
-                                $newVndId = $this->db->lastInsertId();
-                                $vendorMap[$vKey] = $newVndId;
-                                $vendorId = $newVndId;
-                                $successLogs[] = "Auto-created Vendor '{$vendorName}'";
+                                $vendorId = $this->db->lastInsertId();
+                                $vendorMap[$venKey] = $vendorId;
                             }
                         }
                     }
@@ -762,41 +886,41 @@ class InventoryController extends Controller {
                         'name' => $rawName,
                         'selling_price' => $itemData['selling_price'],
                         'wholesale_price' => $itemData['wholesale_price'],
+                        'cost_price' => $itemData['cost_price'],
                         'qty' => $itemData['qty'],
+                        'alert_qty' => $itemData['alert_qty'],
+                        'retail_margin' => $itemData['retail_margin'],
+                        'wholesale_margin' => $itemData['wholesale_margin'],
                         'description' => $itemData['description'],
                         'barcode' => $itemData['barcode'],
                         'category_id' => $categoryId,
                         'brand' => $itemData['brand'],
-                        'warehouse' => $warehouseName,
-                        'alert_qty' => $itemData['alert_qty'],
+                        'warehouse' => $warehouseText,
+                        'warehouse_id' => $warehouseId,
+                        'vendor_id' => $vendorId,
                         'unit' => $itemData['unit'],
                         'status' => $itemData['status'],
                         'weight' => $itemData['weight'],
+                        'sample_code' => !empty($itemData['sample_code']) ? $itemData['sample_code'] : null,
+                        'sync_woo' => 1,
                         'variations_json' => $itemData['variations_json'],
                         'image_path' => '',
-                        'cost_price' => $itemData['cost_price'],
-                        'warehouse_id' => $warehouseId,
-                        'vendor_id' => $vendorId,
-                        'sample_code' => !empty($itemData['sample_code']) ? $itemData['sample_code'] : null,
-                        'retail_margin' => $itemData['retail_margin'],
-                        'wholesale_margin' => $itemData['wholesale_margin']
+                        'additional_images' => '[]'
                     ];
 
-                    $existingItem = $this->itemModel->getItemByCode($rawSku);
+                    $existingItem = isset($dbSkuToItem[$cleanSku]) ? $dbSkuToItem[$cleanSku] : null;
 
                     if ($existingItem) {
                         $insertOrUpdateData['id'] = $existingItem->id;
                         $insertOrUpdateData['image_path'] = $existingItem->image_path ?? '';
+                        $insertOrUpdateData['additional_images'] = $existingItem->additional_images ?? '[]';
 
-                        $oldValues = [];
-                        $newValues = [];
+                        $oldValues = (array)$existingItem;
+                        $newValues = $insertOrUpdateData;
+
                         $changesExist = false;
-                        foreach (['selling_price', 'wholesale_price', 'cost_price', 'name', 'status', 'qty'] as $key) {
-                            $oldVal = $existingItem->$key ?? null;
-                            $newVal = $insertOrUpdateData[$key] ?? null;
-                            if (floatval($oldVal) != floatval($newVal) || $oldVal != $newVal) {
-                                $oldValues[$key] = $oldVal;
-                                $newValues[$key] = $newVal;
+                        foreach ($newValues as $k => $v) {
+                            if (array_key_exists($k, $oldValues) && (string)$oldValues[$k] !== (string)$v) {
                                 $changesExist = true;
                             }
                         }
@@ -804,7 +928,7 @@ class InventoryController extends Controller {
                         if ($this->itemModel->updateItem($insertOrUpdateData)) {
                             $updatedCount++;
                             if ($changesExist) {
-                                $this->logActivity('Product Edited', 'Inventory', "Product '{$insertOrUpdateData['name']}' (Code: {$insertOrUpdateData['item_code']}) updated via custom ERP CSV import.", $existingItem->id, $oldValues, $newValues);
+                                $this->logActivity('Product Edited', 'Inventory', "Product '{$insertOrUpdateData['name']}' (Code: {$insertOrUpdateData['item_code']}) updated via CSV import.", $existingItem->id, $oldValues, $newValues);
                             }
                         } else {
                             throw new Exception("Failed to update database record for SKU '{$rawSku}'.");
@@ -813,7 +937,7 @@ class InventoryController extends Controller {
                         if ($this->itemModel->addItem($insertOrUpdateData)) {
                             $addedCount++;
                             $newItemId = $this->db->lastInsertId();
-                            $this->logActivity('Product Created', 'Inventory', "Product '{$insertOrUpdateData['name']}' (Code: {$insertOrUpdateData['item_code']}) created via custom ERP CSV import.", $newItemId, null, $insertOrUpdateData);
+                            $this->logActivity('Product Created', 'Inventory', "Product '{$insertOrUpdateData['name']}' (Code: {$insertOrUpdateData['item_code']}) created via CSV import.", $newItemId, null, $insertOrUpdateData);
                         } else {
                             throw new Exception("Failed to insert database record for SKU '{$rawSku}'.");
                         }
