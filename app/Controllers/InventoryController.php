@@ -927,8 +927,17 @@ class InventoryController extends Controller {
 
                         if ($this->itemModel->updateItem($insertOrUpdateData)) {
                             $updatedCount++;
+                            $varCount = 0;
+                            if (!empty($insertOrUpdateData['variations_json'])) {
+                                $decodedVars = json_decode($insertOrUpdateData['variations_json'], true);
+                                if (is_array($decodedVars)) {
+                                    $varCount = count($decodedVars);
+                                }
+                            }
+                            $logMsg = "Updated '{$insertOrUpdateData['name']}' (SKU: {$insertOrUpdateData['item_code']}): Total stock {$insertOrUpdateData['qty']}" . ($varCount > 0 ? " across {$varCount} variation options." : ".");
+                            $successLogs[] = $logMsg;
                             if ($changesExist) {
-                                $this->logActivity('Product Edited', 'Inventory', "Product '{$insertOrUpdateData['name']}' (Code: {$insertOrUpdateData['item_code']}) updated via CSV import.", $existingItem->id, $oldValues, $newValues);
+                                $this->logActivity('Product Edited', 'Inventory', $logMsg . " Updated via CSV import.", $existingItem->id, $oldValues, $newValues);
                             }
                         } else {
                             throw new Exception("Failed to update database record for SKU '{$rawSku}'.");
@@ -937,7 +946,16 @@ class InventoryController extends Controller {
                         if ($this->itemModel->addItem($insertOrUpdateData)) {
                             $addedCount++;
                             $newItemId = $this->db->lastInsertId();
-                            $this->logActivity('Product Created', 'Inventory', "Product '{$insertOrUpdateData['name']}' (Code: {$insertOrUpdateData['item_code']}) created via CSV import.", $newItemId, null, $insertOrUpdateData);
+                            $varCount = 0;
+                            if (!empty($insertOrUpdateData['variations_json'])) {
+                                $decodedVars = json_decode($insertOrUpdateData['variations_json'], true);
+                                if (is_array($decodedVars)) {
+                                    $varCount = count($decodedVars);
+                                }
+                            }
+                            $logMsg = "Created '{$insertOrUpdateData['name']}' (SKU: {$insertOrUpdateData['item_code']}): Total stock {$insertOrUpdateData['qty']}" . ($varCount > 0 ? " across {$varCount} variation options." : ".");
+                            $successLogs[] = $logMsg;
+                            $this->logActivity('Product Created', 'Inventory', $logMsg . " Created via CSV import.", $newItemId, null, $insertOrUpdateData);
                         } else {
                             throw new Exception("Failed to insert database record for SKU '{$rawSku}'.");
                         }

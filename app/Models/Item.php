@@ -754,13 +754,14 @@ class Item {
                 $optionId = $ivoRow->id;
                 $this->db->query("
                     UPDATE item_variation_options 
-                    SET sku = :sku, price = :price, wholesale_price = :wholesale_price, cost = :cost 
+                    SET sku = :sku, price = :price, wholesale_price = :wholesale_price, cost = :cost, quantity_on_hand = :qty 
                     WHERE id = :id
                 ");
                 $this->db->bind(':sku', $sku);
                 $this->db->bind(':price', $price);
                 $this->db->bind(':wholesale_price', $wholesalePrice);
                 $this->db->bind(':cost', $cost);
+                $this->db->bind(':qty', $qty);
                 $this->db->bind(':id', $optionId);
                 $this->db->execute();
             } else {
@@ -795,6 +796,9 @@ class Item {
             $this->db->bind(':item_id', $itemId);
             $this->db->execute();
         }
+
+        // 6. Resync variations_json to reflect final relational option states
+        $this->syncVariationsJsonColumn($itemId);
     }
 
     /**
