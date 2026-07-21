@@ -2621,6 +2621,7 @@
     window.loadTabExpenses = loadTabExpenses;
     window.onExpenseSourceChanged = onExpenseSourceChanged;
     window.submitRouteExpense = submitRouteExpense;
+    window.switchExpenseSubTab = switchExpenseSubTab;
 
     function loadTab8Reconciliation(routeId) {
         const rdata = document.getElementById('route_data_' + routeId);
