@@ -19,13 +19,14 @@ class RepTrackingController extends Controller {
     }
 
     protected function validateCsrf() {
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
+                  (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
+                  (!empty($_SERVER['HTTP_X_CSRF_TOKEN']));
         if (!parent::validateCsrf()) {
-            $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
-                      (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
             if ($isAjax) {
-                header('HTTP/1.1 403 Forbidden');
                 header('Content-Type: application/json');
-                echo json_encode(['status' => 'error', 'success' => false, 'message' => 'CSRF token validation failed.']);
+                http_response_code(403);
+                echo json_encode(['status' => 'error', 'success' => false, 'message' => 'CSRF token validation failed. Please refresh page and try again.']);
                 exit;
             } else {
                 http_response_code(403);
@@ -2376,8 +2377,16 @@ class RepTrackingController extends Controller {
             if (isset($db) && $db->inTransaction()) {
                 $db->rollBack();
             }
+            error_log("api_process_delivery_visit error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            
             header('Content-Type: application/json');
-            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            http_response_code(500);
+            echo json_encode([
+                'status' => 'error', 
+                'message' => $e->getMessage(),
+                'file' => basename($e->getFile()),
+                'line' => $e->getLine()
+            ]);
             exit;
         }
     }

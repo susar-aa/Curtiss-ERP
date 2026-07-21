@@ -251,6 +251,8 @@
     function fetchSecure(url, options = {}) {
         options.headers = options.headers || {};
         options.headers['X-CSRF-TOKEN'] = CSRF_TOKEN;
+        options.headers['X-Requested-With'] = 'XMLHttpRequest';
+        options.headers['Accept'] = 'application/json, text/plain, */*';
         
         if (options.body && typeof options.body === 'string') {
             try {
@@ -2186,6 +2188,11 @@
             }
         };
         
+        console.log('[submitServerDeliveryProcess] Submitting delivery visit:', {
+            url: '<?= APP_URL ?>/RepTracking/api_process_delivery_visit',
+            payload: payload
+        });
+        
         fetchSecure('<?= APP_URL ?>/RepTracking/api_process_delivery_visit', {
             method: 'POST',
             headers: {
@@ -2193,19 +2200,34 @@
             },
             body: JSON.stringify(payload)
         })
-        .then(res => res.json())
-        .then(data => {
+        .then(async res => {
+            const rawText = await res.text();
+            console.log('[submitServerDeliveryProcess] HTTP Status:', res.status, res.statusText);
+            console.log('[submitServerDeliveryProcess] Server Response Raw:', rawText);
+            
+            let data = null;
+            try {
+                data = JSON.parse(rawText);
+                console.log('[submitServerDeliveryProcess] Parsed Response Data:', data);
+            } catch (jsonErr) {
+                console.error('[submitServerDeliveryProcess] Response is not valid JSON:', rawText);
+                throw new Error('Server returned unexpected HTML/non-JSON response (HTTP ' + res.status + '). Check console log for details.\nPreview: ' + rawText.substring(0, 200));
+            }
+            return { res, data };
+        })
+        .then(({ res, data }) => {
             if (data.status === 'success') {
-                alert(data.message);
+                alert(data.message || 'Delivery visit processed successfully!');
                 closeServerDeliveryProcessModal();
                 loadDeliveryLiveStage(routeId);
             } else {
-                alert('Error: ' + data.message);
+                const fileInfo = data.file ? ` (${data.file}:${data.line})` : '';
+                alert('Error processing visit: ' + (data.message || 'Unknown server error') + fileInfo);
             }
         })
         .catch(err => {
-            console.error(err);
-            alert('An unexpected error occurred during submission.');
+            console.error('[submitServerDeliveryProcess] Process visit failed:', err);
+            alert('An unexpected error occurred during submission:\n' + err.message);
         });
     }
 
@@ -4190,6 +4212,8 @@
             collections: null
         };
         
+        console.log('[updateSingleInvoiceDeliveryStatus] Updating status:', { invoiceId, customerId, newStatus, payload });
+
         fetchSecure('<?= APP_URL ?>/RepTracking/api_process_delivery_visit', {
             method: 'POST',
             headers: {
@@ -4197,17 +4221,29 @@
             },
             body: JSON.stringify(payload)
         })
-        .then(res => res.json())
-        .then(data => {
+        .then(async res => {
+            const rawText = await res.text();
+            console.log('[updateSingleInvoiceDeliveryStatus] HTTP Status:', res.status, res.statusText);
+            console.log('[updateSingleInvoiceDeliveryStatus] Server Response Raw:', rawText);
+            let data = null;
+            try {
+                data = JSON.parse(rawText);
+            } catch (jsonErr) {
+                console.error('[updateSingleInvoiceDeliveryStatus] Response is not valid JSON:', rawText);
+                throw new Error('Server returned non-JSON response (HTTP ' + res.status + '). Check console log for details.\nPreview: ' + rawText.substring(0, 200));
+            }
+            return { res, data };
+        })
+        .then(({ res, data }) => {
             if (data.status === 'success') {
                 loadDeliveryLiveStage(currentRouteId);
             } else {
-                alert('Error: ' + data.message);
+                alert('Error updating status: ' + (data.message || 'Unknown error'));
             }
         })
         .catch(err => {
-            console.error(err);
-            alert('An unexpected error occurred during status update.');
+            console.error('[updateSingleInvoiceDeliveryStatus] Failed:', err);
+            alert('An unexpected error occurred during status update:\n' + err.message);
         });
     }
 
