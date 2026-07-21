@@ -1030,6 +1030,10 @@
                                         <span>Credit Sales:</span>
                                         <strong id="sumCreditSales" style="font-family:monospace;">Rs 0.00</strong>
                                     </div>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size: 13px; color:#ef4444;">
+                                        <span>Route Expenses Incurred:</span>
+                                        <strong id="sumRouteExpenses" style="font-family:monospace;">Rs 0.00</strong>
+                                    </div>
                                     <div style="display:flex; justify-content:space-between; font-weight:bold; border-top: 1px dashed #cbd5e1; padding-top: 6px; margin-top: 6px; font-size: 13px;">
                                         <span>Total Route Sales:</span>
                                         <strong id="sumTotalSales" style="font-family:monospace;">Rs 0.00</strong>

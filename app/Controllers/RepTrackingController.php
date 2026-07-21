@@ -2910,6 +2910,16 @@ class RepTrackingController extends Controller {
         $db->bind(':rid', intval($routeId));
         $expenses = $db->resultSet() ?: [];
 
+        $totalExpenses = 0.0;
+        foreach ($expenses as $exp) {
+            $totalExpenses += floatval($exp->amount);
+        }
+
+        $db->query("SELECT status FROM rep_daily_routes WHERE id = :rid");
+        $db->bind(':rid', intval($routeId));
+        $rRow = $db->single();
+        $routeStatus = $rRow ? $rRow->status : 'Active';
+
         $expenseService = new RouteExpenseService();
         $pettyCashModel = new PettyCashTransaction();
         $availPC = $pettyCashModel->getAvailableBalance();
@@ -2919,6 +2929,8 @@ class RepTrackingController extends Controller {
         echo json_encode([
             'status' => 'success',
             'expenses' => $expenses,
+            'total_route_expenses' => $totalExpenses,
+            'route_status' => $routeStatus,
             'available_petty_cash' => $availPC,
             'available_route_cash' => $availRC
         ]);

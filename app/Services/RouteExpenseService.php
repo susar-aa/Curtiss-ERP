@@ -71,6 +71,9 @@ class RouteExpenseService {
         $this->db->bind(':rid', $routeId);
         $route = $this->db->single();
         if (!$route) return "Route not found.";
+        if (in_array($route->status, ['Completed', 'Finalized', 'Cancelled'])) {
+            return "Expenses cannot be recorded for a route with status '{$route->status}'.";
+        }
 
         // Fetch assigned vehicle (if any)
         $vehicleNumber = null;
@@ -321,6 +324,13 @@ class RouteExpenseService {
         $this->db->bind(':id', $expenseId);
         $expense = $this->db->single();
         if (!$expense) return "Expense record not found.";
+
+        $this->db->query("SELECT status FROM rep_daily_routes WHERE id = :rid");
+        $this->db->bind(':rid', $expense->rep_route_id);
+        $rRow = $this->db->single();
+        if ($rRow && in_array($rRow->status, ['Completed', 'Finalized'])) {
+            return "Cannot delete expenses for a route that is already {$rRow->status}.";
+        }
 
         // Void Journal Entry (which automatically reverses account balances!)
         if ($expense->journal_entry_id) {

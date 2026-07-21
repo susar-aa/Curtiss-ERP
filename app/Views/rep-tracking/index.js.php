@@ -3099,6 +3099,14 @@
                 document.getElementById('sumCreditSales').innerText = 'Rs ' + creditSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 document.getElementById('sumTotalSales').innerText = 'Rs ' + totalSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 
+                fetchSecure('<?= APP_URL ?>/RepTracking/api_get_route_expenses/' + routeId)
+                    .then(r => r.json())
+                    .then(eData => {
+                        const rExp = (eData && eData.status === 'success') ? parseFloat(eData.total_route_expenses || 0) : 0;
+                        const expEl = document.getElementById('sumRouteExpenses');
+                        if (expEl) expEl.innerText = 'Rs ' + rExp.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    }).catch(err => {});
+                
                 let driverCashCollections = 0.0;
                 if (balancing.payments) {
                     balancing.payments.forEach(p => {
