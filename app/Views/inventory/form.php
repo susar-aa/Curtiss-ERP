@@ -36,6 +36,7 @@ $sample_code = $item ? ($item->sample_code ?? '') : '';
 // Retrieve Relational Warehouse and Vendor variables
 $warehouse_id = $item ? ($item->warehouse_id ?? '') : '';
 $vendor_id = $item ? ($item->vendor_id ?? '') : '';
+$item_suppliers = $data['item_suppliers'] ?? [];
 $retail_margin = $item ? ($item->retail_margin ?? '') : '';
 $wholesale_margin = $item ? ($item->wholesale_margin ?? '') : '';
 
@@ -422,9 +423,9 @@ if (!function_exists('erp_safe_json_encode')) {
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label>Supplier / Vendor</label>
-                            <select name="vendor_id" id="mainVendorSelect" class="font-semibold cursor-pointer" required>
-                                <option value="">Select Supplier</option>
+                            <label>Primary Supplier / Vendor *</label>
+                            <select name="vendor_id" id="mainVendorSelect" class="font-semibold cursor-pointer" onchange="updatePrimarySupplierBadge()" required>
+                                <option value="">Select Primary Supplier</option>
                                 <?php foreach ($vendors as $v): ?>
                                     <option value="<?php echo $v->id; ?>" <?php echo $vendor_id == $v->id ? 'selected' : ''; ?>>
                                         <?php echo htmlspecialchars($v->name); ?>
@@ -442,6 +443,38 @@ if (!function_exists('erp_safe_json_encode')) {
                                     </option>
                                 <?php endforeach; ?>
                             </select>
+                        </div>
+                    </div>
+
+                    <!-- Multi-Supplier Sourcing List -->
+                    <div class="mt-3 pt-3 border-t border-slate-100">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="!mb-0">Approved Suppliers / Multi-Vendor Sourcing</label>
+                            <span class="text-[10px] text-slate-400 font-normal">Select all vendors supplying this item</span>
+                        </div>
+                        <div class="bg-slate-50/80 border border-slate-200 rounded-xl p-3 max-h-[160px] overflow-y-auto space-y-1 shadow-inner">
+                            <?php 
+                                $linkedSupplierIds = array_map(function($s) { return (int)($s->supplier_id ?? 0); }, $item_suppliers);
+                                if (!empty($vendor_id) && !in_array((int)$vendor_id, $linkedSupplierIds)) {
+                                    $linkedSupplierIds[] = (int)$vendor_id;
+                                }
+                            ?>
+                            <?php foreach ($vendors as $v): ?>
+                                <?php $isLinked = in_array((int)$v->id, $linkedSupplierIds); ?>
+                                <label class="flex items-center justify-between p-2 rounded-lg hover:bg-white transition-all cursor-pointer select-none border border-transparent hover:border-slate-200 text-xs font-semibold text-slate-700">
+                                    <div class="flex items-center gap-2.5">
+                                        <input type="checkbox" name="supplier_ids[]" value="<?php echo $v->id; ?>" <?php echo $isLinked ? 'checked' : ''; ?>
+                                               class="supplier-checkbox w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
+                                        <span><?php echo htmlspecialchars($v->name); ?></span>
+                                    </div>
+                                    <span class="primary-badge text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full <?php echo ((int)$vendor_id === (int)$v->id) ? '' : 'hidden'; ?>">
+                                        <i class="fa-solid fa-star text-[8px] text-emerald-600"></i> Primary
+                                    </span>
+                                </label>
+                            <?php endforeach; ?>
+                            <?php if (empty($vendors)): ?>
+                                <p class="text-xs text-slate-400 italic text-center py-2">No vendors registered in system.</p>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -631,6 +664,23 @@ if (!function_exists('erp_safe_json_encode')) {
 
     <!-- Client side dynamic compressor, calculators, variations serializer scripts -->
     <script>
+        function updatePrimarySupplierBadge() {
+            const primarySelect = document.getElementById('mainVendorSelect');
+            if (!primarySelect) return;
+            const primaryId = parseInt(primarySelect.value || 0);
+            const checkboxes = document.querySelectorAll('.supplier-checkbox');
+            checkboxes.forEach(cb => {
+                const vId = parseInt(cb.value);
+                const badge = cb.closest('label').querySelector('.primary-badge');
+                if (vId === primaryId) {
+                    cb.checked = true;
+                    if (badge) badge.classList.remove('hidden');
+                } else {
+                    if (badge) badge.classList.add('hidden');
+                }
+            });
+        }
+
         // Product Attributes & Terms data set
         const syncedAttributes = <?php echo erp_safe_json_encode($synced_attributes); ?>;
         const dbErrorMessage = <?php echo json_encode($db_error_message); ?>;

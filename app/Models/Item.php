@@ -962,4 +962,67 @@ class Item {
             return false;
         }
     }
+
+    /**
+     * Fetch all associated suppliers for a specific item
+     */
+    public function getItemSuppliers($itemId) {
+        if (!$itemId) return [];
+        try {
+            $this->db->query("
+                SELECT s.*, v.name as supplier_name 
+                FROM item_suppliers s
+                LEFT JOIN vendors v ON s.supplier_id = v.id
+                WHERE s.item_id = :item_id
+                ORDER BY s.is_primary DESC, v.name ASC
+            ");
+            $this->db->bind(':item_id', intval($itemId));
+            return $this->db->resultSet() ?: [];
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Synchronize multiple supplier associations for a product
+     */
+    public function syncItemSuppliers($itemId, array $supplierIds, $primarySupplierId = null) {
+        if (!$itemId) {
+            return false;
+        }
+        try {
+            $supplierIds = array_values(array_unique(array_map('intval', array_filter($supplierIds))));
+            
+            // Delete suppliers not in the array
+            if (!empty($supplierIds)) {
+                $placeholders = implode(',', $supplierIds);
+                $this->db->query("DELETE FROM item_suppliers WHERE item_id = :item_id AND supplier_id NOT IN ($placeholders)");
+                $this->db->bind(':item_id', intval($itemId));
+                $this->db->execute();
+            } else {
+                $this->db->query("DELETE FROM item_suppliers WHERE item_id = :item_id");
+                $this->db->bind(':item_id', intval($itemId));
+                $this->db->execute();
+            }
+
+            // Insert or update each selected supplier
+            foreach ($supplierIds as $supId) {
+                $isPrimary = ($primarySupplierId && intval($supId) === intval($primarySupplierId)) ? 1 : 0;
+                $this->db->query("
+                    INSERT INTO item_suppliers (item_id, supplier_id, is_primary)
+                    VALUES (:item_id, :supplier_id, :is_primary)
+                    ON DUPLICATE KEY UPDATE 
+                        is_primary = VALUES(is_primary),
+                        updated_at = CURRENT_TIMESTAMP
+                ");
+                $this->db->bind(':item_id', intval($itemId));
+                $this->db->bind(':supplier_id', intval($supId));
+                $this->db->bind(':is_primary', $isPrimary);
+                $this->db->execute();
+            }
+            return true;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
 }

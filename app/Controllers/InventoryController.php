@@ -1013,8 +1013,15 @@ class InventoryController extends Controller {
             try {
                 if ($this->itemModel->addItem($data)) {
                     $newItemId = $this->db->lastInsertId();
-                    if ($newItemId && !empty($imagePath)) {
-                        $this->syncItemImagesTable($newItemId, $imagePath);
+                    if ($newItemId) {
+                        $supplierIds = isset($_POST['supplier_ids']) && is_array($_POST['supplier_ids']) ? $_POST['supplier_ids'] : [];
+                        if ($vendorId && !in_array($vendorId, $supplierIds)) {
+                            $supplierIds[] = $vendorId;
+                        }
+                        $this->itemModel->syncItemSuppliers($newItemId, $supplierIds, $vendorId);
+                        if (!empty($imagePath)) {
+                            $this->syncItemImagesTable($newItemId, $imagePath);
+                        }
                     }
                     $this->logActivity('Product Created', 'Inventory', "Product '{$data['name']}' (Code: {$data['item_code']}) created successfully.", $newItemId, null, $data);
                     
@@ -1060,6 +1067,7 @@ class InventoryController extends Controller {
             $data = [
                 'title' => 'Create New Inventory Product',
                 'item' => null,
+                'item_suppliers' => [],
                 'categories' => $categories,
                 'vendors' => $vendors,
                 'warehouses' => $warehouses,
@@ -1236,6 +1244,11 @@ class InventoryController extends Controller {
 
             try {
                 if ($this->itemModel->updateItem($data)) {
+                    $supplierIds = isset($_POST['supplier_ids']) && is_array($_POST['supplier_ids']) ? $_POST['supplier_ids'] : [];
+                    if ($vendorId && !in_array($vendorId, $supplierIds)) {
+                        $supplierIds[] = $vendorId;
+                    }
+                    $this->itemModel->syncItemSuppliers($id, $supplierIds, $vendorId);
                     if (!empty($imagePath)) {
                         $this->syncItemImagesTable($id, $imagePath);
                     }
@@ -1308,6 +1321,7 @@ class InventoryController extends Controller {
             }
         } else {
             $item = $this->itemModel->getItemById($id);
+            $itemSuppliers = $this->itemModel->getItemSuppliers($id);
             
             // Dynamic Selections
             $categories = $this->categoryModel->getCategories();
@@ -1320,6 +1334,7 @@ class InventoryController extends Controller {
             $data = [
                 'title' => 'Edit Inventory Product Profile',
                 'item' => $item,
+                'item_suppliers' => $itemSuppliers,
                 'categories' => $categories,
                 'vendors' => $vendors,
                 'warehouses' => $warehouses,
