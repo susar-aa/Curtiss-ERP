@@ -644,39 +644,100 @@
 
                 <!-- TAB 12: EXPENSES (NEW STAGE) -->
                 <div class="workspace-tab-panel" id="tabpanel-12" style="display:none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <div>
                             <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Route Expenses Management</h3>
-                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Record and manage trip-related expenses. Balances and journal entries are automatically updated in real-time.</p>
+                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Record and manage operational expenses for Representatives and Delivery operations.</p>
                         </div>
                     </div>
 
+                    <!-- Inner Sub-Tabs Header -->
+                    <div style="display:flex; gap:10px; border-bottom:1px solid #cbd5e1; margin-bottom:20px;">
+                        <button type="button" class="left-tab-btn active" id="btnExpenseSubTabRep" onclick="switchExpenseSubTab('Rep')">
+                            <i class="ph ph-user-gear"></i> Rep Expenses
+                        </button>
+                        <button type="button" class="left-tab-btn" id="btnExpenseSubTabDelivery" onclick="switchExpenseSubTab('Delivery')">
+                            <i class="ph ph-truck"></i> Delivery Expenses
+                        </button>
+                    </div>
+
                     <div style="display:grid; grid-template-columns:1.1fr 0.9fr; gap:20px;">
-                        <!-- Left: Form to record expense -->
+                        <!-- Left: Form Container -->
                         <div>
                             <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); margin-bottom:20px;">
-                                <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-plus-circle"></i> Record Route Expense</h4>
-                                
                                 <form id="formRecordRouteExpense" onsubmit="submitRouteExpense(event)">
-                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
-                                        <div>
-                                            <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Related Route / Trip</label>
-                                            <input type="text" id="expRouteNumber" readonly style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); background:#f8fafc; font-family:monospace; font-weight:bold;">
+                                    <input type="hidden" id="expCategory" value="Rep">
+
+                                    <!-- Rep Expenses Header -->
+                                    <div id="subtabRepHeader">
+                                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">
+                                            <i class="ph ph-user-gear"></i> Record Representative Expense
+                                        </h4>
+                                    </div>
+
+                                    <!-- Delivery Expenses Header -->
+                                    <div id="subtabDeliveryHeader" style="display:none;">
+                                        <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;">
+                                            <i class="ph ph-truck"></i> Record Delivery Manifest Expense
+                                        </h4>
+                                    </div>
+
+                                    <!-- Rep Expenses Fields -->
+                                    <div id="fieldsRepExpenses">
+                                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                                            <div>
+                                                <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Related Route / Trip</label>
+                                                <input type="text" id="expRouteNumber" readonly style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); background:#f8fafc; font-family:monospace; font-weight:bold;">
+                                            </div>
+                                            <div>
+                                                <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Assigned Vehicle <span style="color:red;">*</span></label>
+                                                <select id="expVehicleNumber" style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); font-weight:bold; outline:none;">
+                                                    <option value="">-- Select Vehicle --</option>
+                                                    <?php if (!empty($data['vehicles'])): ?>
+                                                        <?php foreach($data['vehicles'] as $v): ?>
+                                                            <?php if($v->status === 'Active'): ?>
+                                                                <option value="<?= htmlspecialchars($v->vehicle_number) ?>"><?= htmlspecialchars($v->vehicle_number) ?></option>
+                                                            <?php endif; ?>
+                                                        <?php endforeach; ?>
+                                                    <?php endif; ?>
+                                                </select>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Assigned Vehicle</label>
-                                            <input type="text" id="expVehicleNumber" readonly style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); background:#f8fafc; font-weight:bold;">
+
+                                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                                            <div>
+                                                <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Representative</label>
+                                                <input type="text" id="expRepName" readonly style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); background:#f8fafc; font-weight:500;">
+                                            </div>
+                                            <div>
+                                                <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Date & Time</label>
+                                                <input type="text" id="expDateTime" readonly style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); background:#f8fafc; font-weight:500;">
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
-                                        <div>
-                                            <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Representative</label>
-                                            <input type="text" id="expRepName" readonly style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); background:#f8fafc; font-weight:500;">
+                                    <!-- Delivery Expenses Fields -->
+                                    <div id="fieldsDeliveryExpenses" style="display:none;">
+                                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                                            <div>
+                                                <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Delivery Manifest</label>
+                                                <input type="text" id="expDelManifest" readonly style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); background:#f8fafc; font-family:monospace; font-weight:bold;">
+                                            </div>
+                                            <div>
+                                                <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Arranged Delivery Vehicle</label>
+                                                <input type="text" id="expDelVehicle" readonly style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); background:#f8fafc; font-weight:bold;">
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Date & Time</label>
-                                            <input type="text" id="expDateTime" readonly style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); background:#f8fafc; font-weight:500;">
+
+                                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                                            <div>
+                                                <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Driver & Partner Info</label>
+                                                <input type="text" id="expDelDriverInfo" readonly style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); background:#f8fafc; font-weight:500;">
+                                            </div>
+                                            <div>
+                                                <label style="display:block; font-size:11px; font-weight:700; color:var(--t-label); text-transform:uppercase; margin-bottom:5px;">Date & Time</label>
+                                                <input type="text" id="expDelDateTime" readonly style="width:100%; padding:8px 12px; border:1px solid var(--c-separator); border-radius:var(--r-xs); background:#f8fafc; font-weight:500;">
+                                            </div>
                                         </div>
                                     </div>
 
@@ -753,7 +814,7 @@
                             </div>
 
                             <!-- Recorded Expenses list -->
-                            <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); height: 290px; display: flex; flex-direction: column;">
+                            <div style="border:0.5px solid var(--c-separator); border-radius:var(--r-lg); padding:20px; background:var(--c-surface); box-shadow:var(--shadow-sm); height: 320px; display: flex; flex-direction: column;">
                                 <h4 style="margin:0 0 15px 0; color:var(--primary); font-size:15px; font-weight:bold;"><i class="ph ph-list-bullets"></i> Recorded Expenses</h4>
                                 <div style="flex:1; overflow-y:auto; font-size:12px;" id="listRecordedExpenses">
                                     <!-- Populated dynamically -->

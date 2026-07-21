@@ -2305,6 +2305,34 @@
         }
     }
 
+    function switchExpenseSubTab(category) {
+        const catInput = document.getElementById('expCategory');
+        if (catInput) catInput.value = category;
+
+        const btnRep = document.getElementById('btnExpenseSubTabRep');
+        const btnDel = document.getElementById('btnExpenseSubTabDelivery');
+        const headRep = document.getElementById('subtabRepHeader');
+        const headDel = document.getElementById('subtabDeliveryHeader');
+        const fieldsRep = document.getElementById('fieldsRepExpenses');
+        const fieldsDel = document.getElementById('fieldsDeliveryExpenses');
+
+        if (category === 'Rep') {
+            if (btnRep) btnRep.classList.add('active');
+            if (btnDel) btnDel.classList.remove('active');
+            if (headRep) headRep.style.display = 'block';
+            if (headDel) headDel.style.display = 'none';
+            if (fieldsRep) fieldsRep.style.display = 'block';
+            if (fieldsDel) fieldsDel.style.display = 'none';
+        } else {
+            if (btnDel) btnDel.classList.add('active');
+            if (btnRep) btnRep.classList.remove('active');
+            if (headDel) headDel.style.display = 'block';
+            if (headRep) headRep.style.display = 'none';
+            if (fieldsDel) fieldsDel.style.display = 'block';
+            if (fieldsRep) fieldsRep.style.display = 'none';
+        }
+    }
+
     function loadTabExpenses(routeId) {
         const rdata = document.getElementById('route_data_' + routeId);
         if (!rdata) return;
@@ -2313,15 +2341,42 @@
         const repName = rdata.getAttribute('data-rep') || '';
         const formattedRouteNo = '#RT-' + String(routeId).padStart(5, '0');
 
-        document.getElementById('expRouteNumber').value = formattedRouteNo + ' - ' + routeName;
-        document.getElementById('expRepName').value = repName;
-        document.getElementById('expDateTime').value = new Date().toLocaleString();
+        // Populate Rep Expenses fields
+        if (document.getElementById('expRouteNumber')) document.getElementById('expRouteNumber').value = formattedRouteNo + ' - ' + routeName;
+        if (document.getElementById('expRepName')) document.getElementById('expRepName').value = repName;
+        if (document.getElementById('expDateTime')) document.getElementById('expDateTime').value = new Date().toLocaleString();
 
-        let vehicleNum = 'No Vehicle Assigned';
-        if (currentDeliveryDetails && currentDeliveryDetails.delivery && currentDeliveryDetails.delivery.vehicle_number) {
-            vehicleNum = currentDeliveryDetails.delivery.vehicle_number;
+        // Populate Delivery Expenses fields
+        const delId = rdata.getAttribute('data-delivery-id');
+        if (delId && delId !== '0' && delId !== '') {
+            const formattedDelNo = '#DEL-' + String(delId).padStart(5, '0');
+            if (document.getElementById('expDelManifest')) document.getElementById('expDelManifest').value = formattedDelNo;
+            if (document.getElementById('expDelDateTime')) document.getElementById('expDelDateTime').value = new Date().toLocaleString();
+
+            fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
+                .then(res => res.json())
+                .then(dData => {
+                    if (dData.delivery) {
+                        const delVeh = dData.delivery.vehicle_number || 'Unassigned';
+                        let drvInfo = dData.delivery.driver_name || 'Unassigned Driver';
+                        if (dData.delivery.partner_name) drvInfo += ' (Helper: ' + dData.delivery.partner_name + ')';
+                        
+                        if (document.getElementById('expDelVehicle')) document.getElementById('expDelVehicle').value = delVeh;
+                        if (document.getElementById('expDelDriverInfo')) document.getElementById('expDelDriverInfo').value = drvInfo;
+
+                        // Pre-select delivery vehicle in Rep dropdown if none selected yet
+                        const vehSelect = document.getElementById('expVehicleNumber');
+                        if (vehSelect && !vehSelect.value && delVeh !== 'Unassigned') {
+                            vehSelect.value = delVeh;
+                        }
+                    }
+                });
+        } else {
+            if (document.getElementById('expDelManifest')) document.getElementById('expDelManifest').value = 'No Delivery Arranged';
+            if (document.getElementById('expDelVehicle')) document.getElementById('expDelVehicle').value = 'Not Arranged';
+            if (document.getElementById('expDelDriverInfo')) document.getElementById('expDelDriverInfo').value = 'Not Arranged';
+            if (document.getElementById('expDelDateTime')) document.getElementById('expDelDateTime').value = new Date().toLocaleString();
         }
-        document.getElementById('expVehicleNumber').value = vehicleNum;
 
         // Fetch recorded expenses and available balances
         fetchSecure('<?= APP_URL ?>/RepTracking/api_get_route_expenses/' + routeId)
@@ -2350,8 +2405,8 @@
                             <table style="width:100%; border-collapse:collapse;">
                                 <thead>
                                     <tr style="border-bottom:1.5px solid var(--c-separator); color:var(--t-label); font-weight:700; text-transform:uppercase; font-size:10px;">
-                                        <th style="padding:8px 4px; text-align:left;">Type / Ref</th>
-                                        <th style="padding:8px 4px; text-align:left;">Source</th>
+                                        <th style="padding:8px 4px; text-align:left;">Category / Type</th>
+                                        <th style="padding:8px 4px; text-align:left;">Details / Source</th>
                                         <th style="padding:8px 4px; text-align:right;">Amount</th>
                                         <th style="padding:8px 4px; text-align:center;">Action</th>
                                     </tr>
@@ -2361,15 +2416,28 @@
                         data.expenses.forEach(exp => {
                             const dateStr = new Date(exp.expense_date).toLocaleDateString();
                             const amt = parseFloat(exp.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            const category = exp.expense_category || 'Rep';
+                            const badgeBg = (category === 'Delivery') ? '#fef3c7' : '#e0f2fe';
+                            const badgeColor = (category === 'Delivery') ? '#b45309' : '#0369a1';
                             
+                            let detailsSub = exp.payment_source;
+                            if (category === 'Delivery' && exp.driver_name) {
+                                detailsSub = exp.driver_name + ' (' + (exp.vehicle_number || 'Veh') + ') • ' + exp.payment_source;
+                            } else if (exp.vehicle_number) {
+                                detailsSub = 'Veh: ' + exp.vehicle_number + ' • ' + exp.payment_source;
+                            }
+
                             html += `
                                 <tr style="border-bottom:1px solid var(--c-separator); font-size:12px;">
                                     <td style="padding:8px 4px;">
-                                        <div style="font-weight:600; color:var(--t-primary);">${exp.expense_type}</div>
+                                        <div style="display:flex; align-items:center; gap:6px;">
+                                            <span style="padding:2px 6px; border-radius:4px; font-size:9px; font-weight:bold; background:${badgeBg}; color:${badgeColor};">${category}</span>
+                                            <span style="font-weight:600; color:var(--t-primary);">${exp.expense_type}</span>
+                                        </div>
                                         <div style="font-size:9px; color:#64748b; font-family:monospace; margin-top:2px;">${exp.receipt_number ? 'Rec: ' + exp.receipt_number : exp.description.substring(0, 25) + '...'}</div>
                                     </td>
-                                    <td style="padding:8px 4px; color:#475569;">
-                                        ${exp.payment_source}
+                                    <td style="padding:8px 4px; color:#475569; font-size:11px;">
+                                        ${detailsSub}
                                     </td>
                                     <td style="padding:8px 4px; text-align:right; font-weight:bold; font-family:monospace; color:#ef4444;">
                                         Rs ${amt}
@@ -2394,7 +2462,7 @@
                     const form = document.getElementById('formRecordRouteExpense');
                     const elements = form.elements;
                     for (let i = 0; i < elements.length; i++) {
-                        if (elements[i].id !== 'expRouteNumber' && elements[i].id !== 'expRepName' && elements[i].id !== 'expDateTime' && elements[i].id !== 'expVehicleNumber') {
+                        if (elements[i].id !== 'expRouteNumber' && elements[i].id !== 'expRepName' && elements[i].id !== 'expDateTime' && elements[i].id !== 'expDelManifest' && elements[i].id !== 'expDelVehicle' && elements[i].id !== 'expDelDriverInfo' && elements[i].id !== 'expDelDateTime') {
                             elements[i].disabled = isReadOnly;
                         }
                     }
@@ -2409,18 +2477,19 @@
     }
 
     function onExpenseSourceChanged() {
+        const category = document.getElementById('expCategory')?.value || 'Rep';
         const source = document.getElementById('expSource').value;
         const type = document.getElementById('expType').value;
-        const vehicle = document.getElementById('expVehicleNumber').value;
+        const vehicle = (category === 'Delivery') ? document.getElementById('expDelVehicle').value : document.getElementById('expVehicleNumber').value;
         const descInput = document.getElementById('expDescription');
 
         // Autofill description
         if (type) {
-            let autofillDesc = type + ' expense on route';
+            let autofillDesc = category + ' ' + type + ' expense on route';
             if (type === 'Fuel') {
-                autofillDesc = 'Fuel allowance for vehicle ' + vehicle;
+                autofillDesc = 'Fuel allowance for vehicle ' + (vehicle || 'trip');
             } else if (type === 'Vehicle Maintenance') {
-                autofillDesc = 'Routine maintenance for vehicle ' + vehicle;
+                autofillDesc = 'Routine maintenance for vehicle ' + (vehicle || 'trip');
             }
             descInput.value = autofillDesc;
         }
@@ -2433,11 +2502,30 @@
         event.preventDefault();
 
         const routeId = currentRouteId;
+        const category = document.getElementById('expCategory').value || 'Rep';
         const amount = parseFloat(document.getElementById('expAmount').value);
         const type = document.getElementById('expType').value;
         const source = document.getElementById('expSource').value;
         const desc = document.getElementById('expDescription').value;
         const receipt = document.getElementById('expReceiptNumber').value;
+
+        let vehicleNumber = '';
+        let driverName = '';
+
+        if (category === 'Rep') {
+            vehicleNumber = document.getElementById('expVehicleNumber').value;
+            if (!vehicleNumber) {
+                alert('Please select an assigned vehicle for Representative Expense.');
+                return;
+            }
+        } else {
+            vehicleNumber = document.getElementById('expDelVehicle').value;
+            driverName = document.getElementById('expDelDriverInfo').value;
+            if (!vehicleNumber || vehicleNumber === 'Not Arranged') {
+                alert('Delivery has not been arranged yet for this route. Please arrange logistics in the Dispatch stage before recording Delivery Expenses.');
+                return;
+            }
+        }
 
         if (!type || !source || isNaN(amount) || amount <= 0 || !desc) {
             alert('Please fill in all required fields.');
@@ -2446,11 +2534,14 @@
 
         const payload = {
             rep_route_id: routeId,
+            expense_category: category,
             amount: amount,
             expense_type: type,
             payment_source: source,
             description: desc,
-            receipt_number: receipt
+            receipt_number: receipt,
+            vehicle_number: vehicleNumber,
+            driver_name: driverName
         };
 
         document.getElementById('btnSubmitRouteExpense').disabled = true;
@@ -2483,17 +2574,17 @@
                 if (delId && delId !== '0') {
                     fetchSecure('<?= APP_URL ?>/RepTracking/api_get_delivery_details/' + delId)
                         .then(res => res.json())
-                        .then(dData => {
-                            currentDeliveryDetails = dData;
+                        .then(freshDel => {
+                            currentDeliveryDetails = freshDel;
                         });
                 }
             } else {
-                alert(data.message);
+                alert(data.message || 'Failed to record expense.');
             }
         })
         .catch(err => {
             document.getElementById('btnSubmitRouteExpense').disabled = false;
-            alert('An unexpected error occurred.');
+            alert('Error recording expense: ' + err.message);
         });
     }
 

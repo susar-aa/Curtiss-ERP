@@ -16,6 +16,20 @@ class RouteExpenseService {
         $this->journal = new JournalEntry();
         $this->pettyCash = new PettyCashTransaction();
         $this->audit = new AuditLog();
+
+        // Auto-heal DDL for route_expenses columns
+        try {
+            $this->db->query("SHOW COLUMNS FROM route_expenses LIKE 'expense_category'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE route_expenses ADD COLUMN expense_category VARCHAR(20) NOT NULL DEFAULT 'Rep' AFTER expense_type");
+                $this->db->execute();
+            }
+            $this->db->query("SHOW COLUMNS FROM route_expenses LIKE 'driver_name'");
+            if (!$this->db->single()) {
+                $this->db->query("ALTER TABLE route_expenses ADD COLUMN driver_name VARCHAR(100) NULL AFTER vehicle_number");
+                $this->db->execute();
+            }
+        } catch (Exception $e) {}
     }
 
     /**
@@ -75,13 +89,18 @@ class RouteExpenseService {
             return "Expenses cannot be recorded for a route with status '{$route->status}'.";
         }
 
-        // Fetch assigned vehicle (if any)
-        $vehicleNumber = null;
-        $this->db->query("SELECT vehicle_number FROM deliveries WHERE rep_route_id = :rid ORDER BY id DESC LIMIT 1");
-        $this->db->bind(':rid', $routeId);
-        $del = $this->db->single();
-        if ($del) {
-            $vehicleNumber = $del->vehicle_number;
+        $category = !empty($data['expense_category']) ? trim($data['expense_category']) : 'Rep';
+        $driverName = !empty($data['driver_name']) ? trim($data['driver_name']) : null;
+        $vehicleNumber = !empty($data['vehicle_number']) ? trim($data['vehicle_number']) : null;
+
+        // Fetch fallback vehicle if not explicitly supplied
+        if (empty($vehicleNumber)) {
+            $this->db->query("SELECT vehicle_number FROM deliveries WHERE rep_route_id = :rid ORDER BY id DESC LIMIT 1");
+            $this->db->bind(':rid', $routeId);
+            $del = $this->db->single();
+            if ($del) {
+                $vehicleNumber = $del->vehicle_number;
+            }
         }
 
         // Fetch rep user ID
@@ -191,14 +210,16 @@ class RouteExpenseService {
         // Insert into route_expenses
         try {
             $this->db->beginTransaction();
-            $this->db->query("INSERT INTO route_expenses (rep_route_id, vehicle_number, rep_user_id, expense_date, expense_type, amount, description, payment_source, receipt_number, petty_cash_transaction_id, journal_entry_id, created_by, created_at)
-                              VALUES (:rep_route_id, :vehicle_number, :rep_user_id, :expense_date, :expense_type, :amount, :description, :payment_source, :receipt_number, :petty_cash_transaction_id, :journal_entry_id, :created_by, NOW())");
+            $this->db->query("INSERT INTO route_expenses (rep_route_id, vehicle_number, driver_name, rep_user_id, expense_date, expense_type, expense_category, amount, description, payment_source, receipt_number, petty_cash_transaction_id, journal_entry_id, created_by, created_at)
+                              VALUES (:rep_route_id, :vehicle_number, :driver_name, :rep_user_id, :expense_date, :expense_type, :expense_category, :amount, :description, :payment_source, :receipt_number, :petty_cash_transaction_id, :journal_entry_id, :created_by, NOW())");
             
             $this->db->bind(':rep_route_id', $routeId);
             $this->db->bind(':vehicle_number', $vehicleNumber);
+            $this->db->bind(':driver_name', $driverName);
             $this->db->bind(':rep_user_id', $repUserId);
             $this->db->bind(':expense_date', $date);
             $this->db->bind(':expense_type', $type);
+            $this->db->bind(':expense_category', $category);
             $this->db->bind(':amount', $amount);
             $this->db->bind(':description', $desc);
             $this->db->bind(':payment_source', $source);
