@@ -286,6 +286,16 @@ class Delivery {
                 $this->db->execute();
             }
         } catch (Exception $e) {}
+
+        // Ensure 4900 Cash Variance account exists
+        try {
+            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '4900'");
+            if (!$this->db->single()) {
+                $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, balance, parent_id) 
+                                  VALUES ('4900', 'Cash Variance', 'Expense', 0.00, NULL)");
+                $this->db->execute();
+            }
+        } catch (Exception $e) {}
     }
 
     public function getDeliveryBalancingData($deliveryId, $routeId = null) {
@@ -1002,6 +1012,85 @@ class Delivery {
                             $this->db->execute();
                         }
                     }
+                }
+            }
+            // Calculate and post Cash Variance if any
+            $actualCash = 0.0;
+            if (!empty($delivery->reconciliation_json)) {
+                $recon = json_decode($delivery->reconciliation_json, true);
+                if (is_array($recon)) {
+                    $actualCash = floatval($recon['actual_cash'] ?? 0.0);
+                }
+            }
+
+            $balancing = $this->getDeliveryBalancingData($deliveryId, $delivery->rep_route_id);
+            $rawExpectedCash = floatval($balancing['raw_cash_collections'] ?? 0.0);
+            $routeExpenses = floatval($balancing['collected_cash_expenses_total'] ?? 0.0);
+            $netExpectedCash = max(0.0, $rawExpectedCash - $routeExpenses);
+            $variance = $actualCash - $netExpectedCash;
+
+            if (abs($variance) > 0.005) {
+                // Resolve 4900 and 1000 account IDs
+                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '4900' LIMIT 1");
+                $varAccRow = $this->db->single();
+                $varAccId = $varAccRow ? intval($varAccRow->id) : null;
+
+                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1000' LIMIT 1");
+                $cashAccRow = $this->db->single();
+                $cashAccId = $cashAccRow ? intval($cashAccRow->id) : null;
+
+                if ($varAccId && $cashAccId) {
+                    $ref = 'RT-VAR-' . $deliveryId;
+                    $journalDesc = "Cash Variance Adjustment for Route Finalization #DEL-" . str_pad((string)$deliveryId, 5, '0', STR_PAD_LEFT);
+                    $lines = [];
+
+                    if ($variance < 0) {
+                        // Shortage: Debit Variance (Expense), Credit Cash
+                        $amt = abs($variance);
+                        $lines[] = [
+                            'account_id' => $varAccId,
+                            'debit' => $amt,
+                            'credit' => 0.0,
+                            'description' => $journalDesc . " (Shortage)"
+                        ];
+                        $lines[] = [
+                            'account_id' => $cashAccId,
+                            'debit' => 0.0,
+                            'credit' => $amt,
+                            'description' => $journalDesc . " (Shortage)"
+                        ];
+                    } else {
+                        // Overage: Debit Cash, Credit Variance (Expense)
+                        $amt = $variance;
+                        $lines[] = [
+                            'account_id' => $cashAccId,
+                            'debit' => $amt,
+                            'credit' => 0.0,
+                            'description' => $journalDesc . " (Overage)"
+                        ];
+                        $lines[] = [
+                            'account_id' => $varAccId,
+                            'debit' => 0.0,
+                            'credit' => $amt,
+                            'description' => $journalDesc . " (Overage)"
+                        ];
+                    }
+
+                    // Clean up any existing variance entries
+                    $this->db->query("SELECT id FROM journal_entries WHERE reference = :ref");
+                    $this->db->bind(':ref', $ref);
+                    $oldVarJEs = $this->db->resultSet() ?: [];
+                    foreach ($oldVarJEs as $oldVarJE) {
+                        $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
+                        $this->db->bind(':jid', $oldVarJE->id);
+                        $this->db->execute();
+
+                        $this->db->query("DELETE FROM journal_entries WHERE id = :id");
+                        $this->db->bind(':id', $oldVarJE->id);
+                        $this->db->execute();
+                    }
+
+                    $journalModel->postEntry(date('Y-m-d'), $ref, $journalDesc, $lines, $adminUserId);
                 }
             }
 

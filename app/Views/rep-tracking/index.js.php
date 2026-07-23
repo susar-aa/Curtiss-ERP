@@ -2767,7 +2767,7 @@
                         chequesTbody.innerHTML += `
                             <tr>
                                 <td><strong>${ch.customer_name}</strong></td>
-                                <td>${ch.reference || 'N/A'}</td>
+                                <td>${ch.cheque_number || 'N/A'}</td>
                                 <td style="text-align:right; font-family:monospace; font-weight:bold;">Rs ${parseFloat(ch.amount).toFixed(2)}</td>
                                 <td style="text-align:center;">${approveBox}</td>
                             </tr>
