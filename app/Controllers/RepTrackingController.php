@@ -687,20 +687,31 @@ class RepTrackingController extends Controller {
         echo json_encode(['status' => 'success', 'bills' => $customersWithBills]);
         exit;
     }
-
     private function autoApplyPaymentsToInvoices($customerId, $db = null) {
         $dbToUse = $db ?: new Database();
         
-        // Sum active/finalized customer payments
-        $dbToUse->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :cid AND (status IS NULL OR status = 'Active')");
+        // Sum both active finalized payments and pending collections on current routes
+        $dbToUse->query("
+            SELECT (
+                SELECT COALESCE(SUM(amount), 0) 
+                FROM customer_payments 
+                WHERE customer_id = :cid AND (status IS NULL OR status = 'Active')
+            ) + (
+                SELECT COALESCE(SUM(amount), 0) 
+                FROM pending_collections 
+                WHERE customer_id = :cid2 AND status = 'Pending'
+            ) as total_paid
+        ");
         $dbToUse->bind(':cid', $customerId);
+        $dbToUse->bind(':cid2', $customerId);
         $rowPaid = $dbToUse->single();
         $totalPaid = $rowPaid ? floatval($rowPaid->total_paid) : 0.0;
         
         $dbToUse->query("
             SELECT id, 
                    (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as true_grand_total,
-                   status
+                   status,
+                   delivery_status
             FROM invoices
             WHERE customer_id = :cid AND status != 'Voided'
             ORDER BY invoice_date ASC, id ASC
@@ -710,13 +721,18 @@ class RepTrackingController extends Controller {
         
         $remainingPaid = $totalPaid;
         foreach ($invoices as $inv) {
-            $grandTotal = floatval($inv->true_grand_total);
-            if ($remainingPaid >= $grandTotal - 0.01) {
-                $newStatus = 'Paid';
-                $remainingPaid -= $grandTotal;
-            } else {
+            // Postponed or Cancelled invoices must not be marked Paid, and should not consume payments
+            if ($inv->delivery_status === 'Cancelled' || $inv->delivery_status === 'Postponed') {
                 $newStatus = 'Unpaid';
-                $remainingPaid = 0;
+            } else {
+                $grandTotal = floatval($inv->true_grand_total);
+                if ($remainingPaid >= $grandTotal - 0.01 && $grandTotal > 0) {
+                    $newStatus = 'Paid';
+                    $remainingPaid -= $grandTotal;
+                } else {
+                    $newStatus = 'Unpaid';
+                    $remainingPaid = 0;
+                }
             }
             if ($inv->status !== $newStatus) {
                 $dbToUse->query("UPDATE invoices SET status = :status WHERE id = :id");
@@ -726,7 +742,6 @@ class RepTrackingController extends Controller {
             }
         }
     }
-
     public function api_get_route_variances($routeId) {
         try {
             $db = new Database();

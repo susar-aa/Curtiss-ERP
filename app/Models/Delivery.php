@@ -330,9 +330,18 @@ class Delivery {
 
         // For each customer who received a delivery, calculate their cash & credit sales
         foreach ($custDispatches as $cid => $dispatchAmt) {
-            // Fetch customer payments on this route.
-            $this->db->query("SELECT payment_method, COALESCE(SUM(amount), 0) as amt FROM customer_payments WHERE rep_route_id IN ($ridsStr) AND customer_id = :cid GROUP BY payment_method");
+            // Fetch customer payments on this route (both pending and finalized).
+            $this->db->query("
+                SELECT payment_method, COALESCE(SUM(amount), 0) as amt 
+                FROM (
+                    SELECT payment_method, amount FROM customer_payments WHERE rep_route_id IN ($ridsStr) AND customer_id = :cid AND (status IS NULL OR status = 'Active')
+                    UNION ALL
+                    SELECT payment_method, amount FROM pending_collections WHERE route_id IN ($ridsStr) AND customer_id = :cid2 AND status = 'Pending'
+                ) combined_payments
+                GROUP BY payment_method
+            ");
             $this->db->bind(':cid', $cid);
+            $this->db->bind(':cid2', $cid);
             $pays = $this->db->resultSet() ?: [];
             
             $totPaid = 0.0;
@@ -362,14 +371,17 @@ class Delivery {
             $credit_sales += $pool;
         }
 
-        // 2. Fetch Driver Collections logged today
+        // 2. Fetch Driver Collections logged today (both pending and finalized)
         $this->db->query("
             SELECT 
                 COALESCE(SUM(CASE WHEN payment_method = 'Cash' THEN amount ELSE 0 END), 0) as cash_collections,
                 COALESCE(SUM(CASE WHEN payment_method = 'Cheque' THEN amount ELSE 0 END), 0) as cheque_collections,
                 COALESCE(SUM(CASE WHEN payment_method = 'Bank Transfer' THEN amount ELSE 0 END), 0) as bank_collections
-            FROM customer_payments 
-            WHERE rep_route_id IN ($ridsStr)
+            FROM (
+                SELECT payment_method, amount FROM customer_payments WHERE rep_route_id IN ($ridsStr) AND (status IS NULL OR status = 'Active')
+                UNION ALL
+                SELECT payment_method, amount FROM pending_collections WHERE route_id IN ($ridsStr) AND status = 'Pending'
+            ) combined_all_payments
         ");
         $collectionsStats = $this->db->single();
 
