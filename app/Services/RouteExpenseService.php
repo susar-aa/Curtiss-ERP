@@ -521,10 +521,15 @@ class RouteExpenseService {
         }
         
         // 3. Create sub-account under parent
-        $this->db->query("SELECT COUNT(*) as cnt FROM chart_of_accounts WHERE parent_id = :pid");
+        $this->db->query("SELECT MAX(CAST(account_code AS UNSIGNED)) as max_code FROM chart_of_accounts WHERE parent_id = :pid");
         $this->db->bind(':pid', $parentId);
-        $childCount = intval($this->db->single()->cnt ?? 0);
-        $subAccountCode = strval(intval($parentCode) + $childCount + 1);
+        $maxRow = $this->db->single();
+        $maxCode = $maxRow ? intval($maxRow->max_code) : 0;
+        if ($maxCode > 0) {
+            $subAccountCode = strval($maxCode + 1);
+        } else {
+            $subAccountCode = strval(intval($parentCode) + 1);
+        }
         
         $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, parent_id) VALUES (:code, :name, 'Expense', :pid)");
         $this->db->bind(':code', $subAccountCode);
