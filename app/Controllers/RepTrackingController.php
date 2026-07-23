@@ -2899,8 +2899,6 @@ class RepTrackingController extends Controller {
     }
 
     public function api_get_route_expenses($routeId) {
-        $this->checkPermission('rep_tracking', 'view');
-        
         $db = new Database();
         $db->query("SELECT e.*, u.username as creator_name
                     FROM route_expenses e

@@ -2033,7 +2033,7 @@ if (!function_exists('hasPermission')) {
         const originalFetch = window.fetch;
         window.fetch = function(...args) {
             return originalFetch.apply(this, args).then(response => {
-                if (response.status === 401 || response.status === 419 || response.status === 403) {
+                if (response.status === 401 || response.status === 419) {
                     handleSessionExpiration();
                 }
                 return response;
@@ -2051,7 +2051,7 @@ if (!function_exists('hasPermission')) {
             const onreadystatechange = this.onreadystatechange;
             this.onreadystatechange = function() {
                 if (this.readyState === 4) {
-                    if (this.status === 401 || this.status === 419 || this.status === 403) {
+                    if (this.status === 401 || this.status === 419) {
                         handleSessionExpiration();
                     }
                 }
