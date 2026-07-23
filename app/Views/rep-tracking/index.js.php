@@ -2634,6 +2634,8 @@
         document.getElementById('reconExpectedCash').innerText = 'Rs 0.00';
         document.getElementById('reconExpectedCollections').innerText = 'Rs 0.00';
         document.getElementById('reconTotalExpectedCash').innerText = 'Rs 0.00';
+        if (document.getElementById('reconRouteExpenses')) document.getElementById('reconRouteExpenses').innerText = 'Rs 0.00';
+        if (document.getElementById('reconNetExpectedCash')) document.getElementById('reconNetExpectedCash').innerText = 'Rs 0.00';
         document.getElementById('reconActualCash').value = '0.00';
         document.getElementById('reconCashVariance').innerText = 'Rs 0.00';
         document.getElementById('reconAuditNotes').value = '';
@@ -2664,12 +2666,20 @@
                 const balancing = data.balancing;
 
                 const expectedCashSales = parseFloat(balancing.cash_sales || 0);
-                const totalExpectedCash = parseFloat(balancing.cash_collections || 0);
-                const expectedCashColls = Math.max(0, totalExpectedCash - expectedCashSales);
+                const rawCashCollections = parseFloat(balancing.raw_cash_collections || 0);
+                const expectedCashColls = Math.max(0, rawCashCollections - expectedCashSales);
+                const routeExpenses = parseFloat(balancing.collected_cash_expenses_total || 0);
+                const netExpectedCash = Math.max(0, rawCashCollections - routeExpenses);
 
                 document.getElementById('reconExpectedCash').innerText = 'Rs ' + expectedCashSales.toLocaleString('en-US', {minimumFractionDigits: 2});
                 document.getElementById('reconExpectedCollections').innerText = 'Rs ' + expectedCashColls.toLocaleString('en-US', {minimumFractionDigits: 2});
-                document.getElementById('reconTotalExpectedCash').innerText = 'Rs ' + totalExpectedCash.toLocaleString('en-US', {minimumFractionDigits: 2});
+                document.getElementById('reconTotalExpectedCash').innerText = 'Rs ' + rawCashCollections.toLocaleString('en-US', {minimumFractionDigits: 2});
+                if (document.getElementById('reconRouteExpenses')) {
+                    document.getElementById('reconRouteExpenses').innerText = 'Rs ' + routeExpenses.toLocaleString('en-US', {minimumFractionDigits: 2});
+                }
+                if (document.getElementById('reconNetExpectedCash')) {
+                    document.getElementById('reconNetExpectedCash').innerText = 'Rs ' + netExpectedCash.toLocaleString('en-US', {minimumFractionDigits: 2});
+                }
 
                 let actualCash = 0;
                 let remarks = '';
@@ -2786,7 +2796,8 @@
     }
 
     function calculateCashVariance() {
-        const expectedStr = document.getElementById('reconTotalExpectedCash').innerText.replace('Rs ', '').replace(/,/g, '');
+        const netExpectedEl = document.getElementById('reconNetExpectedCash');
+        const expectedStr = netExpectedEl ? netExpectedEl.innerText.replace('Rs ', '').replace(/,/g, '') : '0';
         const expected = parseFloat(expectedStr) || 0;
         const actual = parseFloat(document.getElementById('reconActualCash').value) || 0;
         const variance = actual - expected;

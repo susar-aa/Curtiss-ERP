@@ -52,8 +52,15 @@ class RouteExpenseService {
         }
         $ridsStr = implode(',', $rids);
 
-        // Fetch sum of cash customer payments
-        $this->db->query("SELECT COALESCE(SUM(amount), 0.0) as amt FROM customer_payments WHERE rep_route_id IN ($ridsStr) AND payment_method = 'Cash'");
+        // Fetch sum of cash customer payments (both finalized and pending collections)
+        $this->db->query("
+            SELECT COALESCE(SUM(amount), 0.0) as amt 
+            FROM (
+                SELECT amount FROM customer_payments WHERE rep_route_id IN ($ridsStr) AND payment_method = 'Cash' AND (status IS NULL OR status = 'Active')
+                UNION ALL
+                SELECT amount FROM pending_collections WHERE route_id IN ($ridsStr) AND payment_method = 'Cash' AND status = 'Pending'
+            ) combined_cash
+        ");
         $paySum = floatval($this->db->single()->amt ?? 0.0);
 
         // Fetch sum of cash expenses recorded so far

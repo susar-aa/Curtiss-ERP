@@ -2915,12 +2915,28 @@ class RepTrackingController extends Controller {
 
     public function api_get_route_expenses($routeId) {
         $db = new Database();
+        
+        // Resolve all bound route IDs
+        $routeIds = [$routeId];
+        $db->query("SELECT route_binding_id FROM rep_daily_routes WHERE id = :rid");
+        $db->bind(':rid', $routeId);
+        $row = $db->single();
+        if ($row && !empty($row->route_binding_id)) {
+            $db->query("SELECT id FROM rep_daily_routes WHERE route_binding_id = :bid");
+            $db->bind(':bid', $row->route_binding_id);
+            $bound = $db->resultSet() ?: [];
+            foreach ($bound as $b) {
+                $routeIds[] = intval($b->id);
+            }
+        }
+        $routeIds = array_unique($routeIds);
+        $ridsStr = implode(',', $routeIds);
+
         $db->query("SELECT e.*, u.username as creator_name
                     FROM route_expenses e
                     LEFT JOIN users u ON e.created_by = u.id
-                    WHERE e.rep_route_id = :rid
+                    WHERE e.rep_route_id IN ($ridsStr)
                     ORDER BY e.expense_date DESC, e.id DESC");
-        $db->bind(':rid', intval($routeId));
         $expenses = $db->resultSet() ?: [];
 
         $totalExpenses = 0.0;
