@@ -40,7 +40,10 @@ class JournalEntry {
                 return 'Accounting Error: The period containing date ' . $date . ' is closed and locked.';
             }
 
-            $this->db->beginTransaction();
+            $inTransaction = $this->db->inTransaction();
+            if (!$inTransaction) {
+                $this->db->beginTransaction();
+            }
 
             // Duplicate reference check under transaction lock
             if (!empty($reference)) {
@@ -48,7 +51,9 @@ class JournalEntry {
                 $this->db->bind(':ref', $reference);
                 $dupRes = $this->db->single();
                 if ($dupRes && $dupRes->cnt > 0) {
-                    $this->db->rollBack();
+                    if (!$inTransaction) {
+                        $this->db->rollBack();
+                    }
                     return 'Accounting Error: Journal Entry Reference "' . htmlspecialchars($reference) . '" already exists.';
                 }
             }
@@ -92,10 +97,12 @@ class JournalEntry {
                 $this->db->execute();
             }
 
-            $this->db->commit();
+            if (!$inTransaction) {
+                $this->db->commit();
+            }
             return true;
         } catch (Exception $e) {
-            if ($this->db->inTransaction()) {
+            if (!$inTransaction && $this->db->inTransaction()) {
                 $this->db->rollBack();
             }
             return 'Database Error: Failed to post entry. ' . $e->getMessage();
