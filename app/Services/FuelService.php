@@ -242,7 +242,7 @@ class FuelService {
             $this->db->commit();
 
             // Log audit
-            $this->audit->log('Record Fuel Refill', 'Vehicle', $historyDesc, $fuelRecordId);
+            $this->audit->logAction($userId, 'Record Fuel Refill', 'Vehicle', $historyDesc, $fuelRecordId);
             return true;
         } catch (PDOException $e) {
             if ($this->db->inTransaction()) {
@@ -311,7 +311,7 @@ class FuelService {
             $this->db->commit();
 
             // Log audit
-            $this->audit->log('Void Fuel Refill', 'Vehicle', $historyDesc, $fuelRecordId);
+            $this->audit->logAction($userId, 'Void Fuel Refill', 'Vehicle', $historyDesc, $fuelRecordId);
             return true;
         } catch (PDOException $e) {
             if ($this->db->inTransaction()) {
