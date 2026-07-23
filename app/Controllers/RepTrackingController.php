@@ -1015,16 +1015,18 @@ class RepTrackingController extends Controller {
             exit;
         }
 
-        $deliveryId = $this->deliveryModel->createDelivery($deliveryData);
-
         header('Content-Type: application/json');
-        if ($deliveryId) {
-            // Route status remains in Adjustments stage until explicitly advanced by operator
-            $this->logRouteActivity('Arrange Delivery', 'RepTracking', "Created delivery arrangement ID: {$deliveryId}", $deliveryData['rep_route_id']);
-
-            echo json_encode(['status' => 'success', 'message' => 'Delivery arranged successfully!', 'delivery_id' => $deliveryId]);
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Failed to arrange delivery. Database transaction error.']);
+        try {
+            $deliveryId = $this->deliveryModel->createDelivery($deliveryData);
+            if ($deliveryId) {
+                // Route status remains in Adjustments stage until explicitly advanced by operator
+                $this->logRouteActivity('Arrange Delivery', 'RepTracking', "Created/Updated delivery arrangement ID: {$deliveryId}", $deliveryData['rep_route_id']);
+                echo json_encode(['status' => 'success', 'message' => 'Delivery arranged successfully!', 'delivery_id' => $deliveryId]);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Failed to arrange delivery. Database transaction error.']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to save delivery: ' . $e->getMessage()]);
         }
         exit;
     }

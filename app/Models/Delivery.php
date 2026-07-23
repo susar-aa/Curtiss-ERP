@@ -11,18 +11,44 @@ class Delivery {
         $this->db->beginTransaction();
 
         try {
-            // 1. Insert into deliveries table
-            $this->db->query("INSERT INTO deliveries (rep_route_id, secondary_rep_route_id, delivery_date, vehicle_number, driver_name, partner_name, selected_credit_invoices) 
-                              VALUES (:rep_route_id, :secondary_rep_route_id, :delivery_date, :vehicle_number, :driver_name, :partner_name, :selected_credit_invoices)");
-            $this->db->bind(':rep_route_id', $data['rep_route_id']);
-            $this->db->bind(':secondary_rep_route_id', $data['secondary_rep_route_id'] ?? null);
-            $this->db->bind(':delivery_date', $data['delivery_date']);
-            $this->db->bind(':vehicle_number', $data['vehicle_number']);
-            $this->db->bind(':driver_name', $data['driver_name']);
-            $this->db->bind(':partner_name', $data['partner_name']);
-            $this->db->bind(':selected_credit_invoices', $data['selected_credit_invoices'] ?? null);
-            $this->db->execute();
-            $deliveryId = $this->db->lastInsertId();
+            // Check if there is already an existing delivery for this rep_route_id
+            $this->db->query("SELECT id FROM deliveries WHERE rep_route_id = :rid LIMIT 1");
+            $this->db->bind(':rid', $data['rep_route_id']);
+            $existing = $this->db->single();
+
+            if ($existing) {
+                $deliveryId = intval($existing->id);
+                // Update the existing delivery record
+                $this->db->query("UPDATE deliveries SET 
+                                    secondary_rep_route_id = :secondary_rep_route_id, 
+                                    delivery_date = :delivery_date, 
+                                    vehicle_number = :vehicle_number, 
+                                    driver_name = :driver_name, 
+                                    partner_name = :partner_name, 
+                                    selected_credit_invoices = :selected_credit_invoices
+                                  WHERE id = :id");
+                $this->db->bind(':secondary_rep_route_id', $data['secondary_rep_route_id'] ?? null);
+                $this->db->bind(':delivery_date', $data['delivery_date']);
+                $this->db->bind(':vehicle_number', $data['vehicle_number']);
+                $this->db->bind(':driver_name', $data['driver_name']);
+                $this->db->bind(':partner_name', $data['partner_name']);
+                $this->db->bind(':selected_credit_invoices', $data['selected_credit_invoices'] ?? null);
+                $this->db->bind(':id', $deliveryId);
+                $this->db->execute();
+            } else {
+                // 1. Insert into deliveries table
+                $this->db->query("INSERT INTO deliveries (rep_route_id, secondary_rep_route_id, delivery_date, vehicle_number, driver_name, partner_name, selected_credit_invoices) 
+                                  VALUES (:rep_route_id, :secondary_rep_route_id, :delivery_date, :vehicle_number, :driver_name, :partner_name, :selected_credit_invoices)");
+                $this->db->bind(':rep_route_id', $data['rep_route_id']);
+                $this->db->bind(':secondary_rep_route_id', $data['secondary_rep_route_id'] ?? null);
+                $this->db->bind(':delivery_date', $data['delivery_date']);
+                $this->db->bind(':vehicle_number', $data['vehicle_number']);
+                $this->db->bind(':driver_name', $data['driver_name']);
+                $this->db->bind(':partner_name', $data['partner_name']);
+                $this->db->bind(':selected_credit_invoices', $data['selected_credit_invoices'] ?? null);
+                $this->db->execute();
+                $deliveryId = $this->db->lastInsertId();
+            }
 
             // 2. Update status of rep_daily_routes to 'Delivery Arranged'
             $rids = [intval($data['rep_route_id'])];
@@ -39,7 +65,7 @@ class Delivery {
             return $deliveryId;
         } catch (Exception $e) {
             $this->db->rollBack();
-            return false;
+            throw $e;
         }
     }
 
@@ -1090,6 +1116,8 @@ class Delivery {
                         $this->db->execute();
                     }
 
+                    require_once __DIR__ . '/JournalEntry.php';
+                    $journalModel = new JournalEntry();
                     $journalModel->postEntry(date('Y-m-d'), $ref, $journalDesc, $lines, $adminUserId);
                 }
             }
