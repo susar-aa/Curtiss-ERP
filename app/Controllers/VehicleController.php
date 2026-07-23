@@ -156,14 +156,23 @@ class VehicleController extends Controller {
         $input = file_get_contents('php://input');
         $payload = json_decode($input, true) ?: $_POST;
 
-        require_once dirname(__DIR__) . '/Services/FuelService.php';
-        $fuelService = new FuelService();
-        $res = $fuelService->recordFuelEntry($payload, intval($_SESSION['user_id']));
+        try {
+            require_once dirname(__DIR__) . '/Services/FuelService.php';
+            $fuelService = new FuelService();
+            $res = $fuelService->recordFuelEntry($payload, intval($_SESSION['user_id']));
 
-        if ($res === true) {
-            echo json_encode(['status' => 'success', 'message' => 'Fuel transaction recorded successfully.']);
-        } else {
-            echo json_encode(['status' => 'error', 'message' => $res ?: 'Failed to record fuel transaction.']);
+            if ($res === true) {
+                echo json_encode(['status' => 'success', 'message' => 'Fuel transaction recorded successfully.']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => $res ?: 'Failed to record fuel transaction.']);
+            }
+        } catch (Throwable $e) {
+            error_log('[api_add_fuel_entry] ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'Server error: ' . $e->getMessage(),
+                'trace' => $e->getFile() . ':' . $e->getLine()
+            ]);
         }
         exit;
     }
