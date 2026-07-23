@@ -2241,13 +2241,13 @@
         let desc = '';
 
         if (!delId || delId === '0' || delId === '') {
-            isBlocked = true;
-            title = 'Delivery Data Incomplete';
-            desc = 'Reconciliation and postings are unavailable because delivery has not been arranged for this route yet.';
+            // isBlocked = true;
+            // title = 'Delivery Data Incomplete';
+            // desc = 'Reconciliation and postings are unavailable because delivery has not been arranged for this route yet.';
         } else if (currentRouteStatus !== 'Finalizing' && currentRouteStatus !== 'Completed' && currentRouteStatus !== 'Finalized') {
-            isBlocked = true;
-            title = 'Preview Not Available';
-            desc = 'Reconciliation and GL postings can only be performed once the route delivery has completed execution.';
+            // isBlocked = true;
+            // title = 'Preview Not Available';
+            // desc = 'Reconciliation and GL postings can only be performed once the route delivery has completed execution.';
         }
 
         if (isBlocked) {
