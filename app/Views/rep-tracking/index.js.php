@@ -3561,11 +3561,16 @@
     }
 
     function submitFinalSettle() {
-        const vehicle = document.getElementById('settleDaVehicle').value;
-        const driver = document.getElementById('settleDaDriver').value;
-        const partner = document.getElementById('settleDaPartner').value;
+        if (!currentDeliveryDetails || !currentDeliveryDetails.delivery) {
+            alert("Error: Delivery details not loaded.");
+            return;
+        }
 
-        if (!vehicle) { alert("Please select a Vehicle Number."); return; }
+        const vehicle = currentDeliveryDetails.delivery.vehicle_number || document.getElementById('settleDaVehicle').value;
+        const driver = currentDeliveryDetails.delivery.driver_name || document.getElementById('settleDaDriver').value;
+        const partner = currentDeliveryDetails.delivery.partner_name || document.getElementById('settleDaPartner').value;
+
+        if (!vehicle || vehicle === 'Pending Vehicle') { alert("Please select a Vehicle Number."); return; }
         if (!driver) { alert("Please select a Driver Name."); return; }
 
         if (!confirm("Are you sure you want to FINALIZE and SETTLE this delivery route?\n\nThis will post all selected collections to GL and update inventory.")) {
