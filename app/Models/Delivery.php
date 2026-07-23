@@ -473,6 +473,10 @@ class Delivery {
         $collectedCashExpensesTotal = floatval($this->db->single()->amt ?? 0.0);
         $adjustedCashCollections = floatval($collectionsStats->cash_collections) - $collectedCashExpensesTotal;
 
+        // Fetch all route expenses for the bound routes
+        $this->db->query("SELECT * FROM route_expenses WHERE rep_route_id IN ($ridsStr) ORDER BY expense_date DESC, id DESC");
+        $expensesList = $this->db->resultSet() ?: [];
+
         return [
             'delivery' => $delivery,
             'cash_sales' => floatval($cash_sales),
@@ -488,7 +492,8 @@ class Delivery {
             'all_accounts' => $allAccounts,
             'bank_accounts' => $bankAccounts,
             'payments' => $payments,
-            'collected_cash_expenses_total' => $collectedCashExpensesTotal
+            'collected_cash_expenses_total' => $collectedCashExpensesTotal,
+            'expenses' => $expensesList
         ];
     }
 

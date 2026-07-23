@@ -204,16 +204,17 @@
             return empty($p->mobile_rep_id);
         });
 
-        $deliveryCashCollections = 0.0;
+        $rawCashCollections = floatval($b['raw_cash_collections'] ?? 0.0);
+        $routeExpenses = floatval($b['collected_cash_expenses_total'] ?? 0.0);
+        $deliveryCashCollections = max(0.0, $rawCashCollections - $routeExpenses);
+
         $deliveryChequeCollections = 0.0;
         $deliveryBankCollections = 0.0;
         $deliveryChequeList = [];
         
         foreach ($deliveryPayments as $p) {
             $amt = floatval($p->amount);
-            if ($p->payment_method === 'Cash') {
-                $deliveryCashCollections += $amt;
-            } elseif ($p->payment_method === 'Cheque') {
+            if ($p->payment_method === 'Cheque') {
                 $deliveryChequeCollections += $amt;
                 $deliveryChequeList[] = (object)[
                     'customer_name' => $p->customer_name,
@@ -300,14 +301,26 @@
         <div style="flex: 1;">
             <?php 
                 $cashDenoms = [];
-                try {
-                    if ($d->cash_denominations) {
+                $totalCashEntered = 0.0;
+                $hasRecon = false;
+                
+                if (!empty($d->reconciliation_json)) {
+                    try {
+                        $recon = json_decode($d->reconciliation_json, true);
+                        if ($recon && isset($recon['actual_cash'])) {
+                            $cashDenoms = $recon['actual_denominations'] ?? [];
+                            $hasRecon = true;
+                        }
+                    } catch(Exception $e) {}
+                }
+                
+                if (!$hasRecon && !empty($d->cash_denominations)) {
+                    try {
                         $cashDenoms = json_decode($d->cash_denominations, true);
-                    }
-                } catch(Exception $e) {}
+                    } catch(Exception $e) {}
+                }
                 
                 $denomList = [5000, 2000, 1000, 500, 100, 50, 20, 'coins'];
-                $totalCashEntered = 0.0;
                 $hasEntries = false;
             ?>
             <table>
@@ -370,6 +383,36 @@
             </div>
         </div>
     </div>
+
+    <div class="section-title">💸 Recorded Route Expenses</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Expense Type</th>
+                <th>Description</th>
+                <th>Payment Source</th>
+                <th>Reference/Details</th>
+                <th class="text-right">Amount (Rs)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (empty($b['expenses'])): ?>
+                <tr>
+                    <td colspan="5" class="text-center" style="color: #666; padding: 15px;">No expenses recorded on this trip.</td>
+                </tr>
+            <?php else: ?>
+                <?php foreach ($b['expenses'] as $exp): ?>
+                    <tr>
+                        <td style="font-weight: 600;"><?= htmlspecialchars($exp->expense_type) ?></td>
+                        <td><?= htmlspecialchars($exp->description) ?></td>
+                        <td><span class="badge badge-success" style="background:#f1f5f9; color:#334155; border:1px solid #e2e8f0;"><?= htmlspecialchars($exp->payment_source) ?></span></td>
+                        <td><?= htmlspecialchars($exp->vehicle_number ? 'Veh: ' . $exp->vehicle_number : '') ?></td>
+                        <td class="text-right monospace" style="font-weight: 700;">Rs <?= number_format($exp->amount, 2) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </tbody>
+    </table>
 
     <div class="section-title">💳 PDC Cheques Collected Audit</div>
     <table>
