@@ -3210,33 +3210,41 @@
                         if (expEl) expEl.innerText = 'Rs ' + rExp.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                     }).catch(err => {});
                 
-                let driverCashCollections = 0.0;
-                if (balancing.payments) {
-                    balancing.payments.forEach(p => {
-                        if (p.payment_method === 'Cash' && !p.mobile_rep_id) {
-                            driverCashCollections += parseFloat(p.amount) || 0;
+                const rawExpectedCash = parseFloat(balancing.raw_cash_collections || 0);
+                const routeExpenses = parseFloat(balancing.collected_cash_expenses_total || 0);
+                const expectedCash = Math.max(0, rawExpectedCash - routeExpenses);
+
+                let actualCash = 0.0;
+                let hasRecon = false;
+                if (delivery.reconciliation_json) {
+                    try {
+                        const recon = JSON.parse(delivery.reconciliation_json);
+                        if (recon && recon.actual_cash !== undefined) {
+                            actualCash = parseFloat(recon.actual_cash || 0);
+                            hasRecon = true;
                         }
-                    });
+                    } catch(e) {}
                 }
                 
-                let cashDenoms = {};
-                try {
-                    if (delivery.cash_denominations) {
-                        cashDenoms = JSON.parse(delivery.cash_denominations);
-                    }
-                } catch(e) {}
+                if (!hasRecon) {
+                    let cashDenoms = {};
+                    try {
+                        if (delivery.cash_denominations) {
+                            cashDenoms = JSON.parse(delivery.cash_denominations);
+                        }
+                    } catch(e) {}
+                    
+                    const denomList = [5000, 2000, 1000, 500, 100, 50, 20];
+                    denomList.forEach(den => {
+                        const cnt = parseInt(cashDenoms[den]) || 0;
+                        actualCash += cnt * den;
+                    });
+                    actualCash += parseFloat(cashDenoms['coins']) || 0;
+                }
                 
-                let actualCash = 0.0;
-                const denomList = [5000, 2000, 1000, 500, 100, 50, 20];
-                denomList.forEach(den => {
-                    const cnt = parseInt(cashDenoms[den]) || 0;
-                    actualCash += cnt * den;
-                });
-                actualCash += parseFloat(cashDenoms['coins']) || 0;
+                const variance = actualCash - expectedCash;
                 
-                const variance = actualCash - driverCashCollections;
-                
-                document.getElementById('sumExpectedCash').innerText = 'Rs ' + driverCashCollections.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('sumExpectedCash').innerText = 'Rs ' + expectedCash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 document.getElementById('sumActualCash').innerText = 'Rs ' + actualCash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 
                 const varEl = document.getElementById('sumCashVariance');
