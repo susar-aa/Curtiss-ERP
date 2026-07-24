@@ -977,10 +977,14 @@
             .then(data => {
                 const bills = data.bills || [];
                 tbody.innerHTML = '';
+                let totalSum = 0;
                 if (bills.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#888;">No sales orders attached to this route.</td></tr>';
+                    const totalGrandEl = document.getElementById('adjustmentsTotalGrand');
+                    if (totalGrandEl) totalGrandEl.innerText = 'Rs 0.00';
                 } else {
                     bills.forEach(bill => {
+                        totalSum += parseFloat(bill.true_grand_total || 0);
                         let time = new Date(bill.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                         
                         let dropdownHtml = '';
@@ -1040,6 +1044,8 @@
                             </tr>
                         `;
                     });
+                    const totalGrandEl = document.getElementById('adjustmentsTotalGrand');
+                    if (totalGrandEl) totalGrandEl.innerText = 'Rs ' + totalSum.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
                 }
             });
     }

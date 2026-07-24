@@ -480,6 +480,13 @@
                                 </tr>
                             </thead>
                             <tbody id="adjustmentsInvoicesTbody"></tbody>
+                            <tfoot id="adjustmentsInvoicesTfoot" style="background:#f8fafc; font-weight:bold; border-top: 2px solid var(--c-separator);">
+                                <tr>
+                                    <td colspan="3" style="padding:10px; text-align:right; color: var(--t-primary);">Total:</td>
+                                    <td id="adjustmentsTotalGrand" style="padding:10px; text-align:right; font-family:monospace; font-size:14px; color:var(--primary);">Rs 0.00</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>

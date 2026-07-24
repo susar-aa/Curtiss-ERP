@@ -183,6 +183,16 @@ class RepTracking {
         }
         $placeholdersStr = implode(',', $placeholders);
 
+        $this->db->query("SELECT id FROM deliveries WHERE rep_route_id IN ($placeholdersStr) OR secondary_rep_route_id IN ($placeholdersStr) ORDER BY id DESC LIMIT 1");
+        foreach ($routeIds as $index => $id) {
+            $this->db->bind(":rid_" . $index, intval($id));
+        }
+        $latestDel = $this->db->single();
+        if (!$latestDel) {
+            return [];
+        }
+        $latestDeliveryId = $latestDel->id;
+
         $this->db->query("
             SELECT dpi.item_id,
                    dpi.variation_option_id,
@@ -202,14 +212,14 @@ class RepTracking {
                        0
                    ) as unit_price
             FROM delivery_picking_items dpi
-            JOIN deliveries d ON dpi.delivery_id = d.id
             LEFT JOIN items it ON dpi.item_id = it.id
             LEFT JOIN item_categories ic ON it.category_id = ic.id
-            WHERE d.rep_route_id IN ($placeholdersStr) OR d.secondary_rep_route_id IN ($placeholdersStr)
+            WHERE dpi.delivery_id = :delivery_id
             GROUP BY dpi.item_id, COALESCE(dpi.variation_option_id, 0), dpi.item_name, COALESCE(ic.name, 'Uncategorized')
             HAVING (SUM(COALESCE(dpi.final_loaded_qty, dpi.required_qty)) > 0 OR SUM(dpi.required_qty) > 0)
             ORDER BY category_name ASC, dpi.item_name ASC
         ");
+        $this->db->bind(':delivery_id', $latestDeliveryId);
         foreach ($routeIds as $index => $id) {
             $this->db->bind(":rid_" . $index, intval($id));
         }
