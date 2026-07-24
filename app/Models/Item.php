@@ -683,6 +683,7 @@ class Item {
         }
 
         $activeOptionIds = [];
+        $activeVariationValueIds = [];
 
         foreach ($decoded as $v) {
             $valueName = $v->attribute ?? $v->value ?? $v->value_name ?? '';
@@ -695,6 +696,7 @@ class Item {
             $wholesalePrice = floatval($v->wholesale_price ?? 0);
             $cost = floatval($v->cost ?? $v->cost_price ?? 0);
             $qty = floatval($v->qty ?? $v->quantity_on_hand ?? 0);
+            $imagePath = $v->image_path ?? '';
 
             // 1. Resolve variation attribute group name
             $attrName = 'Option';
@@ -754,7 +756,7 @@ class Item {
                 $optionId = $ivoRow->id;
                 $this->db->query("
                     UPDATE item_variation_options 
-                    SET sku = :sku, price = :price, wholesale_price = :wholesale_price, cost = :cost, quantity_on_hand = :qty 
+                    SET sku = :sku, price = :price, wholesale_price = :wholesale_price, cost = :cost, quantity_on_hand = :qty, image_path = :image_path 
                     WHERE id = :id
                 ");
                 $this->db->bind(':sku', $sku);
@@ -762,13 +764,14 @@ class Item {
                 $this->db->bind(':wholesale_price', $wholesalePrice);
                 $this->db->bind(':cost', $cost);
                 $this->db->bind(':qty', $qty);
+                $this->db->bind(':image_path', !empty($imagePath) ? $imagePath : null);
                 $this->db->bind(':id', $optionId);
                 $this->db->execute();
             } else {
                 $this->db->query("
                     INSERT INTO item_variation_options 
-                    (item_id, variation_id, variation_value_id, sku, price, wholesale_price, cost, quantity_on_hand, quantity_reserved) 
-                    VALUES (:item_id, :var_id, :val_id, :sku, :price, :wholesale_price, :cost, :qty, 0)
+                    (item_id, variation_id, variation_value_id, sku, price, wholesale_price, cost, quantity_on_hand, quantity_reserved, image_path) 
+                    VALUES (:item_id, :var_id, :val_id, :sku, :price, :wholesale_price, :cost, :qty, 0, :image_path)
                 ");
                 $this->db->bind(':item_id', $itemId);
                 $this->db->bind(':var_id', $variationId);
@@ -778,11 +781,39 @@ class Item {
                 $this->db->bind(':wholesale_price', $wholesalePrice);
                 $this->db->bind(':cost', $cost);
                 $this->db->bind(':qty', $qty);
+                $this->db->bind(':image_path', !empty($imagePath) ? $imagePath : null);
                 $this->db->execute();
                 $optionId = $this->db->lastInsertId();
             }
 
+            // Sync item_images table for this variation
+            if (!empty($imagePath)) {
+                $this->db->query("SELECT id FROM item_images WHERE item_id = :item_id AND variation_value_id = :val_id LIMIT 1");
+                $this->db->bind(':item_id', $itemId);
+                $this->db->bind(':val_id', $variationValueId);
+                $imgExist = $this->db->single();
+
+                if ($imgExist) {
+                    $this->db->query("UPDATE item_images SET image_path = :image_path, is_primary = 1 WHERE id = :id");
+                    $this->db->bind(':image_path', $imagePath);
+                    $this->db->bind(':id', $imgExist->id);
+                    $this->db->execute();
+                } else {
+                    $this->db->query("INSERT INTO item_images (item_id, image_path, is_primary, variation_value_id) VALUES (:item_id, :image_path, 1, :val_id)");
+                    $this->db->bind(':item_id', $itemId);
+                    $this->db->bind(':image_path', $imagePath);
+                    $this->db->bind(':val_id', $variationValueId);
+                    $this->db->execute();
+                }
+            } else {
+                $this->db->query("DELETE FROM item_images WHERE item_id = :item_id AND variation_value_id = :val_id");
+                $this->db->bind(':item_id', $itemId);
+                $this->db->bind(':val_id', $variationValueId);
+                $this->db->execute();
+            }
+
             $activeOptionIds[] = $optionId;
+            $activeVariationValueIds[] = $variationValueId;
         }
 
         // 5. Delete removed variation options
@@ -793,6 +824,18 @@ class Item {
             $this->db->execute();
         } else {
             $this->db->query("DELETE FROM item_variation_options WHERE item_id = :item_id");
+            $this->db->bind(':item_id', $itemId);
+            $this->db->execute();
+        }
+
+        // Delete removed variation value images from item_images
+        if (!empty($activeVariationValueIds)) {
+            $valIdsPlaceholders = implode(',', array_map('intval', $activeVariationValueIds));
+            $this->db->query("DELETE FROM item_images WHERE item_id = :item_id AND variation_value_id IS NOT NULL AND variation_value_id NOT IN ($valIdsPlaceholders)");
+            $this->db->bind(':item_id', $itemId);
+            $this->db->execute();
+        } else {
+            $this->db->query("DELETE FROM item_images WHERE item_id = :item_id AND variation_value_id IS NOT NULL");
             $this->db->bind(':item_id', $itemId);
             $this->db->execute();
         }
@@ -809,7 +852,7 @@ class Item {
         $itemId = intval($itemId);
         try {
             $this->db->query("
-                SELECT ivo.id, ivo.sku, ivo.price, ivo.wholesale_price, ivo.cost, ivo.quantity_on_hand, vv.value_name AS attribute
+                SELECT ivo.id, ivo.sku, ivo.price, ivo.wholesale_price, ivo.cost, ivo.quantity_on_hand, ivo.image_path, vv.value_name AS attribute
                 FROM item_variation_options ivo
                 LEFT JOIN variation_values vv ON ivo.variation_value_id = vv.id
                 WHERE ivo.item_id = :id
@@ -827,7 +870,8 @@ class Item {
                     'cost' => floatval($opt->cost),
                     'qty' => intval($opt->quantity_on_hand),
                     'quantity_on_hand' => intval($opt->quantity_on_hand),
-                    'attribute' => $opt->attribute
+                    'attribute' => $opt->attribute,
+                    'image_path' => $opt->image_path ?? ''
                 ];
             }
             
@@ -843,6 +887,7 @@ class Item {
             return false;
         }
     }
+
 
     /**
      * Automatically generate sample codes ONLY for products that don't have one yet.

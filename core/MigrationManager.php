@@ -1090,8 +1090,10 @@ class MigrationManager {
             'seed_initial_item_suppliers' => "
                 INSERT IGNORE INTO item_suppliers (item_id, supplier_id, last_cost_price, is_primary)
                 SELECT id, vendor_id, cost_price, 1 FROM items WHERE vendor_id IS NOT NULL AND vendor_id > 0
-            "
+            ",
+            'item_variation_options_image_path' => "ALTER TABLE item_variation_options ADD COLUMN image_path VARCHAR(255) NULL DEFAULT NULL AFTER quantity_reserved"
         ];
+
     }
 
     /**
