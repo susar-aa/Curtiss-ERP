@@ -408,11 +408,7 @@ if (!function_exists('erp_safe_json_encode')) {
                             <label>Category</label>
                             <select name="category_id" id="mainCategorySelect" class="font-semibold cursor-pointer" required>
                                 <option value="">General Stationery</option>
-                                <?php foreach ($categories as $cat): ?>
-                                    <option value="<?php echo $cat->id; ?>" <?php echo $category_id == $cat->id ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($cat->name); ?>
-                                    </option>
-                                <?php endforeach; ?>
+                                <?php foreach ($categories as $cat): ?><option value="<?php echo $cat->id; ?>" <?php echo $category_id == $cat->id ? 'selected' : ''; ?>><?php echo htmlspecialchars($cat->name); ?></option><?php endforeach; ?>
                             </select>
                         </div>
                         <div>
@@ -426,22 +422,14 @@ if (!function_exists('erp_safe_json_encode')) {
                             <label>Primary Supplier / Vendor *</label>
                             <select name="vendor_id" id="mainVendorSelect" class="font-semibold cursor-pointer" onchange="updatePrimarySupplierBadge()" required>
                                 <option value="">Select Primary Supplier</option>
-                                <?php foreach ($vendors as $v): ?>
-                                    <option value="<?php echo $v->id; ?>" <?php echo $vendor_id == $v->id ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($v->name); ?>
-                                    </option>
-                                <?php endforeach; ?>
+                                <?php foreach ($vendors as $v): ?><option value="<?php echo $v->id; ?>" <?php echo $vendor_id == $v->id ? 'selected' : ''; ?>><?php echo htmlspecialchars($v->name); ?></option><?php endforeach; ?>
                             </select>
                         </div>
                         <div>
                             <label>Warehouse storage bin</label>
                             <select name="warehouse_id" id="mainWarehouseSelect" class="font-semibold cursor-pointer" required>
                                 <option value="">Select Warehouse</option>
-                                <?php foreach ($warehouses as $wh): ?>
-                                    <option value="<?php echo $wh->id; ?>" <?php echo $warehouse_id == $wh->id ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($wh->name); ?>
-                                    </option>
-                                <?php endforeach; ?>
+                                <?php foreach ($warehouses as $wh): ?><option value="<?php echo $wh->id; ?>" <?php echo $warehouse_id == $wh->id ? 'selected' : ''; ?>><?php echo htmlspecialchars($wh->name); ?></option><?php endforeach; ?>
                             </select>
                         </div>
                     </div>
@@ -568,11 +556,7 @@ if (!function_exists('erp_safe_json_encode')) {
                                 <label>1. Select Attribute</label>
                                 <select id="attrGroupSelect" onchange="handleAttributeSelectionChange()" class="font-semibold cursor-pointer">
                                     <option value="">-- Choose Attribute --</option>
-                                    <?php foreach ($synced_attributes as $attr): ?>
-                                        <option value="<?php echo $attr->id; ?>">
-                                            <?php echo htmlspecialchars($attr->name); ?> (pa_<?php echo htmlspecialchars($attr->slug); ?>)
-                                        </option>
-                                    <?php endforeach; ?>
+                                    <?php foreach ($synced_attributes as $attr): ?><option value="<?php echo $attr->id; ?>"><?php echo htmlspecialchars($attr->name); ?> (pa_<?php echo htmlspecialchars($attr->slug); ?>)</option><?php endforeach; ?>
                                     <option value="Custom">Custom Group...</option>
                                 </select>
                             </div>
@@ -602,15 +586,15 @@ if (!function_exists('erp_safe_json_encode')) {
                         <table class="w-full text-left text-xs border-collapse">
                             <thead>
                                 <tr class="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
-                                    <th class="py-2.5 px-3 w-[15%]">Option</th>
-                                    <th class="py-2.5 px-3 w-[10%]">Image</th>
-                                    <th class="py-2.5 px-3 w-[15%]">SKU *</th>
-                                    <th class="py-2.5 px-3 w-[10%] text-right">Cost</th>
-                                    <th class="py-2.5 px-3 w-[10%] text-right">Retail Marg.</th>
-                                    <th class="py-2.5 px-3 w-[12%] text-right">Retail Price</th>
-                                    <th class="py-2.5 px-3 w-[10%] text-right">B2B Marg.</th>
-                                    <th class="py-2.5 px-3 w-[12%] text-right">B2B Price</th>
-                                    <th class="py-2.5 px-3 w-[6%] text-right"></th>
+                                    <th class="py-2.5 px-2 w-[8%]">Option</th>
+                                    <th class="py-2.5 px-2 w-[6%] text-center">Image</th>
+                                    <th class="py-2.5 px-2 w-[14%]">SKU *</th>
+                                    <th class="py-2.5 px-2 w-[12%] text-right">Cost</th>
+                                    <th class="py-2.5 px-2 w-[12%] text-right">Retail Marg.</th>
+                                    <th class="py-2.5 px-2 w-[14%] text-right">Retail Price</th>
+                                    <th class="py-2.5 px-2 w-[12%] text-right">B2B Marg.</th>
+                                    <th class="py-2.5 px-2 w-[14%] text-right">B2B Price</th>
+                                    <th class="py-2.5 px-2 w-[8%] text-right"></th>
                                 </tr>
                             </thead>
                             <tbody id="variationsTableBody" class="divide-y divide-slate-200">
@@ -754,8 +738,7 @@ if (!function_exists('erp_safe_json_encode')) {
          * Disable/Hide base prices when variations exist (Variations have different prices)
          */
         function toggleBasePricingSection() {
-            const pricingSection = document.getElementById('basePricingSection');
-            const pricingAlert = document.getElementById('basePricingAlert');
+            const pricingContainer = document.getElementById('basePricingContainer');
             const costInput = document.getElementById('costPriceInput');
             const sellInput = document.getElementById('sellingPriceInput');
             const wholesaleInput = document.getElementById('wholesalePriceInput');
@@ -764,16 +747,14 @@ if (!function_exists('erp_safe_json_encode')) {
             const hasVariations = variations.filter(v => v !== null).length > 0;
 
             if (hasVariations) {
-                pricingSection.classList.add('opacity-45', 'pointer-events-none');
-                pricingAlert.classList.remove('hidden');
+                if (pricingContainer) pricingContainer.classList.add('hidden');
                 
                 // Remove HTML5 constraint required flags during active variation syncing
                 costInput.removeAttribute('required');
                 sellInput.removeAttribute('required');
                 wholesaleInput.removeAttribute('required');
             } else {
-                pricingSection.classList.remove('opacity-45', 'pointer-events-none');
-                pricingAlert.classList.add('hidden');
+                if (pricingContainer) pricingContainer.classList.remove('hidden');
                 
                 costInput.setAttribute('required', 'required');
                 sellInput.setAttribute('required', 'required');
@@ -1275,25 +1256,25 @@ if (!function_exists('erp_safe_json_encode')) {
                         ` : ''}
                     </div>
                 </td>
-                <td class="py-2 px-2">
-                    <input type="text" value="${escapeHtml(rowData.sku)}" oninput="updateVariationValue(${index}, 'sku', this.value)" placeholder="SKU" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono focus:border-black focus:ring-0 focus:outline-none">
+                <td class="py-2 px-1">
+                    <input type="text" value="${escapeHtml(rowData.sku)}" oninput="updateVariationValue(${index}, 'sku', this.value)" placeholder="SKU" class="w-full bg-white border border-slate-200 rounded-lg px-1.5 py-1 text-xs font-mono focus:border-black focus:ring-0 focus:outline-none">
                 </td>
-                <td class="py-2 px-2 text-right">
-                    <input type="number" step="0.01" id="var-cost-${index}" value="${rowData.cost_price}" oninput="updateVariationValue(${index}, 'cost_price', this.value); calculateVarRowMaster(${index});" placeholder="0.00" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono text-right focus:border-black focus:ring-0 focus:outline-none">
+                <td class="py-2 px-1 text-right">
+                    <input type="number" step="0.01" id="var-cost-${index}" value="${rowData.cost_price}" oninput="updateVariationValue(${index}, 'cost_price', this.value); calculateVarRowMaster(${index});" placeholder="0.00" class="w-full bg-white border border-slate-200 rounded-lg px-1.5 py-1 text-xs font-mono text-right focus:border-black focus:ring-0 focus:outline-none">
                 </td>
-                <td class="py-2 px-2 text-right">
-                    <input type="number" step="0.1" id="var-retail-margin-${index}" value="${rowData.retail_margin}" oninput="updateVariationValue(${index}, 'retail_margin', this.value); calculateVarPriceFromMargin(${index}, 'retail');" placeholder="0.0" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono text-right focus:border-black focus:ring-0 focus:outline-none">
+                <td class="py-2 px-1 text-right">
+                    <input type="number" step="0.1" id="var-retail-margin-${index}" value="${rowData.retail_margin}" oninput="updateVariationValue(${index}, 'retail_margin', this.value); calculateVarPriceFromMargin(${index}, 'retail');" placeholder="0.0" class="w-full bg-white border border-slate-200 rounded-lg px-1.5 py-1 text-xs font-mono text-right focus:border-black focus:ring-0 focus:outline-none">
                 </td>
-                <td class="py-2 px-2 text-right">
-                    <input type="number" step="0.01" id="var-retail-price-${index}" value="${rowData.price}" oninput="updateVariationValue(${index}, 'price', this.value); calculateVarMarginFromPrice(${index}, 'retail');" placeholder="0.00" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono text-right focus:border-black focus:ring-0 focus:outline-none">
+                <td class="py-2 px-1 text-right">
+                    <input type="number" step="0.01" id="var-retail-price-${index}" value="${rowData.price}" oninput="updateVariationValue(${index}, 'price', this.value); calculateVarMarginFromPrice(${index}, 'retail');" placeholder="0.00" class="w-full bg-white border border-slate-200 rounded-lg px-1.5 py-1 text-xs font-mono text-right focus:border-black focus:ring-0 focus:outline-none">
                 </td>
-                <td class="py-2 px-2 text-right">
-                    <input type="number" step="0.1" id="var-wholesale-margin-${index}" value="${rowData.wholesale_margin}" oninput="updateVariationValue(${index}, 'wholesale_margin', this.value); calculateVarPriceFromMargin(${index}, 'wholesale');" placeholder="0.0" class="w-full bg-purple-50/20 border border-purple-200 rounded-lg px-2 py-1 text-xs font-mono text-right text-purple-900 focus:border-purple-500 focus:ring-0 focus:outline-none font-bold font-bold">
+                <td class="py-2 px-1 text-right">
+                    <input type="number" step="0.1" id="var-wholesale-margin-${index}" value="${rowData.wholesale_margin}" oninput="updateVariationValue(${index}, 'wholesale_margin', this.value); calculateVarPriceFromMargin(${index}, 'wholesale');" placeholder="0.0" class="w-full bg-purple-50/20 border border-purple-200 rounded-lg px-1.5 py-1 text-xs font-mono text-right text-purple-900 focus:border-purple-500 focus:ring-0 focus:outline-none font-bold">
                 </td>
-                <td class="py-2 px-2 text-right">
-                    <input type="number" step="0.01" id="var-wholesale-price-${index}" value="${rowData.wholesale_price}" oninput="updateVariationValue(${index}, 'wholesale_price', this.value); calculateVarMarginFromPrice(${index}, 'wholesale');" placeholder="0.00" class="w-full bg-purple-50/20 border border-purple-200 rounded-lg px-2 py-1 text-xs font-mono text-right text-purple-900 focus:border-purple-500 focus:ring-0 focus:outline-none font-bold">
+                <td class="py-2 px-1 text-right">
+                    <input type="number" step="0.01" id="var-wholesale-price-${index}" value="${rowData.wholesale_price}" oninput="updateVariationValue(${index}, 'wholesale_price', this.value); calculateVarMarginFromPrice(${index}, 'wholesale');" placeholder="0.00" class="w-full bg-purple-50/20 border border-purple-200 rounded-lg px-1.5 py-1 text-xs font-mono text-right text-purple-900 focus:border-purple-500 focus:ring-0 focus:outline-none font-bold">
                 </td>
-                <td class="py-2 px-2 text-right">
+                <td class="py-2 px-1 text-right">
                     <button type="button" onclick="removeVariationRow(${index})" class="p-1 bg-red-50 hover:bg-red-100 text-red-650 border border-red-100 rounded-lg transition-colors cursor-pointer text-xs"><i class="fa-solid fa-trash-can"></i></button>
                 </td>
             `;
