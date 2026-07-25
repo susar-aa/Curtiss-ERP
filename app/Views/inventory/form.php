@@ -238,7 +238,7 @@ if (!function_exists('erp_safe_json_encode')) {
         </div>
 
         <!-- Form Layout: Clean side-by-side without scrolling -->
-        <form action="<?php echo $form_action; ?>" method="POST" id="productForm" enctype="multipart/form-data" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <form action="<?php echo $form_action; ?>" method="POST" id="productForm" enctype="multipart/form-data" class="space-y-6">
             
             <!-- Hidden inputs for variations and image compression base64 -->
             <input type="hidden" name="variations_json" id="variationsJson" value="[]">
@@ -249,297 +249,264 @@ if (!function_exists('erp_safe_json_encode')) {
             <!-- Hidden File Input for Variation Images -->
             <input type="file" id="varImageFileInput" accept="image/*" class="hidden">
 
-            <!-- LEFT COLUMN (5/12 span): Media + Identifiers + Specs -->
-            <div class="lg:col-span-5 space-y-6">
-                
-                <!-- Media Upload Card -->
-                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
-                        <i class="fa-solid fa-image text-slate-500"></i> Product Media
-                    </h3>
+            <!-- Modern Premium Tab Navigation -->
+            <div class="flex border-b border-slate-200 mb-6 gap-6">
+                <button type="button" id="tabBtnMain" onclick="switchFormTab('main')" class="pb-3 text-sm font-bold border-b-2 border-black text-black transition-all flex items-center gap-2 cursor-pointer focus:outline-none">
+                    <i class="fa-solid fa-circle-info"></i> Media & Main Info
+                </button>
+                <button type="button" id="tabBtnVariations" onclick="switchFormTab('variations')" class="pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-black transition-all flex items-center gap-2 cursor-pointer focus:outline-none">
+                    <i class="fa-solid fa-diagram-project"></i> Attributes & Variations
+                </button>
+            </div>
+
+            <!-- TAB 1: MEDIA & MAIN INFO -->
+            <div id="tabContentMain" class="space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     
-                    <div id="dropzone" class="border-2 border-dashed border-slate-200 hover:border-black bg-slate-50/50 hover:bg-slate-50 rounded-xl p-4 transition-all duration-200 cursor-pointer text-center relative">
-                        <input type="file" id="imageFileInput" accept="image/*" multiple class="absolute inset-0 opacity-0 cursor-pointer">
-                        <div class="space-y-1">
-                            <i class="fa-solid fa-cloud-arrow-up text-lg text-slate-450"></i>
-                            <p class="text-xs font-semibold text-slate-700">Drag & drop or <span class="text-black underline">browse</span> to upload multiple images</p>
-                            <p class="text-[10px] text-slate-400">First image in the grid below will be set as primary.</p>
-                        </div>
-                    </div>
+                    <!-- LEFT COLUMN (5/12 span): Media + Specs + Autopost -->
+                    <div class="lg:col-span-5 space-y-6">
+                        <!-- Media Upload Card -->
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
+                                <i class="fa-solid fa-image text-slate-500"></i> Product Media
+                            </h3>
+                            
+                            <div id="dropzone" class="border-2 border-dashed border-slate-200 hover:border-black bg-slate-50/50 hover:bg-slate-50 rounded-xl p-4 transition-all duration-200 cursor-pointer text-center relative">
+                                <input type="file" id="imageFileInput" accept="image/*" multiple class="absolute inset-0 opacity-0 cursor-pointer">
+                                <div class="space-y-1">
+                                    <i class="fa-solid fa-cloud-arrow-up text-lg text-slate-450"></i>
+                                    <p class="text-xs font-semibold text-slate-700">Drag & drop or <span class="text-black underline">browse</span> to upload multiple images</p>
+                                    <p class="text-[10px] text-slate-400">First image in the grid below will be set as primary.</p>
+                                </div>
+                            </div>
 
-                    <!-- Upload Progress -->
-                    <div id="progressWrapper" class="bg-slate-100 rounded-full h-1.5 overflow-hidden hidden border border-slate-200">
-                        <div id="progressBar" class="bg-black h-full transition-all duration-300" style="width: 0%"></div>
-                    </div>
-                    <p id="progressText" class="text-[10px] text-slate-500 font-semibold mt-1 hidden"></p>
+                            <!-- Upload Progress -->
+                            <div id="progressWrapper" class="bg-slate-100 rounded-full h-1.5 overflow-hidden hidden border border-slate-200">
+                                <div id="progressBar" class="bg-black h-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <p id="progressText" class="text-[10px] text-slate-500 font-semibold mt-1 hidden"></p>
 
-                    <!-- Main Product Images Grid -->
-                    <div id="mainImagesGrid" class="grid grid-cols-4 gap-2 mt-2">
-                        <!-- Populated dynamically by JS -->
-                    </div>
-                </div>
+                            <!-- Main Product Images Grid -->
+                            <div id="mainImagesGrid" class="grid grid-cols-4 gap-2 mt-2">
+                                <!-- Populated dynamically by JS -->
+                            </div>
+                        </div>
 
-                <!-- Product Identifiers & Database Relations Card -->
-                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
-                        <i class="fa-solid fa-barcode text-slate-500"></i> Core Info & Relations
-                    </h3>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label>SKU / Code *</label>
-                            <input type="text" name="item_code" id="mainItemCode" value="<?php echo htmlspecialchars($item_code); ?>" placeholder="SKU" required
-                                   class="font-mono font-bold">
+                        <!-- Notes specifications description -->
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
+                                <i class="fa-solid fa-file-lines text-slate-500"></i> Notes & Specifications
+                            </h3>
+                            <textarea name="description" rows="3" placeholder="Enter specifications notes..."
+                                      class="leading-relaxed"><?php echo htmlspecialchars($description); ?></textarea>
                         </div>
-                        <div>
-                            <label>Sample Code</label>
-                            <input type="text" name="sample_code" id="mainSampleCode" value="<?php echo htmlspecialchars($sample_code ?? ''); ?>" placeholder="SMP-001"
-                                   class="font-mono">
-                        </div>
-                    </div>
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label>Barcode UPC/EAN</label>
-                            <input type="text" name="barcode" id="mainBarcode" value="<?php echo htmlspecialchars($barcode); ?>" placeholder="Barcode"
-                                   class="font-mono">
-                        </div>
-                        <div>
-                            <label>Status</label>
-                            <select name="status" id="mainStatusSelect" class="font-semibold cursor-pointer" required>
-                                <option value="active" <?php echo $status === 'active' ? 'selected' : ''; ?>>Active</option>
-                                <option value="inactive" <?php echo $status === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label>Item Name / Product Title *</label>
-                        <input type="text" name="name" id="mainProductName" value="<?php echo htmlspecialchars($name); ?>" placeholder="Falcon Luxury Pen" required
-                               class="font-semibold" spellcheck="true" list="englishProductWords">
-                        <datalist id="englishProductWords">
-                            <option value="Pen"></option>
-                            <option value="Pencil"></option>
-                            <option value="Paper"></option>
-                            <option value="Notebook"></option>
-                            <option value="File"></option>
-                            <option value="Folder"></option>
-                            <option value="Marker"></option>
-                            <option value="Eraser"></option>
-                            <option value="Ruler"></option>
-                            <option value="Tape"></option>
-                            <option value="Glue"></option>
-                            <option value="Scissors"></option>
-                            <option value="Stapler"></option>
-                            <option value="Organizer"></option>
-                            <option value="Holder"></option>
-                            <option value="Desk"></option>
-                            <option value="Office"></option>
-                            <option value="School"></option>
-                            <option value="Highlighter"></option>
-                            <option value="Crayon"></option>
-                            <option value="Watercolor"></option>
-                            <option value="Canvas"></option>
-                            <option value="Brush"></option>
-                            <option value="Sketchbook"></option>
-                            <option value="Ink"></option>
-                            <option value="Cartridge"></option>
-                            <option value="Calculator"></option>
-                            <option value="Board"></option>
-                            <option value="Chalk"></option>
-                            <option value="Card"></option>
-                            <option value="Envelope"></option>
-                            <option value="Label"></option>
-                            <option value="Box"></option>
-                            <option value="Pack"></option>
-                            <option value="Set"></option>
-                            <option value="Black"></option>
-                            <option value="Blue"></option>
-                            <option value="Red"></option>
-                            <option value="Green"></option>
-                            <option value="White"></option>
-                            <option value="Yellow"></option>
-                            <option value="Metal"></option>
-                            <option value="Plastic"></option>
-                            <option value="Wooden"></option>
-                            <option value="Leather"></option>
-                            <option value="Clear"></option>
-                            <option value="Gel"></option>
-                            <option value="Ballpoint"></option>
-                            <option value="Fountain"></option>
-                            <option value="Rollerball"></option>
-                            <option value="Mechanical"></option>
-                            <option value="A4"></option>
-                            <option value="A3"></option>
-                            <option value="Premium"></option>
-                            <option value="Luxury"></option>
-                            <option value="Standard"></option>
-                            <option value="Executive"></option>
-                            <option value="Classic"></option>
-                            <option value="Deluxe"></option>
-                            <option value="Pro"></option>
-                            <option value="Ultra"></option>
-                            <option value="Super"></option>
-                            <option value="Pocket"></option>
-                            <option value="Desktop"></option>
-                            <option value="Portable"></option>
-                            <option value="Heavy"></option>
-                            <option value="Duty"></option>
-                            <option value="Double"></option>
-                            <option value="Single"></option>
-                            <option value="Color"></option>
-                            <option value="Coloured"></option>
-                            <option value="Sheet"></option>
-                            <option value="Book"></option>
-                            <option value="Binder"></option>
-                            <option value="Clips"></option>
-                            <option value="Pins"></option>
-                            <option value="Rubber"></option>
-                            <option value="Band"></option>
-                            <option value="Sharpener"></option>
-                            <option value="Cutter"></option>
-                            <option value="Whiteboard"></option>
-                            <option value="Magnetic"></option>
-                        </datalist>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label>Category</label>
-                            <select name="category_id" id="mainCategorySelect" class="font-semibold cursor-pointer" required>
-                                <option value="">General Stationery</option>
-                                <?php foreach ($categories as $cat): ?><option value="<?php echo $cat->id; ?>" <?php echo $category_id == $cat->id ? 'selected' : ''; ?>><?php echo htmlspecialchars($cat->name); ?></option><?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label>Brand / Manufacturer</label>
-                            <input type="text" name="brand" value="<?php echo htmlspecialchars($brand); ?>" placeholder="Brand">
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label>Primary Supplier / Vendor *</label>
-                            <select name="vendor_id" id="mainVendorSelect" class="font-semibold cursor-pointer" onchange="updatePrimarySupplierBadge()" required>
-                                <option value="">Select Primary Supplier</option>
-                                <?php foreach ($vendors as $v): ?><option value="<?php echo $v->id; ?>" <?php echo $vendor_id == $v->id ? 'selected' : ''; ?>><?php echo htmlspecialchars($v->name); ?></option><?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label>Warehouse storage bin</label>
-                            <select name="warehouse_id" id="mainWarehouseSelect" class="font-semibold cursor-pointer" required>
-                                <option value="">Select Warehouse</option>
-                                <?php foreach ($warehouses as $wh): ?><option value="<?php echo $wh->id; ?>" <?php echo $warehouse_id == $wh->id ? 'selected' : ''; ?>><?php echo htmlspecialchars($wh->name); ?></option><?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Multi-Supplier Sourcing List -->
-                    <div class="mt-3 pt-3 border-t border-slate-100">
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="!mb-0">Approved Suppliers / Multi-Vendor Sourcing</label>
-                            <span class="text-[10px] text-slate-400 font-normal">Select all vendors supplying this item</span>
-                        </div>
-                        <div class="bg-slate-50/80 border border-slate-200 rounded-xl p-3 max-h-[160px] overflow-y-auto space-y-1 shadow-inner">
-                            <?php 
-                                $linkedSupplierIds = array_map(function($s) { return (int)($s->supplier_id ?? 0); }, $item_suppliers);
-                                if (!empty($vendor_id) && !in_array((int)$vendor_id, $linkedSupplierIds)) {
-                                    $linkedSupplierIds[] = (int)$vendor_id;
-                                }
-                            ?>
-                            <?php foreach ($vendors as $v): ?>
-                                <?php $isLinked = in_array((int)$v->id, $linkedSupplierIds); ?>
-                                <label class="flex items-center justify-between p-2 rounded-lg hover:bg-white transition-all cursor-pointer select-none border border-transparent hover:border-slate-200 text-xs font-semibold text-slate-700">
-                                    <div class="flex items-center gap-2.5">
-                                        <input type="checkbox" name="supplier_ids[]" value="<?php echo $v->id; ?>" <?php echo $isLinked ? 'checked' : ''; ?>
-                                               class="supplier-checkbox w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer">
-                                        <span><?php echo htmlspecialchars($v->name); ?></span>
-                                    </div>
-                                    <span class="primary-badge text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full <?php echo ((int)$vendor_id === (int)$v->id) ? '' : 'hidden'; ?>">
-                                        <i class="fa-solid fa-star text-[8px] text-emerald-600"></i> Primary
-                                    </span>
+                        <!-- Facebook Autopost Option (Only visible when adding new product) -->
+                        <?php if (!$is_edit): ?>
+                        <div class="p-4 bg-blue-50/40 border border-blue-150 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="flex items-center gap-2.5">
+                                <input type="checkbox" name="share_facebook" id="shareFacebook" value="1" 
+                                       class="w-4 h-4 text-blue-600 border-slate-300 rounded cursor-pointer">
+                                <label for="shareFacebook" class="text-xs font-semibold text-slate-700 flex items-center gap-2 select-none cursor-pointer">
+                                    <i class="fa-brands fa-facebook text-blue-600 text-base"></i> Autopost new product to Facebook Page
                                 </label>
-                            <?php endforeach; ?>
-                            <?php if (empty($vendors)): ?>
-                                <p class="text-xs text-slate-400 italic text-center py-2">No vendors registered in system.</p>
+                            </div>
+                            <?php if (empty($data['settings']->facebook_page_id) || empty($data['settings']->facebook_access_token)): ?>
+                                <span class="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg font-semibold flex items-center gap-1">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> API keys not configured.
+                                </span>
                             <?php endif; ?>
                         </div>
+                        <?php endif; ?>
                     </div>
-                </div>
 
-                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
-                        <i class="fa-solid fa-scale-balanced text-slate-500"></i> Specs & alert limits
-                    </h3>
-                    <div class="grid grid-cols-3 gap-4">
-                        <div>
-                            <label>Alert Qty</label>
-                            <input type="number" name="alert_qty" id="mainAlertQty" value="<?php echo htmlspecialchars($alert_qty); ?>" placeholder="5"
-                                   class="font-mono" required>
+                    <!-- RIGHT COLUMN (7/12 span): Core Info + Pricing -->
+                    <div class="lg:col-span-7 space-y-6">
+                        <!-- Product Identifiers & Database Relations Card -->
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
+                                <i class="fa-solid fa-barcode text-slate-500"></i> Core Info & Relations
+                            </h3>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label>SKU / Code *</label>
+                                    <input type="text" name="item_code" id="mainItemCode" value="<?php echo htmlspecialchars($item_code); ?>" placeholder="SKU" required
+                                           class="font-mono font-bold">
+                                </div>
+                                <div>
+                                    <label>Sample Code</label>
+                                    <input type="text" name="sample_code" id="mainSampleCode" value="<?php echo htmlspecialchars($sample_code ?? ''); ?>" placeholder="SMP-001"
+                                           class="font-mono">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label>Barcode UPC/EAN</label>
+                                    <input type="text" name="barcode" id="mainBarcode" value="<?php echo htmlspecialchars($barcode); ?>" placeholder="Barcode"
+                                           class="font-mono">
+                                </div>
+                                <div>
+                                    <label>Status</label>
+                                    <select name="status" id="mainStatusSelect" class="font-semibold cursor-pointer" required>
+                                        <option value="active" <?php echo $status === 'active' ? 'selected' : ''; ?>>Active</option>
+                                        <option value="inactive" <?php echo $status === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label>Item Name / Product Title *</label>
+                                <input type="text" name="name" id="mainProductName" value="<?php echo htmlspecialchars($name); ?>" placeholder="Falcon Luxury Pen" required
+                                       class="font-semibold" spellcheck="true" list="englishProductWords">
+                                <datalist id="englishProductWords">
+                                    <option value="Pen"></option>
+                                    <option value="Pencil"></option>
+                                    <option value="Paper"></option>
+                                    <option value="Notebook"></option>
+                                    <option value="File"></option>
+                                    <option value="Folder"></option>
+                                    <option value="Marker"></option>
+                                    <option value="Eraser"></option>
+                                    <option value="Ruler"></option>
+                                    <option value="Tape"></option>
+                                    <option value="Glue"></option>
+                                    <option value="Scissors"></option>
+                                    <option value="Stapler"></option>
+                                    <option value="Organizer"></option>
+                                    <option value="Holder"></option>
+                                    <option value="Desk"></option>
+                                    <option value="Office"></option>
+                                    <option value="School"></option>
+                                    <option value="Highlighter"></option>
+                                    <option value="Crayon"></option>
+                                    <option value="Watercolor"></option>
+                                    <option value="Canvas"></option>
+                                    <option value="Brush"></option>
+                                    <option value="Sketchbook"></option>
+                                    <option value="Ink"></option>
+                                    <option value="Cartridge"></option>
+                                    <option value="Calculator"></option>
+                                    <option value="Board"></option>
+                                    <option value="Chalk"></option>
+                                    <option value="Card"></option>
+                                </datalist>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label>Category</label>
+                                    <select name="category_id" id="mainCategorySelect" class="font-semibold cursor-pointer" required>
+                                        <option value="">General Stationery</option>
+                                        <?php foreach ($categories as $cat): ?><option value="<?php echo $cat->id; ?>" <?php echo $category_id == $cat->id ? 'selected' : ''; ?>><?php echo htmlspecialchars($cat->name); ?></option><?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Brand / Manufacturer</label>
+                                    <input type="text" name="brand" value="<?php echo htmlspecialchars($brand); ?>" placeholder="Brand">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label>Primary Supplier / Vendor *</label>
+                                    <select name="vendor_id" id="mainVendorSelect" class="font-semibold cursor-pointer" onchange="updatePrimarySupplierBadge()" required>
+                                        <option value="">Select Primary Supplier</option>
+                                        <?php foreach ($vendors as $v): ?><option value="<?php echo $v->id; ?>" <?php echo $vendor_id == $v->id ? 'selected' : ''; ?>><?php echo htmlspecialchars($v->name); ?></option><?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Warehouse storage bin</label>
+                                    <select name="warehouse_id" id="mainWarehouseSelect" class="font-semibold cursor-pointer" required>
+                                        <option value="">Select Warehouse</option>
+                                        <?php foreach ($warehouses as $wh): ?><option value="<?php echo $wh->id; ?>" <?php echo $warehouse_id == $wh->id ? 'selected' : ''; ?>><?php echo htmlspecialchars($wh->name); ?></option><?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Multi-Supplier Sourcing List -->
+                            <div class="mt-3 pt-3 border-t border-slate-100">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="!mb-0">Approved Suppliers / Multi-Vendor Sourcing</label>
+                                    <span class="text-[10px] text-slate-400 font-normal">Select all vendors supplying this item</span>
+                                </div>
+                                <div class="bg-slate-50/80 border border-slate-200 rounded-xl p-3 max-h-[160px] overflow-y-auto space-y-1 shadow-inner">
+                                    <?php 
+                                        $linkedSupplierIds = array_map(function($s) { return (int)($s->supplier_id ?? 0); }, $item_suppliers);
+                                        if (!empty($vendor_id) && !in_array((int)$vendor_id, $linkedSupplierIds)) {
+                                            $linkedSupplierIds[] = (int)$vendor_id;
+                                        }
+                                        $linkedSupplierIds = array_unique($linkedSupplierIds);
+                                    ?>
+                                    <?php foreach ($vendors as $v): ?>
+                                        <label class="flex items-center gap-2 px-2 py-1 hover:bg-slate-200/50 rounded-lg cursor-pointer transition-colors text-xs font-semibold text-slate-700">
+                                            <input type="checkbox" name="supplier_ids[]" value="<?php echo $v->id; ?>" 
+                                                   class="supplier-checkbox w-3.5 h-3.5 text-black border-slate-300 rounded cursor-pointer"
+                                                   <?php echo in_array((int)$v->id, $linkedSupplierIds) ? 'checked' : ''; ?>>
+                                            <?php echo htmlspecialchars($v->name); ?>
+                                            <span class="primary-badge text-[8px] font-bold text-white bg-black px-1.5 py-0.5 rounded-md uppercase tracking-wider scale-90 origin-left hidden">Primary</span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 pt-2">
+                                <div>
+                                    <label>Weight</label>
+                                    <input type="text" name="weight" value="<?php echo htmlspecialchars($weight); ?>" placeholder="e.g. 150g">
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <label>UOM</label>
-                            <select name="unit" class="font-semibold cursor-pointer">
-                                <option value="pcs" <?php echo $unit === 'pcs' ? 'selected' : ''; ?>>pcs</option>
-                                <option value="pack" <?php echo $unit === 'pack' ? 'selected' : ''; ?>>pack</option>
-                                <option value="box" <?php echo $unit === 'box' ? 'selected' : ''; ?>>box</option>
-                                <option value="kg" <?php echo $unit === 'kg' ? 'selected' : ''; ?>>kg</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label>Weight</label>
-                            <input type="text" name="weight" value="<?php echo htmlspecialchars($weight); ?>" placeholder="e.g. 150g">
+
+                        <!-- Pricing Card -->
+                        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4" id="basePricingContainer">
+                            <div id="basePricingAlert" class="bg-purple-50 border border-purple-200 text-purple-955 p-3.5 rounded-xl text-xs flex items-center gap-3 hidden">
+                                <i class="fa-solid fa-lock text-purple-650 text-sm animate-bounce"></i>
+                                <div>
+                                    <strong>Pricing Deactivated:</strong> Pricing is managed at the variation level below.
+                                </div>
+                            </div>
+                            
+                            <div id="basePricingSection" class="space-y-4">
+                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
+                                    <i class="fa-solid fa-wallet text-slate-500"></i> Base Pricing & Profit Margins
+                                </h3>
+                                <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                                    <div>
+                                        <label>Cost (LKR)</label>
+                                        <input type="number" step="0.01" name="cost_price" id="costPriceInput" value="<?php echo htmlspecialchars($cost_price); ?>" oninput="calculateMarkupProfit()" placeholder="0.00"
+                                               class="font-mono font-bold" required>
+                                    </div>
+                                    <div>
+                                        <label>Retail Marg. %</label>
+                                        <input type="number" step="0.1" name="retail_margin" id="retailMarginInput" value="<?php echo htmlspecialchars($retail_margin); ?>" oninput="calculatePriceFromMargin('retail')" placeholder="0.0"
+                                               class="font-mono font-bold" required>
+                                    </div>
+                                    <div>
+                                        <label>Retail Price *</label>
+                                        <input type="number" step="0.01" name="selling_price" id="sellingPriceInput" value="<?php echo htmlspecialchars($selling_price); ?>" oninput="calculateMarginFromPrice('retail')" placeholder="0.00" required
+                                               class="font-mono font-bold">
+                                    </div>
+                                    <div>
+                                        <label class="purple-lbl">B2B Margin %</label>
+                                        <input type="number" step="0.1" name="wholesale_margin" id="wholesaleMarginInput" value="<?php echo htmlspecialchars($wholesale_margin); ?>" oninput="calculatePriceFromMargin('wholesale')" placeholder="0.0"
+                                               class="font-mono font-bold wholesale-input" required>
+                                    </div>
+                                    <div>
+                                        <label class="purple-lbl">B2B Price *</label>
+                                        <input type="number" step="0.01" name="wholesale_price" id="wholesalePriceInput" value="<?php echo htmlspecialchars($wholesale_price); ?>" oninput="calculateMarginFromPrice('wholesale')" placeholder="0.00"
+                                               class="font-mono font-bold wholesale-input" required>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- RIGHT COLUMN (7/12 span): Pricing + Variations + Notes -->
-            <div class="lg:col-span-7 space-y-6">
-                
-                <!-- Pricing Card -->
-                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4" id="basePricingContainer">
-                    <div id="basePricingAlert" class="bg-purple-50 border border-purple-200 text-purple-955 p-3.5 rounded-xl text-xs flex items-center gap-3 hidden">
-                        <i class="fa-solid fa-lock text-purple-650 text-sm animate-bounce"></i>
-                        <div>
-                            <strong>Pricing Deactivated:</strong> Pricing is managed at the variation level below.
-                        </div>
-                    </div>
-                    
-                    <div id="basePricingSection" class="space-y-4">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
-                            <i class="fa-solid fa-wallet text-slate-500"></i> Base Pricing & Profit Margins
-                        </h3>
-                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                            <div>
-                                <label>Cost (LKR)</label>
-                                <input type="number" step="0.01" name="cost_price" id="costPriceInput" value="<?php echo htmlspecialchars($cost_price); ?>" oninput="calculateMarkupProfit()" placeholder="0.00"
-                                       class="font-mono font-bold" required>
-                            </div>
-                            <div>
-                                <label>Retail Marg. %</label>
-                                <input type="number" step="0.1" name="retail_margin" id="retailMarginInput" value="<?php echo htmlspecialchars($retail_margin); ?>" oninput="calculatePriceFromMargin('retail')" placeholder="0.0"
-                                       class="font-mono font-bold" required>
-                            </div>
-                            <div>
-                                <label>Retail Price *</label>
-                                <input type="number" step="0.01" name="selling_price" id="sellingPriceInput" value="<?php echo htmlspecialchars($selling_price); ?>" oninput="calculateMarginFromPrice('retail')" placeholder="0.00" required
-                                       class="font-mono font-bold">
-                            </div>
-                            <div>
-                                <label class="purple-lbl">B2B Margin %</label>
-                                <input type="number" step="0.1" name="wholesale_margin" id="wholesaleMarginInput" value="<?php echo htmlspecialchars($wholesale_margin); ?>" oninput="calculatePriceFromMargin('wholesale')" placeholder="0.0"
-                                       class="font-mono font-bold wholesale-input" required>
-                            </div>
-                            <div>
-                                <label class="purple-lbl">B2B Price *</label>
-                                <input type="number" step="0.01" name="wholesale_price" id="wholesalePriceInput" value="<?php echo htmlspecialchars($wholesale_price); ?>" oninput="calculateMarginFromPrice('wholesale')" placeholder="0.00"
-                                       class="font-mono font-bold wholesale-input" required>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+            <!-- TAB 2: ATTRIBUTES & VARIATIONS -->
+            <div id="tabContentVariations" class="hidden space-y-6">
                 <!-- Attributes & Variations Card -->
                 <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
                     <div class="flex justify-between items-center border-b border-slate-100 pb-2">
@@ -605,33 +572,6 @@ if (!function_exists('erp_safe_json_encode')) {
                         </table>
                     </div>
                 </div>
-
-                <!-- Notes specifications description -->
-                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-2">
-                        <i class="fa-solid fa-file-lines text-slate-500"></i> Notes & Specifications
-                    </h3>
-                    <textarea name="description" rows="3" placeholder="Enter specifications notes..."
-                              class="leading-relaxed"><?php echo htmlspecialchars($description); ?></textarea>
-                </div>
-
-                <!-- Facebook Autopost Option (Only visible when adding new product) -->
-                <?php if (!$is_edit): ?>
-                <div class="p-4 bg-blue-50/40 border border-blue-150 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div class="flex items-center gap-2.5">
-                        <input type="checkbox" name="share_facebook" id="shareFacebook" value="1" 
-                               class="w-4 h-4 text-blue-600 border-slate-300 rounded cursor-pointer">
-                        <label for="shareFacebook" class="text-xs font-semibold text-slate-700 flex items-center gap-2 select-none cursor-pointer">
-                            <i class="fa-brands fa-facebook text-blue-600 text-base"></i> Autopost new product to Facebook Page
-                        </label>
-                    </div>
-                    <?php if (empty($data['settings']->facebook_page_id) || empty($data['settings']->facebook_access_token)): ?>
-                        <span class="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg font-semibold flex items-center gap-1">
-                            <i class="fa-solid fa-triangle-exclamation"></i> API keys not configured.
-                        </span>
-                    <?php endif; ?>
-                </div>
-                <?php endif; ?>
             </div>
         </form>
     </div>
@@ -1621,6 +1561,53 @@ if (!function_exists('erp_safe_json_encode')) {
             const errEl = document.getElementById('sampleDuplicateError');
             if (errEl) errEl.remove();
         }
+
+        // Tab switching logic
+        function switchFormTab(tabName) {
+            const btnMain = document.getElementById('tabBtnMain');
+            const btnVars = document.getElementById('tabBtnVariations');
+            const contentMain = document.getElementById('tabContentMain');
+            const contentVars = document.getElementById('tabContentVariations');
+
+            if (tabName === 'main') {
+                if (btnMain) {
+                    btnMain.classList.remove('border-transparent', 'text-slate-500');
+                    btnMain.classList.add('border-black', 'text-black', 'font-bold');
+                }
+                if (btnVars) {
+                    btnVars.classList.remove('border-black', 'text-black', 'font-bold');
+                    btnVars.classList.add('border-transparent', 'text-slate-500');
+                }
+                if (contentMain) contentMain.classList.remove('hidden');
+                if (contentVars) contentVars.classList.add('hidden');
+            } else if (tabName === 'variations') {
+                if (btnVars) {
+                    btnVars.classList.remove('border-transparent', 'text-slate-500');
+                    btnVars.classList.add('border-black', 'text-black', 'font-bold');
+                }
+                if (btnMain) {
+                    btnMain.classList.remove('border-black', 'text-black', 'font-bold');
+                    btnMain.classList.add('border-transparent', 'text-slate-500');
+                }
+                if (contentVars) contentVars.classList.remove('hidden');
+                if (contentMain) contentMain.classList.add('hidden');
+            }
+        }
+
+        // Form submission auto-tab validation resolver
+        document.getElementById('productForm').addEventListener('submit', function(e) {
+            const tab1Required = this.querySelectorAll('#tabContentMain [required]');
+            let hasInvalidTab1 = false;
+            for (let el of tab1Required) {
+                if (!el.checkValidity()) {
+                    hasInvalidTab1 = true;
+                    break;
+                }
+            }
+            if (hasInvalidTab1) {
+                switchFormTab('main');
+            }
+        });
 
         // Run initial duplicate check on load to catch pre-existing duplicate inputs if any
         window.addEventListener('DOMContentLoaded', () => {
