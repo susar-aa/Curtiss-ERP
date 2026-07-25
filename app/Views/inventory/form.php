@@ -1362,8 +1362,14 @@ if (!function_exists('erp_safe_json_encode')) {
                 calculateMarkupProfit();
             }
 
-            <?php if ($is_edit && isset($item->variations_json) && !empty($item->variations_json)): ?>
-                const savedVariations = <?php echo json_encode(json_decode($item->variations_json) ?: [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+            <?php 
+            $varsList = $data['variations'] ?? null;
+            if (empty($varsList) && $is_edit && isset($item->variations_json) && !empty($item->variations_json)) {
+                $varsList = json_decode($item->variations_json, true) ?: [];
+            }
+            if ($is_edit && !empty($varsList)): 
+            ?>
+                const savedVariations = <?php echo json_encode($varsList, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
                 if (Array.isArray(savedVariations)) {
                     savedVariations.forEach(item => addVariationRow(item));
                 }

@@ -1465,6 +1465,25 @@ class InventoryController extends Controller {
             $item = $this->itemModel->getItemById($id);
             $itemSuppliers = $this->itemModel->getItemSuppliers($id);
             
+            // Query variations directly from database table (source of truth)
+            $dbVars = $this->itemModel->getItemVariations($id);
+            $variations = [];
+            if (!empty($dbVars)) {
+                foreach ($dbVars as $v) {
+                    $variations[] = [
+                        'id' => $v->id,
+                        'sku' => $v->sku,
+                        'price' => floatval($v->price),
+                        'wholesale_price' => floatval($v->wholesale_price ?? 0),
+                        'cost' => floatval($v->cost),
+                        'qty' => intval($v->quantity_on_hand),
+                        'quantity_on_hand' => intval($v->quantity_on_hand),
+                        'attribute' => $v->value_name ?? $v->variation_name ?? '',
+                        'image_path' => $v->image_path ?? ''
+                    ];
+                }
+            }
+
             // Dynamic Selections
             $categories = $this->categoryModel->getCategories();
             $vendors = $this->getVendorsDropdown();
@@ -1481,7 +1500,8 @@ class InventoryController extends Controller {
                 'vendors' => $vendors,
                 'warehouses' => $warehouses,
                 'settings' => $settings,
-                'product_suggestions' => $productSuggestions
+                'product_suggestions' => $productSuggestions,
+                'variations' => $variations
             ];
             $this->view('inventory/form', $data);
         }
