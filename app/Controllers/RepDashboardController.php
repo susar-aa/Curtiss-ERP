@@ -646,10 +646,11 @@ class RepDashboardController extends Controller {
                 $processCustomerUpdate = function($c, $serverId) {
                     $existingCust = $this->customerModel->getCustomerById($serverId);
                     
+                    $mcaName = !empty($c['mca_name']) ? $c['mca_name'] : (!empty($c['territory']) ? $c['territory'] : '');
                     $mcaId = null;
-                    if (!empty($c['territory'])) {
+                    if (!empty($mcaName)) {
                         $this->db->query("SELECT id FROM mca_areas WHERE name = :name LIMIT 1");
-                        $this->db->bind(':name', $c['territory']);
+                        $this->db->bind(':name', $mcaName);
                         $areaRow = $this->db->single();
                         if ($areaRow) {
                             $mcaId = $areaRow->id;
@@ -775,6 +776,17 @@ class RepDashboardController extends Controller {
                             $serverId = $existingCust->id;
                             $processCustomerUpdate($c, $serverId);
                         } else {
+                            $mcaName = !empty($c['mca_name']) ? $c['mca_name'] : (!empty($c['territory']) ? $c['territory'] : '');
+                            $mcaId = null;
+                            if (!empty($mcaName)) {
+                                $this->db->query("SELECT id FROM mca_areas WHERE name = :name LIMIT 1");
+                                $this->db->bind(':name', $mcaName);
+                                $areaRow = $this->db->single();
+                                if ($areaRow) {
+                                    $mcaId = $areaRow->id;
+                                }
+                            }
+
                             $this->customerModel->addCustomer([
                                 'name' => $c['name'],
                                 'email' => $c['email'] ?? null,
@@ -783,7 +795,7 @@ class RepDashboardController extends Controller {
                                 'address' => $c['address'] ?? null,
                                 'lat' => $c['latitude'] ?? null,
                                 'lng' => $c['longitude'] ?? null,
-                                'mca_id' => null,
+                                'mca_id' => $mcaId,
                                 'territory' => $c['territory'] ?? null,
                                 'credit_limit' => isset($c['credit_limit']) ? floatval($c['credit_limit']) : 0.00,
                                 'customer_type' => $c['customer_type'] ?? 'Standard',
