@@ -336,7 +336,11 @@ class CustomerController extends Controller {
             'Latitude',
             'Longitude',
             'Territory',
-            'Opening Balance'
+            'Credit Limit',
+            'Opening Balance',
+            'Outstanding Balance',
+            'Customer Type',
+            'Notes'
         ]);
 
         $customers = $this->customerModel->getAllCustomers();
@@ -351,7 +355,11 @@ class CustomerController extends Controller {
                 $c->latitude ?? '',
                 $c->longitude ?? '',
                 $c->mca_name ?? '',
-                $c->opening_balance ?? 0.00
+                $c->credit_limit ?? 0.00,
+                $c->opening_balance ?? 0.00,
+                $c->outstanding_balance ?? 0.00,
+                $c->customer_type ?? 'Standard',
+                $c->notes ?? ''
             ]);
         }
 
@@ -426,7 +434,10 @@ class CustomerController extends Controller {
             $latIdx       = $colMap['latitude'] ?? ($colMap['lat'] ?? -1);
             $lngIdx       = $colMap['longitude'] ?? ($colMap['lng'] ?? -1);
             $territoryIdx = $colMap['territory'] ?? ($colMap['mca'] ?? ($colMap['route'] ?? -1));
+            $creditLimitIdx = $colMap['credit limit'] ?? ($colMap['credit_limit'] ?? ($colMap['limit'] ?? -1));
             $openingBalIdx = $colMap['opening balance'] ?? ($colMap['opening_balance'] ?? ($colMap['opening'] ?? -1));
+            $customerTypeIdx = $colMap['customer type'] ?? ($colMap['customer_type'] ?? ($colMap['type'] ?? -1));
+            $notesIdx     = $colMap['notes'] ?? -1;
 
             // Load lookup maps to avoid N+1 queries during insertion
             $territoryMap = [];
@@ -436,7 +447,7 @@ class CustomerController extends Controller {
             }
 
             $customerMap = [];
-            $this->db->query("SELECT id, name, phone, email, whatsapp, address, latitude, longitude, mca_id, territory, opening_balance FROM customers");
+            $this->db->query("SELECT id, name, phone, email, whatsapp, address, latitude, longitude, mca_id, territory, credit_limit, customer_type, notes, opening_balance FROM customers");
             foreach ($this->db->resultSet() as $c) {
                 $customerMap[strtolower(trim($c->name))] = $c;
             }
@@ -462,7 +473,21 @@ class CustomerController extends Controller {
                     $latitude      = $latIdx       !== -1 ? trim($row[$latIdx] ?? '') : '';
                     $longitude     = $lngIdx       !== -1 ? trim($row[$lngIdx] ?? '') : '';
                     $territoryName = $territoryIdx !== -1 ? trim($row[$territoryIdx] ?? '') : '';
-                    $openingBal    = $openingBalIdx !== -1 ? floatval(trim($row[$openingBalIdx] ?? 0.00)) : 0.00;
+                    
+                    $openingBalText = $openingBalIdx !== -1 ? trim($row[$openingBalIdx] ?? '0') : '0';
+                    $openingBalText = preg_replace('/[^\d\.\-]/', '', $openingBalText);
+                    $openingBal = floatval($openingBalText);
+
+                    $creditLimitText = $creditLimitIdx !== -1 ? trim($row[$creditLimitIdx] ?? '0') : '0';
+                    $creditLimitText = preg_replace('/[^\d\.\-]/', '', $creditLimitText);
+                    $creditLimit = floatval($creditLimitText);
+
+                    $customerType = $customerTypeIdx !== -1 ? trim($row[$customerTypeIdx] ?? '') : 'Standard';
+                    if (empty($customerType)) {
+                        $customerType = 'Standard';
+                    }
+
+                    $notes = $notesIdx !== -1 ? trim($row[$notesIdx] ?? '') : '';
 
                     // Resolve territory (MCA area) on-the-fly
                     $mcaId = null;
@@ -505,6 +530,9 @@ class CustomerController extends Controller {
                         'lng' => !empty($longitude) ? $longitude : null,
                         'mca_id' => $mcaId,
                         'territory' => !empty($territoryName) ? $territoryName : null,
+                        'credit_limit' => $creditLimit,
+                        'customer_type' => $customerType,
+                        'notes' => !empty($notes) ? $notes : null,
                         'opening_balance' => $openingBal
                     ];
 
@@ -528,6 +556,9 @@ class CustomerController extends Controller {
                             'longitude' => 'Longitude',
                             'mca_id' => 'Territory ID',
                             'territory' => 'Territory Name',
+                            'credit_limit' => 'Credit Limit',
+                            'customer_type' => 'Customer Type',
+                            'notes' => 'Notes',
                             'opening_balance' => 'Opening Balance'
                         ];
 
@@ -583,6 +614,9 @@ class CustomerController extends Controller {
                                 'longitude' => $longitude,
                                 'mca_id' => $mcaId,
                                 'territory' => $territoryName,
+                                'credit_limit' => $creditLimit,
+                                'customer_type' => $customerType,
+                                'notes' => $notes,
                                 'opening_balance' => $openingBal
                             ];
                             $customerMap[$custKey] = $newCustomerObj;
