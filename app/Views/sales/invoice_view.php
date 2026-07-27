@@ -39,6 +39,17 @@ if (!empty($data['invoice']->rep_route_id)) {
         $repPhone = $repRow->rep_phone;
     }
 }
+
+// Fetch payment term information
+$paymentTermName = '';
+if (!empty($data['invoice']->payment_term_id)) {
+    $db->query("SELECT name FROM payment_terms WHERE id = :id LIMIT 1");
+    $db->bind(':id', $data['invoice']->payment_term_id);
+    $termRow = $db->single();
+    if ($termRow) {
+        $paymentTermName = $termRow->name;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -481,6 +492,12 @@ if (!empty($data['invoice']->rep_route_id)) {
                             <th>Date:</th>
                             <td><?= date('d-M-Y', strtotime($data['invoice']->invoice_date)) ?></td>
                         </tr>
+                        <?php if(!empty($paymentTermName)): ?>
+                        <tr>
+                            <th>Payment Term:</th>
+                            <td><?= htmlspecialchars($paymentTermName) ?></td>
+                        </tr>
+                        <?php endif; ?>
                         <?php if(!empty($data['invoice']->cheque_date)): ?>
                         <tr>
                             <th>Cheque Date:</th>

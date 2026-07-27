@@ -1564,6 +1564,31 @@ class SalesController extends Controller {
             $totalOutstanding = 0;
         }
 
+        // Fetch payment term information
+        $paymentTermName = '';
+        if (!empty($invoice->payment_term_id)) {
+            try {
+                $db = new Database();
+                $db->query("SELECT name FROM payment_terms WHERE id = :id LIMIT 1");
+                $db->bind(':id', $invoice->payment_term_id);
+                $termRow = $db->single();
+                if ($termRow) {
+                    $paymentTermName = $termRow->name;
+                }
+            } catch (Exception $e) {
+                // Ignore
+            }
+        }
+
+        $paymentTermHtml = '';
+        if (!empty($paymentTermName)) {
+            $paymentTermHtml = '
+            <tr>
+                <th style="text-align: right; font-size: 7.5pt; font-weight: bold; text-transform: uppercase; padding-right: 10px;">Payment Term:</th>
+                <td style="text-align: right; font-size: 8.5pt;">' . htmlspecialchars($paymentTermName) . '</td>
+            </tr>';
+        }
+
         // Calculations for totals
         $subTotal = floatval($invoice->total_amount);
         $globalDiscountAmount = 0;
@@ -1835,6 +1860,7 @@ class SalesController extends Controller {
                                 <th>Due Date:</th>
                                 <td>' . date('d-M-Y', strtotime($invoice->due_date)) . '</td>
                             </tr>
+                            ' . $paymentTermHtml . '
                             ' . $chequeDateHtml . '
                             <tr>
                                 <th>Status:</th>
