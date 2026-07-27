@@ -1817,6 +1817,7 @@ if (!function_exists('hasPermission')) {
                         <?php if (hasPermission('dunning')): ?><a href="<?= APP_URL ?>/dunning" class="fs-link"><i class="ph ph-clock"></i> Dunning</a><?php endif; ?>
                         <?php if (hasPermission('discount')): ?><a href="<?= APP_URL ?>/discount" class="fs-link"><i class="ph ph-tag"></i> Discounts</a><?php endif; ?>
                         <?php if (hasPermission('reptracking')): ?><a href="<?= APP_URL ?>/RepTracking/index" class="fs-link"><i class="ph ph-map-pin"></i> Route Control</a><?php endif; ?>
+                        <?php if (hasPermission('reptracking')): ?><a href="<?= APP_URL ?>/repperformance" class="fs-link"><i class="ph ph-chart-bar"></i> Rep Performance</a><?php endif; ?>
                         <?php if (hasPermission('territory')): ?><a href="<?= APP_URL ?>/territory" class="fs-link"><i class="ph ph-map-trifold"></i> Territory</a><?php endif; ?>
                         <?php if (hasPermission('sales')): ?><a href="<?= APP_URL ?>/sales/deleted_list" class="fs-link text-danger"><i class="ph ph-trash"></i> Deleted Invoices</a><?php endif; ?>
                     </div>

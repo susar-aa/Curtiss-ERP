@@ -1,0 +1,565 @@
+<?php
+declare(strict_types=1);
+
+class RepPerformance {
+    private Database $db;
+
+    public function __construct() {
+        $this->db = new Database();
+    }
+
+    /**
+     * Get all KPI configuration thresholds and weights
+     */
+    public function getKpiConfigs(): array {
+        $this->db->query("SELECT * FROM rep_kpi_configs ORDER BY id ASC");
+        return $this->db->resultSet() ?: [];
+    }
+
+    /**
+     * Update weights, targets, and min/max score constraints
+     */
+    public function updateKpiConfigs(array $configs): bool {
+        try {
+            $this->db->beginTransaction();
+            foreach ($configs as $kpiKey => $cfg) {
+                $this->db->query("UPDATE rep_kpi_configs 
+                                  SET weight = :weight, target_value = :target, min_score = :min_s, max_score = :max_s
+                                  WHERE kpi_key = :kkey");
+                $this->db->bind(':weight', floatval($cfg['weight'] ?? 0));
+                $this->db->bind(':target', floatval($cfg['target_value'] ?? 0));
+                $this->db->bind(':min_s', intval($cfg['min_score'] ?? 0));
+                $this->db->bind(':max_s', intval($cfg['max_score'] ?? 100));
+                $this->db->bind(':kkey', $kpiKey);
+                $this->db->execute();
+            }
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            return false;
+        }
+    }
+
+    /**
+     * Calculate all KPIs, scoring, and aggregates for a Sales Representative in a given period
+     */
+    public function calculatePerformance(
+        int $repUserId, 
+        string $startDate, 
+        string $endDate, 
+        ?int $routeId = null, 
+        ?int $areaId = null
+    ): array {
+        $startDate = date('Y-m-d', strtotime($startDate));
+        $endDate = date('Y-m-d', strtotime($endDate));
+
+        // 1. Resolve Rep Route IDs in period
+        $routeQueryStr = "SELECT id, status FROM rep_daily_routes WHERE user_id = :uid AND DATE(start_time) BETWEEN :start AND :end";
+        if ($routeId) {
+            $routeQueryStr = "SELECT id, status FROM rep_daily_routes WHERE id = :route_id";
+        }
+        
+        $this->db->query($routeQueryStr);
+        $this->db->bind(':uid', $repUserId);
+        if ($routeId) {
+            $this->db->bind(':route_id', $routeId);
+        } else {
+            $this->db->bind(':start', $startDate);
+            $this->db->bind(':end', $endDate);
+        }
+        $routes = $this->db->resultSet() ?: [];
+        $routeIds = array_map(fn($r) => intval($r->id), $routes);
+        
+        if (empty($routeIds)) {
+            $routeIds = [0]; // avoid SQL error in empty list
+        }
+
+        $routeIdsPlaceholder = implode(',', $routeIds);
+
+        // 2. Fetch Sales Invoices Grand Total Expression helper
+        $invoiceTotalExpr = "SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0))";
+
+        // KPI: Total Sales & Net Sales
+        $salesSql = "SELECT {$invoiceTotalExpr} as total_sales, COUNT(i.id) as invoice_count 
+                     FROM invoices i
+                     LEFT JOIN customers c ON i.customer_id = c.id
+                     WHERE i.rep_route_id IN ($routeIdsPlaceholder) AND i.status != 'Voided'
+                       AND i.invoice_date BETWEEN :start AND :end";
+        if ($areaId) {
+            $salesSql .= " AND c.mca_id = :area_id";
+        }
+
+        $this->db->query($salesSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        if ($areaId) {
+            $this->db->bind(':area_id', $areaId);
+        }
+        $salesRow = $this->db->single();
+        $totalSales = floatval($salesRow->total_sales ?? 0.00);
+        $invoiceCount = intval($salesRow->invoice_count ?? 0);
+
+        // Fetch Credit Notes (Returns) linked to these invoices
+        $cnSql = "SELECT SUM(cn.total_amount) as total_returns 
+                  FROM credit_notes cn
+                  JOIN invoices i ON cn.invoice_id = i.id
+                  LEFT JOIN customers c ON i.customer_id = c.id
+                  WHERE i.rep_route_id IN ($routeIdsPlaceholder) 
+                    AND cn.status IN ('Issued', 'Applied')
+                    AND cn.note_date BETWEEN :start AND :end";
+        if ($areaId) {
+            $cnSql .= " AND c.mca_id = :area_id";
+        }
+        $this->db->query($cnSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        if ($areaId) {
+            $this->db->bind(':area_id', $areaId);
+        }
+        $cnRow = $this->db->single();
+        $totalReturns = floatval($cnRow->total_returns ?? 0.00);
+        $netSales = $totalSales - $totalReturns;
+
+        $avgInvoiceValue = $invoiceCount > 0 ? $netSales / $invoiceCount : 0.00;
+
+        // KPI: Customer Visit coverage (Productive vs Unproductive)
+        $prodVisitsSql = "SELECT COUNT(DISTINCT i.customer_id) as active_customers 
+                          FROM invoices i
+                          LEFT JOIN customers c ON i.customer_id = c.id
+                          WHERE i.rep_route_id IN ($routeIdsPlaceholder) AND i.status != 'Voided'
+                            AND i.invoice_date BETWEEN :start AND :end";
+        if ($areaId) {
+            $prodVisitsSql .= " AND c.mca_id = :area_id";
+        }
+        $this->db->query($prodVisitsSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        if ($areaId) {
+            $this->db->bind(':area_id', $areaId);
+        }
+        $prodVisitsRow = $this->db->single();
+        $productiveVisits = intval($prodVisitsRow->active_customers ?? 0);
+
+        $unprodVisitsSql = "SELECT COUNT(*) as unprod_count 
+                            FROM unproductive_visits uv
+                            LEFT JOIN customers c ON uv.customer_id = c.id
+                            WHERE uv.rep_route_id IN ($routeIdsPlaceholder)
+                              AND DATE(uv.visit_time) BETWEEN :start AND :end";
+        if ($areaId) {
+            $unprodVisitsSql .= " AND c.mca_id = :area_id";
+        }
+        $this->db->query($unprodVisitsSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        if ($areaId) {
+            $this->db->bind(':area_id', $areaId);
+        }
+        $unprodVisitsRow = $this->db->single();
+        $unproductiveVisits = intval($unprodVisitsRow->unprod_count ?? 0);
+
+        $totalVisits = $productiveVisits + $unproductiveVisits;
+
+        // Repeat customers count (customers with > 1 invoice in period)
+        $repeatSql = "SELECT COUNT(*) as repeat_count FROM (
+                          SELECT i.customer_id, COUNT(*) as cnt 
+                          FROM invoices i
+                          LEFT JOIN customers c ON i.customer_id = c.id
+                          WHERE i.rep_route_id IN ($routeIdsPlaceholder) AND i.status != 'Voided'
+                            AND i.invoice_date BETWEEN :start AND :end";
+        if ($areaId) {
+            $repeatSql .= " AND c.mca_id = :area_id";
+        }
+        $repeatSql .= " GROUP BY i.customer_id HAVING cnt > 1) r";
+        
+        $this->db->query($repeatSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        if ($areaId) {
+            $this->db->bind(':area_id', $areaId);
+        }
+        $repeatRow = $this->db->single();
+        $repeatCustomers = intval($repeatRow->repeat_count ?? 0);
+
+        // New Customers acquired
+        $newCustSql = "SELECT COUNT(*) as new_count FROM customers WHERE created_by_user_id = :uid AND DATE(created_at) BETWEEN :start AND :end";
+        if ($areaId) {
+            $newCustSql .= " AND mca_id = :area_id";
+        }
+        $this->db->query($newCustSql);
+        $this->db->bind(':uid', $repUserId);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        if ($areaId) {
+            $this->db->bind(':area_id', $areaId);
+        }
+        $newCustRow = $this->db->single();
+        $newCustomers = intval($newCustRow->new_count ?? 0);
+
+        // Rates
+        $productiveVisitRate = $totalVisits > 0 ? ($productiveVisits / $totalVisits) * 100 : 0.00;
+        $customerConversionRate = $totalVisits > 0 ? ($productiveVisits / $totalVisits) * 100 : 0.00;
+
+        // Route Performance
+        $totalRoutes = count($routes);
+        $completedRoutes = count(array_filter($routes, fn($r) => $r->status === 'Completed' || $r->status === 'Finalized'));
+        $routeCompletionRate = $totalRoutes > 0 ? ($completedRoutes / $totalRoutes) * 100 : 0.00;
+
+        $avgSalesPerRoute = $totalRoutes > 0 ? $netSales / $totalRoutes : 0.00;
+        $avgCustomersPerRoute = $totalRoutes > 0 ? $productiveVisits / $totalRoutes : 0.00;
+        $avgSalesPerVisit = $totalVisits > 0 ? $netSales / $totalVisits : 0.00;
+
+        // Collections
+        $collectionsSql = "SELECT payment_method, SUM(amount) as total_collected 
+                           FROM customer_payments 
+                           WHERE rep_route_id IN ($routeIdsPlaceholder) AND status != 'Reversed'
+                             AND payment_date BETWEEN :start AND :end
+                           GROUP BY payment_method";
+        $this->db->query($collectionsSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        $collectionRows = $this->db->resultSet() ?: [];
+
+        $cashCollections = 0.00;
+        $chequeCollections = 0.00;
+        $bankCollections = 0.00;
+        $totalCollections = 0.00;
+
+        foreach ($collectionRows as $col) {
+            $amt = floatval($col->total_collected);
+            $totalCollections += $amt;
+            if ($col->payment_method === 'Cash') {
+                $cashCollections = $amt;
+            } elseif ($col->payment_method === 'Cheque') {
+                $chequeCollections = $amt;
+            } elseif ($col->payment_method === 'Bank Transfer') {
+                $bankCollections = $amt;
+            }
+        }
+
+        $collectionEfficiency = $totalSales > 0 ? ($totalCollections / $totalSales) * 100 : 0.00;
+
+        // Outstanding Receivables for Rep's Customers
+        $outstandingSql = "SELECT SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as outstanding 
+                           FROM invoices i
+                           LEFT JOIN customers c ON i.customer_id = c.id
+                           WHERE i.rep_route_id IN ($routeIdsPlaceholder) 
+                             AND i.status IN ('Unpaid', 'Draft')
+                             AND i.invoice_date BETWEEN :start AND :end";
+        if ($areaId) {
+            $outstandingSql .= " AND c.mca_id = :area_id";
+        }
+        $this->db->query($outstandingSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        if ($areaId) {
+            $this->db->bind(':area_id', $areaId);
+        }
+        $outstandingRow = $this->db->single();
+        $outstandingAmount = floatval($outstandingRow->outstanding ?? 0.00);
+
+        // Expense & Profitability
+        $expensesSql = "SELECT expense_type, SUM(amount) as exp_sum 
+                        FROM route_expenses 
+                        WHERE rep_route_id IN ($routeIdsPlaceholder)
+                          AND DATE(expense_date) BETWEEN :start AND :end
+                        GROUP BY expense_type";
+        $this->db->query($expensesSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        $expenseRows = $this->db->resultSet() ?: [];
+
+        $totalExpenses = 0.00;
+        $fuelExpenses = 0.00;
+        foreach ($expenseRows as $exp) {
+            $amt = floatval($exp->exp_sum);
+            $totalExpenses += $amt;
+            if (strtolower($exp->expense_type) === 'fuel') {
+                $fuelExpenses = $amt;
+            }
+        }
+
+        $otherExpenses = $totalExpenses - $fuelExpenses;
+        $expensePerRoute = $totalRoutes > 0 ? $totalExpenses / $totalRoutes : 0.00;
+        $netSalesAfterExpenses = $netSales - $totalExpenses;
+        $salesToExpenseRatio = $netSales > 0 ? ($totalExpenses / $netSales) * 100 : 0.00;
+
+        // Productivity
+        $routeDaysSql = "SELECT COUNT(DISTINCT DATE(start_time)) as active_days 
+                         FROM rep_daily_routes 
+                         WHERE user_id = :uid AND DATE(start_time) BETWEEN :start AND :end";
+        $this->db->query($routeDaysSql);
+        $this->db->bind(':uid', $repUserId);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        $routeDaysRow = $this->db->single();
+        $activeRouteDays = intval($routeDaysRow->active_days ?? 0);
+
+        // Working Days (difference in days)
+        $diff = date_diff(date_create($startDate), date_create($endDate));
+        $workingDays = max(1, intval($diff->format("%a")) + 1);
+
+        $avgDailySales = $activeRouteDays > 0 ? $netSales / $activeRouteDays : 0.00;
+        $avgDailyVisits = $activeRouteDays > 0 ? $totalVisits / $activeRouteDays : 0.00;
+        $avgDailyCollections = $activeRouteDays > 0 ? $totalCollections / $activeRouteDays : 0.00;
+        $salesPerProductiveVisit = $productiveVisits > 0 ? $netSales / $productiveVisits : 0.00;
+        $salesPerCustomer = $productiveVisits > 0 ? $netSales / $productiveVisits : 0.00;
+
+        // Top Categories
+        $topCategoriesSql = "SELECT c.name as category_name, SUM(ii.total) as total_sales 
+                             FROM invoice_items ii
+                             JOIN invoices i ON ii.invoice_id = i.id
+                             JOIN items it ON ii.item_id = it.id
+                             JOIN item_categories c ON it.category_id = c.id
+                             LEFT JOIN customers cust ON i.customer_id = cust.id
+                             WHERE i.rep_route_id IN ($routeIdsPlaceholder) AND i.status != 'Voided'
+                               AND i.invoice_date BETWEEN :start AND :end";
+        if ($areaId) {
+            $topCategoriesSql .= " AND cust.mca_id = :area_id";
+        }
+        $topCategoriesSql .= " GROUP BY c.id ORDER BY total_sales DESC LIMIT 5";
+        $this->db->query($topCategoriesSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        if ($areaId) {
+            $this->db->bind(':area_id', $areaId);
+        }
+        $topCategories = $this->db->resultSet() ?: [];
+
+        // Top Products
+        $topProductsSql = "SELECT it.name as product_name, SUM(ii.quantity) as qty, SUM(ii.total) as total_sales 
+                           FROM invoice_items ii
+                           JOIN invoices i ON ii.invoice_id = i.id
+                           JOIN items it ON ii.item_id = it.id
+                           LEFT JOIN customers cust ON i.customer_id = cust.id
+                           WHERE i.rep_route_id IN ($routeIdsPlaceholder) AND i.status != 'Voided'
+                             AND i.invoice_date BETWEEN :start AND :end";
+        if ($areaId) {
+            $topProductsSql .= " AND cust.mca_id = :area_id";
+        }
+        $topProductsSql .= " GROUP BY it.id ORDER BY total_sales DESC LIMIT 5";
+        $this->db->query($topProductsSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        if ($areaId) {
+            $this->db->bind(':area_id', $areaId);
+        }
+        $topProducts = $this->db->resultSet() ?: [];
+
+        // Top Customers
+        $topCustomersSql = "SELECT c.name as customer_name, COUNT(i.id) as bills, SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as total_sales 
+                             FROM invoices i
+                             JOIN customers c ON i.customer_id = c.id
+                             WHERE i.rep_route_id IN ($routeIdsPlaceholder) AND i.status != 'Voided'
+                               AND i.invoice_date BETWEEN :start AND :end";
+        if ($areaId) {
+            $topCustomersSql .= " AND c.mca_id = :area_id";
+        }
+        $topCustomersSql .= " GROUP BY c.id ORDER BY total_sales DESC LIMIT 5";
+        $this->db->query($topCustomersSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        if ($areaId) {
+            $this->db->bind(':area_id', $areaId);
+        }
+        $topCustomers = $this->db->resultSet() ?: [];
+
+        // Trends data (weekly or daily breakdown for charts)
+        $salesTrendSql = "SELECT i.invoice_date as label, SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as sales_amount 
+                          FROM invoices i
+                          LEFT JOIN customers c ON i.customer_id = c.id
+                          WHERE i.rep_route_id IN ($routeIdsPlaceholder) AND i.status != 'Voided'
+                            AND i.invoice_date BETWEEN :start AND :end";
+        if ($areaId) {
+            $salesTrendSql .= " AND c.mca_id = :area_id";
+        }
+        $salesTrendSql .= " GROUP BY i.invoice_date ORDER BY i.invoice_date ASC";
+        $this->db->query($salesTrendSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        if ($areaId) {
+            $this->db->bind(':area_id', $areaId);
+        }
+        $salesTrend = $this->db->resultSet() ?: [];
+
+        $collTrendSql = "SELECT cp.payment_date as label, SUM(cp.amount) as col_amount 
+                         FROM customer_payments cp
+                         LEFT JOIN rep_daily_routes r ON cp.rep_route_id = r.id
+                         WHERE cp.rep_route_id IN ($routeIdsPlaceholder) AND cp.status != 'Reversed'
+                           AND cp.payment_date BETWEEN :start AND :end
+                         GROUP BY cp.payment_date ORDER BY cp.payment_date ASC";
+        $this->db->query($collTrendSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        $collTrend = $this->db->resultSet() ?: [];
+
+        // Recent Transactions
+        $recentSalesSql = "SELECT i.*, c.name as customer_name,
+                                  (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as true_amount
+                           FROM invoices i
+                           JOIN customers c ON i.customer_id = c.id
+                           WHERE i.rep_route_id IN ($routeIdsPlaceholder) AND i.status != 'Voided'
+                             AND i.invoice_date BETWEEN :start AND :end";
+        if ($areaId) {
+            $recentSalesSql .= " AND c.mca_id = :area_id";
+        }
+        $recentSalesSql .= " ORDER BY i.invoice_date DESC, i.id DESC LIMIT 10";
+        $this->db->query($recentSalesSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        if ($areaId) {
+            $this->db->bind(':area_id', $areaId);
+        }
+        $recentSales = $this->db->resultSet() ?: [];
+
+        $recentCollectionsSql = "SELECT cp.*, c.name as customer_name
+                                 FROM customer_payments cp
+                                 JOIN customers c ON cp.customer_id = c.id
+                                 WHERE cp.rep_route_id IN ($routeIdsPlaceholder) AND cp.status != 'Reversed'
+                                   AND cp.payment_date BETWEEN :start AND :end";
+        if ($areaId) {
+            $recentCollectionsSql .= " AND c.mca_id = :area_id";
+        }
+        $recentCollectionsSql .= " ORDER BY cp.payment_date DESC, cp.id DESC LIMIT 10";
+        $this->db->query($recentCollectionsSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        if ($areaId) {
+            $this->db->bind(':area_id', $areaId);
+        }
+        $recentCollections = $this->db->resultSet() ?: [];
+
+        $recentUnprodSql = "SELECT uv.*, c.name as customer_name
+                            FROM unproductive_visits uv
+                            JOIN customers c ON uv.customer_id = c.id
+                            WHERE uv.rep_route_id IN ($routeIdsPlaceholder)
+                              AND DATE(uv.visit_time) BETWEEN :start AND :end";
+        if ($areaId) {
+            $recentUnprodSql .= " AND c.mca_id = :area_id";
+        }
+        $recentUnprodSql .= " ORDER BY uv.visit_time DESC LIMIT 10";
+        $this->db->query($recentUnprodSql);
+        $this->db->bind(':start', $startDate);
+        $this->db->bind(':end', $endDate);
+        if ($areaId) {
+            $this->db->bind(':area_id', $areaId);
+        }
+        $recentUnprod = $this->db->resultSet() ?: [];
+
+        // 3. Score Calculation based on configurator
+        $kpiConfigs = $this->getKpiConfigs();
+        $totalWeight = 0.00;
+        $achievedWeightedScore = 0.00;
+        
+        $kpiScores = [];
+        foreach ($kpiConfigs as $cfg) {
+            $weight = floatval($cfg->weight);
+            $target = floatval($cfg->target_value);
+            $minScore = intval($cfg->min_score);
+            $maxScore = intval($cfg->max_score);
+            
+            // Map keys to calculations
+            $actual = 0.00;
+            if ($cfg->kpi_key === 'sales_amount') {
+                $actual = $netSales;
+            } elseif ($cfg->kpi_key === 'productive_visit_rate') {
+                $actual = $productiveVisitRate;
+            } elseif ($cfg->kpi_key === 'collection_efficiency') {
+                $actual = $collectionEfficiency;
+            } elseif ($cfg->kpi_key === 'new_customers') {
+                $actual = floatval($newCustomers);
+            } elseif ($cfg->kpi_key === 'route_completion') {
+                $actual = $routeCompletionRate;
+            }
+
+            $achievementPct = 0.00;
+            if ($target > 0) {
+                $achievementPct = ($actual / $target) * 100;
+            } else {
+                $achievementPct = $actual > 0 ? 100.00 : 0.00;
+            }
+
+            $clampedScore = min($maxScore, max($minScore, $achievementPct));
+            $weightedContrib = $clampedScore * ($weight / 100);
+
+            $kpiScores[$cfg->kpi_key] = [
+                'name' => $cfg->kpi_name,
+                'actual' => $actual,
+                'target' => $target,
+                'achievement_pct' => $achievementPct,
+                'clamped_score' => $clampedScore,
+                'weight' => $weight,
+                'contribution' => $weightedContrib
+            ];
+
+            if ($weight > 0) {
+                $totalWeight += $weight;
+                $achievedWeightedScore += $weightedContrib;
+            }
+        }
+
+        $overallPerformanceScore = $totalWeight > 0 ? ($achievedWeightedScore / ($totalWeight / 100)) : 0.00;
+
+        return [
+            // Totals
+            'total_sales' => $totalSales,
+            'total_returns' => $totalReturns,
+            'net_sales' => $netSales,
+            'invoice_count' => $invoiceCount,
+            'avg_invoice_value' => $avgInvoiceValue,
+            // Visits
+            'total_visited' => $totalVisits,
+            'productive_visits' => $productiveVisits,
+            'unproductive_visits' => $unproductiveVisits,
+            'new_customers_added' => $newCustomers,
+            'active_customers' => $productiveVisits,
+            'repeat_customers' => $repeatCustomers,
+            'productive_visit_rate' => $productiveVisitRate,
+            'customer_conversion_rate' => $customerConversionRate,
+            // Routes
+            'total_routes' => $totalRoutes,
+            'completed_routes' => $completedRoutes,
+            'route_completion_rate' => $routeCompletionRate,
+            'avg_sales_per_route' => $avgSalesPerRoute,
+            'avg_customers_per_route' => $avgCustomersPerRoute,
+            'avg_sales_per_visit' => $avgSalesPerVisit,
+            // Collections
+            'total_collections' => $totalCollections,
+            'cash_collections' => $cashCollections,
+            'cheque_collections' => $chequeCollections,
+            'bank_collections' => $bankCollections,
+            'collection_efficiency' => $collectionEfficiency,
+            'outstanding_amount' => $outstandingAmount,
+            // Expenses
+            'total_expenses' => $totalExpenses,
+            'fuel_expenses' => $fuelExpenses,
+            'other_expenses' => $otherExpenses,
+            'expense_per_route' => $expensePerRoute,
+            'net_sales_after_expenses' => $netSalesAfterExpenses,
+            'sales_to_expense_ratio' => $salesToExpenseRatio,
+            // Productivity
+            'working_days' => $workingDays,
+            'active_route_days' => $activeRouteDays,
+            'avg_daily_sales' => $avgDailySales,
+            'avg_daily_visits' => $avgDailyVisits,
+            'avg_daily_collections' => $avgDailyCollections,
+            'sales_per_productive_visit' => $salesPerProductiveVisit,
+            'sales_per_customer' => $salesPerCustomer,
+            // Tables
+            'top_categories' => $topCategories,
+            'top_products' => $topProducts,
+            'top_customers' => $topCustomers,
+            'sales_trend' => $salesTrend,
+            'collections_trend' => $collTrend,
+            // Recent Grid Data
+            'recent_sales' => $recentSales,
+            'recent_collections' => $recentCollections,
+            'recent_unprod' => $recentUnprod,
+            // Scoring
+            'kpi_scores' => $kpiScores,
+            'overall_score' => $overallPerformanceScore
+        ];
+    }
+}
