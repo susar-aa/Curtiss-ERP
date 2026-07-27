@@ -909,9 +909,11 @@ declare(strict_types=1);
                                 <?php endif; ?>
                             </td>
                             <td>
+                                <a href="<?= APP_URL ?>/pettycash/print_reimbursement/<?= $reim->id ?>" target="_blank" class="btn btn-outline btn-sm" style="padding: 4px 8px; border: 1px solid #1b5e20; color: #1b5e20;" title="Print Reimbursement"><i class="ph ph-printer"></i> Print</a>
+                                <a href="<?= APP_URL ?>/pettycash/download_reimbursement_pdf/<?= $reim->id ?>" class="btn btn-outline btn-sm" style="padding: 4px 8px; border: 1px solid #d32f2f; color: #d32f2f;" title="Download PDF"><i class="ph ph-file-pdf"></i> PDF</a>
                                 <?php if ($reim->status === 'Pending'): ?>
-                                    <a href="<?= APP_URL ?>/pettycash/approve_reimbursement/<?= $reim->id ?>" class="btn btn-primary btn-sm"><i class="ph ph-hand-coins"></i> Disburse (Replenish)</a>
-                                    <a href="<?= APP_URL ?>/pettycash/reject_reimbursement/<?= $reim->id ?>" class="btn btn-danger btn-sm" onclick="return confirm('Reject reimbursement? Linked expenses will be unlocked.')"><i class="ph ph-x"></i> Reject</a>
+                                    <a href="<?= APP_URL ?>/pettycash/approve_reimbursement/<?= $reim->id ?>" class="btn btn-primary btn-sm" style="margin-left: 4px;"><i class="ph ph-hand-coins"></i> Disburse (Replenish)</a>
+                                    <a href="<?= APP_URL ?>/pettycash/reject_reimbursement/<?= $reim->id ?>" class="btn btn-danger btn-sm" onclick="return confirm('Reject reimbursement? Linked expenses will be unlocked.')" style="margin-left: 4px;"><i class="ph ph-x"></i> Reject</a>
                                 <?php endif; ?>
                             </td>
                         </tr>

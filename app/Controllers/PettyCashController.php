@@ -397,6 +397,76 @@ class PettyCashController extends Controller {
         return trim(($Rupees ? $Rupees . 'Rupees ' : '') . $paise . ' Only');
     }
 
+    public function print_reimbursement($id) {
+        $this->checkPermission('petty_cash', 'view');
+        $reim = $this->pcReimModel->getReimbursementById(intval($id));
+        if (!$reim) {
+            die('Reimbursement request not found.');
+        }
+
+        $expenses = $this->pcReimModel->getLinkedExpenses(intval($id));
+
+        $companyModel = $this->model('Company');
+        $company = $companyModel->getSettings();
+
+        $amountInWords = $this->numberToWords(floatval($reim->amount));
+
+        $data = [
+            'reim' => $reim,
+            'expenses' => $expenses,
+            'company' => $company,
+            'amount_in_words' => $amountInWords,
+            'is_pdf' => false
+        ];
+
+        // Audit printed action
+        $this->logActivity('Print Reimbursement', 'Petty Cash', "Printed Reimbursement Voucher: REIM-" . $reim->id, $reim->id);
+
+        $this->view('petty_cash/print_reimbursement', $data);
+    }
+
+    public function download_reimbursement_pdf($id) {
+        $this->checkPermission('petty_cash', 'view');
+        $reim = $this->pcReimModel->getReimbursementById(intval($id));
+        if (!$reim) {
+            die('Reimbursement request not found.');
+        }
+
+        $expenses = $this->pcReimModel->getLinkedExpenses(intval($id));
+
+        $companyModel = $this->model('Company');
+        $company = $companyModel->getSettings();
+
+        $amountInWords = $this->numberToWords(floatval($reim->amount));
+
+        ob_start();
+        $data = [
+            'reim' => $reim,
+            'expenses' => $expenses,
+            'company' => $company,
+            'amount_in_words' => $amountInWords,
+            'is_pdf' => true
+        ];
+        $this->view('petty_cash/print_reimbursement', $data);
+        $html = ob_get_clean();
+
+        // Audit PDF download action
+        $this->logActivity('Download Reimbursement PDF', 'Petty Cash', "Downloaded PDF for Reimbursement Voucher: REIM-" . $reim->id, $reim->id);
+
+        $options = new \Dompdf\Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+
+        $dompdf = new \Dompdf\Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        $filename = 'petty_cash_reimbursement_' . $reim->id . '.pdf';
+        $dompdf->stream($filename, ['Attachment' => true]);
+        exit;
+    }
+
     public function delete($id) {
         $this->checkPermission('petty_cash', 'delete');
         
