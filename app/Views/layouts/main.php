@@ -1259,6 +1259,13 @@ if (!function_exists('hasPermission')) {
                                 <div class="desc">Unified route lifecycle & deliveries</div>
                             </div>
                         </a>
+                        <a href="<?php echo APP_URL; ?>/repperformance" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-chart-bar"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Rep Performance</div>
+                                <div class="desc">Track KPI targets &amp; evaluations</div>
+                            </div>
+                        </a>
                         <?php endif; ?>
                         <?php if (hasPermission('territory')): ?>
                         <a href="<?= APP_URL ?>/territory" class="mega-list-item">
