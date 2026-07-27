@@ -163,13 +163,50 @@ class RepDashboardController extends Controller {
             // 1. Get products (items)
             $items = $this->itemModel->getItemsDelta($lastSync);
             $productsJson = [];
+            
+            // Bulk-load variation details to avoid N+1 query overhead
+            $itemIds = array_map(function($item) { return intval($item->id); }, $items);
+            $variationsMap = [];
+            if (!empty($itemIds)) {
+                $idsPlaceholder = implode(',', $itemIds);
+                $this->db->query("
+                    SELECT ivo.id, ivo.item_id, ivo.sku, ivo.price, ivo.wholesale_price, ivo.cost, ivo.quantity_on_hand, ivo.image_path, vv.value_name AS attribute
+                    FROM item_variation_options ivo
+                    LEFT JOIN variation_values vv ON ivo.variation_value_id = vv.id
+                    WHERE ivo.item_id IN ($idsPlaceholder)
+                ");
+                $dbVars = $this->db->resultSet() ?: [];
+                foreach ($dbVars as $v) {
+                    $itemId = intval($v->item_id);
+                    if (!isset($variationsMap[$itemId])) {
+                        $variationsMap[$itemId] = [];
+                    }
+                    $variationsMap[$itemId][] = [
+                        'id' => intval($v->id),
+                        'sku' => $v->sku,
+                        'price' => floatval($v->price),
+                        'wholesale_price' => floatval($v->wholesale_price ?? 0),
+                        'cost' => floatval($v->cost),
+                        'qty' => intval($v->quantity_on_hand),
+                        'quantity_on_hand' => intval($v->quantity_on_hand),
+                        'attribute' => $v->attribute ?? '',
+                        'image_path' => $v->image_path ?? ''
+                    ];
+                }
+            }
+
             foreach ($items as $item) {
                 $wholesalePrice = floatval($item->wholesale_price ?? 0);
                 if ($wholesalePrice <= 0) {
                     $wholesalePrice = floatval($item->selling_price ?? 0);
                 }
+                
+                $itemId = intval($item->id);
+                $varsArray = $variationsMap[$itemId] ?? [];
+                $variationsJsonStr = !empty($varsArray) ? json_encode($varsArray) : '[]';
+
                 $productsJson[] = [
-                    'id' => intval($item->id),
+                    'id' => $itemId,
                     'name' => $item->name,
                     'category_name' => $item->category_name ?? 'General',
                     'selling_price' => floatval($item->selling_price ?? 0),
@@ -180,7 +217,7 @@ class RepDashboardController extends Controller {
                     'image_path' => $this->sanitizeImagePath($item->image_path ?? ''),
                     'sku' => $item->item_code ?? $item->sku ?? '',
                     'sample_code' => $item->sample_code ?? '',
-                    'variations_json' => $item->variations_json ?? '',
+                    'variations_json' => $variationsJsonStr,
                     'brand' => $item->brand ?? '',
                     'description' => $item->description ?? '',
                     'status' => $item->status ?? 'active'
