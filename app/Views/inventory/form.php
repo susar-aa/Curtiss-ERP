@@ -1159,7 +1159,10 @@ if (!function_exists('erp_safe_json_encode')) {
                 retail_margin: existing ? (existing.retail_margin || '') : '',
                 wholesale_margin: existing ? (existing.wholesale_margin || '') : '',
                 image_path: existing ? (existing.image_path || '') : '',
-                image_base64: ''
+                image_base64: '',
+                qty: existing ? (existing.qty !== undefined ? existing.qty : (existing.quantity_on_hand !== undefined ? existing.quantity_on_hand : 0)) : 0,
+                quantity_on_hand: existing ? (existing.quantity_on_hand !== undefined ? existing.quantity_on_hand : (existing.qty !== undefined ? existing.qty : 0)) : 0,
+                quantity_reserved: existing ? (existing.quantity_reserved !== undefined ? existing.quantity_reserved : 0) : 0
             };
 
             // Calculate default margins if empty

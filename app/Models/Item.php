@@ -743,7 +743,7 @@ class Item {
 
             // 4. Check if variation option exists in item_variation_options
             $this->db->query("
-                SELECT id 
+                SELECT id, quantity_on_hand 
                 FROM item_variation_options 
                 WHERE item_id = :item_id AND variation_value_id = :val_id 
                 LIMIT 1
@@ -754,6 +754,11 @@ class Item {
 
             if ($ivoRow) {
                 $optionId = $ivoRow->id;
+                
+                // Safety fallback: if qty/quantity_on_hand is omitted in payload, preserve existing database stock
+                $hasQtyKey = property_exists($v, 'qty') || property_exists($v, 'quantity_on_hand');
+                $updateQty = $hasQtyKey ? floatval($v->qty ?? $v->quantity_on_hand ?? 0) : floatval($ivoRow->quantity_on_hand ?? 0);
+
                 $this->db->query("
                     UPDATE item_variation_options 
                     SET sku = :sku, price = :price, wholesale_price = :wholesale_price, cost = :cost, quantity_on_hand = :qty, image_path = :image_path 
@@ -763,7 +768,7 @@ class Item {
                 $this->db->bind(':price', $price);
                 $this->db->bind(':wholesale_price', $wholesalePrice);
                 $this->db->bind(':cost', $cost);
-                $this->db->bind(':qty', $qty);
+                $this->db->bind(':qty', $updateQty);
                 $this->db->bind(':image_path', !empty($imagePath) ? $imagePath : null);
                 $this->db->bind(':id', $optionId);
                 $this->db->execute();
