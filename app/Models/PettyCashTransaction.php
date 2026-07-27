@@ -17,8 +17,21 @@ class PettyCashTransaction {
     }
 
     /**
-     * Get petty cash account ID
+    /**
+     * Generate the next unique and sequential Petty Cash Voucher number
      */
+    public function generateNextVoucherNumber(): string {
+        $this->db->query("SELECT voucher_number FROM petty_cash_transactions WHERE voucher_number LIKE 'PCV-%' ORDER BY id DESC LIMIT 1");
+        $row = $this->db->single();
+        if ($row && !empty($row->voucher_number)) {
+            $lastNum = intval(substr($row->voucher_number, 4));
+            $nextNum = $lastNum + 1;
+        } else {
+            $nextNum = 1;
+        }
+        return 'PCV-' . str_pad((string)$nextNum, 5, '0', STR_PAD_LEFT);
+    }
+
     public function getPettyCashAccountId(): int {
         $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1020' LIMIT 1");
         $row = $this->db->single();
@@ -73,11 +86,18 @@ class PettyCashTransaction {
      * Get all petty cash transactions with filtering and pagination
      */
     public function getTransactions(array $filters = [], int $limit = 50, int $offset = 0): array {
-        $sql = "SELECT t.*, u.username as creator_name, app.username as approver_name, a.account_name as offset_account_name, a.account_code as offset_account_code
+        $sql = "SELECT t.*, u.username as creator_name, app.username as approver_name, a.account_name as offset_account_name, a.account_code as offset_account_code,
+                       re.id as route_expense_id, re.rep_route_id, re.vehicle_number, re.rep_user_id,
+                       rdr.route_name as route_name,
+                       emp.first_name as rep_first_name, emp.last_name as rep_last_name
                 FROM petty_cash_transactions t
                 LEFT JOIN users u ON t.created_by = u.id
                 LEFT JOIN users app ON t.approved_by = app.id
                 LEFT JOIN chart_of_accounts a ON t.account_id = a.id
+                LEFT JOIN route_expenses re ON re.petty_cash_transaction_id = t.id
+                LEFT JOIN rep_daily_routes rdr ON re.rep_route_id = rdr.id
+                LEFT JOIN users u_rep ON re.rep_user_id = u_rep.id
+                LEFT JOIN employees emp ON u_rep.email = emp.email
                 WHERE 1=1";
         
         $binds = [];
@@ -98,8 +118,24 @@ class PettyCashTransaction {
             $sql .= " AND t.transaction_date <= :date_to";
             $binds['date_to'] = $filters['date_to'];
         }
+        if (!empty($filters['voucher_number'])) {
+            $sql .= " AND t.voucher_number LIKE :voucher_number";
+            $binds['voucher_number'] = '%' . $filters['voucher_number'] . '%';
+        }
+        if (!empty($filters['paid_to'])) {
+            $sql .= " AND t.paid_to LIKE :paid_to";
+            $binds['paid_to'] = '%' . $filters['paid_to'] . '%';
+        }
+        if (!empty($filters['rep_route_id'])) {
+            $sql .= " AND re.rep_route_id = :rep_route_id";
+            $binds['rep_route_id'] = $filters['rep_route_id'];
+        }
+        if (!empty($filters['rep_user_id'])) {
+            $sql .= " AND re.rep_user_id = :rep_user_id";
+            $binds['rep_user_id'] = $filters['rep_user_id'];
+        }
         if (!empty($filters['search'])) {
-            $sql .= " AND (t.description LIKE :search OR t.paid_to LIKE :search OR t.reference LIKE :search)";
+            $sql .= " AND (t.description LIKE :search OR t.paid_to LIKE :search OR t.reference LIKE :search OR t.voucher_number LIKE :search)";
             $binds['search'] = '%' . $filters['search'] . '%';
         }
 
@@ -116,7 +152,10 @@ class PettyCashTransaction {
     }
 
     public function getTransactionsCount(array $filters = []): int {
-        $sql = "SELECT COUNT(*) as total FROM petty_cash_transactions t WHERE 1=1";
+        $sql = "SELECT COUNT(DISTINCT t.id) as total 
+                FROM petty_cash_transactions t 
+                LEFT JOIN route_expenses re ON re.petty_cash_transaction_id = t.id
+                WHERE 1=1";
         $binds = [];
 
         if (!empty($filters['type'])) {
@@ -135,8 +174,24 @@ class PettyCashTransaction {
             $sql .= " AND t.transaction_date <= :date_to";
             $binds['date_to'] = $filters['date_to'];
         }
+        if (!empty($filters['voucher_number'])) {
+            $sql .= " AND t.voucher_number LIKE :voucher_number";
+            $binds['voucher_number'] = '%' . $filters['voucher_number'] . '%';
+        }
+        if (!empty($filters['paid_to'])) {
+            $sql .= " AND t.paid_to LIKE :paid_to";
+            $binds['paid_to'] = '%' . $filters['paid_to'] . '%';
+        }
+        if (!empty($filters['rep_route_id'])) {
+            $sql .= " AND re.rep_route_id = :rep_route_id";
+            $binds['rep_route_id'] = $filters['rep_route_id'];
+        }
+        if (!empty($filters['rep_user_id'])) {
+            $sql .= " AND re.rep_user_id = :rep_user_id";
+            $binds['rep_user_id'] = $filters['rep_user_id'];
+        }
         if (!empty($filters['search'])) {
-            $sql .= " AND (t.description LIKE :search OR t.paid_to LIKE :search OR t.reference LIKE :search)";
+            $sql .= " AND (t.description LIKE :search OR t.paid_to LIKE :search OR t.reference LIKE :search OR t.voucher_number LIKE :search)";
             $binds['search'] = '%' . $filters['search'] . '%';
         }
 
@@ -149,11 +204,18 @@ class PettyCashTransaction {
     }
 
     public function getTransactionById(int $id): ?stdClass {
-        $this->db->query("SELECT t.*, u.username as creator_name, app.username as approver_name, a.account_name as offset_account_name, a.account_code as offset_account_code
+        $this->db->query("SELECT t.*, u.username as creator_name, app.username as approver_name, a.account_name as offset_account_name, a.account_code as offset_account_code,
+                                 re.id as route_expense_id, re.rep_route_id, re.vehicle_number, re.rep_user_id,
+                                 rdr.route_name as route_name,
+                                 emp.first_name as rep_first_name, emp.last_name as rep_last_name
                           FROM petty_cash_transactions t
                           LEFT JOIN users u ON t.created_by = u.id
                           LEFT JOIN users app ON t.approved_by = app.id
                           LEFT JOIN chart_of_accounts a ON t.account_id = a.id
+                          LEFT JOIN route_expenses re ON re.petty_cash_transaction_id = t.id
+                          LEFT JOIN rep_daily_routes rdr ON re.rep_route_id = rdr.id
+                          LEFT JOIN users u_rep ON re.rep_user_id = u_rep.id
+                          LEFT JOIN employees emp ON u_rep.email = emp.email
                           WHERE t.id = :id");
         $this->db->bind(':id', $id);
         return $this->db->single() ?: null;
@@ -210,10 +272,11 @@ class PettyCashTransaction {
                 return "Failed to find generated journal entry.";
             }
 
+            $voucherNum = $this->generateNextVoucherNumber();
             $this->db->beginTransaction();
 
-            $this->db->query("INSERT INTO petty_cash_transactions (transaction_date, type, amount, reference, description, account_id, status, created_by, approved_by, approved_at, journal_entry_id) 
-                              VALUES (:date, 'allocation', :amount, :ref, :desc, :acc_id, 'Approved', :uid, :uid, NOW(), :jid)");
+            $this->db->query("INSERT INTO petty_cash_transactions (transaction_date, type, amount, reference, description, account_id, status, created_by, approved_by, approved_at, journal_entry_id, voucher_number) 
+                              VALUES (:date, 'allocation', :amount, :ref, :desc, :acc_id, 'Approved', :uid, :uid, NOW(), :jid, :vnum)");
             $this->db->bind(':date', $date);
             $this->db->bind(':amount', $amount);
             $this->db->bind(':ref', $ref);
@@ -221,6 +284,7 @@ class PettyCashTransaction {
             $this->db->bind(':acc_id', $sourceAccId);
             $this->db->bind(':uid', $userId);
             $this->db->bind(':jid', $journalId);
+            $this->db->bind(':vnum', $voucherNum);
             $this->db->execute();
 
             $txId = intval($this->db->lastInsertId());
@@ -269,10 +333,11 @@ class PettyCashTransaction {
             $requireApproval = $config ? (bool)$config->require_approval : false;
 
             if ($requireApproval) {
+                $voucherNum = $this->generateNextVoucherNumber();
                 // Save as Pending transaction, no journal entry yet
                 $this->db->beginTransaction();
-                $this->db->query("INSERT INTO petty_cash_transactions (transaction_date, type, amount, reference, description, paid_to, account_id, status, attachment_path, created_by) 
-                                  VALUES (:date, 'expense', :amount, :ref, :desc, :paid_to, :acc_id, 'Pending', :attach, :uid)");
+                $this->db->query("INSERT INTO petty_cash_transactions (transaction_date, type, amount, reference, description, paid_to, account_id, status, attachment_path, created_by, voucher_number) 
+                                  VALUES (:date, 'expense', :amount, :ref, :desc, :paid_to, :acc_id, 'Pending', :attach, :uid, :vnum)");
                 $this->db->bind(':date', $date);
                 $this->db->bind(':amount', $amount);
                 $this->db->bind(':ref', $ref);
@@ -281,6 +346,7 @@ class PettyCashTransaction {
                 $this->db->bind(':acc_id', $expenseAccId);
                 $this->db->bind(':attach', $attachment);
                 $this->db->bind(':uid', $userId);
+                $this->db->bind(':vnum', $voucherNum);
                 $this->db->execute();
 
                 $txId = intval($this->db->lastInsertId());
@@ -319,9 +385,10 @@ class PettyCashTransaction {
                 $jeRow = $this->db->single();
                 $journalId = $jeRow ? intval($jeRow->id) : null;
 
+                $voucherNum = $this->generateNextVoucherNumber();
                 $this->db->beginTransaction();
-                $this->db->query("INSERT INTO petty_cash_transactions (transaction_date, type, amount, reference, description, paid_to, account_id, status, attachment_path, created_by, approved_by, approved_at, journal_entry_id) 
-                                  VALUES (:date, 'expense', :amount, :ref, :desc, :paid_to, :acc_id, 'Approved', :attach, :uid, :uid, NOW(), :jid)");
+                $this->db->query("INSERT INTO petty_cash_transactions (transaction_date, type, amount, reference, description, paid_to, account_id, status, attachment_path, created_by, approved_by, approved_at, journal_entry_id, voucher_number) 
+                                  VALUES (:date, 'expense', :amount, :ref, :desc, :paid_to, :acc_id, 'Approved', :attach, :uid, :uid, NOW(), :jid, :vnum)");
                 $this->db->bind(':date', $date);
                 $this->db->bind(':amount', $amount);
                 $this->db->bind(':ref', $ref);
@@ -331,6 +398,7 @@ class PettyCashTransaction {
                 $this->db->bind(':attach', $attachment);
                 $this->db->bind(':uid', $userId);
                 $this->db->bind(':jid', $journalId);
+                $this->db->bind(':vnum', $voucherNum);
                 $this->db->execute();
 
                 $txId = intval($this->db->lastInsertId());

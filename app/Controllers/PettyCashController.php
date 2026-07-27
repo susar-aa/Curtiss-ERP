@@ -33,7 +33,11 @@ class PettyCashController extends Controller {
             'status' => $_GET['status'] ?? '',
             'date_from' => $_GET['date_from'] ?? '',
             'date_to' => $_GET['date_to'] ?? '',
-            'search' => trim($_GET['search'] ?? '')
+            'search' => trim($_GET['search'] ?? ''),
+            'voucher_number' => trim($_GET['voucher_number'] ?? ''),
+            'paid_to' => trim($_GET['paid_to'] ?? ''),
+            'rep_route_id' => $_GET['rep_route_id'] ?? '',
+            'rep_user_id' => $_GET['rep_user_id'] ?? '',
         ];
 
         // Pagination for transactions
@@ -62,6 +66,11 @@ class PettyCashController extends Controller {
             return $a->account_type == 'Expense';
         });
 
+        // Get all active daily routes for filter bar
+        $db = new Database();
+        $db->query("SELECT id, route_name FROM rep_daily_routes ORDER BY route_name ASC");
+        $routes = $db->resultSet() ?: [];
+
         $data = [
             'title' => 'Petty Cash Management',
             'content_view' => 'petty_cash/index',
@@ -76,6 +85,7 @@ class PettyCashController extends Controller {
             'funding_accounts' => $fundingAccounts,
             'expense_accounts' => $expenseAccounts,
             'users' => $this->userModel->getAllUsers(),
+            'routes' => $routes,
             'filters' => $filters,
             'page' => $page,
             'total_pages' => $totalPages,
@@ -287,6 +297,104 @@ class PettyCashController extends Controller {
         
         header('Location: ' . APP_URL . '/pettycash');
         exit;
+    }
+
+    public function print_voucher($id) {
+        $this->checkPermission('petty_cash', 'view');
+        $tx = $this->pcTxModel->getTransactionById(intval($id));
+        if (!$tx) {
+            die('Voucher not found.');
+        }
+
+        $companyModel = $this->model('Company');
+        $company = $companyModel->getSettings();
+
+        $amountInWords = $this->numberToWords(floatval($tx->amount));
+
+        $data = [
+            'tx' => $tx,
+            'company' => $company,
+            'amount_in_words' => $amountInWords,
+            'is_pdf' => false
+        ];
+
+        // Audit printed by action
+        $this->logActivity('Print Voucher', 'Petty Cash', "Printed Petty Cash Voucher: " . ($tx->voucher_number ?: $tx->id), $tx->id);
+
+        $this->view('petty_cash/print_voucher', $data);
+    }
+
+    public function download_pdf($id) {
+        $this->checkPermission('petty_cash', 'view');
+        $tx = $this->pcTxModel->getTransactionById(intval($id));
+        if (!$tx) {
+            die('Voucher not found.');
+        }
+
+        $companyModel = $this->model('Company');
+        $company = $companyModel->getSettings();
+
+        $amountInWords = $this->numberToWords(floatval($tx->amount));
+
+        ob_start();
+        $data = [
+            'tx' => $tx,
+            'company' => $company,
+            'amount_in_words' => $amountInWords,
+            'is_pdf' => true
+        ];
+        $this->view('petty_cash/print_voucher', $data);
+        $html = ob_get_clean();
+
+        // Audit PDF download action
+        $this->logActivity('Download Voucher PDF', 'Petty Cash', "Downloaded PDF for Petty Cash Voucher: " . ($tx->voucher_number ?: $tx->id), $tx->id);
+
+        $options = new \Dompdf\Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+
+        $dompdf = new \Dompdf\Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        $filename = 'petty_cash_voucher_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $tx->voucher_number ?: (string)$tx->id) . '.pdf';
+        $dompdf->stream($filename, ['Attachment' => true]);
+        exit;
+    }
+
+    private function numberToWords(float $number): string {
+        $decimal = round($number - ($no = floor($number)), 2) * 100;
+        $hundred = null;
+        $digits_length = strlen((string)$no);
+        $i = 0;
+        $str = array();
+        $words = array(
+            0 => '', 1 => 'One', 2 => 'Two',
+            3 => 'Three', 4 => 'Four', 5 => 'Five', 6 => 'Six',
+            7 => 'Seven', 8 => 'Eight', 9 => 'Nine',
+            10 => 'Ten', 11 => 'Eleven', 12 => 'Twelve',
+            13 => 'Thirteen', 14 => 'Fourteen', 15 => 'Fifteen',
+            16 => 'Sixteen', 17 => 'Seventeen', 18 => 'Eighteen',
+            19 => 'Nineteen', 20 => 'Twenty', 30 => 'Thirty',
+            40 => 'Forty', 50 => 'Fifty', 60 => 'Sixty',
+            70 => 'Seventy', 80 => 'Eighty', 90 => 'Ninety'
+        );
+        $digits = array('', 'Hundred','Thousand','Lakh', 'Crore');
+        while( $i < $digits_length ) {
+            $divider = ($i == 2) ? 10 : 100;
+            $number = floor($no % $divider);
+            $no = floor($no / $divider);
+            $i += $divider == 10 ? 1 : 2;
+            if ($number) {
+                $plural = (($counter = count($str)) && $number > 9) ? 's' : null;
+                $hundred = ($counter == 1 && $str[0]) ? ' and ' : null;
+                $str [] = ($number < 21) ? $words[$number].' '. $digits[$counter].$plural.' '.$hundred:$words[floor($number / 10) * 10].' '.$words[$number % 10]. ' '.$digits[$counter].$plural.' '.$hundred;
+            } else $str[] = null;
+        }
+        $Rupees = implode('', array_reverse($str));
+        $paise = ($decimal > 0) ? "." . ($words[$decimal / 10] ?? $words[floor($decimal / 10) * 10] . " " . $words[$decimal % 10]) . ' Cents' : '';
+        return trim(($Rupees ? $Rupees . 'Rupees ' : '') . $paise . ' Only');
     }
 
     public function delete($id) {
