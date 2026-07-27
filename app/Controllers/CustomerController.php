@@ -337,7 +337,6 @@ class CustomerController extends Controller {
             'Longitude',
             'Territory',
             'Credit Limit',
-            'Opening Balance',
             'Outstanding Balance',
             'Customer Type',
             'Notes'
@@ -356,7 +355,6 @@ class CustomerController extends Controller {
                 $c->longitude ?? '',
                 $c->mca_name ?? '',
                 $c->credit_limit ?? 0.00,
-                $c->opening_balance ?? 0.00,
                 $c->outstanding_balance ?? 0.00,
                 $c->customer_type ?? 'Standard',
                 $c->notes ?? ''
@@ -435,7 +433,7 @@ class CustomerController extends Controller {
             $lngIdx       = $colMap['longitude'] ?? ($colMap['lng'] ?? -1);
             $territoryIdx = $colMap['territory'] ?? ($colMap['mca'] ?? ($colMap['route'] ?? -1));
             $creditLimitIdx = $colMap['credit limit'] ?? ($colMap['credit_limit'] ?? ($colMap['limit'] ?? -1));
-            $openingBalIdx = $colMap['opening balance'] ?? ($colMap['opening_balance'] ?? ($colMap['opening'] ?? -1));
+            $outstandingBalIdx = $colMap['outstanding balance'] ?? ($colMap['outstanding_balance'] ?? ($colMap['balance'] ?? ($colMap['opening balance'] ?? ($colMap['opening_balance'] ?? ($colMap['opening'] ?? -1)))));
             $customerTypeIdx = $colMap['customer type'] ?? ($colMap['customer_type'] ?? ($colMap['type'] ?? -1));
             $notesIdx     = $colMap['notes'] ?? -1;
 
@@ -447,7 +445,29 @@ class CustomerController extends Controller {
             }
 
             $customerMap = [];
-            $this->db->query("SELECT id, name, phone, email, whatsapp, address, latitude, longitude, mca_id, territory, credit_limit, customer_type, notes, opening_balance FROM customers");
+            $this->db->query("
+                SELECT c.id, c.name, c.phone, c.email, c.whatsapp, c.address, c.latitude, c.longitude, c.mca_id, c.territory, c.credit_limit, c.customer_type, c.notes, c.opening_balance,
+                       (c.opening_balance + COALESCE(inv.total_billed, 0) - COALESCE(pmt.total_paid, 0) - COALESCE(cn.total_credited, 0)) AS outstanding_balance
+                FROM customers c
+                LEFT JOIN (
+                    SELECT customer_id, 
+                           SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_billed
+                    FROM invoices 
+                    WHERE status != 'Voided'
+                    GROUP BY customer_id
+                ) inv ON c.id = inv.customer_id
+                LEFT JOIN (
+                    SELECT customer_id, SUM(amount) as total_paid
+                    FROM customer_payments 
+                    WHERE status = 'Active'
+                    GROUP BY customer_id
+                ) pmt ON c.id = pmt.customer_id
+                LEFT JOIN (
+                    SELECT customer_id, SUM(total_amount) as total_credited
+                    FROM credit_notes
+                    GROUP BY customer_id
+                ) cn ON c.id = cn.customer_id
+            ");
             foreach ($this->db->resultSet() as $c) {
                 $customerMap[strtolower(trim($c->name))] = $c;
             }
@@ -474,9 +494,9 @@ class CustomerController extends Controller {
                     $longitude     = $lngIdx       !== -1 ? trim($row[$lngIdx] ?? '') : '';
                     $territoryName = $territoryIdx !== -1 ? trim($row[$territoryIdx] ?? '') : '';
                     
-                    $openingBalText = $openingBalIdx !== -1 ? trim($row[$openingBalIdx] ?? '0') : '0';
-                    $openingBalText = preg_replace('/[^\d\.\-]/', '', $openingBalText);
-                    $openingBal = floatval($openingBalText);
+                    $importedOutstandingBalText = $outstandingBalIdx !== -1 ? trim($row[$outstandingBalIdx] ?? '0') : '0';
+                    $importedOutstandingBalText = preg_replace('/[^\d\.\-]/', '', $importedOutstandingBalText);
+                    $importedOutstandingBal = floatval($importedOutstandingBalText);
 
                     $creditLimitText = $creditLimitIdx !== -1 ? trim($row[$creditLimitIdx] ?? '0') : '0';
                     $creditLimitText = preg_replace('/[^\d\.\-]/', '', $creditLimitText);
@@ -519,6 +539,14 @@ class CustomerController extends Controller {
                     // Check if customer already exists by name (case-insensitive)
                     $custKey = strtolower($name);
                     $existingCustomer = $customerMap[$custKey] ?? null;
+
+                    // Dynamically calculate opening balance adjustment if outstanding balance has changed
+                    if ($existingCustomer) {
+                        $extraBalance = floatval($existingCustomer->outstanding_balance ?? 0.0) - floatval($existingCustomer->opening_balance ?? 0.0);
+                        $openingBal = $importedOutstandingBal - $extraBalance;
+                    } else {
+                        $openingBal = $importedOutstandingBal;
+                    }
 
                     $customerData = [
                         'name' => $name,
@@ -617,7 +645,8 @@ class CustomerController extends Controller {
                                 'credit_limit' => $creditLimit,
                                 'customer_type' => $customerType,
                                 'notes' => $notes,
-                                'opening_balance' => $openingBal
+                                'opening_balance' => $openingBal,
+                                'outstanding_balance' => $openingBal
                             ];
                             $customerMap[$custKey] = $newCustomerObj;
                         } else {
