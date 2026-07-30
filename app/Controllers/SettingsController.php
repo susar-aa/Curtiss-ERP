@@ -1,6 +1,7 @@
 <?php
 class SettingsController extends Controller {
     private $companyModel;
+    private $perfModel;
 
     public function __construct() {
         if (!isset($_SESSION['user_id'])) { header('Location: ' . APP_URL . '/auth/login'); exit; }
@@ -9,6 +10,7 @@ class SettingsController extends Controller {
             die("Access Denied: You do not have permission to view this module.");
         }
         $this->companyModel = $this->model('Company');
+        $this->perfModel = $this->model('RepPerformance');
     }
 
     public function index() {
@@ -16,6 +18,8 @@ class SettingsController extends Controller {
             'title' => 'Company Settings',
             'content_view' => 'settings/index',
             'settings' => $this->companyModel->getSettings(),
+            'active_tab' => 'company',
+            'csrf_token' => $this->generateCsrfToken(),
             'error' => '',
             'success' => ''
         ];
@@ -69,6 +73,32 @@ class SettingsController extends Controller {
             
             // Refresh settings data after updates
             $data['settings'] = $this->companyModel->getSettings();
+        }
+
+        $this->view('layouts/main', $data);
+    }
+
+    public function rep_targets() {
+        $data = [
+            'title' => 'Rep KPI Targets Settings',
+            'content_view' => 'settings/rep_targets',
+            'kpi_configs' => $this->perfModel->getKpiConfigs(),
+            'active_tab' => 'rep_targets',
+            'csrf_token' => $this->generateCsrfToken(),
+            'error' => '',
+            'success' => ''
+        ];
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $configs = $_POST['configs'] ?? [];
+            if ($this->perfModel->updateKpiConfigs($configs)) {
+                $this->logActivity('Update KPI Settings', 'Analytics', 'Updated performance targets and scoring weights.');
+                $data['success'] = 'KPI configurations and weights saved successfully.';
+            } else {
+                $data['error'] = 'Failed to update KPI weights settings.';
+            }
+            // reload config list
+            $data['kpi_configs'] = $this->perfModel->getKpiConfigs();
         }
 
         $this->view('layouts/main', $data);

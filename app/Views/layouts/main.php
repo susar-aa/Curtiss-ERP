@@ -1708,7 +1708,7 @@ if (!function_exists('hasPermission')) {
                             <a href="<?= APP_URL ?>/settings" class="mega-card">
                                 <div class="icon"><i class="ph ph-gear"></i></div>
                                 <div class="mega-card-text">
-                                    <div class="title">Settings</div>
+                                    <div class="title">Company Settings</div>
                                     <div class="desc">Company config</div>
                                 </div>
                             </a>
@@ -1938,7 +1938,7 @@ if (!function_exists('hasPermission')) {
                     <div class="fs-section-label">Admin &amp; Settings</div>
                     <div class="fs-row">
                         <?php if (hasPermission('settings')): ?>
-                            <a href="<?= APP_URL ?>/settings" class="fs-link"><i class="ph ph-gear"></i> Settings</a>
+                            <a href="<?= APP_URL ?>/settings" class="fs-link"><i class="ph ph-gear"></i> Company Settings</a>
                             <a href="<?= APP_URL ?>/settings/releases" class="fs-link"><i class="ph ph-cloud-arrow-down"></i> Releases</a>
                             <a href="<?= APP_URL ?>/backup" class="fs-link"><i class="ph ph-database"></i> Backup &amp; Restore</a>
                             <a href="<?= APP_URL ?>/diagnostics" class="fs-link"><i class="ph ph-heartbeat"></i> System Health</a>

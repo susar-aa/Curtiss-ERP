@@ -34,16 +34,11 @@ class RepPerformanceController extends Controller {
             $repUserId = intval($reps[0]->id);
         }
 
-        // Handle month/year overrides
-        $month = $_GET['month'] ?? '';
-        $year = $_GET['year'] ?? '';
-        if (!empty($month) && !empty($year)) {
-            $startDate = date("$year-$month-01");
-            $endDate = date("$year-$month-t");
-        } else {
-            $startDate = $_GET['start_date'] ?? date('Y-m-d', strtotime('-30 days'));
-            $endDate = $_GET['end_date'] ?? date('Y-m-d');
-        }
+        // Handle month/year filters (defaulting to the current month & year)
+        $month = $_GET['month'] ?? date('m');
+        $year = $_GET['year'] ?? date('Y');
+        $startDate = date("$year-$month-01");
+        $endDate = date("$year-$month-t");
 
         $routeId = !empty($_GET['route_id']) ? intval($_GET['route_id']) : null;
         $areaId = !empty($_GET['area_id']) ? intval($_GET['area_id']) : null;

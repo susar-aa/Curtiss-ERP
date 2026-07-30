@@ -299,7 +299,7 @@
 
     <!-- Filters Section -->
     <div class="glass-card" style="background-color: #ffffff;">
-        <form method="GET" action="<?= APP_URL ?>/repperformance" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: flex-end;">
+        <form method="GET" action="<?= APP_URL ?>/repperformance" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: flex-end;">
             <div>
                 <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 5px;" for="rep_user_id">Representative</label>
                 <select name="rep_user_id" id="rep_user_id" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;" onchange="this.form.submit()">
@@ -329,7 +329,6 @@
             <div>
                 <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 5px;" for="month">Specific Month</label>
                 <select name="month" id="month" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;">
-                    <option value="">All Months</option>
                     <?php for ($m = 1; $m <= 12; $m++): $mVal = str_pad((string)$m, 2, '0', STR_PAD_LEFT); ?>
                         <option value="<?= $mVal ?>" <?= $data['month'] === $mVal ? 'selected' : '' ?>><?= date('F', mktime(0, 0, 0, $m, 1)) ?></option>
                     <?php endfor; ?>
@@ -338,23 +337,14 @@
             <div>
                 <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 5px;" for="year">Specific Year</label>
                 <select name="year" id="year" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;">
-                    <option value="">All Years</option>
                     <?php for ($y = date('Y'); $y >= 2024; $y--): ?>
                         <option value="<?= $y ?>" <?= $data['year'] == $y ? 'selected' : '' ?>><?= $y ?></option>
                     <?php endfor; ?>
                 </select>
             </div>
-            <div>
-                <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 5px;" for="start_date">From Date</label>
-                <input type="date" name="start_date" id="start_date" value="<?= htmlspecialchars($data['start_date']) ?>" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;">
-            </div>
-            <div>
-                <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 5px;" for="end_date">To Date</label>
-                <input type="date" name="end_date" id="end_date" value="<?= htmlspecialchars($data['end_date']) ?>" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff;">
-            </div>
             <div style="display: flex; gap: 8px;">
-                <button type="submit" class="btn btn-primary" style="height: 38px; flex: 1;"><i class="ph ph-funnel"></i> Apply</button>
-                <a href="<?= APP_URL ?>/repperformance" class="btn btn-outline" style="height: 38px; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: #333;"><i class="ph ph-arrow-counter-clockwise"></i></a>
+                <button type="submit" class="btn btn-primary" style="height: 38px; flex: 1;"><i class="ph ph-funnel"></i> Apply Filter</button>
+                <a href="<?= APP_URL ?>/repperformance" class="btn btn-outline" style="height: 38px; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: #333;"><i class="ph ph-arrow-counter-clockwise"></i> Reset</a>
             </div>
         </form>
     </div>
@@ -364,7 +354,6 @@
         <button class="tab-btn active" onclick="switchTab('profileTab', this)"><i class="ph ph-user-circle"></i> Representative Profile</button>
         <button class="tab-btn" onclick="switchTab('compareTab', this)"><i class="ph ph-git-compare"></i> Side-by-Side Comparison</button>
         <button class="tab-btn" onclick="switchTab('rankingsTab', this)"><i class="ph ph-trophy"></i> Rankings &amp; Leaderboard</button>
-        <button class="tab-btn" onclick="switchTab('settingsTab', this)"><i class="ph ph-gear"></i> Target Configurations</button>
     </div>
 
     <!-- PROFILE TAB -->
@@ -661,56 +650,7 @@
         </div>
     </div>
 
-    <!-- TARGET CONFIGURATION SETTINGS TAB -->
-    <div id="settingsTab" class="tab-pane">
-        <div class="glass-card" style="background-color: #ffffff;">
-            <h4 style="margin: 0 0 15px 0; color: #0f172a;"><i class="ph ph-gear"></i> KPI Targets &amp; Score Weights Configurator</h4>
-            <p style="font-size: 13px; color: #64748b; margin-bottom: 20px;">
-                As an Administrator, you can update KPI target benchmarks and weights dynamically.
-                All weights must sum up to 100% for mathematical accuracy.
-            </p>
-            <form method="POST" action="<?= APP_URL ?>/repperformance/save_settings">
-                <input type="hidden" name="csrf_token" value="<?= $data['csrf_token'] ?>">
-                
-                <table class="perf-table">
-                    <thead>
-                        <tr>
-                            <th>Evaluation Dimension</th>
-                            <th>Weight Assigned (%)</th>
-                            <th>Monthly Benchmark Target</th>
-                            <th>Min Clamped Score</th>
-                            <th>Max Clamped Score</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($data['kpi_configs'] as $cfg): ?>
-                            <tr>
-                                <td>
-                                    <strong><?= htmlspecialchars($cfg->kpi_name) ?></strong>
-                                    <input type="hidden" name="configs[<?= $cfg->kpi_key ?>][kpi_key]" value="<?= $cfg->kpi_key ?>">
-                                </td>
-                                <td>
-                                    <input type="number" name="configs[<?= $cfg->kpi_key ?>][weight]" value="<?= floatval($cfg->weight) ?>" step="0.5" min="0" max="100" style="padding: 6px; width: 80px; border: 1px solid #cbd5e1; border-radius: 4px;"> %
-                                </td>
-                                <td>
-                                    <input type="number" name="configs[<?= $cfg->kpi_key ?>][target_value]" value="<?= floatval($cfg->target_value) ?>" step="0.01" min="0" style="padding: 6px; width: 140px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                                </td>
-                                <td>
-                                    <input type="number" name="configs[<?= $cfg->kpi_key ?>][min_score]" value="<?= intval($cfg->min_score) ?>" min="0" style="padding: 6px; width: 80px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                                </td>
-                                <td>
-                                    <input type="number" name="configs[<?= $cfg->kpi_key ?>][max_score]" value="<?= intval($cfg->max_score) ?>" min="0" style="padding: 6px; width: 80px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-                <div style="margin-top: 20px; text-align: right;">
-                    <button type="submit" class="btn btn-primary"><i class="ph ph-floppy-disk"></i> Save Configurations</button>
-                </div>
-            </form>
-        </div>
-    </div>
+
 
 </div>
 
