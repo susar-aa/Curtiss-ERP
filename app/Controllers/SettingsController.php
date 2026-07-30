@@ -79,9 +79,30 @@ class SettingsController extends Controller {
     }
 
     public function rep_targets() {
+        $db = new Database();
+        $db->query("SELECT u.id, u.username, e.first_name, e.last_name 
+                    FROM users u
+                    LEFT JOIN employees e ON u.employee_id = e.id
+                    WHERE u.role = 'Rep (Sales Representative)'
+                    ORDER BY u.username ASC");
+        $reps = $db->resultSet() ?: [];
+
+        $selectedRepId = isset($_GET['rep_user_id']) ? intval($_GET['rep_user_id']) : 0;
+        if ($selectedRepId === 0 && !empty($reps)) {
+            $selectedRepId = intval($reps[0]->id);
+        }
+
+        $month = $_GET['month'] ?? date('m');
+        $year = $_GET['year'] ?? date('Y');
+
         $data = [
-            'title' => 'Rep KPI Targets Settings',
+            'title' => 'Rep Targets & KPI Weights',
             'content_view' => 'settings/rep_targets',
+            'reps' => $reps,
+            'selected_rep_id' => $selectedRepId,
+            'month' => $month,
+            'year' => $year,
+            'rep_targets' => $this->perfModel->getRepTargets($selectedRepId, $month, $year),
             'kpi_configs' => $this->perfModel->getKpiConfigs(),
             'active_tab' => 'rep_targets',
             'csrf_token' => $this->generateCsrfToken(),
@@ -90,14 +111,36 @@ class SettingsController extends Controller {
         ];
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $configs = $_POST['configs'] ?? [];
-            if ($this->perfModel->updateKpiConfigs($configs)) {
-                $this->logActivity('Update KPI Settings', 'Analytics', 'Updated performance targets and scoring weights.');
-                $data['success'] = 'KPI configurations and weights saved successfully.';
-            } else {
-                $data['error'] = 'Failed to update KPI weights settings.';
+            // Check which form was submitted (Save Targets or Save Global Weights)
+            if (isset($_POST['save_targets'])) {
+                $postData = [
+                    'user_id' => $selectedRepId,
+                    'month' => $month,
+                    'year' => $year,
+                    'sales_target' => floatval($_POST['sales_target'] ?? 0.00),
+                    'productive_visits_target' => intval($_POST['productive_visits_target'] ?? 0),
+                    'total_visits_target' => intval($_POST['total_visits_target'] ?? 0),
+                    'working_days_target' => intval($_POST['working_days_target'] ?? 0),
+                    'credit_limit' => floatval($_POST['credit_limit'] ?? 0.00)
+                ];
+                if ($this->perfModel->saveRepTargets($postData)) {
+                    $this->logActivity('Update Rep Targets', 'Analytics', "Updated targets for Rep User ID {$selectedRepId} for {$year}-{$month}.");
+                    $data['success'] = 'Representative targets updated successfully.';
+                } else {
+                    $data['error'] = 'Failed to save representative targets.';
+                }
+            } elseif (isset($_POST['save_weights'])) {
+                $configs = $_POST['configs'] ?? [];
+                if ($this->perfModel->updateKpiConfigs($configs)) {
+                    $this->logActivity('Update KPI Settings', 'Analytics', 'Updated global performance weights.');
+                    $data['success'] = 'Global KPI weights and constraints updated successfully.';
+                } else {
+                    $data['error'] = 'Failed to update global KPI weights.';
+                }
             }
-            // reload config list
+
+            // Refresh configurations and targets data
+            $data['rep_targets'] = $this->perfModel->getRepTargets($selectedRepId, $month, $year);
             $data['kpi_configs'] = $this->perfModel->getKpiConfigs();
         }
 

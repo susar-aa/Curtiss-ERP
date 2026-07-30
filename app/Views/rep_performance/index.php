@@ -429,6 +429,19 @@
                     <div class="kpi-sub">Daily Visits Avg: <?= number_format($p['avg_daily_visits'], 1) ?></div>
                 </div>
 
+                <!-- Credit limit and Outstanding -->
+                <div class="kpi-metric-card productivity" style="border-left-color: #3b82f6;">
+                    <div class="kpi-label">Credit Limit / Outstanding</div>
+                    <div class="kpi-value">Rs. <?= number_format($p['total_outstanding'] ?? 0.00, 2) ?></div>
+                    <div class="kpi-sub">Assigned Limit: Rs. <?= number_format($p['credit_limit'] ?? 0.00, 2) ?></div>
+                    <?php if (($p['credit_limit'] ?? 0.00) > 0.00): ?>
+                        <div class="kpi-progress-bar">
+                            <div class="kpi-progress-fill" style="width: <?= min(100, (($p['total_outstanding'] ?? 0.00) / $p['credit_limit']) * 100) ?>%; background: #3b82f6;"></div>
+                        </div>
+                        <div class="kpi-sub" style="margin-top: 5px;">Limit Usage: <?= number_format((($p['total_outstanding'] ?? 0.00) / $p['credit_limit']) * 100, 1) ?>%</div>
+                    <?php endif; ?>
+                </div>
+
                 <!-- Profitability / Expenses -->
                 <div class="kpi-metric-card expenses">
                     <div class="kpi-label">Expenses</div>

@@ -56,6 +56,10 @@ class RepPerformance {
         $startDate = date('Y-m-d', strtotime($startDate));
         $endDate = date('Y-m-d', strtotime($endDate));
 
+        $month = date('m', strtotime($startDate));
+        $year = date('Y', strtotime($startDate));
+        $repTargets = $this->getRepTargets($repUserId, $month, $year);
+
         // 1. Resolve Rep Route IDs in period
         $routeQueryStr = "SELECT id, status FROM rep_daily_routes WHERE user_id = :uid AND DATE(start_time) BETWEEN :start AND :end";
         if ($routeId) {
@@ -241,24 +245,28 @@ class RepPerformance {
 
         $collectionEfficiency = $totalSales > 0 ? ($totalCollections / $totalSales) * 100 : 0.00;
 
-        // Outstanding Receivables for Rep's Customers
-        $outstandingSql = "SELECT SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as outstanding 
+        // Outstanding Receivables for Rep's Customers (unpaid/partially paid)
+        $outstandingSql = "SELECT i.id,
+                                  (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as bill_amt,
+                                  COALESCE((SELECT SUM(amount) FROM customer_payment_allocations WHERE invoice_id = i.id AND is_reversed = 0), 0) as paid_amt
                            FROM invoices i
                            LEFT JOIN customers c ON i.customer_id = c.id
                            WHERE i.rep_route_id IN ($routeIdsPlaceholder) 
-                             AND i.status IN ('Unpaid', 'Draft')
-                             AND i.invoice_date BETWEEN :start AND :end";
+                             AND i.status != 'Voided' 
+                             AND i.status != 'Paid'";
         if ($areaId) {
             $outstandingSql .= " AND c.mca_id = :area_id";
         }
         $this->db->query($outstandingSql);
-        $this->db->bind(':start', $startDate);
-        $this->db->bind(':end', $endDate);
         if ($areaId) {
             $this->db->bind(':area_id', $areaId);
         }
-        $outstandingRow = $this->db->single();
-        $outstandingAmount = floatval($outstandingRow->outstanding ?? 0.00);
+        $outstandingRows = $this->db->resultSet() ?: [];
+        $totalOutstanding = 0.00;
+        foreach ($outstandingRows as $row) {
+            $totalOutstanding += max(0.00, floatval($row->bill_amt) - floatval($row->paid_amt));
+        }
+        $outstandingAmount = $totalOutstanding;
 
         // Expense & Profitability
         $expensesSql = "SELECT expense_type, SUM(amount) as exp_sum 
@@ -460,18 +468,24 @@ class RepPerformance {
             $minScore = intval($cfg->min_score);
             $maxScore = intval($cfg->max_score);
             
-            // Map keys to calculations
+            // Map keys to calculations (prioritizing rep-wise targets)
             $actual = 0.00;
             if ($cfg->kpi_key === 'sales_amount') {
+                $target = floatval($repTargets->sales_target);
                 $actual = $netSales;
             } elseif ($cfg->kpi_key === 'productive_visit_rate') {
-                $actual = $productiveVisitRate;
+                $target = floatval($repTargets->productive_visits_target);
+                $actual = floatval($productiveVisits);
+            } elseif ($cfg->kpi_key === 'total_visits') {
+                $target = floatval($repTargets->total_visits_target);
+                $actual = floatval($totalVisits);
             } elseif ($cfg->kpi_key === 'collection_efficiency') {
                 $actual = $collectionEfficiency;
             } elseif ($cfg->kpi_key === 'new_customers') {
                 $actual = floatval($newCustomers);
             } elseif ($cfg->kpi_key === 'route_completion') {
-                $actual = $routeCompletionRate;
+                $target = floatval($repTargets->working_days_target);
+                $actual = floatval($activeRouteDays);
             }
 
             $achievementPct = 0.00;
@@ -532,6 +546,8 @@ class RepPerformance {
             'bank_collections' => $bankCollections,
             'collection_efficiency' => $collectionEfficiency,
             'outstanding_amount' => $outstandingAmount,
+            'total_outstanding' => $outstandingAmount,
+            'credit_limit' => floatval($repTargets->credit_limit),
             // Expenses
             'total_expenses' => $totalExpenses,
             'fuel_expenses' => $fuelExpenses,
@@ -561,5 +577,58 @@ class RepPerformance {
             'kpi_scores' => $kpiScores,
             'overall_score' => $overallPerformanceScore
         ];
+    }
+
+    /**
+     * Fetch targets for a specific representative for a given month and year.
+     * Defaults to 0 if not set.
+     */
+    public function getRepTargets(int $userId, string $month, string $year): object {
+        $this->db->query("SELECT * FROM rep_targets WHERE user_id = :uid AND month = :m AND year = :y LIMIT 1");
+        $this->db->bind(':uid', $userId);
+        $this->db->bind(':m', $month);
+        $this->db->bind(':y', $year);
+        $row = $this->db->single();
+        if ($row) {
+            return $row;
+        }
+        
+        // Return a default object with 0 values
+        return (object)[
+            'user_id' => $userId,
+            'month' => $month,
+            'year' => $year,
+            'sales_target' => 0.00,
+            'productive_visits_target' => 0,
+            'total_visits_target' => 0,
+            'working_days_target' => 0,
+            'credit_limit' => 0.00
+        ];
+    }
+
+    /**
+     * Save/update targets for a representative.
+     */
+    public function saveRepTargets(array $data): bool {
+        $this->db->query("
+            INSERT INTO rep_targets (user_id, month, year, sales_target, productive_visits_target, total_visits_target, working_days_target, credit_limit)
+            VALUES (:uid, :m, :y, :sales, :prod, :total, :days, :credit)
+            ON DUPLICATE KEY UPDATE
+                sales_target = VALUES(sales_target),
+                productive_visits_target = VALUES(productive_visits_target),
+                total_visits_target = VALUES(total_visits_target),
+                working_days_target = VALUES(working_days_target),
+                credit_limit = VALUES(credit_limit)
+        ");
+        $this->db->bind(':uid', intval($data['user_id']));
+        $this->db->bind(':m', $data['month']);
+        $this->db->bind(':y', $data['year']);
+        $this->db->bind(':sales', floatval($data['sales_target']));
+        $this->db->bind(':prod', intval($data['productive_visits_target']));
+        $this->db->bind(':total', intval($data['total_visits_target']));
+        $this->db->bind(':days', intval($data['working_days_target']));
+        $this->db->bind(':credit', floatval($data['credit_limit']));
+        
+        return $this->db->execute();
     }
 }
