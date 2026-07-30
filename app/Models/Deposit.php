@@ -333,9 +333,10 @@ class Deposit {
         $jeModel = new JournalEntry();
         
         $desc = "Deposit sent to bank: " . $deposit->deposit_number;
+        $jeRef = 'DEP-' . $deposit->deposit_number;
         $result = $jeModel->postEntry(
             $deposit->deposit_date,
-            $deposit->deposit_number,
+            $jeRef,
             $desc,
             $lines,
             intval($userId)
@@ -347,7 +348,7 @@ class Deposit {
 
                 // Get the inserted journal entry ID
                 $this->db->query("SELECT id FROM journal_entries WHERE reference = :ref LIMIT 1");
-                $this->db->bind(':ref', $deposit->deposit_number);
+                $this->db->bind(':ref', $jeRef);
                 $jeRow = $this->db->single();
                 $jeId = $jeRow ? intval($jeRow->id) : null;
 
