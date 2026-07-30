@@ -54,8 +54,10 @@ class RepPerformanceController extends Controller {
 
         // 4. Compute primary representative performance
         $perfData = [];
+        $monthlyTrend = [];
         if ($repUserId > 0) {
             $perfData = $this->perfModel->calculatePerformance($repUserId, $startDate, $endDate, $routeId, $areaId);
+            $monthlyTrend = $this->perfModel->getMonthlyTrend($repUserId, 6);
         }
 
         // 5. Compute comparisons if requested
@@ -133,6 +135,7 @@ class RepPerformanceController extends Controller {
             'month' => $month,
             'year' => $year,
             'perf_data' => $perfData,
+            'monthly_trend' => $monthlyTrend,
             'compare_data' => $compareData,
             'team_avg' => $teamAvg,
             'rankings' => $rankings,

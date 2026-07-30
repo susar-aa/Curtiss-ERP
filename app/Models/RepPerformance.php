@@ -77,6 +77,21 @@ class RepPerformance {
         $routes = $this->db->resultSet() ?: [];
         $routeIds = array_map(fn($r) => intval($r->id), $routes);
         
+        // Fetch detailed routes listing
+        $routesDetailSql = "SELECT * FROM rep_daily_routes WHERE user_id = :uid AND DATE(start_time) BETWEEN :start AND :end ORDER BY start_time DESC";
+        if ($routeId) {
+            $routesDetailSql = "SELECT * FROM rep_daily_routes WHERE id = :route_id";
+        }
+        $this->db->query($routesDetailSql);
+        $this->db->bind(':uid', $repUserId);
+        if ($routeId) {
+            $this->db->bind(':route_id', $routeId);
+        } else {
+            $this->db->bind(':start', $startDate);
+            $this->db->bind(':end', $endDate);
+        }
+        $routesDetail = $this->db->resultSet() ?: [];
+        
         if (empty($routeIds)) {
             $routeIds = [0]; // avoid SQL error in empty list
         }
@@ -575,6 +590,7 @@ class RepPerformance {
             'recent_unprod' => $recentUnprod,
             // Scoring
             'kpi_scores' => $kpiScores,
+            'routes_detail' => $routesDetail,
             'overall_score' => $overallPerformanceScore
         ];
     }
@@ -630,5 +646,30 @@ class RepPerformance {
         $this->db->bind(':credit', floatval($data['credit_limit']));
         
         return $this->db->execute();
+    }
+
+    /**
+     * Get monthly aggregates trend for a representative over the last N months.
+     */
+    public function getMonthlyTrend(int $repUserId, int $limit = 6): array {
+        $trends = [];
+        for ($i = $limit - 1; $i >= 0; $i--) {
+            // Get first and last day of that month
+            $targetMonth = date('m', strtotime("-$i months"));
+            $targetYear = date('Y', strtotime("-$i months"));
+            
+            $start = date("$targetYear-$targetMonth-01");
+            $end = date("$targetYear-$targetMonth-t");
+            
+            $perf = $this->calculatePerformance($repUserId, $start, $end);
+            
+            $trends[] = [
+                'label' => date('M Y', strtotime($start)),
+                'net_sales' => $perf['net_sales'],
+                'total_collections' => $perf['total_collections'],
+                'overall_score' => $perf['overall_score']
+            ];
+        }
+        return $trends;
     }
 }

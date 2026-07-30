@@ -3,10 +3,10 @@
 
 <style>
     :root {
-        --c-glass: rgba(255, 255, 255, 0.7);
+        --c-glass: rgba(255, 255, 255, 0.75);
         --c-glass-border: rgba(226, 232, 240, 0.8);
-        --glow-green: 0 0 12px rgba(16, 185, 129, 0.4);
-        --glow-blue: 0 0 12px rgba(2, 132, 199, 0.4);
+        --glow-green: 0 0 12px rgba(16, 185, 129, 0.3);
+        --glow-blue: 0 0 12px rgba(2, 132, 199, 0.3);
         --c-primary: #1b5e20;
         --c-secondary: #0284c7;
     }
@@ -24,15 +24,15 @@
         -webkit-backdrop-filter: blur(12px);
         border: 1px solid var(--c-glass-border);
         border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
         padding: 20px;
-        margin-bottom: 20px;
+        margin-bottom: 25px;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     .glass-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
     }
 
     .dashboard-header {
@@ -71,7 +71,7 @@
     .tab-bar {
         display: flex;
         gap: 10px;
-        margin-bottom: 20px;
+        margin-bottom: 25px;
         border-bottom: 2px solid #e2e8f0;
         padding-bottom: 2px;
         overflow-x: auto;
@@ -80,7 +80,7 @@
     .tab-btn {
         background: none;
         border: none;
-        padding: 10px 20px;
+        padding: 12px 24px;
         font-size: 14px;
         font-weight: 600;
         color: #64748b;
@@ -170,7 +170,6 @@
         color: #94a3b8;
     }
 
-    /* Target Achieved Indicator */
     .kpi-progress-bar {
         height: 4px;
         background: #e2e8f0;
@@ -189,10 +188,18 @@
         display: grid;
         grid-template-columns: 2fr 1fr;
         gap: 20px;
+        margin-bottom: 25px;
+    }
+
+    .chart-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 25px;
     }
 
     @media (max-width: 1024px) {
-        .dashboard-panels {
+        .dashboard-panels, .chart-grid-2 {
             grid-template-columns: 1fr;
         }
     }
@@ -216,7 +223,7 @@
         background: #fff;
         border-radius: 12px;
         width: 90%;
-        max-width: 800px;
+        max-width: 850px;
         max-height: 80vh;
         overflow-y: auto;
         padding: 25px;
@@ -239,7 +246,6 @@
         color: #0f172a;
     }
 
-    /* Standardized tables styles */
     .perf-table {
         width: 100%;
         border-collapse: collapse;
@@ -247,9 +253,9 @@
     }
 
     .perf-table th {
-        background: #f1f5f9;
+        background: #f8fafc;
         text-align: left;
-        padding: 10px 12px;
+        padding: 12px;
         font-size: 12px;
         font-weight: 600;
         color: #475569;
@@ -257,11 +263,23 @@
     }
 
     .perf-table td {
-        padding: 10px 12px;
+        padding: 12px;
         font-size: 13px;
         color: #334155;
         border-bottom: 1px solid #f1f5f9;
     }
+
+    .badge {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .badge-success { background: #d1fae5; color: #065f46; }
+    .badge-warning { background: #fef3c7; color: #92400e; }
+    .badge-info { background: #e0f2fe; color: #0369a1; }
+    .badge-danger { background: #fee2e2; color: #991b1b; }
 
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(5px); }
@@ -373,12 +391,12 @@
                 <div class="kpi-metric-card sales">
                     <div class="kpi-label">Total / Net Sales</div>
                     <div class="kpi-value" onclick="openDrilldown('sales')">Rs. <?= number_format($p['net_sales'], 2) ?></div>
-                    <div class="kpi-sub">Total Bills: <?= $p['invoice_count'] ?> | Avg: Rs. <?= number_format($p['avg_invoice_value'], 2) ?></div>
+                    <div class="kpi-sub">Bills: <?= $p['invoice_count'] ?> | Returns: Rs. <?= number_format($p['total_returns'], 2) ?></div>
                     <?php if ($p['kpi_scores']['sales_amount']['target'] > 0): ?>
                         <div class="kpi-progress-bar">
-                            <div class="kpi-progress-fill" style="width: <?= min(100, $p['kpi_scores']['sales_amount']['achievement_pct']) ?>%; background: #10b981;"></div>
+                            <div class="kpi-progress-fill" style="width: min(100%, <?= (($p['net_sales'] / $p['kpi_scores']['sales_amount']['target']) * 100) ?>%); background: #10b981;"></div>
                         </div>
-                        <div class="kpi-sub" style="margin-top: 5px;">Target Achieved: <?= number_format($p['kpi_scores']['sales_amount']['achievement_pct'], 1) ?>%</div>
+                        <div class="kpi-sub" style="margin-top: 5px;">Target: Rs. <?= number_format($p['kpi_scores']['sales_amount']['target'], 2) ?></div>
                     <?php endif; ?>
                 </div>
 
@@ -387,11 +405,11 @@
                     <div class="kpi-label">Customer Visits</div>
                     <div class="kpi-value" onclick="openDrilldown('visits')"><?= $p['productive_visits'] ?> / <?= $p['total_visited'] ?></div>
                     <div class="kpi-sub">New Acquired: <?= $p['new_customers_added'] ?> | Repeat: <?= $p['repeat_customers'] ?></div>
-                    <?php if ($p['kpi_scores']['productive_visit_rate']['target'] > 0): ?>
+                    <?php if (($p['kpi_scores']['productive_visit_rate']['target'] ?? 0) > 0): ?>
                         <div class="kpi-progress-bar">
-                            <div class="kpi-progress-fill" style="width: <?= min(100, $p['productive_visit_rate']) ?>%; background: #0284c7;"></div>
+                            <div class="kpi-progress-fill" style="width: min(100%, <?= (($p['productive_visits'] / $p['kpi_scores']['productive_visit_rate']['target']) * 100) ?>%); background: #0284c7;"></div>
                         </div>
-                        <div class="kpi-sub" style="margin-top: 5px;">Productive Rate: <?= number_format($p['productive_visit_rate'], 1) ?>%</div>
+                        <div class="kpi-sub" style="margin-top: 5px;">Target: <?= $p['kpi_scores']['productive_visit_rate']['target'] ?> productive</div>
                     <?php endif; ?>
                 </div>
 
@@ -399,12 +417,12 @@
                 <div class="kpi-metric-card routes">
                     <div class="kpi-label">Routes Completed</div>
                     <div class="kpi-value"><?= $p['completed_routes'] ?> / <?= $p['total_routes'] ?></div>
-                    <div class="kpi-sub">Completion: <?= number_format($p['route_completion_rate'], 1) ?>%</div>
-                    <?php if ($p['kpi_scores']['route_completion']['target'] > 0): ?>
+                    <div class="kpi-sub">Completion Rate: <?= number_format($p['route_completion_rate'], 1) ?>%</div>
+                    <?php if (($p['kpi_scores']['route_completion']['target'] ?? 0) > 0): ?>
                         <div class="kpi-progress-bar">
-                            <div class="kpi-progress-fill" style="width: <?= min(100, $p['route_completion_rate']) ?>%; background: #f59e0b;"></div>
+                            <div class="kpi-progress-fill" style="width: min(100%, <?= (($p['active_route_days'] / $p['kpi_scores']['route_completion']['target']) * 100) ?>%); background: #f59e0b;"></div>
                         </div>
-                        <div class="kpi-sub" style="margin-top: 5px;">Rate vs Target: <?= number_format($p['kpi_scores']['route_completion']['achievement_pct'], 1) ?>%</div>
+                        <div class="kpi-sub" style="margin-top: 5px;">Target Days: <?= $p['kpi_scores']['route_completion']['target'] ?> days</div>
                     <?php endif; ?>
                 </div>
 
@@ -413,23 +431,15 @@
                     <div class="kpi-label">Collections</div>
                     <div class="kpi-value" onclick="openDrilldown('collections')">Rs. <?= number_format($p['total_collections'], 2) ?></div>
                     <div class="kpi-sub">Efficiency: <?= number_format($p['collection_efficiency'], 1) ?>%</div>
-                    <?php if ($p['kpi_scores']['collection_efficiency']['target'] > 0): ?>
+                    <?php if (($p['kpi_scores']['collection_efficiency']['target'] ?? 0) > 0): ?>
                         <div class="kpi-progress-bar">
-                            <div class="kpi-progress-fill" style="width: <?= min(100, $p['collection_efficiency']) ?>%; background: #8b5cf6;"></div>
+                            <div class="kpi-progress-fill" style="width: min(100%, <?= $p['collection_efficiency'] ?>%); background: #8b5cf6;"></div>
                         </div>
-                        <div class="kpi-sub" style="margin-top: 5px;">Collection Rate: <?= number_format($p['collection_efficiency'], 1) ?>%</div>
+                        <div class="kpi-sub" style="margin-top: 5px;">Target: <?= $p['kpi_scores']['collection_efficiency']['target'] ?>% efficiency</div>
                     <?php endif; ?>
                 </div>
 
-                <!-- Productivity -->
-                <div class="kpi-metric-card productivity">
-                    <div class="kpi-label">Working Days</div>
-                    <div class="kpi-value"><?= $p['active_route_days'] ?> Days</div>
-                    <div class="kpi-sub">Daily Sales Avg: Rs. <?= number_format($p['avg_daily_sales'], 2) ?></div>
-                    <div class="kpi-sub">Daily Visits Avg: <?= number_format($p['avg_daily_visits'], 1) ?></div>
-                </div>
-
-                <!-- Credit limit and Outstanding -->
+                <!-- Credit Limit vs Outstanding -->
                 <div class="kpi-metric-card productivity" style="border-left-color: #3b82f6;">
                     <div class="kpi-label">Credit Limit / Outstanding</div>
                     <div class="kpi-value">Rs. <?= number_format($p['total_outstanding'] ?? 0.00, 2) ?></div>
@@ -442,7 +452,7 @@
                     <?php endif; ?>
                 </div>
 
-                <!-- Profitability / Expenses -->
+                <!-- Expenses -->
                 <div class="kpi-metric-card expenses">
                     <div class="kpi-label">Expenses</div>
                     <div class="kpi-value">Rs. <?= number_format($p['total_expenses'], 2) ?></div>
@@ -452,27 +462,52 @@
             </div>
 
             <!-- Export KPI Report buttons -->
-            <div style="margin-bottom: 20px; text-align: right;">
+            <div style="margin-bottom: 25px; text-align: right;">
                 <span style="font-size: 13px; font-weight: bold; color: #475569; margin-right: 10px;">Download Reports:</span>
                 <a href="<?= APP_URL ?>/repperformance/export/kpi?rep_user_id=<?= $data['selected_rep_id'] ?>&start_date=<?= $data['start_date'] ?>&end_date=<?= $data['end_date'] ?>&route_id=<?= $data['selected_route_id'] ?>&area_id=<?= $data['selected_area_id'] ?>" class="btn btn-outline btn-sm"><i class="ph ph-file-csv"></i> KPI Report</a>
                 <a href="<?= APP_URL ?>/repperformance/export/sales?rep_user_id=<?= $data['selected_rep_id'] ?>&start_date=<?= $data['start_date'] ?>&end_date=<?= $data['end_date'] ?>&route_id=<?= $data['selected_route_id'] ?>&area_id=<?= $data['selected_area_id'] ?>" class="btn btn-outline btn-sm"><i class="ph ph-file-csv"></i> Sales Report</a>
                 <a href="<?= APP_URL ?>/repperformance/export/route?rep_user_id=<?= $data['selected_rep_id'] ?>&start_date=<?= $data['start_date'] ?>&end_date=<?= $data['end_date'] ?>&route_id=<?= $data['selected_route_id'] ?>&area_id=<?= $data['selected_area_id'] ?>" class="btn btn-outline btn-sm"><i class="ph ph-file-csv"></i> Route Report</a>
                 <a href="<?= APP_URL ?>/repperformance/export/collection?rep_user_id=<?= $data['selected_rep_id'] ?>&start_date=<?= $data['start_date'] ?>&end_date=<?= $data['end_date'] ?>&route_id=<?= $data['selected_route_id'] ?>&area_id=<?= $data['selected_area_id'] ?>" class="btn btn-outline btn-sm"><i class="ph ph-file-csv"></i> Collection Report</a>
-                <a href="<?= APP_URL ?>/repperformance/export/customer?rep_user_id=<?= $data['selected_rep_id'] ?>&start_date=<?= $data['start_date'] ?>&end_date=<?= $data['end_date'] ?>&route_id=<?= $data['selected_route_id'] ?>&area_id=<?= $data['selected_area_id'] ?>" class="btn btn-outline btn-sm"><i class="ph ph-file-csv"></i> Customer Visit Report</a>
             </div>
 
-            <!-- Two Panels: Charts + Breakdowns -->
-            <div class="dashboard-panels">
-                <div>
-                    <!-- Charts Panel -->
-                    <div class="glass-card" style="background-color: #ffffff;">
-                        <h4 style="margin: 0 0 15px 0; color: #0f172a;"><i class="ph ph-chart-line-up"></i> Sales &amp; Collections Trend</h4>
-                        <div style="height: 320px; position: relative;">
-                            <canvas id="trendChart"></canvas>
+            <!-- ROW 1 OF CHARTS: Combo Sales/Collections & visit/payment splits -->
+            <div class="chart-grid-2">
+                <div class="glass-card" style="background-color: #ffffff; margin-bottom:0;">
+                    <h4 style="margin: 0 0 15px 0; color: #0f172a;"><i class="ph ph-chart-line-up"></i> Sales &amp; Collections Trend (Current Period)</h4>
+                    <div style="height: 320px; position: relative;">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-card" style="background-color: #ffffff; margin-bottom:0; display: flex; flex-direction: column; justify-content: space-between;">
+                    <h4 style="margin: 0 0 15px 0; color: #0f172a;"><i class="ph ph-chart-pie"></i> Customer Engagement &amp; Payment Methods</h4>
+                    <div style="display: flex; gap: 15px; flex: 1; align-items: center; justify-content: space-around; flex-wrap: wrap;">
+                        <div style="width: 170px; height: 170px; position: relative;">
+                            <canvas id="visitPieChart"></canvas>
+                            <div style="text-align: center; font-size: 11px; font-weight: bold; margin-top: 5px; color:#475569;">Visits Breakup</div>
+                        </div>
+                        <div style="width: 170px; height: 170px; position: relative;">
+                            <canvas id="paymentPieChart"></canvas>
+                            <div style="text-align: center; font-size: 11px; font-weight: bold; margin-top: 5px; color:#475569;">Collections Splitting</div>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <!-- KPI Target Contribution breakdown -->
+            <!-- ROW 2 OF CHARTS: 6-Month Monthly Historical Performance Trend -->
+            <?php if (!empty($data['monthly_trend'])): ?>
+                <div class="glass-card" style="background-color: #ffffff;">
+                    <h4 style="margin: 0 0 15px 0; color: #0f172a;"><i class="ph ph-calendar"></i> 6-Month Historical Sales &amp; KPI Score Profile</h4>
+                    <div style="height: 320px; position: relative;">
+                        <canvas id="monthlyTrendChart"></canvas>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <!-- ROW 3: KPI Target Contributions & Category Sales -->
+            <div class="dashboard-panels">
+                <div>
+                    <!-- KPI Evaluation Detail -->
                     <div class="glass-card" style="background-color: #ffffff;">
                         <h4 style="margin: 0 0 15px 0; color: #0f172a;"><i class="ph ph-star"></i> KPI Evaluation Detail</h4>
                         <table class="perf-table">
@@ -482,7 +517,7 @@
                                     <th>Target Value</th>
                                     <th>Actual Result</th>
                                     <th>Achievement %</th>
-                                    <th>Assigned Weight</th>
+                                    <th>Weight</th>
                                     <th>Score Contribution</th>
                                 </tr>
                             </thead>
@@ -504,11 +539,34 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Category Sales Breakdown -->
+                    <div class="glass-card" style="background-color: #ffffff;">
+                        <h4 style="margin: 0 0 15px 0; color: #0f172a;"><i class="ph ph-tag"></i> Category-wise Sales Volume</h4>
+                        <table class="perf-table">
+                            <thead>
+                                <tr>
+                                    <th>Product Category</th>
+                                    <th style="text-align: right;">Total Sales (LKR)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($p['top_categories'])): ?>
+                                    <tr><td colspan="2" style="text-align:center; color:#94a3b8;">No category sales recorded.</td></tr>
+                                <?php else: foreach ($p['top_categories'] as $cat): ?>
+                                    <tr>
+                                        <td><strong><?= htmlspecialchars($cat->category_name) ?></strong></td>
+                                        <td style="text-align: right; font-weight: bold; color: var(--c-primary);">Rs. <?= number_format($cat->total_sales, 2) ?></td>
+                                    </tr>
+                                <?php endforeach; endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div>
-                    <!-- Top lists panel -->
-                    <div class="glass-card" style="background-color: #ffffff;">
+                    <!-- Top Customers -->
+                    <div class="glass-card" style="background-color: #ffffff; padding: 15px;">
                         <h4 style="margin: 0 0 15px 0; color: #0f172a;"><i class="ph ph-crown"></i> Top Customers</h4>
                         <table class="perf-table">
                             <thead>
@@ -518,17 +576,20 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($p['top_customers'] as $c): ?>
+                                <?php if (empty($p['top_customers'])): ?>
+                                    <tr><td colspan="2" style="text-align:center; color:#94a3b8;">No clients found.</td></tr>
+                                <?php else: foreach ($p['top_customers'] as $c): ?>
                                     <tr>
                                         <td><?= htmlspecialchars($c->customer_name) ?></td>
                                         <td style="text-align: right; font-weight: bold;">Rs. <?= number_format($c->total_sales, 2) ?></td>
                                     </tr>
-                                <?php endforeach; ?>
+                                <?php endforeach; endif; ?>
                             </tbody>
                         </table>
                     </div>
 
-                    <div class="glass-card" style="background-color: #ffffff;">
+                    <!-- Top Products -->
+                    <div class="glass-card" style="background-color: #ffffff; padding: 15px;">
                         <h4 style="margin: 0 0 15px 0; color: #0f172a;"><i class="ph ph-shopping-bag"></i> Top Products</h4>
                         <table class="perf-table">
                             <thead>
@@ -538,16 +599,55 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($p['top_products'] as $pr): ?>
+                                <?php if (empty($p['top_products'])): ?>
+                                    <tr><td colspan="2" style="text-align:center; color:#94a3b8;">No items sold.</td></tr>
+                                <?php else: foreach ($p['top_products'] as $pr): ?>
                                     <tr>
                                         <td><?= htmlspecialchars($pr->product_name) ?></td>
-                                        <td style="text-align: right; font-weight: bold;"><?= number_format($pr->qty) ?></td>
+                                        <td style="text-align: right; font-weight: bold; color: var(--c-secondary);"><?= number_format($pr->qty) ?></td>
                                     </tr>
-                                <?php endforeach; ?>
+                                <?php endforeach; endif; ?>
                             </tbody>
                         </table>
                     </div>
                 </div>
+            </div>
+
+            <!-- ROW 4: Route Execution History -->
+            <div class="glass-card" style="background-color: #ffffff;">
+                <h4 style="margin: 0 0 15px 0; color: #0f172a;"><i class="ph ph-map-trifold"></i> Route Execution History (Period)</h4>
+                <table class="perf-table">
+                    <thead>
+                        <tr>
+                            <th>Route Name</th>
+                            <th>Start Date &amp; Time</th>
+                            <th>End Date &amp; Time</th>
+                            <th>Starting Meter</th>
+                            <th>Ending Meter</th>
+                            <th>Vehicle No</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($p['routes_detail'])): ?>
+                            <tr><td colspan="7" style="text-align:center; color:#94a3b8;">No route executions logged in this month.</td></tr>
+                        <?php else: foreach ($p['routes_detail'] as $rt): ?>
+                            <tr>
+                                <td><strong><?= htmlspecialchars($rt->route_name) ?></strong></td>
+                                <td><?= htmlspecialchars($rt->start_time) ?></td>
+                                <td><?= htmlspecialchars($rt->end_time ?? 'Ongoing') ?></td>
+                                <td><?= number_format(floatval($rt->start_meter)) ?> km</td>
+                                <td><?= $rt->end_meter ? number_format(floatval($rt->end_meter)) . ' km' : '-' ?></td>
+                                <td><span class="badge badge-info"><?= htmlspecialchars($rt->vehicle_number ?? 'Fleet N/A') ?></span></td>
+                                <td>
+                                    <span class="badge <?= $rt->status === 'Finalized' || $rt->status === 'Completed' ? 'badge-success' : 'badge-warning' ?>">
+                                        <?= htmlspecialchars($rt->status) ?>
+                                    </span>
+                                </td>
+                            </tr>
+                        <?php endforeach; endif; ?>
+                    </tbody>
+                </table>
             </div>
 
         <?php endif; ?>
@@ -560,8 +660,8 @@
                 <h4 style="margin: 0; color: #0f172a;"><i class="ph ph-git-compare"></i> Side-by-Side Performance Comparison</h4>
                 <form method="GET" action="<?= APP_URL ?>/repperformance" style="display: flex; gap: 10px; align-items: center;">
                     <input type="hidden" name="rep_user_id" value="<?= $data['selected_rep_id'] ?>">
-                    <input type="hidden" name="start_date" value="<?= $data['start_date'] ?>">
-                    <input type="hidden" name="end_date" value="<?= $data['end_date'] ?>">
+                    <input type="hidden" name="month" value="<?= $data['month'] ?>">
+                    <input type="hidden" name="year" value="<?= $data['year'] ?>">
                     <label for="compare_user_id" style="font-size: 13px; font-weight: bold;">Compare against: </label>
                     <select name="compare_user_id" id="compare_user_id" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" onchange="this.form.submit()">
                         <option value="">Select Competitor...</option>
@@ -571,6 +671,13 @@
                     </select>
                 </form>
             </div>
+
+            <!-- Side by Side Bar comparison Chart -->
+            <?php if (!empty($data['compare_data'])): ?>
+                <div style="height: 300px; position: relative; margin-bottom: 25px;">
+                    <canvas id="compareBarChart"></canvas>
+                </div>
+            <?php endif; ?>
 
             <table class="perf-table" style="font-size: 14px;">
                 <thead>
@@ -645,6 +752,10 @@
                             <td style="text-align: center; font-weight: bold;">
                                 <?php if ($rank === 1): ?>
                                     <i class="ph ph-crown-fill" style="color: #f59e0b; font-size: 18px;"></i>
+                                <?php elseif ($rank === 2): ?>
+                                    <i class="ph ph-medal-fill" style="color: #cbd5e1; font-size: 18px;"></i>
+                                <?php elseif ($rank === 3): ?>
+                                    <i class="ph ph-medal-fill" style="color: #b45309; font-size: 18px;"></i>
                                 <?php else: ?>
                                     <?= $rank ?>
                                 <?php endif; ?>
@@ -663,8 +774,6 @@
         </div>
     </div>
 
-
-
 </div>
 
 <!-- Drilldown modal overlay -->
@@ -677,7 +786,6 @@
 </div>
 
 <script>
-    // Tab switching controller
     function switchTab(tabId, btn) {
         document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -686,17 +794,15 @@
         btn.classList.add('active');
     }
 
-    // Chart.js initialization
     <?php if (!empty($data['perf_data'])): $p = $data['perf_data']; ?>
+        // 1. Sales & Collections line trend
         const dates = <?= json_encode(array_column($p['sales_trend'], 'label')) ?>;
         const salesData = <?= json_encode(array_map('floatval', array_column($p['sales_trend'], 'sales_amount'))) ?>;
         
-        // Match collections trend to the same labels
         const collectionsMap = <?= json_encode(array_reduce($p['collections_trend'], function($carry, $item) {
             $carry[$item->label] = floatval($item->col_amount);
             return $carry;
         }, [])) ?>;
-        
         const colData = dates.map(d => collectionsMap[d] || 0.00);
 
         const ctx = document.getElementById('trendChart').getContext('2d');
@@ -706,37 +812,184 @@
                 labels: dates,
                 datasets: [
                     {
-                        label: 'Net Sales Amount (LKR)',
+                        label: 'Net Sales (Bar)',
                         data: salesData,
+                        type: 'bar',
+                        backgroundColor: 'rgba(16, 185, 129, 0.45)',
                         borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        tension: 0.3,
-                        fill: true
+                        borderWidth: 1
                     },
                     {
-                        label: 'Collections Amount (LKR)',
+                        label: 'Collections (Line)',
                         data: colData,
+                        type: 'line',
                         borderColor: '#8b5cf6',
                         backgroundColor: 'rgba(139, 92, 246, 0.1)',
                         tension: 0.3,
-                        fill: true
+                        fill: false
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'top' }
-                },
+                plugins: { legend: { position: 'top' } },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: {
-                            callback: function(value) { return 'Rs ' + value.toLocaleString(); }
-                        }
+                        ticks: { callback: function(value) { return 'Rs ' + value.toLocaleString(); } }
                     }
                 }
+            }
+        });
+
+        // 2. Visits breakup Pie Chart
+        const visitCtx = document.getElementById('visitPieChart').getContext('2d');
+        new Chart(visitCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Productive', 'Unproductive'],
+                datasets: [{
+                    data: [<?= $p['productive_visits'] ?>, <?= $p['unproductive_visits'] ?>],
+                    backgroundColor: ['#0284c7', '#ef4444'],
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // 3. Payment Mode Doughnut Chart
+        const payCtx = document.getElementById('paymentPieChart').getContext('2d');
+        new Chart(payCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Cash', 'Cheque', 'Bank Transfer'],
+                datasets: [{
+                    data: [<?= $p['cash_collections'] ?>, <?= $p['cheque_collections'] ?>, <?= $p['bank_collections'] ?>],
+                    backgroundColor: ['#10b981', '#f59e0b', '#8b5cf6'],
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    <?php endif; ?>
+
+    // 4. 6-Month Monthly Historical Performance Trend Chart
+    <?php if (!empty($data['monthly_trend'])): ?>
+        const trendLabels = <?= json_encode(array_column($data['monthly_trend'], 'label')) ?>;
+        const trendSales = <?= json_encode(array_map('floatval', array_column($data['monthly_trend'], 'net_sales'))) ?>;
+        const trendCollections = <?= json_encode(array_map('floatval', array_column($data['monthly_trend'], 'total_collections'))) ?>;
+        const trendScores = <?= json_encode(array_map('floatval', array_column($data['monthly_trend'], 'overall_score'))) ?>;
+
+        const mTrendCtx = document.getElementById('monthlyTrendChart').getContext('2d');
+        new Chart(mTrendCtx, {
+            type: 'bar',
+            data: {
+                labels: trendLabels,
+                datasets: [
+                    {
+                        label: 'Net Sales (LKR)',
+                        data: trendSales,
+                        backgroundColor: 'rgba(2, 132, 199, 0.4)',
+                        borderColor: '#0284c7',
+                        borderWidth: 1,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Collections (LKR)',
+                        data: trendCollections,
+                        backgroundColor: 'rgba(16, 185, 129, 0.4)',
+                        borderColor: '#10b981',
+                        borderWidth: 1,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'KPI Score (%)',
+                        data: trendScores,
+                        borderColor: '#ef4444',
+                        borderWidth: 3,
+                        type: 'line',
+                        fill: false,
+                        tension: 0.2,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        ticks: { callback: function(value) { return 'Rs ' + value.toLocaleString(); } }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        min: 0,
+                        max: 100,
+                        grid: { drawOnChartArea: false },
+                        ticks: { callback: function(value) { return value + '%'; } }
+                    }
+                }
+            }
+        });
+    <?php endif; ?>
+
+    // 5. Compare Bar Chart (Selected Rep vs Competitor vs Team Avg)
+    <?php if (!empty($data['compare_data'])): $p = $data['perf_data']; $c = $data['compare_data']; $t = $data['team_avg']; ?>
+        const compCtx = document.getElementById('compareBarChart').getContext('2d');
+        new Chart(compCtx, {
+            type: 'bar',
+            data: {
+                labels: ['KPI Score (%)', 'Net Sales (LKR / 10,000)', 'Collections (LKR / 10,000)', 'Productive Visits'],
+                datasets: [
+                    {
+                        label: '<?= htmlspecialchars($data['reps'][array_search($data['selected_rep_id'], array_column($data['reps'], 'id'))]->username ?? 'Selected Rep') ?>',
+                        data: [
+                            <?= floatval($p['overall_score']) ?>, 
+                            <?= floatval($p['net_sales'] / 10000) ?>, 
+                            <?= floatval($p['total_collections'] / 10000) ?>, 
+                            <?= floatval($p['productive_visits']) ?>
+                        ],
+                        backgroundColor: 'rgba(27, 94, 32, 0.7)',
+                    },
+                    {
+                        label: '<?= htmlspecialchars($data['reps'][array_search($data['compare_rep_id'], array_column($data['reps'], 'id'))]->username ?? 'Competitor') ?>',
+                        data: [
+                            <?= floatval($c['overall_score']) ?>, 
+                            <?= floatval($c['net_sales'] / 10000) ?>, 
+                            <?= floatval($c['total_collections'] / 10000) ?>, 
+                            <?= floatval($c['productive_visits']) ?>
+                        ],
+                        backgroundColor: 'rgba(2, 132, 199, 0.7)',
+                    },
+                    {
+                        label: 'Team Average',
+                        data: [
+                            <?= floatval($t['overall_score']) ?>, 
+                            <?= floatval($t['net_sales'] / 10000) ?>, 
+                            <?= floatval($t['total_collections'] / 10000) ?>, 
+                            <?= floatval($t['productive_visits']) ?>
+                        ],
+                        backgroundColor: 'rgba(100, 116, 139, 0.7)',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } }
             }
         });
     <?php endif; ?>
