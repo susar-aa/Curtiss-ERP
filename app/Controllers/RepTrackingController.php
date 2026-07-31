@@ -3063,7 +3063,6 @@ class RepTrackingController extends Controller {
             exit;
         }
         $this->validateCsrf();
-        $this->checkPermission('rep_tracking', 'edit');
 
         $payload = json_decode(file_get_contents('php://input'), true);
         $routeId = intval($payload['route_id'] ?? 0);
@@ -3152,7 +3151,6 @@ class RepTrackingController extends Controller {
         if (!$id) {
             die("Market Return ID is required.");
         }
-        $this->checkPermission('reptracking', 'view');
 
         require_once dirname(__DIR__) . '/Models/CreditNote.php';
         $creditNoteModel = new CreditNote();
