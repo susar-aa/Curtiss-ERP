@@ -1091,7 +1091,12 @@ class MigrationManager {
                 INSERT IGNORE INTO item_suppliers (item_id, supplier_id, last_cost_price, is_primary)
                 SELECT id, vendor_id, cost_price, 1 FROM items WHERE vendor_id IS NOT NULL AND vendor_id > 0
             ",
-            'item_variation_options_image_path' => "ALTER TABLE item_variation_options ADD COLUMN image_path VARCHAR(255) NULL DEFAULT NULL AFTER quantity_reserved"
+            'item_variation_options_image_path' => "ALTER TABLE item_variation_options ADD COLUMN image_path VARCHAR(255) NULL DEFAULT NULL AFTER quantity_reserved",
+            'credit_notes_rep_route_id' => "ALTER TABLE credit_notes ADD COLUMN rep_route_id INT NULL DEFAULT NULL",
+            'credit_notes_is_market_return' => "ALTER TABLE credit_notes ADD COLUMN is_market_return TINYINT(1) DEFAULT 0",
+            'items_damaged_qty' => "ALTER TABLE items ADD COLUMN damaged_qty DECIMAL(15,2) DEFAULT 0.00",
+            'item_variation_options_damaged_qty' => "ALTER TABLE item_variation_options ADD COLUMN damaged_qty DECIMAL(15,2) DEFAULT 0.00",
+            'stock_ledger_stock_status' => "ALTER TABLE stock_ledger ADD COLUMN stock_status VARCHAR(50) DEFAULT 'Good'"
         ];
 
     }

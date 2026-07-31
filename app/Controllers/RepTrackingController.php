@@ -3038,4 +3038,155 @@ class RepTrackingController extends Controller {
         }
         exit;
     }
+
+    public function api_get_route_customers($routeId) {
+        $this->checkPermission('reptracking', 'view');
+        $customers = $this->trackingModel->getRouteCustomers(intval($routeId));
+        
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'success', 'customers' => $customers]);
+        exit;
+    }
+
+    public function api_get_market_returns($routeId) {
+        $this->checkPermission('reptracking', 'view');
+        $returns = $this->trackingModel->getRouteMarketReturns(intval($routeId));
+        
+        header('Content-Type: application/json');
+        echo json_encode(['status' => 'success', 'returns' => $returns]);
+        exit;
+    }
+
+    public function api_save_market_return() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            http_response_code(405);
+            echo json_encode(['status' => 'error', 'message' => 'Invalid Request Method']);
+            exit;
+        }
+        $this->validateCsrf();
+        $this->checkPermission('reptracking', 'edit');
+
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $routeId = intval($payload['route_id'] ?? 0);
+        $customerId = intval($payload['customer_id'] ?? 0);
+        $date = trim($payload['date'] ?? date('Y-m-d'));
+        $rawItems = $payload['items'] ?? [];
+
+        if ($routeId <= 0 || $customerId <= 0 || empty($rawItems)) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Invalid route, customer, or items list.']);
+            exit;
+        }
+
+        try {
+            // Generate unique Market Return Note Number
+            $db = new Database();
+            $db->query("SELECT id FROM credit_notes ORDER BY id DESC LIMIT 1");
+            $lastRow = $db->single();
+            $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+            $mrnNumber = "MRN-" . str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
+
+            $noteData = [
+                'credit_note_number' => $mrnNumber,
+                'customer_id' => $customerId,
+                'date' => $date
+            ];
+
+            // Build items array matching model signature
+            $items = [];
+            foreach ($rawItems as $item) {
+                $items[] = [
+                    'item_id' => intval($item['item_id']),
+                    'var_opt_id' => !empty($item['var_opt_id']) ? intval($item['var_opt_id']) : null,
+                    'invoice_id' => !empty($item['invoice_id']) ? intval($item['invoice_id']) : null,
+                    'invoice_item_id' => !empty($item['invoice_item_id']) ? intval($item['invoice_item_id']) : null,
+                    'desc' => trim($item['desc']),
+                    'qty' => floatval($item['qty']),
+                    'price' => floatval($item['price']),
+                    'condition' => trim($item['condition'] ?? 'Good'),
+                    'remarks' => trim($item['remarks'] ?? '')
+                ];
+            }
+
+            require_once dirname(__DIR__) . '/Models/CreditNote.php';
+            $creditNoteModel = new CreditNote();
+            
+            $cnId = $creditNoteModel->createCreditNoteWithAccounting(
+                $noteData,
+                $items,
+                null,
+                null,
+                null,
+                $_SESSION['user_id'] ?? 1,
+                $routeId,
+                1 // is_market_return
+            );
+
+            header('Content-Type: application/json');
+            if ($cnId) {
+                // Settle customer invoices via FIFO credit settlement
+                require_once dirname(__DIR__) . '/Models/Payment.php';
+                $paymentModel = new Payment();
+                $paymentModel->settleCustomerInvoicesWithCreditNonTransactional($customerId, $_SESSION['user_id'] ?? 1);
+
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Market Return Note generated successfully.',
+                    'return_note_id' => $cnId,
+                    'return_note_number' => $mrnNumber
+                ]);
+            } else {
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => 'Failed to issue Market Return note. Review accounting configurations.'
+                ]);
+            }
+            exit;
+        } catch (Throwable $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Exception: ' . $e->getMessage()]);
+            exit;
+        }
+    }
+
+    public function print_market_return($id = null) {
+        if (!$id) {
+            die("Market Return ID is required.");
+        }
+        $this->checkPermission('reptracking', 'view');
+
+        require_once dirname(__DIR__) . '/Models/CreditNote.php';
+        $creditNoteModel = new CreditNote();
+        $creditNote = $creditNoteModel->getCreditNoteById(intval($id));
+        
+        if (!$creditNote || !$creditNote->is_market_return) {
+            die("Market Return Note not found.");
+        }
+        
+        $items = $creditNoteModel->getCreditNoteItems(intval($id));
+
+        // Fetch representative details
+        $db = new Database();
+        $db->query("SELECT r.route_name, r.route_number, COALESCE(e.first_name, u.username) as rep_first_name, COALESCE(e.last_name, '') as rep_last_name
+                    FROM rep_daily_routes r
+                    LEFT JOIN users u ON r.user_id = u.id
+                    LEFT JOIN employees e ON u.email = e.email
+                    WHERE r.id = :rid");
+        $db->bind(':rid', $creditNote->rep_route_id);
+        $routeInfo = $db->single();
+
+        require_once dirname(__DIR__) . '/Models/Company.php';
+        $companyModel = new Company();
+
+        $data = [
+            'title' => 'Market Return Note - ' . $creditNote->credit_note_number,
+            'credit_note' => $creditNote,
+            'items' => $items,
+            'route_info' => $routeInfo,
+            'company' => $companyModel->getSettings()
+        ];
+
+        $this->view('rep-tracking/print_market_return', $data);
+    }
 }

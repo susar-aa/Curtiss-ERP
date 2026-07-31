@@ -41,6 +41,7 @@ class StockLedger {
                 total_value DECIMAL(15,2) DEFAULT 0.00,
                 user_id INT NOT NULL,
                 remarks TEXT NULL,
+                stock_status VARCHAR(50) DEFAULT 'Good',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX (item_id),
                 INDEX (variation_option_id),
@@ -77,7 +78,7 @@ class StockLedger {
     /**
      * Record a new stock movement
      */
-    public function logMovement($itemId, $varOptId, $qtyIn, $qtyOut, $type, $ref, $warehouseId, $userId, $remarks, $unitCost = 0.00) {
+    public function logMovement($itemId, $varOptId, $qtyIn, $qtyOut, $type, $ref, $warehouseId, $userId, $remarks, $unitCost = 0.00, $stockStatus = 'Good') {
         $ownsTransaction = false;
         try {
             if (!$this->db->inTransaction()) {
@@ -224,8 +225,8 @@ class StockLedger {
                 }
             }
 
-            $this->db->query("INSERT INTO stock_ledger (item_id, variation_option_id, transaction_type, reference_number, warehouse_id, quantity_in, quantity_out, running_balance, unit_cost, total_value, user_id, remarks, journal_entry_id)
-                              VALUES (:iid, :vid, :type, :ref, :whid, :qin, :qout, :bal, :cost, :val, :uid, :remarks, :jid)");
+            $this->db->query("INSERT INTO stock_ledger (item_id, variation_option_id, transaction_type, reference_number, warehouse_id, quantity_in, quantity_out, running_balance, unit_cost, total_value, user_id, remarks, journal_entry_id, stock_status)
+                              VALUES (:iid, :vid, :type, :ref, :whid, :qin, :qout, :bal, :cost, :val, :uid, :remarks, :jid, :status)");
             $this->db->bind(':iid', $itemId);
             $this->db->bind(':vid', $varOptId ? $varOptId : null);
             $this->db->bind(':type', $type);
@@ -239,6 +240,7 @@ class StockLedger {
             $this->db->bind(':uid', $userId);
             $this->db->bind(':remarks', $remarks);
             $this->db->bind(':jid', $journalId);
+            $this->db->bind(':status', $stockStatus);
             $this->db->execute();
 
             if ($ownsTransaction) {

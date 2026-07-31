@@ -222,7 +222,8 @@
             <button id="auto-evt-button-10" class="scroll-tab-btn" ><i class="ph ph-currency-dollar"></i> 8. Reconciliation</button>
             <button id="auto-evt-button-12" class="scroll-tab-btn" ><i class="ph ph-package"></i> 9. Return Stock Verification</button>
             <button id="auto-evt-button-13" class="scroll-tab-btn" ><i class="ph ph-briefcase"></i> 10. Payments</button>
-            <button id="btnTabFinalize" class="scroll-tab-btn" ><i class="ph ph-flag-checkered"></i> 11. Finalize</button>
+            <button id="btnTabMarketReturns" class="scroll-tab-btn" ><i class="ph ph-arrow-counter-clockwise"></i> 11. Market Returns</button>
+            <button id="btnTabFinalize" class="scroll-tab-btn" ><i class="ph ph-flag-checkered"></i> 12. Finalize</button>
         </div>
 
         <!-- Workspace Layout Container (Sidebar + Content Body) -->
@@ -305,8 +306,15 @@
                             <span class="step-desc">Verify & approve payments</span>
                         </div>
                     </div>
-                    <div class="sidebar-step-item" id="sb-step-11" >
+                    <div class="sidebar-step-item" id="sb-step-13" >
                         <div class="step-dot">11</div>
+                        <div class="step-info">
+                            <span class="step-title">Market Returns</span>
+                            <span class="step-desc">Representative returns</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-step-item" id="sb-step-11" >
+                        <div class="step-dot">12</div>
                         <div class="step-info">
                             <span class="step-title">Finalize</span>
                             <span class="step-desc">Settle & Close Route</span>
@@ -1065,6 +1073,127 @@
 
                     </div>
                     <div id="tab10GuardContainer" style="display:none;"></div>
+                </div>
+
+                <!-- TAB 13: MARKET RETURNS -->
+                <div class="workspace-tab-panel" id="tabpanel-13" style="display:none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div>
+                            <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--t-primary);">Market Returns</h3>
+                            <p style="margin:4px 0 0 0; font-size:13px; color:var(--t-secondary);">Process customer product returns, select previous selling prices, and post entries.</p>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; margin-bottom: 25px; align-items: start;">
+                        <!-- Left Side: New Return Form -->
+                        <div style="background: var(--c-surface); border: 0.5px solid var(--c-separator); border-radius: var(--r-lg); padding: 20px; box-shadow: var(--shadow-sm);">
+                            <h4 style="margin: 0 0 15px 0; font-size: 14px; font-weight: bold; color: var(--primary);"><i class="ph ph-plus-circle"></i> Create Market Return</h4>
+                            
+                            <form id="marketReturnForm" onsubmit="submitMarketReturn(event)">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                                        <label style="font-size: 11px; font-weight: bold; color: var(--t-label); text-transform: uppercase;">Select Customer *</label>
+                                        <select id="mrCustomerSelect" onchange="onMrCustomerChange()" style="padding: 8px 12px; border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); font-size: 13px; background: var(--c-surface2); color: var(--t-primary); outline: none; width: 100%;" required>
+                                            <option value="">Choose Customer...</option>
+                                        </select>
+                                    </div>
+                                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                                        <label style="font-size: 11px; font-weight: bold; color: var(--t-label); text-transform: uppercase;">Date</label>
+                                        <input type="date" id="mrNoteDate" value="<?= date('Y-m-d') ?>" style="padding: 7px 12px; border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); font-size: 13px; background: var(--c-surface2); color: var(--t-primary); outline: none; width: 100%;" required>
+                                    </div>
+                                </div>
+
+                                <div id="mrCustomerInfoCard" style="display: none; background: rgba(0, 102, 204, 0.04); border: 0.5px solid rgba(0, 102, 204, 0.15); border-radius: 6px; padding: 12px 16px; margin-bottom: 15px; font-size: 12.5px;">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                        <div><strong>Customer:</strong> <span id="mrCustName">-</span></div>
+                                        <div><strong>Outstanding Balance:</strong> <span id="mrCustOutstanding" style="color: #b91c1c; font-weight: bold;">Rs 0.00</span></div>
+                                        <div><strong>Credit Limit:</strong> <span id="mrCustLimit">Rs 0.00</span></div>
+                                        <div><strong>Phone:</strong> <span id="mrCustPhone">-</span></div>
+                                    </div>
+                                </div>
+
+                                <table class="data-table" style="width: 100%; margin-bottom: 15px;" id="mrLinesTable">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 35%;">Product</th>
+                                            <th style="width: 12%; text-align: right;">Qty</th>
+                                            <th style="width: 15%; text-align: right;">Price (Rs)</th>
+                                            <th style="width: 18%;">Condition</th>
+                                            <th style="width: 15%;">Remarks</th>
+                                            <th style="width: 5%;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mrLinesBody">
+                                        <!-- Appended dynamically -->
+                                    </tbody>
+                                </table>
+
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                                    <button type="button" onclick="addMrLine()" style="padding: 8px 12px; background: var(--c-surface2); color: var(--t-secondary); border: 0.5px solid var(--c-separator); border-radius: var(--r-sm); font-size: 12px; font-weight: 600; cursor: pointer;">
+                                        <i class="ph ph-plus"></i> Add Line
+                                    </button>
+                                    <div style="font-size: 15px; font-weight: bold; color: var(--primary);">
+                                        Total Return Value: <span id="mrGrandTotalText" style="color: #b91c1c;">Rs 0.00</span>
+                                    </div>
+                                </div>
+
+                                <div style="text-align: right; margin-top: 20px; border-top: 0.5px solid var(--c-separator); padding-top: 15px;">
+                                    <button type="submit" style="padding: 10px 20px; background: #0066cc; color: #fff; border: none; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; box-shadow: var(--shadow-sm);">
+                                        <i class="ph ph-check-square"></i> Save & Post Market Return
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Right Side: Historical Selling Prices -->
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            <div style="background: var(--c-surface); border: 0.5px solid var(--c-separator); border-radius: var(--r-lg); padding: 20px; box-shadow: var(--shadow-sm);">
+                                <h4 style="margin: 0 0 10px 0; font-size: 14px; font-weight: bold; color: #ff9f0a; display: flex; align-items: center; gap: 6px;">
+                                    <span>📊</span> Historical Selling Prices
+                                </h4>
+                                <p style="font-size: 11.5px; color: var(--t-secondary); margin: 0 0 15px 0;">Click on a product search box on the left, then select one of their previous invoice prices below to apply it.</p>
+                                
+                                <div id="mrHistoryContainer" style="min-height: 120px; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--c-separator); border-radius: 6px; background: rgba(0, 0, 0, 0.01); width: 100%;">
+                                    <div id="mrHistoryPlaceholder" style="color: var(--t-secondary); text-align: center; font-size: 12px; padding: 20px; width: 100%;">
+                                        Select a customer and focus on a product field to view purchase history.
+                                    </div>
+                                    <table class="data-table" id="mrHistoryTable" style="display: none; width: 100%; font-size: 12px;">
+                                        <thead>
+                                            <tr>
+                                                <th>Invoice</th>
+                                                <th>Date</th>
+                                                <th style="text-align: right;">Qty</th>
+                                                <th style="text-align: right;">Price (Rs)</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="mrHistoryBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Previously Saved Market Returns List -->
+                    <div style="background: var(--c-surface); border: 0.5px solid var(--c-separator); border-radius: var(--r-lg); padding: 20px; box-shadow: var(--shadow-sm);">
+                        <h4 style="margin: 0 0 15px 0; font-size: 14px; font-weight: bold; color: var(--t-primary);"><i class="ph ph-clock-counter-clockwise"></i> Route Market Return Notes</h4>
+                        <table class="data-table" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Return Note #</th>
+                                    <th>Customer</th>
+                                    <th>Date</th>
+                                    <th style="text-align: right;">Total Amount (Rs)</th>
+                                    <th style="text-align: center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mrSavedNotesBody">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: var(--t-secondary); padding: 20px;">No market returns logged for this route yet.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- TAB 11: FINALIZE ROUTE -->

@@ -137,7 +137,7 @@ class CreditNote {
         return $this->db->resultSet() ?: [];
     }
 
-    public function createCreditNoteWithAccounting($noteData, $items, $arAccountId = null, $revenueAccountId = null, $expenseAccountId = null, $userId = null) {
+    public function createCreditNoteWithAccounting($noteData, $items, $arAccountId = null, $revenueAccountId = null, $expenseAccountId = null, $userId = null, $repRouteId = null, $isMarketReturn = 0) {
         try {
             $this->db->beginTransaction();
 
@@ -225,14 +225,16 @@ class CreditNote {
             ];
 
             // 2. Create Credit Note Header
-            $this->db->query("INSERT INTO credit_notes (credit_note_number, customer_id, note_date, total_amount, journal_entry_id, created_by) 
-                              VALUES (:cn_num, :cust_id, :ndate, :total, :jid, :uid)");
+            $this->db->query("INSERT INTO credit_notes (credit_note_number, customer_id, note_date, total_amount, journal_entry_id, created_by, rep_route_id, is_market_return) 
+                              VALUES (:cn_num, :cust_id, :ndate, :total, :jid, :uid, :rep_route_id, :is_mr)");
             $this->db->bind(':cn_num', $noteData['credit_note_number']);
             $this->db->bind(':cust_id', $noteData['customer_id']);
             $this->db->bind(':ndate', $noteData['date']);
             $this->db->bind(':total', $totalAmount);
             $this->db->bind(':jid', $journalId);
             $this->db->bind(':uid', $userId);
+            $this->db->bind(':rep_route_id', $repRouteId);
+            $this->db->bind(':is_mr', $isMarketReturn);
             $this->db->execute();
             
             $cnId = $this->db->lastInsertId();
@@ -285,6 +287,7 @@ class CreditNote {
                 $this->db->execute();
 
                 if ($item['item_id']) {
+                    $movType = $isMarketReturn ? 'Market Return' : 'Sales Return';
                     if ($isGood) {
                         require_once '../app/Models/Item.php';
                         $itemModel = new Item();
@@ -307,9 +310,35 @@ class CreditNote {
                         $this->db->bind(':id', $item['item_id']);
                         $itemRow = $this->db->single();
                         $whId = $itemRow ? $itemRow->warehouse_id : null;
-                        $ledger->logMovement($item['item_id'], $item['var_opt_id'] ?: null, $item['qty'], 0, 'Sales Return', $noteData['credit_note_number'], $whId, $userId, 'Sales Return Restocking', $costPrice);
+                        
+                        $remarks = $item['remarks'] ?? ($isMarketReturn ? 'Market Return Restocking' : 'Sales Return Restocking');
+                        $ledger->logMovement($item['item_id'], $item['var_opt_id'] ?: null, $item['qty'], 0, $movType, $noteData['credit_note_number'], $whId, $userId, $remarks, $costPrice, 'Good');
                     } else {
                         $totalDamagedCost += ($item['qty'] * $costPrice);
+
+                        // Increment damaged stock quantity in database so it is tracked but not sellable
+                        $this->db->query("UPDATE items SET damaged_qty = damaged_qty + :qty WHERE id = :id");
+                        $this->db->bind(':qty', $item['qty']);
+                        $this->db->bind(':id', $item['item_id']);
+                        $this->db->execute();
+
+                        if ($item['var_opt_id']) {
+                            $this->db->query("UPDATE item_variation_options SET damaged_qty = damaged_qty + :qty WHERE id = :id");
+                            $this->db->bind(':qty', $item['qty']);
+                            $this->db->bind(':id', $item['var_opt_id']);
+                            $this->db->execute();
+                        }
+
+                        // Log Damaged Stock Movement in Stock Ledger
+                        require_once '../app/Models/StockLedger.php';
+                        $ledger = new StockLedger();
+                        $this->db->query("SELECT warehouse_id FROM items WHERE id = :id");
+                        $this->db->bind(':id', $item['item_id']);
+                        $itemRow = $this->db->single();
+                        $whId = $itemRow ? $itemRow->warehouse_id : null;
+                        
+                        $remarks = $item['remarks'] ?? ($isMarketReturn ? 'Market Return Damaged Stock' : 'Sales Return Damaged Stock');
+                        $ledger->logMovement($item['item_id'], $item['var_opt_id'] ?: null, $item['qty'], 0, $movType, $noteData['credit_note_number'], $whId, $userId, $remarks, $costPrice, 'Damaged');
                     }
                 }
             }
