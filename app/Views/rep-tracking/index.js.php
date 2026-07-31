@@ -4897,7 +4897,8 @@ window.buildAccountOptions = buildAccountOptions;
             div.style.borderBottom = '0.5px solid var(--c-separator)';
             div.innerHTML = `<strong>${c.name}</strong> <span style="font-size:10.5px; color:var(--t-secondary); float:right;">Outstanding: Rs ${parseFloat(c.outstanding || 0).toFixed(0)}</span>`;
             
-            div.addEventListener('click', function() {
+            div.addEventListener('mousedown', function(e) {
+                e.preventDefault(); // prevent losing focus
                 input.value = c.name;
                 document.getElementById('mrCustomerSelect').value = c.id;
                 container.style.display = 'none';
@@ -4969,9 +4970,9 @@ window.buildAccountOptions = buildAccountOptions;
         const tr = document.createElement('tr');
         
         tr.innerHTML = `
-            <td style="position: relative;">
+            <td style="position: relative; overflow: visible; z-index: 9999;">
                 <input type="text" class="mr-product-input" placeholder="Type product name to search..." onfocus="showMrSuggestions(this)" oninput="filterMrSuggestions(this)" style="width:100%; padding: 6px 10px; border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); background: var(--c-surface2); color: var(--t-primary); outline: none;" required autocomplete="off">
-                <div class="autocomplete-items" style="display: none; position: absolute; left: 0; right: 0; z-index: 10; background: var(--c-surface); border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); max-height: 180px; overflow-y: auto; box-shadow: var(--shadow-md);"></div>
+                <div class="autocomplete-items" style="display: none; position: absolute; left: 0; right: 0; z-index: 99999; background: var(--c-surface); border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); max-height: 180px; overflow-y: auto; box-shadow: var(--shadow-md);"></div>
                 <input type="hidden" class="mr-item-id-hidden">
                 <input type="hidden" class="mr-var-opt-id-hidden">
                 <input type="hidden" class="mr-desc-hidden">
@@ -5043,7 +5044,8 @@ window.buildAccountOptions = buildAccountOptions;
             div.style.borderBottom = '0.5px solid var(--c-separator)';
             div.innerHTML = `<strong>${prod.product_name}</strong> <span style="font-size:10px; color:var(--t-secondary); float:right;">Max: ${parseFloat(prod.max_returnable).toFixed(0)}</span>`;
             
-            div.addEventListener('click', function() {
+            div.addEventListener('mousedown', function(e) {
+                e.preventDefault(); // prevent losing focus
                 input.value = prod.product_name;
                 row.querySelector('.mr-item-id-hidden').value = prod.item_id;
                 row.querySelector('.mr-var-opt-id-hidden').value = prod.variation_option_id || '';
@@ -5289,6 +5291,7 @@ window.buildAccountOptions = buildAccountOptions;
     window.filterMrSuggestions = filterMrSuggestions;
     window.validateMrQty = validateMrQty;
     window.applyMrHistoryPrice = applyMrHistoryPrice;
+    window.calcMrTotals = calcMrTotals;
     window.submitMarketReturn = submitMarketReturn;
 
     window.unbindCombinedRoute = unbindCombinedRoute;
