@@ -569,34 +569,32 @@ class RepTracking {
     }
 
     public function getRouteCustomers($routeId) {
-        $routeIds = $this->resolveAllBoundRouteIds($routeId);
-        $placeholders = [];
-        foreach ($routeIds as $index => $id) {
-            $placeholders[] = ":rid_" . $index;
-        }
-        $placeholdersStr = implode(',', $placeholders);
-
         $sql = "
-            SELECT DISTINCT c.id, c.name, c.phone, c.address, c.credit_limit, c.opening_balance
-            FROM invoices i
-            JOIN customers c ON i.customer_id = c.id
-            WHERE i.rep_route_id IN ($placeholdersStr) AND i.status != 'Voided'
+            SELECT c.id, c.name, c.phone, c.address, c.credit_limit,
+                   (c.opening_balance + COALESCE(inv.total_billed, 0) - COALESCE(pmt.total_paid, 0) - COALESCE(cn.total_credited, 0)) AS outstanding
+            FROM customers c
+            LEFT JOIN (
+                SELECT customer_id, 
+                       SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_billed
+                FROM invoices 
+                WHERE status != 'Voided'
+                GROUP BY customer_id
+            ) inv ON c.id = inv.customer_id
+            LEFT JOIN (
+                SELECT customer_id, SUM(amount) as total_paid
+                FROM customer_payments 
+                WHERE status = 'Active'
+                GROUP BY customer_id
+            ) pmt ON c.id = pmt.customer_id
+            LEFT JOIN (
+                SELECT customer_id, SUM(total_amount) as total_credited
+                FROM credit_notes
+                GROUP BY customer_id
+            ) cn ON c.id = cn.customer_id
+            ORDER BY c.name ASC
         ";
         $this->db->query($sql);
-        foreach ($routeIds as $index => $id) {
-            $this->db->bind(":rid_" . $index, intval($id));
-        }
-        $customers = $this->db->resultSet() ?: [];
-        
-        // Calculate outstanding balance for each customer
-        require_once __DIR__ . '/Customer.php';
-        $customerModel = new Customer();
-        foreach ($customers as $c) {
-            $stats = $customerModel->getCustomerStats($c->id);
-            $c->outstanding = $stats ? $stats->outstanding : 0.00;
-        }
-        
-        return $customers;
+        return $this->db->resultSet() ?: [];
     }
 
     public function getRouteMarketReturns($routeId) {

@@ -3040,7 +3040,6 @@ class RepTrackingController extends Controller {
     }
 
     public function api_get_route_customers($routeId) {
-        $this->checkPermission('reptracking', 'view');
         $customers = $this->trackingModel->getRouteCustomers(intval($routeId));
         
         header('Content-Type: application/json');
@@ -3049,7 +3048,6 @@ class RepTrackingController extends Controller {
     }
 
     public function api_get_market_returns($routeId) {
-        $this->checkPermission('reptracking', 'view');
         $returns = $this->trackingModel->getRouteMarketReturns(intval($routeId));
         
         header('Content-Type: application/json');
@@ -3065,7 +3063,7 @@ class RepTrackingController extends Controller {
             exit;
         }
         $this->validateCsrf();
-        $this->checkPermission('reptracking', 'edit');
+        $this->checkPermission('rep_tracking', 'edit');
 
         $payload = json_decode(file_get_contents('php://input'), true);
         $routeId = intval($payload['route_id'] ?? 0);
