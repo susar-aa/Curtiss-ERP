@@ -1091,12 +1091,14 @@
                             
                             <form id="marketReturnForm" onsubmit="submitMarketReturn(event)">
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                                    <div style="display: flex; flex-direction: column; gap: 6px;">
-                                        <label style="font-size: 11px; font-weight: bold; color: var(--t-label); text-transform: uppercase;">Select Customer *</label>
-                                        <select id="mrCustomerSelect" onchange="onMrCustomerChange()" style="padding: 8px 12px; border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); font-size: 13px; background: var(--c-surface2); color: var(--t-primary); outline: none; width: 100%;" required>
-                                            <option value="">Choose Customer...</option>
-                                        </select>
-                                    </div>
+                                     <div style="display: flex; flex-direction: column; gap: 6px;">
+                                         <label style="font-size: 11px; font-weight: bold; color: var(--t-label); text-transform: uppercase;">Search Customer *</label>
+                                         <div style="position: relative; width: 100%;">
+                                             <input type="text" id="mrCustomerSearchInput" placeholder="Type customer name to search..." onfocus="showMrCustomerSuggestions(this)" oninput="filterMrCustomerSuggestions(this)" style="width: 100%; padding: 8px 12px; border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); font-size: 13px; background: var(--c-surface2); color: var(--t-primary); outline: none;" required autocomplete="off">
+                                             <div id="mrCustomerSuggestions" style="display: none; position: absolute; left: 0; right: 0; z-index: 20; background: var(--c-surface); border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); max-height: 180px; overflow-y: auto; box-shadow: var(--shadow-md); width: 100%;"></div>
+                                             <input type="hidden" id="mrCustomerSelect" value="" required>
+                                         </div>
+                                     </div>
                                     <div style="display: flex; flex-direction: column; gap: 6px;">
                                         <label style="font-size: 11px; font-weight: bold; color: var(--t-label); text-transform: uppercase;">Date</label>
                                         <input type="date" id="mrNoteDate" value="<?= date('Y-m-d') ?>" style="padding: 7px 12px; border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); font-size: 13px; background: var(--c-surface2); color: var(--t-primary); outline: none; width: 100%;" required>

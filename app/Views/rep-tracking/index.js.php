@@ -4809,6 +4809,16 @@ window.buildAccountOptions = buildAccountOptions;
     let mrRouteCustomersList = [];
     let mrActiveFocusedRow = null;
 
+    function showLoader() {
+        const loader = document.getElementById('midLoader');
+        if (loader) loader.style.display = 'block';
+    }
+
+    function hideLoader() {
+        const loader = document.getElementById('midLoader');
+        if (loader) loader.style.display = 'none';
+    }
+
     function loadMarketReturnsStage(routeId) {
         showLoader();
         
@@ -4817,23 +4827,19 @@ window.buildAccountOptions = buildAccountOptions;
         document.getElementById('mrLinesBody').innerHTML = '';
         document.getElementById('mrCustomerInfoCard').style.display = 'none';
         document.getElementById('mrGrandTotalText').innerText = 'Rs 0.00';
+        
+        const searchInput = document.getElementById('mrCustomerSearchInput');
+        if (searchInput) searchInput.value = '';
+        const select = document.getElementById('mrCustomerSelect');
+        if (select) select.value = '';
+
         resetMrHistoryPanel();
 
         // 1. Fetch Route Customers
         fetchSecure('<?= APP_URL ?>/RepTracking/api_get_route_customers/' + routeId)
             .then(res => res.json())
             .then(data => {
-                const select = document.getElementById('mrCustomerSelect');
-                if (select) {
-                    select.innerHTML = '<option value="">Choose Customer...</option>';
-                    mrRouteCustomersList = data.customers || [];
-                    mrRouteCustomersList.forEach(c => {
-                        const opt = document.createElement('option');
-                        opt.value = c.id;
-                        opt.innerText = c.name + ' - (' + c.phone + ')';
-                        select.appendChild(opt);
-                    });
-                }
+                mrRouteCustomersList = data.customers || [];
                 
                 // 2. Fetch Existing Market Returns for Route
                 return fetchSecure('<?= APP_URL ?>/RepTracking/api_get_market_returns/' + routeId);
@@ -4870,9 +4876,55 @@ window.buildAccountOptions = buildAccountOptions;
             });
     }
 
+    function showMrCustomerSuggestions(input) {
+        closeAllMrSuggestions();
+        const container = document.getElementById('mrCustomerSuggestions');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        container.style.display = 'block';
+
+        if (mrRouteCustomersList.length === 0) {
+            container.innerHTML = '<div style="padding:8px 12px; color:var(--t-secondary); font-size:12px;">No customers on this route.</div>';
+            return;
+        }
+
+        mrRouteCustomersList.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.style.padding = '8px 12px';
+            div.style.cursor = 'pointer';
+            div.style.borderBottom = '0.5px solid var(--c-separator)';
+            div.innerHTML = `<strong>${c.name}</strong> <span style="font-size:10.5px; color:var(--t-secondary); float:right;">Outstanding: Rs ${parseFloat(c.outstanding || 0).toFixed(0)}</span>`;
+            
+            div.addEventListener('click', function() {
+                input.value = c.name;
+                document.getElementById('mrCustomerSelect').value = c.id;
+                container.style.display = 'none';
+                onMrCustomerChange();
+            });
+            container.appendChild(div);
+        });
+    }
+
+    function filterMrCustomerSuggestions(input) {
+        const filter = input.value.toUpperCase();
+        const container = document.getElementById('mrCustomerSuggestions');
+        if (!container) return;
+        
+        const items = container.querySelectorAll('.autocomplete-item');
+        items.forEach(item => {
+            const txt = item.textContent || item.innerText;
+            if (txt.toUpperCase().indexOf(filter) > -1) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
     function onMrCustomerChange() {
-        const select = document.getElementById('mrCustomerSelect');
-        const customerId = parseInt(select.value || 0);
+        const customerId = parseInt(document.getElementById('mrCustomerSelect').value || 0);
         
         const linesBody = document.getElementById('mrLinesBody');
         linesBody.innerHTML = '';
@@ -4907,8 +4959,7 @@ window.buildAccountOptions = buildAccountOptions;
     }
 
     function addMrLine() {
-        const select = document.getElementById('mrCustomerSelect');
-        const customerId = parseInt(select.value || 0);
+        const customerId = parseInt(document.getElementById('mrCustomerSelect').value || 0);
         if (customerId <= 0) {
             alert('Please select a Customer first.');
             return;
@@ -4919,7 +4970,7 @@ window.buildAccountOptions = buildAccountOptions;
         
         tr.innerHTML = `
             <td style="position: relative;">
-                <input type="text" class="mr-product-input" placeholder="Type product name to search..." onfocus="showMrSuggestions(this)" oninput="filterMrSuggestions(this)" style="width:100%; padding: 6px 10px; border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); background: var(--c-surface2); color: var(--t-primary); outline: none;" required>
+                <input type="text" class="mr-product-input" placeholder="Type product name to search..." onfocus="showMrSuggestions(this)" oninput="filterMrSuggestions(this)" style="width:100%; padding: 6px 10px; border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); background: var(--c-surface2); color: var(--t-primary); outline: none;" required autocomplete="off">
                 <div class="autocomplete-items" style="display: none; position: absolute; left: 0; right: 0; z-index: 10; background: var(--c-surface); border: 0.5px solid var(--c-separator); border-radius: var(--r-xs); max-height: 180px; overflow-y: auto; box-shadow: var(--shadow-md);"></div>
                 <input type="hidden" class="mr-item-id-hidden">
                 <input type="hidden" class="mr-var-opt-id-hidden">
@@ -4964,14 +5015,13 @@ window.buildAccountOptions = buildAccountOptions;
     }
 
     function renumberMrRows() {
-        // Renumber logic if rows need indices
+        // Reserved for line renumbering if required
     }
 
     function showMrSuggestions(input) {
         const row = input.closest('tr');
         mrActiveFocusedRow = row;
         
-        // Populate and display history panel for currently selected row product if item_id already chosen
         const itemId = row.querySelector('.mr-item-id-hidden').value;
         const varId = row.querySelector('.mr-var-opt-id-hidden').value;
         if (itemId) {
@@ -4999,14 +5049,12 @@ window.buildAccountOptions = buildAccountOptions;
                 row.querySelector('.mr-var-opt-id-hidden').value = prod.variation_option_id || '';
                 row.querySelector('.mr-desc-hidden').value = prod.product_name;
                 
-                // Show Qty Limit Badge
                 const badge = row.querySelector('.max-qty-badge');
                 badge.innerText = 'Max: ' + parseFloat(prod.max_returnable).toFixed(0);
                 badge.style.display = 'block';
                 row.querySelector('.mr-qty-input').max = prod.max_returnable;
                 
                 container.style.display = 'none';
-                
                 fetchMrHistoryPrices(prod.item_id, prod.variation_option_id);
             });
             container.appendChild(div);
@@ -5032,6 +5080,8 @@ window.buildAccountOptions = buildAccountOptions;
         document.querySelectorAll('#mrLinesTable .autocomplete-items').forEach(c => {
             c.style.display = 'none';
         });
+        const custSug = document.getElementById('mrCustomerSuggestions');
+        if (custSug) custSug.style.display = 'none';
     }
 
     function validateMrQty(input) {
@@ -5044,8 +5094,7 @@ window.buildAccountOptions = buildAccountOptions;
     }
 
     function fetchMrHistoryPrices(itemId, varOptId) {
-        const customerSelect = document.getElementById('mrCustomerSelect');
-        const customerId = parseInt(customerSelect.value || 0);
+        const customerId = parseInt(document.getElementById('mrCustomerSelect').value || 0);
         if (customerId <= 0) return;
 
         const prodVal = itemId + '|' + (varOptId || '');
@@ -5065,7 +5114,7 @@ window.buildAccountOptions = buildAccountOptions;
                 }
                 history.forEach(h => {
                     const maxRet = parseFloat(h.max_returnable);
-                    if (maxRet <= 0) return; // skip if already returned in other notes
+                    if (maxRet <= 0) return;
 
                     const tr = document.createElement('tr');
                     tr.style.cursor = 'pointer';
@@ -5110,37 +5159,21 @@ window.buildAccountOptions = buildAccountOptions;
     }
 
     function calcMrTotals() {
-        let grandTotal = 0;
-        document.querySelectorAll('#mrLinesBody tr').forEach(row => {
-            const qty = parseFloat(row.querySelector('.mr-qty-input').value || 0);
-            const price = parseFloat(row.querySelector('.mr-price-input').value || 0);
-            const total = qty * price;
-            row.querySelector('.mr-price-input').closest('tr').querySelector('.mr-remarks-input').closest('tr').querySelector('.mr-qty-input').closest('tr').querySelector('.mr-price-input').closest('tr').querySelectorAll('td')[4].closest('tr');
-            
-            // Render line total locally
-            const totalCell = row.querySelectorAll('td')[4]; // wait, remarks is 4th index?
-            // Let's set it in a specific cell
-            grandTotal += total;
-        });
-
-        // Loop simpler:
         let totalMrValue = 0;
         document.querySelectorAll('#mrLinesBody tr').forEach(row => {
             const qty = parseFloat(row.querySelector('.mr-qty-input').value || 0);
             const price = parseFloat(row.querySelector('.mr-price-input').value || 0);
             totalMrValue += (qty * price);
         });
-
         document.getElementById('mrGrandTotalText').innerText = 'Rs ' + totalMrValue.toFixed(2);
     }
 
     function submitMarketReturn(event) {
         event.preventDefault();
         
-        const customerSelect = document.getElementById('mrCustomerSelect');
-        const customerId = parseInt(customerSelect.value || 0);
+        const customerId = parseInt(document.getElementById('mrCustomerSelect').value || 0);
         if (customerId <= 0) {
-            alert('Please select a Customer.');
+            alert('Please search and select a Customer.');
             return;
         }
 
@@ -5206,11 +5239,7 @@ window.buildAccountOptions = buildAccountOptions;
             hideLoader();
             if (data.status === 'success') {
                 showMrnNotificationToast('success', data.message || 'Market Return Note saved successfully.');
-                
-                // Refresh list
                 loadMarketReturnsStage(currentRouteId);
-                
-                // Open print preview automatically in new window
                 window.open('<?= APP_URL ?>/RepTracking/print_market_return/' + data.return_note_id, '_blank');
             } else {
                 showMrnNotificationToast('error', data.message || 'Failed to save return note.');
@@ -5224,7 +5253,6 @@ window.buildAccountOptions = buildAccountOptions;
     }
 
     function showMrnNotificationToast(status, message) {
-        // Reuse toast elements
         const container = document.getElementById('successToast') || document.getElementById('errorToast');
         if (container) {
             container.querySelector('.ios-toast-message').innerText = message;
@@ -5244,10 +5272,16 @@ window.buildAccountOptions = buildAccountOptions;
         if (!e.target.classList.contains('mr-product-input') && !e.target.closest('.autocomplete-items')) {
             closeAllMrSuggestions();
         }
+        if (e.target.id !== 'mrCustomerSearchInput' && !e.target.closest('#mrCustomerSuggestions')) {
+            const custSug = document.getElementById('mrCustomerSuggestions');
+            if (custSug) custSug.style.display = 'none';
+        }
     });
 
-    // Expose necessary global functions
+    // Expose functions to global context
     window.loadMarketReturnsStage = loadMarketReturnsStage;
+    window.showMrCustomerSuggestions = showMrCustomerSuggestions;
+    window.filterMrCustomerSuggestions = filterMrCustomerSuggestions;
     window.onMrCustomerChange = onMrCustomerChange;
     window.addMrLine = addMrLine;
     window.removeMrLine = removeMrLine;
