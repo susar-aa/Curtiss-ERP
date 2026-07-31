@@ -515,11 +515,24 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log("Create Stock Adjustment view loaded. Auto-complete registry items: " + itemsList.length);
 
     let selectedItem = null;
+    let activeSearchIndex = -1;
+
+    function highlightSearchItem(items) {
+        items.forEach((itemEl, index) => {
+            if (index === activeSearchIndex) {
+                itemEl.classList.add('highlighted');
+                itemEl.scrollIntoView({ block: 'nearest' });
+            } else {
+                itemEl.classList.remove('highlighted');
+            }
+        });
+    }
 
     // 1. Search filter autocomplete dropdown
     searchInput.addEventListener('input', function() {
         const term = searchInput.value.toLowerCase().trim();
         dropdown.innerHTML = '';
+        activeSearchIndex = -1;
         console.log(`[Search autocomplete] User input: "${term}"`);
 
         if (!term) {
@@ -537,15 +550,17 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(`[Search autocomplete] Found ${matches.length} matches.`);
 
         if (matches.length > 0) {
-            matches.forEach(item => {
+            matches.forEach((item, idx) => {
                 const div = document.createElement('div');
                 div.className = 'dropdown-item';
                 div.innerHTML = `<strong>${item.item_code}</strong> - ${item.name} (${item.qty} in stock)`;
                 div.addEventListener('click', function() {
                     console.log(`[Search autocomplete] Item selected via click: ID: ${item.id} | Code: ${item.item_code} | Name: ${item.name}`);
-                    searchInput.value = `${item.item_code} - ${item.name}`;
-                    selectedItem = item;
                     dropdown.style.display = 'none';
+                    searchInput.value = '';
+                    selectedItem = null;
+                    activeSearchIndex = -1;
+                    addProductToGrid(item);
                 });
                 dropdown.appendChild(div);
             });
@@ -553,6 +568,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             dropdown.style.display = 'none';
             selectedItem = null;
+            activeSearchIndex = -1;
         }
     });
 
@@ -629,6 +645,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const newQtyEl = tr.querySelector('.grid-new-qty');
         const qtyEl = tr.querySelector('.grid-qty');
         const costEl = tr.querySelector('.grid-cost');
+        const remarksEl = tr.querySelector('input[name="item_remarks[]"]');
         
         function updateRowTotal() {
             const q = parseFloat(qtyEl.value) || 0;
@@ -654,6 +671,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
         costEl.addEventListener('input', updateRowTotal);
 
+        // Allow Enter key in row inputs to return focus back to the search bar
+        function handleEnterToSearch(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                searchInput.focus();
+            }
+        }
+        newQtyEl.addEventListener('keydown', handleEnterToSearch);
+        qtyEl.addEventListener('keydown', handleEnterToSearch);
+        costEl.addEventListener('keydown', handleEnterToSearch);
+        if (remarksEl) remarksEl.addEventListener('keydown', handleEnterToSearch);
+
         // Bind delete button
         tr.querySelector('.remove-item-btn').addEventListener('click', function() {
             console.log(`[Grid Action] Deleting row for product Row: ${rowKey}`);
@@ -664,27 +693,56 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Reset search input
+        // Reset search input and autofocus on the New QTY column
         searchInput.value = '';
         selectedItem = null;
+        activeSearchIndex = -1;
+        dropdown.style.display = 'none';
+
+        setTimeout(() => {
+            if (newQtyEl) {
+                newQtyEl.focus();
+                newQtyEl.select();
+            }
+        }, 50);
     }
 
     btnAddSearched.addEventListener('click', function() {
-        if (!selectedItem) {
-            console.warn("[Grid Action] Add clicked but no product is selected.");
+        const items = dropdown.querySelectorAll('.dropdown-item');
+        if (activeSearchIndex >= 0 && activeSearchIndex < items.length) {
+            items[activeSearchIndex].click();
+        } else if (selectedItem) {
+            addProductToGrid(selectedItem);
+        } else if (items.length > 0) {
+            items[0].click();
+        } else {
             alert('Please select a product from the autocomplete dropdown list first.');
-            return;
         }
-        addProductToGrid(selectedItem);
     });
 
-    // Allow Enter key to trigger adding item
+    // Keyboard Navigation & Enter key to trigger adding item
     searchInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
+        const items = dropdown.querySelectorAll('.dropdown-item');
+        if (e.key === 'ArrowDown') {
+            if (items.length === 0) return;
             e.preventDefault();
-            if (selectedItem) {
-                console.log(`[Grid Action] Enter key pressed. Selected item: ID: ${selectedItem.id}`);
+            activeSearchIndex++;
+            if (activeSearchIndex >= items.length) activeSearchIndex = 0;
+            highlightSearchItem(items);
+        } else if (e.key === 'ArrowUp') {
+            if (items.length === 0) return;
+            e.preventDefault();
+            activeSearchIndex--;
+            if (activeSearchIndex < 0) activeSearchIndex = items.length - 1;
+            highlightSearchItem(items);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeSearchIndex >= 0 && activeSearchIndex < items.length) {
+                items[activeSearchIndex].click();
+            } else if (selectedItem) {
                 addProductToGrid(selectedItem);
+            } else if (items.length > 0) {
+                items[0].click();
             }
         }
     });
