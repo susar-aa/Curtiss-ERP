@@ -185,40 +185,50 @@
         if (!dbUrl) return;
 
         try {
-            // Delete previous firebase app if exists
-            if (firebaseApp) {
-                firebaseApp.delete();
-            }
-
-            const firebaseConfig = {
-                databaseURL: dbUrl
-            };
-
-            firebaseApp = firebase.initializeApp(firebaseConfig, "LiveTrackingApp");
-            const db = firebaseApp.database();
-            databaseRef = db.ref('locations');
-
-            // Listen to real-time location stream changes
-            databaseRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                if (!data) return;
-
-                Object.keys(data).forEach(key => {
-                    // key format is rep_ID (e.g. rep_15)
-                    const parts = key.split('_');
-                    if (parts.length < 2) return;
-                    const repId = parseInt(parts[1]);
-                    const repData = data[key];
-
-                    updateRepStatusAndMarker(repId, repData);
+            // Check if app already exists in firebase.apps list
+            const existingApp = firebase.apps.find(app => app.name === "LiveTrackingApp");
+            if (existingApp) {
+                existingApp.delete().then(() => {
+                    initializeNewFirebaseApp(dbUrl);
+                }).catch(err => {
+                    console.error("Error deleting old app: ", err);
+                    initializeNewFirebaseApp(dbUrl);
                 });
-            });
-
-            console.log("Firebase stream connected to URL: " + dbUrl);
+            } else {
+                initializeNewFirebaseApp(dbUrl);
+            }
         } catch (e) {
             console.error("Firebase connection error: ", e);
             alert("Firebase Error: " + e.message);
         }
+    }
+
+    function initializeNewFirebaseApp(dbUrl) {
+        const firebaseConfig = {
+            databaseURL: dbUrl
+        };
+
+        firebaseApp = firebase.initializeApp(firebaseConfig, "LiveTrackingApp");
+        const db = firebaseApp.database();
+        databaseRef = db.ref('locations');
+
+        // Listen to real-time location stream changes
+        databaseRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+
+            Object.keys(data).forEach(key => {
+                // key format is rep_ID (e.g. rep_15)
+                const parts = key.split('_');
+                if (parts.length < 2) return;
+                const repId = parseInt(parts[1]);
+                const repData = data[key];
+
+                updateRepStatusAndMarker(repId, repData);
+            });
+        });
+
+        console.log("Firebase stream connected to URL: " + dbUrl);
     }
 
     function reconnectFirebase() {

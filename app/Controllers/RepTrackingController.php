@@ -88,7 +88,7 @@ class RepTrackingController extends Controller {
             'title' => 'Live Location Tracking',
             'content_view' => 'reptracking/live',
             'reps' => $reps,
-            'firebase_db_url' => 'https://curtiss-erp-default-rtdb.firebaseio.com/'
+            'firebase_db_url' => 'https://curtiss-erp-cc0c0-default-rtdb.firebaseio.com/'
         ];
         
         $this->view('layouts/main', $data);
