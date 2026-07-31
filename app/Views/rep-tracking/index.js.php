@@ -5269,15 +5269,19 @@ window.buildAccountOptions = buildAccountOptions;
         }
     }
 
-    // Auto close autocomplete suggestion blocks on clicking outside
+    // Prevent clicks inside inputs/suggestions from bubbling up to document click listener
     document.addEventListener('click', function(e) {
-        if (!e.target.classList.contains('mr-product-input') && !e.target.closest('.autocomplete-items')) {
-            closeAllMrSuggestions();
+        if (e.target.id === 'mrCustomerSearchInput' || e.target.closest('#mrCustomerSuggestions')) {
+            return;
         }
-        if (e.target.id !== 'mrCustomerSearchInput' && !e.target.closest('#mrCustomerSuggestions')) {
-            const custSug = document.getElementById('mrCustomerSuggestions');
-            if (custSug) custSug.style.display = 'none';
+        if (e.target.classList.contains('mr-product-input') || e.target.closest('.autocomplete-items')) {
+            return;
         }
+        
+        // Clicked outside - close all suggestions
+        closeAllMrSuggestions();
+        const custSug = document.getElementById('mrCustomerSuggestions');
+        if (custSug) custSug.style.display = 'none';
     });
 
     // Expose functions to global context
