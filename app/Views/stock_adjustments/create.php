@@ -1,363 +1,504 @@
 <!-- Inter Font & FontAwesome Icons -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
 <style>
-/* ============================================================
-   APPLE DESIGN LANGUAGE — CREATE STOCK ADJUSTMENT
-   ============================================================ */
+    /* =====================================================
+       MODERN BILLING PANEL — STOCK ADJUSTMENTS
+       ===================================================== */
+    html, body { overflow: hidden; height: 100%; margin: 0; }
 
-:root {
-    --c-bg:           #f2f2f7;
-    --c-surface:      #ffffff;
-    --c-surface2:     #f9f9fb;
-    --c-separator:    rgba(60,60,67,0.12);
-    --c-separator2:   rgba(60,60,67,0.06);
+    :root {
+        --primary:       #2563eb;
+        --primary-hover: #1d4ed8;
+        --primary-light: #eff6ff;
+        --success:       #16a34a;
+        --success-light: #f0fdf4;
+        --danger:        #dc2626;
+        --danger-light:  #fef2f2;
+        --warning:       #d97706;
+        --warning-light: #fffbeb;
+        --slate-900:     #0f172a;
+        --slate-800:     #1e293b;
+        --slate-700:     #334155;
+        --slate-600:     #475569;
+        --slate-400:     #94a3b8;
+        --slate-300:     #cbd5e1;
+        --slate-200:     #e2e8f0;
+        --slate-100:     #f1f5f9;
+        --slate-50:      #f8fafc;
+        --white:         #ffffff;
+        --radius-sm:     6px;
+        --radius-md:     10px;
+        --radius-lg:     14px;
+        --shadow-sm:     0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+        --shadow-md:     0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+        --font:          'Inter', system-ui, -apple-system, sans-serif;
+        --f-mono:        ui-monospace, 'SF Mono', 'Menlo', 'Monaco', monospace;
+        --c-blue:        var(--primary);
+        --t-secondary:   var(--slate-500, #64748b);
+    }
 
-    --c-blue:         #007aff;
-    --c-blue-light:   #e5f2ff;
-    --c-green:        #34c759;
-    --c-red:          #ff3b30;
-    --c-red-light:    #fff0ef;
+    /* ── Wrapper ── */
+    .qb-wrapper {
+        background: var(--slate-100);
+        font-family: var(--font);
+        font-size: 13px;
+        color: var(--slate-800);
+        height: calc(100vh - 30px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding: 10px 12px;
+        box-sizing: border-box;
+    }
 
-    --f-system: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Inter', sans-serif;
-    --f-mono:   ui-monospace, 'SF Mono', 'Menlo', 'Monaco', monospace;
+    /* ── Main card ── */
+    .qb-container {
+        background: var(--white);
+        width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        padding: 0;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
 
-    --t-primary:   #1c1c1e;
-    --t-secondary: #636366;
-    --t-label:     #8e8e93;
+    #adjForm {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        overflow: hidden;
+        margin: 0;
+    }
 
-    --shadow-sm:  0 2px 8px rgba(0,0,0,0.06);
-    --shadow-md:  0 8px 24px rgba(0,0,0,0.08);
+    /* ── Top nav bar ── */
+    .inv-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 18px;
+        border-bottom: 1px solid var(--slate-200);
+        background: var(--white);
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        flex-shrink: 0;
+    }
+    .inv-topbar-left { display: flex; align-items: center; gap: 10px; }
+    .inv-topbar-right { display: flex; align-items: center; gap: 6px; }
+    .inv-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--slate-900);
+        letter-spacing: -0.3px;
+    }
+    .inv-type-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 10px;
+        border-radius: 99px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+        background: var(--primary-light);
+        color: var(--primary);
+    }
 
-    --r-sm: 10px;
-    --r-md: 14px;
-    --r-lg: 20px;
-    --r-pill: 999px;
+    /* ── Buttons ── */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 13px;
+        font-family: var(--font);
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--slate-300);
+        background: var(--white);
+        color: var(--slate-700);
+        cursor: pointer;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+        line-height: 1.4;
+    }
+    .btn:hover { background: var(--slate-100); border-color: var(--slate-400); }
+    .btn-primary { background: var(--primary); color: var(--white); border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .btn-danger-outline { background: var(--white); color: var(--danger); border-color: #fca5a5; }
+    .btn-danger-outline:hover { background: var(--danger-light); }
+    .btn-sm { padding: 5px 11px; font-size: 11px; }
 
-    --ease-ios:    cubic-bezier(0.25, 0.1, 0.25, 1);
-    --dur-fast:    0.18s;
-}
+    /* ── Form body scroll area ── */
+    .inv-body {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 14px 18px 0 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background: var(--slate-50);
+    }
 
-.create-wrap {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 24px 100px;
-    font-family: var(--f-system);
-    color: var(--t-primary);
-}
+    /* ── Header fields card ── */
+    .inv-meta-card {
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-md);
+        background: var(--white);
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+    }
+    .inv-meta-card-header {
+        padding: 7px 12px;
+        background: var(--slate-800);
+        color: var(--white);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        border-radius: var(--radius-md) var(--radius-md) 0 0;
+    }
+    .inv-meta-body {
+        padding: 12px 14px;
+        display: grid;
+        grid-template-columns: 2fr 2fr 1.5fr 3.5fr;
+        gap: 14px;
+        align-items: flex-start;
+    }
+    .inv-labeled-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .inv-labeled-field label {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--slate-600);
+    }
+    .inv-labeled-field select,
+    .inv-labeled-field input,
+    .inv-labeled-field textarea {
+        padding: 7px 10px;
+        border: 1px solid var(--slate-300);
+        border-radius: var(--radius-sm);
+        font-family: var(--font);
+        font-size: 12px;
+        color: var(--slate-800);
+        background: var(--slate-50);
+        box-sizing: border-box;
+        outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .inv-labeled-field select:focus,
+    .inv-labeled-field input:focus,
+    .inv-labeled-field textarea:focus {
+        border-color: var(--primary);
+        background: var(--white);
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    }
 
-.page-header {
-    margin-bottom: 24px;
-}
-.eyebrow {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--c-blue);
-    margin-bottom: 4px;
-}
-.title {
-    font-size: 32px;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    line-height: 1.1;
-}
+    /* ── Item Search bar ── */
+    .search-wrapper {
+        position: relative;
+        flex-shrink: 0;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    .search-select-wrapper {
+        position: relative;
+        flex: 1;
+        display: flex;
+        align-items: center;
+    }
+    .item-search-bar {
+        width: 100%;
+        padding: 9px 14px 9px 38px;
+        border: 1.5px solid var(--slate-300);
+        border-radius: var(--radius-md);
+        font-size: 13px;
+        font-family: var(--font);
+        font-weight: 500;
+        color: var(--slate-800);
+        background: var(--white);
+        box-sizing: border-box;
+        outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .item-search-bar:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    }
+    .item-search-bar::placeholder { color: var(--slate-400); }
+    .search-icon-prefix {
+        position: absolute;
+        left: 13px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--slate-400);
+        font-size: 15px;
+        pointer-events: none;
+    }
+    .search-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        width: 100%;
+        background: var(--white);
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-md);
+        max-height: 240px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        box-shadow: var(--shadow-md);
+    }
+    .dropdown-item {
+        padding: 9px 14px;
+        cursor: pointer;
+        list-style: none;
+        border-bottom: 1px solid var(--slate-100);
+        font-size: 13px;
+        color: var(--slate-800);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.1s;
+    }
+    .dropdown-item:last-child { border-bottom: none; }
+    .dropdown-item:hover {
+        background: var(--primary);
+        color: var(--white);
+    }
 
-.flash-msg {
-    padding: 14px 20px;
-    border-radius: var(--r-md);
-    margin-bottom: 24px;
-    font-size: 14px;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.flash-msg-error { background: var(--c-red-light); color: #bd2130; border: 0.5px solid rgba(255,59,48,0.3); }
+    /* ── Line items table ── */
+    .table-scroll-container {
+        flex: 1;
+        overflow-y: auto;
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-md);
+        background: var(--white);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 14px;
+    }
+    .qb-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .qb-table thead th {
+        position: sticky;
+        top: 0;
+        background: var(--slate-800);
+        color: var(--white);
+        padding: 8px 10px;
+        text-align: left;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        border-right: 1px solid rgba(255,255,255,0.08);
+        z-index: 10;
+    }
+    .qb-table thead th:last-child { border-right: none; }
+    .qb-table tbody tr { transition: background 0.1s; }
+    .qb-table tbody tr:nth-child(even) { background: var(--slate-50); }
+    .qb-table tbody tr:hover { background: var(--primary-light); }
+    .qb-table td {
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--slate-100);
+        border-right: 1px solid var(--slate-100);
+        vertical-align: middle;
+    }
+    .qb-table td:last-child { border-right: none; }
+    .qb-table input {
+        width: 100%;
+        border: 1px solid var(--slate-200);
+        background: var(--white);
+        padding: 5px 8px;
+        font-size: 12px;
+        font-family: var(--font);
+        color: var(--slate-800);
+        box-sizing: border-box;
+        border-radius: 4px;
+    }
+    .qb-table input:focus {
+        background: var(--primary-light);
+        border-color: var(--primary);
+        outline: none;
+    }
+    .btn-delete {
+        background: transparent;
+        border: none;
+        color: var(--danger);
+        cursor: pointer;
+        font-size: 14px;
+        padding: 5px;
+        border-radius: 50%;
+    }
+    .btn-delete:hover {
+        background: var(--danger-light);
+    }
 
-.card {
-    background: var(--c-surface);
-    border-radius: var(--r-md);
-    border: 0.5px solid var(--c-separator);
-    box-shadow: var(--shadow-sm);
-    padding: 24px;
-    margin-bottom: 24px;
-}
-
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin-bottom: 20px;
-}
-.form-field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-.form-field-full {
-    grid-column: span 3;
-}
-.label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--t-secondary);
-}
-.label-required::after {
-    content: " *";
-    color: var(--c-red);
-}
-.select, .input, .textarea {
-    background: rgba(120,120,128,0.08);
-    border: 0.5px solid transparent;
-    border-radius: var(--r-sm);
-    padding: 10px 14px;
-    font-size: 14px;
-    font-family: var(--f-system);
-    color: var(--t-primary);
-    outline: none;
-    transition: all var(--dur-fast);
-}
-.select:focus, .input:focus, .textarea:focus {
-    background: var(--c-surface);
-    border-color: var(--c-blue);
-    box-shadow: 0 0 0 3px rgba(0,122,255,0.15);
-}
-.textarea {
-    resize: vertical;
-    min-height: 80px;
-}
-
-/* ---- Product Picker ---- */
-.picker-container {
-    background: var(--c-surface2);
-    border: 0.5px dashed var(--c-separator);
-    border-radius: var(--r-md);
-    padding: 20px;
-    margin-bottom: 24px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-.search-select-wrapper {
-    position: relative;
-    flex-grow: 1;
-}
-.search-dropdown {
-    position: absolute;
-    top: 100%; left: 0; right: 0;
-    background: var(--c-surface);
-    border: 0.5px solid var(--c-separator);
-    border-radius: var(--r-sm);
-    box-shadow: var(--shadow-md);
-    z-index: 100;
-    max-height: 200px;
-    overflow-y: auto;
-    display: none;
-}
-.dropdown-item {
-    padding: 10px 14px;
-    cursor: pointer;
-    font-size: 13px;
-    border-bottom: 0.5px solid var(--c-separator2);
-}
-.dropdown-item:last-child { border-bottom: none; }
-.dropdown-item:hover { background: var(--c-blue-light); }
-
-/* ---- Items Grid Table ---- */
-.items-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-.items-table th {
-    background: var(--c-surface2);
-    padding: 12px 14px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: var(--t-secondary);
-    border-bottom: 0.5px solid var(--c-separator);
-    letter-spacing: 0.05em;
-    text-align: left;
-}
-.items-table td {
-    padding: 12px 14px;
-    font-size: 14px;
-    border-bottom: 0.5px solid var(--c-separator2);
-}
-
-.qty-input {
-    background: rgba(120,120,128,0.08);
-    border: 0.5px solid var(--c-separator);
-    border-radius: var(--r-sm);
-    padding: 6px 10px;
-    font-size: 13px;
-    font-weight: 700;
-    font-family: var(--f-mono);
-    width: 90px;
-    text-align: center;
-    color: var(--t-primary);
-    outline: none;
-}
-.cost-input {
-    background: rgba(120,120,128,0.08);
-    border: 0.5px solid var(--c-separator);
-    border-radius: var(--r-sm);
-    padding: 6px 10px;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: var(--f-mono);
-    width: 110px;
-    text-align: right;
-    color: var(--t-primary);
-    outline: none;
-}
-.total-cell {
-    font-family: var(--f-mono);
-    font-weight: 700;
-    text-align: right;
-}
-.btn-delete {
-    background: transparent;
-    border: none;
-    color: var(--c-red);
-    cursor: pointer;
-    font-size: 15px;
-    padding: 6px;
-    border-radius: 50%;
-}
-.btn-delete:hover {
-    background: var(--c-red-light);
-}
-
-.actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 24px;
-}
-.btn {
-    padding: 12px 24px;
-    border-radius: var(--r-pill);
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    border: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-}
-.btn-secondary { background: var(--c-fill); color: var(--t-primary); }
-.btn-secondary:hover { background: rgba(120,120,128,0.2); }
-.btn-primary { background: var(--c-blue); color: #fff; }
-.btn-primary:hover { background: #0066cc; }
+    /* ── Footer section ── */
+    .inv-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-shrink: 0;
+        padding: 10px 18px;
+        border-top: 1px solid var(--slate-200);
+        background: var(--white);
+    }
 </style>
 
-<div class="create-wrap">
-    <!-- Header -->
-    <div class="page-header">
-        <div class="eyebrow">Operations</div>
-        <div class="title">Create Stock Adjustment</div>
-    </div>
-
+<div class="qb-wrapper">
     <!-- Errors -->
     <?php if (!empty($_SESSION['flash_error'])): ?>
-        <div class="flash-msg flash-msg-error">
-            <i class="fa-solid fa-triangle-exclamation"></i>
+        <div style="background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; padding: 10px 14px; border-radius: 8px; margin-bottom: 10px; font-weight: 500;">
+            <i class="fa-solid fa-triangle-exclamation" style="margin-right: 6px;"></i>
             <?= $_SESSION['flash_error']; unset($_SESSION['flash_error']); ?>
         </div>
     <?php endif; ?>
 
-    <form method="POST" action="<?= APP_URL ?>/stockadjustment/store" id="adjForm">
-        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
+    <div class="qb-container">
+        <form method="POST" action="<?= APP_URL ?>/stockadjustment/store" id="adjForm">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
 
-        <!-- Header Card -->
-        <div class="card">
-            <div class="form-grid">
-                <!-- Warehouse -->
-                <div class="form-field">
-                    <label class="label label-required">Warehouse</label>
-                    <select name="warehouse_id" class="select" required>
-                        <option value="">-- Choose Warehouse --</option>
-                        <?php foreach ($data['warehouses'] as $wh): ?>
-                            <option value="<?= $wh->id; ?>"><?= htmlspecialchars($wh->name); ?></option>
-                        <?php endforeach; ?>
-                    </select>
+            <!-- ═══ TOP NAV BAR ═══ -->
+            <div class="inv-topbar">
+                <div class="inv-topbar-left">
+                    <a href="<?= APP_URL ?>/stockadjustment" class="btn">
+                        <i class="fa-solid fa-arrow-left"></i> Back
+                    </a>
+                    <div class="inv-title">Create Stock Adjustment</div>
+                    <span class="inv-type-badge">Stock Adjustment</span>
                 </div>
-
-                <!-- Reason -->
-                <div class="form-field">
-                    <label class="label label-required">Reason / Correction Type</label>
-                    <select name="reason" class="select" required>
-                        <option value="">-- Select Reason --</option>
-                        <option value="Damage">Damage</option>
-                        <option value="Theft">Theft</option>
-                        <option value="Inventory Write-off">Inventory Write-off</option>
-                        <option value="Found Item">Found Item</option>
-                        <option value="Promotion">Promotion / Marketing Sample</option>
-                        <option value="General Adjustment">General Adjustment</option>
-                    </select>
-                </div>
-
-                <!-- Date -->
-                <div class="form-field">
-                    <label class="label label-required">Adjustment Date</label>
-                    <input type="date" name="adjustment_date" class="input" value="<?= date('Y-m-d'); ?>" required>
-                </div>
-
-                <!-- Remarks -->
-                <div class="form-field form-field-full">
-                    <label class="label">General Remarks</label>
-                    <textarea name="remarks" class="textarea" placeholder="Describe the reason for this manual adjustment..."></textarea>
+                <div class="inv-topbar-right">
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="fa-solid fa-floppy-disk"></i> Submit Adjustment Request
+                    </button>
+                    <a href="<?= APP_URL ?>/stockadjustment" class="btn btn-sm btn-danger-outline">
+                        <i class="fa-solid fa-xmark"></i> Cancel
+                    </a>
                 </div>
             </div>
-        </div>
 
-        <!-- Product Picker Section -->
-        <h3 style="font-weight: 700; margin-bottom: 12px; margin-top: 24px;">Adjusted Products List</h3>
-        <div class="picker-container">
-            <div class="search-select-wrapper">
-                <input type="text" id="productSearchInput" class="input" style="width: 100%;" placeholder="Search product by name, item code, barcode..." autocomplete="off">
-                <div class="search-dropdown" id="searchDropdown"></div>
+            <!-- ═══ SCROLLABLE BODY ═══ -->
+            <div class="inv-body">
+
+                <!-- ── Header row: Adjustment Parameters Card ── -->
+                <div class="inv-meta-card">
+                    <div class="inv-meta-card-header">
+                        <i class="fa-solid fa-sliders" style="margin-right: 6px;"></i>Adjustment Parameters
+                    </div>
+                    <div class="inv-meta-body">
+                        <!-- Warehouse -->
+                        <div class="inv-labeled-field">
+                            <label>Warehouse <span style="color:#dc2626;">*</span></label>
+                            <select name="warehouse_id" required>
+                                <option value="">-- Choose Warehouse --</option>
+                                <?php foreach ($data['warehouses'] as $wh): ?>
+                                    <option value="<?= $wh->id; ?>"><?= htmlspecialchars($wh->name); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Reason -->
+                        <div class="inv-labeled-field">
+                            <label>Reason / Correction Type <span style="color:#dc2626;">*</span></label>
+                            <select name="reason" required>
+                                <option value="">-- Select Reason --</option>
+                                <option value="Damage">Damage</option>
+                                <option value="Theft">Theft</option>
+                                <option value="Inventory Write-off">Inventory Write-off</option>
+                                <option value="Found Item">Found Item</option>
+                                <option value="Promotion">Promotion / Marketing Sample</option>
+                                <option value="General Adjustment">General Adjustment</option>
+                            </select>
+                        </div>
+
+                        <!-- Date -->
+                        <div class="inv-labeled-field">
+                            <label>Adjustment Date <span style="color:#dc2626;">*</span></label>
+                            <input type="date" name="adjustment_date" value="<?= date('Y-m-d'); ?>" required>
+                        </div>
+
+                        <!-- Remarks -->
+                        <div class="inv-labeled-field">
+                            <label>General Remarks</label>
+                            <input type="text" name="remarks" placeholder="Describe the reason for this manual adjustment...">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Item Catalog Search ── -->
+                <div class="search-wrapper">
+                    <div class="search-select-wrapper">
+                        <i class="fa-solid fa-magnifying-glass search-icon-prefix"></i>
+                        <input type="text" id="productSearchInput" class="item-search-bar"
+                               placeholder="Search product catalog by name, item code, barcode, or SKU..."
+                               autocomplete="off">
+                        <div class="search-dropdown" id="searchDropdown"></div>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="btnAddSearched">
+                        <i class="fa-solid fa-plus"></i> Add Item
+                    </button>
+                </div>
+
+                <!-- ── Line Items Table ── -->
+                <div class="table-scroll-container">
+                    <table class="qb-table">
+                        <thead>
+                            <tr>
+                                <th style="width:13%;">SKU / Code</th>
+                                <th style="width:25%;">Product Name</th>
+                                <th style="width:10%; text-align:center;">Current Qty</th>
+                                <th style="width:10%; text-align:center;">New Qty</th>
+                                <th style="width:11%; text-align:center;">Adjustment Qty</th>
+                                <th style="width:11%; text-align:right;">Unit Cost</th>
+                                <th style="width:11%; text-align:right;">Total Value</th>
+                                <th style="width:15%;">Item Remarks</th>
+                                <th style="width:30px; background:#7f1d1d;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="adjustmentGridBody">
+                            <tr id="emptyGridRow">
+                                <td colspan="9" style="text-align: center; color: var(--slate-400); padding: 40px; font-weight: 500;">
+                                    No items added yet. Search and select products above to adjust.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div><!-- /.inv-body -->
+
+            <!-- ═══ FOOTER ═══ -->
+            <div class="inv-footer">
+                <div style="font-size: 12px; color: var(--slate-600); font-weight: 500;">
+                    <i class="fa-solid fa-circle-info" style="color: var(--primary); margin-right: 6px;"></i>
+                    All stock adjustments affect ledger balances immediately upon submission.
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <a href="<?= APP_URL ?>/stockadjustment" class="btn btn-sm">Cancel</a>
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="fa-solid fa-paper-plane"></i> Submit Adjustment Request
+                    </button>
+                </div>
             </div>
-            <button type="button" class="btn btn-secondary" id="btnAddSearched" style="flex-shrink: 0;"><i class="fa-solid fa-plus"></i> Add Item</button>
-        </div>
 
-        <!-- Items Grid Card -->
-        <div class="card" style="padding: 0; overflow: hidden;">
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th style="width: 12%;">SKU / Code</th>
-                        <th style="width: 25%;">Product Name</th>
-                        <th style="width: 10%; text-align: center;">Current Qty</th>
-                        <th style="width: 12%; text-align: center;">New Qty</th>
-                        <th style="width: 12%; text-align: center;">Adjustment Qty</th>
-                        <th style="width: 12%; text-align: right;">Unit Cost</th>
-                        <th style="width: 12%; text-align: right;">Total Value</th>
-                        <th style="width: 15%;">Item Remarks</th>
-                        <th style="width: 5%; text-align: center;"></th>
-                    </tr>
-                </thead>
-                <tbody id="adjustmentGridBody">
-                    <tr id="emptyGridRow">
-                        <td colspan="9" style="text-align: center; color: var(--t-secondary); padding: 30px;">
-                            No items added yet. Search and select products above to adjust.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Form Submission -->
-        <div class="actions">
-            <a href="<?= APP_URL ?>/stockadjustment" class="btn btn-secondary">Cancel</a>
-            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Submit Adjustment Request</button>
-        </div>
-    </form>
+        </form>
+    </div>
 </div>
 
 <script>
