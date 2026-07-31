@@ -5224,15 +5224,15 @@ window.buildAccountOptions = buildAccountOptions;
             route_id: currentRouteId,
             customer_id: customerId,
             date: document.getElementById('mrNoteDate').value,
-            items: items
+            items: items,
+            csrf_token: CSRF_TOKEN
         };
 
         showLoader();
         fetchSecure('<?= APP_URL ?>/RepTracking/api_save_market_return', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': '<?= $_SESSION['csrf_token'] ?>'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload)
         })
