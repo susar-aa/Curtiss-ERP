@@ -1233,6 +1233,14 @@ class RepDashboardController extends Controller {
                             );
 
                             if ($updateOk) {
+                                // Save latitude and longitude
+                                if (isset($inv['latitude']) && isset($inv['longitude'])) {
+                                    $this->db->query("UPDATE invoices SET latitude = :lat, longitude = :lng WHERE id = :id");
+                                    $this->db->bind(':lat', $inv['latitude']);
+                                    $this->db->bind(':lng', $inv['longitude']);
+                                    $this->db->bind(':id', $existingInv->id);
+                                    $this->db->execute();
+                                }
                                 $this->logActivity('Update Invoice', 'Billing', "Updated Invoice {$invNo} via mobile sync", $existingInv->id);
                                 
                                 $this->db->query("SELECT invoice_date FROM invoices WHERE id = :id");
@@ -1352,6 +1360,14 @@ class RepDashboardController extends Controller {
                     );
 
                     if ($invoiceId) {
+                        // Save latitude and longitude
+                        if (isset($inv['latitude']) && isset($inv['longitude'])) {
+                            $this->db->query("UPDATE invoices SET latitude = :lat, longitude = :lng WHERE id = :id");
+                            $this->db->bind(':lat', $inv['latitude']);
+                            $this->db->bind(':lng', $inv['longitude']);
+                            $this->db->bind(':id', $invoiceId);
+                            $this->db->execute();
+                        }
                         $this->logActivity('Create Invoice', 'Billing', "Created and posted Invoice {$invNo} for Customer ID {$custServerId} via mobile sync", $invoiceId);
                         
                         // If discount was applied, log this to system_audit_trail specifically

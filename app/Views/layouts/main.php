@@ -1259,6 +1259,13 @@ if (!function_exists('hasPermission')) {
                                 <div class="desc">Unified route lifecycle & deliveries</div>
                             </div>
                         </a>
+                        <a href="<?php echo APP_URL; ?>/RepTracking/live" class="mega-list-item">
+                            <div class="icon-wrapper" style="background:#e0f2fe; color:#0284c7;"><i class="ph ph-radar"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Live Tracking</div>
+                                <div class="desc">Real-time rep location visualizer</div>
+                            </div>
+                        </a>
                         <a href="<?php echo APP_URL; ?>/repperformance" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-chart-bar"></i></div>
                             <div class="mega-list-item-content">

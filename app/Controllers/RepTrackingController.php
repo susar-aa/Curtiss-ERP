@@ -73,6 +73,27 @@ class RepTrackingController extends Controller {
         return $drivers;
     }
 
+    public function live() {
+        $this->checkPermission('reptracking', 'view');
+        
+        $db = new Database();
+        $db->query("SELECT u.id, u.username, e.first_name, e.last_name 
+                    FROM users u
+                    LEFT JOIN employees e ON u.employee_id = e.id
+                    WHERE u.role = 'Rep (Sales Representative)'
+                    ORDER BY u.username ASC");
+        $reps = $db->resultSet() ?: [];
+
+        $data = [
+            'title' => 'Live Location Tracking',
+            'content_view' => 'reptracking/live',
+            'reps' => $reps,
+            'firebase_db_url' => 'https://curtiss-erp-default-rtdb.firebaseio.com/'
+        ];
+        
+        $this->view('layouts/main', $data);
+    }
+
     public function index() {
         $this->renderRouteDashboard(false);
     }
