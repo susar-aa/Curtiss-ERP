@@ -343,7 +343,7 @@ $actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "cre
             <div class="sf-alert info" style="margin-top: 10px;">
                 <i class="fa-solid fa-circle-info sf-alert-icon"></i>
                 <div style="flex:1;">
-                    <div class="sf-alert-msg">Products are filtered by Vendor. Select specific variants directly, or choose "(MIX)" if the exact colors/sizes will be decided upon delivery.</div>
+                    <div class="sf-alert-msg">Products are filtered by Vendor. Select specific product variants directly from the dropdown.</div>
                 </div>
             </div>
 
@@ -371,12 +371,12 @@ $actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "cre
                                     $vOpt = $item->item_variation_option_id ?: ($item->is_mix ? 'MIX' : '0');
                                     $vMix = $item->is_mix;
                                     $selectedValue = "{$vId}|{$vOpt}|{$vMix}";
-                                } else {
-                                    // Coming from AI Suggester (prefilled) -> defaults to MIX if variations exist
+                                    // Coming from AI Suggester (prefilled) -> defaults to first variant if variations exist
                                     $itemRef = array_filter($data['catalog_items'], function($c) use ($item) { return $c->id == $item['item_id']; });
                                     $itemRef = reset($itemRef);
                                     $hasVars = !empty($itemRef->variations);
-                                    $selectedValue = $item['item_id'] . '|' . ($hasVars ? 'MIX' : '0') . '|' . ($hasVars ? '1' : '0');
+                                    $firstVarId = $hasVars ? ($itemRef->variations[0]->id ?? '0') : '0';
+                                    $selectedValue = $item['item_id'] . '|' . $firstVarId . '|0';
                                 }
                             ?>
 
@@ -388,9 +388,6 @@ $actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "cre
                                         <?php foreach($data['catalog_items'] as $catItem): ?>
                                             <?php if(!empty($catItem->variations)): ?>
                                                 <optgroup label="<?= htmlspecialchars($catItem->name) ?>" data-vendor="<?= $catItem->vendor_id ?>">
-                                                    <option value="<?= $catItem->id ?>|MIX|1" data-price="<?= floatval($catItem->cost_price ?? 0.00) ?>" data-name="<?= htmlspecialchars($catItem->name) ?> (MIX)" data-sku="<?= htmlspecialchars($catItem->item_code ?? '') ?>" data-sample-code="<?= htmlspecialchars($catItem->sample_code ?? '') ?>" <?= $selectedValue === "{$catItem->id}|MIX|1" ? 'selected' : '' ?>>
-                                                        <?= htmlspecialchars($catItem->name) ?> (MIX)
-                                                    </option>
                                                     <?php foreach($catItem->variations as $var): ?>
                                                         <option value="<?= $catItem->id ?>|<?= $var->id ?>|0" data-price="<?= floatval($var->cost ?? 0) > 0 ? $var->cost : floatval($catItem->cost_price ?? 0.00) ?>" data-name="<?= htmlspecialchars($catItem->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>" data-sku="<?= htmlspecialchars($var->sku ?? $catItem->item_code ?? '') ?>" data-sample-code="<?= htmlspecialchars($catItem->sample_code ?? '') ?>" <?= $selectedValue === "{$catItem->id}|{$var->id}|0" ? 'selected' : '' ?>>
                                                             <?= htmlspecialchars($catItem->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>
@@ -426,9 +423,6 @@ $actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "cre
                                     <?php foreach($data['catalog_items'] as $item): ?>
                                         <?php if(!empty($item->variations)): ?>
                                             <optgroup label="<?= htmlspecialchars($item->name) ?>" data-vendor="<?= $item->vendor_id ?>">
-                                                <option value="<?= $item->id ?>|MIX|1" data-price="<?= floatval($item->cost_price ?? 0.00) ?>" data-name="<?= htmlspecialchars($item->name) ?> (MIX)" data-sku="<?= htmlspecialchars($item->item_code ?? '') ?>" data-sample-code="<?= htmlspecialchars($item->sample_code ?? '') ?>">
-                                                    <?= htmlspecialchars($item->name) ?> (MIX)
-                                                </option>
                                                 <?php foreach($item->variations as $var): ?>
                                                     <option value="<?= $item->id ?>|<?= $var->id ?>|0" data-price="<?= floatval($var->cost ?? 0) > 0 ? $var->cost : floatval($item->cost_price ?? 0.00) ?>" data-name="<?= htmlspecialchars($item->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>" data-sku="<?= htmlspecialchars($var->sku ?? $item->item_code ?? '') ?>" data-sample-code="<?= htmlspecialchars($item->sample_code ?? '') ?>">
                                                         <?= htmlspecialchars($item->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>
@@ -486,9 +480,6 @@ $actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "cre
         <?php foreach($data['catalog_items'] as $item): ?>
             <?php if(!empty($item->variations)): ?>
                 <optgroup label="<?= htmlspecialchars($item->name) ?>" data-vendor="<?= $item->vendor_id ?>">
-                    <option value="<?= $item->id ?>|MIX|1" data-price="<?= floatval($item->cost_price ?? 0.00) ?>" data-name="<?= htmlspecialchars($item->name) ?> (MIX)" data-sku="<?= htmlspecialchars($item->item_code ?? '') ?>" data-sample-code="<?= htmlspecialchars($item->sample_code ?? '') ?>">
-                        <?= htmlspecialchars($item->name) ?> (MIX)
-                    </option>
                     <?php foreach($item->variations as $var): ?>
                         <option value="<?= $item->id ?>|<?= $var->id ?>|0" data-price="<?= floatval($var->cost ?? 0) > 0 ? $var->cost : floatval($item->cost_price ?? 0.00) ?>" data-name="<?= htmlspecialchars($item->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>" data-sku="<?= htmlspecialchars($var->sku ?? $item->item_code ?? '') ?>" data-sample-code="<?= htmlspecialchars($item->sample_code ?? '') ?>">
                             <?= htmlspecialchars($item->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>
