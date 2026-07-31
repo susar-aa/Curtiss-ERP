@@ -1114,7 +1114,12 @@
                                     </div>
                                 </div>
 
-                                <table class="data-table" style="width: 100%; margin-bottom: 15px;" id="mrLinesTable">
+                                 <style>
+                                     #mrLinesTable, #mrLinesTable tbody, #mrLinesTable tr, #mrLinesTable td {
+                                         overflow: visible !important;
+                                     }
+                                 </style>
+                                 <table class="data-table" style="width: 100%; margin-bottom: 15px; overflow: visible !important;" id="mrLinesTable">
                                     <thead>
                                         <tr>
                                             <th style="width: 35%;">Product</th>
