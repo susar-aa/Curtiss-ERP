@@ -587,9 +587,11 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
             }
 
             // Search ALL active catalog items
-            let matches = searchableItems.filter(item => 
-                item.display_name.toLowerCase().includes(query) || item.sku.toLowerCase().includes(query)
-            );
+            const tokens = query.split(/\s+/).filter(Boolean);
+            let matches = searchableItems.filter(item => {
+                const searchStr = `${item.display_name || ''} ${item.sku || ''}`.toLowerCase();
+                return tokens.every(token => searchStr.includes(token));
+            });
 
             if (matches.length === 0) {
                 wrapper.innerHTML = '<div style="padding: 10px 12px; font-size:12px; color:var(--t-tertiary); text-align:center; font-style:italic;">No products found</div>';
@@ -627,8 +629,8 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                 return a.display_name.localeCompare(b.display_name);
             });
 
-            // Limit to top 15 results
-            matches = matches.slice(0, 15);
+            // Display all matching results without limit
+            // (all matches rendered in scrollable dropdown)
 
             matches.forEach(m => {
                 const itemDiv = document.createElement('div');

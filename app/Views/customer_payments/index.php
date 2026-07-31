@@ -812,11 +812,11 @@
         resList.innerHTML = '';
         if(!val) { resList.style.display = 'none'; return; }
 
-        const filtered = customers.filter(c =>
-            (c.name && c.name.toLowerCase().includes(val)) ||
-            (c.phone && c.phone.toLowerCase().includes(val)) ||
-            (c.address && c.address.toLowerCase().includes(val))
-        ).slice(0, 10);
+        const tokens = val.split(/\s+/).filter(Boolean);
+        const filtered = customers.filter(c => {
+            const searchStr = `${c.name || ''} ${c.phone || ''} ${c.address || ''}`.toLowerCase();
+            return tokens.every(token => searchStr.includes(token));
+        });
 
         if(filtered.length === 0) {
             const li = document.createElement('li');

@@ -387,11 +387,11 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const matches = itemsList.filter(item => 
-            (item.name && item.name.toLowerCase().includes(term)) || 
-            (item.item_code && item.item_code.toLowerCase().includes(term)) || 
-            (item.barcode && item.barcode.toLowerCase().includes(term))
-        ).slice(0, 10);
+        const tokens = term.split(/\s+/).filter(Boolean);
+        const matches = itemsList.filter(item => {
+            const searchStr = `${item.name || ''} ${item.item_code || ''} ${item.barcode || ''} ${item.sample_code || ''} ${item.category_name || ''}`.toLowerCase();
+            return tokens.every(token => searchStr.includes(token));
+        });
 
         console.log(`[Search autocomplete] Found ${matches.length} matches.`);
 

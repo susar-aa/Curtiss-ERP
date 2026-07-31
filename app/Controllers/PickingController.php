@@ -874,7 +874,6 @@ class PickingController extends Controller {
             LEFT JOIN variations v ON ivo.variation_id = v.id
             LEFT JOIN variation_values vv ON ivo.variation_value_id = vv.id
             WHERE (i.name LIKE :q OR i.item_code LIKE :q OR ivo.sku LIKE :q) AND i.status != 'Inactive'
-            LIMIT 40
         ");
         $this->db->bind(':q', "%$q%");
         $products = $this->db->resultSet() ?: [];

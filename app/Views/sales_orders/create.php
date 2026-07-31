@@ -411,12 +411,11 @@ $reps = $db->resultSet();
         resList.innerHTML = '';
         if(!val) { resList.style.display = 'none'; return; }
 
-        const filtered = customers.filter(c => 
-            c.name.toLowerCase().includes(val) || 
-            c.phone.toLowerCase().includes(val) || 
-            c.mca.toLowerCase().includes(val) || 
-            c.address.toLowerCase().includes(val)
-        ).slice(0, 10);
+        const tokens = val.split(/\s+/).filter(Boolean);
+        const filtered = customers.filter(c => {
+            const searchStr = `${c.name || ''} ${c.phone || ''} ${c.mca || ''} ${c.address || ''}`.toLowerCase();
+            return tokens.every(token => searchStr.includes(token));
+        });
 
         if(filtered.length === 0) {
             const li = document.createElement('li');
@@ -492,11 +491,11 @@ $reps = $db->resultSet();
         resList.innerHTML = '';
         if(!val) { resList.style.display = 'none'; return; }
 
-        const filtered = catalog.filter(i => 
-            i.name.toLowerCase().includes(val) || 
-            i.code.toLowerCase().includes(val) ||
-            (i.sample_code && i.sample_code.toLowerCase().includes(val))
-        ).slice(0, 15);
+        const tokens = val.split(/\s+/).filter(Boolean);
+        const filtered = catalog.filter(i => {
+            const searchStr = `${i.name || ''} ${i.code || ''} ${i.sample_code || ''}`.toLowerCase();
+            return tokens.every(token => searchStr.includes(token));
+        });
         if(filtered.length === 0) { resList.style.display = 'none'; return; }
 
         filtered.forEach(item => {

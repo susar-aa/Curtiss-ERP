@@ -161,10 +161,11 @@
             return;
         }
 
-        const matches = searchableItems.filter(item => 
-            item.display_name.toLowerCase().includes(query) || 
-            item.sku.toLowerCase().includes(query)
-        ).slice(0, 15);
+        const tokens = query.split(/\s+/).filter(Boolean);
+        const matches = searchableItems.filter(item => {
+            const searchStr = `${item.display_name || ''} ${item.sku || ''}`.toLowerCase();
+            return tokens.every(token => searchStr.includes(token));
+        });
 
         if (matches.length === 0) {
             autocompleteList.innerHTML = '<div style="padding: 12px; font-size:12px; color:#86868b; text-align:center;">No matching products found.</div>';

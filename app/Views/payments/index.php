@@ -696,11 +696,11 @@
         const type = document.getElementById('form-entity-type').value;
         const listToSearch = (type === 'service_provider') ? serviceProviders : suppliers;
 
-        const filtered = listToSearch.filter(s =>
-            (s.name && s.name.toLowerCase().includes(val)) ||
-            (s.phone && s.phone.toLowerCase().includes(val)) ||
-            (s.address && s.address.toLowerCase().includes(val))
-        ).slice(0, 10);
+        const tokens = val.split(/\s+/).filter(Boolean);
+        const filtered = listToSearch.filter(s => {
+            const searchStr = `${s.name || ''} ${s.phone || ''} ${s.address || ''}`.toLowerCase();
+            return tokens.every(token => searchStr.includes(token));
+        });
 
         if(filtered.length === 0) {
             const li = document.createElement('li');
