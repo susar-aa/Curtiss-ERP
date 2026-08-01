@@ -24,9 +24,9 @@ if (!empty($data['invoice']->customer_id)) {
 }
 
 // Fetch sales representative information
-$repName = '';
-$repPhone = '';
-if (!empty($data['invoice']->rep_route_id)) {
+$repName = $data['rep_name'] ?? '';
+$repPhone = $data['rep_phone'] ?? '';
+if (empty($repName) && !empty($data['invoice']->rep_route_id)) {
     $db->query("
         SELECT CONCAT(e.first_name, ' ', e.last_name) as rep_name, e.phone as rep_phone 
         FROM employees e 
@@ -38,8 +38,23 @@ if (!empty($data['invoice']->rep_route_id)) {
     $db->bind(':route_id', $data['invoice']->rep_route_id);
     $repRow = $db->single();
     if ($repRow) {
-        $repName = $repRow->rep_name;
-        $repPhone = $repRow->rep_phone;
+        $repName = trim($repRow->rep_name);
+        $repPhone = $repRow->rep_phone ?? '';
+    }
+}
+if (empty($repName) && !empty($data['invoice']->user_id)) {
+    $db->query("
+        SELECT CONCAT(COALESCE(e.first_name, u.username), ' ', COALESCE(e.last_name, '')) as rep_name, e.phone as rep_phone 
+        FROM users u 
+        LEFT JOIN employees e ON u.employee_id = e.id 
+        WHERE u.id = :user_id 
+        LIMIT 1
+    ");
+    $db->bind(':user_id', $data['invoice']->user_id);
+    $repRow = $db->single();
+    if ($repRow) {
+        $repName = trim($repRow->rep_name);
+        $repPhone = $repRow->rep_phone ?? '';
     }
 }
 

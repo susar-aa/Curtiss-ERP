@@ -1062,6 +1062,8 @@ class SalesController extends Controller {
                             'items' => $items,
                             'company' => $companyModel->getSettings(),
                             'invoice_paid' => $paidAmount,
+                            'rep_name' => $payload['rep'] ?? '',
+                            'rep_phone' => $payload['rep_phone'] ?? '',
                             'is_offline_verified' => true
                         ];
                         $this->view('sales/invoice_view', $data);
