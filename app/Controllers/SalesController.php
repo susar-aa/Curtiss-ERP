@@ -1001,7 +1001,80 @@ class SalesController extends Controller {
         $invoice = $invoiceModel->getInvoiceById($id);
 
         if (!$invoice) {
-            die('Invoice not found.');
+            // Check for self-contained offline digital payload (Solution 2)
+            if (!empty($_GET['data'])) {
+                try {
+                    $rawBase64 = strtr($_GET['data'], '-_', '+/');
+                    $padLen = 4 - (strlen($rawBase64) % 4);
+                    if ($padLen < 4) {
+                        $rawBase64 .= str_repeat('=', $padLen);
+                    }
+                    $decodedJson = base64_decode($rawBase64);
+                    $payload = json_decode($decodedJson, true);
+                    if ($payload && (!empty($payload['inv']) || !empty($payload['total']))) {
+                        $invNumber = $payload['inv'] ?? $id;
+                        $subTotal = floatval($payload['sub'] ?? ($payload['total'] ?? 0));
+                        $discVal = floatval($payload['disc'] ?? 0);
+                        $grandTotal = floatval($payload['total'] ?? ($subTotal - $discVal));
+
+                        $invoice = (object)[
+                            'id' => $invNumber,
+                            'invoice_number' => $invNumber,
+                            'invoice_date' => $payload['date'] ?? date('Y-m-d H:i'),
+                            'created_at' => $payload['date'] ?? date('Y-m-d H:i'),
+                            'customer_id' => 0,
+                            'customer_name' => $payload['cust'] ?? 'Customer',
+                            'phone' => $payload['phone'] ?? '',
+                            'address' => '',
+                            'payment_method' => $payload['pay'] ?? 'Cash',
+                            'total_amount' => $subTotal,
+                            'global_discount_val' => $discVal,
+                            'global_discount_type' => 'Rs',
+                            'tax_amount' => 0,
+                            'status' => 'Issued (Offline Terminal)',
+                            'rep_route_id' => null,
+                            'payment_term_id' => null,
+                            'cheque_date' => null,
+                            'is_offline_receipt' => true
+                        ];
+
+                        $items = [];
+                        if (!empty($payload['items']) && is_array($payload['items'])) {
+                            foreach ($payload['items'] as $it) {
+                                $items[] = (object)[
+                                    'description' => $it['n'] ?? ($it['name'] ?? 'Product'),
+                                    'quantity' => floatval($it['q'] ?? ($it['qty'] ?? 1)),
+                                    'unit_price' => floatval($it['p'] ?? ($it['price'] ?? 0)),
+                                    'discount_value' => 0,
+                                    'discount_type' => 'Rs',
+                                    'total' => floatval($it['t'] ?? ($it['total'] ?? 0))
+                                ];
+                            }
+                        }
+
+                        $data = [
+                            'invoice' => $invoice,
+                            'items' => $items,
+                            'company' => $companyModel->getSettings(),
+                            'invoice_paid' => $grandTotal,
+                            'is_offline_verified' => true
+                        ];
+                        $this->view('sales/invoice_view', $data);
+                        return;
+                    }
+                } catch (Exception $e) {
+                    // Fall through to error
+                }
+            }
+
+            // Friendly waiting screen if invoice not synced and no payload attached
+            $company = $companyModel->getSettings();
+            $data = [
+                'invoice_num' => $id,
+                'company' => $company
+            ];
+            $this->view('sales/invoice_pending', $data);
+            return;
         }
 
         // Calculate amount paid for this invoice

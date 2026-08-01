@@ -1,24 +1,27 @@
 <?php
 $db = new Database();
 
-// Failsafe: Fetch the customer's true total outstanding balance for the "Previous Balance" calculation
-$db->query("
-    SELECT 
-        COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) as total_billed
-    FROM invoices WHERE customer_id = :id AND status != 'Voided'
-");
-$db->bind(':id', $data['invoice']->customer_id);
-$billed = $db->single()->total_billed ?? 0;
+$totalOutstanding = 0;
+if (!empty($data['invoice']->customer_id)) {
+    // Failsafe: Fetch the customer's true total outstanding balance for the "Previous Balance" calculation
+    $db->query("
+        SELECT 
+            COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) as total_billed
+        FROM invoices WHERE customer_id = :id AND status != 'Voided'
+    ");
+    $db->bind(':id', $data['invoice']->customer_id);
+    $billed = $db->single()->total_billed ?? 0;
 
-$db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :id");
-$db->bind(':id', $data['invoice']->customer_id);
-$paid = $db->single()->total_paid ?? 0;
+    $db->query("SELECT COALESCE(SUM(amount), 0) as total_paid FROM customer_payments WHERE customer_id = :id");
+    $db->bind(':id', $data['invoice']->customer_id);
+    $paid = $db->single()->total_paid ?? 0;
 
-$db->query("SELECT COALESCE(SUM(total_amount), 0) as total_credited FROM credit_notes WHERE customer_id = :id");
-$db->bind(':id', $data['invoice']->customer_id);
-$credited = $db->single()->total_credited ?? 0;
+    $db->query("SELECT COALESCE(SUM(total_amount), 0) as total_credited FROM credit_notes WHERE customer_id = :id");
+    $db->bind(':id', $data['invoice']->customer_id);
+    $credited = $db->single()->total_credited ?? 0;
 
-$totalOutstanding = $billed - $paid - $credited;
+    $totalOutstanding = $billed - $paid - $credited;
+}
 
 // Fetch sales representative information
 $repName = '';

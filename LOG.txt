@@ -1,302 +1,156 @@
- Print Document Close Window
-Route Loading Sheet
-Route Name: Kurunegala To Hettipola
-
-Assigned Rep: Abdul Raheem
-
-Printed On: 2026-07-20 6:51 PM
-
-Active Bills
-17
-Total Route Value
-Rs. 308,062.82
-No	Product Name	Qty	Unit Price	Total	
-1	1206 Water Color Tube 6ml	0	460.00	0.00	
-2	Color Pencil Tin 12 Half	36	260.00	9,360.00	
-3	Cosmo Color Pencil 12 half	36	150.00	5,400.00	
-4	Doms Color Pencil Tin 12Pcs	18	440.00	7,920.00	
-5	Master Water Color Tube 6ml	0	250.00	0.00	
-6	Pastel Pentium 13Pcs	144	185.00	26,640.00	
-7	Pastel Pentium 24Pcs	18	315.00	5,670.00	
-8	Pastel Pentium 6Pcs	144	90.00	12,960.00	
-9	Platignum Yalong 6Pcs	18	220.00	3,960.00	
-10	Vneed Platignum 6Pcs	72	160.00	11,520.00	
-11	Vneed Water Color Tube 6ml	99	300.00	29,700.00	
-12	Plain Balloon 20Pcs Black	174	160.00	27,840.00	
-13	Plain Balloon 20Pcs Blue	12	160.00	1,920.00	
-14	Plain Balloon 20Pcs Gold	126	200.00	25,200.00	
-15	Plain Balloon 20Pcs Green	12	160.00	1,920.00	
-16	Plain Balloon 20Pcs L Blue	48	160.00	7,680.00	
-17	Plain Balloon 20Pcs L Green	12	160.00	1,920.00	
-18	Plain Balloon 20Pcs Magenta	12	160.00	1,920.00	
-19	Plain Balloon 20Pcs Orange	12	160.00	1,920.00	
-20	Plain Balloon 20Pcs Pink	42	160.00	6,720.00	
-21	Plain Balloon 20Pcs Red	42	160.00	6,720.00	
-22	Plain Balloon 20Pcs Silver	126	200.00	25,200.00	
-23	Plain Balloon 20Pcs White	174	160.00	27,840.00	
-24	Plain Balloon 20Pcs Yellow	18	160.00	2,880.00	
-25	Plain Balloon Assorted Balloon 20Pcs	108	160.00	17,280.00	
-26	Plain Balloon Assorted No 09 100Pcs	12	580.00	6,960.00	
-27	Plain Balloon Assorted No 12 100Pcs	6	730.00	4,380.00	
-28	Plain Balloon No 09 100Pcs Blue	6	580.00	3,480.00	
-29	Plain Balloon No 09 100Pcs Gold	36	770.00	27,720.00	
-30	Plain Balloon No 09 100Pcs Pink	6	580.00	3,480.00	
-31	Plain Balloon No 09 100Pcs Red	18	580.00	10,440.00	
-32	Plain Balloon No 09 100Pcs Silver	36	770.00	27,720.00	
-33	Plain Balloon No 09 100Pcs White	6	580.00	3,480.00	
-34	Plain Balloon No 09 100Pcs Yellow	6	580.00	3,480.00	
-35	B Day Party Balloon 72Pcs	12	1,490.00	17,880.00	
-36	B Day Party Balloon 7Pcs	54	310.00	16,740.00	
-37	B Day Party Candle 0013	54	90.00	4,860.00	
-38	B Day Party Candle 0085	96	100.00	9,600.00	
-39	B Day Party Candle 0252	102	135.00	13,770.00	
-40	B Day Party Candle 0313	54	155.00	8,370.00	
-41	B Day Party Candle 0856	48	145.00	6,960.00	
-42	B Day Party Candle 1179	102	145.00	14,790.00	
-43	B Day Party Candle 3622	36	125.00	4,500.00	
-44	B Day Party Candle 8661	36	145.00	5,220.00	
-45	B Day Party Candle Mini 0025	36	190.00	6,840.00	
-46	B Day Party Candle Mini 1279UE	0	35.00	0.00	
-47	B Day Party Candle Mini 1279YF	0	45.00	0.00	
-48	Birthday Banner 0146	72	215.00	15,480.00	
-49	Birthday Banner frozen 7857	54	240.00	12,960.00	
-50	Birthday Banner Gliter 0209	120	275.00	33,000.00	
-51	Birthday Cake Topper 1735	36	115.00	4,140.00	
-52	Birthday Cake Topper Butterfly	36	175.00	6,300.00	
-53	Birthday Cake Topper Characters	18	155.00	2,790.00	
-54	Birthday Crown	126	120.00	15,120.00	
-55	Birthday Foil Banner 1316	24	280.00	6,720.00	
-56	Birthday Hat Balls	72	145.00	10,440.00	
-57	Birthday Hat Foil	72	145.00	10,440.00	
-58	Birthday Letter Candle 0556	18	190.00	3,420.00	
-59	Birthday Plate 10Pcs	36	180.00	6,480.00	
-60	Bow Design Number Candles Mix	288	50.00	14,400.00	
-61	Number Candles NO 1	0	35.00	0.00	
-62	Number Candles NO 2	0	35.00	0.00	
-63	Number Candles NO 3	0	35.00	0.00	
-64	Number Candles NO 4	216	35.00	7,560.00	
-65	Number Candles NO 5	0	35.00	0.00	
-66	Number Candles NO 6	0	35.00	0.00	
-67	Number Candles NO 7	0	35.00	0.00	
-68	Number Candles NO 9	144	35.00	5,040.00	
-69	Party Candle 3066	18	200.00	3,600.00	
-70	Party Candle 6694	0	160.00	0.00	
-71	Envelop Clear Bag 2316 A6	72	130.00	9,360.00	
-72	Envelop Clear Bag 2318 A4	144	190.00	27,360.00	
-73	Envelop Clear Bag FC	0	240.00	0.00	
-74	Fabric Zipper Bag A6	66	140.00	9,240.00	
-75	Handle Bag With Cartoon	108	390.00	42,120.00	
-76	My Clear Bag FC-Blue	72	60.00	4,320.00	
-77	My Clear Bag FC-Design	120	80.00	9,600.00	
-78	My Clear Bag FC-Green	72	60.00	4,320.00	
-79	My Clear Bag FC-Red	72	60.00	4,320.00	
-80	My Clear Bag FC-White	288	60.00	17,280.00	
-81	My Clear Bag FC-Yellow	72	60.00	4,320.00	
-82	Rainbow Mesh Bag A5	72	80.00	5,760.00	
-83	Rainbow Mesh Bag A6	216	65.52	14,152.32	
-84	Ring Zipper Clear Bag A6	72	130.00	9,360.00	
-85	FALCON Color A4 Cyber Red 100	6	770.00	4,620.00	
-86	Light A4 170 Pink 500 Sheets	0	2,360.00	0.00	
-87	White Paper 70gsm 100 Sheets	36	225.00	8,100.00	
-88	Cutter Knife Heavy Duty Small	36	90.00	3,240.00	
-89	Falcon Paper Cutter Large	12	410.00	4,920.00	
-90	Falcon Paper Cutter Small	12	290.00	3,480.00	
-91	Scissors 120mm	30	130.00	3,900.00	
-92	Scissors 190mm	18	330.00	5,940.00	
-93	Scissors Kangaroo 185mm	0	800.00	0.00	
-94	Color Crepe Paper 10Pcs	12	850.00	10,200.00	
-95	Glitter Paper Cream 10Pcs	0	390.00	0.00	
-96	Glitter Pipe Cleaners BLUE 50Pcs	12	120.00	1,440.00	
-97	Glitter Pipe Cleaners GOLD 50Pcs	6	120.00	720.00	
-98	Glitter Pipe Cleaners GREEN 50Pcs	12	120.00	1,440.00	
-99	Glitter Pipe Cleaners MAGENTA 50Pcs	6	120.00	720.00	
-100	Glitter Pipe Cleaners PINK 50Pcs	6	120.00	720.00	
-101	Glitter Pipe Cleaners PURPLE 50Pcs	12	120.00	1,440.00	
-102	Glitter Pipe Cleaners SILVER 50Pcs	12	120.00	1,440.00	
-103	Glitter Pipe Cleaners WHITE 50Pcs	12	120.00	1,440.00	
-104	Pipe Cleaners BLACK 50Pcs	6	115.00	690.00	
-105	Pipe Cleaners BLUE 50Pcs	5	115.00	575.00	
-106	Pipe Cleaners BROWN 50Pcs	6	115.00	690.00	
-107	Pipe Cleaners GREEN 100Pcs	30	225.00	6,750.00	
-108	Pipe Cleaners LIGHT BLUE 100Pcs	36	225.00	8,100.00	
-109	Pipe Cleaners LIGHT GREEN 50Pcs	12	115.00	1,380.00	
-110	Pipe Cleaners ORANGE 50Pcs	6	115.00	690.00	
-111	Pipe Cleaners PINK 100Pcs	25	225.00	5,625.00	
-112	Pipe Cleaners PINK 50Pcs	12	115.00	1,380.00	
-113	Pipe Cleaners PURPLE 100Pcs	30	225.00	6,750.00	
-114	Pipe Cleaners PURPLE 50Pcs	6	115.00	690.00	
-115	Pipe Cleaners RED 50Pcs	12	115.00	1,380.00	
-116	Pipe Cleaners WHITE 50Pcs	12	115.00	1,380.00	
-117	Pipe Cleaners YELLOW 100Pcs	20	225.00	4,500.00	
-118	Pipe Cleaners YELLOW 50Pcs	10	115.00	1,150.00	
-119	Sequins 12Pcs	12	750.00	9,000.00	
-120	4 Hole File With Lase	12	160.00	1,920.00	
-121	Box Clip Board BJ810	12	660.00	7,920.00	
-122	Business File A4 BLUE	144	57.50	8,280.00	
-123	Business File A4 RED	72	55.00	3,960.00	
-124	Business File FC L BLUE	72	70.00	5,040.00	
-125	Business File FC Mix	72	70.00	5,040.00	
-126	Business File FC PINK	72	70.00	5,040.00	
-127	Business File FC RED	72	70.00	5,040.00	
-128	Campus File A4 801A	0	480.00	0.00	
-129	Campus File FC 802F	18	540.00	9,720.00	
-130	Design Clip Board A4 6595	12	200.00	2,400.00	
-131	Design Clip Board A4 6854	12	200.00	2,400.00	
-132	Paper File Cover Blue 100Pcs	6	1,190.00	7,140.00	
-133	Paper File Cover Pink 100Pcs	6	1,190.00	7,140.00	
-134	Plastic Clip Board A4	18	275.00	4,950.00	
-135	Stylish Pocket File Separate B812	0	900.00	0.00	
-136	Wooden Clip Board A4	12	235.00	2,820.00	
-137	Stationery Set 6605	18	260.00	4,680.00	
-138	Stationery Set 6608	18	260.00	4,680.00	
-139	Glue Gun Small	36	250.00	9,000.00	
-140	Redy Binder Gum 500ml	36	170.00	6,120.00	
-141	Redy Binder Gum 50ml	126	55.00	6,930.00	
-142	Redy Clear Glue 500ml	18	170.00	3,060.00	
-143	Building Blocks 24Pcs	18	170.00	3,060.00	
-144	Building Blocks 40Pcs	18	220.00	3,960.00	
-145	Enlightenment Sound Book	6	3,500.00	21,000.00	
-146	Ice Stick Pack Color	0	130.00	0.00	
-147	Ice Stick Pack White	0	130.00	0.00	
-148	Kids Lerning Board DZ 5077	18	720.00	12,960.00	
-149	Magic Cube 357 12Pcs	6	3,850.00	23,100.00	
-150	Magnet Set Box Mini	36	240.00	8,640.00	
-151	Magnetic White Board 200x300mm	30	620.00	18,600.00	
-152	Magnetic White Board 250x350mm	18	730.00	13,140.00	
-153	Magnetic White Board 300x400mm	18	830.00	14,940.00	
-154	Modeling Clay 6 Color 2023	198	250.00	49,500.00	
-155	Painting Card with WC Cup	24	110.00	2,640.00	
-156	Scratch Book Large	0	240.00	0.00	
-157	Scratch Book Small	12	135.00	1,620.00	
-158	ID Pouch	120	30.00	3,600.00	
-159	Lunch Box Crisper	0	770.00	0.00	
-160	Lunch Box Dayana	12	220.00	2,640.00	
-161	Steel Lunch Box Large	12	660.00	7,920.00	
-162	Steel Water Bottle (780) 1000ML	98	665.00	65,170.00	
-163	Cello CD Marker Black	60	78.88	4,732.80	
-164	Highlighter 6 Pcs	18	445.00	8,010.00	
-165	Highlighter Gxin 6Pcs	36	490.00	17,640.00	
-166	Stamper Marker 6Pcs	18	280.00	5,040.00	
-167	White Board Ink Black	0	170.00	0.00	
-168	White Board Ink Blue	0	170.00	0.00	
-169	White Board Ink Red	12	170.00	2,040.00	
-170	Chalk White 100Pcs	6	212.80	1,276.80	
-171	Envelop 16*12 Manila	900	13.80	12,420.00	
-172	Push Pin Single	24	110.00	2,640.00	
-173	Key Tag Wool Bear	6	210.00	1,260.00	
-174	Key Tag Wool Kitty	6	210.00	1,260.00	
-175	Key Tag Wool Kuromi	6	210.00	1,260.00	
-176	Key Tag Wool Phoo	6	210.00	1,260.00	
-177	Key Tag Wool Rat	6	210.00	1,260.00	
-178	Polythene 1 Kg	30	1,000.00	30,000.00	
-179	Fabric Paint 15ml 6Pcs Baby Pink	6	580.00	3,480.00	
-180	Fabric Paint 15ml 6Pcs BLACK	0	580.00	0.00	
-181	Fabric Paint 15ml 6Pcs Blue	6	580.00	3,480.00	
-182	Fabric Paint 15ml 6Pcs CHROME YELLOW	0	580.00	0.00	
-183	Fabric Paint 15ml 6Pcs DARK GREEN	6	580.00	3,480.00	
-184	Fabric Paint 15ml 6Pcs GRAY	6	580.00	3,480.00	
-185	Fabric Paint 15ml 6Pcs MAGENTA	6	580.00	3,480.00	
-186	Fabric Paint 15ml 6Pcs RICH RED	0	580.00	0.00	
-187	Fabric Paint 15ml 6Pcs VERMILION	0	580.00	0.00	
-188	Fabric Paint 15ml 6Pcs VIOLET	0	580.00	0.00	
-189	Fabric Paint 15ml 6Pcs WHITE	0	580.00	0.00	
-190	Fabric Paint 6 Colors	0	720.00	0.00	
-191	Pen Holder Metal 9922	18	160.00	2,880.00	
-192	Pen Holder Wooden Large	18	250.00	4,500.00	
-193	Pen Holders Bunny (FS33-36)	0	160.00	0.00	
-194	Magnet Box 1153	0	330.00	0.00	
-195	Magnet Box 1230	60	225.00	13,500.00	
-196	Magnet Box 1488	0	415.00	0.00	
-197	Magnet Box 6825	0	395.00	0.00	
-198	Magnet Box BH002	0	495.00	0.00	
-199	Magnet Box QY30	12	520.00	6,240.00	
-200	Metal Pencil Box 1701A	18	217.40	3,913.20	
-201	Metal Pencil Box 8702	0	350.00	0.00	
-202	Pencil Design Purse A6	18	140.00	2,520.00	
-203	Pencil Purse 1199	12	520.00	6,240.00	
-204	Pencil Purse 2523	0	650.00	0.00	
-205	Pencil Purse 2528	0	650.00	0.00	
-206	Pencil Purse 5335	36	320.00	11,520.00	
-207	Pencil Purse 5338	18	325.00	5,850.00	
-208	Pencil Purse 5501	36	325.00	11,700.00	
-209	Pencil Purse Y 106	30	650.00	19,500.00	
-210	Erasable Pen	6	900.00	5,400.00	
-211	Supra B & G Blue Pen 10 Pcs	0	800.00	0.00	
-212	Supra B & G White Pen 10 Pcs	0	800.00	0.00	
-213	Supra Play Smart Pen 10 Pcs	0	800.00	0.00	
-214	Ten Color Pen 5Pcs	0	110.00	0.00	
-215	Ten Plus Pen Black 50Pcs	24	852.50	20,460.00	
-216	Ten Plus Pen Blue 50Pcs	66	852.50	56,265.00	
-217	Ten Plus Pen Red 50Pcs	18	852.50	15,345.00	
-218	Color Book Covers EX 10Pcs D Blue	6	250.00	1,500.00	
-219	Color Book Covers EX 10Pcs L Green	6	250.00	1,500.00	
-220	Color Book Covers EX 10Pcs Orange	6	250.00	1,500.00	
-221	Color Book Covers EX 10Pcs Pink	6	250.00	1,500.00	
-222	Color Book Covers EX 10Pcs Purple	6	250.00	1,500.00	
-223	Color Book Covers EX 10Pcs Red	6	250.00	1,500.00	
-224	Color Book Covers EX 10Pcs Yellow	6	250.00	1,500.00	
-225	Compass Single 9005	144	110.00	15,840.00	
-226	Design Ruler 30cm 8930	72	80.00	5,760.00	
-227	Game Ruler 15CM	60	90.00	5,400.00	
-228	Game Ruler 20CM	60	110.00	6,600.00	
-229	Meter Ruler Plastic	0	114.75	0.00	
-230	Rotating Ruler 15cm	72	45.00	3,240.00	
-231	Ruler 15CM 12Pcs	6	390.00	2,340.00	
-232	Ruler 30CM 12Pcs	6	620.00	3,720.00	
-233	Vneed Artist Brushes 6Pcs	36	300.00	10,800.00	
-234	Water Color Palette Set DY 1	0	334.05	0.00	
-235	Water Color Pallet Small 288	30	110.00	3,300.00	
-236	Name Sticker Bike 10Pcs (NEW)	6	200.00	1,200.00	
-237	Punch Wall Sticker Large Mix	60	185.00	11,100.00	
-238	Punch Wall Sticker Medium Mix	0	110.00	0.00	
-239	Punch Wall Sticker Small Mix	72	60.00	4,320.00	
-240	Room Decor W12 Mix	18	740.00	13,320.00	
-241	Star Sticker Small 10Pcs GOLD	5	120.00	600.00	
-242	Star Sticker Small 10Pcs GREEN	6	120.00	720.00	
-243	Star Sticker Small 10Pcs PINK	0	120.00	0.00	
-244	Star Sticker Small 10Pcs PURPLE	0	120.00	0.00	
-245	Star Sticker Small 10Pcs RED	1	120.00	120.00	
-246	Star Sticker Small 10Pcs SILVER	6	120.00	720.00	
-247	Sticker A4 Bat Man	60	26.03	1,561.80	
-248	Sticker A4 Dora	60	30.00	1,800.00	
-249	Sticker LYQ Mix	18	185.00	3,330.00	
-250	Fancy Note Book	36	250.00	9,000.00	
-251	Sticky Notes Multy Color 76*51	36	90.00	3,240.00	
-252	Binding Tape 25mm*20mt BLACK	36	130.00	4,680.00	
-253	Cello Tape 48mm*100mt	72	225.00	16,200.00	
-254	Cello Tape 48mm*25mt	36	70.00	2,520.00	
-255	Cello Tape 48mm*50mt	36	125.00	4,500.00	
-256	Double Side Tape 12mm*10mt	72	60.00	4,320.00	
-257	Easy Tear Tape 1/2mm*20mt	6	170.00	1,020.00	
-258	Masking Tape 25mm*20mt	108	80.00	8,640.00	
-259	Steel Water Bottle 1000ml-SPORT POT	69	660.00	45,540.00	
-260	Steel Water Bottle 750ml-SPORT POT	0	600.00	0.00	
-261	Vacuum Water Bottle 500ml 4017	15	1,375.00	20,625.00	
-262	Water Bottle 4024	0	675.00	0.00	
-263	Water Bottle 4054	36	760.00	27,360.00	
-264	Water Bottle 4055	36	835.00	30,060.00	
-Total Route Summary & Verification
-Total Items Count:
-264 items
-Total Shortages:
-663 pcs
-Total Overages:
-64 pcs
-Physical Verification:
-Prepared By:
-
-___________________________
-
-Logistics / Admin
-
-Verified By (OIC):
-
-___________________________
-
-Warehouse Keeper
-
-Acknowledged By:
-
-___________________________
-
-Driver / Representative
+2026-08-01 15:12:23.585  8268-8268  MIUIInput               com.example.curtiss                  I  [MotionEvent] ViewRootImpl windowName 'com.example.curtiss/com.example.curtiss.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=27669849, downTime=27669849, phoneEventTime=1785577343577 } moveCount:0
+2026-08-01 15:12:23.593  8268-8268  MirrorManager           com.example.curtiss                  W  this model don't Support
+2026-08-01 15:12:23.593  8268-8268  VRI[MainActivity]       com.example.curtiss                  D  getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
+2026-08-01 15:12:23.608  8268-8376  example.curtiss         com.example.curtiss                  E  FrameInsert open fail: No such file or directory
+2026-08-01 15:12:23.629  8268-8274  example.curtiss         com.example.curtiss                  W  Cleared Reference was only reachable from finalizer (only reported once)
+2026-08-01 15:12:23.676  8268-8268  HandWritingStubImpl     com.example.curtiss                  I  setCurrentKeyboardType: 1
+2026-08-01 15:12:23.676  8268-8268  MIUIInput               com.example.curtiss                  I  [MotionEvent] ViewRootImpl windowName 'com.example.curtiss/com.example.curtiss.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=27669946, downTime=27669849, phoneEventTime=1785577343675 } moveCount:0
+2026-08-01 15:12:23.689  8268-8376  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.23 ms.
+2026-08-01 15:12:23.837  8268-8282  ActivityThread          com.example.curtiss                  I  HardwareRenderer preload  done
+2026-08-01 15:12:23.837  1793-3331  TransitionChain         system_server                        E  Mismatch between current collecting (TransitionRecord{ee14092 id=642 type=OPEN flags=0x0 c=[
+                                                                                                       ChangeInfo{b704fea container=Task{6a08bc6 #335 type=standard A=10286:com.example.curtiss} flags=0x0}
+                                                                                                       ChangeInfo{2782db container=DefaultTaskDisplayArea@119938186 flags=0x0}
+                                                                                                       ChangeInfo{b13a178 container=ActivityRecord{176237155 u0 com.example.curtiss/.BillingActivity t335} flags=0x0}
+                                                                                                       ChangeInfo{d5e8051 container=Display{#0 state=ON size=1600x2560 ROTATION_0} flags=0x0}
+                                                                                                       ChangeInfo{bfb80b6 container=ActivityRecord{264630493 u0 com.example.curtiss/.MainActivity t335} flags=0x0}
+                                                                                                    ]
+                                                                                                    }) and chain (TransitionRecord{ee14092 id=642 type=OPEN flags=0x0 c=[
+                                                                                                       ChangeInfo{b704fea container=Task{6a08bc6 #335 type=standard A=10286:com.example.curtiss} flags=0x0}
+                                                                                                       ChangeInfo{2782db container=DefaultTaskDisplayArea@119938186 flags=0x0}
+                                                                                                       ChangeInfo{b13a178 container=ActivityRecord{176237155 u0 com.example.curtiss/.BillingActivity t335} flags=0x0}
+                                                                                                       ChangeInfo{d5e8051 container=Display{#0 state=ON size=1600x2560 ROTATION_0} flags=0x0}
+                                                                                                       ChangeInfo{bfb80b6 container=ActivityRecord{264630493 u0 com.example.curtiss/.MainActivity t335} flags=0x0}
+                                                                                                    ]
+                                                                                                    })
+2026-08-01 15:12:23.840  1793-3331  TransitionChain         system_server                        E  Mismatch between current collecting (TransitionRecord{ee14092 id=642 type=OPEN flags=0x0 c=[
+                                                                                                       ChangeInfo{b704fea container=Task{6a08bc6 #335 type=standard A=10286:com.example.curtiss} flags=0x0}
+                                                                                                       ChangeInfo{2782db container=DefaultTaskDisplayArea@119938186 flags=0x0}
+                                                                                                       ChangeInfo{b13a178 container=ActivityRecord{176237155 u0 com.example.curtiss/.BillingActivity t335} flags=0x0}
+                                                                                                       ChangeInfo{d5e8051 container=Display{#0 state=ON size=1600x2560 ROTATION_0} flags=0x0}
+                                                                                                       ChangeInfo{bfb80b6 container=ActivityRecord{264630493 u0 com.example.curtiss/.MainActivity t335} flags=0x0}
+                                                                                                    ]
+                                                                                                    }) and chain (TransitionRecord{ee14092 id=642 type=OPEN flags=0x0 c=[
+                                                                                                       ChangeInfo{b704fea container=Task{6a08bc6 #335 type=standard A=10286:com.example.curtiss} flags=0x0}
+                                                                                                       ChangeInfo{2782db container=DefaultTaskDisplayArea@119938186 flags=0x0}
+                                                                                                       ChangeInfo{b13a178 container=ActivityRecord{176237155 u0 com.example.curtiss/.BillingActivity t335} flags=0x0}
+                                                                                                       ChangeInfo{d5e8051 container=Display{#0 state=ON size=1600x2560 ROTATION_0} flags=0x0}
+                                                                                                       ChangeInfo{bfb80b6 container=ActivityRecord{264630493 u0 com.example.curtiss/.MainActivity t335} flags=0x0}
+                                                                                                    ]
+                                                                                                    })
+2026-08-01 15:12:23.861  8268-8268  example.curtiss         com.example.curtiss                  I  AssetManager2(0xb400006fd581acf8) locale list changing from [] to [en-US]
+2026-08-01 15:12:23.877  8268-8268  DecorView               com.example.curtiss                  D  updateFreeformOutlineFromActivity, inFreeform=false,inFreeformWindowMode=false
+2026-08-01 15:12:23.884  8268-8268  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 64, height = 64, encodedFormat = 4
+2026-08-01 15:12:23.884  8268-8268  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
+2026-08-01 15:12:23.896  8268-8268  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 64, height = 64, encodedFormat = 4
+2026-08-01 15:12:23.896  8268-8268  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
+2026-08-01 15:12:23.917  8268-8268  ScrollerOp...ionManager com.example.curtiss                  D  registerConfigChangedListener
+2026-08-01 15:12:23.948  8268-8268  ScrollerOp...ionManager com.example.curtiss                  D  registerConfigChangedListener
+2026-08-01 15:12:23.959 13340-13456 MiuiPadHom...gerWrapper com.miui.home                        E  getRecentTasksForceIncludingTaskIdIfValid: getRecentTasks: size=1
+                                                                                                     mainTaskId=335   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.example.curtiss/com.example.curtiss.SplashActivity} }
+2026-08-01 15:12:23.971  8268-8268  ScrollerOp...ionManager com.example.curtiss                  D  registerConfigChangedListener
+2026-08-01 15:12:23.974 13340-13456 MiuiPadHom...gerWrapper com.miui.home                        E  getRecentTasksForceIncludingTaskIdIfValid: getRecentTasks: size=1
+                                                                                                     mainTaskId=335   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.example.curtiss/com.example.curtiss.SplashActivity} }
+2026-08-01 15:12:24.002  8268-8268  ScrollerOp...ionManager com.example.curtiss                  D  registerConfigChangedListener
+2026-08-01 15:12:24.059  8268-8268  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 38, height = 33, encodedFormat = 4
+2026-08-01 15:12:24.059  8268-8268  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
+2026-08-01 15:12:24.060  8268-8268  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 38, height = 33, encodedFormat = 4
+2026-08-01 15:12:24.060  8268-8268  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
+2026-08-01 15:12:24.061  8268-8268  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 38, height = 33, encodedFormat = 4
+2026-08-01 15:12:24.061  8268-8268  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
+2026-08-01 15:12:24.071  8268-8268  TransactionExecutor     com.example.curtiss                  E  Failed to execute the transaction: tId:529142312 ClientTransaction{
+                                                                                                    tId:529142312   transactionItems=[
+                                                                                                    tId:529142312     LaunchActivityItem{activityToken=android.os.BinderProxy@8d1eddb,intent=Intent { xflg=0x4 cmp=com.example.curtiss/.BillingActivity },ident=176237155,info=ActivityInfo{316aa17 com.example.curtiss.BillingActivity},curConfig={1.0 ?mcc0mnc [en_US] ldltr sw711dp w711dp h1091dp 360dpi lrg port finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 1600, 2560) mAppBounds=Rect(0, 0 - 1600, 2524) mMaxBounds=Rect(0, 0 - 1600, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.2 s.1427 fontWeightAdjustment=0/d/0 themeChanged=0 themeChangedFlags=0 display=0 extraData = Bundle[EMPTY_PARCEL] screenType=0/0},overrideConfig={1.0 ?mcc0mnc [en_US] ldltr sw711dp w711dp h1091dp 360dpi lrg port finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 1600, 2560) mAppBounds=Rect(0, 0 - 1600, 2524) mMaxBounds=Rect(0, 0 - 1600, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.2 s.3 fontWeightAdjustment=0/d/0 themeChanged=0 themeChangedFlags=0 display=0 extraData = Bundle[{}] screenType=0/0},deviceId=0,referrer=com.example.curtiss,procState=2,state=null,persistentState=null,pendingResults=null,pendingNewIntents=null,sceneTransitionInfo=null,profilerInfo=null,assistToken=android.os.BinderProxy@a5d9458,shareableActivityToken=android.os.BinderProxy@11b29b1,activityWindowInfo=ActivityWindowInfo{isEmbedded=false, taskBounds=Rect(0, 0 - 1600, 2560), taskFragmentBounds=Rect(0, 0 - 1600, 2560), inOwnOrganizerProcess=true}}
+                                                                                                    tId:529142312     ResumeActivityItem{mActivityToken=android.os.BinderProxy@8d1eddb,procState=-1,isForward=true,shouldSendCompatFakeFocus=false}
+                                                                                                    tId:529142312     Target activity: com.example.curtiss.BillingActivity
+                                                                                                    tId:529142312   ]
+                                                                                                    tId:529142312 }
+2026-08-01 15:12:24.071  8268-8268  AndroidRuntime          com.example.curtiss                  D  Shutting down VM
+2026-08-01 15:12:24.072  8268-8268  AndroidRuntime          com.example.curtiss                  E  FATAL EXCEPTION: main
+                                                                                                    Process: com.example.curtiss, PID: 8268
+                                                                                                    java.lang.RuntimeException: Unable to start activity ComponentInfo{com.example.curtiss/com.example.curtiss.BillingActivity}: java.lang.ClassCastException: androidx.recyclerview.widget.RecyclerView cannot be cast to android.widget.GridView
+                                                                                                    	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4721)
+                                                                                                    	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4950)
+                                                                                                    	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:222)
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:136)
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:106)
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:83)
+                                                                                                    	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:3103)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:114)
+                                                                                                    	at android.os.Looper.loopOnce(Looper.java:274)
+                                                                                                    	at android.os.Looper.loop(Looper.java:369)
+                                                                                                    	at android.app.ActivityThread.main(ActivityThread.java:10090)
+                                                                                                    	at java.lang.reflect.Method.invoke(Native Method)
+                                                                                                    	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:616)
+                                                                                                    	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1137)
+                                                                                                    Caused by: java.lang.ClassCastException: androidx.recyclerview.widget.RecyclerView cannot be cast to android.widget.GridView
+                                                                                                    	at com.example.curtiss.BillingActivity.onCreate(BillingActivity.java:138)
+                                                                                                    	at android.app.Activity.performCreate(Activity.java:9428)
+                                                                                                    	at android.app.Activity.performCreate(Activity.java:9371)
+                                                                                                    	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1537)
+                                                                                                    	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4703)
+                                                                                                    	... 13 more
+2026-08-01 15:12:24.071  8268-8268  pool-9-thread-1         com.example.curtiss                  W  type=1400 audit(0.0:146382): avc:  denied  { search } for  name="miuilog" dev="dm-73" ino=704 scontext=u:r:untrusted_app:s0:c30,c257,c512,c768 tcontext=u:object_r:data_log_file:s0 tclass=dir permissive=0 app=com.example.curtiss
+2026-08-01 15:12:24.075  8268-8268  pool-9-thread-1         com.example.curtiss                  W  type=1400 audit(0.0:146383): avc:  denied  { search } for  name="miuilog" dev="dm-73" ino=704 scontext=u:r:untrusted_app:s0:c30,c257,c512,c768 tcontext=u:object_r:data_log_file:s0 tclass=dir permissive=0 app=com.example.curtiss
+2026-08-01 15:12:24.075  8268-8268  pool-9-thread-1         com.example.curtiss                  W  type=1400 audit(0.0:146384): avc:  denied  { search } for  name="miuilog" dev="dm-73" ino=704 scontext=u:r:untrusted_app:s0:c30,c257,c512,c768 tcontext=u:object_r:data_log_file:s0 tclass=dir permissive=0 app=com.example.curtiss
+2026-08-01 15:12:24.075  8268-8268  pool-9-thread-1         com.example.curtiss                  W  type=1400 audit(0.0:146385): avc:  denied  { search } for  name="miuilog" dev="dm-73" ino=704 scontext=u:r:untrusted_app:s0:c30,c257,c512,c768 tcontext=u:object_r:data_log_file:s0 tclass=dir permissive=0 app=com.example.curtiss
+2026-08-01 15:12:24.075  8268-8268  pool-9-thread-1         com.example.curtiss                  W  type=1400 audit(0.0:146386): avc:  denied  { search } for  name="miuilog" dev="dm-73" ino=704 scontext=u:r:untrusted_app:s0:c30,c257,c512,c768 tcontext=u:object_r:data_log_file:s0 tclass=dir permissive=0 app=com.example.curtiss
+2026-08-01 15:12:24.079  8268-8662  FileUtils               com.example.curtiss                  W  Failed to chmod(/data/miuilog/stability/jetrace): android.system.ErrnoException: chmod failed: EACCES (Permission denied)
+2026-08-01 15:12:24.079  8268-8662  RuntimeInitImpl         com.example.curtiss                  W  dump java trace fail /data/miuilog/stability/jetrace/2026-08-01-15-12-24-075_com.example.curtiss_8268.trace.tmp: open failed: EACCES (Permission denied)
+2026-08-01 15:12:24.081  8268-8268  ScoutUtils              com.example.curtiss                  W  Failed to mkdir /data/miuilog/stability/hprof/
+2026-08-01 15:12:24.083  4505-4747  JavaExceptionHandler    com.miui.daemon                      E  Process: com.example.curtiss, PID: 8268
+                                                                                                    java.lang.RuntimeException: Unable to start activity ComponentInfo{com.example.curtiss/com.example.curtiss.BillingActivity}: java.lang.ClassCastException: androidx.recyclerview.widget.RecyclerView cannot be cast to android.widget.GridView
+                                                                                                    	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4721)
+                                                                                                    	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4950)
+                                                                                                    	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:222)
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:136)
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:106)
+                                                                                                    	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:83)
+                                                                                                    	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:3103)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:114)
+                                                                                                    	at android.os.Looper.loopOnce(Looper.java:274)
+                                                                                                    	at android.os.Looper.loop(Looper.java:369)
+                                                                                                    	at android.app.ActivityThread.main(ActivityThread.java:10090)
+                                                                                                    	at java.lang.reflect.Method.invoke(Native Method)
+                                                                                                    	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:616)
+                                                                                                    	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1137)
+                                                                                                    Caused by: java.lang.ClassCastException: androidx.recyclerview.widget.RecyclerView cannot be cast to android.widget.GridView
+                                                                                                    	at com.example.curtiss.BillingActivity.onCreate(BillingActivity.java:138)
+                                                                                                    	at android.app.Activity.performCreate(Activity.java:9428)
+                                                                                                    	at android.app.Activity.performCreate(Activity.java:9371)
+                                                                                                    	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1537)
+                                                                                                    	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4703)
+                                                                                                    	... 13 more
+2026-08-01 15:12:24.159 13340-13456 MiuiPadHom...gerWrapper com.miui.home                        E  getRecentTasksForceIncludingTaskIdIfValid: getRecentTasks: size=1
+                                                                                                     mainTaskId=335   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.example.curtiss/com.example.curtiss.SplashActivity} }
+2026-08-01 15:12:24.712  1793-3284  TransitionChain         system_server                        E  Mismatch between current collecting (TransitionRecord{ee14092 id=642 type=OPEN flags=0x0 c=[
+                                                                                                       ChangeInfo{5f0f51a container=Task{2a27f61 #260 type=home} flags=0x0}
+                                                                                                       ChangeInfo{b704fea container=Task{6a08bc6 #335 type=standard A=10286:com.example.curtiss} flags=0x0}
+                                                                                                       ChangeInfo{e62784b container=Task{6c2b999 #261 type=home I=com.miui.home/.launcher.Launcher} flags=0x0}
+                                                                                                       ChangeInfo{2782db container=DefaultTaskDisplayArea@119938186 flags=0x0}
+                                                                                                       ChangeInfo{b13a178 container=ActivityRecord{176237155 u0 com.example.curtiss/.BillingActivity t335 f}} flags=0x0}
+                                                                                                       ChangeInfo{5964228 container=ActivityRecord{178696349 u0 com.miui.home/.launcher.Launcher t261} flags=0x0}
+                                                                                                       ChangeInfo{d5e8051 container=Display{#0 state=ON size=1600x2560 ROTATION_0} flags=0x0}
+                                                                                                       ChangeInfo{bfb80b6 container=ActivityRecord{264630493 u0 com.example.curtiss/.MainActivity t335 f}} flags=0x0}
+                                                                                                    ]
+                                                                                                    }) and chain (TransitionRecord{ee14092 id=642 type=OPEN flags=0x0 c=[
+                                                                                                       ChangeInfo{5f0f51a container=Task{2a27f61 #260 type=home} flags=0x0}
+                                                                                                       ChangeInfo{b704fea container=Task{6a08bc6 #335 type=standard A=10286:com.example.curtiss} flags=0x0}
+                                                                                                       ChangeInfo{e62784b container=Task{6c2b999 #261 type=home I=com.miui.home/.launcher.Launcher} flags=0x0}
+                                                                                                       ChangeInfo{2782db container=DefaultTaskDisplayArea@119938186 flags=0x0}
+                                                                                                       ChangeInfo{b13a178 container=ActivityRecord{176237155 u0 com.example.curtiss/.BillingActivity t335 f}} flags=0x0}
+                                                                                                       ChangeInfo{5964228 container=ActivityRecord{178696349 u0 com.miui.home/.launcher.Launcher t261} flags=0x0}
+                                                                                                       ChangeInfo{d5e8051 container=Display{#0 state=ON size=1600x2560 ROTATION_0} flags=0x0}
+                                                                                                       ChangeInfo{bfb80b6 container=ActivityRecord{264630493 u0 com.example.curtiss/.MainActivity t335 f}} flags=0x0}
+                                                                                                    ]
+                                                                                                    })
+2026-08-01 15:12:24.796 13340-13456 MiuiPadHom...gerWrapper com.miui.home                        E  getRecentTasksForceIncludingTaskIdIfValid: getRecentTasks: size=1
+                                                                                                     mainTaskId=335   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.example.curtiss/com.example.curtiss.SplashActivity} }
+2026-08-01 15:12:24.814 13340-13456 MiuiPadHom...gerWrapper com.miui.home                        E  getRecentTasksForceIncludingTaskIdIfValid: getRecentTasks: size=1
+                                                                                                     mainTaskId=335   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.example.curtiss/com.example.curtiss.SplashActivity} }
+2026-08-01 15:12:24.888  1793-1990  WindowManager           system_server                        E   source = Task{6a08bc6 #335 type=standard A=10286:com.example.curtiss} excludeMiuiNavBar = true excludeMiuiStatusBar = true excludeIme = false excludeNavBar = true miuiNavSurfaceControl = Surface(name=NavigationBar Container of Task = 335#9336)/@0xf1686b4 miuiStatusSurfaceControl = Surface(name=StatusBar Container of Task = 335#9338)/@0x3ef5a20
+2026-08-01 15:12:28.896  8268-8270  example.curtiss         com.example.curtiss                  I  Thread[2,tid=8270,WaitingInMainSignalCatcherLoop,Thread*=0xb400006e5580b6f0,peer=0x20025f8,"Signal Catcher"]: reacting to signal 3
+2026-08-01 15:12:28.897  8268-8270  example.curtiss         com.example.curtiss                  I  
+2026-08-01 15:12:29.006  1793-2820  HyperSentinel           system_server                        E  ->pid:8268,processName:"com.example.curtiss",Rss Memory Size Change 245360kb -> 308188kb
+2026-08-01 15:12:29.236  1793-2820  HyperSentinel           system_server                        E  ->pid:8268,processName:"com.example.curtiss",Rss Memory Size Change 308188kb -> 388384kb
+2026-08-01 15:12:29.722  8268-8270  libc                    com.example.curtiss                  I  tombstoned_notify_completion, socket: 189
+2026-08-01 15:12:29.722  8268-8270  example.curtiss         com.example.curtiss                  I  Wrote stack traces to tombstoned
