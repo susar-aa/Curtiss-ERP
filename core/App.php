@@ -28,6 +28,7 @@ class App {
         // Check if this is a Picking PWA API request
         $isPickingApi = isset($url[0]) && strtolower($url[0]) === 'picking';
         $isPickingLogin = $isPickingApi && isset($url[1]) && strtolower($url[1]) === 'api_login';
+        $isAuthRoute = isset($url[0]) && strtolower($url[0]) === 'auth';
 
         // Support token/header-based authentication fallback for Picking PWA on mobile browsers
         if (!isset($_SESSION['user_id']) && $isPickingApi) {
@@ -50,7 +51,7 @@ class App {
         }
 
         // Global CSRF Protection
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isMobileSync && !$isPickingApi) {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isMobileSync && !$isPickingApi && !$isAuthRoute) {
             $token = $_POST['csrf_token'] ?? '';
             if (empty($token) && isset($_SERVER['HTTP_X_CSRF_TOKEN'])) {
                 $token = $_SERVER['HTTP_X_CSRF_TOKEN'];

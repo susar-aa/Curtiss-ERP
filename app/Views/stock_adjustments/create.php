@@ -278,9 +278,14 @@
         transition: background 0.1s;
     }
     .dropdown-item:last-child { border-bottom: none; }
-    .dropdown-item:hover {
-        background: var(--primary);
-        color: var(--white);
+    .dropdown-item:hover,
+    .dropdown-item.highlighted {
+        background: var(--primary) !important;
+        color: var(--white) !important;
+    }
+    .dropdown-item:hover *,
+    .dropdown-item.highlighted * {
+        color: var(--white) !important;
     }
 
     /* ── Line items table ── */
@@ -723,19 +728,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Keyboard Navigation & Enter key to trigger adding item
     searchInput.addEventListener('keydown', function(e) {
         const items = dropdown.querySelectorAll('.dropdown-item');
-        if (e.key === 'ArrowDown') {
+        if (e.key === 'ArrowDown' || e.key === 'Down' || e.keyCode === 40) {
             if (items.length === 0) return;
             e.preventDefault();
             activeSearchIndex++;
             if (activeSearchIndex >= items.length) activeSearchIndex = 0;
             highlightSearchItem(items);
-        } else if (e.key === 'ArrowUp') {
+        } else if (e.key === 'ArrowUp' || e.key === 'Up' || e.keyCode === 38) {
             if (items.length === 0) return;
             e.preventDefault();
             activeSearchIndex--;
             if (activeSearchIndex < 0) activeSearchIndex = items.length - 1;
             highlightSearchItem(items);
-        } else if (e.key === 'Enter') {
+        } else if (e.key === 'Enter' || e.keyCode === 13) {
             e.preventDefault();
             if (activeSearchIndex >= 0 && activeSearchIndex < items.length) {
                 items[activeSearchIndex].click();

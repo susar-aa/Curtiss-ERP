@@ -49,12 +49,6 @@ class AuthController extends Controller {
             }
 
             try {
-                // CSRF protection validation
-                if (!$this->validateCsrf()) {
-                    $data['csrf_err'] = 'Security validation failed (CSRF mismatch). Please refresh and try again.';
-                    $this->logActivity('Login Suspicious', 'Auth', "CSRF token mismatch detected for login attempt.");
-                }
-
                 // Sanitize POST data
                 $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
