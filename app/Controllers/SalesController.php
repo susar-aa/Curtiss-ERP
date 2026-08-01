@@ -1017,6 +1017,11 @@ class SalesController extends Controller {
                         $discVal = floatval($payload['disc'] ?? 0);
                         $grandTotal = floatval($payload['total'] ?? ($subTotal - $discVal));
 
+                        $payMethod = $payload['pay'] ?? 'Cash';
+                        $isCashPaid = (stripos($payMethod, 'Cash') !== false);
+                        $invoiceStatus = $isCashPaid ? 'Paid' : 'Pending';
+                        $paidAmount = $isCashPaid ? $grandTotal : 0;
+
                         $invoice = (object)[
                             'id' => $invNumber,
                             'invoice_number' => $invNumber,
@@ -1026,12 +1031,12 @@ class SalesController extends Controller {
                             'customer_name' => $payload['cust'] ?? 'Customer',
                             'phone' => $payload['phone'] ?? '',
                             'address' => '',
-                            'payment_method' => $payload['pay'] ?? 'Cash',
+                            'payment_method' => $payMethod,
                             'total_amount' => $subTotal,
                             'global_discount_val' => $discVal,
                             'global_discount_type' => 'Rs',
                             'tax_amount' => 0,
-                            'status' => 'Issued (Offline Terminal)',
+                            'status' => $invoiceStatus,
                             'rep_route_id' => null,
                             'payment_term_id' => null,
                             'cheque_date' => null,
@@ -1056,7 +1061,7 @@ class SalesController extends Controller {
                             'invoice' => $invoice,
                             'items' => $items,
                             'company' => $companyModel->getSettings(),
-                            'invoice_paid' => $grandTotal,
+                            'invoice_paid' => $paidAmount,
                             'is_offline_verified' => true
                         ];
                         $this->view('sales/invoice_view', $data);

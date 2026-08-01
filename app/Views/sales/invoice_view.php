@@ -53,6 +53,38 @@ if (!empty($data['invoice']->payment_term_id)) {
         $paymentTermName = $termRow->name;
     }
 }
+
+// Calculations
+$subTotal = floatval($data['invoice']->total_amount ?? 0);
+$globalDiscountAmount = 0;
+$globalDiscVal = floatval($data['invoice']->global_discount_val ?? 0);
+
+if($globalDiscVal > 0) {
+    if (!empty($data['invoice']->global_discount_type) && $data['invoice']->global_discount_type == '%') {
+        $globalDiscountAmount = $subTotal * ($globalDiscVal / 100);
+    } else {
+        $globalDiscountAmount = $globalDiscVal;
+    }
+}
+
+$netSubTotal = $subTotal - $globalDiscountAmount;
+if ($netSubTotal < 0) $netSubTotal = 0;
+
+$taxAmount = floatval($data['invoice']->tax_amount ?? 0);
+$thisInvoiceGrandTotal = $netSubTotal + $taxAmount;
+
+$invoicePaidAmount = floatval($data['invoice_paid'] ?? 0);
+$statusStr = strtolower(trim($data['invoice']->status ?? ''));
+$isStatusPaid = in_array($statusStr, ['paid', 'completed']);
+$isFullyPaid = ($invoicePaidAmount >= ($thisInvoiceGrandTotal - 0.01) && $thisInvoiceGrandTotal > 0) || $isStatusPaid;
+$isPartiallyPaid = (!$isFullyPaid && $invoicePaidAmount > 0.01);
+
+$previousBalance = $totalOutstanding;
+if (in_array($data['invoice']->status, ['Unpaid', 'Draft', 'Pending'])) {
+    $previousBalance -= $thisInvoiceGrandTotal;
+}
+$amountDueNow = $previousBalance + $thisInvoiceGrandTotal;
+$showUnpaid = in_array($data['invoice']->status, ['Unpaid', 'Draft', 'Pending']) && ($previousBalance > 0.01 || $previousBalance < -0.01);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -63,7 +95,7 @@ if (!empty($data['invoice']->payment_term_id)) {
     <!-- Modern Typography & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
         /* Base Reset */
@@ -173,10 +205,73 @@ if (!empty($data['invoice']->payment_term_id)) {
             position: relative;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
 
         .main-content {
             flex: 1;
+        }
+
+        /* Authentic PAID Rubber Stamp Seal */
+        .stamp-paid {
+            position: absolute;
+            top: 28px;
+            right: 32px;
+            border: 3.5px solid #15803D;
+            color: #15803D;
+            padding: 2px;
+            border-radius: 8px;
+            transform: rotate(-14deg);
+            opacity: 0.88;
+            pointer-events: none;
+            z-index: 10;
+            box-shadow: 0 0 0 1px #15803D, inset 0 0 0 1px #15803D;
+            background-color: rgba(240, 253, 244, 0.7);
+            backdrop-filter: blur(2px);
+            display: inline-block;
+        }
+
+        .stamp-inner {
+            border: 1.5px dashed #15803D;
+            padding: 4px 18px;
+            border-radius: 4px;
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 26px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            line-height: 1;
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-paid {
+            background: #DCFCE7;
+            color: #15803D;
+            border: 1px solid #BBF7D0;
+        }
+
+        .status-partial {
+            background: #FEF3C7;
+            color: #B45309;
+            border: 1px solid #FDE68A;
+        }
+
+        .status-pending {
+            background: #FEE2E2;
+            color: #B91C1C;
+            border: 1px solid #FECACA;
         }
 
         /* Header Section */
@@ -278,20 +373,6 @@ if (!empty($data['invoice']->payment_term_id)) {
             padding: 14px 16px;
         }
 
-        .section-heading {
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #64748B;
-            border-bottom: 1px solid #E2E8F0;
-            padding-bottom: 6px;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
         .customer-name {
             font-size: 15px;
             font-weight: 700;
@@ -382,6 +463,20 @@ if (!empty($data['invoice']->payment_term_id)) {
             border-radius: 12px;
             padding: 16px;
             font-size: 12px;
+        }
+
+        .payment-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748B;
+            border-bottom: 1px solid #E2E8F0;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .terms-text {
@@ -534,6 +629,19 @@ if (!empty($data['invoice']->payment_term_id)) {
                 box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             }
 
+            .stamp-paid {
+                top: 14px;
+                right: 14px;
+                border-width: 2.5px;
+                transform: rotate(-10deg);
+            }
+
+            .stamp-inner {
+                font-size: 18px;
+                padding: 3px 10px;
+                letter-spacing: 2px;
+            }
+
             .invoice-header {
                 flex-direction: column;
                 align-items: stretch;
@@ -636,6 +744,21 @@ if (!empty($data['invoice']->payment_term_id)) {
                 width: 100%;
                 max-width: none;
                 display: block;
+            }
+
+            .stamp-paid {
+                top: 20px;
+                right: 30px;
+                border-color: #000 !important;
+                color: #000 !important;
+                box-shadow: none !important;
+                background: none !important;
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
+            }
+
+            .stamp-inner {
+                border-color: #000 !important;
             }
 
             .invoice-header {
@@ -777,6 +900,14 @@ if (!empty($data['invoice']->payment_term_id)) {
     <?php endif; ?>
 
     <div class="page-wrapper">
+
+        <!-- PAID Rubber Stamp Seal (Shown when invoice is fully paid) -->
+        <?php if ($isFullyPaid): ?>
+            <div class="stamp-paid">
+                <div class="stamp-inner">PAID</div>
+            </div>
+        <?php endif; ?>
+
         <div class="main-content">
             <!-- Header Section -->
             <div class="invoice-header">
@@ -828,7 +959,7 @@ if (!empty($data['invoice']->payment_term_id)) {
                 </div>
             </div>
 
-            <!-- Customer & Sales Rep Section -->
+            <!-- Customer & Payment Status Section -->
             <div class="customer-section">
                 <div class="info-card">
                     <div class="customer-name"><?= htmlspecialchars($data['invoice']->customer_name ?? 'Customer') ?></div>
@@ -842,13 +973,31 @@ if (!empty($data['invoice']->payment_term_id)) {
                     <?php if(!empty($repName)): ?>
                         <div class="customer-name"><?= htmlspecialchars($repName) ?></div>
                         <div class="customer-details">
-                            <span style="color: #64748B; font-size: 11px; font-weight: 600; text-transform: uppercase;">Sales Representative</span><br>
-                            <?php if(!empty($repPhone)) echo '<strong>Tel:</strong> ' . htmlspecialchars($repPhone); ?>
+                            <?php if(!empty($repPhone)) echo '<strong>Tel:</strong> ' . htmlspecialchars($repPhone) . '<br>'; ?>
+                            <div style="margin-top: 5px;">
+                                <strong>Payment:</strong>
+                                <?php if ($isFullyPaid): ?>
+                                    <span class="status-badge status-paid"><i class="ph ph-check-circle"></i> Paid</span>
+                                <?php elseif ($isPartiallyPaid): ?>
+                                    <span class="status-badge status-partial"><i class="ph ph-clock"></i> Partially Paid</span>
+                                <?php else: ?>
+                                    <span class="status-badge status-pending"><i class="ph ph-hourglass-high"></i> Pending</span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     <?php else: ?>
-                        <div class="customer-name">Sales Representative</div>
-                        <div class="customer-details" style="color: #94A3B8;">
-                            Direct Sales / Terminal
+                        <div class="customer-name" style="font-size: 13px; text-transform: uppercase; color: #64748B; letter-spacing: 0.5px;">Payment Status</div>
+                        <div class="customer-details" style="margin-top: 4px;">
+                            <?php if ($isFullyPaid): ?>
+                                <span class="status-badge status-paid"><i class="ph ph-check-circle"></i> Paid</span>
+                            <?php elseif ($isPartiallyPaid): ?>
+                                <span class="status-badge status-partial"><i class="ph ph-clock"></i> Partially Paid</span>
+                            <?php else: ?>
+                                <span class="status-badge status-pending"><i class="ph ph-hourglass-high"></i> Pending</span>
+                            <?php endif; ?>
+                            <?php if(!empty($data['invoice']->payment_method)): ?>
+                                <div style="margin-top: 6px;"><strong>Method:</strong> <?= htmlspecialchars($data['invoice']->payment_method) ?></div>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -888,39 +1037,11 @@ if (!empty($data['invoice']->payment_term_id)) {
                 </table>
             </div>
 
-            <?php 
-                // Calculations
-                $subTotal = floatval($data['invoice']->total_amount ?? 0);
-                $globalDiscountAmount = 0;
-                $globalDiscVal = floatval($data['invoice']->global_discount_val ?? 0);
-                
-                if($globalDiscVal > 0) {
-                    if (!empty($data['invoice']->global_discount_type) && $data['invoice']->global_discount_type == '%') {
-                        $globalDiscountAmount = $subTotal * ($globalDiscVal / 100);
-                    } else {
-                        $globalDiscountAmount = $globalDiscVal;
-                    }
-                }
-                
-                $netSubTotal = $subTotal - $globalDiscountAmount;
-                if ($netSubTotal < 0) $netSubTotal = 0;
-
-                $taxAmount = floatval($data['invoice']->tax_amount ?? 0);
-                $thisInvoiceGrandTotal = $netSubTotal + $taxAmount;
-
-                $previousBalance = $totalOutstanding;
-                if (in_array($data['invoice']->status, ['Unpaid', 'Draft'])) {
-                    $previousBalance -= $thisInvoiceGrandTotal;
-                }
-                $amountDueNow = $previousBalance + $thisInvoiceGrandTotal;
-                $showUnpaid = in_array($data['invoice']->status, ['Unpaid', 'Draft']) && ($previousBalance > 0.01 || $previousBalance < -0.01);
-            ?>
-
             <!-- Bottom Section: Payment Info & Totals -->
             <div class="bottom-section">
                 <!-- Dedicated Bank & Payment Details Block -->
                 <div class="payment-info">
-                    <div class="section-heading"><i class="ph ph-bank"></i> Payment & Terms</div>
+                    <div class="payment-title"><i class="ph ph-bank"></i> Payment & Terms</div>
                     <div class="terms-text">
                         <strong>Cheques:</strong> To be drawn in favour of "Falcon Stationary PVT (LTD)".<br><br>
                         <strong>Bank Deposits:</strong><br>
@@ -1053,9 +1174,9 @@ if (!empty($data['invoice']->payment_term_id)) {
                             <td colspan="3" style="padding-top: 5px; vertical-align: top; text-align: right;">
                                 <?php if(!empty($repName)): ?>
                                     <strong style="font-size: 11pt;"><?= htmlspecialchars($repName) ?></strong><br>
-                                    Sales Representative<br>
-                                    <?php if(!empty($repPhone)) echo 'Tel: ' . htmlspecialchars($repPhone); ?>
+                                    <?php if(!empty($repPhone)) echo 'Tel: ' . htmlspecialchars($repPhone) . '<br>'; ?>
                                 <?php endif; ?>
+                                <strong>Payment:</strong> <?= $isFullyPaid ? 'PAID' : ($isPartiallyPaid ? 'PARTIALLY PAID' : 'PENDING') ?>
                             </td>
                         </tr>
                         <tr><td colspan="6"></td></tr>
