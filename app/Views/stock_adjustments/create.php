@@ -6,7 +6,7 @@
     /* =====================================================
        MODERN BILLING PANEL — STOCK ADJUSTMENTS
        ===================================================== */
-    html, body { overflow: hidden; height: 100%; margin: 0; }
+    html, body { overflow: hidden !important; height: 100%; margin: 0; padding: 0; }
 
     :root {
         --primary:       #2563eb;
@@ -45,11 +45,12 @@
         font-family: var(--font);
         font-size: 13px;
         color: var(--slate-800);
-        height: calc(100vh - 30px);
+        height: calc(100vh - 85px);
+        max-height: calc(100vh - 85px);
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        padding: 10px 12px;
+        padding: 0 12px 12px 12px;
         box-sizing: border-box;
     }
 
@@ -139,9 +140,8 @@
     /* ── Form body scroll area ── */
     .inv-body {
         flex: 1;
-        overflow-y: auto;
-        overflow-x: hidden;
-        padding: 14px 18px 0 18px;
+        overflow: hidden;
+        padding: 14px 18px 14px 18px;
         display: flex;
         flex-direction: column;
         gap: 12px;
@@ -259,23 +259,23 @@
         background: var(--white);
         border: 1px solid var(--slate-200);
         border-radius: var(--radius-md);
-        max-height: 240px;
+        max-height: 260px;
         overflow-y: auto;
         z-index: 1000;
         display: none;
-        box-shadow: var(--shadow-md);
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
     }
     .dropdown-item {
-        padding: 9px 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
         cursor: pointer;
         list-style: none;
         border-bottom: 1px solid var(--slate-100);
         font-size: 13px;
         color: var(--slate-800);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        transition: background 0.1s;
+        transition: background 0.15s, color 0.15s;
     }
     .dropdown-item:last-child { border-bottom: none; }
     .dropdown-item:hover,
@@ -287,6 +287,60 @@
     .dropdown-item.highlighted * {
         color: var(--white) !important;
     }
+    .dropdown-item:hover .sr-stock span,
+    .dropdown-item.highlighted .sr-stock span {
+        background: rgba(255, 255, 255, 0.2) !important;
+        color: var(--white) !important;
+    }
+    .dropdown-item .sr-name {
+        flex: 2;
+        min-width: 0;
+        font-weight: 600;
+        color: var(--slate-800);
+        word-break: break-word;
+    }
+    .dropdown-item .sr-sku {
+        flex: 1.2;
+        min-width: 0;
+        font-size: 12px;
+        color: var(--slate-500);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .dropdown-item .sr-sample {
+        flex: 0.8;
+        min-width: 0;
+        font-size: 12px;
+        color: var(--slate-500);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .dropdown-item .sr-stock {
+        flex: 1;
+        min-width: 0;
+        text-align: center;
+    }
+    .dropdown-item .sr-stock span {
+        color: #16a34a;
+        font-size: 11px;
+        font-weight: 700;
+        background: #f0fdf4;
+        padding: 2px 8px;
+        border-radius: 99px;
+        display: inline-block;
+    }
+    .dropdown-item .sr-price {
+        flex: 1;
+        min-width: 0;
+        text-align: right;
+        color: var(--primary);
+        font-family: var(--f-mono);
+        font-weight: 700;
+        font-size: 13px;
+        white-space: nowrap;
+    }
 
     /* ── Line items table ── */
     .table-scroll-container {
@@ -296,7 +350,7 @@
         border-radius: var(--radius-md);
         background: var(--white);
         box-shadow: var(--shadow-sm);
-        margin-bottom: 14px;
+        margin-bottom: 0;
     }
     .qb-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .qb-table thead th {
@@ -351,18 +405,6 @@
     }
     .btn-delete:hover {
         background: var(--danger-light);
-    }
-
-    /* ── Footer section ── */
-    .inv-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
-        flex-shrink: 0;
-        padding: 10px 18px;
-        border-top: 1px solid var(--slate-200);
-        background: var(--white);
     }
 </style>
 
@@ -488,20 +530,6 @@
 
             </div><!-- /.inv-body -->
 
-            <!-- ═══ FOOTER ═══ -->
-            <div class="inv-footer">
-                <div style="font-size: 12px; color: var(--slate-600); font-weight: 500;">
-                    <i class="fa-solid fa-circle-info" style="color: var(--primary); margin-right: 6px;"></i>
-                    All stock adjustments affect ledger balances immediately upon submission.
-                </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <a href="<?= APP_URL ?>/stockadjustment" class="btn btn-sm">Cancel</a>
-                    <button type="submit" class="btn btn-sm btn-primary">
-                        <i class="fa-solid fa-paper-plane"></i> Submit Adjustment Request
-                    </button>
-                </div>
-            </div>
-
         </form>
     </div>
 </div>
@@ -558,7 +586,14 @@ document.addEventListener('DOMContentLoaded', function() {
             matches.forEach((item, idx) => {
                 const div = document.createElement('div');
                 div.className = 'dropdown-item';
-                div.innerHTML = `<strong>${item.item_code}</strong> - ${item.name} (${item.qty} in stock)`;
+                const priceVal = parseFloat(item.cost_price || item.selling_price || item.price || 0).toFixed(2);
+                div.innerHTML = `
+                    <div class="sr-name">${item.name || ''}</div>
+                    <div class="sr-sku">SKU: ${item.item_code || 'N/A'}</div>
+                    <div class="sr-sample">${item.sample_code ? 'Sample: ' + item.sample_code : ''}</div>
+                    <div class="sr-stock"><span>Stock: ${item.qty || 0}</span></div>
+                    <div class="sr-price">Rs ${priceVal}</div>
+                `;
                 div.addEventListener('click', function() {
                     console.log(`[Search autocomplete] Item selected via click: ID: ${item.id} | Code: ${item.item_code} | Name: ${item.name}`);
                     dropdown.style.display = 'none';
