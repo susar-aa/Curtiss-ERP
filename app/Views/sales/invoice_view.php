@@ -824,26 +824,13 @@ if (!empty($data['invoice']->payment_term_id)) {
                             <td><?= date('d-M-Y', strtotime($data['invoice']->cheque_date)) ?></td>
                         </tr>
                         <?php endif; ?>
-                        <?php if(!empty($repName)): ?>
-                        <tr>
-                            <th>Sales Rep:</th>
-                            <td><?= htmlspecialchars($repName) ?></td>
-                        </tr>
-                        <?php endif; ?>
-                        <?php if(!empty($repPhone)): ?>
-                        <tr>
-                            <th>Rep Contact:</th>
-                            <td><?= htmlspecialchars($repPhone) ?></td>
-                        </tr>
-                        <?php endif; ?>
                     </table>
                 </div>
             </div>
 
-            <!-- Customer & Info Section -->
+            <!-- Customer & Sales Rep Section -->
             <div class="customer-section">
                 <div class="info-card">
-                    <div class="section-heading"><i class="ph ph-user"></i> Bill To</div>
                     <div class="customer-name"><?= htmlspecialchars($data['invoice']->customer_name ?? 'Customer') ?></div>
                     <div class="customer-details">
                         <?php if(!empty($data['invoice']->address)) echo nl2br(htmlspecialchars($data['invoice']->address)) . '<br>'; ?>
@@ -852,12 +839,18 @@ if (!empty($data['invoice']->payment_term_id)) {
                 </div>
 
                 <div class="info-card">
-                    <div class="section-heading"><i class="ph ph-info"></i> Invoice Details</div>
-                    <div class="customer-details">
-                        <strong>Status:</strong> <?= htmlspecialchars($data['invoice']->status ?? 'Issued') ?><br>
-                        <strong>Issue Type:</strong> <?= !empty($data['is_offline_verified']) ? 'Digital Mobile Terminal' : 'Standard Web Terminal' ?><br>
-                        <strong>Created:</strong> <?= date('d-M-Y H:i', strtotime($data['invoice']->created_at ?? date('Y-m-d H:i'))) ?>
-                    </div>
+                    <?php if(!empty($repName)): ?>
+                        <div class="customer-name"><?= htmlspecialchars($repName) ?></div>
+                        <div class="customer-details">
+                            <span style="color: #64748B; font-size: 11px; font-weight: 600; text-transform: uppercase;">Sales Representative</span><br>
+                            <?php if(!empty($repPhone)) echo '<strong>Tel:</strong> ' . htmlspecialchars($repPhone); ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="customer-name">Sales Representative</div>
+                        <div class="customer-details" style="color: #94A3B8;">
+                            Direct Sales / Terminal
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -1037,28 +1030,32 @@ if (!empty($data['invoice']->payment_term_id)) {
                             <td colspan="2" style="text-align: right; border-bottom: 2px solid #000; padding-bottom: 10px;">
                                 <strong>Invoice No:</strong> <?= htmlspecialchars($data['invoice']->invoice_number) ?><br>
                                 <strong>Date:</strong> <?= date('d-M-Y', strtotime($data['invoice']->invoice_date ?? date('Y-m-d'))) ?><br>
+                                <?php if(!empty($paymentTermName)): ?>
+                                <strong>Payment Term:</strong> <?= htmlspecialchars($paymentTermName) ?><br>
+                                <?php endif; ?>
+                                <?php if(!empty($data['invoice']->payment_method)): ?>
+                                <strong>Payment:</strong> <?= htmlspecialchars($data['invoice']->payment_method) ?><br>
+                                <?php endif; ?>
                                 <?php if(!empty($data['invoice']->cheque_date)): ?>
                                 <strong>Cheque Date:</strong> <?= date('d-M-Y', strtotime($data['invoice']->cheque_date)) ?><br>
-                                <?php endif; ?>
-                                <?php if(!empty($repName)): ?>
-                                <strong>Sales Rep:</strong> <?= htmlspecialchars($repName) ?><br>
-                                <?php endif; ?>
-                                <?php if(!empty($repPhone)): ?>
-                                <strong>Rep Contact:</strong> <?= htmlspecialchars($repPhone) ?><br>
                                 <?php endif; ?>
                             </td>
                         </tr>
                         <tr><td colspan="6"></td></tr>
 
-                        <!-- Customer -->
+                        <!-- Customer & Sales Rep -->
                         <tr>
-                            <td colspan="6" style="font-size: 10pt; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000;">Bill To</td>
-                        </tr>
-                        <tr>
-                            <td colspan="6" style="padding-top: 5px;">
+                            <td colspan="3" style="padding-top: 5px; vertical-align: top;">
                                 <strong style="font-size: 11pt;"><?= htmlspecialchars($data['invoice']->customer_name ?? 'Customer') ?></strong><br>
                                 <?php if(!empty($data['invoice']->address)) echo nl2br(htmlspecialchars($data['invoice']->address)) . '<br>'; ?>
                                 <?php if(!empty($data['invoice']->phone)) echo 'Tel: ' . htmlspecialchars($data['invoice']->phone); ?>
+                            </td>
+                            <td colspan="3" style="padding-top: 5px; vertical-align: top; text-align: right;">
+                                <?php if(!empty($repName)): ?>
+                                    <strong style="font-size: 11pt;"><?= htmlspecialchars($repName) ?></strong><br>
+                                    Sales Representative<br>
+                                    <?php if(!empty($repPhone)) echo 'Tel: ' . htmlspecialchars($repPhone); ?>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <tr><td colspan="6"></td></tr>
