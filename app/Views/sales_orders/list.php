@@ -202,27 +202,6 @@
                 <input type="date" name="end_date" value="<?= htmlspecialchars($data['end_date'] ?? '') ?>" class="sf-input">
             </div>
 
-            <!-- Status -->
-            <div class="sf-form-group">
-                <label>Order Status</label>
-                <select name="status" class="sf-input">
-                    <option value="">-- All Statuses --</option>
-                    <option value="Pending" <?= (isset($data['status']) && $data['status'] === 'Pending') ? 'selected' : '' ?>>Pending</option>
-                    <option value="Transferred" <?= (isset($data['status']) && $data['status'] === 'Transferred') ? 'selected' : '' ?>>Transferred (Invoiced)</option>
-                    <option value="Voided" <?= (isset($data['status']) && $data['status'] === 'Voided') ? 'selected' : '' ?>>Voided</option>
-                </select>
-            </div>
-
-            <!-- Source Type -->
-            <div class="sf-form-group">
-                <label>Channel</label>
-                <select name="source_type" class="sf-input">
-                    <option value="">-- All Channels --</option>
-                    <option value="standard" <?= (isset($data['source_type']) && $data['source_type'] === 'standard') ? 'selected' : '' ?>>Standard Sales Orders</option>
-                    <option value="route" <?= (isset($data['source_type']) && $data['source_type'] === 'route') ? 'selected' : '' ?>>Route Rep Bookings</option>
-                </select>
-            </div>
-
             <!-- Sales Rep Filter -->
             <div class="sf-form-group">
                 <label>Sales Rep</label>
