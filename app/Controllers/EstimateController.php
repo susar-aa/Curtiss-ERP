@@ -26,6 +26,7 @@ class EstimateController extends Controller {
             'title' => 'Estimates & Quotes',
             'content_view' => 'estimates/index',
             'estimates' => $this->estimateModel->getAllEstimates(),
+            'customers' => $this->customerModel->getAllCustomers(),
             'assets' => $assets,
             'revenues' => $revenues,
             'error' => '',
@@ -119,11 +120,16 @@ class EstimateController extends Controller {
         $lastRow = $db->single();
         $nextId = $lastRow ? ($lastRow->id + 1) : 1;
 
+        $catalogItems = $this->itemModel->getAllItems();
+        foreach($catalogItems as $item) {
+            $item->variations = $this->itemModel->getItemVariations($item->id);
+        }
+
         $data = [
             'title' => 'Create Estimate',
             'content_view' => 'estimates/create',
             'customers' => $this->customerModel->getAllCustomers(),
-            'catalog_items' => $this->itemModel->getAllItems(), 
+            'catalog_items' => $catalogItems, 
             'estimate_number' => str_pad((string)$nextId, 5, '0', STR_PAD_LEFT),
             'error' => ''
         ];
