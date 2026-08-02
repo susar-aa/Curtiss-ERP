@@ -394,4 +394,94 @@ class CreditNote {
             return false;
         }
     }
+
+    public function deleteCreditNote($id) {
+        try {
+            $this->db->beginTransaction();
+
+            $cn = $this->getCreditNoteById($id);
+            if (!$cn) { $this->db->rollBack(); return false; }
+
+            $items = $this->getCreditNoteItems($id);
+
+            // 1. Reverse Inventory
+            foreach ($items as $item) {
+                if ($item->item_id) {
+                    if ($item->condition_status === 'Good') {
+                        $this->db->query("UPDATE items SET quantity_on_hand = quantity_on_hand - :qty WHERE id = :id");
+                        $this->db->bind(':qty', $item->quantity);
+                        $this->db->bind(':id', $item->item_id);
+                        $this->db->execute();
+                        if ($item->variation_option_id) {
+                            $this->db->query("UPDATE item_variation_options SET quantity_on_hand = quantity_on_hand - :qty WHERE id = :id");
+                            $this->db->bind(':qty', $item->quantity);
+                            $this->db->bind(':id', $item->variation_option_id);
+                            $this->db->execute();
+                        }
+                    } else {
+                        $this->db->query("UPDATE items SET damaged_qty = damaged_qty - :qty WHERE id = :id");
+                        $this->db->bind(':qty', $item->quantity);
+                        $this->db->bind(':id', $item->item_id);
+                        $this->db->execute();
+                        if ($item->variation_option_id) {
+                            $this->db->query("UPDATE item_variation_options SET damaged_qty = damaged_qty - :qty WHERE id = :id");
+                            $this->db->bind(':qty', $item->quantity);
+                            $this->db->bind(':id', $item->variation_option_id);
+                            $this->db->execute();
+                        }
+                    }
+                }
+            }
+
+            // 2. Reverse Ledger
+            if ($cn->journal_entry_id) {
+                $this->db->query("SELECT * FROM transactions WHERE journal_entry_id = :jid");
+                $this->db->bind(':jid', $cn->journal_entry_id);
+                $txns = $this->db->resultSet() ?: [];
+                
+                foreach ($txns as $txn) {
+                    $this->db->query("SELECT account_type FROM chart_of_accounts WHERE id = :id");
+                    $this->db->bind(':id', $txn->account_id);
+                    $acc = $this->db->single();
+                    if ($acc) {
+                        $sql = "UPDATE chart_of_accounts SET balance = balance ";
+                        if (in_array($acc->account_type, ['Asset', 'Expense'])) {
+                            $sql .= "- :debit + :credit ";
+                        } else {
+                            $sql .= "+ :debit - :credit ";
+                        }
+                        $sql .= "WHERE id = :id";
+                        $this->db->query($sql);
+                        $this->db->bind(':debit', $txn->debit);
+                        $this->db->bind(':credit', $txn->credit);
+                        $this->db->bind(':id', $txn->account_id);
+                        $this->db->execute();
+                    }
+                }
+
+                $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
+                $this->db->bind(':jid', $cn->journal_entry_id);
+                $this->db->execute();
+
+                $this->db->query("DELETE FROM journal_entries WHERE id = :jid");
+                $this->db->bind(':jid', $cn->journal_entry_id);
+                $this->db->execute();
+            }
+
+            // 3. Delete Credit Note
+            $this->db->query("DELETE FROM credit_note_items WHERE credit_note_id = :id");
+            $this->db->bind(':id', $id);
+            $this->db->execute();
+
+            $this->db->query("DELETE FROM credit_notes WHERE id = :id");
+            $this->db->bind(':id', $id);
+            $this->db->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (PDOException $e) {
+            $this->db->rollBack();
+            return false;
+        }
+    }
 }
