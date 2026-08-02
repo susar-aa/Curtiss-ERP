@@ -123,8 +123,8 @@ class EstimateController extends Controller {
         $nextId = $lastRow ? ($lastRow->id + 1) : 1;
 
         // Fetch all active items
-        $this->db->query("SELECT id, name, item_code, sample_code, selling_price, wholesale_price, regular_price, price, type, variations_json FROM items ORDER BY name ASC");
-        $catalogItems = $this->db->resultSet();
+        $this->db->query("SELECT id, name, item_code, sample_code, price, wholesale_price, cost_price, type, variations_json FROM items ORDER BY name ASC");
+        $catalogItems = $this->db->resultSet() ?: [];
 
         // Fetch all variations in ONE batch
         $this->db->query("
@@ -146,14 +146,12 @@ class EstimateController extends Controller {
         $preparedProducts = [];
         foreach ($catalogItems as $item) {
             $basePrice = 0.00;
-            if (isset($item->selling_price) && floatval($item->selling_price) > 0) {
-                $basePrice = floatval($item->selling_price);
-            } elseif (isset($item->price) && floatval($item->price) > 0) {
+            if (isset($item->price) && floatval($item->price) > 0) {
                 $basePrice = floatval($item->price);
-            } elseif (isset($item->regular_price) && floatval($item->regular_price) > 0) {
-                $basePrice = floatval($item->regular_price);
             } elseif (isset($item->wholesale_price) && floatval($item->wholesale_price) > 0) {
                 $basePrice = floatval($item->wholesale_price);
+            } elseif (isset($item->cost_price) && floatval($item->cost_price) > 0) {
+                $basePrice = floatval($item->cost_price);
             }
 
             // Add base item
