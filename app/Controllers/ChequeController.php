@@ -15,7 +15,8 @@ class ChequeController extends Controller {
     }
 
     public function index() {
-        $cheques = $this->chequeModel->getAllCheques();
+        $search = $_GET['search'] ?? '';
+        $cheques = $this->chequeModel->getAllCheques($search);
         $company = $this->companyModel->getSettings();
         $parentId = $this->coaModel->selfHealBankAccounts();
         $bankAccounts = $this->coaModel->getBankAccounts($parentId);
@@ -52,6 +53,7 @@ class ChequeController extends Controller {
             'title' => 'Cheque Management',
             'content_view' => 'cheques/index',
             'grouped_cheques' => $groupedCheques,
+            'search' => $search,
             'customers' => $this->customerModel->getAllCustomers() ?: [],
             'suppliers' => $this->supplierModel->getAllSuppliers() ?: [],
             'bank_accounts' => $bankAccounts,

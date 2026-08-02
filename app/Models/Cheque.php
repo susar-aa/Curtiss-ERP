@@ -6,14 +6,31 @@ class Cheque {
         $this->db = new Database();
     }
 
-    public function getAllCheques() {
-        $this->db->query("SELECT ch.*, c.name as customer_name, COALESCE(v.name, sp.name) as vendor_name, ba.account_name as drawn_bank_name, ba.account_code as drawn_bank_code 
-                          FROM cheques ch 
-                          LEFT JOIN customers c ON ch.customer_id = c.id 
-                          LEFT JOIN vendors v ON ch.vendor_id = v.id 
-                          LEFT JOIN service_providers sp ON ch.service_provider_id = sp.id
-                          LEFT JOIN chart_of_accounts ba ON ch.bank_account_id = ba.id
-                          ORDER BY ch.status ASC, ch.banking_date ASC");
+    public function getAllCheques($search = '') {
+        if (!empty($search)) {
+            $this->db->query("SELECT ch.*, c.name as customer_name, COALESCE(v.name, sp.name) as vendor_name, ba.account_name as drawn_bank_name, ba.account_code as drawn_bank_code 
+                              FROM cheques ch 
+                              LEFT JOIN customers c ON ch.customer_id = c.id 
+                              LEFT JOIN vendors v ON ch.vendor_id = v.id 
+                              LEFT JOIN service_providers sp ON ch.service_provider_id = sp.id
+                              LEFT JOIN chart_of_accounts ba ON ch.bank_account_id = ba.id
+                              WHERE ch.cheque_number LIKE :search 
+                                 OR c.name LIKE :search 
+                                 OR v.name LIKE :search 
+                                 OR sp.name LIKE :search 
+                                 OR ba.account_name LIKE :search
+                                 OR ch.bank_name LIKE :search
+                              ORDER BY ch.status ASC, ch.banking_date ASC");
+            $this->db->bind(':search', "%$search%");
+        } else {
+            $this->db->query("SELECT ch.*, c.name as customer_name, COALESCE(v.name, sp.name) as vendor_name, ba.account_name as drawn_bank_name, ba.account_code as drawn_bank_code 
+                              FROM cheques ch 
+                              LEFT JOIN customers c ON ch.customer_id = c.id 
+                              LEFT JOIN vendors v ON ch.vendor_id = v.id 
+                              LEFT JOIN service_providers sp ON ch.service_provider_id = sp.id
+                              LEFT JOIN chart_of_accounts ba ON ch.bank_account_id = ba.id
+                              ORDER BY ch.status ASC, ch.banking_date ASC");
+        }
         return $this->db->resultSet();
     }
 

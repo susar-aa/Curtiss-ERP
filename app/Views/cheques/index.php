@@ -1,175 +1,405 @@
-<?php
-?>
+<!-- Inter Font & FontAwesome Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
 <style>
-    .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .btn { padding: 8px 16px; background: #0066cc; color: #fff; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 14px;}
-    .btn-outline { background: transparent; border: 1px solid #0066cc; color: #0066cc; }
-    .btn-danger { background: #c62828; color: #fff; }
-    
-    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
-    .kpi-card { background: #fff; padding: 20px; border-radius: 8px; border: 1px solid var(--mac-border); display: flex; flex-direction: column; }
-    @media (prefers-color-scheme: dark) { .kpi-card { background: rgba(0,0,0,0.2); } }
-    .kpi-title { font-size: 12px; color: #888; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; }
-    .kpi-val { font-size: 24px; font-weight: bold; color: var(--text-main); }
-    
-    .date-group-header { background: rgba(0,102,204,0.05); padding: 10px 15px; border-radius: 6px; font-weight: bold; color: #0066cc; margin-top: 20px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
-    
-    .data-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-    .data-table th, .data-table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--mac-border); font-size: 13px;}
-    .data-table th { color: #888; font-weight: normal; }
-    
-    .status-Pending { color: #f57c00; font-weight: bold; }
-    .status-Cleared { color: #2e7d32; font-weight: bold; }
-    .status-Bounced { color: #c62828; font-weight: bold; }
+/* ============================================================
+   SF PRO + APPLE DESIGN LANGUAGE — CHEQUE MANAGEMENT
+   ============================================================ */
+:root {
+    --c-bg:           #f2f2f7;
+    --c-surface:      #ffffff;
+    --c-surface2:     #f9f9fb;
+    --c-fill:         rgba(120,120,128,0.12);
+    --c-fill2:        rgba(120,120,128,0.16);
+    --c-separator:    rgba(60,60,67,0.12);
+    --c-separator2:   rgba(60,60,67,0.06);
 
-    /* Custom Modals */
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; }
-    .modal-content { background: var(--mac-bg); backdrop-filter: blur(20px); padding: 30px; border-radius: 12px; width: 500px; border: 1px solid var(--mac-border); }
-    .form-group { margin-bottom: 15px; }
-    .form-group label { display: block; margin-bottom: 5px; font-size: 13px; font-weight: 500; }
-    .form-control { width: 100%; padding: 8px 12px; border: 1px solid var(--mac-border); border-radius: 4px; background: transparent; color: var(--text-main); box-sizing: border-box;}
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    --c-blue:         #007aff;
+    --c-blue-light:   #e5f2ff;
+    --c-green:        #34c759;
+    --c-green-light:  #e6f9ec;
+    --c-orange:       #ff9500;
+    --c-orange-light: #fff4e5;
+    --c-red:          #ff3b30;
+    --c-red-light:    #fff0ef;
+    --c-purple:       #af52de;
+    --c-purple-light: #f5eeff;
 
-    .cheque-modal-content { background: transparent; border: none; padding: 0; width: 750px; display: flex; flex-direction: column; align-items: center;}
-    .cheque-paper {
-        width: 700px; height: 320px;
-        background: repeating-linear-gradient(45deg, #f0f8ff, #f0f8ff 10px, #e6f2ff 10px, #e6f2ff 20px);
-        border: 1px solid #b0c4de;
-        border-radius: 4px;
-        padding: 25px;
-        position: relative;
-        font-family: 'Times New Roman', serif;
-        box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-        color: #333;
-        box-sizing: border-box;
-    }
-    .cq-bank { font-size: 18px; font-weight: bold; color: #444; border-bottom: 2px solid #ccc; display: inline-block; padding-bottom: 5px; margin-bottom: 20px;}
-    .cq-date { position: absolute; top: 25px; right: 25px; border-bottom: 1px solid #555; padding-bottom: 2px; font-size: 16px; font-family: monospace; letter-spacing: 2px;}
-    .cq-payee { margin-top: 30px; font-size: 16px; border-bottom: 1px solid #555; padding-bottom: 5px; }
-    .cq-amount-words { margin-top: 30px; font-size: 16px; border-bottom: 1px solid #555; padding-bottom: 5px; line-height: 1.5; }
-    .cq-amount-box { position: absolute; top: 120px; right: 25px; border: 2px solid #555; padding: 10px 20px; font-size: 20px; font-weight: bold; background: #fff; }
-    .cq-signature { position: absolute; bottom: 60px; right: 25px; border-bottom: 1px solid #555; width: 200px; text-align: center; font-size: 14px; color: #0066cc; font-style: italic;}
-    .cq-micr { position: absolute; bottom: 20px; left: 0; width: 100%; text-align: center; font-family: 'Courier New', Courier, monospace; font-size: 22px; font-weight: bold; letter-spacing: 4px; color: #111;}
+    --f-system: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', sans-serif;
+    --f-mono:   ui-monospace, 'SF Mono', 'Menlo', 'Monaco', monospace;
+
+    --t-primary:   #1c1c1e;
+    --t-secondary: #636366;
+    --t-label:     #8e8e93;
+
+    --shadow-xs:  0 1px 2px rgba(0,0,0,0.04);
+    --shadow-sm:  0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-md:  0 8px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+    --shadow-xl:  0 24px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.06);
+
+    --r-md: 14px;
+    --r-xl: 26px;
+    --r-pill: 999px;
+
+    --dur-fast:    0.18s;
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.inv-wrap {
+    max-width: 1420px; margin: 0 auto;
+    padding: 0px 24px 140px;
+    font-family: var(--f-system);
+    color: var(--t-primary);
+}
+
+.inv-header { margin-bottom: 28px; }
+.inv-eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--c-blue); margin-bottom: 6px;
+}
+.inv-title { font-size: 32px; font-weight: 700; letter-spacing: -0.03em; color: var(--t-primary); }
+
+.sf-alert {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--c-surface); border-radius: var(--r-md);
+    padding: 14px 16px; margin-bottom: 20px;
+    box-shadow: var(--shadow-xs); border: 0.5px solid var(--c-separator);
+    border-left-width: 3px; font-size: 14px;
+}
+.sf-alert.success { border-left-color: var(--c-green); }
+.sf-alert.error   { border-left-color: var(--c-red); }
+.sf-alert-icon { font-size: 18px; flex-shrink: 0; padding-top: 1px; }
+.sf-alert.success .sf-alert-icon { color: var(--c-green); }
+.sf-alert.error   .sf-alert-icon { color: var(--c-red); }
+.sf-alert-title { font-weight: 600; color: var(--t-primary); margin-bottom: 2px; }
+.sf-alert-msg   { color: var(--t-secondary); font-size: 13px; }
+
+/* KPI Grid */
+.kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+.kpi-card {
+    background: var(--c-surface); border-radius: var(--r-md);
+    padding: 20px; border: 0.5px solid var(--c-separator);
+    box-shadow: var(--shadow-xs);
+    display: flex; flex-direction: column; gap: 8px;
+}
+.kpi-label { font-size: 12px; font-weight: 600; color: var(--t-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+.kpi-val { font-size: 28px; font-weight: 700; color: var(--t-primary); }
+.kpi-sub { font-size: 13px; color: var(--t-label); font-weight: 500; }
+
+/* Table Section */
+.date-group {
+    background: var(--c-surface2); padding: 10px 16px;
+    font-size: 13px; font-weight: 600; color: var(--t-secondary);
+    border-top: 0.5px solid var(--c-separator);
+    border-bottom: 0.5px solid var(--c-separator);
+    display: flex; justify-content: space-between;
+}
+.date-group.overdue { background: var(--c-red-light); color: var(--c-red); border-color: rgba(255,59,48,0.2); }
+
+.table-panel {
+    background: var(--c-surface); border-radius: var(--r-xl);
+    border: 0.5px solid var(--c-separator); box-shadow: var(--shadow-sm);
+    overflow: hidden; margin-bottom: 20px;
+}
+.inv-table { width: 100%; border-collapse: collapse; }
+.inv-table thead th {
+    padding: 13px 18px; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--t-label); background: var(--c-surface2);
+    border-bottom: 0.5px solid var(--c-separator); text-align: left;
+}
+.inv-table tbody tr { transition: background var(--dur-fast); border-bottom: 0.5px solid var(--c-separator2); }
+.inv-table tbody tr:hover { background: var(--c-fill2); }
+.inv-table td { padding: 14px 18px; font-size: 14px; color: var(--t-primary); vertical-align: middle; }
+
+/* Badges */
+.sf-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: var(--r-pill);
+    font-size: 12px; font-weight: 700; letter-spacing: 0.01em; white-space: nowrap;
+}
+.sf-badge .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.badge-Pending { background: var(--c-orange-light); color: #c05d00; }
+.badge-Pending .dot { background: var(--c-orange); }
+.badge-Cleared { background: var(--c-green-light); color: #1a7f3c; }
+.badge-Cleared .dot { background: var(--c-green); }
+.badge-Bounced { background: var(--c-red-light); color: var(--c-red); }
+.badge-Bounced .dot { background: var(--c-red); }
+
+/* Row Actions */
+.row-acts { display: flex; gap: 6px; justify-content: flex-end; }
+.act-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--c-fill); color: var(--t-label);
+    border: none; cursor: pointer; text-decoration: none; font-size: 13px;
+    transition: all var(--dur-fast) var(--ease-spring);
+}
+.act-btn:hover { transform: scale(1.12); }
+.act-btn.view:hover   { background: var(--c-purple-light); color: var(--c-purple); }
+.act-btn.edit:hover   { background: var(--c-blue-light); color: var(--c-blue); }
+.act-btn.delete:hover { background: var(--c-red-light); color: var(--c-red); }
+
+/* Command Bar (Dynamic Island) */
+.cmd-bar {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    background: rgba(28, 28, 30, 0.92);
+    backdrop-filter: saturate(180%) blur(28px); -webkit-backdrop-filter: saturate(180%) blur(28px);
+    border: 0.5px solid rgba(255,255,255,0.12); border-radius: var(--r-pill);
+    padding: 7px 10px; display: flex; align-items: center; gap: 4px;
+    box-shadow: var(--shadow-xl), 0 0 0 0.5px rgba(0,0,0,0.3); z-index: 1000;
+}
+.cmd-search {
+    display: flex; align-items: center; gap: 9px;
+    background: rgba(255,255,255,0.1); border-radius: var(--r-pill);
+    padding: 8px 14px; width: 250px;
+    transition: width 0.42s cubic-bezier(0.25, 0.1, 0.25, 1), background var(--dur-fast);
+}
+.cmd-search:focus-within { width: 380px; background: rgba(255,255,255,0.18); }
+.cmd-search i { color: rgba(255,255,255,0.55); font-size: 14px; }
+.cmd-search input {
+    background: transparent; border: none; outline: none;
+    color: #fff; font-size: 14px; font-weight: 500; font-family: var(--f-system); width: 100%;
+}
+.cmd-search input::placeholder { color: rgba(255,255,255,0.45); }
+.cmd-divider { width: 0.5px; height: 22px; background: rgba(255,255,255,0.15); margin: 0 3px; }
+.cmd-cta {
+    display: flex; align-items: center; gap: 7px;
+    background: #fff; color: #1c1c1e;
+    border: none; border-radius: var(--r-pill); padding: 0 18px; height: 38px;
+    font-size: 14px; font-weight: 700; font-family: var(--f-system);
+    cursor: pointer; transition: transform var(--dur-fast) var(--ease-spring), background var(--dur-fast);
+    margin-left: 2px;
+}
+.cmd-cta:hover { background: #e5e5ea; transform: scale(0.97); }
+
+/* SF Modals */
+.sf-modal {
+    display: none; position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.4); backdrop-filter: blur(8px);
+    align-items: center; justify-content: center; opacity: 0;
+    transition: opacity var(--dur-fast);
+}
+.sf-modal.open { display: flex; opacity: 1; }
+.sf-modal-box {
+    background: var(--c-surface); width: 540px;
+    border-radius: var(--r-xl); padding: 32px;
+    box-shadow: var(--shadow-xl); border: 0.5px solid var(--c-separator);
+    transform: scale(0.95); transition: transform var(--dur-fast) var(--ease-spring);
+}
+.sf-modal.open .sf-modal-box { transform: scale(1); }
+.sf-modal-box h3 { margin-top: 0; font-size: 22px; margin-bottom: 20px; color: var(--t-primary); }
+.sf-form-group { margin-bottom: 16px; }
+.sf-form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--t-secondary); margin-bottom: 6px; }
+.sf-input {
+    width: 100%; padding: 10px 14px;
+    background: var(--c-surface2); border: 1px solid var(--c-separator);
+    border-radius: var(--r-md); font-family: var(--f-system);
+    font-size: 14px; color: var(--t-primary); box-sizing: border-box;
+    transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.sf-input:focus { outline: none; border-color: var(--c-blue); background: var(--c-surface); }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.sf-modal-acts { display: flex; justify-content: flex-end; gap: 10px; margin-top: 28px; }
+.sf-btn {
+    padding: 10px 20px; border-radius: var(--r-pill); font-weight: 600; font-size: 14px;
+    border: none; cursor: pointer; transition: background var(--dur-fast); font-family: var(--f-system);
+}
+.sf-btn-ghost { background: var(--c-fill); color: var(--t-primary); }
+.sf-btn-ghost:hover { background: var(--c-fill2); }
+.sf-btn-primary { background: var(--c-blue); color: #fff; }
+.sf-btn-primary:hover { background: #006ce6; }
+.sf-btn-danger { background: var(--c-red); color: #fff; }
+.sf-btn-danger:hover { background: #e03228; }
+
+/* Cheque Viewer Modal */
+.cheque-paper {
+    width: 100%; height: 260px;
+    background: repeating-linear-gradient(45deg, #f0f8ff, #f0f8ff 10px, #e6f2ff 10px, #e6f2ff 20px);
+    border: 1px solid #b0c4de; border-radius: 8px; padding: 25px;
+    position: relative; font-family: 'Times New Roman', serif;
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.05); color: #333; box-sizing: border-box;
+}
+.cq-bank { font-size: 18px; font-weight: bold; color: #444; border-bottom: 2px solid #ccc; display: inline-block; padding-bottom: 5px; margin-bottom: 20px;}
+.cq-date { position: absolute; top: 25px; right: 25px; border-bottom: 1px solid #555; padding-bottom: 2px; font-size: 16px; font-family: var(--f-mono); letter-spacing: 2px;}
+.cq-payee { margin-top: 20px; font-size: 16px; border-bottom: 1px solid #555; padding-bottom: 5px; }
+.cq-amount-words { margin-top: 20px; font-size: 16px; border-bottom: 1px solid #555; padding-bottom: 5px; line-height: 1.5; }
+.cq-amount-box { position: absolute; top: 110px; right: 25px; border: 2px solid #555; padding: 10px 20px; font-size: 20px; font-weight: bold; background: #fff; }
+.cq-signature { position: absolute; bottom: 50px; right: 25px; border-bottom: 1px solid #555; width: 180px; text-align: center; font-size: 14px; color: var(--c-blue); font-style: italic;}
+.cq-micr { position: absolute; bottom: 15px; left: 0; width: 100%; text-align: center; font-family: var(--f-mono); font-size: 20px; font-weight: bold; letter-spacing: 4px; color: #111;}
+
 </style>
 
-<div class="header-actions">
-    <h2>Cheque Management (PDC)</h2>
-    <button class="btn" onclick="openModal('addModal')">+ Record Received Cheque</button>
-</div>
+<div class="inv-wrap">
 
-<?php if(!empty($data['error'])): ?>
-    <div style="padding: 10px; background:#ffebee; color:#c62828; border-radius:4px; margin-bottom:15px;"><?= $data['error'] ?></div>
-<?php endif; ?>
-<?php if(!empty($data['success'])): ?>
-    <div style="padding: 10px; background:#e8f5e9; color:#2e7d32; border-radius:4px; margin-bottom:15px;"><?= $data['success'] ?></div>
-<?php endif; ?>
-
-<div class="kpi-grid">
-    <div class="kpi-card" style="border-top: 4px solid #f57c00;">
-        <div class="kpi-title">Total Pending Amount</div>
-        <div class="kpi-val">Rs: <?= number_format($data['kpi_pending'], 2) ?></div>
+    <div class="inv-header">
+        <div class="inv-eyebrow">Financial Management</div>
+        <h1 class="inv-title">Cheque Portfolio (PDC)</h1>
     </div>
-    <div class="kpi-card" style="border-top: 4px solid #0066cc;">
-        <div class="kpi-title">Next Banking Date</div>
-        <?php if($data['kpi_next_date']): ?>
-            <div class="kpi-val" style="color: #0066cc;"><?= date('M d, Y', strtotime($data['kpi_next_date'])) ?></div>
-            <div style="font-size: 12px; color: #888; margin-top: 5px;">Amount: Rs: <?= number_format($data['kpi_next_amount'], 2) ?></div>
-        <?php else: ?>
-            <div class="kpi-val" style="color: #888;">None</div>
-        <?php endif; ?>
-    </div>
-    <div class="kpi-card" style="border-top: 4px solid #2e7d32;">
-        <div class="kpi-title">Total Cleared (Historical)</div>
-        <div class="kpi-val" style="color: #2e7d32;">Rs: <?= number_format($data['kpi_cleared'], 2) ?></div>
-    </div>
-</div>
 
-<div class="card">
-    <?php if(empty($data['grouped_cheques'])): ?>
-        <p style="text-align: center; color: #888; padding: 40px;">No cheques recorded in the system.</p>
-    <?php else: foreach($data['grouped_cheques'] as $date => $cheques): ?>
-        
-        <?php 
-            // Calculate group total
-            $dayTotal = 0;
-            foreach($cheques as $c) { if($c->status == 'Pending') $dayTotal += $c->amount; }
-            $isPastDue = strtotime($date) < strtotime('today') && $dayTotal > 0;
-        ?>
-
-        <div class="date-group-header" style="<?= $isPastDue ? 'background:#ffebee; color:#c62828;' : '' ?>">
-            <span>📅 <?= date('l, F j, Y', strtotime($date)) ?> <?= $isPastDue ? '(OVERDUE FOR BANKING)' : '' ?></span>
-            <span>Pending to Deposit: Rs: <?= number_format($dayTotal, 2) ?></span>
+    <!-- Alerts -->
+    <?php if(isset($_GET['success'])): ?>
+    <div class="sf-alert success">
+        <i class="fa-solid fa-circle-check sf-alert-icon"></i>
+        <div style="flex:1;">
+            <div class="sf-alert-title">Success</div>
+            <div class="sf-alert-msg"><?= htmlspecialchars($data['success']) ?></div>
         </div>
+    </div>
+    <?php endif; ?>
+    <?php if(!empty($data['error'])): ?>
+    <div class="sf-alert error">
+        <i class="fa-solid fa-triangle-exclamation sf-alert-icon"></i>
+        <div style="flex:1;">
+            <div class="sf-alert-title">Operation Error</div>
+            <div class="sf-alert-msg"><?= htmlspecialchars($data['error']) ?></div>
+        </div>
+    </div>
+    <?php endif; ?>
 
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th style="width: 25%;">Drawer / Payee</th>
-                    <th style="width: 20%;">Bank Name</th>
-                    <th style="width: 15%;">Cheque Number</th>
-                    <th style="width: 10%;">Status</th>
-                    <th style="width: 15%; text-align: right;">Amount (Rs:)</th>
-                    <th style="width: 15%; text-align: center;">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach($cheques as $chk): ?>
-                <tr>
-                    <td>
-                        <strong><?= htmlspecialchars($chk->customer_name ?: ($chk->vendor_name ?: '-')) ?></strong>
-                        <?php if ($chk->customer_name): ?>
-                            <span style="font-size:10px; color:#2e7d32; display:block; font-weight:600;">Customer Receipt</span>
-                        <?php elseif ($chk->vendor_name): ?>
-                            <span style="font-size:10px; color:#ef6c00; display:block; font-weight:600;">Supplier Payment</span>
-                        <?php endif; ?>
-                    </td>
-                    <td>
-                        <?= htmlspecialchars($chk->bank_name) ?>
-                        <?php if (!empty($chk->drawn_bank_name)): ?>
-                            <br><span style="font-size: 11px; color: #4b5563;">🏦 Ledger: <?= htmlspecialchars($chk->drawn_bank_name) ?></span>
-                        <?php endif; ?>
-                    </td>
-                    <td style="font-family: monospace; font-size: 14px;"><?= htmlspecialchars($chk->cheque_number) ?></td>
-                    <td class="status-<?= $chk->status ?>"><?= $chk->status ?></td>
-                    <td style="text-align: right; font-weight: bold;"><?= number_format($chk->amount, 2) ?></td>
-                    <td style="text-align: center;">
-                        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;" onclick="viewCheque('<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->banking_date)) ?>', '<?= htmlspecialchars(addslashes($chk->amount)) ?>', '<?= htmlspecialchars(addslashes($chk->customer_name ?: ($chk->vendor_name ?: ''))) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">👁️ View</button>
-                        
-                        <button class="btn" style="padding: 4px 8px; font-size: 11px; margin: 0 4px;" onclick="openEditModal(<?= $chk->id ?>, <?= $chk->customer_id ?: 'null' ?>, <?= $chk->vendor_id ?: 'null' ?>, '<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>', <?= $chk->amount ?>, '<?= $chk->banking_date ?>', '<?= $chk->status ?>', <?= $chk->bank_account_id ?: 'null' ?>)">✏️ Edit</button>
-                        
-                        <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="openDeleteModal(<?= $chk->id ?>, '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">🗑️</button>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    <?php endforeach; endif; ?>
+    <!-- KPI Grid -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-label" style="color: var(--c-orange);">Pending Portfolio</div>
+            <div class="kpi-val">Rs: <?= number_format($data['kpi_pending'], 2) ?></div>
+            <div class="kpi-sub">Total Uncleared Amount</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label" style="color: var(--c-blue);">Next Banking Date</div>
+            <div class="kpi-val" style="color: var(--c-blue);">
+                <?= $data['kpi_next_date'] ? date('M d, Y', strtotime($data['kpi_next_date'])) : 'No Schedule' ?>
+            </div>
+            <div class="kpi-sub">Rs: <?= number_format($data['kpi_next_amount'], 2) ?> due</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label" style="color: var(--c-green);">Historical Cleared</div>
+            <div class="kpi-val" style="color: var(--c-green);">Rs: <?= number_format($data['kpi_cleared'], 2) ?></div>
+            <div class="kpi-sub">Realized in Bank</div>
+        </div>
+    </div>
+
+    <!-- Table Body Container (ajax target) -->
+    <div id="tableContainer">
+        <?php if(empty($data['grouped_cheques'])): ?>
+        <div class="table-panel" style="padding: 60px; text-align: center; color: var(--t-secondary);">
+            <i class="fa-solid fa-money-check" style="font-size: 32px; margin-bottom: 16px; opacity: 0.5;"></i>
+            <p>No cheques recorded matching this query.</p>
+        </div>
+        <?php else: foreach($data['grouped_cheques'] as $date => $cheques): ?>
+            
+            <?php 
+                $dayTotal = 0;
+                foreach($cheques as $c) { if($c->status == 'Pending') $dayTotal += $c->amount; }
+                $isPastDue = strtotime($date) < strtotime('today') && $dayTotal > 0;
+            ?>
+
+            <div class="date-group <?= $isPastDue ? 'overdue' : '' ?>">
+                <span><i class="fa-regular fa-calendar" style="margin-right:6px;"></i> <?= date('l, F j, Y', strtotime($date)) ?> <?= $isPastDue ? '— OVERDUE' : '' ?></span>
+                <span>Deposit Rs: <?= number_format($dayTotal, 2) ?></span>
+            </div>
+
+            <div class="table-panel" style="border-radius: 0; border-top: none; margin-bottom: 0;">
+                <table class="inv-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">Drawer / Payee</th>
+                            <th style="width: 20%;">Bank details</th>
+                            <th style="width: 15%;">Cheque Number</th>
+                            <th style="width: 12%;">Status</th>
+                            <th style="width: 15%; text-align: right;">Amount (Rs:)</th>
+                            <th style="width: 13%; text-align: right;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach($cheques as $chk): ?>
+                        <tr>
+                            <td>
+                                <strong style="font-weight:600;"><?= htmlspecialchars($chk->customer_name ?: ($chk->vendor_name ?: '-')) ?></strong>
+                                <?php if ($chk->customer_name): ?>
+                                    <div style="font-size:11px; color:var(--c-green); font-weight:600; margin-top:2px;">Customer Receipt</div>
+                                <?php elseif ($chk->vendor_name): ?>
+                                    <div style="font-size:11px; color:var(--c-orange); font-weight:600; margin-top:2px;">Supplier Payment</div>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div style="font-weight:500;"><?= htmlspecialchars($chk->bank_name) ?></div>
+                                <?php if (!empty($chk->drawn_bank_name)): ?>
+                                    <div style="font-size: 11px; color: var(--t-secondary); margin-top:2px;">
+                                        <i class="fa-solid fa-building-columns"></i> <?= htmlspecialchars($chk->drawn_bank_name) ?>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <span style="font-family: var(--f-mono); background: var(--c-fill); padding: 4px 8px; border-radius: 6px; font-size: 13px;">
+                                    <?= htmlspecialchars($chk->cheque_number) ?>
+                                </span>
+                            </td>
+                            <td>
+                                <div class="sf-badge badge-<?= $chk->status ?>">
+                                    <div class="dot"></div> <?= $chk->status ?>
+                                </div>
+                            </td>
+                            <td style="text-align: right; font-weight: 600;">
+                                <?= number_format($chk->amount, 2) ?>
+                            </td>
+                            <td>
+                                <div class="row-acts">
+                                    <button class="act-btn view" title="View Cheque" onclick="viewCheque('<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->banking_date)) ?>', '<?= htmlspecialchars(addslashes($chk->amount)) ?>', '<?= htmlspecialchars(addslashes($chk->customer_name ?: ($chk->vendor_name ?: ''))) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
+                                        <i class="fa-regular fa-eye"></i>
+                                    </button>
+                                    <button class="act-btn edit" title="Edit" onclick="openEditModal(<?= $chk->id ?>, <?= $chk->customer_id ?: 'null' ?>, <?= $chk->vendor_id ?: 'null' ?>, '<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>', <?= $chk->amount ?>, '<?= $chk->banking_date ?>', '<?= $chk->status ?>', <?= $chk->bank_account_id ?: 'null' ?>)">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
+                                    <button class="act-btn delete" title="Delete" onclick="openDeleteModal(<?= $chk->id ?>, '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
+                                        <i class="fa-regular fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endforeach; endif; ?>
+    </div>
 </div>
 
+<!-- Command Bar -->
+<div class="cmd-bar">
+    <div class="cmd-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="Search by name, bank, or cheque #" value="<?= htmlspecialchars($data['search'] ?? '') ?>">
+    </div>
+    <div class="cmd-divider"></div>
+    <button class="cmd-cta" onclick="openModal('addModal')">
+        <i class="fa-solid fa-plus"></i> Record Cheque
+    </button>
+</div>
 
 <!-- Add Modal -->
-<div class="modal" id="addModal">
-    <div class="modal-content">
-        <h3 style="margin-top:0;">Record Received / Paid Cheque</h3>
+<div class="sf-modal" id="addModal">
+    <div class="sf-modal-box">
+        <h3>Record Received / Paid Cheque</h3>
         <form action="<?= APP_URL ?>/cheque" method="POST">
             <input type="hidden" name="action" value="add_cheque">
-            <div class="form-group">
+            <div class="sf-form-group">
                 <label>Customer (for Collection/Received Cheque)</label>
-                <select name="customer_id" class="form-control">
+                <select name="customer_id" class="sf-input">
                     <option value="">-- Select Customer --</option>
                     <?php foreach($data['customers'] as $cust): ?><option value="<?= $cust->id ?>"><?= htmlspecialchars($cust->name) ?></option><?php endforeach; ?>
                 </select>
             </div>
-            <div class="form-group">
+            <div class="sf-form-group">
                 <label>Supplier / Vendor (for Payment/Issued Cheque)</label>
-                <select name="vendor_id" class="form-control">
+                <select name="vendor_id" class="sf-input">
                     <option value="">-- Select Supplier --</option>
                     <?php foreach($data['suppliers'] as $supp): ?><option value="<?= $supp->id ?>"><?= htmlspecialchars($supp->name) ?></option><?php endforeach; ?>
                 </select>
             </div>
-            <div class="form-group">
+            <div class="sf-form-group">
                 <label>Drawn/Deposit Bank Account (Required for Supplier Payments)</label>
-                <select name="bank_account_id" class="form-control">
+                <select name="bank_account_id" class="sf-input">
                     <option value="">-- Select Bank Account --</option>
                     <?php foreach($data['bank_accounts'] as $acc): ?>
                         <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->account_name) ?> (<?= htmlspecialchars($acc->account_code) ?>)</option>
@@ -177,46 +407,46 @@
                 </select>
             </div>
             <div class="grid-2">
-                <div class="form-group"><label>Bank Name *</label><input type="text" name="bank_name" class="form-control" placeholder="e.g. Commercial Bank" required></div>
-                <div class="form-group"><label>Cheque Number *</label><input type="text" name="cheque_number" class="form-control" required></div>
+                <div class="sf-form-group"><label>Bank Name *</label><input type="text" name="bank_name" class="sf-input" placeholder="e.g. Commercial Bank" required></div>
+                <div class="sf-form-group"><label>Cheque Number *</label><input type="text" name="cheque_number" class="sf-input" required></div>
             </div>
             <div class="grid-2">
-                <div class="form-group"><label>Banking Date *</label><input type="date" name="banking_date" class="form-control" required></div>
-                <div class="form-group"><label>Amount (Rs:) *</label><input type="number" name="amount" step="0.01" class="form-control" required></div>
+                <div class="sf-form-group"><label>Banking Date *</label><input type="date" name="banking_date" class="sf-input" required></div>
+                <div class="sf-form-group"><label>Amount (Rs:) *</label><input type="number" name="amount" step="0.01" class="sf-input" required></div>
             </div>
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
-                <button type="button" class="btn btn-outline" onclick="closeModal('addModal')">Cancel</button>
-                <button type="submit" class="btn">Save Cheque</button>
+            <div class="sf-modal-acts">
+                <button type="button" class="sf-btn sf-btn-ghost" onclick="closeModal('addModal')">Cancel</button>
+                <button type="submit" class="sf-btn sf-btn-primary">Save Cheque</button>
             </div>
         </form>
     </div>
 </div>
 
 <!-- Edit Modal -->
-<div class="modal" id="editModal">
-    <div class="modal-content">
-        <h3 style="margin-top:0;">Update Cheque Details</h3>
+<div class="sf-modal" id="editModal">
+    <div class="sf-modal-box">
+        <h3>Update Cheque Details</h3>
         <form action="<?= APP_URL ?>/cheque" method="POST">
             <input type="hidden" name="action" value="edit_cheque">
             <input type="hidden" name="cheque_id" id="edit_id">
             
-            <div class="form-group">
+            <div class="sf-form-group">
                 <label>Customer (for Collections)</label>
-                <select name="customer_id" id="edit_customer" class="form-control">
+                <select name="customer_id" id="edit_customer" class="sf-input">
                     <option value="">-- None --</option>
                     <?php foreach($data['customers'] as $cust): ?><option value="<?= $cust->id ?>"><?= htmlspecialchars($cust->name) ?></option><?php endforeach; ?>
                 </select>
             </div>
-            <div class="form-group">
+            <div class="sf-form-group">
                 <label>Supplier / Vendor (for Payments)</label>
-                <select name="vendor_id" id="edit_vendor" class="form-control">
+                <select name="vendor_id" id="edit_vendor" class="sf-input">
                     <option value="">-- None --</option>
                     <?php foreach($data['suppliers'] as $supp): ?><option value="<?= $supp->id ?>"><?= htmlspecialchars($supp->name) ?></option><?php endforeach; ?>
                 </select>
             </div>
-            <div class="form-group">
-                <label>Drawn/Deposit Bank Account (Required for Supplier Payments)</label>
-                <select name="bank_account_id" id="edit_bank_account_id" class="form-control">
+            <div class="sf-form-group">
+                <label>Drawn/Deposit Bank Account</label>
+                <select name="bank_account_id" id="edit_bank_account_id" class="sf-input">
                     <option value="">-- None --</option>
                     <?php foreach($data['bank_accounts'] as $acc): ?>
                         <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->account_name) ?> (<?= htmlspecialchars($acc->account_code) ?>)</option>
@@ -224,106 +454,92 @@
                 </select>
             </div>
             <div class="grid-2">
-                <div class="form-group"><label>Bank Name</label><input type="text" name="bank_name" id="edit_bank" class="form-control" required></div>
-                <div class="form-group"><label>Cheque Number</label><input type="text" name="cheque_number" id="edit_cnum" class="form-control" required></div>
+                <div class="sf-form-group"><label>Bank Name</label><input type="text" name="bank_name" id="edit_bank" class="sf-input" required></div>
+                <div class="sf-form-group"><label>Cheque Number</label><input type="text" name="cheque_number" id="edit_cnum" class="sf-input" required></div>
             </div>
             <div class="grid-2">
-                <div class="form-group"><label>Banking Date</label><input type="date" name="banking_date" id="edit_date" class="form-control" required></div>
-                <div class="form-group"><label>Amount</label><input type="number" name="amount" id="edit_amt" step="0.01" class="form-control" required></div>
+                <div class="sf-form-group"><label>Banking Date</label><input type="date" name="banking_date" id="edit_date" class="sf-input" required></div>
+                <div class="sf-form-group"><label>Amount</label><input type="number" name="amount" id="edit_amt" step="0.01" class="sf-input" required></div>
             </div>
-            <div class="form-group" style="background: rgba(0,102,204,0.05); padding: 10px; border-radius: 4px;">
-                <label style="color:#0066cc;">Cheque Status</label>
-                <select name="status" id="edit_status" class="form-control">
+            <div class="sf-form-group">
+                <label style="color:var(--c-blue);">Cheque Status</label>
+                <select name="status" id="edit_status" class="sf-input" style="background:var(--c-blue-light); border-color:var(--c-blue); color:var(--c-blue); font-weight:700;">
                     <option value="Pending">Pending (Holding)</option>
                     <option value="Cleared">Cleared (Realized in Bank)</option>
                     <option value="Bounced">Bounced (Returned)</option>
                 </select>
             </div>
-            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
-                <button type="button" class="btn btn-outline" onclick="closeModal('editModal')">Cancel</button>
-                <button type="submit" class="btn">Update Cheque</button>
+            <div class="sf-modal-acts">
+                <button type="button" class="sf-btn sf-btn-ghost" onclick="closeModal('editModal')">Cancel</button>
+                <button type="submit" class="sf-btn sf-btn-primary">Update Cheque</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Custom Delete Confirmation Modal -->
-<div class="modal" id="deleteModal">
-    <div class="modal-content" style="width: 400px; text-align: center;">
-        <h3 style="color: #c62828; margin-top:0;">Delete Cheque Record</h3>
-        <p>Are you sure you want to permanently delete cheque <strong id="del_cnum_display"></strong>? This cannot be undone.</p>
-        <form action="<?= APP_URL ?>/cheque" method="POST" style="margin-top: 20px;">
+<!-- Delete Modal -->
+<div class="sf-modal" id="deleteModal">
+    <div class="sf-modal-box" style="width: 420px; text-align: center;">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size:42px; color:var(--c-red); margin-bottom:16px;"></i>
+        <h3 style="margin-bottom:8px;">Delete Cheque?</h3>
+        <p style="color:var(--t-secondary); margin-bottom:24px; font-size:14px;">Are you sure you want to permanently delete cheque <strong id="del_cnum"></strong>? This action cannot be undone.</p>
+        <form action="<?= APP_URL ?>/cheque" method="POST">
             <input type="hidden" name="action" value="delete_cheque">
             <input type="hidden" name="delete_id" id="delete_id">
-            <div style="display: flex; justify-content: center; gap: 15px;">
-                <button type="button" class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
-                <button type="submit" class="btn-danger btn">Yes, Delete</button>
+            <div class="sf-modal-acts" style="justify-content: center;">
+                <button type="button" class="sf-btn sf-btn-ghost" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="submit" class="sf-btn sf-btn-danger">Delete Cheque</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Realistic Cheque Viewer Modal -->
-<div class="modal" id="viewModal">
-    <div class="cheque-modal-content">
+<!-- View Cheque Modal -->
+<div class="sf-modal" id="viewModal">
+    <div class="sf-modal-box" style="width: 760px; background:transparent; border:none; box-shadow:none; padding:0;">
         <div class="cheque-paper">
-            <div class="cq-bank" id="vq_bank">Bank Name</div>
-            <div class="cq-date">Date: <span id="vq_date"></span></div>
-            
-            <div class="cq-payee">
-                <strong>Pay:</strong> <span style="font-family: sans-serif; margin-left: 10px; font-weight: bold;"><?= htmlspecialchars($data['company_name']) ?></span> 
-                <span style="float: right;">Or Bearer</span>
-            </div>
-            
-            <div class="cq-amount-words">
-                <strong>Rupees:</strong> <span id="vq_words" style="font-family: cursive; margin-left: 10px; font-size: 18px; color: #111;"></span>
-            </div>
-            
-            <div class="cq-amount-box">
-                Rs: <span id="vq_amount">0.00</span>
-            </div>
-            
-            <div class="cq-signature" id="vq_drawer">
-                Drawer Signature
-            </div>
-            
-            <div class="cq-micr">
-                ⑆<span id="vq_micr1">123456</span>⑆ ⑈<span id="vq_micr2">7890</span>⑈ ⑉<span id="vq_micr3">12345678</span>⑉
-            </div>
+            <div class="cq-bank" id="view_bank">Bank Name</div>
+            <div class="cq-date" id="view_date">DD/MM/YYYY</div>
+            <div class="cq-payee"><strong>Pay:</strong> <span id="view_payee" style="font-family: var(--f-mono);"></span></div>
+            <div class="cq-amount-words"><strong>Rupees:</strong> <span id="view_words" style="font-style:italic;"></span></div>
+            <div class="cq-amount-box">Rs. <span id="view_amount"></span></div>
+            <div class="cq-signature">Authorized Signatory</div>
+            <div class="cq-micr">|| 000 <span id="view_cnum"></span> 0000 00 ||</div>
         </div>
-        <button class="btn btn-outline" style="margin-top: 20px; background: #fff;" onclick="closeModal('viewModal')">Close Viewer</button>
+        <div style="text-align:center; margin-top:16px;">
+            <button class="sf-btn sf-btn-ghost" style="background:rgba(255,255,255,0.2); color:#fff; backdrop-filter:blur(10px);" onclick="closeModal('viewModal')">Close Viewer</button>
+        </div>
     </div>
 </div>
 
 <script>
-    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function openModal(id) { 
+        const m = document.getElementById(id);
+        m.classList.add('open');
+    }
+    function closeModal(id) { 
+        document.getElementById(id).classList.remove('open');
+    }
 
-    function openEditModal(id, cid, vid, bank, cnum, amt, date, status, bankAccountId) {
+    function openEditModal(id, custId, vendId, bank, cnum, amt, date, status, bankAccId) {
         document.getElementById('edit_id').value = id;
-        document.getElementById('edit_customer').value = cid || '';
-        document.getElementById('edit_vendor').value = vid || '';
+        document.getElementById('edit_customer').value = custId || '';
+        document.getElementById('edit_vendor').value = vendId || '';
         document.getElementById('edit_bank').value = bank;
         document.getElementById('edit_cnum').value = cnum;
         document.getElementById('edit_amt').value = amt;
         document.getElementById('edit_date').value = date;
         document.getElementById('edit_status').value = status;
-        document.getElementById('edit_bank_account_id').value = bankAccountId || '';
+        document.getElementById('edit_bank_account_id').value = bankAccId || '';
         openModal('editModal');
     }
 
     function openDeleteModal(id, cnum) {
         document.getElementById('delete_id').value = id;
-        document.getElementById('del_cnum_display').innerText = cnum;
+        document.getElementById('del_cnum').innerText = cnum;
         openModal('deleteModal');
     }
 
-    // Number to Words converter for Cheque UI
-    function numberToWords(amount) {
-        // Simplified fallback for visual effect in UI. 
-        // A full scale converter requires extensive arrays, but this serves the visual purpose beautifully.
-        return "Amount in words for Rs. " + parseFloat(amount).toLocaleString('en-IN') + " Only."; 
-    }
 
     function viewCheque(bank, date, amount, drawer, cnum) {
         document.getElementById('vq_bank').innerText = bank;
@@ -340,5 +556,36 @@
         document.getElementById('vq_micr1').innerText = cnum.padStart(6, '0');
         
         openModal('viewModal');
+    }
+
+    // AJAX Search implementation
+    let searchTimeout = null;
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout); 
+            searchTimeout = setTimeout(triggerSearch, 400); 
+        });
+    }
+
+    function triggerSearch() {
+        const query = encodeURIComponent(searchInput.value);
+        const url = `?search=${query}`;
+        
+        fetch(url).then(response => response.text()).then(html => {
+            console.log("Search response fetched for Cheques URL:", url);
+            const parser = new DOMParser(); 
+            const doc = parser.parseFromString(html, 'text/html');
+            const newContainer = doc.getElementById('tableContainer');
+            if (newContainer) {
+                document.getElementById('tableContainer').innerHTML = newContainer.innerHTML;
+                console.log("Cheque table successfully updated.");
+            } else {
+                console.log("Error: Could not find tableContainer in response HTML.");
+            }
+            window.history.pushState({}, '', url);
+        }).catch(err => {
+            console.error("Fetch error during search:", err);
+        });
     }
 </script>
