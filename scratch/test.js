@@ -32,7 +32,7 @@
         
         if (autoLoadId && !isNaN(autoLoadId)) {
             const tab = new URLSearchParams(window.location.search).get('tab');
-            showSupplierProfile(autoLoadId, tab);
+            openSupplierModalPopup(autoLoadId, tab);
         }
     });
 
@@ -120,7 +120,7 @@
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
     // --- Supplier Profile Popup Modal Handlers ---
-    function showSupplierProfile(id, tab = null) {
+    function openSupplierModalPopup(id, tab = null) {
         const modal = document.getElementById('supplierProfileModal');
         const loader = document.getElementById('modal-loader');
         const content = document.getElementById('modal-profile-content');

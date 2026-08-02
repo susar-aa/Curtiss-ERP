@@ -1,3 +1,4 @@
+console.log('--- SUPPLIERS.JS LOADED! ---');
 
     // --- Pagination and List Globals ---
     let allSuppliers = [];
@@ -186,3 +187,4 @@
         const newUrl = window.location.pathname + '?' + urlParams.toString();
         window.history.replaceState({ path: newUrl }, '', newUrl);
     }
+
