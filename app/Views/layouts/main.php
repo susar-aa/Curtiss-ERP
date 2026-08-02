@@ -1210,14 +1210,14 @@ if (!function_exists('hasPermission')) {
                         <a href="<?= APP_URL ?>/salesorder" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-list-bullets"></i></div>
                             <div class="mega-list-item-content">
-                                <div class="title">Sales Order Center</div>
+                                <div class="title">Sales Orders</div>
                                 <div class="desc">Manage standard and route orders</div>
                             </div>
                         </a>
                         <a href="<?= APP_URL ?>/sales" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-credit-card"></i></div>
                             <div class="mega-list-item-content">
-                                <div class="title">Invoices & AR</div>
+                                <div class="title">Invoices</div>
                                 <div class="desc">Manage receivables</div>
                             </div>
                         </a>
@@ -1826,7 +1826,7 @@ if (!function_exists('hasPermission')) {
                         <?php if (hasPermission('sales')): ?>
                             <a href="<?= APP_URL ?>/sales/create" class="fs-link"><i class="ph ph-pencil-simple"></i> Billing Creator</a>
                             <a href="<?= APP_URL ?>/salesorder" class="fs-link"><i class="ph ph-list-bullets"></i> Sales Orders</a>
-                            <a href="<?= APP_URL ?>/sales" class="fs-link"><i class="ph ph-credit-card"></i> Invoices &amp; AR</a>
+                            <a href="<?= APP_URL ?>/sales" class="fs-link"><i class="ph ph-credit-card"></i> Invoices</a>
                         <?php endif; ?>
                         <?php if (hasPermission('creditnote')): ?><a href="<?= APP_URL ?>/creditnote" class="fs-link"><i class="ph ph-money"></i> Refunds</a><?php endif; ?>
                         <?php if (hasPermission('dunning')): ?><a href="<?= APP_URL ?>/dunning" class="fs-link"><i class="ph ph-clock"></i> Dunning</a><?php endif; ?>
