@@ -16,10 +16,13 @@ class CreditNoteController extends Controller {
     }
 
     public function index() {
+        $search = $_GET['search'] ?? '';
+
         $data = [
             'title' => 'Credit Notes & Refunds',
             'content_view' => 'credit_notes/index',
-            'credit_notes' => $this->creditNoteModel->getAllCreditNotes(),
+            'credit_notes' => $this->creditNoteModel->getAllCreditNotes($search),
+            'search' => $search,
             'error' => '',
             'success' => ''
         ];
