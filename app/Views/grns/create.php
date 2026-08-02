@@ -151,52 +151,55 @@
         border-radius: 99px;
         font-size: 11px;
         font-weight: 700;
-        background: var(--success-light);
-        color: var(--success);
-        border: 1px solid rgba(22,163,74,0.25);
+        background: #fdf4ff;
+        color: #9333ea;
+        border: 1px solid rgba(147,51,234,0.25);
     }
 
     /* ── Action Buttons ── */
     .btn {
         display: inline-flex;
         align-items: center;
-        justify-content: center;
         gap: 6px;
-        padding: 6px 14px;
-        font-family: var(--font);
+        padding: 6px 12px;
+        border-radius: var(--radius-sm);
         font-size: 12px;
         font-weight: 600;
-        border-radius: var(--radius-sm);
+        font-family: var(--font);
+        cursor: pointer;
         border: 1px solid var(--slate-300);
         background: var(--white);
         color: var(--slate-700);
-        cursor: pointer;
         text-decoration: none;
-        white-space: nowrap;
         transition: all 0.15s ease;
         line-height: 1.4;
-        height: 32px;
-        box-sizing: border-box;
     }
-    .btn:hover { background: var(--slate-100); border-color: var(--slate-400); color: var(--slate-900); }
-    .btn-primary { background: var(--primary); color: var(--white); border-color: var(--primary); }
-    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: var(--white); }
-    .btn-success { background: var(--success); color: var(--white); border-color: var(--success); }
-    .btn-success:hover { background: var(--success-hover); color: var(--white); }
-    .btn-sm { padding: 4px 8px; font-size: 11px; height: 26px; }
-    .btn-danger-outline { background: var(--white); color: var(--danger); border-color: #fca5a5; }
-    .btn-danger-outline:hover { background: var(--danger-light); border-color: var(--danger); }
+    .btn:hover {
+        background: var(--slate-50);
+        border-color: var(--slate-400);
+        color: var(--slate-900);
+    }
+    .btn-primary {
+        background: var(--primary);
+        color: var(--white);
+        border-color: var(--primary);
+        box-shadow: 0 1px 2px rgba(37,99,235,0.2);
+    }
+    .btn-primary:hover {
+        background: var(--primary-hover);
+        border-color: var(--primary-hover);
+        color: var(--white);
+    }
     .btn-kbd {
         font-family: var(--f-mono);
         font-size: 10px;
-        background: rgba(0,0,0,0.15);
-        color: inherit;
+        background: rgba(255,255,255,0.22);
         padding: 1px 5px;
         border-radius: 3px;
-        margin-left: 4px;
+        letter-spacing: 0.5px;
     }
 
-    /* ── Body Scroll Container ── */
+    /* ── Main Scrollable Body ── */
     .inv-body {
         flex: 1;
         overflow-y: auto;
@@ -217,7 +220,7 @@
 
     /* Card 1: Supplier Card */
     .supplier-card {
-        width: 360px;
+        width: 380px;
         flex-shrink: 0;
         border: 1px solid var(--slate-200);
         border-radius: var(--radius-md);
@@ -245,7 +248,7 @@
         flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 6px;
     }
     .custom-select-box {
         width: 100%;
@@ -269,14 +272,23 @@
         background: var(--slate-50);
         border: 1px solid var(--slate-200);
         border-radius: var(--radius-sm);
-        padding: 8px 10px;
+        padding: 6px 10px;
         font-size: 11px;
         color: var(--slate-600);
         line-height: 1.4;
         display: flex;
         flex-direction: column;
-        gap: 3px;
-        min-height: 48px;
+        gap: 2px;
+    }
+
+    /* Outstanding Balance Indicator (Invoice style) */
+    .customer-outstanding {
+        font-size: 11px;
+        padding: 6px 10px;
+        border-radius: var(--radius-sm);
+        display: none;
+        line-height: 1.4;
+        font-weight: 500;
     }
 
     /* Card 2: Document Meta Details Card */
@@ -532,26 +544,39 @@
         font-weight: 600;
     }
 
-    /* ── Pricing Badges ── */
-    .price-badge {
-        font-size: 11px;
-        font-weight: 700;
-        padding: 3px 6px;
-        border-radius: var(--radius-xs);
-        display: inline-block;
-        font-family: var(--f-mono);
-        text-align: right;
-    }
-    .price-retail {
-        background: var(--primary-light);
+    /* Price inputs with distinct styling */
+    .form-control-cell.retail-price-input {
         color: var(--primary);
-        border: 1px solid rgba(37,99,235,0.25);
+        font-weight: 700;
+        background: rgba(37,99,235,0.04);
+        border: 1px solid rgba(37,99,235,0.2);
     }
-    .price-wholesale {
-        background: var(--purple-light);
+    .form-control-cell.retail-price-input:hover {
+        background: var(--white);
+        border-color: var(--primary);
+    }
+    .form-control-cell.retail-price-input:focus {
+        background: var(--white);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+    }
+
+    .form-control-cell.wholesale-price-input {
         color: var(--purple);
-        border: 1px solid rgba(124,58,237,0.25);
+        font-weight: 700;
+        background: rgba(124,58,237,0.04);
+        border: 1px solid rgba(124,58,237,0.2);
     }
+    .form-control-cell.wholesale-price-input:hover {
+        background: var(--white);
+        border-color: var(--purple);
+    }
+    .form-control-cell.wholesale-price-input:focus {
+        background: var(--white);
+        border-color: var(--purple);
+        box-shadow: 0 0 0 2px rgba(124,58,237,0.2);
+    }
+
     .btn-delete-row {
         background: transparent;
         border: none;
@@ -738,7 +763,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                     <div class="supplier-card">
                         <div class="card-header-bar">
                             <span><i class="ph-bold ph-storefront"></i> Supplier / Vendor *</span>
-                            <span id="supplierProductCount" style="font-size: 10px; opacity: 0.8;"></span>
+                            <span id="supplierProductCount" style="font-size: 10px; opacity: 0.85;"></span>
                         </div>
                         <div class="card-body-content">
                             <select name="vendor_id" id="vendorSelect" class="custom-select-box" onchange="onVendorChange()" required <?= ($data['linked_po'] || $isEdit) ? 'style="pointer-events:none; background:#f1f5f9;"' : '' ?>>
@@ -748,12 +773,17 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                                             data-phone="<?= htmlspecialchars($ven->phone ?? '') ?>"
                                             data-email="<?= htmlspecialchars($ven->email ?? '') ?>"
                                             data-address="<?= htmlspecialchars($ven->address ?? '') ?>"
+                                            data-outstanding="<?= floatval($ven->outstanding_balance ?? 0) ?>"
                                             <?= $data['prefilled_vendor'] == $ven->id ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($ven->name) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
 
+                            <!-- Outstanding balance indicator (Same as Invoice creation panel) -->
+                            <div id="supplierOutstanding" class="customer-outstanding"></div>
+
+                            <!-- Supplier contact preview -->
                             <div class="supplier-preview-info" id="supplierInfoPreview">
                                 <span style="color: var(--slate-400); font-style: italic;">Select a supplier above to load contact details and preferred product mappings.</span>
                             </div>
@@ -794,9 +824,6 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                                autocomplete="off">
                         <ul id="searchResults" class="search-results"></ul>
                     </div>
-                    <button type="button" class="btn" onclick="addRow()" title="Add manual line item">
-                        <i class="ph-bold ph-plus"></i> Add Blank Line <span class="btn-kbd">Alt+N</span>
-                    </button>
                 </div>
 
                 <!-- ── Line Items Table ── -->
@@ -805,14 +832,14 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                         <thead>
                             <tr>
                                 <th style="width: 32px; text-align:center;">#</th>
-                                <th style="width: 28%;">Product / Variation Received</th>
-                                <th style="width: 8%; text-align:right;">Qty</th>
-                                <th style="width: 11%; text-align:right;">Unit Cost (Rs)</th>
-                                <th style="width: 12%; text-align:right;">Line Total (Rs)</th>
-                                <th style="width: 8%; text-align:right;">Retail %</th>
-                                <th style="width: 8%; text-align:right;">Wholesale %</th>
-                                <th style="width: 11%; text-align:right; color: #93c5fd;">Retail Price</th>
-                                <th style="width: 11%; text-align:right; color: #d8b4fe;">Wholesale B2B</th>
+                                <th style="width: 27%;">Product / Variation Received</th>
+                                <th style="width: 7%; text-align:right;">Qty</th>
+                                <th style="width: 10%; text-align:right;">Unit Cost (Rs)</th>
+                                <th style="width: 11%; text-align:right;">Line Total (Rs)</th>
+                                <th style="width: 7%; text-align:right;">Retail %</th>
+                                <th style="width: 7%; text-align:right;">Wholesale %</th>
+                                <th style="width: 12%; text-align:right; color: #93c5fd;">Retail Price (Rs)</th>
+                                <th style="width: 12%; text-align:right; color: #d8b4fe;">Wholesale B2B (Rs)</th>
                                 <th style="width: 32px; text-align:center;"></th>
                             </tr>
                         </thead>
@@ -846,7 +873,13 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                                                 }
                                             }
                                         }
-                                        $unitCost = isset($item->unit_cost) ? $item->unit_cost : ($item->unit_price ?? 0);
+                                        $unitCost = isset($item->unit_cost) ? floatval($item->unit_cost) : floatval($item->unit_price ?? 0);
+                                        $sellingPrice = isset($item->selling_price) && floatval($item->selling_price) > 0 
+                                            ? floatval($item->selling_price) 
+                                            : ($unitCost > 0 ? ($unitCost + ($unitCost * $retailMargin / 100)) : 0);
+                                        $wholesalePrice = isset($item->wholesale_price) && floatval($item->wholesale_price) > 0 
+                                            ? floatval($item->wholesale_price) 
+                                            : ($unitCost > 0 ? ($unitCost + ($unitCost * $wholesaleMargin / 100)) : 0);
                                     ?>
                                     <tr>
                                         <td class="line-row-num"><?= $lineNum++ ?></td>
@@ -866,18 +899,16 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                                             <span class="line-total-display">0.00</span>
                                         </td>
                                         <td>
-                                            <input type="number" name="retail_margin[]" step="0.1" value="<?= number_format($retailMargin, 1, '.', '') ?>" class="form-control-cell num retail-margin-input" oninput="calculateRowPrices(this.closest('tr'))" required>
+                                            <input type="number" name="retail_margin[]" step="0.1" value="<?= number_format($retailMargin, 1, '.', '') ?>" class="form-control-cell num retail-margin-input" oninput="calculatePriceFromMargin(this.closest('tr'), 'retail')" required>
                                         </td>
                                         <td>
-                                            <input type="number" name="wholesale_margin[]" step="0.1" value="<?= number_format($wholesaleMargin, 1, '.', '') ?>" class="form-control-cell num wholesale-margin-input" oninput="calculateRowPrices(this.closest('tr'))" required>
+                                            <input type="number" name="wholesale_margin[]" step="0.1" value="<?= number_format($wholesaleMargin, 1, '.', '') ?>" class="form-control-cell num wholesale-margin-input" oninput="calculatePriceFromMargin(this.closest('tr'), 'wholesale')" required>
                                         </td>
-                                        <td style="text-align: right;">
-                                            <span class="price-badge price-retail display-retail">0.00</span>
-                                            <input type="hidden" name="selling_price[]" value="0.00">
+                                        <td>
+                                            <input type="number" name="selling_price[]" step="0.01" min="0" value="<?= number_format($sellingPrice, 2, '.', '') ?>" class="form-control-cell num retail-price-input" oninput="calculateMarginFromPrice(this.closest('tr'), 'retail')" required>
                                         </td>
-                                        <td style="text-align: right;">
-                                            <span class="price-badge price-wholesale display-wholesale">0.00</span>
-                                            <input type="hidden" name="wholesale_price[]" value="0.00">
+                                        <td>
+                                            <input type="number" name="wholesale_price[]" step="0.01" min="0" value="<?= number_format($wholesalePrice, 2, '.', '') ?>" class="form-control-cell num wholesale-price-input" oninput="calculateMarginFromPrice(this.closest('tr'), 'wholesale')" required>
                                         </td>
                                         <td style="text-align: center;">
                                             <button type="button" class="btn-delete-row" onclick="removeRow(this)" title="Remove item">
@@ -892,7 +923,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                     <div id="emptyTableNotice" class="empty-grid-notice" style="<?= !empty($data['prefilled_items']) ? 'display:none;' : '' ?>">
                         <i class="ph-bold ph-package" style="font-size: 38px; opacity: 0.4; margin-bottom: 6px;"></i>
                         <div style="font-size: 13px; font-weight: 600; color: var(--slate-600);">No items added to this GRN yet.</div>
-                        <div style="font-size: 11px; color: var(--slate-400); margin-top: 2px;">Search products above or click "Add Blank Line" to begin.</div>
+                        <div style="font-size: 11px; color: var(--slate-400); margin-top: 2px;">Search catalog products above (press '/' or 'F2' to focus) and press Enter to add.</div>
                     </div>
                 </div>
 
@@ -954,13 +985,9 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                 <span style="color:var(--slate-600);">Close Dropdown Suggestions:</span>
                 <span class="btn-kbd" style="font-size:11px;">Escape</span>
             </div>
-            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed var(--slate-100);">
+            <div style="display:flex; justify-content:space-between; padding:4px 0;">
                 <span style="color:var(--slate-600);">Save GRN Form:</span>
                 <span class="btn-kbd" style="font-size:11px;">Ctrl + S / Cmd + S</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; padding:4px 0;">
-                <span style="color:var(--slate-600);">Add Blank Line:</span>
-                <span class="btn-kbd" style="font-size:11px;">Alt + N</span>
             </div>
         </div>
         <button type="button" class="btn btn-primary" onclick="closeShortcutsModal()" style="width:100%; margin-top:16px;">
@@ -1037,10 +1064,15 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
         const vendorSelect = document.getElementById('vendorSelect');
         const preview = document.getElementById('supplierInfoPreview');
         const countSpan = document.getElementById('supplierProductCount');
+        const outDiv = document.getElementById('supplierOutstanding');
         
         if (!vendorSelect.value) {
             preview.innerHTML = '<span style="color: var(--slate-400); font-style: italic;">Select a supplier above to load contact details and preferred product mappings.</span>';
             if (countSpan) countSpan.textContent = '';
+            if (outDiv) {
+                outDiv.style.display = 'none';
+                outDiv.innerHTML = '';
+            }
             return;
         }
 
@@ -1048,6 +1080,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
         const phone = opt.getAttribute('data-phone') || 'No phone recorded';
         const email = opt.getAttribute('data-email') || 'No email recorded';
         const address = opt.getAttribute('data-address') || 'No address recorded';
+        const outBal = parseFloat(opt.getAttribute('data-outstanding')) || 0;
         const vendorId = parseInt(vendorSelect.value);
 
         // Count linked products
@@ -1061,6 +1094,41 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
 
         if (countSpan) {
             countSpan.textContent = `${linkedCount} linked products`;
+        }
+
+        // Render Outstanding Balance indicator (matching Invoice creation panel)
+        if (outDiv) {
+            outDiv.style.display = 'block';
+            let html = '';
+            if (outBal > 0.01) {
+                html = `<div style="display:flex; align-items:center; justify-content:space-between;">
+                            <span style="display:flex; align-items:center; gap:5px; font-weight:700; color:#dc2626;">
+                                <i class="ph-bold ph-warning"></i> Outstanding Payable:
+                            </span>
+                            <strong style="font-family:var(--f-mono); font-size:12px; color:#dc2626;">Rs. ${outBal.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong>
+                        </div>`;
+                outDiv.style.background = '#fef2f2';
+                outDiv.style.color = '#dc2626';
+                outDiv.style.border = '1px solid #fecaca';
+            } else if (outBal < -0.01) {
+                html = `<div style="display:flex; align-items:center; justify-content:space-between;">
+                            <span style="display:flex; align-items:center; gap:5px; font-weight:700; color:#16a34a;">
+                                <i class="ph-bold ph-check-circle"></i> Advance / Overpaid Credit:
+                            </span>
+                            <strong style="font-family:var(--f-mono); font-size:12px; color:#16a34a;">Rs. ${Math.abs(outBal).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong>
+                        </div>`;
+                outDiv.style.background = '#f0fdf4';
+                outDiv.style.color = '#166534';
+                outDiv.style.border = '1px solid #bbf7d0';
+            } else {
+                html = `<div style="display:flex; align-items:center; gap:5px; color:#64748b; font-weight:600;">
+                            <i class="ph-bold ph-check"></i> No Outstanding Balance
+                        </div>`;
+                outDiv.style.background = '#f8fafc';
+                outDiv.style.color = '#64748b';
+                outDiv.style.border = '1px solid #e2e8f0';
+            }
+            outDiv.innerHTML = html;
         }
 
         preview.innerHTML = `
@@ -1211,6 +1279,16 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
     function selectSearchProduct(product) {
         if (!product) return;
 
+        let retailPrice = product.price || 0;
+        if (product.supplier_cost > 0 && product.retail_margin) {
+            retailPrice = product.supplier_cost + (product.supplier_cost * product.retail_margin / 100);
+        }
+
+        let wholesalePrice = product.wholesale_price || 0;
+        if (product.supplier_cost > 0 && product.wholesale_margin) {
+            wholesalePrice = product.supplier_cost + (product.supplier_cost * product.wholesale_margin / 100);
+        }
+
         // Add row with selected product data
         const newRow = addRow({
             itemId: product.item_id,
@@ -1219,7 +1297,9 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
             qty: 1,
             cost: product.supplier_cost,
             retailMargin: product.retail_margin,
-            wholesaleMargin: product.wholesale_margin
+            wholesaleMargin: product.wholesale_margin,
+            sellingPrice: retailPrice,
+            wholesalePrice: wholesalePrice
         });
 
         // Clear search and reset
@@ -1271,12 +1351,6 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                 searchResultsList.style.display = 'none';
                 return;
             }
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            // If search is empty and user hits enter, add a blank line
-            if (!this.value || this.value.trim().length === 0) {
-                addRow();
-            }
         }
     });
 
@@ -1287,13 +1361,15 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
         }
     });
 
-    // ═══ TABLE CALCULATIONS & ROW MANAGEMENT ═══
+    // ═══ TABLE CALCULATIONS & TWO-WAY REACTIVE PRICING ═══
     function calculateRowPrices(row) {
         if (!row) return;
         const qtyInput = row.querySelector('.qty-input');
         const costInput = row.querySelector('.cost-input');
         const retailMarginInput = row.querySelector('.retail-margin-input');
         const wholesaleMarginInput = row.querySelector('.wholesale-margin-input');
+        const retailPriceInput = row.querySelector('.retail-price-input');
+        const wholesalePriceInput = row.querySelector('.wholesale-price-input');
 
         const qty = parseFloat(qtyInput ? qtyInput.value : 0) || 0;
         const cost = parseFloat(costInput ? costInput.value : 0) || 0;
@@ -1306,18 +1382,56 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
             lineTotalDisplay.textContent = lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
-        const calculatedRetail = cost + (cost * retailMargin / 100);
-        const calculatedWholesale = cost + (cost * wholesaleMargin / 100);
+        if (cost > 0) {
+            const calculatedRetail = cost + (cost * retailMargin / 100);
+            const calculatedWholesale = cost + (cost * wholesaleMargin / 100);
+            if (retailPriceInput) retailPriceInput.value = calculatedRetail.toFixed(2);
+            if (wholesalePriceInput) wholesalePriceInput.value = calculatedWholesale.toFixed(2);
+        }
 
-        const retailDisplay = row.querySelector('.display-retail');
-        const wholesaleDisplay = row.querySelector('.display-wholesale');
-        if (retailDisplay) retailDisplay.textContent = calculatedRetail.toFixed(2);
-        if (wholesaleDisplay) wholesaleDisplay.textContent = calculatedWholesale.toFixed(2);
+        recalcGrandTotals();
+    }
 
-        const sellingPriceInput = row.querySelector('input[name="selling_price[]"]');
-        const wholesalePriceInput = row.querySelector('input[name="wholesale_price[]"]');
-        if (sellingPriceInput) sellingPriceInput.value = calculatedRetail.toFixed(2);
-        if (wholesalePriceInput) wholesalePriceInput.value = calculatedWholesale.toFixed(2);
+    function calculatePriceFromMargin(row, type) {
+        if (!row) return;
+        const costInput = row.querySelector('.cost-input');
+        const cost = parseFloat(costInput ? costInput.value : 0) || 0;
+
+        if (type === 'retail') {
+            const marginInput = row.querySelector('.retail-margin-input');
+            const priceInput = row.querySelector('.retail-price-input');
+            const margin = parseFloat(marginInput ? marginInput.value : 0) || 0;
+            const calculated = cost > 0 ? (cost + (cost * margin / 100)) : 0;
+            if (priceInput) priceInput.value = calculated.toFixed(2);
+        } else if (type === 'wholesale') {
+            const marginInput = row.querySelector('.wholesale-margin-input');
+            const priceInput = row.querySelector('.wholesale-price-input');
+            const margin = parseFloat(marginInput ? marginInput.value : 0) || 0;
+            const calculated = cost > 0 ? (cost + (cost * margin / 100)) : 0;
+            if (priceInput) priceInput.value = calculated.toFixed(2);
+        }
+
+        recalcGrandTotals();
+    }
+
+    function calculateMarginFromPrice(row, type) {
+        if (!row) return;
+        const costInput = row.querySelector('.cost-input');
+        const cost = parseFloat(costInput ? costInput.value : 0) || 0;
+
+        if (type === 'retail') {
+            const marginInput = row.querySelector('.retail-margin-input');
+            const priceInput = row.querySelector('.retail-price-input');
+            const price = parseFloat(priceInput ? priceInput.value : 0) || 0;
+            const margin = cost > 0 ? (((price - cost) / cost) * 100) : 0;
+            if (marginInput) marginInput.value = margin.toFixed(1);
+        } else if (type === 'wholesale') {
+            const marginInput = row.querySelector('.wholesale-margin-input');
+            const priceInput = row.querySelector('.wholesale-price-input');
+            const price = parseFloat(priceInput ? priceInput.value : 0) || 0;
+            const margin = cost > 0 ? (((price - cost) / cost) * 100) : 0;
+            if (marginInput) marginInput.value = margin.toFixed(1);
+        }
 
         recalcGrandTotals();
     }
@@ -1362,9 +1476,19 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
         const varOptId = data.varOptId || '0';
         const desc = data.desc || '';
         const qty = data.qty || 1;
-        const cost = data.cost !== undefined ? parseFloat(data.cost).toFixed(2) : '0.00';
-        const retailMargin = data.retailMargin !== undefined ? parseFloat(data.retailMargin).toFixed(1) : '20.0';
-        const wholesaleMargin = data.wholesaleMargin !== undefined ? parseFloat(data.wholesaleMargin).toFixed(1) : '10.0';
+        const cost = data.cost !== undefined ? parseFloat(data.cost) : 0;
+        const retailMargin = data.retailMargin !== undefined ? parseFloat(data.retailMargin) : 20.0;
+        const wholesaleMargin = data.wholesaleMargin !== undefined ? parseFloat(data.wholesaleMargin) : 10.0;
+
+        let retailPrice = data.sellingPrice !== undefined ? parseFloat(data.sellingPrice) : 0;
+        if (!retailPrice && cost > 0) {
+            retailPrice = cost + (cost * retailMargin / 100);
+        }
+
+        let wholesalePrice = data.wholesalePrice !== undefined ? parseFloat(data.wholesalePrice) : 0;
+        if (!wholesalePrice && cost > 0) {
+            wholesalePrice = cost + (cost * wholesaleMargin / 100);
+        }
 
         tr.innerHTML = `
             <td class="line-row-num"></td>
@@ -1378,24 +1502,22 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                 <input type="number" name="qty[]" step="1" min="1" value="${qty}" class="form-control-cell num qty-input" oninput="calculateRowPrices(this.closest('tr'))" required>
             </td>
             <td>
-                <input type="number" name="price[]" step="0.01" min="0" value="${cost}" class="form-control-cell num cost-input" oninput="calculateRowPrices(this.closest('tr'))" required>
+                <input type="number" name="price[]" step="0.01" min="0" value="${cost.toFixed(2)}" class="form-control-cell num cost-input" oninput="calculateRowPrices(this.closest('tr'))" required>
             </td>
             <td style="text-align: right; font-family: var(--f-mono); font-weight:700; color: var(--slate-900);">
                 <span class="line-total-display">0.00</span>
             </td>
             <td>
-                <input type="number" name="retail_margin[]" step="0.1" value="${retailMargin}" class="form-control-cell num retail-margin-input" oninput="calculateRowPrices(this.closest('tr'))" required>
+                <input type="number" name="retail_margin[]" step="0.1" value="${retailMargin.toFixed(1)}" class="form-control-cell num retail-margin-input" oninput="calculatePriceFromMargin(this.closest('tr'), 'retail')" required>
             </td>
             <td>
-                <input type="number" name="wholesale_margin[]" step="0.1" value="${wholesaleMargin}" class="form-control-cell num wholesale-margin-input" oninput="calculateRowPrices(this.closest('tr'))" required>
+                <input type="number" name="wholesale_margin[]" step="0.1" value="${wholesaleMargin.toFixed(1)}" class="form-control-cell num wholesale-margin-input" oninput="calculatePriceFromMargin(this.closest('tr'), 'wholesale')" required>
             </td>
-            <td style="text-align: right;">
-                <span class="price-badge price-retail display-retail">0.00</span>
-                <input type="hidden" name="selling_price[]" value="0.00">
+            <td>
+                <input type="number" name="selling_price[]" step="0.01" min="0" value="${retailPrice.toFixed(2)}" class="form-control-cell num retail-price-input" oninput="calculateMarginFromPrice(this.closest('tr'), 'retail')" required>
             </td>
-            <td style="text-align: right;">
-                <span class="price-badge price-wholesale display-wholesale">0.00</span>
-                <input type="hidden" name="wholesale_price[]" value="0.00">
+            <td>
+                <input type="number" name="wholesale_price[]" step="0.01" min="0" value="${wholesalePrice.toFixed(2)}" class="form-control-cell num wholesale-price-input" oninput="calculateMarginFromPrice(this.closest('tr'), 'wholesale')" required>
             </td>
             <td style="text-align: center;">
                 <button type="button" class="btn-delete-row" onclick="removeRow(this)" title="Remove item">
@@ -1480,6 +1602,13 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                     row.querySelector('.cost-input').value = cost.toFixed(2);
                     row.querySelector('.retail-margin-input').value = m.retail_margin.toFixed(1);
                     row.querySelector('.wholesale-margin-input').value = m.wholesale_margin.toFixed(1);
+                    
+                    const retailPrice = cost > 0 ? (cost + (cost * m.retail_margin / 100)) : (m.price || 0);
+                    const wholesalePrice = cost > 0 ? (cost + (cost * m.wholesale_margin / 100)) : (m.wholesale_price || 0);
+                    
+                    row.querySelector('.retail-price-input').value = retailPrice.toFixed(2);
+                    row.querySelector('.wholesale-price-input').value = wholesalePrice.toFixed(2);
+                    
                     calculateRowPrices(row);
 
                     const qtyInput = row.querySelector('.qty-input');
@@ -1513,7 +1642,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
         });
     }
 
-    // Row keyboard traversal (Enter advances to next field or next row)
+    // Row keyboard traversal (Enter advances to next field or next row/search bar)
     function bindRowEnterTraversal(row) {
         const inputs = row.querySelectorAll('input:not([type="hidden"])');
         inputs.forEach((input, index) => {
@@ -1524,7 +1653,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                         inputs[index + 1].focus();
                         if (inputs[index + 1].select) inputs[index + 1].select();
                     } else {
-                        // At the last field in the row: move focus back to search bar or add new line
+                        // At the last field in the row: move focus back to search bar
                         itemSearchInput.focus();
                     }
                 }
@@ -1552,7 +1681,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
     }
 
     document.addEventListener("DOMContentLoaded", () => {
-        // Init vendor preview if vendor is selected
+        // Init vendor preview & outstanding balance if vendor is selected
         onVendorChange();
 
         // Calculate all prefilled rows and bind listeners
@@ -1585,13 +1714,6 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                         form.reportValidity();
                     }
                 }
-                return;
-            }
-
-            // Add Blank Line: Alt+N
-            if (e.altKey && (e.key === 'n' || e.key === 'N')) {
-                e.preventDefault();
-                addRow();
                 return;
             }
 
