@@ -1,4 +1,4 @@
-const CACHE_NAME = 'curtiss-erp-v1';
+const CACHE_NAME = 'curtiss-erp-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',
