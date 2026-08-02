@@ -183,7 +183,9 @@
     transition: all var(--dur-fast) var(--ease-spring);
 }
 .act-btn:hover { transform: scale(1.12); }
-.act-btn.view:hover   { background: var(--c-red-light); color: var(--c-red); }
+.act-btn.view:hover   { background: var(--c-purple-light); color: var(--c-purple); }
+.act-btn.edit:hover   { background: var(--c-blue-light); color: var(--c-blue); }
+.act-btn.delete:hover { background: var(--c-red-light); color: var(--c-red); }
 
 /* ---- Command Bar (Dynamic Island style) ---- */
 .cmd-bar {
@@ -200,6 +202,26 @@
     box-shadow: var(--shadow-xl), 0 0 0 0.5px rgba(0,0,0,0.3);
     z-index: 1000;
 }
+.cmd-search {
+    display: flex; align-items: center; gap: 9px;
+    background: rgba(255,255,255,0.1);
+    border-radius: var(--r-pill);
+    padding: 8px 14px;
+    width: 250px;
+    transition: width var(--dur-slow) var(--ease-ios),
+                background var(--dur-mid);
+}
+.cmd-search:focus-within {
+    width: 380px;
+    background: rgba(255,255,255,0.18);
+}
+.cmd-search i { color: rgba(255,255,255,0.55); font-size: 14px; flex-shrink: 0; }
+.cmd-search input {
+    background: transparent; border: none; outline: none;
+    color: #fff; font-size: 14px; font-weight: 500;
+    font-family: var(--f-system); width: 100%;
+}
+.cmd-search input::placeholder { color: rgba(255,255,255,0.45); }
 .cmd-divider { width: 0.5px; height: 22px; background: rgba(255,255,255,0.15); margin: 0 3px; }
 .cmd-cta {
     display: flex; align-items: center; gap: 7px;
@@ -296,6 +318,12 @@
                             <a href="<?= APP_URL ?>/creditnote/show/<?= $cn->id ?>" class="act-btn view" title="View/Print Note">
                                 <i class="fa-solid fa-arrow-right"></i>
                             </a>
+                            <a href="<?= APP_URL ?>/creditnote/edit/<?= $cn->id ?>" class="act-btn edit" title="Edit Note">
+                                <i class="fa-solid fa-pen"></i>
+                            </a>
+                            <a href="<?= APP_URL ?>/creditnote/delete/<?= $cn->id ?>" class="act-btn delete" title="Delete Note" onclick="return confirm('Are you sure you want to delete this Customer Return? This action cannot be undone.');">
+                                <i class="fa-solid fa-trash"></i>
+                            </a>
                         </div>
                     </td>
                 </tr>
@@ -307,7 +335,40 @@
 
 <!-- Command Bar (Dynamic Island style) -->
 <div class="cmd-bar">
+    <div class="cmd-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="Search Customer Returns..." value="<?= htmlspecialchars($data['search'] ?? '') ?>">
+    </div>
+    <div class="cmd-divider"></div>
     <a href="<?= APP_URL ?>/creditnote/create" class="cmd-cta">
         <i class="fa-solid fa-plus"></i> Create Customer Return
     </a>
 </div>
+
+<script>
+    let searchTimeout = null;
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', triggerSearchDelay);
+    }
+    
+    function triggerSearchDelay() { 
+        clearTimeout(searchTimeout); 
+        searchTimeout = setTimeout(triggerSearch, 400); 
+    }
+
+    function triggerSearch() {
+        const query = encodeURIComponent(searchInput.value);
+        const url = `?search=${query}&page=1`;
+        
+        fetch(url).then(response => response.text()).then(html => {
+            const parser = new DOMParser(); 
+            const doc = parser.parseFromString(html, 'text/html');
+            const newTbody = doc.getElementById('tableBody');
+            if (newTbody) {
+                document.getElementById('tableBody').innerHTML = newTbody.innerHTML;
+            }
+            window.history.pushState({}, '', url);
+        });
+    }
+</script>
