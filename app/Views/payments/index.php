@@ -1229,24 +1229,45 @@
         document.getElementById('supp-unallocated-lbl').innerText = 'Rs ' + suppUnallocated.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
     }
 
+    // Sync Bank Name input from selected Bank Account option
+    function syncBankNameFromAccount(assetSelect) {
+        if (!assetSelect || assetSelect.selectedIndex < 0) return;
+        const optText = assetSelect.options[assetSelect.selectedIndex].text;
+        if (!optText || optText.startsWith('--')) return;
+        
+        const bankInput = document.getElementById('supp-chk-bank-input');
+        if (bankInput) {
+            // Option text format: "1608 - COMMERCIAL BANK - 112 2 015 325" or "1606 - PEOPLES BANK..."
+            const parts = optText.split(' - ');
+            if (parts.length >= 2) {
+                const bName = parts[1].trim();
+                if (!bankInput.value || bankInput.dataset.autofilled === 'true') {
+                    bankInput.value = bName;
+                    bankInput.dataset.autofilled = 'true';
+                }
+            }
+        }
+    }
+
     // Toggle cheque details
     function toggleChequeFields(prefix) {
-        const method = document.getElementById(prefix + '-method-select').value;
+        const methodSelect = document.getElementById(prefix + '-method-select');
+        const method = methodSelect ? methodSelect.value : 'Cash';
         const cqBox = document.getElementById(prefix + '-cheque-details');
         const bankInput = document.getElementById(prefix + '-chk-bank-input');
         const numInput = document.getElementById(prefix + '-chk-num-input');
         const dateInput = document.getElementById(prefix + '-chk-date-input');
 
         if (method === 'Cheque') {
-            cqBox.classList.remove('hidden');
-            bankInput.required = true;
-            numInput.required = true;
-            dateInput.required = true;
+            if (cqBox) cqBox.classList.remove('hidden');
+            if (bankInput) bankInput.required = true;
+            if (numInput) numInput.required = true;
+            if (dateInput) dateInput.required = true;
         } else {
-            cqBox.classList.add('hidden');
-            bankInput.required = false;
-            numInput.required = false;
-            dateInput.required = false;
+            if (cqBox) cqBox.classList.add('hidden');
+            if (bankInput) bankInput.required = false;
+            if (numInput) numInput.required = false;
+            if (dateInput) dateInput.required = false;
         }
 
         // Automatic Account Selection based on Method
@@ -1256,7 +1277,7 @@
             let bankParentId = '';
             allAssetAccounts.forEach(acc => {
                 if (acc.code === '1600') {
-                    bankParentId = acc.value;
+                    bankParentId = String(acc.value);
                 }
             });
 
@@ -1264,17 +1285,25 @@
             let filtered = [];
             if (method === 'Cash') {
                 filtered = allAssetAccounts.filter(acc => acc.code === '1000');
-            } else if (method === 'Cheque') {
-                filtered = allAssetAccounts.filter(acc => acc.code === '1010');
-            } else if (method === 'Bank Transfer') {
-                filtered = allAssetAccounts.filter(acc => acc.parent === bankParentId);
+            } else if (method === 'Cheque' || method === 'Bank Transfer') {
+                // Both Cheque and Bank Transfer display the registered Bank Accounts!
+                filtered = allAssetAccounts.filter(acc => {
+                    const isChildOfBank = bankParentId && String(acc.parent) === bankParentId;
+                    const isBankCode = acc.code && acc.code.startsWith('16') && acc.code !== '1600' && acc.code !== '1605';
+                    return isChildOfBank || isBankCode;
+                });
+                if (filtered.length === 0) {
+                    filtered = allAssetAccounts.filter(acc => bankParentId && String(acc.parent) === bankParentId);
+                }
             } else {
                 filtered = allAssetAccounts;
             }
 
+            const currentVal = assetSelect.value;
+
             // Rebuild options
             assetSelect.innerHTML = '';
-            if (method === 'Bank Transfer') {
+            if (method === 'Bank Transfer' || method === 'Cheque') {
                 const emptyOpt = document.createElement('option');
                 emptyOpt.value = '';
                 emptyOpt.text = '-- Select Bank Account --';
@@ -1289,11 +1318,21 @@
                 assetSelect.appendChild(opt);
             });
 
-            // Auto-select first available option or leave empty for bank transfer
-            if (method === 'Bank Transfer') {
-                assetSelect.value = '';
-            } else if (filtered.length > 0) {
-                assetSelect.selectedIndex = 0;
+            // Auto-select first available option or leave empty prompt for bank selection
+            if (method === 'Cash') {
+                if (filtered.length > 0) assetSelect.value = filtered[0].value;
+            } else if (method === 'Cheque' || method === 'Bank Transfer') {
+                if (currentVal && filtered.some(f => String(f.value) === String(currentVal))) {
+                    assetSelect.value = currentVal;
+                } else if (filtered.length === 1) {
+                    assetSelect.value = filtered[0].value;
+                } else {
+                    assetSelect.value = '';
+                }
+
+                if (method === 'Cheque' && assetSelect.value) {
+                    syncBankNameFromAccount(assetSelect);
+                }
             }
         }
     }
@@ -1312,7 +1351,22 @@
                     parent: opt.getAttribute('data-parent')
                 });
             }
+
+            assetSelect.addEventListener('change', function() {
+                const method = document.getElementById('supp-method-select').value;
+                if (method === 'Cheque') {
+                    syncBankNameFromAccount(this);
+                }
+            });
         }
+
+        const bankInput = document.getElementById('supp-chk-bank-input');
+        if (bankInput) {
+            bankInput.addEventListener('input', function() {
+                this.dataset.autofilled = 'false';
+            });
+        }
+
         toggleChequeFields('supp');
 
         // Form Submit Validation Checks
@@ -1322,15 +1376,28 @@
                 const method = document.getElementById('supp-method-select').value;
                 const assetSelect = document.getElementById('supp-asset-account');
                 
-                if (method === 'Bank Transfer' && (!assetSelect || assetSelect.value === '')) {
+                if ((method === 'Bank Transfer' || method === 'Cheque') && (!assetSelect || assetSelect.value === '')) {
                     e.preventDefault();
-                    alert('Please select a bank account for the bank transfer.');
+                    alert('Please select a bank account from Credit Ledger Account (Cash/Bank).');
+                    assetSelect.focus();
                     return false;
                 }
 
                 if (method === 'Cheque') {
+                    const chkBank = document.getElementById('supp-chk-bank-input').value;
                     const chkNum = document.getElementById('supp-chk-num-input').value;
+                    const chkDate = document.getElementById('supp-chk-date-input').value;
                     
+                    if (!chkBank.trim()) {
+                        e.preventDefault();
+                        alert('Please provide a bank name for the cheque.');
+                        return false;
+                    }
+                    if (!chkDate) {
+                        e.preventDefault();
+                        alert('Please provide a banking date for the cheque.');
+                        return false;
+                    }
                     if (!/^\d{6}$/.test(chkNum)) {
                         e.preventDefault();
                         alert('Cheque number must be exactly 6 numeric digits.');

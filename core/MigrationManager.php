@@ -1096,7 +1096,16 @@ class MigrationManager {
             'credit_notes_is_market_return' => "ALTER TABLE credit_notes ADD COLUMN is_market_return TINYINT(1) DEFAULT 0",
             'items_damaged_qty' => "ALTER TABLE items ADD COLUMN damaged_qty DECIMAL(15,2) DEFAULT 0.00",
             'item_variation_options_damaged_qty' => "ALTER TABLE item_variation_options ADD COLUMN damaged_qty DECIMAL(15,2) DEFAULT 0.00",
-            'stock_ledger_stock_status' => "ALTER TABLE stock_ledger ADD COLUMN stock_status VARCHAR(50) DEFAULT 'Good'"
+            'stock_ledger_stock_status' => "ALTER TABLE stock_ledger ADD COLUMN stock_status VARCHAR(50) DEFAULT 'Good'",
+            'supplier_payments_bank_account_id' => "ALTER TABLE supplier_payments ADD COLUMN bank_account_id INT NULL DEFAULT NULL AFTER journal_entry_id, ADD INDEX (bank_account_id)",
+            'cheques_supplier_payment_id' => "ALTER TABLE cheques ADD COLUMN supplier_payment_id INT NULL DEFAULT NULL AFTER bank_account_id, ADD INDEX (supplier_payment_id)",
+            'coa_outstanding_cheques_account' => function(PDO $dbh) {
+                $stmt = $dbh->query("SELECT id FROM chart_of_accounts WHERE account_code = '2050' LIMIT 1");
+                if (!$stmt->fetch()) {
+                    $dbh->exec("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('2050', 'Outstanding Cheques (Issued)', 'Liability', 'Current Liability', 0.00, 1)");
+                }
+                return true;
+            }
         ];
 
     }

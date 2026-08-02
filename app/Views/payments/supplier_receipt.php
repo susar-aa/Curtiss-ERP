@@ -159,6 +159,16 @@
         <div class="info-block" style="text-align: right;">
             <h3>Payment Information</h3>
             <p>Payment Method: <strong><?= $data['payment']->payment_method ?></strong></p>
+            <?php if ($data['payment']->payment_method === 'Cheque'): ?>
+                <p>Cheque Number: <strong><?= htmlspecialchars($data['payment']->cheque_number ?: '-') ?></strong></p>
+                <p>Cheque Bank: <strong><?= htmlspecialchars($data['payment']->cheque_bank ?: '-') ?></strong></p>
+                <p>Banking Date: <strong><?= htmlspecialchars($data['payment']->cheque_date ?: '-') ?></strong></p>
+                <?php if (!empty($data['payment']->bank_account_name)): ?>
+                    <p>Drawn Bank: <strong><?= htmlspecialchars($data['payment']->bank_account_name) ?> (<?= htmlspecialchars($data['payment']->bank_account_code) ?>)</strong></p>
+                <?php endif; ?>
+            <?php elseif (!empty($data['payment']->bank_account_name)): ?>
+                <p>Bank Account: <strong><?= htmlspecialchars($data['payment']->bank_account_name) ?> (<?= htmlspecialchars($data['payment']->bank_account_code) ?>)</strong></p>
+            <?php endif; ?>
             <?php if ($data['payment']->reference): ?>
                 <p>Reference: <strong><?= htmlspecialchars($data['payment']->reference) ?></strong></p>
             <?php endif; ?>

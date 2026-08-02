@@ -163,6 +163,7 @@ class PaymentController extends Controller {
             'reference' => $reference,
             'notes' => trim($_POST['notes'] ?? ''),
             'asset_account_id' => intval($_POST['asset_account_id'] ?? 0),
+            'bank_account_id' => intval($_POST['asset_account_id'] ?? 0),
             'ap_account_id' => intval($_POST['ap_account_id'] ?? 0),
             'allocation_type' => $_POST['allocation_type'] ?? 'auto',
             'allocations' => $_POST['allocations'] ?? [],

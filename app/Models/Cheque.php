@@ -7,10 +7,11 @@ class Cheque {
     }
 
     public function getAllCheques() {
-        $this->db->query("SELECT ch.*, c.name as customer_name, v.name as vendor_name, ba.account_name as drawn_bank_name 
+        $this->db->query("SELECT ch.*, c.name as customer_name, COALESCE(v.name, sp.name) as vendor_name, ba.account_name as drawn_bank_name, ba.account_code as drawn_bank_code 
                           FROM cheques ch 
                           LEFT JOIN customers c ON ch.customer_id = c.id 
                           LEFT JOIN vendors v ON ch.vendor_id = v.id 
+                          LEFT JOIN service_providers sp ON ch.service_provider_id = sp.id
                           LEFT JOIN chart_of_accounts ba ON ch.bank_account_id = ba.id
                           ORDER BY ch.status ASC, ch.banking_date ASC");
         return $this->db->resultSet();
@@ -20,16 +21,18 @@ class Cheque {
         try {
             $this->db->beginTransaction();
             
-            $this->db->query("INSERT INTO cheques (customer_id, vendor_id, bank_name, cheque_number, amount, banking_date, created_by, bank_account_id, status) 
-                              VALUES (:cid, :vid, :bank, :cnum, :amt, :bdate, :uid, :bank_account_id, 'Pending')");
+            $this->db->query("INSERT INTO cheques (customer_id, vendor_id, service_provider_id, bank_name, cheque_number, amount, banking_date, created_by, bank_account_id, supplier_payment_id, status) 
+                              VALUES (:cid, :vid, :spid, :bank, :cnum, :amt, :bdate, :uid, :bank_account_id, :supplier_payment_id, 'Pending')");
             $this->db->bind(':cid', !empty($data['customer_id']) ? $data['customer_id'] : null);
             $this->db->bind(':vid', !empty($data['vendor_id']) ? $data['vendor_id'] : null);
+            $this->db->bind(':spid', !empty($data['service_provider_id']) ? $data['service_provider_id'] : null);
             $this->db->bind(':bank', $data['bank_name']);
             $this->db->bind(':cnum', $data['cheque_number']);
             $this->db->bind(':amt', $data['amount']);
             $this->db->bind(':bdate', $data['banking_date']);
             $this->db->bind(':uid', $data['created_by']);
             $this->db->bind(':bank_account_id', !empty($data['bank_account_id']) ? $data['bank_account_id'] : null);
+            $this->db->bind(':supplier_payment_id', !empty($data['supplier_payment_id']) ? $data['supplier_payment_id'] : null);
             $this->db->execute();
             $chequeId = $this->db->lastInsertId();
             
@@ -103,12 +106,13 @@ class Cheque {
         // Account IDs
         $chequeInHandId = $this->getAccountIdByCode('1010');
         $arAccountId = $this->getAccountIdByCode('1200');
-        $apAccountId = $this->getAccountIdByCode('2100');
+        $apAccountId = $this->getAccountIdByCode('2000') ?: $this->getAccountIdByCode('2100');
+        $outstandingChequesId = $this->getOutstandingChequesAccountId();
         
         if ($oldStatus === null && $newStatus === 'Pending') {
             // Cheque Created
             if ($chk->customer_id) {
-                // Received Cheque
+                // Received Customer Cheque: Debit Cheques in Hand, Credit AR
                 $ref = 'CQ-RCV-' . $chequeNum;
                 $desc = "Received Customer Cheque #" . $chequeNum;
                 $lines = [
@@ -116,13 +120,14 @@ class Cheque {
                     ['account_id' => $arAccountId, 'debit' => 0.00, 'credit' => $amount, 'description' => $desc]
                 ];
                 $this->insertJournalEntry($bankingDate, $ref, $desc, $lines, $uid);
-            } elseif ($chk->vendor_id && $chk->bank_account_id) {
-                // Issued Cheque
+            } elseif (($chk->vendor_id || $chk->service_provider_id) && $chk->bank_account_id) {
+                // Issued Supplier Cheque: Debit AP, Credit Outstanding Cheques (Issued) [2050]
+                // (Bank balance is NOT deducted until Cheque Clears!)
                 $ref = 'CQ-ISS-' . $chequeNum;
                 $desc = "Issued Supplier Cheque #" . $chequeNum;
                 $lines = [
                     ['account_id' => $apAccountId, 'debit' => $amount, 'credit' => 0.00, 'description' => $desc],
-                    ['account_id' => $chk->bank_account_id, 'debit' => 0.00, 'credit' => $amount, 'description' => $desc]
+                    ['account_id' => $outstandingChequesId, 'debit' => 0.00, 'credit' => $amount, 'description' => $desc]
                 ];
                 $this->insertJournalEntry($bankingDate, $ref, $desc, $lines, $uid);
             }
@@ -142,11 +147,20 @@ class Cheque {
                     ['account_id' => $creditAccount, 'debit' => 0.00, 'credit' => $amount, 'description' => $desc]
                 ];
                 $this->insertJournalEntry($bankingDate, $ref, $desc, $lines, $uid);
+            } elseif (($chk->vendor_id || $chk->service_provider_id || $chk->supplier_payment_id) && $chk->bank_account_id) {
+                // Manually clear supplier cheque: Deduct from selected Bank Account!
+                $ref = 'CQ-CLR-' . $chequeNum;
+                $desc = "Cleared Supplier Cheque #" . $chequeNum;
+                $lines = [
+                    ['account_id' => $outstandingChequesId, 'debit' => $amount, 'credit' => 0.00, 'description' => $desc],
+                    ['account_id' => $chk->bank_account_id, 'debit' => 0.00, 'credit' => $amount, 'description' => $desc]
+                ];
+                $this->insertJournalEntry($bankingDate, $ref, $desc, $lines, $uid);
             }
         }
         
-        // Status Transition: -> Bounced / Returned (direct manual bounce)
-        if (($newStatus === 'Bounced' || $newStatus === 'Returned') && $oldStatus !== $newStatus) {
+        // Status Transition: -> Bounced / Returned / Cancelled
+        if (in_array($newStatus, ['Bounced', 'Returned', 'Cancelled']) && $oldStatus !== $newStatus) {
             if ($chk->customer_id) {
                 // Bounced customer cheque: Re-open Accounts Receivable
                 $ref = 'CQ-BNC-' . $chequeNum;
@@ -189,15 +203,70 @@ class Cheque {
                         $this->db->execute();
                     }
                 }
-            } elseif ($chk->vendor_id && $chk->bank_account_id) {
-                // Bounced/Cancelled supplier cheque (reverses the payment)
+            } elseif ($chk->vendor_id || $chk->service_provider_id || $chk->supplier_payment_id) {
+                // Bounced / Cancelled supplier cheque
                 $ref = 'CQ-CAN-' . $chequeNum;
                 $desc = "Cancelled Supplier Cheque #" . $chequeNum;
-                $lines = [
-                    ['account_id' => $chk->bank_account_id, 'debit' => $amount, 'credit' => 0.00, 'description' => $desc],
-                    ['account_id' => $apAccountId, 'debit' => 0.00, 'credit' => $amount, 'description' => $desc]
-                ];
+
+                if ($oldStatus === 'Cleared' && $chk->bank_account_id) {
+                    // Was cleared, so bank balance was deducted: Restore bank balance and re-open AP
+                    $lines = [
+                        ['account_id' => $chk->bank_account_id, 'debit' => $amount, 'credit' => 0.00, 'description' => $desc],
+                        ['account_id' => $apAccountId, 'debit' => 0.00, 'credit' => $amount, 'description' => $desc]
+                    ];
+                } else {
+                    // Was pending: Clear Outstanding Cheques (2050) liability and re-open AP
+                    $lines = [
+                        ['account_id' => $outstandingChequesId, 'debit' => $amount, 'credit' => 0.00, 'description' => $desc],
+                        ['account_id' => $apAccountId, 'debit' => 0.00, 'credit' => $amount, 'description' => $desc]
+                    ];
+                }
                 $this->insertJournalEntry($bankingDate, $ref, $desc, $lines, $uid);
+
+                // Reverse corresponding active supplier payment and re-open GRNs
+                $paymentId = $chk->supplier_payment_id;
+                if (!$paymentId) {
+                    $this->db->query("SELECT id FROM supplier_payments WHERE (vendor_id = :vid OR service_provider_id = :spid) AND amount = :amt AND payment_method = 'Cheque' AND status = 'Active' ORDER BY id DESC LIMIT 1");
+                    $this->db->bind(':vid', $chk->vendor_id);
+                    $this->db->bind(':spid', $chk->service_provider_id);
+                    $this->db->bind(':amt', $amount);
+                    $pRow = $this->db->single();
+                    if ($pRow) $paymentId = $pRow->id;
+                }
+
+                if ($paymentId) {
+                    $this->db->query("UPDATE supplier_payments SET status = 'Reversed', reversed_by = :uid, reversed_at = CURRENT_TIMESTAMP() WHERE id = :pid");
+                    $this->db->bind(':uid', intval($uid));
+                    $this->db->bind(':pid', intval($paymentId));
+                    $this->db->execute();
+
+                    $this->db->query("SELECT grn_id FROM supplier_payment_allocations WHERE supplier_payment_id = :pid AND is_reversed = 0");
+                    $this->db->bind(':pid', intval($paymentId));
+                    $allocs = $this->db->resultSet() ?: [];
+
+                    $this->db->query("UPDATE supplier_payment_allocations SET is_reversed = 1, reversed_by = :uid, reversed_at = CURRENT_TIMESTAMP() WHERE supplier_payment_id = :pid");
+                    $this->db->bind(':uid', intval($uid));
+                    $this->db->bind(':pid', intval($paymentId));
+                    $this->db->execute();
+
+                    foreach ($allocs as $a) {
+                        $this->db->query("SELECT total_amount FROM goods_receipt_notes WHERE id = :id");
+                        $this->db->bind(':id', $a->grn_id);
+                        $grn = $this->db->single();
+                        if ($grn) {
+                            $this->db->query("SELECT COALESCE(SUM(amount), 0) as paid FROM supplier_payment_allocations WHERE grn_id = :id AND is_reversed = 0");
+                            $this->db->bind(':id', $a->grn_id);
+                            $allocRow = $this->db->single();
+                            $paid = $allocRow ? floatval($allocRow->paid) : 0.0;
+                            $tot = floatval($grn->total_amount);
+                            $st = ($paid >= $tot - 0.01 && $tot > 0) ? 'Paid' : (($paid > 0.01) ? 'Partially Paid' : 'Unpaid');
+                            $this->db->query("UPDATE goods_receipt_notes SET status = :st WHERE id = :id");
+                            $this->db->bind(':st', $st);
+                            $this->db->bind(':id', $a->grn_id);
+                            $this->db->execute();
+                        }
+                    }
+                }
             }
         }
     }
@@ -207,6 +276,17 @@ class Cheque {
         $this->db->bind(':code', $code);
         $row = $this->db->single();
         return $row ? intval($row->id) : null;
+    }
+
+    private function getOutstandingChequesAccountId() {
+        $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '2050' LIMIT 1");
+        $row = $this->db->single();
+        if ($row) return intval($row->id);
+
+        $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) 
+                          VALUES ('2050', 'Outstanding Cheques (Issued)', 'Liability', 'Current Liability', 0.00, 1)");
+        $this->db->execute();
+        return intval($this->db->lastInsertId());
     }
     
     private function insertJournalEntry($date, $ref, $desc, $lines, $uid) {

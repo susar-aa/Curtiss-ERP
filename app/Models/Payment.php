@@ -333,6 +333,20 @@ class Payment {
     }
 
     /**
+     * Get or Create 2050 Outstanding Cheques (Issued) Liability Account
+     */
+    private function getOutstandingChequesAccountId() {
+        $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '2050' LIMIT 1");
+        $row = $this->db->single();
+        if ($row) return intval($row->id);
+
+        $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) 
+                          VALUES ('2050', 'Outstanding Cheques (Issued)', 'Liability', 'Current Liability', 0.00, 1)");
+        $this->db->execute();
+        return intval($this->db->lastInsertId());
+    }
+
+    /**
      * Record a Supplier Payment (AP Payout)
      */
     public function recordSupplierPayment($data, $userId) {
@@ -350,10 +364,16 @@ class Payment {
             $this->db->execute();
             $journalId = $this->db->lastInsertId();
 
-            // 2. Post Transactions (Debit Accounts Payable, Credit Asset Account)
+            // 2. Post Transactions
+            // If Cheque: Credit Outstanding Cheques (2050) so Bank Balance is NOT deducted until Cheque Clears!
+            // If Cash / Bank Transfer: Credit Asset Account directly
+            $creditAccountId = ($data['method'] === 'Cheque') 
+                ? $this->getOutstandingChequesAccountId() 
+                : $data['asset_account_id'];
+
             $lines = [
                 ['account_id' => $data['ap_account_id'], 'debit' => $data['amount'], 'credit' => 0],
-                ['account_id' => $data['asset_account_id'], 'debit' => 0, 'credit' => $data['amount']]
+                ['account_id' => $creditAccountId, 'debit' => 0, 'credit' => $data['amount']]
             ];
 
             foreach ($lines as $line) {
@@ -379,8 +399,9 @@ class Payment {
             }
 
             // 3. Save to supplier_payments
-            $this->db->query("INSERT INTO supplier_payments (vendor_id, service_provider_id, amount, unallocated_amount, payment_date, payment_method, reference, notes, journal_entry_id, created_by, status) 
-                              VALUES (:vid, :spid, :amt, :uamt, :date, :method, :ref, :notes, :jid, :uid, 'Active')");
+            $bankAccountId = !empty($data['bank_account_id']) ? intval($data['bank_account_id']) : (!empty($data['asset_account_id']) ? intval($data['asset_account_id']) : null);
+            $this->db->query("INSERT INTO supplier_payments (vendor_id, service_provider_id, amount, unallocated_amount, payment_date, payment_method, reference, notes, journal_entry_id, bank_account_id, created_by, status) 
+                              VALUES (:vid, :spid, :amt, :uamt, :date, :method, :ref, :notes, :jid, :bank_account_id, :uid, 'Active')");
             $this->db->bind(':vid', !empty($data['supplier_id']) ? $data['supplier_id'] : null);
             $this->db->bind(':spid', !empty($data['service_provider_id']) ? $data['service_provider_id'] : null);
             $this->db->bind(':amt', $data['amount']);
@@ -390,20 +411,23 @@ class Payment {
             $this->db->bind(':ref', $data['reference']);
             $this->db->bind(':notes', $data['notes'] ?? null);
             $this->db->bind(':jid', $journalId);
+            $this->db->bind(':bank_account_id', $bankAccountId);
             $this->db->bind(':uid', $userId);
             $this->db->execute();
             $paymentId = $this->db->lastInsertId();
 
             // 4. Save Cheque details if applicable
             if ($data['method'] === 'Cheque') {
-                $this->db->query("INSERT INTO cheques (vendor_id, service_provider_id, customer_id, bank_name, cheque_number, amount, banking_date, status, created_by) 
-                                  VALUES (:vid, :spid, NULL, :bn, :cn, :amt, :bdate, 'Pending', :uid)");
+                $this->db->query("INSERT INTO cheques (vendor_id, service_provider_id, customer_id, bank_name, cheque_number, amount, banking_date, status, bank_account_id, supplier_payment_id, created_by) 
+                                  VALUES (:vid, :spid, NULL, :bn, :cn, :amt, :bdate, 'Pending', :bank_account_id, :supplier_payment_id, :uid)");
                 $this->db->bind(':vid', !empty($data['supplier_id']) ? $data['supplier_id'] : null);
                 $this->db->bind(':spid', !empty($data['service_provider_id']) ? $data['service_provider_id'] : null);
                 $this->db->bind(':bn', $data['cheque_bank']);
                 $this->db->bind(':cn', $data['cheque_number']);
                 $this->db->bind(':amt', $data['amount']);
                 $this->db->bind(':bdate', $data['cheque_date']);
+                $this->db->bind(':bank_account_id', $bankAccountId);
+                $this->db->bind(':supplier_payment_id', $paymentId);
                 $this->db->bind(':uid', $userId);
                 $this->db->execute();
             }
@@ -678,29 +702,52 @@ class Payment {
             $this->db->bind(':id', $id);
             $this->db->execute();
 
-            // 5. If it was a cheque payment, find and mark cheque as Bounced / Voided
+            // 5. If it was a cheque payment, find and mark cheque as Cancelled / Bounced
             if ($payment->payment_method === 'Cheque') {
-                if (!empty($payment->vendor_id)) {
-                    $this->db->query("UPDATE cheques SET status = 'Bounced' WHERE vendor_id = :vid AND amount = :amt AND cheque_number = (
-                        SELECT cheque_number FROM (
-                            SELECT cheque_number FROM cheques WHERE vendor_id = :vid2 AND amount = :amt2 ORDER BY id DESC LIMIT 1
-                        ) as tmp
-                    )");
+                $this->db->query("SELECT id, status, banking_date, bank_account_id FROM cheques WHERE supplier_payment_id = :pid LIMIT 1");
+                $this->db->bind(':pid', $id);
+                $chk = $this->db->single();
+                if (!$chk) {
+                    $this->db->query("SELECT id, status, banking_date, bank_account_id FROM cheques WHERE (vendor_id = :vid OR service_provider_id = :spid) AND amount = :amt ORDER BY id DESC LIMIT 1");
                     $this->db->bind(':vid', $payment->vendor_id);
-                    $this->db->bind(':amt', $payment->amount);
-                    $this->db->bind(':vid2', $payment->vendor_id);
-                    $this->db->bind(':amt2', $payment->amount);
-                    $this->db->execute();
-                } elseif (!empty($payment->service_provider_id)) {
-                    $this->db->query("UPDATE cheques SET status = 'Bounced' WHERE service_provider_id = :spid AND amount = :amt AND cheque_number = (
-                        SELECT cheque_number FROM (
-                            SELECT cheque_number FROM cheques WHERE service_provider_id = :spid2 AND amount = :amt2 ORDER BY id DESC LIMIT 1
-                        ) as tmp
-                    )");
                     $this->db->bind(':spid', $payment->service_provider_id);
                     $this->db->bind(':amt', $payment->amount);
-                    $this->db->bind(':spid2', $payment->service_provider_id);
-                    $this->db->bind(':amt2', $payment->amount);
+                    $chk = $this->db->single();
+                }
+
+                if ($chk) {
+                    if ($chk->status === 'Cleared' && $chk->bank_account_id) {
+                        // Was cleared: Bank balance was deducted. Reverse clearing entry: Debit Bank, Credit Outstanding Cheques (2050)
+                        $outstandingChequesId = $this->getOutstandingChequesAccountId();
+                        $clearRevDesc = "Reversal: Cleared Supplier Cheque for Payment ID " . $payment->id;
+                        $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) VALUES (CURRENT_DATE(), :ref, :desc, :uid, 'Posted')");
+                        $this->db->bind(':ref', 'REV-CQ-CLR-' . $payment->reference);
+                        $this->db->bind(':desc', $clearRevDesc);
+                        $this->db->bind(':uid', $userId);
+                        $this->db->execute();
+                        $clearRevJid = $this->db->lastInsertId();
+
+                        $clearLines = [
+                            ['account_id' => $chk->bank_account_id, 'debit' => $payment->amount, 'credit' => 0],
+                            ['account_id' => $outstandingChequesId, 'debit' => 0, 'credit' => $payment->amount]
+                        ];
+                        foreach ($clearLines as $cline) {
+                            $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, :cred)");
+                            $this->db->bind(':jid', $clearRevJid);
+                            $this->db->bind(':aid', $cline['account_id']);
+                            $this->db->bind(':deb', $cline['debit']);
+                            $this->db->bind(':cred', $cline['credit']);
+                            $this->db->execute();
+
+                            $this->db->query("UPDATE chart_of_accounts SET balance = balance " . ($cline['debit'] > 0 ? "+ :amt " : "- :amt ") . "WHERE id = :id");
+                            $this->db->bind(':amt', $payment->amount);
+                            $this->db->bind(':id', $cline['account_id']);
+                            $this->db->execute();
+                        }
+                    }
+
+                    $this->db->query("UPDATE cheques SET status = 'Cancelled' WHERE id = :cid");
+                    $this->db->bind(':cid', $chk->id);
                     $this->db->execute();
                 }
             }
@@ -752,13 +799,15 @@ class Payment {
     public function getSupplierPaymentById($id) {
         $this->db->query("
             SELECT p.*, COALESCE(v.name, sp.name) as supplier_name, COALESCE(v.email, sp.email) as supplier_email, COALESCE(v.phone, sp.phone) as supplier_phone, COALESCE(v.address, sp.address) as supplier_address, u.username as creator_name, ur.username as reverser_name,
-                   ch.bank_name as cheque_bank, ch.cheque_number, ch.banking_date as cheque_date
+                   ch.id as cheque_id, ch.bank_name as cheque_bank, ch.cheque_number, ch.banking_date as cheque_date, ch.status as cheque_status,
+                   ba.account_name as bank_account_name, ba.account_code as bank_account_code
             FROM supplier_payments p
             LEFT JOIN vendors v ON p.vendor_id = v.id
             LEFT JOIN service_providers sp ON p.service_provider_id = sp.id
             LEFT JOIN users u ON p.created_by = u.id
             LEFT JOIN users ur ON p.reversed_by = ur.id
-            LEFT JOIN cheques ch ON (ch.vendor_id = p.vendor_id OR ch.service_provider_id = p.service_provider_id) AND ch.amount = p.amount AND ABS(TIMESTAMPDIFF(SECOND, ch.created_at, p.created_at)) < 60
+            LEFT JOIN cheques ch ON ch.supplier_payment_id = p.id OR ((ch.vendor_id = p.vendor_id OR ch.service_provider_id = p.service_provider_id) AND ch.amount = p.amount AND ABS(TIMESTAMPDIFF(SECOND, ch.created_at, p.created_at)) < 60)
+            LEFT JOIN chart_of_accounts ba ON p.bank_account_id = ba.id OR ch.bank_account_id = ba.id
             WHERE p.id = :id
         ");
         $this->db->bind(':id', $id);
