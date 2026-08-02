@@ -7,8 +7,11 @@ class EstimateController extends Controller {
     private $coaModel;
     private $invoiceModel;
 
+    private $db;
+
     public function __construct() {
         if (!isset($_SESSION['user_id'])) { header('Location: ' . APP_URL . '/auth/login'); exit; }
+        $this->db = new Database();
         $this->customerModel = $this->model('Customer');
         $this->estimateModel = $this->model('Estimate');
         $this->itemModel = $this->model('Item');
@@ -115,21 +118,93 @@ class EstimateController extends Controller {
     }
 
     public function create() {
-        $db = new Database();
-        $db->query("SELECT id FROM estimates ORDER BY id DESC LIMIT 1");
-        $lastRow = $db->single();
+        $this->db->query("SELECT id FROM estimates ORDER BY id DESC LIMIT 1");
+        $lastRow = $this->db->single();
         $nextId = $lastRow ? ($lastRow->id + 1) : 1;
 
-        $catalogItems = $this->itemModel->getAllItems();
-        foreach($catalogItems as $item) {
-            $item->variations = $this->itemModel->getItemVariations($item->id);
+        // Fetch all active items
+        $this->db->query("SELECT id, name, item_code, sample_code, selling_price, wholesale_price, regular_price, price, type, variations_json FROM items ORDER BY name ASC");
+        $catalogItems = $this->db->resultSet();
+
+        // Fetch all variations in ONE batch
+        $this->db->query("
+            SELECT ivo.id as var_opt_id, ivo.item_id, ivo.sku, ivo.price, ivo.wholesale_price, 
+                   v.name as variation_name, vv.value_name
+            FROM item_variation_options ivo
+            JOIN variations v ON ivo.variation_id = v.id
+            JOIN variation_values vv ON ivo.variation_value_id = vv.id
+            ORDER BY ivo.item_id ASC, vv.value_name ASC
+        ");
+        $allVariations = $this->db->resultSet() ?: [];
+
+        $varMap = [];
+        foreach ($allVariations as $var) {
+            $varMap[$var->item_id][] = $var;
+        }
+
+        // Build a lean, clean list of products for frontend autocomplete
+        $preparedProducts = [];
+        foreach ($catalogItems as $item) {
+            $basePrice = 0.00;
+            if (isset($item->selling_price) && floatval($item->selling_price) > 0) {
+                $basePrice = floatval($item->selling_price);
+            } elseif (isset($item->price) && floatval($item->price) > 0) {
+                $basePrice = floatval($item->price);
+            } elseif (isset($item->regular_price) && floatval($item->regular_price) > 0) {
+                $basePrice = floatval($item->regular_price);
+            } elseif (isset($item->wholesale_price) && floatval($item->wholesale_price) > 0) {
+                $basePrice = floatval($item->wholesale_price);
+            }
+
+            // Add base item
+            $preparedProducts[] = [
+                'id' => (int)$item->id,
+                'name' => (string)$item->name,
+                'sku' => (string)($item->item_code ?? ''),
+                'sample_code' => (string)($item->sample_code ?? ''),
+                'price' => (float)$basePrice,
+                'variation' => ''
+            ];
+
+            // Add variations if present
+            $itemVars = $varMap[$item->id] ?? [];
+            if (!empty($itemVars)) {
+                foreach ($itemVars as $v) {
+                    $vPrice = (isset($v->price) && floatval($v->price) > 0) ? floatval($v->price) : $basePrice;
+                    $varLabel = ($v->variation_name ? $v->variation_name . ': ' : '') . $v->value_name;
+                    $preparedProducts[] = [
+                        'id' => (int)$item->id,
+                        'name' => (string)($item->name . ' (' . $varLabel . ')'),
+                        'sku' => (string)($v->sku ?: ($item->item_code ?? '')),
+                        'sample_code' => (string)($item->sample_code ?? ''),
+                        'price' => (float)$vPrice,
+                        'variation' => $varLabel
+                    ];
+                }
+            } elseif (!empty($item->variations_json)) {
+                $decoded = json_decode($item->variations_json);
+                if (is_array($decoded)) {
+                    foreach ($decoded as $dec) {
+                        $vPrice = (isset($dec->price) && floatval($dec->price) > 0) ? floatval($dec->price) : $basePrice;
+                        $varLabel = $dec->attribute ?? ($dec->value_name ?? 'Option');
+                        $preparedProducts[] = [
+                            'id' => (int)$item->id,
+                            'name' => (string)($item->name . ' (' . $varLabel . ')'),
+                            'sku' => (string)($dec->sku ?? ($item->item_code ?? '')),
+                            'sample_code' => (string)($item->sample_code ?? ''),
+                            'price' => (float)$vPrice,
+                            'variation' => $varLabel
+                        ];
+                    }
+                }
+            }
         }
 
         $data = [
             'title' => 'Create Estimate',
             'content_view' => 'estimates/create',
             'customers' => $this->customerModel->getAllCustomers(),
-            'catalog_items' => $catalogItems, 
+            'catalog_items' => $preparedProducts,
             'estimate_number' => str_pad((string)$nextId, 5, '0', STR_PAD_LEFT),
             'error' => ''
         ];

@@ -46,6 +46,7 @@
     --qb-shadow-sm:    0 1px 2px 0 rgb(0 0 0 / 0.05);
     --qb-shadow:       0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
     --qb-shadow-md:    0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --qb-shadow-xl:    0 20px 25px -5px rgb(0 0 0 / 0.15), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
 * { box-sizing: border-box; }
@@ -169,6 +170,7 @@
     border-radius: var(--qb-radius-lg);
     padding: 14px 16px;
     box-shadow: var(--qb-shadow-sm);
+    position: relative;
 }
 
 .qb-card-header {
@@ -206,7 +208,7 @@
     letter-spacing: 0.03em;
 }
 
-.qb-input, .qb-select {
+.qb-input {
     width: 100%;
     padding: 7px 10px;
     font-size: 12.5px;
@@ -219,7 +221,7 @@
     transition: all 0.15s ease;
 }
 
-.qb-input:focus, .qb-select:focus {
+.qb-input:focus {
     border-color: var(--qb-primary);
     box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
 }
@@ -230,35 +232,140 @@
     cursor: default;
 }
 
-.qb-customer-strip {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
+/* Customer Realtime Search Container */
+.customer-search-container {
+    position: relative;
+    width: 100%;
 }
 
-.qb-customer-details {
-    background: var(--qb-slate-50);
-    border: 1px dashed var(--qb-slate-200);
+.customer-search-input {
+    width: 100%;
+    padding: 8px 12px 8px 34px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--qb-font);
+    border: 1.5px solid var(--qb-slate-300);
     border-radius: var(--qb-radius);
+    outline: none;
+    transition: all 0.15s ease;
+    background: var(--qb-slate-50);
+}
+
+.customer-search-input:focus {
+    background: #ffffff;
+    border-color: var(--qb-primary);
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.customer-search-icon {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--qb-slate-400);
+    font-size: 13px;
+    pointer-events: none;
+}
+
+/* Customer Results Dropdown */
+.customer-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid var(--qb-slate-300);
+    border-radius: var(--qb-radius);
+    box-shadow: var(--qb-shadow-xl);
+    max-height: 240px;
+    overflow-y: auto;
+    z-index: 1050;
+    display: none;
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+}
+
+.customer-dropdown-item {
     padding: 8px 12px;
-    font-size: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-bottom: 1px solid var(--qb-slate-100);
+}
+
+.customer-dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.customer-dropdown-item:hover, .customer-dropdown-item.active {
+    background: var(--qb-primary-light);
+}
+
+.customer-item-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--qb-slate-900);
+}
+
+.customer-item-meta {
+    font-size: 11px;
+    color: var(--qb-slate-500);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Selected Customer Card Box */
+.selected-customer-box {
+    margin-top: 8px;
+    background: var(--qb-slate-50);
+    border: 1px solid var(--qb-slate-200);
+    border-radius: var(--qb-radius);
+    padding: 9px 12px;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.selected-customer-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    min-height: 38px;
 }
 
-.qb-customer-info {
+.selected-customer-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--qb-slate-900);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-change-customer {
+    font-size: 11px;
+    color: var(--qb-primary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.btn-change-customer:hover {
+    background: var(--qb-primary-light);
+}
+
+.selected-customer-info {
+    font-size: 11.5px;
     color: var(--qb-slate-600);
     display: flex;
     gap: 14px;
     flex-wrap: wrap;
-}
-
-.qb-customer-info span {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
 }
 
 /* Customer Balance Badges */
@@ -359,21 +466,25 @@
     background: #ffffff;
     border: 1px solid var(--qb-slate-300);
     border-radius: var(--qb-radius);
-    box-shadow: var(--qb-shadow-md);
+    box-shadow: var(--qb-shadow-xl);
     max-height: 280px;
     overflow-y: auto;
-    z-index: 100;
+    z-index: 1000;
     display: none;
+    list-style: none;
+    padding: 4px;
+    margin: 0;
 }
 
 .qb-suggestion-item {
-    padding: 9px 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid var(--qb-slate-100);
     cursor: pointer;
-    transition: background 0.1s;
+    transition: background 0.12s;
+    border-bottom: 1px solid var(--qb-slate-100);
 }
 
 .qb-suggestion-item:last-child {
@@ -625,7 +736,7 @@
                 </div>
                 <div>
                     <h1 class="qb-title">Create Estimate / Quotation</h1>
-                    <p class="qb-subtitle">Draft official pricing quotations for clients & potential customers</p>
+                    <p class="qb-subtitle">Draft official pricing quotations for clients & prospective buyers</p>
                 </div>
             </div>
 
@@ -662,28 +773,29 @@
                     </span>
                 </div>
 
-                <div class="qb-customer-strip">
-                    <div class="qb-field-group">
-                        <select name="customer_id" id="customerSelect" class="qb-select" required onchange="handleCustomerChange(this)">
-                            <option value="">Select Customer...</option>
-                            <?php foreach($data['customers'] as $cust): ?>
-                                <option value="<?= $cust->id ?>"
-                                        data-phone="<?= htmlspecialchars($cust->phone ?? '') ?>"
-                                        data-email="<?= htmlspecialchars($cust->email ?? '') ?>"
-                                        data-address="<?= htmlspecialchars($cust->address ?? '') ?>"
-                                        data-balance="<?= floatval($cust->outstanding_balance ?? 0) ?>">
-                                    <?= htmlspecialchars($cust->name) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
+                <!-- Realtime Customer Search Container -->
+                <div class="customer-search-container" id="customerSearchWrap">
+                    <i class="fa-solid fa-magnifying-glass customer-search-icon"></i>
+                    <input type="hidden" name="customer_id" id="customerIdInput" required>
+                    <input type="text" id="customerSearch" class="customer-search-input" placeholder="Search customer by name, phone, route, address..." autocomplete="off">
+                    <ul id="customerSearchResults" class="customer-dropdown"></ul>
+                </div>
 
-                    <div class="qb-customer-details" id="customerPreviewBox">
-                        <div class="qb-customer-info" id="customerInfoText">
-                            <span><i class="fa-solid fa-phone"></i> Phone: -</span>
-                            <span><i class="fa-solid fa-envelope"></i> Email: -</span>
-                            <span><i class="fa-solid fa-location-dot"></i> Address: -</span>
-                        </div>
+                <!-- Selected Customer Details Box -->
+                <div class="selected-customer-box" id="selectedCustomerBox">
+                    <div class="selected-customer-header">
+                        <span class="selected-customer-name" id="selectedCustomerName">
+                            <i class="fa-solid fa-check-circle" style="color:var(--qb-emerald-600);"></i> 
+                            <span>Customer Name</span>
+                        </span>
+                        <button type="button" class="btn-change-customer" onclick="clearCustomerSelection()">
+                            <i class="fa-solid fa-pen-to-square"></i> Change
+                        </button>
+                    </div>
+                    <div class="selected-customer-info" id="selectedCustomerInfo">
+                        <span id="displayPhone"><i class="fa-solid fa-phone"></i> Phone: -</span>
+                        <span id="displayEmail"><i class="fa-solid fa-envelope"></i> Email: -</span>
+                        <span id="displayAddress"><i class="fa-solid fa-location-dot"></i> Address: -</span>
                     </div>
                 </div>
             </div>
@@ -723,11 +835,11 @@
         <div class="qb-search-card">
             <div class="qb-search-wrapper">
                 <i class="fa-solid fa-magnifying-glass qb-search-icon"></i>
-                <input type="text" id="catalogSearch" class="qb-search-input" placeholder="Search catalog items, SKUs, or type custom description... (Press '/' or F2)" autocomplete="off">
+                <input type="text" id="catalogSearch" class="qb-search-input" placeholder="Search catalog items, SKUs, or type custom description to add... (Press '/' or F2)" autocomplete="off">
                 <span class="qb-search-badge">/ or F2</span>
             </div>
 
-            <div class="qb-suggestions-list" id="suggestionsList"></div>
+            <ul class="qb-suggestions-list" id="suggestionsList"></ul>
         </div>
 
         <!-- ═══ LINE ITEMS TABLE CARD ═══ -->
@@ -745,7 +857,7 @@
                         </tr>
                     </thead>
                     <tbody id="estimateBody">
-                        <!-- Initial Dynamic Empty State or Default Row -->
+                        <!-- Items injected dynamically -->
                     </tbody>
                 </table>
 
@@ -796,6 +908,7 @@
             <button type="button" class="qb-row-del" onclick="toggleShortcutsModal()"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div style="display:flex; flex-direction:column; gap:8px; font-size:12.5px;">
+            <div style="display:flex; justify-content:space-between;"><span>Focus Customer Search</span><kbd class="qb-search-badge" style="position:static;">Alt + C</kbd></div>
             <div style="display:flex; justify-content:space-between;"><span>Focus Product Search</span><kbd class="qb-search-badge" style="position:static;">/</kbd> or <kbd class="qb-search-badge" style="position:static;">F2</kbd></div>
             <div style="display:flex; justify-content:space-between;"><span>Save Estimate</span><kbd class="qb-search-badge" style="position:static;">Ctrl + S</kbd></div>
             <div style="display:flex; justify-content:space-between;"><span>Navigate Suggestions</span><kbd class="qb-search-badge" style="position:static;">↑ / ↓</kbd></div>
@@ -806,75 +919,174 @@
 </div>
 
 <script>
-    // ═══ CATALOG DATA ═══
-    const catalogData = [];
+    // ═══ BACKEND DATA INJECTION ═══
+    const catalogData = <?= json_encode($data['catalog_items'] ?? []) ?>;
+    const rawCustomers = <?= json_encode($data['customers'] ?? []) ?>;
 
-    <?php if(!empty($data['catalog_items'])): foreach($data['catalog_items'] as $item): ?>
-        // Base Item
-        catalogData.push({
-            id: <?= $item->id ?>,
-            name: <?= json_encode($item->name) ?>,
-            sku: <?= json_encode($item->item_code ?? '') ?>,
-            price: <?= floatval($item->price ?? 0) ?>,
-            variation: null
-        });
+    // Normalize customer list for fast search
+    const customerList = rawCustomers.map(c => ({
+        id: c.id,
+        name: c.name || '',
+        phone: c.phone || '',
+        email: c.email || '',
+        address: c.address || '',
+        mca: c.mca_name || c.route || '',
+        balance: parseFloat(c.outstanding_balance || 0)
+    }));
 
-        // Variations
-        <?php if(!empty($item->variations)): foreach($item->variations as $var): ?>
-            catalogData.push({
-                id: <?= $item->id ?>,
-                name: <?= json_encode($item->name . ' (' . $var->option_name . ')') ?>,
-                sku: <?= json_encode($var->sku ?? ($item->item_code ?? '')) ?>,
-                price: <?= floatval($var->price > 0 ? $var->price : $item->price) ?>,
-                variation: <?= json_encode($var->option_name) ?>
-            });
-        <?php endforeach; endif; ?>
-    <?php endforeach; endif; ?>
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
 
-    // ═══ CUSTOMER CHANGE HANDLER ═══
-    function handleCustomerChange(select) {
-        const option = select.options[select.selectedIndex];
-        const previewBox = document.getElementById('customerInfoText');
-        const balanceIndicator = document.getElementById('customerBalanceIndicator');
+    // ═══ 1. REALTIME CUSTOMER SEARCH & SELECTION ═══
+    const custSearchInput = document.getElementById('customerSearch');
+    const custResultsList = document.getElementById('customerSearchResults');
+    const custIdInput = document.getElementById('customerIdInput');
+    const selectedCustBox = document.getElementById('selectedCustomerBox');
+    const balanceIndicator = document.getElementById('customerBalanceIndicator');
+    let activeCustIndex = -1;
+    let currentCustMatches = [];
 
-        if (!option || !option.value) {
-            previewBox.innerHTML = `
-                <span><i class="fa-solid fa-phone"></i> Phone: -</span>
-                <span><i class="fa-solid fa-envelope"></i> Email: -</span>
-                <span><i class="fa-solid fa-location-dot"></i> Address: -</span>
-            `;
-            balanceIndicator.className = 'qb-balance-badge clear';
-            balanceIndicator.innerHTML = '<i class="fa-solid fa-circle-notch"></i> Select a customer';
+    custSearchInput.addEventListener('input', function() {
+        const query = this.value.trim().toLowerCase();
+        if (!query) {
+            custResultsList.style.display = 'none';
             return;
         }
 
-        const phone = option.getAttribute('data-phone') || 'N/A';
-        const email = option.getAttribute('data-email') || 'N/A';
-        const address = option.getAttribute('data-address') || 'N/A';
-        const balance = parseFloat(option.getAttribute('data-balance') || 0);
+        const tokens = query.split(/\s+/).filter(Boolean);
+        currentCustMatches = customerList.filter(c => {
+            const combined = `${c.name} ${c.phone} ${c.email} ${c.mca} ${c.address}`.toLowerCase();
+            return tokens.every(token => combined.includes(token));
+        }).slice(0, 20);
 
-        previewBox.innerHTML = `
-            <span><i class="fa-solid fa-phone"></i> ${phone}</span>
-            <span><i class="fa-solid fa-envelope"></i> ${email}</span>
-            <span><i class="fa-solid fa-location-dot"></i> ${address}</span>
-        `;
+        renderCustomerDropdown();
+    });
 
-        if (balance > 0) {
+    function renderCustomerDropdown() {
+        custResultsList.innerHTML = '';
+        activeCustIndex = -1;
+
+        if (currentCustMatches.length === 0) {
+            const li = document.createElement('li');
+            li.className = 'customer-dropdown-item';
+            li.style.color = 'var(--qb-slate-400)';
+            li.style.cursor = 'default';
+            li.textContent = 'No matching customers found';
+            custResultsList.appendChild(li);
+            custResultsList.style.display = 'block';
+            return;
+        }
+
+        currentCustMatches.forEach((cust, idx) => {
+            const li = document.createElement('li');
+            li.className = 'customer-dropdown-item';
+            
+            let metaParts = [];
+            if (cust.phone) metaParts.push(`📞 ${escapeHtml(cust.phone)}`);
+            if (cust.mca) metaParts.push(`📍 Route: ${escapeHtml(cust.mca)}`);
+            if (cust.address) metaParts.push(`🏠 ${escapeHtml(cust.address)}`);
+
+            li.innerHTML = `
+                <span class="customer-item-name">${escapeHtml(cust.name)}</span>
+                <span class="customer-item-meta">${metaParts.join(' &bull; ')}</span>
+            `;
+
+            li.onclick = () => selectCustomer(cust);
+            custResultsList.appendChild(li);
+        });
+
+        custResultsList.style.display = 'block';
+    }
+
+    custSearchInput.addEventListener('keydown', function(e) {
+        const items = custResultsList.querySelectorAll('.customer-dropdown-item');
+        if (custResultsList.style.display === 'block' && items.length > 0 && currentCustMatches.length > 0) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeCustIndex = (activeCustIndex + 1) % items.length;
+                updateActiveCustItem(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeCustIndex = (activeCustIndex - 1 + items.length) % items.length;
+                updateActiveCustItem(items);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (activeCustIndex >= 0 && currentCustMatches[activeCustIndex]) {
+                    selectCustomer(currentCustMatches[activeCustIndex]);
+                } else if (currentCustMatches.length > 0) {
+                    selectCustomer(currentCustMatches[0]);
+                }
+            } else if (e.key === 'Escape') {
+                custResultsList.style.display = 'none';
+            }
+        }
+    });
+
+    function updateActiveCustItem(items) {
+        items.forEach((it, i) => {
+            if (i === activeCustIndex) {
+                it.classList.add('active');
+                it.scrollIntoView({ block: 'nearest' });
+            } else {
+                it.classList.remove('active');
+            }
+        });
+    }
+
+    function selectCustomer(cust) {
+        if (!cust) return;
+
+        custIdInput.value = cust.id;
+        custSearchInput.value = '';
+        custResultsList.style.display = 'none';
+        document.getElementById('customerSearchWrap').style.display = 'none';
+
+        // Update selected box
+        document.getElementById('selectedCustomerName').querySelector('span').textContent = cust.name;
+        document.getElementById('displayPhone').innerHTML = `<i class="fa-solid fa-phone"></i> Phone: ${escapeHtml(cust.phone || 'N/A')}`;
+        document.getElementById('displayEmail').innerHTML = `<i class="fa-solid fa-envelope"></i> Email: ${escapeHtml(cust.email || 'N/A')}`;
+        document.getElementById('displayAddress').innerHTML = `<i class="fa-solid fa-location-dot"></i> Address: ${escapeHtml(cust.address || 'N/A')}`;
+        
+        selectedCustBox.style.display = 'flex';
+
+        // Update balance badge
+        const bal = cust.balance || 0;
+        if (bal > 0.01) {
             balanceIndicator.className = 'qb-balance-badge payable';
-            balanceIndicator.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Outstanding: Rs. ${balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        } else if (balance < 0) {
+            balanceIndicator.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Outstanding: Rs. ${bal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        } else if (bal < -0.01) {
             balanceIndicator.className = 'qb-balance-badge advance';
-            balanceIndicator.innerHTML = `<i class="fa-solid fa-circle-check"></i> Advance Credit: Rs. ${Math.abs(balance).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            balanceIndicator.innerHTML = `<i class="fa-solid fa-circle-check"></i> Advance Credit: Rs. ${Math.abs(bal).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         } else {
             balanceIndicator.className = 'qb-balance-badge clear';
             balanceIndicator.innerHTML = `<i class="fa-solid fa-check"></i> No Outstanding Balance`;
         }
+
+        // Focus product catalog search to quickly add lines
+        setTimeout(() => {
+            document.getElementById('catalogSearch').focus();
+        }, 50);
     }
 
-    // ═══ PRODUCT SEARCH & AUTOCOMPLETE ═══
+    function clearCustomerSelection() {
+        custIdInput.value = '';
+        selectedCustBox.style.display = 'none';
+        document.getElementById('customerSearchWrap').style.display = 'block';
+        custSearchInput.value = '';
+        custSearchInput.focus();
+
+        balanceIndicator.className = 'qb-balance-badge clear';
+        balanceIndicator.innerHTML = '<i class="fa-solid fa-circle-notch"></i> Select a customer';
+    }
+
+
+    // ═══ 2. REALTIME PRODUCT & SERVICE SEARCH ═══
     const searchInput = document.getElementById('catalogSearch');
     const suggestionsList = document.getElementById('suggestionsList');
     let activeSuggestionIndex = -1;
+    let currentProdMatches = [];
 
     searchInput.addEventListener('input', function() {
         const query = this.value.trim().toLowerCase();
@@ -883,52 +1095,53 @@
             return;
         }
 
-        const matches = catalogData.filter(item => {
-            return (item.name && item.name.toLowerCase().includes(query)) ||
-                   (item.sku && item.sku.toLowerCase().includes(query));
-        }).slice(0, 15);
+        const tokens = query.split(/\s+/).filter(Boolean);
+        currentProdMatches = catalogData.filter(item => {
+            const combined = `${item.name || ''} ${item.sku || ''} ${item.sample_code || ''}`.toLowerCase();
+            return tokens.every(token => combined.includes(token));
+        }).slice(0, 20);
 
-        renderSuggestions(matches, query);
+        renderSuggestions(query);
     });
 
-    function renderSuggestions(matches, query) {
+    function renderSuggestions(query) {
         suggestionsList.innerHTML = '';
         activeSuggestionIndex = -1;
 
-        if (matches.length === 0) {
+        if (currentProdMatches.length === 0) {
             // Option to add custom item text directly
-            const customDiv = document.createElement('div');
-            customDiv.className = 'qb-suggestion-item';
-            customDiv.innerHTML = `
+            const customLi = document.createElement('li');
+            customLi.className = 'qb-suggestion-item';
+            customLi.innerHTML = `
                 <div class="qb-suggestion-left">
-                    <span class="qb-suggestion-name"><i class="fa-solid fa-plus-circle" style="color:var(--qb-primary);"></i> Add Custom Line: "${query}"</span>
-                    <span class="qb-suggestion-sku">Custom Non-Inventory Service / Item</span>
+                    <span class="qb-suggestion-name"><i class="fa-solid fa-plus-circle" style="color:var(--qb-primary);"></i> Add Custom Line: "${escapeHtml(query)}"</span>
+                    <span class="qb-suggestion-sku">Custom Non-Inventory Service / Line Item</span>
                 </div>
                 <div class="qb-suggestion-price">Custom Price</div>
             `;
-            customDiv.onclick = () => {
+            customLi.onclick = () => {
                 addItemRow(query, 1, 0);
                 searchInput.value = '';
                 suggestionsList.style.display = 'none';
             };
-            suggestionsList.appendChild(customDiv);
+            suggestionsList.appendChild(customLi);
         } else {
-            matches.forEach((item, idx) => {
-                const div = document.createElement('div');
-                div.className = 'qb-suggestion-item';
-                div.innerHTML = `
+            currentProdMatches.forEach((item, idx) => {
+                const li = document.createElement('li');
+                li.className = 'qb-suggestion-item';
+                li.innerHTML = `
                     <div class="qb-suggestion-left">
                         <span class="qb-suggestion-name">${escapeHtml(item.name)}</span>
-                        <span class="qb-suggestion-sku">SKU: ${escapeHtml(item.sku || 'N/A')}</span>
+                        <span class="qb-suggestion-sku">SKU: ${escapeHtml(item.sku || 'N/A')}${item.sample_code ? ' | Sample: ' + escapeHtml(item.sample_code) : ''}</span>
                     </div>
-                    <div class="qb-suggestion-price">Rs. ${item.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                    <div class="qb-suggestion-price">Rs. ${parseFloat(item.price || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                 `;
-                div.onclick = () => {
-                    addItemRow(item.name, 1, item.price);
+                li.onclick = () => {
+                    addItemRow(item.name, 1, item.price || 0);
                     searchInput.value = '';
                     suggestionsList.style.display = 'none';
                 };
-                suggestionsList.appendChild(div);
+                suggestionsList.appendChild(li);
             });
         }
 
@@ -970,13 +1183,18 @@
         });
     }
 
+    // Close dropdowns on outside click
     document.addEventListener('click', function(e) {
         if (!searchInput.contains(e.target) && !suggestionsList.contains(e.target)) {
             suggestionsList.style.display = 'none';
         }
+        if (!custSearchInput.contains(e.target) && !custResultsList.contains(e.target)) {
+            custResultsList.style.display = 'none';
+        }
     });
 
-    // ═══ TABLE ROW MANAGEMENT ═══
+
+    // ═══ 3. TABLE ROW MANAGEMENT & DYNAMIC CALCULATIONS ═══
     function addItemRow(description, qty = 1, price = 0) {
         const tbody = document.getElementById('estimateBody');
         const emptyState = document.getElementById('emptyState');
@@ -1015,8 +1233,10 @@
         const qtyInput = row.querySelector('.item-qty-input');
         const priceInput = row.querySelector('.item-price-input');
 
-        qtyInput.focus();
-        qtyInput.select();
+        setTimeout(() => {
+            qtyInput.focus();
+            qtyInput.select();
+        }, 30);
 
         qtyInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
@@ -1085,19 +1305,24 @@
         document.getElementById('summaryUnitsCount').textContent = `${totalUnits.toLocaleString('en-US')} unit${totalUnits === 1 ? '' : 's'}`;
     }
 
-    function escapeHtml(str) {
-        if (!str) return '';
-        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
-    // ═══ GLOBAL SHORTCUTS ═══
+    // ═══ 4. GLOBAL KEYBOARD SHORTCUTS ═══
     document.addEventListener('keydown', function(e) {
         // Ctrl+S to save
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
             e.preventDefault();
             document.getElementById('btnSaveEstimate').click();
         }
-        // '/' or F2 to focus search
+        // Alt+C to focus customer search
+        if (e.altKey && e.key.toLowerCase() === 'c') {
+            e.preventDefault();
+            if (selectedCustBox.style.display !== 'none') {
+                clearCustomerSelection();
+            } else {
+                custSearchInput.focus();
+                custSearchInput.select();
+            }
+        }
+        // '/' or F2 to focus product search
         if ((e.key === '/' || e.key === 'F2') && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
             e.preventDefault();
             searchInput.focus();
