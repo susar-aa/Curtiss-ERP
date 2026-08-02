@@ -362,13 +362,19 @@
         const url = `?search=${query}&page=1`;
         
         fetch(url).then(response => response.text()).then(html => {
+            console.log("Search response fetched for URL:", url);
             const parser = new DOMParser(); 
             const doc = parser.parseFromString(html, 'text/html');
             const newTbody = doc.getElementById('tableBody');
             if (newTbody) {
                 document.getElementById('tableBody').innerHTML = newTbody.innerHTML;
+                console.log("Table body successfully updated.");
+            } else {
+                console.log("Error: Could not find tableBody in response HTML.");
             }
             window.history.pushState({}, '', url);
+        }).catch(err => {
+            console.error("Fetch error during search:", err);
         });
     }
 </script>
