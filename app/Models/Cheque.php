@@ -8,26 +8,18 @@ class Cheque {
 
     public function getAllCheques($search = '') {
         if (!empty($search)) {
-            $this->db->query("SELECT ch.*, c.name as customer_name, COALESCE(v.name, sp.name) as vendor_name, ba.account_name as drawn_bank_name, ba.account_code as drawn_bank_code 
+            $this->db->query("SELECT ch.*, ba.account_name as drawn_bank_name, ba.account_code as drawn_bank_code 
                               FROM cheques ch 
-                              LEFT JOIN customers c ON ch.customer_id = c.id 
-                              LEFT JOIN vendors v ON ch.vendor_id = v.id 
-                              LEFT JOIN service_providers sp ON ch.service_provider_id = sp.id
                               LEFT JOIN chart_of_accounts ba ON ch.bank_account_id = ba.id
                               WHERE ch.cheque_number LIKE :search 
-                                 OR c.name LIKE :search 
-                                 OR v.name LIKE :search 
-                                 OR sp.name LIKE :search 
+                                 OR ch.payee_name LIKE :search 
                                  OR ba.account_name LIKE :search
                                  OR ch.bank_name LIKE :search
                               ORDER BY ch.status ASC, ch.banking_date ASC");
             $this->db->bind(':search', "%$search%");
         } else {
-            $this->db->query("SELECT ch.*, c.name as customer_name, COALESCE(v.name, sp.name) as vendor_name, ba.account_name as drawn_bank_name, ba.account_code as drawn_bank_code 
+            $this->db->query("SELECT ch.*, ba.account_name as drawn_bank_name, ba.account_code as drawn_bank_code 
                               FROM cheques ch 
-                              LEFT JOIN customers c ON ch.customer_id = c.id 
-                              LEFT JOIN vendors v ON ch.vendor_id = v.id 
-                              LEFT JOIN service_providers sp ON ch.service_provider_id = sp.id
                               LEFT JOIN chart_of_accounts ba ON ch.bank_account_id = ba.id
                               ORDER BY ch.status ASC, ch.banking_date ASC");
         }
@@ -38,18 +30,15 @@ class Cheque {
         try {
             $this->db->beginTransaction();
             
-            $this->db->query("INSERT INTO cheques (customer_id, vendor_id, service_provider_id, bank_name, cheque_number, amount, banking_date, created_by, bank_account_id, supplier_payment_id, status) 
-                              VALUES (:cid, :vid, :spid, :bank, :cnum, :amt, :bdate, :uid, :bank_account_id, :supplier_payment_id, 'Pending')");
-            $this->db->bind(':cid', !empty($data['customer_id']) ? $data['customer_id'] : null);
-            $this->db->bind(':vid', !empty($data['vendor_id']) ? $data['vendor_id'] : null);
-            $this->db->bind(':spid', !empty($data['service_provider_id']) ? $data['service_provider_id'] : null);
+            $this->db->query("INSERT INTO cheques (payee_name, bank_name, cheque_number, amount, banking_date, created_by, bank_account_id, status) 
+                              VALUES (:payee, :bank, :cnum, :amt, :bdate, :uid, :bank_account_id, 'Pending')");
+            $this->db->bind(':payee', $data['payee_name']);
             $this->db->bind(':bank', $data['bank_name']);
             $this->db->bind(':cnum', $data['cheque_number']);
             $this->db->bind(':amt', $data['amount']);
             $this->db->bind(':bdate', $data['banking_date']);
             $this->db->bind(':uid', $data['created_by']);
             $this->db->bind(':bank_account_id', !empty($data['bank_account_id']) ? $data['bank_account_id'] : null);
-            $this->db->bind(':supplier_payment_id', !empty($data['supplier_payment_id']) ? $data['supplier_payment_id'] : null);
             $this->db->execute();
             $chequeId = $this->db->lastInsertId();
             
@@ -75,12 +64,11 @@ class Cheque {
             $old = $this->db->single();
             
             $this->db->query("UPDATE cheques 
-                              SET customer_id = :cid, vendor_id = :vid, bank_name = :bank, cheque_number = :cnum, 
+                              SET payee_name = :payee, bank_name = :bank, cheque_number = :cnum, 
                                   amount = :amt, banking_date = :bdate, status = :status, bank_account_id = :bank_account_id 
                               WHERE id = :id");
             $this->db->bind(':id', $data['id']);
-            $this->db->bind(':cid', !empty($data['customer_id']) ? $data['customer_id'] : null);
-            $this->db->bind(':vid', !empty($data['vendor_id']) ? $data['vendor_id'] : null);
+            $this->db->bind(':payee', $data['payee_name']);
             $this->db->bind(':bank', $data['bank_name']);
             $this->db->bind(':cnum', $data['cheque_number']);
             $this->db->bind(':amt', $data['amount']);

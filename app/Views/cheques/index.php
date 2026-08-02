@@ -331,7 +331,7 @@
                                     <?php foreach($cheques as $chk): ?>
                                     <tr>
                                         <td>
-                                            <strong style="font-weight:600;"><?= htmlspecialchars($chk->customer_name ?: '-') ?></strong>
+                                            <strong style="font-weight:600;"><?= htmlspecialchars($chk->payee_name ?: '-') ?></strong>
                                             <div style="font-size:11px; color:var(--c-green); font-weight:600; margin-top:2px;">Customer Receipt</div>
                                         </td>
                                         <td>
@@ -357,10 +357,10 @@
                                         </td>
                                         <td>
                                             <div class="row-acts">
-                                                <button class="act-btn view" title="View Cheque" onclick="viewCheque('<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->banking_date)) ?>', '<?= htmlspecialchars(addslashes($chk->amount)) ?>', '<?= htmlspecialchars(addslashes($chk->customer_name ?: '')) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
+                                                <button class="act-btn view" title="View Cheque" onclick="viewCheque('<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->banking_date)) ?>', '<?= htmlspecialchars(addslashes($chk->amount)) ?>', '<?= htmlspecialchars(addslashes($chk->payee_name ?: '')) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
                                                     <i class="fa-regular fa-eye"></i>
                                                 </button>
-                                                <button class="act-btn edit" title="Edit" onclick="openEditModal(<?= $chk->id ?>, <?= $chk->customer_id ?: 'null' ?>, <?= $chk->vendor_id ?: 'null' ?>, '<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>', <?= $chk->amount ?>, '<?= $chk->banking_date ?>', '<?= $chk->status ?>', <?= $chk->bank_account_id ?: 'null' ?>)">
+                                                <button class="act-btn edit" title="Edit" onclick="openEditModal(<?= $chk->id ?>, '<?= htmlspecialchars(addslashes($chk->payee_name ?: '')) ?>', '<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>', <?= $chk->amount ?>, '<?= $chk->banking_date ?>', '<?= $chk->status ?>', <?= $chk->bank_account_id ?: 'null' ?>, 'received')">
                                                     <i class="fa-solid fa-pen"></i>
                                                 </button>
                                                 <button class="act-btn delete" title="Delete" onclick="openDeleteModal(<?= $chk->id ?>, '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
@@ -409,7 +409,7 @@
                                     <?php foreach($cheques as $chk): ?>
                                     <tr>
                                         <td>
-                                            <strong style="font-weight:600;"><?= htmlspecialchars($chk->vendor_name ?: '-') ?></strong>
+                                            <strong style="font-weight:600;"><?= htmlspecialchars($chk->payee_name ?: '-') ?></strong>
                                             <div style="font-size:11px; color:var(--c-orange); font-weight:600; margin-top:2px;">Supplier Payment</div>
                                         </td>
                                         <td>
@@ -435,10 +435,10 @@
                                         </td>
                                         <td>
                                             <div class="row-acts">
-                                                <button class="act-btn view" title="View Cheque" onclick="viewCheque('<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->banking_date)) ?>', '<?= htmlspecialchars(addslashes($chk->amount)) ?>', '<?= htmlspecialchars(addslashes($chk->vendor_name ?: '')) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
+                                                <button class="act-btn view" title="View Cheque" onclick="viewCheque('<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->banking_date)) ?>', '<?= htmlspecialchars(addslashes($chk->amount)) ?>', '<?= htmlspecialchars(addslashes($chk->payee_name ?: '')) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
                                                     <i class="fa-regular fa-eye"></i>
                                                 </button>
-                                                <button class="act-btn edit" title="Edit" onclick="openEditModal(<?= $chk->id ?>, <?= $chk->customer_id ?: 'null' ?>, <?= $chk->vendor_id ?: 'null' ?>, '<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>', <?= $chk->amount ?>, '<?= $chk->banking_date ?>', '<?= $chk->status ?>', <?= $chk->bank_account_id ?: 'null' ?>)">
+                                                <button class="act-btn edit" title="Edit" onclick="openEditModal(<?= $chk->id ?>, '<?= htmlspecialchars(addslashes($chk->payee_name ?: '')) ?>', '<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>', <?= $chk->amount ?>, '<?= $chk->banking_date ?>', '<?= $chk->status ?>', <?= $chk->bank_account_id ?: 'null' ?>, 'issued')">
                                                     <i class="fa-solid fa-pen"></i>
                                                 </button>
                                                 <button class="act-btn delete" title="Delete" onclick="openDeleteModal(<?= $chk->id ?>, '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
@@ -478,22 +478,20 @@
         <form action="<?= APP_URL ?>/cheque" method="POST">
             <input type="hidden" name="action" value="add_cheque">
             <div class="sf-form-group">
-                <label>Customer (for Collection/Received Cheque)</label>
-                <select name="customer_id" class="sf-input">
-                    <option value="">-- Select Customer --</option>
-                    <?php foreach($data['customers'] as $cust): ?><option value="<?= $cust->id ?>"><?= htmlspecialchars($cust->name) ?></option><?php endforeach; ?>
+                <label>Cheque Type *</label>
+                <select name="cheque_type" id="add_cheque_type" class="sf-input" required onchange="toggleAddBankAcc()">
+                    <option value="">-- Select Type --</option>
+                    <option value="received">Collection (Received Cheque)</option>
+                    <option value="issued">Payment (Issued Cheque)</option>
                 </select>
             </div>
             <div class="sf-form-group">
-                <label>Supplier / Vendor (for Payment/Issued Cheque)</label>
-                <select name="vendor_id" class="sf-input">
-                    <option value="">-- Select Supplier --</option>
-                    <?php foreach($data['suppliers'] as $supp): ?><option value="<?= $supp->id ?>"><?= htmlspecialchars($supp->name) ?></option><?php endforeach; ?>
-                </select>
+                <label>Drawer / Payee Name *</label>
+                <input type="text" name="payee_name" class="sf-input" placeholder="e.g. John Doe" required>
             </div>
-            <div class="sf-form-group">
-                <label>Drawn/Deposit Bank Account (Required for Supplier Payments)</label>
-                <select name="bank_account_id" class="sf-input">
+            <div class="sf-form-group" id="add_bank_acc_group" style="display:none;">
+                <label>Drawn Bank Account (Required for Issued Cheques)</label>
+                <select name="bank_account_id" id="add_bank_account_id" class="sf-input">
                     <option value="">-- Select Bank Account --</option>
                     <?php foreach($data['bank_accounts'] as $acc): ?>
                         <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->account_name) ?> (<?= htmlspecialchars($acc->account_code) ?>)</option>
@@ -525,21 +523,18 @@
             <input type="hidden" name="cheque_id" id="edit_id">
             
             <div class="sf-form-group">
-                <label>Customer (for Collections)</label>
-                <select name="customer_id" id="edit_customer" class="sf-input">
-                    <option value="">-- None --</option>
-                    <?php foreach($data['customers'] as $cust): ?><option value="<?= $cust->id ?>"><?= htmlspecialchars($cust->name) ?></option><?php endforeach; ?>
+                <label>Cheque Type *</label>
+                <select name="cheque_type" id="edit_cheque_type" class="sf-input" required onchange="toggleEditBankAcc()">
+                    <option value="received">Collection (Received Cheque)</option>
+                    <option value="issued">Payment (Issued Cheque)</option>
                 </select>
             </div>
             <div class="sf-form-group">
-                <label>Supplier / Vendor (for Payments)</label>
-                <select name="vendor_id" id="edit_vendor" class="sf-input">
-                    <option value="">-- None --</option>
-                    <?php foreach($data['suppliers'] as $supp): ?><option value="<?= $supp->id ?>"><?= htmlspecialchars($supp->name) ?></option><?php endforeach; ?>
-                </select>
+                <label>Drawer / Payee Name *</label>
+                <input type="text" name="payee_name" id="edit_payee_name" class="sf-input" required>
             </div>
-            <div class="sf-form-group">
-                <label>Drawn/Deposit Bank Account</label>
+            <div class="sf-form-group" id="edit_bank_acc_group" style="display:none;">
+                <label>Drawn Bank Account (Required for Issued Cheques)</label>
                 <select name="bank_account_id" id="edit_bank_account_id" class="sf-input">
                     <option value="">-- None --</option>
                     <?php foreach($data['bank_accounts'] as $acc): ?>
@@ -615,16 +610,45 @@
         document.getElementById(id).classList.remove('open');
     }
 
-    function openEditModal(id, custId, vendId, bank, cnum, amt, date, status, bankAccId) {
+    function toggleAddBankAcc() {
+        const type = document.getElementById('add_cheque_type').value;
+        const group = document.getElementById('add_bank_acc_group');
+        const select = document.getElementById('add_bank_account_id');
+        if (type === 'issued') {
+            group.style.display = 'block';
+            select.setAttribute('required', 'required');
+        } else {
+            group.style.display = 'none';
+            select.removeAttribute('required');
+            select.value = '';
+        }
+    }
+
+    function toggleEditBankAcc() {
+        const type = document.getElementById('edit_cheque_type').value;
+        const group = document.getElementById('edit_bank_acc_group');
+        const select = document.getElementById('edit_bank_account_id');
+        if (type === 'issued') {
+            group.style.display = 'block';
+            select.setAttribute('required', 'required');
+        } else {
+            group.style.display = 'none';
+            select.removeAttribute('required');
+            select.value = '';
+        }
+    }
+
+    function openEditModal(id, payee, bank, cnum, amt, date, status, bankAccId, type) {
         document.getElementById('edit_id').value = id;
-        document.getElementById('edit_customer').value = custId || '';
-        document.getElementById('edit_vendor').value = vendId || '';
+        document.getElementById('edit_cheque_type').value = type;
+        document.getElementById('edit_payee_name').value = payee;
         document.getElementById('edit_bank').value = bank;
         document.getElementById('edit_cnum').value = cnum;
         document.getElementById('edit_amt').value = amt;
         document.getElementById('edit_date').value = date;
         document.getElementById('edit_status').value = status;
         document.getElementById('edit_bank_account_id').value = bankAccId || '';
+        toggleEditBankAcc();
         openModal('editModal');
     }
 
