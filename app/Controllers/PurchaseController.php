@@ -204,11 +204,14 @@ class PurchaseController extends Controller {
         $lastRow = $db->single();
         $nextId = $lastRow ? ($lastRow->id + 1) : 1;
 
+        $itemSupplierMappings = $this->itemModel->getAllItemSupplierMappings();
+
         $data = [
             'title' => 'Create Purchase Order',
             'content_view' => 'purchases/create',
             'vendors' => $this->vendorModel->getAllVendors(),
             'catalog_items' => $catalogItems,
+            'item_supplier_mappings' => $itemSupplierMappings,
             'po_number' => str_pad((string)$nextId, 5, '0', STR_PAD_LEFT),
             'prefilled_vendor' => $prefilledVendor,
             'prefilled_items' => $prefilledItems,
@@ -256,11 +259,14 @@ class PurchaseController extends Controller {
             $item->variations = $this->itemModel->getItemVariations($item->id);
         }
 
+        $itemSupplierMappings = $this->itemModel->getAllItemSupplierMappings();
+
         $data = [
             'title' => 'Edit Purchase Order',
             'content_view' => 'purchases/create',
             'vendors' => $this->vendorModel->getAllVendors(),
             'catalog_items' => $catalogItems,
+            'item_supplier_mappings' => $itemSupplierMappings,
             'po' => $po,
             'items' => $this->poModel->getPOItems($id),
             'prefilled_vendor' => $po->vendor_id,

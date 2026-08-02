@@ -1,620 +1,1545 @@
-<!-- Inter Font & FontAwesome Icons -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Inter Font, Phosphor Icons & FontAwesome Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
 
 <style>
-/* ============================================================
-   SF PRO + APPLE DESIGN LANGUAGE — CREATE/EDIT PO
-   ============================================================ */
+    /* =====================================================
+       CURTISS-ERP: MODERN PURCHASE ORDER (PO) PANEL
+       ===================================================== */
+    html, body { overflow: hidden !important; height: 100%; margin: 0; padding: 0; }
 
-:root {
-    --c-bg:           #f2f2f7;
-    --c-surface:      #ffffff;
-    --c-surface2:     #f9f9fb;
-    --c-fill:         rgba(120,120,128,0.08);
-    --c-fill2:        rgba(120,120,128,0.12);
-    --c-separator:    rgba(60,60,67,0.12);
-    --c-separator2:   rgba(60,60,67,0.06);
+    :root {
+        --primary:       #2563eb;
+        --primary-hover: #1d4ed8;
+        --primary-light: #eff6ff;
+        --success:       #16a34a;
+        --success-hover: #15803d;
+        --success-light: #f0fdf4;
+        --danger:        #dc2626;
+        --danger-light:  #fef2f2;
+        --warning:       #d97706;
+        --warning-light: #fffbeb;
+        --purple:        #7c3aed;
+        --purple-light:  #f5f3ff;
+        --slate-900:     #0f172a;
+        --slate-800:     #1e293b;
+        --slate-700:     #334155;
+        --slate-600:     #475569;
+        --slate-500:     #64748b;
+        --slate-400:     #94a3b8;
+        --slate-300:     #cbd5e1;
+        --slate-200:     #e2e8f0;
+        --slate-100:     #f1f5f9;
+        --slate-50:      #f8fafc;
+        --white:         #ffffff;
+        --radius-xs:     4px;
+        --radius-sm:     6px;
+        --radius-md:     10px;
+        --radius-lg:     14px;
+        --shadow-xs:     0 1px 2px rgba(0,0,0,0.04);
+        --shadow-sm:     0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+        --shadow-md:     0 4px 14px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+        --shadow-xl:     0 20px 35px -8px rgba(0,0,0,0.18), 0 8px 16px -4px rgba(0,0,0,0.08);
+        --font:          'Inter', system-ui, -apple-system, sans-serif;
+        --f-mono:        ui-monospace, 'SF Mono', 'Menlo', 'Monaco', monospace;
+    }
 
-    --c-blue:         #007aff;
-    --c-blue-light:   #e5f2ff;
-    --c-blue-mid:     #b3d6ff;
-    --c-green:        #34c759;
-    --c-green-light:  #e6f9ec;
-    --c-orange:       #ff9500;
-    --c-orange-light: #fff4e5;
-    --c-red:          #ff3b30;
-    --c-red-light:    #fff0ef;
-    --c-purple:       #af52de;
-    --c-purple-light: #f5eeff;
+    /* ── Wrapper Container ── */
+    .qb-wrapper {
+        background: var(--slate-100);
+        font-family: var(--font);
+        font-size: 13px;
+        color: var(--slate-800);
+        height: calc(100vh - 85px);
+        max-height: calc(100vh - 85px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding: 0 12px 12px 12px;
+        box-sizing: border-box;
+    }
 
-    --f-system: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', sans-serif;
-    --f-mono:   ui-monospace, 'SF Mono', 'Menlo', 'Monaco', monospace;
+    /* ── Main Panel Card ── */
+    .qb-container {
+        background: var(--white);
+        width: 100%;
+        max-width: 1560px;
+        margin: 0 auto;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        padding: 0;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
 
-    --t-primary:   #1c1c1e;
-    --t-secondary: #636366;
-    --t-tertiary:  #aeaeb2;
-    --t-label:     #8e8e93;
+    #poForm {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        height: 100%;
+        overflow: hidden;
+        margin: 0;
+    }
 
-    --shadow-xs:  0 1px 2px rgba(0,0,0,0.04);
-    --shadow-sm:  0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
-    --shadow-md:  0 8px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
-    --shadow-xl:  0 24px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.06);
+    /* ── Top Bar ── */
+    .inv-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 18px;
+        border-bottom: 1px solid var(--slate-200);
+        background: var(--white);
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        flex-shrink: 0;
+        gap: 12px;
+    }
+    .inv-topbar-left { display: flex; align-items: center; gap: 12px; }
+    .inv-topbar-right { display: flex; align-items: center; gap: 8px; }
+    
+    .inv-title-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .inv-icon-box {
+        width: 34px;
+        height: 34px;
+        border-radius: var(--radius-md);
+        background: #e0f2fe;
+        color: #0284c7;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+    .inv-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--slate-900);
+        letter-spacing: -0.3px;
+        margin: 0;
+    }
+    .inv-type-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 99px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+        background: var(--primary-light);
+        color: var(--primary);
+        border: 1px solid rgba(37,99,235,0.2);
+    }
+    .inv-type-badge.edit-mode {
+        background: var(--warning-light);
+        color: var(--warning);
+        border-color: rgba(217,119,6,0.25);
+    }
 
-    --r-xs: 6px;
-    --r-sm: 10px;
-    --r-md: 14px;
-    --r-lg: 20px;
-    --r-xl: 26px;
-    --r-pill: 999px;
+    /* ── Action Buttons ── */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: var(--radius-sm);
+        font-size: 12px;
+        font-weight: 600;
+        font-family: var(--font);
+        cursor: pointer;
+        border: 1px solid var(--slate-300);
+        background: var(--white);
+        color: var(--slate-700);
+        text-decoration: none;
+        transition: all 0.15s ease;
+        line-height: 1.4;
+    }
+    .btn:hover {
+        background: var(--slate-50);
+        border-color: var(--slate-400);
+        color: var(--slate-900);
+    }
+    .btn-primary {
+        background: var(--primary);
+        color: var(--white);
+        border-color: var(--primary);
+        box-shadow: 0 1px 2px rgba(37,99,235,0.2);
+    }
+    .btn-primary:hover {
+        background: var(--primary-hover);
+        border-color: var(--primary-hover);
+        color: var(--white);
+    }
+    .btn-kbd {
+        font-family: var(--f-mono);
+        font-size: 10px;
+        background: rgba(255,255,255,0.22);
+        padding: 1px 5px;
+        border-radius: 3px;
+        letter-spacing: 0.5px;
+    }
 
-    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-    --ease-ios:    cubic-bezier(0.25, 0.1, 0.25, 1);
-    --dur-fast:    0.18s;
-    --dur-mid:     0.28s;
-    --dur-slow:    0.42s;
-}
+    /* ── Main Scrollable Body ── */
+    .inv-body {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 12px 18px 0 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
 
-.inv-wrap {
-    max-width: 1420px;
-    margin: 0 auto;
-    padding: 0 24px 24px;
-    font-family: var(--f-system);
-    color: var(--t-primary);
-}
+    /* ── Header Cards Grid ── */
+    .inv-header-row {
+        display: flex;
+        gap: 14px;
+        align-items: stretch;
+        flex-shrink: 0;
+    }
 
-/* ---- Page Header ---- */
-.inv-header {
-    margin-bottom: 28px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-}
-.inv-eyebrow {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--c-blue);
-    margin-bottom: 6px;
-}
-.inv-title {
-    font-size: 32px;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    line-height: 1.1;
-    color: var(--t-primary);
-}
-.btn-quick {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--c-surface);
-    border: 0.5px solid var(--c-separator);
-    border-radius: var(--r-pill);
-    padding: 7px 14px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--t-secondary);
-    text-decoration: none;
-    transition: all var(--dur-fast);
-}
-.btn-quick:hover {
-    background: var(--c-fill2);
-    color: var(--t-primary);
-}
+    /* Card 1: Supplier Card */
+    .supplier-card {
+        width: 380px;
+        flex-shrink: 0;
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-md);
+        background: var(--white);
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+    }
+    .card-header-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 12px;
+        background: var(--slate-800);
+        color: var(--white);
+        border-radius: var(--radius-md) var(--radius-md) 0 0;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+    .card-body-content {
+        padding: 10px 12px;
+        position: relative;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .custom-select-box {
+        width: 100%;
+        padding: 6px 10px;
+        border: 1px solid var(--slate-300);
+        border-radius: var(--radius-sm);
+        font-size: 12px;
+        font-family: var(--font);
+        font-weight: 600;
+        color: var(--slate-800);
+        background: var(--slate-50);
+        outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .custom-select-box:focus {
+        border-color: var(--primary);
+        background: var(--white);
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    }
+    .supplier-preview-info {
+        background: var(--slate-50);
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-sm);
+        padding: 6px 10px;
+        font-size: 11px;
+        color: var(--slate-600);
+        line-height: 1.4;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
 
-/* ---- Panel Card ---- */
-.create-panel {
-    background: var(--c-surface);
-    border-radius: var(--r-xl);
-    border: 0.5px solid var(--c-separator);
-    box-shadow: var(--shadow-sm);
-    padding: 24px;
-    margin-bottom: 28px;
-}
+    /* Outstanding Balance Indicator (Invoice style) */
+    .customer-outstanding {
+        font-size: 11px;
+        padding: 6px 10px;
+        border-radius: var(--radius-sm);
+        display: none;
+        line-height: 1.4;
+        font-weight: 500;
+    }
 
-/* ---- Form controls ---- */
-.form-group {
-    margin-bottom: 18px;
-}
-.form-group label {
-    display: block;
-    margin-bottom: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--t-label);
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-}
-.form-control {
-    width: 100%;
-    padding: 10px 14px;
-    background: var(--c-fill);
-    border: 0.5px solid var(--c-separator);
-    border-radius: var(--r-md);
-    font-size: 14px;
-    font-weight: 500;
-    font-family: var(--f-system);
-    color: var(--t-primary);
-    outline: none;
-    transition: border-color var(--dur-fast), box-shadow var(--dur-fast), background var(--dur-fast);
-    box-sizing: border-box;
-}
-.form-control:focus {
-    background: var(--c-surface);
-    border-color: var(--c-blue);
-    box-shadow: 0 0 0 3.5px rgba(0,122,255,0.14);
-}
-.grid-4 {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 18px;
-}
+    /* Card 2: Document Meta Details Card */
+    .doc-meta-card {
+        flex: 1;
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-md);
+        background: var(--white);
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+    }
+    .doc-fields-strip {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+        background: var(--white);
+        margin-top: 2px;
+    }
+    .doc-field-col {
+        border-right: 1px solid var(--slate-200);
+        display: flex;
+        flex-direction: column;
+    }
+    .doc-field-col:last-child { border-right: none; }
+    .doc-field-label {
+        background: var(--slate-100);
+        color: var(--slate-600);
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 4px 8px;
+        border-bottom: 1px solid var(--slate-200);
+    }
+    .doc-field-input {
+        padding: 6px 10px;
+        font-family: var(--font);
+        font-size: 12px;
+        color: var(--slate-800);
+        border: none;
+        background: transparent;
+        width: 100%;
+        box-sizing: border-box;
+        outline: none;
+        font-weight: 500;
+    }
+    .doc-field-input:focus {
+        background: var(--primary-light);
+    }
+    .doc-field-input.mono {
+        font-family: var(--f-mono);
+        font-weight: 700;
+        color: var(--primary);
+    }
 
-/* ---- Table Styles ---- */
-.po-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 24px;
-}
-.po-table th {
-    padding: 12px 14px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--t-label);
-    background: var(--c-surface2);
-    border-bottom: 0.5px solid var(--c-separator);
-    text-align: left;
-}
-.po-table td {
-    padding: 12px 14px;
-    border-bottom: 0.5px solid var(--c-separator2);
-    vertical-align: middle;
-}
-.po-table tr:hover td {
-    background: var(--c-fill);
-}
-.line-row-num {
-    text-align: center;
-    color: var(--t-tertiary);
-    font-weight: 700;
-    font-size: 12px;
-    width: 40px;
-}
+    /* ── Item Catalog Search Strip ── */
+    .search-wrapper {
+        position: relative;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-shrink: 0;
+    }
+    .search-input-container {
+        position: relative;
+        flex: 1;
+    }
+    .search-icon-prefix {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--slate-400);
+        font-size: 16px;
+        pointer-events: none;
+    }
+    .item-search-bar {
+        width: 100%;
+        padding: 8px 12px 8px 36px;
+        border: 1.5px solid var(--slate-300);
+        border-radius: var(--radius-md);
+        font-size: 13px;
+        font-family: var(--font);
+        font-weight: 500;
+        color: var(--slate-800);
+        background: var(--slate-50);
+        box-sizing: border-box;
+        outline: none;
+        transition: all 0.15s ease;
+    }
+    .item-search-bar:focus {
+        border-color: var(--primary);
+        background: var(--white);
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+    }
+    .item-search-bar::placeholder { color: var(--slate-400); font-size: 12px; }
 
-/* ---- Select override ---- */
-.item-select {
-    width: 100%;
-    padding: 10px 14px;
-    background: var(--c-fill);
-    border: 0.5px solid var(--c-separator);
-    border-radius: var(--r-md);
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--t-primary);
-    outline: none;
-    transition: border-color var(--dur-fast), background var(--dur-fast);
-    box-sizing: border-box;
-}
-.item-select:focus {
-    background: var(--c-surface);
-    border-color: var(--c-blue);
-}
-optgroup { font-weight: bold; color: var(--c-blue); background: var(--c-surface); }
-option { font-weight: normal; color: var(--t-primary); background: var(--c-surface);}
+    /* ── Search Dropdown Results ── */
+    .search-results {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: var(--white);
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-xl);
+        max-height: 280px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        padding: 4px;
+        list-style: none;
+        margin: 0;
+    }
+    .search-item-row {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--slate-100);
+        transition: background 0.1s ease;
+    }
+    .search-item-row:last-child { border-bottom: none; }
+    .search-item-row:hover,
+    .search-item-row.active {
+        background: var(--primary-light);
+        border-color: var(--primary-light);
+    }
+    .search-item-name {
+        font-weight: 600;
+        color: var(--slate-900);
+        font-size: 12px;
+    }
+    .search-item-sku {
+        font-family: var(--f-mono);
+        font-size: 11px;
+        color: var(--slate-500);
+    }
+    .search-item-cost {
+        font-family: var(--f-mono);
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--slate-800);
+    }
+    .supplier-badge {
+        font-size: 9px;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+    }
+    .badge-preferred {
+        background: var(--success-light);
+        color: var(--success);
+        border: 1px solid rgba(22,163,74,0.25);
+    }
+    .badge-linked {
+        background: var(--primary-light);
+        color: var(--primary);
+        border: 1px solid rgba(37,99,235,0.25);
+    }
+    .badge-new {
+        background: var(--warning-light);
+        color: var(--warning);
+        border: 1px solid rgba(217,119,6,0.25);
+    }
 
-.total-box {
-    float: right;
-    width: 320px;
-    padding: 18px 24px;
-    background: var(--c-surface2);
-    border-radius: var(--r-md);
-    border: 0.5px solid var(--c-separator);
-    margin-top: 20px;
-    text-align: right;
-    font-size: 18px;
-    font-weight: 700;
-    box-shadow: var(--shadow-xs);
-    color: var(--t-primary);
-}
-.total-box span {
-    font-family: var(--f-mono);
-    color: var(--c-blue);
-}
+    /* ── Table Container & Grid ── */
+    .table-scroll-container {
+        flex: 1;
+        min-height: 180px;
+        overflow-y: auto;
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-md);
+        background: var(--white);
+        box-shadow: var(--shadow-xs);
+    }
+    .qb-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+    .qb-table thead th {
+        position: sticky;
+        top: 0;
+        background: var(--slate-800);
+        color: var(--white);
+        padding: 7px 10px;
+        text-align: left;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+        border-right: 1px solid rgba(255,255,255,0.1);
+        border-bottom: 1px solid var(--slate-900);
+        z-index: 10;
+    }
+    .qb-table thead th:last-child { border-right: none; }
+    .qb-table tbody td {
+        padding: 5px 8px;
+        border-bottom: 1px solid var(--slate-200);
+        border-right: 1px solid var(--slate-100);
+        vertical-align: middle;
+        font-size: 12px;
+    }
+    .qb-table tbody tr:hover td {
+        background: var(--slate-50);
+    }
+    .qb-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .line-row-num {
+        text-align: center;
+        color: var(--slate-400);
+        font-weight: 700;
+        font-size: 11px;
+    }
+    .form-control-cell {
+        width: 100%;
+        border: 1px solid transparent;
+        background: transparent;
+        padding: 4px 6px;
+        font-size: 12px;
+        font-family: var(--font);
+        border-radius: var(--radius-xs);
+        box-sizing: border-box;
+        outline: none;
+        transition: all 0.15s;
+    }
+    .form-control-cell:hover {
+        border-color: var(--slate-300);
+        background: var(--white);
+    }
+    .form-control-cell:focus {
+        border-color: var(--primary);
+        background: var(--white);
+        box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+    }
+    .form-control-cell.num {
+        text-align: right;
+        font-family: var(--f-mono);
+        font-weight: 600;
+    }
 
-/* ---- Buttons ---- */
-.btn {
-    padding: 10px 18px;
-    background: var(--t-primary);
-    color: #fff;
-    border: none;
-    border-radius: var(--r-md);
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 700;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    transition: transform var(--dur-fast) var(--ease-spring), filter var(--dur-fast);
-    text-decoration: none;
-}
-.btn:hover { filter: brightness(0.92); }
-.btn:active { transform: scale(0.97); }
-.btn-outline {
-    background: transparent;
-    border: 0.5px solid var(--c-separator);
-    color: var(--t-secondary);
-}
-.btn-outline:hover {
-    background: var(--c-fill);
-    color: var(--t-primary);
-}
-.btn-danger {
-    background: var(--c-red-light);
-    color: var(--c-red);
-    border: 0.5px solid rgba(255,59,48,0.25);
-}
-.btn-danger:hover {
-    background: var(--c-red);
-    color: #fff;
-}
+    .btn-delete-row {
+        background: transparent;
+        border: none;
+        color: var(--slate-400);
+        cursor: pointer;
+        padding: 4px 6px;
+        border-radius: var(--radius-xs);
+        transition: all 0.15s;
+    }
+    .btn-delete-row:hover {
+        background: var(--danger-light);
+        color: var(--danger);
+    }
 
-/* ---- Alerts ---- */
-.sf-alert {
-    display: flex; align-items: flex-start; gap: 12px;
-    background: var(--c-surface);
-    border-radius: var(--r-md);
-    padding: 14px 16px;
-    margin-bottom: 20px;
-    box-shadow: var(--shadow-xs);
-    border: 0.5px solid var(--c-separator);
-    border-left-width: 3px;
-    font-size: 14px;
-}
-.sf-alert.success { border-left-color: var(--c-green); }
-.sf-alert.error   { border-left-color: var(--c-red); }
-.sf-alert.info    { border-left-color: var(--c-blue); }
-.sf-alert-icon { font-size: 18px; flex-shrink: 0; padding-top: 1px; }
-.sf-alert.success .sf-alert-icon { color: var(--c-green); }
-.sf-alert.error   .sf-alert-icon { color: var(--c-red); }
-.sf-alert.info .sf-alert-icon    { color: var(--c-blue); }
-.sf-alert-title { font-weight: 600; color: var(--t-primary); margin-bottom: 2px; }
-.sf-alert-msg   { color: var(--t-secondary); font-size: 13px; }
+    /* ── Empty State ── */
+    .empty-grid-notice {
+        text-align: center;
+        padding: 45px 20px;
+        color: var(--slate-400);
+    }
+
+    /* ── Footer Panel ── */
+    .inv-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: stretch;
+        padding: 10px 18px 12px 18px;
+        background: var(--slate-50);
+        border-top: 1px solid var(--slate-200);
+        border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        flex-shrink: 0;
+        gap: 20px;
+    }
+    .inv-footer-left {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .footer-field-label {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--slate-600);
+        letter-spacing: 0.4px;
+        margin-bottom: 2px;
+    }
+    .footer-textarea {
+        width: 100%;
+        height: 52px;
+        border: 1px solid var(--slate-300);
+        border-radius: var(--radius-sm);
+        padding: 6px 10px;
+        font-size: 11px;
+        font-family: var(--font);
+        color: var(--slate-800);
+        background: var(--white);
+        resize: none;
+        box-sizing: border-box;
+        outline: none;
+    }
+    .footer-textarea:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(37,99,235,0.12);
+    }
+
+    /* ── Summary Totals ── */
+    .totals-card {
+        width: 320px;
+        background: var(--white);
+        border: 1px solid var(--slate-200);
+        border-radius: var(--radius-md);
+        padding: 8px 14px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 4px;
+        box-shadow: var(--shadow-xs);
+    }
+    .totals-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 12px;
+        color: var(--slate-600);
+    }
+    .totals-row.grand-total {
+        border-top: 1px dashed var(--slate-200);
+        padding-top: 6px;
+        margin-top: 4px;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--slate-900);
+    }
+    .grand-total-amount {
+        font-family: var(--f-mono);
+        font-size: 17px;
+        color: var(--success);
+        font-weight: 800;
+    }
+
+    /* ── Alerts ── */
+    .panel-alert {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        border-radius: var(--radius-sm);
+        font-size: 12px;
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+    .panel-alert.error {
+        background: var(--danger-light);
+        color: var(--danger);
+        border: 1px solid rgba(220,38,38,0.25);
+    }
 </style>
 
 <?php
 $isEdit = isset($data['po']);
-$actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "create"); 
+$actionUrl = APP_URL . '/purchase/' . ($isEdit ? "edit/{$data['po']->id}" : "create");
 ?>
 
-<div class="inv-wrap">
-    <!-- Header -->
-    <div class="inv-header">
-        <div>
-            <div class="inv-eyebrow">Procurement</div>
-            <h1 class="inv-title"><?= $isEdit ? 'Edit Purchase Order' : 'Create Purchase Order' ?></h1>
-        </div>
-        <a href="<?= APP_URL ?>/purchase" class="btn-quick">&larr; Back to POs</a>
-    </div>
-
-    <!-- Alert Messaging -->
-    <?php if(!empty($data['error'])): ?>
-    <div class="sf-alert error">
-        <i class="fa-solid fa-triangle-exclamation sf-alert-icon"></i>
-        <div style="flex:1;">
-            <div class="sf-alert-title">Operation Error</div>
-            <div class="sf-alert-msg"><?= htmlspecialchars($data['error']) ?></div>
-        </div>
-    </div>
-    <?php endif; ?>
-
-    <div class="create-panel">
+<div class="qb-wrapper">
+    <div class="qb-container">
         <form action="<?= $actionUrl ?>" method="POST" id="poForm">
             <input type="hidden" name="action" value="<?= $isEdit ? 'update_po' : 'save_po' ?>">
-            
-            <div class="grid-4">
-                <div class="form-group">
-                    <label>Supplier / Vendor *</label>
-                    <select name="vendor_id" id="vendorSelect" class="form-control" onchange="filterProducts()" required>
-                        <option value="">Select Vendor...</option>
-                        <?php foreach($data['vendors'] as $ven): ?>
-                            <option value="<?= $ven->id ?>" <?= $data['prefilled_vendor'] == $ven->id ? 'selected' : '' ?>><?= htmlspecialchars($ven->name) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+
+            <!-- ═══ TOPBAR ═══ -->
+            <div class="inv-topbar">
+                <div class="inv-topbar-left">
+                    <div class="inv-title-group">
+                        <div class="inv-icon-box">
+                            <i class="ph-bold ph-shopping-cart"></i>
+                        </div>
+                        <div>
+                            <div class="inv-title"><?= $isEdit ? 'Edit Purchase Order' : 'Purchase Order (PO)' ?></div>
+                        </div>
+                    </div>
+                    <span class="inv-type-badge <?= $isEdit ? 'edit-mode' : '' ?>">
+                        <i class="ph-bold <?= $isEdit ? 'ph-pencil-simple' : 'ph-plus-circle' ?>"></i>
+                        <?= $isEdit ? 'Edit Mode # ' . htmlspecialchars($data['po']->po_number) : 'New Purchase Order' ?>
+                    </span>
                 </div>
-                <div class="form-group">
-                    <label>PO Number</label>
-                    <input type="text" name="po_number" class="form-control" value="<?= htmlspecialchars($data['po']->po_number ?? $data['po_number']) ?>" <?= $isEdit ? 'readonly style="pointer-events:none; background:rgba(0,0,0,0.04);"' : 'required' ?>>
-                </div>
-                <div class="form-group">
-                    <label>Order Date</label>
-                    <input type="date" name="po_date" class="form-control" value="<?= htmlspecialchars($data['po']->po_date ?? date('Y-m-d')) ?>" required>
-                </div>
-                <div class="form-group">
-                    <label>Expected Delivery</label>
-                    <input type="date" name="expected_date" class="form-control" value="<?= htmlspecialchars($data['po']->expected_date ?? date('Y-m-d', strtotime('+7 days'))) ?>" required>
+
+                <div class="inv-topbar-right">
+                    <a href="<?= APP_URL ?>/purchase" class="btn" title="Back to PO List">
+                        <i class="ph-bold ph-arrow-left"></i> Back to POs
+                    </a>
+                    <a href="<?= APP_URL ?>/purchase/wizard" class="btn" title="Procurement Smart Wizard">
+                        <i class="ph-bold ph-magic-wand"></i> Smart Wizard
+                    </a>
+                    <button type="button" class="btn" onclick="openShortcutsModal()" title="Keyboard Shortcuts">
+                        <i class="ph-bold ph-keyboard"></i> Shortcuts
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="savePoBtn">
+                        <i class="ph-bold ph-check-circle"></i> <?= $isEdit ? 'Update Purchase Order' : 'Save Purchase Order' ?> <span class="btn-kbd">Ctrl+S</span>
+                    </button>
                 </div>
             </div>
 
-            <div class="sf-alert info" style="margin-top: 10px;">
-                <i class="fa-solid fa-circle-info sf-alert-icon"></i>
-                <div style="flex:1;">
-                    <div class="sf-alert-msg">Products are filtered by Vendor. Select specific product variants directly from the dropdown.</div>
-                </div>
-            </div>
-
-            <!-- Items Table -->
-            <table class="po-table" id="linesTable">
-                <thead>
-                    <tr>
-                        <th class="line-row-num">#</th>
-                        <th style="width: 50%;">Product / Variation</th>
-                        <th style="width: 15%; text-align:right;">Qty</th>
-                        <th style="width: 15%; text-align:right;">Unit Cost (Rs)</th>
-                        <th style="width: 15%; text-align:right;">Total (Rs)</th>
-                        <th style="width: 40px; text-align:center;"></th>
-                    </tr>
-                </thead>
-                <tbody id="poBody">
-                    <?php if($isEdit || !empty($data['prefilled_items'])): ?>
-                        <?php $loopItems = $isEdit ? $data['items'] : $data['prefilled_items']; ?>
-                        <?php $lineNum = 1; foreach($loopItems as $item): ?>
-                            
-                            <?php 
-                                // Determine the exact value string to pre-select
-                                if ($isEdit) {
-                                    $vId = $item->item_id;
-                                    $vOpt = $item->item_variation_option_id ?: ($item->is_mix ? 'MIX' : '0');
-                                    $vMix = $item->is_mix;
-                                    $selectedValue = "{$vId}|{$vOpt}|{$vMix}";
-                                    // Coming from AI Suggester (prefilled) -> defaults to first variant if variations exist
-                                    $itemRef = array_filter($data['catalog_items'], function($c) use ($item) { return $c->id == $item['item_id']; });
-                                    $itemRef = reset($itemRef);
-                                    $hasVars = !empty($itemRef->variations);
-                                    $firstVarId = $hasVars ? ($itemRef->variations[0]->id ?? '0') : '0';
-                                    $selectedValue = $item['item_id'] . '|' . $firstVarId . '|0';
-                                }
-                            ?>
-
-                            <tr>
-                                <td class="line-row-num"><?= $lineNum++ ?></td>
-                                <td>
-                                    <select name="item_selection[]" class="item-select" onchange="autoFillSelection(this)" required>
-                                        <option value="">Select Product...</option>
-                                        <?php foreach($data['catalog_items'] as $catItem): ?>
-                                            <?php if(!empty($catItem->variations)): ?>
-                                                <optgroup label="<?= htmlspecialchars($catItem->name) ?>" data-vendor="<?= $catItem->vendor_id ?>">
-                                                    <?php foreach($catItem->variations as $var): ?>
-                                                        <option value="<?= $catItem->id ?>|<?= $var->id ?>|0" data-price="<?= floatval($var->cost ?? 0) > 0 ? $var->cost : floatval($catItem->cost_price ?? 0.00) ?>" data-name="<?= htmlspecialchars($catItem->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>" data-sku="<?= htmlspecialchars($var->sku ?? $catItem->item_code ?? '') ?>" data-sample-code="<?= htmlspecialchars($catItem->sample_code ?? '') ?>" <?= $selectedValue === "{$catItem->id}|{$var->id}|0" ? 'selected' : '' ?>>
-                                                            <?= htmlspecialchars($catItem->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>
-                                                        </option>
-                                                    <?php endforeach; ?>
-                                                </optgroup>
-                                            <?php else: ?>
-                                                <option class="base-opt" value="<?= $catItem->id ?>|0|0" data-price="<?= floatval($catItem->cost_price ?? 0.00) ?>" data-vendor="<?= $catItem->vendor_id ?>" data-name="<?= htmlspecialchars($catItem->name) ?>" data-sku="<?= htmlspecialchars($catItem->item_code ?? '') ?>" data-sample-code="<?= htmlspecialchars($catItem->sample_code ?? '') ?>" <?= $selectedValue === "{$catItem->id}|0|0" ? 'selected' : '' ?>>
-                                                    <?= htmlspecialchars($catItem->name) ?>
-                                                </option>
-                                            <?php endif; ?>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <input type="hidden" name="desc[]" class="desc-hidden" value="<?= htmlspecialchars($isEdit ? $item->description : $item['name']) ?>">
-                                </td>
-                                <td><input type="number" name="qty[]" step="1" min="1" value="<?= $isEdit ? $item->quantity : $item['qty'] ?>" class="form-control" onchange="calcTotals()" required style="text-align:right;"></td>
-                                <td><input type="number" name="price[]" step="0.01" min="0" value="<?= number_format($isEdit ? $item->unit_price : $item['cost'], 2, '.', '') ?>" class="form-control" onchange="calcTotals()" required style="font-weight:600; text-align:right; font-family:var(--f-mono);"></td>
-                                <td><input type="text" class="form-control line-total" value="<?= number_format($isEdit ? $item->total : ($item['qty'] * $item['cost']), 2, '.', '') ?>" readonly style="font-weight:700; text-align:right; font-family:var(--f-mono); background:transparent; border:none; pointer-events:none;"></td>
-                                <td style="text-align: center;">
-                                    <button type="button" class="btn btn-danger" style="padding: 6px; width:28px; height:28px; border-radius:50%;" onclick="removeRow(this)">
-                                        <i class="fa-solid fa-xmark"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <!-- Standard Blank Row -->
-                        <tr>
-                            <td class="line-row-num">1</td>
-                            <td>
-                                <select name="item_selection[]" class="item-select" onchange="autoFillSelection(this)" required>
-                                    <option value="">Select Product...</option>
-                                    <?php foreach($data['catalog_items'] as $item): ?>
-                                        <?php if(!empty($item->variations)): ?>
-                                            <optgroup label="<?= htmlspecialchars($item->name) ?>" data-vendor="<?= $item->vendor_id ?>">
-                                                <?php foreach($item->variations as $var): ?>
-                                                    <option value="<?= $item->id ?>|<?= $var->id ?>|0" data-price="<?= floatval($var->cost ?? 0) > 0 ? $var->cost : floatval($item->cost_price ?? 0.00) ?>" data-name="<?= htmlspecialchars($item->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>" data-sku="<?= htmlspecialchars($var->sku ?? $item->item_code ?? '') ?>" data-sample-code="<?= htmlspecialchars($item->sample_code ?? '') ?>">
-                                                        <?= htmlspecialchars($item->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </optgroup>
-                                        <?php else: ?>
-                                            <option class="base-opt" value="<?= $item->id ?>|0|0" data-price="<?= floatval($item->cost_price ?? 0.00) ?>" data-vendor="<?= $item->vendor_id ?>" data-name="<?= htmlspecialchars($item->name) ?>" data-sku="<?= htmlspecialchars($item->item_code ?? '') ?>" data-sample-code="<?= htmlspecialchars($item->sample_code ?? '') ?>">
-                                                <?= htmlspecialchars($item->name) ?>
-                                            </option>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </select>
-                                <input type="hidden" name="desc[]" class="desc-hidden">
-                            </td>
-                            <td><input type="number" name="qty[]" step="1" min="1" value="1" class="form-control" onchange="calcTotals()" required style="text-align:right;"></td>
-                            <td><input type="number" name="price[]" step="0.01" min="0" value="0.00" class="form-control" onchange="calcTotals()" required style="font-weight:600; text-align:right; font-family:var(--f-mono);"></td>
-                            <td><input type="text" class="form-control line-total" value="0.00" readonly style="font-weight:700; text-align:right; font-family:var(--f-mono); background:transparent; border:none; pointer-events:none;"></td>
-                            <td style="text-align: center;"></td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-            
-            <button type="button" class="btn btn-outline" style="margin-top: 14px;" onclick="addRow()">
-                <i class="fa-solid fa-plus"></i> Add Item
-            </button>
-
-            <!-- Notes & Summary Footer -->
-            <div style="display: flex; justify-content: space-between; margin-top: 28px; align-items: flex-start; gap: 40px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>Terms / Notes</label>
-                    <textarea name="notes" class="form-control" rows="4" placeholder="Enter terms of delivery or specific requests..." style="resize: none;"><?= htmlspecialchars($data['po']->notes ?? '') ?></textarea>
-                </div>
-                
-                <div>
-                    <div class="total-box">
-                        Grand Total: Rs: <span id="grandTotal">0.00</span>
+            <!-- ═══ ERROR ALERT (IF ANY) ═══ -->
+            <?php if(!empty($data['error'])): ?>
+                <div style="padding: 10px 18px 0 18px;">
+                    <div class="panel-alert error">
+                        <i class="ph-bold ph-warning-circle" style="font-size: 16px;"></i>
+                        <span><?= htmlspecialchars($data['error']) ?></span>
                     </div>
                 </div>
-            </div>
+            <?php endif; ?>
 
-            <div style="margin-top: 32px; text-align: right; border-top: 0.5px solid var(--c-separator); padding-top: 24px;">
-                <button type="submit" class="btn" style="padding: 14px 28px; font-size: 15px;">
-                    <i class="fa-solid fa-circle-check"></i> <?= $isEdit ? 'Update Purchase Order' : 'Generate Purchase Order' ?>
-                </button>
+            <!-- ═══ BODY CONTENT ═══ -->
+            <div class="inv-body">
+                
+                <!-- ── Header Info Cards Row ── -->
+                <div class="inv-header-row">
+                    <!-- Left: Supplier Card -->
+                    <div class="supplier-card">
+                        <div class="card-header-bar">
+                            <span><i class="ph-bold ph-storefront"></i> Supplier / Vendor *</span>
+                            <span id="supplierProductCount" style="font-size: 10px; opacity: 0.85;"></span>
+                        </div>
+                        <div class="card-body-content">
+                            <select name="vendor_id" id="vendorSelect" class="custom-select-box" onchange="onVendorChange()" required <?= $isEdit ? 'style="pointer-events:none; background:#f1f5f9;"' : '' ?>>
+                                <option value="">-- Select Vendor / Supplier --</option>
+                                <?php foreach($data['vendors'] as $ven): ?>
+                                    <option value="<?= $ven->id ?>" 
+                                            data-phone="<?= htmlspecialchars($ven->phone ?? '') ?>"
+                                            data-email="<?= htmlspecialchars($ven->email ?? '') ?>"
+                                            data-address="<?= htmlspecialchars($ven->address ?? '') ?>"
+                                            data-outstanding="<?= floatval($ven->outstanding_balance ?? 0) ?>"
+                                            <?= $data['prefilled_vendor'] == $ven->id ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($ven->name) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+
+                            <!-- Outstanding balance indicator (Same as Invoice creation panel) -->
+                            <div id="supplierOutstanding" class="customer-outstanding"></div>
+
+                            <!-- Supplier contact preview -->
+                            <div class="supplier-preview-info" id="supplierInfoPreview">
+                                <span style="color: var(--slate-400); font-style: italic;">Select a supplier above to load contact details and preferred product mappings.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Document Meta Details Card -->
+                    <div class="doc-meta-card">
+                        <div class="card-header-bar">
+                            <span><i class="ph-bold ph-calendar-blank"></i> Order & Delivery Schedule</span>
+                            <span style="font-size: 10px; font-weight: 500; opacity: 0.85;">Procurement Schedule</span>
+                        </div>
+                        <div class="card-body-content" style="justify-content: center;">
+                            <div class="doc-fields-strip">
+                                <div class="doc-field-col">
+                                    <label class="doc-field-label">PO Number *</label>
+                                    <input type="text" name="po_number" id="po_number" class="doc-field-input mono" value="<?= htmlspecialchars($isEdit ? $data['po']->po_number : $data['po_number']) ?>" required <?= $isEdit ? 'readonly style="pointer-events:none;"' : '' ?>>
+                                </div>
+                                <div class="doc-field-col">
+                                    <label class="doc-field-label">Order Date *</label>
+                                    <input type="date" name="po_date" id="po_date" class="doc-field-input" value="<?= htmlspecialchars($isEdit ? $data['po']->po_date : date('Y-m-d')) ?>" required>
+                                </div>
+                                <div class="doc-field-col">
+                                    <label class="doc-field-label">Expected Delivery *</label>
+                                    <input type="date" name="expected_date" id="expected_date" class="doc-field-input" value="<?= htmlspecialchars($isEdit ? $data['po']->expected_date : date('Y-m-d', strtotime('+7 days'))) ?>" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Product Search & Quick Add Strip ── -->
+                <div class="search-wrapper">
+                    <div class="search-input-container">
+                        <i class="ph-bold ph-magnifying-glass search-icon-prefix"></i>
+                        <input type="text" id="itemSearch" class="item-search-bar"
+                               placeholder="Search catalog by product name, SKU, item code, or variation... (Press ' / ' or 'F2' to focus, ↑ / ↓ to navigate, Enter to add)"
+                               autocomplete="off">
+                        <ul id="searchResults" class="search-results"></ul>
+                    </div>
+                </div>
+
+                <!-- ── Line Items Table ── -->
+                <div class="table-scroll-container">
+                    <table class="qb-table" id="linesTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 32px; text-align:center;">#</th>
+                                <th style="width: 48%;">Product / Variation</th>
+                                <th style="width: 14%; text-align:right;">Qty</th>
+                                <th style="width: 18%; text-align:right;">Unit Cost (Rs)</th>
+                                <th style="width: 18%; text-align:right;">Total (Rs)</th>
+                                <th style="width: 32px; text-align:center;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="poBody">
+                            <?php if($isEdit || !empty($data['prefilled_items'])): ?>
+                                <?php 
+                                    $loopItems = $isEdit ? $data['items'] : $data['prefilled_items']; 
+                                    $lineNum = 1;
+                                    foreach($loopItems as $item):
+                                        if ($isEdit) {
+                                            $vId = $item->item_id;
+                                            $vOpt = $item->item_variation_option_id ?: ($item->is_mix ? 'MIX' : '0');
+                                            $vMix = $item->is_mix ? 1 : 0;
+                                            $itemSelVal = "{$vId}|{$vOpt}|{$vMix}";
+                                            $displayName = $item->description;
+                                            $qty = $item->quantity;
+                                            $cost = floatval($item->unit_price);
+                                            $lineTot = floatval($item->total ?? ($qty * $cost));
+                                        } else {
+                                            $vId = $item['item_id'];
+                                            $vOpt = '0';
+                                            $vMix = 0;
+                                            $itemSelVal = "{$vId}|0|0";
+                                            $displayName = $item['name'];
+                                            $qty = $item['qty'];
+                                            $cost = floatval($item['cost']);
+                                            $lineTot = $qty * $cost;
+                                        }
+                                ?>
+                                    <tr>
+                                        <td class="line-row-num"><?= $lineNum++ ?></td>
+                                        <td style="position: relative;">
+                                            <input type="text" class="form-control-cell row-search-input" value="<?= htmlspecialchars($displayName) ?>" placeholder="Search product..." autocomplete="off" required>
+                                            <div class="row-suggestions-wrapper" style="display:none;"></div>
+                                            <input type="hidden" name="item_selection[]" class="item-selection-hidden" value="<?= htmlspecialchars($itemSelVal) ?>" required>
+                                            <input type="hidden" name="desc[]" class="desc-hidden" value="<?= htmlspecialchars($displayName) ?>">
+                                        </td>
+                                        <td>
+                                            <input type="number" name="qty[]" step="1" min="1" value="<?= $qty ?>" class="form-control-cell num qty-input" oninput="calculateRow(this.closest('tr'))" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" name="price[]" step="0.01" min="0" value="<?= number_format($cost, 2, '.', '') ?>" class="form-control-cell num cost-input" oninput="calculateRow(this.closest('tr'))" required>
+                                        </td>
+                                        <td style="text-align: right; font-family: var(--f-mono); font-weight:700; color: var(--slate-900);">
+                                            <span class="line-total-display"><?= number_format($lineTot, 2, '.', ',') ?></span>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <button type="button" class="btn-delete-row" onclick="removeRow(this)" title="Remove item">
+                                                <i class="ph-bold ph-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                    <div id="emptyTableNotice" class="empty-grid-notice" style="<?= ($isEdit || !empty($data['prefilled_items'])) ? 'display:none;' : '' ?>">
+                        <i class="ph-bold ph-shopping-cart" style="font-size: 38px; opacity: 0.4; margin-bottom: 6px;"></i>
+                        <div style="font-size: 13px; font-weight: 600; color: var(--slate-600);">No items added to this Purchase Order yet.</div>
+                        <div style="font-size: 11px; color: var(--slate-400); margin-top: 2px;">Search catalog products above (press '/' or 'F2' to focus) and press Enter to add.</div>
+                    </div>
+                </div>
+
+            </div><!-- /.inv-body -->
+
+            <!-- ═══ FOOTER ═══ -->
+            <div class="inv-footer">
+                <!-- Left: Terms / Delivery Notes -->
+                <div class="inv-footer-left">
+                    <label class="footer-field-label">Delivery Terms & Purchasing Notes</label>
+                    <textarea name="notes" class="footer-textarea" placeholder="Enter terms of delivery, payment conditions, or specific instructions for the supplier..."><?= htmlspecialchars($isEdit ? ($data['po']->notes ?? '') : '') ?></textarea>
+                </div>
+
+                <!-- Right: Summary Totals -->
+                <div class="totals-card">
+                    <div class="totals-row">
+                        <span>Total Items Count:</span>
+                        <strong id="totalLinesLabel" style="font-family: var(--f-mono); color: var(--slate-800);">0 lines (0 units)</strong>
+                    </div>
+                    <div class="totals-row">
+                        <span>Items Subtotal:</span>
+                        <span id="subTotalLabel" style="font-family: var(--f-mono); font-weight: 600;">Rs 0.00</span>
+                    </div>
+                    <div class="totals-row grand-total">
+                        <span>Grand Total:</span>
+                        <span class="grand-total-amount" id="grandTotal">Rs 0.00</span>
+                    </div>
+                </div>
             </div>
         </form>
     </div>
 </div>
 
-<script>
-    var catalogOptions = `
-        <option value="">Select Product...</option>
-        <?php foreach($data['catalog_items'] as $item): ?>
-            <?php if(!empty($item->variations)): ?>
-                <optgroup label="<?= htmlspecialchars($item->name) ?>" data-vendor="<?= $item->vendor_id ?>">
-                    <?php foreach($item->variations as $var): ?>
-                        <option value="<?= $item->id ?>|<?= $var->id ?>|0" data-price="<?= floatval($var->cost ?? 0) > 0 ? $var->cost : floatval($item->cost_price ?? 0.00) ?>" data-name="<?= htmlspecialchars($item->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>" data-sku="<?= htmlspecialchars($var->sku ?? $item->item_code ?? '') ?>" data-sample-code="<?= htmlspecialchars($item->sample_code ?? '') ?>">
-                            <?= htmlspecialchars($item->name) ?> - <?= htmlspecialchars($var->variation_name) ?>: <?= htmlspecialchars($var->value_name) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </optgroup>
-            <?php else: ?>
-                <option class="base-opt" value="<?= $item->id ?>|0|0" data-price="<?= floatval($item->cost_price ?? 0.00) ?>" data-vendor="<?= $item->vendor_id ?>" data-name="<?= htmlspecialchars($item->name) ?>" data-sku="<?= htmlspecialchars($item->item_code ?? '') ?>" data-sample-code="<?= htmlspecialchars($item->sample_code ?? '') ?>">
-                    <?= htmlspecialchars($item->name) ?>
-                </option>
-            <?php endif; ?>
-        <?php endforeach; ?>
-    `;
+<!-- ═══ KEYBOARD SHORTCUTS MODAL ═══ -->
+<div id="shortcutsModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:var(--white); border-radius:var(--radius-lg); width:420px; box-shadow:var(--shadow-xl); border:1px solid var(--slate-200); padding:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid var(--slate-200); padding-bottom:10px;">
+            <div style="font-size:15px; font-weight:700; color:var(--slate-900); display:flex; align-items:center; gap:6px;">
+                <i class="ph-bold ph-keyboard" style="color:var(--primary);"></i> Keyboard Navigation
+            </div>
+            <button type="button" onclick="closeShortcutsModal()" style="background:none; border:none; color:var(--slate-400); cursor:pointer; font-size:18px;">
+                <i class="ph-bold ph-x"></i>
+            </button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px; font-size:12px;">
+            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed var(--slate-100);">
+                <span style="color:var(--slate-600);">Focus Item Search:</span>
+                <span class="btn-kbd" style="font-size:11px;">/ or F2</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed var(--slate-100);">
+                <span style="color:var(--slate-600);">Navigate Search Suggestions:</span>
+                <span class="btn-kbd" style="font-size:11px;">↑ / ↓ Arrow Keys</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed var(--slate-100);">
+                <span style="color:var(--slate-600);">Add Selected Item to PO:</span>
+                <span class="btn-kbd" style="font-size:11px;">Enter</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed var(--slate-100);">
+                <span style="color:var(--slate-600);">Close Dropdown Suggestions:</span>
+                <span class="btn-kbd" style="font-size:11px;">Escape</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:4px 0;">
+                <span style="color:var(--slate-600);">Save Purchase Order:</span>
+                <span class="btn-kbd" style="font-size:11px;">Ctrl + S / Cmd + S</span>
+            </div>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="closeShortcutsModal()" style="width:100%; margin-top:16px;">
+            Got it
+        </button>
+    </div>
+</div>
 
-    function filterProducts() {
-        const vendorId = document.getElementById('vendorSelect').value;
-        document.querySelectorAll('.item-select').forEach(select => {
-            select.querySelectorAll('optgroup, option.base-opt').forEach(group => {
-                if (group.getAttribute('data-vendor') === vendorId || vendorId === "" || !group.getAttribute('data-vendor')) {
-                    group.style.display = '';
-                } else {
-                    group.style.display = 'none';
-                }
+<script>
+    // ═══ BACKEND DATA INJECTION ═══
+    var catalogItems = <?= json_encode($data['catalog_items']) ?>;
+    var itemSupplierMappings = <?= json_encode($data['item_supplier_mappings'] ?? []) ?>;
+
+    // Fast lookup dictionary for supplier-item relationships: "itemId_supplierId" -> { last_cost_price, is_primary }
+    var itemSupplierMap = {};
+    if (Array.isArray(itemSupplierMappings)) {
+        itemSupplierMappings.forEach(mapping => {
+            const key = `${mapping.item_id}_${mapping.supplier_id}`;
+            itemSupplierMap[key] = {
+                last_cost_price: parseFloat(mapping.last_cost_price ?? 0),
+                is_primary: parseInt(mapping.is_primary ?? 0) === 1
+            };
+        });
+    }
+    
+    // Generate flattened list of searchable elements (main items + variation options)
+    var searchableItems = [];
+    catalogItems.forEach(item => {
+        if (item.variations && item.variations.length > 0) {
+            item.variations.forEach(v => {
+                searchableItems.push({
+                    item_id: item.id,
+                    var_opt_id: v.id,
+                    is_mix: 0,
+                    display_name: `${item.name} - ${v.variation_name}: ${v.value_name}`,
+                    name: item.name,
+                    variation_label: `${v.variation_name}: ${v.value_name}`,
+                    sku: v.sku || item.item_code || '',
+                    vendor_id: item.vendor_id,
+                    cost: parseFloat(v.cost && parseFloat(v.cost) > 0 ? v.cost : (item.cost_price && parseFloat(item.cost_price) > 0 ? item.cost_price : (item.cost ?? 0))),
+                    price: parseFloat(v.price ?? item.price ?? 0)
+                });
             });
-            // Reset if previously selected item is now hidden
-            const selectedOpt = select.options[select.selectedIndex];
-            if(selectedOpt && (selectedOpt.style.display === 'none' || (selectedOpt.parentElement && selectedOpt.parentElement.style.display === 'none'))) {
-                select.value = "";
-                const tr = select.closest('tr');
-                tr.querySelector('input[name="price[]"]').value = "0.00";
-                tr.querySelector('.desc-hidden').value = "";
-                calcTotals();
+        } else {
+            searchableItems.push({
+                item_id: item.id,
+                var_opt_id: 0,
+                is_mix: 0,
+                display_name: item.name,
+                name: item.name,
+                variation_label: '',
+                sku: item.item_code || '',
+                vendor_id: item.vendor_id,
+                cost: parseFloat(item.cost_price && parseFloat(item.cost_price) > 0 ? item.cost_price : (item.cost ?? 0)),
+                price: parseFloat(item.price ?? 0)
+            });
+        }
+    });
+
+    // ═══ STATE & DOM REFERENCES ═══
+    const itemSearchInput = document.getElementById('itemSearch');
+    const searchResultsList = document.getElementById('searchResults');
+    const poBody = document.getElementById('poBody');
+    const emptyNotice = document.getElementById('emptyTableNotice');
+    let activeSearchIndex = -1;
+    let currentSearchResults = [];
+
+    // ═══ SUPPLIER CHANGE HANDLER ═══
+    function onVendorChange() {
+        const vendorSelect = document.getElementById('vendorSelect');
+        const preview = document.getElementById('supplierInfoPreview');
+        const countSpan = document.getElementById('supplierProductCount');
+        const outDiv = document.getElementById('supplierOutstanding');
+        
+        if (!vendorSelect.value) {
+            preview.innerHTML = '<span style="color: var(--slate-400); font-style: italic;">Select a supplier above to load contact details and preferred product mappings.</span>';
+            if (countSpan) countSpan.textContent = '';
+            if (outDiv) {
+                outDiv.style.display = 'none';
+                outDiv.innerHTML = '';
+            }
+            return;
+        }
+
+        const opt = vendorSelect.options[vendorSelect.selectedIndex];
+        const phone = opt.getAttribute('data-phone') || 'No phone recorded';
+        const email = opt.getAttribute('data-email') || 'No email recorded';
+        const address = opt.getAttribute('data-address') || 'No address recorded';
+        const outBal = parseFloat(opt.getAttribute('data-outstanding')) || 0;
+        const vendorId = parseInt(vendorSelect.value);
+
+        // Count linked products
+        let linkedCount = 0;
+        searchableItems.forEach(item => {
+            const mapKey = `${item.item_id}_${vendorId}`;
+            if (parseInt(item.vendor_id) === vendorId || itemSupplierMap[mapKey]) {
+                linkedCount++;
+            }
+        });
+
+        if (countSpan) {
+            countSpan.textContent = `${linkedCount} linked products`;
+        }
+
+        // Render Outstanding Balance indicator (matching Invoice creation panel)
+        if (outDiv) {
+            outDiv.style.display = 'block';
+            let html = '';
+            if (outBal > 0.01) {
+                html = `<div style="display:flex; align-items:center; justify-content:space-between;">
+                            <span style="display:flex; align-items:center; gap:5px; font-weight:700; color:#dc2626;">
+                                <i class="ph-bold ph-warning"></i> Outstanding Payable:
+                            </span>
+                            <strong style="font-family:var(--f-mono); font-size:12px; color:#dc2626;">Rs. ${outBal.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong>
+                        </div>`;
+                outDiv.style.background = '#fef2f2';
+                outDiv.style.color = '#dc2626';
+                outDiv.style.border = '1px solid #fecaca';
+            } else if (outBal < -0.01) {
+                html = `<div style="display:flex; align-items:center; justify-content:space-between;">
+                            <span style="display:flex; align-items:center; gap:5px; font-weight:700; color:#16a34a;">
+                                <i class="ph-bold ph-check-circle"></i> Advance / Overpaid Credit:
+                            </span>
+                            <strong style="font-family:var(--f-mono); font-size:12px; color:#16a34a;">Rs. ${Math.abs(outBal).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong>
+                        </div>`;
+                outDiv.style.background = '#f0fdf4';
+                outDiv.style.color = '#166534';
+                outDiv.style.border = '1px solid #bbf7d0';
+            } else {
+                html = `<div style="display:flex; align-items:center; gap:5px; color:#64748b; font-weight:600;">
+                            <i class="ph-bold ph-check"></i> No Outstanding Balance
+                        </div>`;
+                outDiv.style.background = '#f8fafc';
+                outDiv.style.color = '#64748b';
+                outDiv.style.border = '1px solid #e2e8f0';
+            }
+            outDiv.innerHTML = html;
+        }
+
+        preview.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong style="color:var(--slate-800); font-size:12px;">${escapeHtml(opt.text)}</strong>
+                <span style="font-size:10px; font-weight:700; color:var(--primary); background:var(--primary-light); padding:1px 6px; border-radius:3px;">ID #${vendorId}</span>
+            </div>
+            <div style="font-size:11px; color:var(--slate-500); display:flex; gap:12px; margin-top:2px;">
+                <span><i class="ph ph-phone"></i> ${escapeHtml(phone)}</span>
+                <span><i class="ph ph-envelope"></i> ${escapeHtml(email)}</span>
+            </div>
+            <div style="font-size:10px; color:var(--slate-400); margin-top:2px;">
+                <i class="ph ph-map-pin"></i> ${escapeHtml(address)}
+            </div>
+        `;
+    }
+
+    // ═══ SEARCH ENGINE & KEYBOARD NAVIGATION ═══
+    function renderSearchDropdown(query) {
+        const vendorSelect = document.getElementById('vendorSelect');
+        const selectedVendorId = parseInt(vendorSelect.value || 0);
+
+        if (!selectedVendorId) {
+            searchResultsList.innerHTML = `
+                <li style="padding:10px 14px; color:var(--danger); font-size:12px; font-weight:600; text-align:center;">
+                    <i class="ph-bold ph-warning-circle"></i> Please select a Supplier / Vendor above first
+                </li>
+            `;
+            searchResultsList.style.display = 'block';
+            currentSearchResults = [];
+            activeSearchIndex = -1;
+            return;
+        }
+
+        if (!query || query.trim().length === 0) {
+            searchResultsList.style.display = 'none';
+            currentSearchResults = [];
+            activeSearchIndex = -1;
+            return;
+        }
+
+        const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+        let matches = searchableItems.filter(item => {
+            const searchStr = `${item.display_name || ''} ${item.sku || ''}`.toLowerCase();
+            return tokens.every(token => searchStr.includes(token));
+        });
+
+        if (matches.length === 0) {
+            searchResultsList.innerHTML = `
+                <li style="padding:12px; color:var(--slate-400); font-size:12px; text-align:center; font-style:italic;">
+                    <i class="ph ph-magnifying-glass"></i> No catalog products matching "${escapeHtml(query)}"
+                </li>
+            `;
+            searchResultsList.style.display = 'block';
+            currentSearchResults = [];
+            activeSearchIndex = -1;
+            return;
+        }
+
+        // Annotate each match with supplier link status
+        matches = matches.map(m => {
+            const mapKey = `${m.item_id}_${selectedVendorId}`;
+            const supplierInfo = itemSupplierMap[mapKey];
+            const isDirectVendor = parseInt(m.vendor_id) === selectedVendorId;
+            const isLinked = isDirectVendor || Boolean(supplierInfo);
+            const isPreferred = isDirectVendor || (supplierInfo && supplierInfo.is_primary);
+
+            let applicableCost = m.cost;
+            if (supplierInfo && supplierInfo.last_cost_price > 0) {
+                applicableCost = supplierInfo.last_cost_price;
+            }
+
+            return {
+                ...m,
+                is_linked: isLinked,
+                is_preferred: isPreferred,
+                supplier_cost: applicableCost
+            };
+        });
+
+        // Sort: Preferred -> Linked -> Others -> Alphabetical
+        matches.sort((a, b) => {
+            if (a.is_preferred && !b.is_preferred) return -1;
+            if (!a.is_preferred && b.is_preferred) return 1;
+            if (a.is_linked && !b.is_linked) return -1;
+            if (!a.is_linked && b.is_linked) return 1;
+            return a.display_name.localeCompare(b.display_name);
+        });
+
+        currentSearchResults = matches;
+        activeSearchIndex = 0; // Default highlight first result
+
+        searchResultsList.innerHTML = '';
+        matches.forEach((m, idx) => {
+            const li = document.createElement('li');
+            li.className = 'search-item-row' + (idx === 0 ? ' active' : '');
+            li.dataset.index = idx;
+
+            let badgeHtml = '';
+            if (m.is_preferred) {
+                badgeHtml = '<span class="supplier-badge badge-preferred"><i class="ph-fill ph-star"></i> Preferred</span>';
+            } else if (m.is_linked) {
+                badgeHtml = '<span class="supplier-badge badge-linked"><i class="ph-bold ph-check"></i> Linked</span>';
+            } else {
+                badgeHtml = '<span class="supplier-badge badge-new"><i class="ph-bold ph-plus"></i> New Product</span>';
+            }
+
+            li.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:2px; flex:1; min-width:0;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                        <span class="search-item-name" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(m.display_name)}</span>
+                        ${badgeHtml}
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+                        <span class="search-item-sku">SKU: ${escapeHtml(m.sku || 'N/A')}</span>
+                        <span class="search-item-cost">Cost: Rs ${m.supplier_cost.toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+
+            li.addEventListener('mouseenter', () => {
+                activeSearchIndex = idx;
+                highlightActiveSearchItem();
+            });
+
+            li.addEventListener('click', () => {
+                selectSearchProduct(m);
+            });
+
+            searchResultsList.appendChild(li);
+        });
+
+        searchResultsList.style.display = 'block';
+    }
+
+    function highlightActiveSearchItem() {
+        const rows = searchResultsList.querySelectorAll('.search-item-row');
+        rows.forEach((row, idx) => {
+            if (idx === activeSearchIndex) {
+                row.classList.add('active');
+                row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            } else {
+                row.classList.remove('active');
             }
         });
     }
 
-    function autoFillSelection(selectElement) {
-        const selectedOption = selectElement.options[selectElement.selectedIndex];
-        const price = selectedOption.getAttribute('data-price') || 0;
-        const name = selectedOption.getAttribute('data-name') || '';
-        
-        const tr = selectElement.closest('tr');
-        tr.querySelector('input[name="price[]"]').value = parseFloat(price).toFixed(2);
-        tr.querySelector('.desc-hidden').value = name;
-        calcTotals();
+    function selectSearchProduct(product) {
+        if (!product) return;
+
+        // Add row with selected product data
+        const newRow = addRow({
+            itemId: product.item_id,
+            varOptId: product.var_opt_id,
+            isMix: product.is_mix || 0,
+            desc: product.display_name,
+            qty: 1,
+            cost: product.supplier_cost
+        });
+
+        // Clear search and reset
+        itemSearchInput.value = '';
+        searchResultsList.style.display = 'none';
+        currentSearchResults = [];
+        activeSearchIndex = -1;
+
+        // Autofocus quantity input of newly added row
+        if (newRow) {
+            setTimeout(() => {
+                const qtyInput = newRow.querySelector('.qty-input');
+                if (qtyInput) {
+                    qtyInput.focus();
+                    qtyInput.select();
+                }
+            }, 30);
+        }
     }
 
-    function renumberLineRows(tbodyId) {
-        document.querySelectorAll(`#${tbodyId} tr`).forEach((tr, i) => {
+    // ═══ SEARCH INPUT EVENT LISTENERS ═══
+    itemSearchInput.addEventListener('input', function() {
+        renderSearchDropdown(this.value);
+    });
+
+    itemSearchInput.addEventListener('keydown', function(e) {
+        if (searchResultsList.style.display === 'block' && currentSearchResults.length > 0) {
+            if (e.key === 'ArrowDown' || e.key === 'Down') {
+                e.preventDefault();
+                activeSearchIndex++;
+                if (activeSearchIndex >= currentSearchResults.length) activeSearchIndex = 0;
+                highlightActiveSearchItem();
+                return;
+            } else if (e.key === 'ArrowUp' || e.key === 'Up') {
+                e.preventDefault();
+                activeSearchIndex--;
+                if (activeSearchIndex < 0) activeSearchIndex = currentSearchResults.length - 1;
+                highlightActiveSearchItem();
+                return;
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (activeSearchIndex >= 0 && activeSearchIndex < currentSearchResults.length) {
+                    selectSearchProduct(currentSearchResults[activeSearchIndex]);
+                } else if (currentSearchResults.length > 0) {
+                    selectSearchProduct(currentSearchResults[0]);
+                }
+                return;
+            } else if (e.key === 'Escape') {
+                searchResultsList.style.display = 'none';
+                return;
+            }
+        }
+    });
+
+    // Close dropdown on click outside
+    document.addEventListener('click', function(e) {
+        if (!itemSearchInput.contains(e.target) && !searchResultsList.contains(e.target)) {
+            searchResultsList.style.display = 'none';
+        }
+    });
+
+    // ═══ TABLE CALCULATIONS ═══
+    function calculateRow(row) {
+        if (!row) return;
+        const qtyInput = row.querySelector('.qty-input');
+        const costInput = row.querySelector('.cost-input');
+
+        const qty = parseFloat(qtyInput ? qtyInput.value : 0) || 0;
+        const cost = parseFloat(costInput ? costInput.value : 0) || 0;
+
+        const lineTotal = qty * cost;
+        const lineTotalDisplay = row.querySelector('.line-total-display');
+        if (lineTotalDisplay) {
+            lineTotalDisplay.textContent = lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        recalcGrandTotals();
+    }
+
+    function recalcGrandTotals() {
+        let grandTotal = 0;
+        let totalUnits = 0;
+        const rows = poBody.querySelectorAll('tr');
+        const lineCount = rows.length;
+
+        rows.forEach(row => {
+            const qty = parseFloat(row.querySelector('.qty-input')?.value || 0) || 0;
+            const cost = parseFloat(row.querySelector('.cost-input')?.value || 0) || 0;
+            grandTotal += (qty * cost);
+            totalUnits += qty;
+        });
+
+        const grandTotalSpan = document.getElementById('grandTotal');
+        const subTotalSpan = document.getElementById('subTotalLabel');
+        const totalLinesSpan = document.getElementById('totalLinesLabel');
+
+        const formatted = 'Rs ' + grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (grandTotalSpan) grandTotalSpan.textContent = formatted;
+        if (subTotalSpan) subTotalSpan.textContent = formatted;
+        if (totalLinesSpan) totalLinesSpan.textContent = `${lineCount} lines (${totalUnits} units)`;
+
+        if (emptyNotice) {
+            emptyNotice.style.display = lineCount === 0 ? 'block' : 'none';
+        }
+    }
+
+    function renumberRows() {
+        poBody.querySelectorAll('tr').forEach((tr, i) => {
             const cell = tr.querySelector('.line-row-num');
             if (cell) cell.textContent = i + 1;
         });
     }
 
-    function addRow() {
-        const tbody = document.getElementById('poBody');
+    function addRow(data = {}) {
         const tr = document.createElement('tr');
+        const itemId = data.itemId || '';
+        const varOptId = data.varOptId || '0';
+        const isMix = data.isMix || 0;
+        const desc = data.desc || '';
+        const qty = data.qty || 1;
+        const cost = data.cost !== undefined ? parseFloat(data.cost) : 0;
+        const lineTotal = qty * cost;
+
+        const selectionVal = itemId ? `${itemId}|${varOptId}|${isMix}` : '';
+
         tr.innerHTML = `
             <td class="line-row-num"></td>
-            <td>
-                <select name="item_selection[]" class="item-select" onchange="autoFillSelection(this)" required>${catalogOptions}</select>
-                <input type="hidden" name="desc[]" class="desc-hidden">
+            <td style="position: relative;">
+                <input type="text" class="form-control-cell row-search-input" value="${escapeHtml(desc)}" placeholder="Search product / SKU..." autocomplete="off" required>
+                <div class="row-suggestions-wrapper" style="display:none;"></div>
+                <input type="hidden" name="item_selection[]" class="item-selection-hidden" value="${escapeHtml(selectionVal)}" required>
+                <input type="hidden" name="desc[]" class="desc-hidden" value="${escapeHtml(desc)}">
             </td>
-            <td><input type="number" name="qty[]" step="1" min="1" value="1" class="form-control" onchange="calcTotals()" required style="text-align:right;"></td>
-            <td><input type="number" name="price[]" step="0.01" min="0" value="0.00" class="form-control" onchange="calcTotals()" required style="font-weight:600; text-align:right; font-family:var(--f-mono);"></td>
-            <td><input type="text" class="form-control line-total" value="0.00" readonly style="font-weight:700; text-align:right; font-family:var(--f-mono); background:transparent; border:none; pointer-events:none;"></td>
+            <td>
+                <input type="number" name="qty[]" step="1" min="1" value="${qty}" class="form-control-cell num qty-input" oninput="calculateRow(this.closest('tr'))" required>
+            </td>
+            <td>
+                <input type="number" name="price[]" step="0.01" min="0" value="${cost.toFixed(2)}" class="form-control-cell num cost-input" oninput="calculateRow(this.closest('tr'))" required>
+            </td>
+            <td style="text-align: right; font-family: var(--f-mono); font-weight:700; color: var(--slate-900);">
+                <span class="line-total-display">${lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </td>
             <td style="text-align: center;">
-                <button type="button" class="btn btn-danger" style="padding: 6px; width:28px; height:28px; border-radius:50%;" onclick="removeRow(this)">
-                    <i class="fa-solid fa-xmark"></i>
+                <button type="button" class="btn-delete-row" onclick="removeRow(this)" title="Remove item">
+                    <i class="ph-bold ph-trash"></i>
                 </button>
             </td>
         `;
-        tbody.appendChild(tr);
-        filterProducts();
-        renumberLineRows('poBody');
+
+        poBody.appendChild(tr);
+        bindInlineRowSearch(tr);
+        bindRowEnterTraversal(tr);
+        renumberRows();
+        calculateRow(tr);
+
+        return tr;
     }
 
     function removeRow(btn) {
-        btn.closest('tr').remove();
-        renumberLineRows('poBody');
-        calcTotals();
+        if (!btn) return;
+        const tr = btn.closest('tr');
+        if (tr) {
+            tr.remove();
+            renumberRows();
+            recalcGrandTotals();
+        }
     }
 
-    function calcTotals() {
-        let grandTotal = 0;
-        document.querySelectorAll('#poBody tr').forEach(row => {
-            const qty = parseFloat(row.querySelector('input[name="qty[]"]').value) || 0;
-            const price = parseFloat(row.querySelector('input[name="price[]"]').value) || 0;
-            const total = qty * price;
-            
-            const totalInput = row.querySelector('.line-total');
-            if(totalInput) { totalInput.value = total.toFixed(2); }
-            grandTotal += total;
+    // Inline row search binding for manual row edits
+    function bindInlineRowSearch(row) {
+        const input = row.querySelector('.row-search-input');
+        const hiddenSel = row.querySelector('.item-selection-hidden');
+        const hiddenDesc = row.querySelector('.desc-hidden');
+        const wrapper = row.querySelector('.row-suggestions-wrapper');
+
+        if (!input || !wrapper) return;
+
+        input.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            const selectedVendorId = parseInt(document.getElementById('vendorSelect').value || 0);
+
+            if (!query || query.length === 0) {
+                wrapper.style.display = 'none';
+                return;
+            }
+
+            const tokens = query.split(/\s+/).filter(Boolean);
+            let matches = searchableItems.filter(item => {
+                const searchStr = `${item.display_name || ''} ${item.sku || ''}`.toLowerCase();
+                return tokens.every(t => searchStr.includes(t));
+            });
+
+            if (matches.length === 0) {
+                wrapper.innerHTML = '<div style="padding:8px 10px; font-size:11px; color:var(--slate-400); text-align:center;">No matching products</div>';
+                wrapper.style.display = 'block';
+                return;
+            }
+
+            wrapper.innerHTML = '';
+            matches.slice(0, 10).forEach(m => {
+                const mapKey = `${m.item_id}_${selectedVendorId}`;
+                const supplierInfo = itemSupplierMap[mapKey];
+                let cost = m.cost;
+                if (supplierInfo && supplierInfo.last_cost_price > 0) {
+                    cost = supplierInfo.last_cost_price;
+                }
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'search-item-row';
+                itemDiv.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                        <span style="font-weight:600; font-size:12px; color:var(--slate-800);">${escapeHtml(m.display_name)}</span>
+                        <span style="font-family:var(--f-mono); font-size:11px; font-weight:700;">Rs ${cost.toFixed(2)}</span>
+                    </div>
+                `;
+
+                itemDiv.addEventListener('click', () => {
+                    input.value = m.display_name;
+                    hiddenSel.value = `${m.item_id}|${m.var_opt_id}|0`;
+                    hiddenDesc.value = m.display_name;
+                    wrapper.style.display = 'none';
+
+                    row.querySelector('.cost-input').value = cost.toFixed(2);
+                    calculateRow(row);
+
+                    const qtyInput = row.querySelector('.qty-input');
+                    if (qtyInput) {
+                        qtyInput.focus();
+                        qtyInput.select();
+                    }
+                });
+
+                wrapper.appendChild(itemDiv);
+            });
+
+            wrapper.style.display = 'block';
+            wrapper.style.position = 'absolute';
+            wrapper.style.top = '100%';
+            wrapper.style.left = '0';
+            wrapper.style.right = '0';
+            wrapper.style.background = 'var(--white)';
+            wrapper.style.border = '1px solid var(--slate-200)';
+            wrapper.style.borderRadius = 'var(--radius-sm)';
+            wrapper.style.boxShadow = 'var(--shadow-xl)';
+            wrapper.style.zIndex = '999';
+            wrapper.style.maxHeight = '200px';
+            wrapper.style.overflowY = 'auto';
         });
-        document.getElementById('grandTotal').innerText = grandTotal.toFixed(2);
+
+        document.addEventListener('click', function(e) {
+            if (!input.contains(e.target) && !wrapper.contains(e.target)) {
+                wrapper.style.display = 'none';
+            }
+        });
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
-        calcTotals();
-        filterProducts();
-        renumberLineRows('poBody');
-
-        const form = document.getElementById('poForm');
-        if (form) {
-            form.addEventListener('keydown', function(e) {
+    // Row keyboard traversal (Enter advances to next field or search bar)
+    function bindRowEnterTraversal(row) {
+        const inputs = row.querySelectorAll('input:not([type="hidden"])');
+        inputs.forEach((input, index) => {
+            input.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
-                    const target = e.target;
-                    if (target.tagName === 'INPUT' || target.tagName === 'SELECT') {
-                        const row = target.closest('tr');
-                        if (row && row.closest('#poBody')) {
-                            e.preventDefault();
-                            
-                            const tbody = document.getElementById('poBody');
-                            const lastTr = tbody.querySelector('tr:last-child');
-                            if (row === lastTr) {
-                                addRow();
-                            }
-                            
-                            setTimeout(() => {
-                                const newLastTr = tbody.querySelector('tr:last-child');
-                                if (newLastTr) {
-                                    const select = newLastTr.querySelector('.item-select');
-                                    if (select) {
-                                        if (select.tomselect) {
-                                            select.tomselect.focus();
-                                        } else {
-                                            select.focus();
-                                        }
-                                    }
-                                }
-                            }, 50);
-                        }
+                    e.preventDefault();
+                    if (index < inputs.length - 1) {
+                        inputs[index + 1].focus();
+                        if (inputs[index + 1].select) inputs[index + 1].select();
+                    } else {
+                        // At the last field in the row: move focus back to search bar
+                        itemSearchInput.focus();
                     }
                 }
             });
-        }
+        });
+    }
+
+    // ═══ GLOBAL SHORTCUTS & INITIALIZATION ═══
+    function openShortcutsModal() {
+        document.getElementById('shortcutsModal').style.display = 'flex';
+    }
+
+    function closeShortcutsModal() {
+        document.getElementById('shortcutsModal').style.display = 'none';
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        // Init vendor preview & outstanding balance if vendor is selected
+        onVendorChange();
+
+        // Calculate all prefilled rows and bind listeners
+        poBody.querySelectorAll('tr').forEach(row => {
+            bindInlineRowSearch(row);
+            bindRowEnterTraversal(row);
+            calculateRow(row);
+        });
+        renumberRows();
+        recalcGrandTotals();
+
+        // Global hotkeys
+        document.addEventListener('keydown', function(e) {
+            // Focus item search: '/' or 'F2'
+            if ((e.key === '/' || e.key === 'F2') && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                itemSearchInput.focus();
+                itemSearchInput.select();
+                return;
+            }
+
+            // Save PO: Ctrl+S / Cmd+S
+            if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+                e.preventDefault();
+                const form = document.getElementById('poForm');
+                if (form) {
+                    if (form.checkValidity()) {
+                        form.submit();
+                    } else {
+                        form.reportValidity();
+                    }
+                }
+                return;
+            }
+
+            // Close modal on Escape
+            if (e.key === 'Escape') {
+                closeShortcutsModal();
+            }
+        });
     });
 </script>
