@@ -27,12 +27,20 @@ class ChequeController extends Controller {
         $nextBankingDate = null;
         $nextBankingAmount = 0;
 
-        $groupedCheques = [];
+        $groupedReceivedCheques = [];
+        $groupedIssuedCheques = [];
 
         foreach ($cheques as $chk) {
             // Group by Date for UI display
             $dateKey = date('Y-m-d', strtotime($chk->banking_date));
-            $groupedCheques[$dateKey][] = $chk;
+            
+            if (!empty($chk->vendor_id) || (!empty($chk->bank_account_id) && empty($chk->customer_id))) {
+                // If it has a vendor_id, it's a payment/issued cheque. 
+                // Or if it's drawn from a bank account and not a customer receipt.
+                $groupedIssuedCheques[$dateKey][] = $chk;
+            } else {
+                $groupedReceivedCheques[$dateKey][] = $chk;
+            }
 
             if ($chk->status == 'Pending') {
                 $totalPending += $chk->amount;
@@ -52,7 +60,8 @@ class ChequeController extends Controller {
         $data = [
             'title' => 'Cheque Management',
             'content_view' => 'cheques/index',
-            'grouped_cheques' => $groupedCheques,
+            'grouped_received_cheques' => $groupedReceivedCheques,
+            'grouped_issued_cheques' => $groupedIssuedCheques,
             'search' => $search,
             'customers' => $this->customerModel->getAllCustomers() ?: [],
             'suppliers' => $this->supplierModel->getAllSuppliers() ?: [],
