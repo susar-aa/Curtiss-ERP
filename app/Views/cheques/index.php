@@ -241,11 +241,6 @@
 
 <div class="inv-wrap">
 
-    <div class="inv-header">
-        <div class="inv-eyebrow">Financial Management</div>
-        <h1 class="inv-title">Cheque Portfolio (PDC)</h1>
-    </div>
-
     <!-- Alerts -->
     <?php if(isset($_GET['success'])): ?>
     <div class="sf-alert success">
