@@ -339,11 +339,13 @@
         <div class="qb-card" style="flex: 1; display: flex; flex-direction: column;">
             <div class="qb-card-header" style="border-bottom: none; margin-bottom: 0;">
                 <div class="qb-card-title"><i class="fa-solid fa-list-check"></i> Return Items</div>
-                <div>
-                    <button type="button" class="qb-btn qb-btn-ghost" style="font-size: 11px; padding: 4px 10px;" onclick="addRow()">
-                        <i class="fa-solid fa-plus"></i> Add Line
-                    </button>
-                </div>
+            </div>
+
+            <!-- Product Search Bar -->
+            <div class="qb-search-wrapper" style="margin-bottom: 12px; position: relative;">
+                <i class="fa-solid fa-magnifying-glass vendor-search-icon"></i>
+                <input type="text" id="productSearchInput" class="vendor-search-input" placeholder="Search Vendor Products... (Must select supplier first)" autocomplete="off" disabled>
+                <div id="productSearchDropdown" class="vendor-search-dropdown"></div>
             </div>
 
             <!-- Product Purchase History Section (Loads dynamically) -->
@@ -466,46 +468,89 @@
         document.getElementById('historyContainer').style.display = 'none';
         updateTotals();
 
+        const prodSearch = document.getElementById('productSearchInput');
+        prodSearch.disabled = true;
+        prodSearch.placeholder = 'Loading products...';
+
         fetch(`<?= APP_URL ?>/supplier-return/get_vendor_products?vendor_id=${vendorId}`)
             .then(res => res.json())
             .then(data => {
                 vendorProducts = data;
-                addRow(); 
+                prodSearch.disabled = false;
+                prodSearch.placeholder = 'Search Vendor Products by name or SKU...';
+                prodSearch.focus();
             });
     }
 
-    function addRow() {
-        const vendorId = hiddenVendorId.value;
-        if (!vendorId) {
-            alert('Please select a Supplier first.');
+    // --- PRODUCT SEARCH LOGIC ---
+    const prodSearchInput = document.getElementById('productSearchInput');
+    const prodSearchDropdown = document.getElementById('productSearchDropdown');
+
+    prodSearchInput.addEventListener('input', function() {
+        const filter = this.value.toLowerCase().trim();
+        if(!filter) {
+            prodSearchDropdown.style.display = 'none';
             return;
         }
 
+        prodSearchDropdown.innerHTML = '';
+        let hasVisible = false;
+
+        vendorProducts.forEach(p => {
+            const skuVal = p.var_sku || p.sku || '';
+            const codeVal = p.sample_code || '';
+            const searchString = `${p.product_name} ${skuVal} ${codeVal}`.toLowerCase();
+            
+            if(searchString.includes(filter)) {
+                hasVisible = true;
+                const item = document.createElement('div');
+                item.className = 'vendor-search-item';
+                
+                let sub = '';
+                if(skuVal) sub += `SKU: ${skuVal}`;
+                if(codeVal) sub += (sub ? ' | ' : '') + `Code: ${codeVal}`;
+
+                item.innerHTML = `
+                    <div class="v-title">${escapeHtml(p.product_name)}</div>
+                    ${sub ? `<div class="v-sub">${escapeHtml(sub)}</div>` : ''}
+                `;
+
+                item.onclick = () => {
+                    prodSearchDropdown.style.display = 'none';
+                    prodSearchInput.value = '';
+                    const val = `${p.item_id}|${p.var_opt_id || '0'}`;
+                    addItemRow(val, p.product_name);
+                };
+                prodSearchDropdown.appendChild(item);
+            }
+        });
+
+        prodSearchDropdown.style.display = hasVisible ? 'block' : 'none';
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.qb-search-wrapper')) {
+            prodSearchDropdown.style.display = 'none';
+        }
+    });
+
+    function addItemRow(productVal, productName) {
         const tbody = document.getElementById('linesBody');
         const tr = document.createElement('tr');
         
-        let selectOptions = '<option value=""></option>';
-        vendorProducts.forEach(p => {
-            const skuVal = p.var_sku || p.sku || '';
-            const sampleCodeVal = p.sample_code || '';
-            selectOptions += `<option value="${p.item_id}|${p.var_opt_id || '0'}" data-sku="${escapeHtml(skuVal)}" data-sample-code="${escapeHtml(sampleCodeVal)}">${escapeHtml(p.product_name)}</option>`;
-        });
-
         tr.innerHTML = `
             <td><span class="line-num"></span></td>
             <td>
-                <select name="item_selection[]" class="original-select" style="display:none;" required>
-                    ${selectOptions}
-                </select>
-                <input type="hidden" name="desc[]" class="desc-hidden">
+                <input type="hidden" name="item_selection[]" value="${escapeHtml(productVal)}">
+                <input type="text" name="desc[]" class="qb-table-input" value="${escapeHtml(productName)}" readonly style="background:transparent; border:none; font-weight:600;">
                 <input type="hidden" name="grn_id[]" class="grn-id-hidden">
             </td>
             <td>
-                <input type="text" name="grn_display[]" class="grn-display-input" placeholder="No batch..." readonly style="background: var(--qb-slate-50); color: var(--qb-slate-500); border-color: transparent;">
+                <input type="text" name="grn_display[]" class="grn-display-input" placeholder="No batch..." readonly style="background: var(--qb-slate-50); color: var(--qb-slate-500); border-color: transparent; font-family:var(--qb-mono); font-size:11px;">
             </td>
-            <td><input type="number" name="price[]" step="0.01" min="0" value="0.00" style="text-align:right;" oninput="calculateLineTotal(this)" required></td>
-            <td><input type="number" name="qty[]" step="1" min="1" value="1" style="text-align:right;" oninput="calculateLineTotal(this)" required></td>
-            <td style="text-align: right; font-family: var(--qb-mono); font-weight: 700; color: var(--qb-slate-800); vertical-align: middle;">
+            <td><input type="number" name="price[]" step="0.01" min="0" value="0.00" class="qb-table-input num" oninput="calculateLineTotal(this)" required></td>
+            <td><input type="number" name="qty[]" step="1" min="1" value="1" class="qb-table-input num" oninput="calculateLineTotal(this)" required></td>
+            <td style="text-align: right; vertical-align: middle;" class="qb-table-total">
                 <span class="line-total-display">0.00</span>
             </td>
             <td style="vertical-align: middle;">
@@ -518,9 +563,15 @@
         tbody.appendChild(tr);
         renumberRows();
         
-        // Initialize searchable select for this new row
-        const newSelect = tr.querySelector('.original-select');
-        convertSelectToSearchable(newSelect, onItemChange);
+        currentActiveRow = tr;
+
+        // Auto trigger history fetch
+        const vendorId = hiddenVendorId.value;
+        fetch(`<?= APP_URL ?>/supplier-return/get_product_history?vendor_id=${vendorId}&product_val=${encodeURIComponent(productVal)}`)
+            .then(res => res.json())
+            .then(history => {
+                renderHistoryTable(history);
+            });
     }
 
     function removeRow(btn) {
@@ -537,27 +588,51 @@
         updateTotals();
     }
 
-    function onItemChange(select) {
-        const tr = select.closest('tr');
-        currentActiveRow = tr;
+
+
+    function calculateLineTotal(input) {
+        const tr = input.closest('tr');
+        const qty = parseFloat(tr.querySelector('input[name="qty[]"]').value) || 0;
+        const cost = parseFloat(tr.querySelector('input[name="price[]"]').value) || 0;
         
-        const selectedOption = select.options[select.selectedIndex];
-        tr.querySelector('.desc-hidden').value = selectedOption.textContent;
-
-        const val = select.value;
-        if (!val) {
-            document.getElementById('historyContainer').style.display = 'none';
-            return;
-        }
-
-        const vendorId = hiddenVendorId.value;
-
-        fetch(`<?= APP_URL ?>/supplier-return/get_product_history?vendor_id=${vendorId}&product_val=${encodeURIComponent(val)}`)
-            .then(res => res.json())
-            .then(history => {
-                renderHistoryTable(history);
-            });
+        const lineTotal = qty * cost;
+        tr.querySelector('.line-total-display').textContent = lineTotal.toFixed(2);
+        
+        updateTotals();
     }
+
+    function updateTotals() {
+        let grandTotal = 0;
+        let totalQty = 0;
+        let lineCount = 0;
+        
+        document.querySelectorAll('#linesBody tr').forEach(tr => {
+            const qty = parseFloat(tr.querySelector('input[name="qty[]"]').value) || 0;
+            const cost = parseFloat(tr.querySelector('input[name="price[]"]').value) || 0;
+            grandTotal += qty * cost;
+            totalQty += qty;
+            lineCount++;
+        });
+
+        document.getElementById('totalDisplay').textContent = grandTotal.toFixed(2);
+        document.getElementById('totalAmountHidden').value = grandTotal.toFixed(2);
+        document.getElementById('sumQty').textContent = totalQty.toFixed(0);
+        document.getElementById('sumLines').textContent = lineCount;
+    }
+
+    function escapeHtml(str) {
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    document.getElementById('linesBody').addEventListener('click', (e) => {
+        const tr = e.target.closest('tr');
+        if (tr) currentActiveRow = tr;
+    });
 
     function renderHistoryTable(history) {
         const container = document.getElementById('historyTableContainer');
@@ -617,153 +692,4 @@
         card.style.backgroundColor = '#fef3c7';
         setTimeout(() => { card.style.backgroundColor = '#fdfbf7'; }, 300);
     }
-
-    function calculateLineTotal(input) {
-        const tr = input.closest('tr');
-        const qty = parseFloat(tr.querySelector('input[name="qty[]"]').value) || 0;
-        const cost = parseFloat(tr.querySelector('input[name="price[]"]').value) || 0;
-        
-        const lineTotal = qty * cost;
-        tr.querySelector('.line-total-display').textContent = lineTotal.toFixed(2);
-        
-        updateTotals();
-    }
-
-    function updateTotals() {
-        let grandTotal = 0;
-        let totalQty = 0;
-        let lineCount = 0;
-        
-        document.querySelectorAll('#linesBody tr').forEach(tr => {
-            const qty = parseFloat(tr.querySelector('input[name="qty[]"]').value) || 0;
-            const cost = parseFloat(tr.querySelector('input[name="price[]"]').value) || 0;
-            grandTotal += qty * cost;
-            totalQty += qty;
-            lineCount++;
-        });
-
-        document.getElementById('totalDisplay').textContent = grandTotal.toFixed(2);
-        document.getElementById('totalAmountHidden').value = grandTotal.toFixed(2);
-        document.getElementById('sumQty').textContent = totalQty.toFixed(0);
-        document.getElementById('sumLines').textContent = lineCount;
-    }
-
-    function escapeHtml(str) {
-        return str
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-    document.getElementById('linesBody').addEventListener('click', (e) => {
-        const tr = e.target.closest('tr');
-        if (tr) currentActiveRow = tr;
-    });
-
-    // --- Searchable Select Component for Grid ---
-    function convertSelectToSearchable(select, onChangeCallback) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'searchable-select-wrapper';
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'searchable-select-input';
-        input.placeholder = 'Search item...';
-        input.autocomplete = 'off';
-
-        const dropdown = document.createElement('div');
-        dropdown.className = 'searchable-select-dropdown';
-
-        select.parentNode.insertBefore(wrapper, select);
-        wrapper.appendChild(select);
-        wrapper.appendChild(input);
-        wrapper.appendChild(dropdown);
-
-        let visibleItems = [];
-        let highlightedIndex = -1;
-
-        function buildOptionsList(showAll = false) {
-            dropdown.innerHTML = '';
-            visibleItems = [];
-            const filter = input.value.toLowerCase();
-            let hasVisible = false;
-
-            for (let i = 0; i < select.options.length; i++) {
-                const option = select.options[i];
-                if (!option.value && !option.textContent.trim()) continue; // Skip empty placeholder
-
-                const text = option.textContent.toLowerCase();
-                const sku = option.getAttribute('data-sku') || '';
-                const sampleCode = option.getAttribute('data-sample-code') || '';
-                
-                const searchString = `${text} ${sku.toLowerCase()} ${sampleCode.toLowerCase()}`;
-
-                if (showAll || searchString.includes(filter)) {
-                    hasVisible = true;
-                    const item = document.createElement('div');
-                    item.className = 'searchable-select-item';
-                    
-                    if (option.selected) item.classList.add('selected');
-
-                    const labelSpan = document.createElement('span');
-                    labelSpan.textContent = option.textContent;
-                    item.appendChild(labelSpan);
-
-                    let subtitleText = '';
-                    if (sku) subtitleText += `SKU: ${sku}`;
-                    if (sampleCode) subtitleText += (subtitleText ? ' | ' : '') + `Code: ${sampleCode}`;
-
-                    if (subtitleText) {
-                        const subSpan = document.createElement('span');
-                        subSpan.className = 'searchable-select-item-sub';
-                        subSpan.textContent = subtitleText;
-                        item.appendChild(subSpan);
-                    }
-
-                    item.addEventListener('mousedown', function(e) {
-                        e.preventDefault(); 
-                        selectOption(option);
-                    });
-
-                    dropdown.appendChild(item);
-                    visibleItems.push({ element: item, option: option });
-                }
-            }
-            dropdown.style.display = hasVisible ? 'block' : 'none';
-        }
-
-        function selectOption(option) {
-            select.value = option.value;
-            input.value = option.textContent;
-            dropdown.style.display = 'none';
-            highlightedIndex = -1;
-            
-            if(onChangeCallback) onChangeCallback(select);
-        }
-
-        input.addEventListener('focus', function() {
-            buildOptionsList(true);
-            dropdown.style.display = 'block';
-        });
-
-        input.addEventListener('input', function() {
-            buildOptionsList(false);
-        });
-
-        input.addEventListener('blur', function() {
-            // Delay to allow mousedown to fire on items
-            setTimeout(() => {
-                dropdown.style.display = 'none';
-                const selectedOpt = select.options[select.selectedIndex];
-                if (selectedOpt && selectedOpt.value) {
-                    input.value = selectedOpt.textContent;
-                } else {
-                    input.value = '';
-                }
-            }, 150);
-        });
-    }
-
 </script>
