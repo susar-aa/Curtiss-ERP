@@ -151,4 +151,43 @@ class CreditNoteController extends Controller {
 
         $this->view('layouts/main', $data);
     }
+
+    public function edit($id = null) {
+        if (!$id) { header('Location: ' . APP_URL . '/creditnote'); exit; }
+        
+        $creditNote = $this->creditNoteModel->getCreditNoteById($id);
+        if (!$creditNote) { die("Credit Note not found."); }
+        
+        $data = [
+            'title' => 'Edit Customer Return',
+            'content_view' => 'credit_notes/index',
+            'credit_notes' => $this->creditNoteModel->getAllCreditNotes(),
+            'error' => 'Editing posted financial records is highly prohibited in Double-Entry Accounting systems to prevent audit trails from breaking. Please delete this Customer Return entirely and create a new one to automatically issue the correct adjustment ledgers.',
+            'success' => ''
+        ];
+        
+        $this->view('layouts/main', $data);
+    }
+
+    public function delete($id = null) {
+        if (!$id) { header('Location: ' . APP_URL . '/creditnote'); exit; }
+        
+        $creditNote = $this->creditNoteModel->getCreditNoteById($id);
+        if (!$creditNote) { die("Credit Note not found."); }
+
+        if ($this->creditNoteModel->deleteCreditNote($id)) {
+            $this->logActivity('Delete Credit Note', 'Billing', "Deleted Customer Return {$creditNote->credit_note_number} and reversed ledgers", $id);
+            header('Location: ' . APP_URL . '/creditnote?success=1');
+            exit;
+        } else {
+            $data = [
+                'title' => 'Credit Notes & Refunds',
+                'content_view' => 'credit_notes/index',
+                'credit_notes' => $this->creditNoteModel->getAllCreditNotes(),
+                'error' => 'Database Error: Failed to safely reverse accounting ledgers and delete Customer Return.',
+                'success' => ''
+            ];
+            $this->view('layouts/main', $data);
+        }
+    }
 }
