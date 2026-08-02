@@ -25,14 +25,18 @@ function global_exception_handler(Throwable $exception) {
               
     if ($isAjax) {
         header('Content-Type: application/json');
-        http_response_code(200);
+        if (!headers_sent()) {
+            http_response_code(200);
+        }
         echo json_encode([
             'success' => false,
             'message' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString()
         ]);
     } else {
-        http_response_code(500);
+        if (!headers_sent()) {
+            http_response_code(500);
+        }
         $showDetails = (DIRECTORY_SEPARATOR === '\\' || (isset($_SERVER['HTTP_HOST']) && (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false)));
         ?>
         <!DOCTYPE html>
