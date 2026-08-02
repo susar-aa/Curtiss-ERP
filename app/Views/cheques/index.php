@@ -229,6 +229,14 @@
 .cq-signature { position: absolute; bottom: 50px; right: 25px; border-bottom: 1px solid #555; width: 180px; text-align: center; font-size: 14px; color: var(--c-blue); font-style: italic;}
 .cq-micr { position: absolute; bottom: 15px; left: 0; width: 100%; text-align: center; font-family: var(--f-mono); font-size: 20px; font-weight: bold; letter-spacing: 4px; color: #111;}
 
+/* Segmented Control */
+.sf-segment-wrap { display: flex; justify-content: center; margin-bottom: 24px; }
+.sf-segments { display: inline-flex; background: var(--c-fill); padding: 4px; border-radius: var(--r-md); }
+.sf-seg-btn { padding: 8px 24px; font-size: 14px; font-weight: 600; font-family: var(--f-system); border: none; background: transparent; color: var(--t-secondary); border-radius: 10px; cursor: pointer; transition: all var(--dur-fast); }
+.sf-seg-btn.active { background: var(--c-surface); color: var(--t-primary); box-shadow: var(--shadow-sm); }
+.chq-section { display: none; }
+.chq-section.active { display: block; }
+
 </style>
 
 <div class="inv-wrap">
@@ -276,6 +284,14 @@
 
     <!-- Table Body Container (ajax target) -->
     <div id="tableContainer">
+        
+        <div class="sf-segment-wrap">
+            <div class="sf-segments">
+                <button class="sf-seg-btn active" id="tab-received" onclick="switchChequeTab('received')">Collections (Received)</button>
+                <button class="sf-seg-btn" id="tab-issued" onclick="switchChequeTab('issued')">Payments (Issued)</button>
+            </div>
+        </div>
+
         <?php if(empty($data['grouped_received_cheques']) && empty($data['grouped_issued_cheques'])): ?>
         <div class="table-panel" style="padding: 60px; text-align: center; color: var(--t-secondary);">
             <i class="fa-solid fa-money-check" style="font-size: 32px; margin-bottom: 16px; opacity: 0.5;"></i>
@@ -283,149 +299,161 @@
         </div>
         <?php else: ?>
             
-            <?php if(!empty($data['grouped_received_cheques'])): ?>
-            <h3 style="font-size: 18px; color: var(--t-primary); margin: 32px 0 16px;">Collections (Received Cheques)</h3>
-            <?php foreach($data['grouped_received_cheques'] as $date => $cheques): ?>
-                <?php 
-                    $dayTotal = 0;
-                    foreach($cheques as $c) { if($c->status == 'Pending') $dayTotal += $c->amount; }
-                    $isPastDue = strtotime($date) < strtotime('today') && $dayTotal > 0;
-                ?>
-                <div class="date-group <?= $isPastDue ? 'overdue' : '' ?>">
-                    <span><i class="fa-regular fa-calendar" style="margin-right:6px;"></i> <?= date('l, F j, Y', strtotime($date)) ?> <?= $isPastDue ? '— OVERDUE' : '' ?></span>
-                    <span>Deposit Rs: <?= number_format($dayTotal, 2) ?></span>
-                </div>
-                <div class="table-panel" style="border-radius: 0; border-top: none; margin-bottom: 0;">
-                    <table class="inv-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 25%;">Customer (Drawer)</th>
-                                <th style="width: 20%;">Bank details</th>
-                                <th style="width: 15%;">Cheque Number</th>
-                                <th style="width: 12%;">Status</th>
-                                <th style="width: 15%; text-align: right;">Amount (Rs:)</th>
-                                <th style="width: 13%; text-align: right;"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach($cheques as $chk): ?>
-                            <tr>
-                                <td>
-                                    <strong style="font-weight:600;"><?= htmlspecialchars($chk->customer_name ?: '-') ?></strong>
-                                    <div style="font-size:11px; color:var(--c-green); font-weight:600; margin-top:2px;">Customer Receipt</div>
-                                </td>
-                                <td>
-                                    <div style="font-weight:500;"><?= htmlspecialchars($chk->bank_name) ?></div>
-                                    <?php if (!empty($chk->drawn_bank_name)): ?>
-                                        <div style="font-size: 11px; color: var(--t-secondary); margin-top:2px;">
-                                            <i class="fa-solid fa-building-columns"></i> <?= htmlspecialchars($chk->drawn_bank_name) ?>
-                                        </div>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <span style="font-family: var(--f-mono); background: var(--c-fill); padding: 4px 8px; border-radius: 6px; font-size: 13px;">
-                                        <?= htmlspecialchars($chk->cheque_number) ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="sf-badge badge-<?= $chk->status ?>">
-                                        <div class="dot"></div> <?= $chk->status ?>
-                                    </div>
-                                </td>
-                                <td style="text-align: right; font-weight: 600;">
-                                    <?= number_format($chk->amount, 2) ?>
-                                </td>
-                                <td>
-                                    <div class="row-acts">
-                                        <button class="act-btn view" title="View Cheque" onclick="viewCheque('<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->banking_date)) ?>', '<?= htmlspecialchars(addslashes($chk->amount)) ?>', '<?= htmlspecialchars(addslashes($chk->customer_name ?: '')) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
-                                            <i class="fa-regular fa-eye"></i>
-                                        </button>
-                                        <button class="act-btn edit" title="Edit" onclick="openEditModal(<?= $chk->id ?>, <?= $chk->customer_id ?: 'null' ?>, <?= $chk->vendor_id ?: 'null' ?>, '<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>', <?= $chk->amount ?>, '<?= $chk->banking_date ?>', '<?= $chk->status ?>', <?= $chk->bank_account_id ?: 'null' ?>)">
-                                            <i class="fa-solid fa-pen"></i>
-                                        </button>
-                                        <button class="act-btn delete" title="Delete" onclick="openDeleteModal(<?= $chk->id ?>, '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
-                                            <i class="fa-regular fa-trash-can"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endforeach; endif; ?>
+            <div id="section-received" class="chq-section active">
+                <?php if(empty($data['grouped_received_cheques'])): ?>
+                    <div class="table-panel" style="padding: 60px; text-align: center; color: var(--t-secondary);">
+                        <p>No received cheques matching this query.</p>
+                    </div>
+                <?php else: ?>
+                    <?php foreach($data['grouped_received_cheques'] as $date => $cheques): ?>
+                        <?php 
+                            $dayTotal = 0;
+                            foreach($cheques as $c) { if($c->status == 'Pending') $dayTotal += $c->amount; }
+                            $isPastDue = strtotime($date) < strtotime('today') && $dayTotal > 0;
+                        ?>
+                        <div class="date-group <?= $isPastDue ? 'overdue' : '' ?>">
+                            <span><i class="fa-regular fa-calendar" style="margin-right:6px;"></i> <?= date('l, F j, Y', strtotime($date)) ?> <?= $isPastDue ? '— OVERDUE' : '' ?></span>
+                            <span>Deposit Rs: <?= number_format($dayTotal, 2) ?></span>
+                        </div>
+                        <div class="table-panel" style="border-radius: 0; border-top: none; margin-bottom: 0;">
+                            <table class="inv-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%;">Customer (Drawer)</th>
+                                        <th style="width: 20%;">Bank details</th>
+                                        <th style="width: 15%;">Cheque Number</th>
+                                        <th style="width: 12%;">Status</th>
+                                        <th style="width: 15%; text-align: right;">Amount (Rs:)</th>
+                                        <th style="width: 13%; text-align: right;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach($cheques as $chk): ?>
+                                    <tr>
+                                        <td>
+                                            <strong style="font-weight:600;"><?= htmlspecialchars($chk->customer_name ?: '-') ?></strong>
+                                            <div style="font-size:11px; color:var(--c-green); font-weight:600; margin-top:2px;">Customer Receipt</div>
+                                        </td>
+                                        <td>
+                                            <div style="font-weight:500;"><?= htmlspecialchars($chk->bank_name) ?></div>
+                                            <?php if (!empty($chk->drawn_bank_name)): ?>
+                                                <div style="font-size: 11px; color: var(--t-secondary); margin-top:2px;">
+                                                    <i class="fa-solid fa-building-columns"></i> <?= htmlspecialchars($chk->drawn_bank_name) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <span style="font-family: var(--f-mono); background: var(--c-fill); padding: 4px 8px; border-radius: 6px; font-size: 13px;">
+                                                <?= htmlspecialchars($chk->cheque_number) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="sf-badge badge-<?= $chk->status ?>">
+                                                <div class="dot"></div> <?= $chk->status ?>
+                                            </div>
+                                        </td>
+                                        <td style="text-align: right; font-weight: 600;">
+                                            <?= number_format($chk->amount, 2) ?>
+                                        </td>
+                                        <td>
+                                            <div class="row-acts">
+                                                <button class="act-btn view" title="View Cheque" onclick="viewCheque('<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->banking_date)) ?>', '<?= htmlspecialchars(addslashes($chk->amount)) ?>', '<?= htmlspecialchars(addslashes($chk->customer_name ?: '')) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
+                                                    <i class="fa-regular fa-eye"></i>
+                                                </button>
+                                                <button class="act-btn edit" title="Edit" onclick="openEditModal(<?= $chk->id ?>, <?= $chk->customer_id ?: 'null' ?>, <?= $chk->vendor_id ?: 'null' ?>, '<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>', <?= $chk->amount ?>, '<?= $chk->banking_date ?>', '<?= $chk->status ?>', <?= $chk->bank_account_id ?: 'null' ?>)">
+                                                    <i class="fa-solid fa-pen"></i>
+                                                </button>
+                                                <button class="act-btn delete" title="Delete" onclick="openDeleteModal(<?= $chk->id ?>, '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
+                                                    <i class="fa-regular fa-trash-can"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
 
-            <?php if(!empty($data['grouped_issued_cheques'])): ?>
-            <h3 style="font-size: 18px; color: var(--t-primary); margin: 32px 0 16px;">Payments (Issued Cheques)</h3>
-            <?php foreach($data['grouped_issued_cheques'] as $date => $cheques): ?>
-                <?php 
-                    $dayTotal = 0;
-                    foreach($cheques as $c) { if($c->status == 'Pending') $dayTotal += $c->amount; }
-                    $isPastDue = strtotime($date) < strtotime('today') && $dayTotal > 0;
-                ?>
-                <div class="date-group <?= $isPastDue ? 'overdue' : '' ?>">
-                    <span><i class="fa-regular fa-calendar" style="margin-right:6px;"></i> <?= date('l, F j, Y', strtotime($date)) ?> <?= $isPastDue ? '— OVERDUE' : '' ?></span>
-                    <span>Payment Rs: <?= number_format($dayTotal, 2) ?></span>
-                </div>
-                <div class="table-panel" style="border-radius: 0; border-top: none; margin-bottom: 0;">
-                    <table class="inv-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 25%;">Supplier / Payee</th>
-                                <th style="width: 20%;">Bank details</th>
-                                <th style="width: 15%;">Cheque Number</th>
-                                <th style="width: 12%;">Status</th>
-                                <th style="width: 15%; text-align: right;">Amount (Rs:)</th>
-                                <th style="width: 13%; text-align: right;"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach($cheques as $chk): ?>
-                            <tr>
-                                <td>
-                                    <strong style="font-weight:600;"><?= htmlspecialchars($chk->vendor_name ?: '-') ?></strong>
-                                    <div style="font-size:11px; color:var(--c-orange); font-weight:600; margin-top:2px;">Supplier Payment</div>
-                                </td>
-                                <td>
-                                    <div style="font-weight:500;"><?= htmlspecialchars($chk->bank_name) ?></div>
-                                    <?php if (!empty($chk->drawn_bank_name)): ?>
-                                        <div style="font-size: 11px; color: var(--t-secondary); margin-top:2px;">
-                                            <i class="fa-solid fa-building-columns"></i> <?= htmlspecialchars($chk->drawn_bank_name) ?>
-                                        </div>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <span style="font-family: var(--f-mono); background: var(--c-fill); padding: 4px 8px; border-radius: 6px; font-size: 13px;">
-                                        <?= htmlspecialchars($chk->cheque_number) ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="sf-badge badge-<?= $chk->status ?>">
-                                        <div class="dot"></div> <?= $chk->status ?>
-                                    </div>
-                                </td>
-                                <td style="text-align: right; font-weight: 600;">
-                                    <?= number_format($chk->amount, 2) ?>
-                                </td>
-                                <td>
-                                    <div class="row-acts">
-                                        <button class="act-btn view" title="View Cheque" onclick="viewCheque('<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->banking_date)) ?>', '<?= htmlspecialchars(addslashes($chk->amount)) ?>', '<?= htmlspecialchars(addslashes($chk->vendor_name ?: '')) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
-                                            <i class="fa-regular fa-eye"></i>
-                                        </button>
-                                        <button class="act-btn edit" title="Edit" onclick="openEditModal(<?= $chk->id ?>, <?= $chk->customer_id ?: 'null' ?>, <?= $chk->vendor_id ?: 'null' ?>, '<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>', <?= $chk->amount ?>, '<?= $chk->banking_date ?>', '<?= $chk->status ?>', <?= $chk->bank_account_id ?: 'null' ?>)">
-                                            <i class="fa-solid fa-pen"></i>
-                                        </button>
-                                        <button class="act-btn delete" title="Delete" onclick="openDeleteModal(<?= $chk->id ?>, '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
-                                            <i class="fa-regular fa-trash-can"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endforeach; endif; ?>
+            <div id="section-issued" class="chq-section">
+                <?php if(empty($data['grouped_issued_cheques'])): ?>
+                    <div class="table-panel" style="padding: 60px; text-align: center; color: var(--t-secondary);">
+                        <p>No issued cheques matching this query.</p>
+                    </div>
+                <?php else: ?>
+                    <?php foreach($data['grouped_issued_cheques'] as $date => $cheques): ?>
+                        <?php 
+                            $dayTotal = 0;
+                            foreach($cheques as $c) { if($c->status == 'Pending') $dayTotal += $c->amount; }
+                            $isPastDue = strtotime($date) < strtotime('today') && $dayTotal > 0;
+                        ?>
+                        <div class="date-group <?= $isPastDue ? 'overdue' : '' ?>">
+                            <span><i class="fa-regular fa-calendar" style="margin-right:6px;"></i> <?= date('l, F j, Y', strtotime($date)) ?> <?= $isPastDue ? '— OVERDUE' : '' ?></span>
+                            <span>Payment Rs: <?= number_format($dayTotal, 2) ?></span>
+                        </div>
+                        <div class="table-panel" style="border-radius: 0; border-top: none; margin-bottom: 0;">
+                            <table class="inv-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%;">Supplier / Payee</th>
+                                        <th style="width: 20%;">Bank details</th>
+                                        <th style="width: 15%;">Cheque Number</th>
+                                        <th style="width: 12%;">Status</th>
+                                        <th style="width: 15%; text-align: right;">Amount (Rs:)</th>
+                                        <th style="width: 13%; text-align: right;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach($cheques as $chk): ?>
+                                    <tr>
+                                        <td>
+                                            <strong style="font-weight:600;"><?= htmlspecialchars($chk->vendor_name ?: '-') ?></strong>
+                                            <div style="font-size:11px; color:var(--c-orange); font-weight:600; margin-top:2px;">Supplier Payment</div>
+                                        </td>
+                                        <td>
+                                            <div style="font-weight:500;"><?= htmlspecialchars($chk->bank_name) ?></div>
+                                            <?php if (!empty($chk->drawn_bank_name)): ?>
+                                                <div style="font-size: 11px; color: var(--t-secondary); margin-top:2px;">
+                                                    <i class="fa-solid fa-building-columns"></i> <?= htmlspecialchars($chk->drawn_bank_name) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <span style="font-family: var(--f-mono); background: var(--c-fill); padding: 4px 8px; border-radius: 6px; font-size: 13px;">
+                                                <?= htmlspecialchars($chk->cheque_number) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="sf-badge badge-<?= $chk->status ?>">
+                                                <div class="dot"></div> <?= $chk->status ?>
+                                            </div>
+                                        </td>
+                                        <td style="text-align: right; font-weight: 600;">
+                                            <?= number_format($chk->amount, 2) ?>
+                                        </td>
+                                        <td>
+                                            <div class="row-acts">
+                                                <button class="act-btn view" title="View Cheque" onclick="viewCheque('<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->banking_date)) ?>', '<?= htmlspecialchars(addslashes($chk->amount)) ?>', '<?= htmlspecialchars(addslashes($chk->vendor_name ?: '')) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
+                                                    <i class="fa-regular fa-eye"></i>
+                                                </button>
+                                                <button class="act-btn edit" title="Edit" onclick="openEditModal(<?= $chk->id ?>, <?= $chk->customer_id ?: 'null' ?>, <?= $chk->vendor_id ?: 'null' ?>, '<?= htmlspecialchars(addslashes($chk->bank_name)) ?>', '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>', <?= $chk->amount ?>, '<?= $chk->banking_date ?>', '<?= $chk->status ?>', <?= $chk->bank_account_id ?: 'null' ?>)">
+                                                    <i class="fa-solid fa-pen"></i>
+                                                </button>
+                                                <button class="act-btn delete" title="Delete" onclick="openDeleteModal(<?= $chk->id ?>, '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>')">
+                                                    <i class="fa-regular fa-trash-can"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
 
         <?php endif; ?>
     </div>
@@ -632,6 +660,21 @@
         openModal('viewModal');
     }
 
+    let activeTab = 'received';
+
+    function switchChequeTab(tab) {
+        activeTab = tab;
+        // Update Buttons
+        document.getElementById('tab-received').classList.remove('active');
+        document.getElementById('tab-issued').classList.remove('active');
+        document.getElementById('tab-' + tab).classList.add('active');
+        
+        // Update Sections
+        document.getElementById('section-received').classList.remove('active');
+        document.getElementById('section-issued').classList.remove('active');
+        document.getElementById('section-' + tab).classList.add('active');
+    }
+
     // AJAX Search implementation
     let searchTimeout = null;
     const searchInput = document.getElementById('searchInput');
@@ -647,15 +690,14 @@
         const url = `?search=${query}`;
         
         fetch(url).then(response => response.text()).then(html => {
-            console.log("Search response fetched for Cheques URL:", url);
             const parser = new DOMParser(); 
             const doc = parser.parseFromString(html, 'text/html');
             const newContainer = doc.getElementById('tableContainer');
             if (newContainer) {
                 document.getElementById('tableContainer').innerHTML = newContainer.innerHTML;
-                console.log("Cheque table successfully updated.");
-            } else {
-                console.log("Error: Could not find tableContainer in response HTML.");
+                
+                // Restore Tab state after replacing the container contents
+                switchChequeTab(activeTab);
             }
             window.history.pushState({}, '', url);
         }).catch(err => {
