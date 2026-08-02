@@ -260,14 +260,7 @@
             </div>
         <?php endif; ?>
         
-        <!-- Feature Banner -->
-        <div style="background: rgba(46, 125, 50, 0.06); padding: 12px 18px; border-radius: var(--qb-radius-lg); border: 1px solid rgba(46, 125, 50, 0.2); display: flex; align-items: center; gap: 12px;">
-            <div style="font-size: 20px; color: #2e7d32;">⚡</div>
-            <div>
-                <h4 style="margin: 0 0 2px 0; color: #2e7d32; font-size: 13px; font-weight: 700;">Automated Double-Entry Accounting Enabled</h4>
-                <p style="font-size: 11.5px; color: #2e7d32; margin: 0; opacity: 0.9;">Manual ledger configuration has been eliminated. The system will automatically reverse sales revenue, deduct the customer's outstanding balance, and manage inventory.</p>
-            </div>
-        </div>
+
 
         <!-- 1. Header -->
         <header class="qb-header">
