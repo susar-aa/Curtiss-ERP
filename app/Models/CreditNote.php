@@ -6,11 +6,20 @@ class CreditNote {
         $this->db = new Database();
     }
 
-    public function getAllCreditNotes() {
-        $this->db->query("SELECT cn.*, c.name as customer_name 
-                          FROM credit_notes cn 
-                          JOIN customers c ON cn.customer_id = c.id 
-                          ORDER BY cn.created_at DESC");
+    public function getAllCreditNotes($search = '') {
+        if (!empty($search)) {
+            $this->db->query("SELECT cn.*, c.name as customer_name 
+                              FROM credit_notes cn 
+                              JOIN customers c ON cn.customer_id = c.id 
+                              WHERE cn.credit_note_number LIKE :search OR c.name LIKE :search
+                              ORDER BY cn.created_at DESC");
+            $this->db->bind(':search', "%$search%");
+        } else {
+            $this->db->query("SELECT cn.*, c.name as customer_name 
+                              FROM credit_notes cn 
+                              JOIN customers c ON cn.customer_id = c.id 
+                              ORDER BY cn.created_at DESC");
+        }
         return $this->db->resultSet();
     }
 

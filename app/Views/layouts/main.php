@@ -428,43 +428,27 @@ if (!function_exists('hasPermission')) {
             }
         }
         .glass-menu-container .mega-menu {
-            visibility: hidden;
-            opacity: 0;
+            display: none;
             position: absolute;
             top: 100%;
             left: 0;
-            /* Using padding top instead of margin top creates the invisible bridge (Solution 1) */
-            padding-top: 12px;
-            z-index: 3000;
-            cursor: default;
-            min-width: 200px;
-            /* Transition delay on leaving allows a grace period (Solution 2) */
-            transition: opacity 0.2s ease, visibility 0.2s ease;
-            transition-delay: 0.15s;
-        }
-        
-        .glass-menu-container .mega-menu-inner {
+            margin-top: 8px;
             background: var(--mega-bg);
             border: 1px solid var(--glass-border);
             border-radius: 16px;
             box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
             padding: 8px 0;
-            display: flex;
+            z-index: 3000;
             flex-direction: row;
-            transform: translateY(-6px);
-            transition: transform 0.2s ease;
+            cursor: default;
+            min-width: 200px;
+            animation: megaFadeIn 0.2s ease;
         }
-
-        .glass-menu-container:hover .mega-menu { 
-            visibility: visible; 
-            opacity: 1;
-            /* Remove delay when entering so it opens instantly */
-            transition-delay: 0s;
+        @keyframes megaFadeIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        
-        .glass-menu-container:hover .mega-menu-inner {
-            transform: translateY(0);
-        }
+        .glass-menu-container:hover .mega-menu { display: flex; }
         
         .align-right .mega-menu { left: auto; right: 0; }
         .glass-menu-container:hover .mega-menu .glass-nav-item {
