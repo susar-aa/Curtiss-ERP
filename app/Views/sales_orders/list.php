@@ -128,6 +128,17 @@
 /* Checkboxes */
 .sf-checkbox { accent-color: var(--c-blue); width: 16px; height: 16px; cursor: pointer; }
 
+/* Command Bar (Dynamic Island) */
+.cmd-bar { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: rgba(28, 28, 30, 0.92); backdrop-filter: saturate(180%) blur(28px); -webkit-backdrop-filter: saturate(180%) blur(28px); border: 0.5px solid rgba(255,255,255,0.12); border-radius: var(--r-pill); padding: 7px 10px; display: flex; align-items: center; gap: 4px; box-shadow: var(--shadow-xl), 0 0 0 0.5px rgba(0,0,0,0.3); z-index: 1000; }
+.cmd-search { display: flex; align-items: center; gap: 9px; background: rgba(255,255,255,0.1); border-radius: var(--r-pill); padding: 8px 14px; width: 250px; transition: width 0.42s cubic-bezier(0.25, 0.1, 0.25, 1), background var(--dur-fast); }
+.cmd-search:focus-within { width: 380px; background: rgba(255,255,255,0.18); }
+.cmd-search i { color: rgba(255,255,255,0.55); font-size: 14px; }
+.cmd-search input { background: transparent; border: none; outline: none; color: #fff; font-size: 14px; font-weight: 500; font-family: var(--f-system); width: 100%; }
+.cmd-search input::placeholder { color: rgba(255,255,255,0.45); }
+.cmd-divider { width: 0.5px; height: 22px; background: rgba(255,255,255,0.15); margin: 0 3px; }
+.cmd-cta { display: flex; align-items: center; gap: 7px; background: #fff; color: #1c1c1e; border: none; border-radius: var(--r-pill); padding: 0 18px; height: 38px; font-size: 14px; font-weight: 700; font-family: var(--f-system); cursor: pointer; transition: transform var(--dur-fast) var(--ease-spring), background var(--dur-fast); margin-left: 2px; text-decoration: none; }
+.cmd-cta:hover { background: #e5e5ea; transform: scale(0.97); }
+
 /* Modals */
 .sf-modal { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); align-items: center; justify-content: center; opacity: 0; transition: opacity var(--dur-fast); }
 .sf-modal.open { display: flex; opacity: 1; }
@@ -137,27 +148,6 @@
 
 <!-- Sales Orders Management -->
 <div class="inv-wrap">
-    
-    <!-- Top Action Bar -->
-    <div class="inv-header">
-        <div class="inv-title-group">
-            <div class="inv-eyebrow">Sales Management</div>
-            <h1 class="inv-title">Sales Order Center</h1>
-            <p class="inv-desc">Manage sales bookings, convert approved orders to finalized invoices, and view route bookings.</p>
-        </div>
-        
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-            <a href="<?= APP_URL ?>/sales/deleted_list" class="sf-btn sf-btn-danger-outline">
-                <i class="fa-solid fa-trash-can"></i> Deleted Log
-            </a>
-            <a href="<?= APP_URL ?>/sales" class="sf-btn sf-btn-ghost">
-                <i class="fa-solid fa-file-invoice"></i> Invoices List
-            </a>
-            <a href="<?= APP_URL ?>/sales/create?type=sales_order" class="sf-btn sf-btn-primary">
-                <i class="fa-solid fa-circle-plus"></i> Create Sales Order
-            </a>
-        </div>
-    </div>
 
     <!-- Alert Notifications -->
     <?php if (isset($_SESSION['flash_success'])): ?>
@@ -182,16 +172,10 @@
 
     <!-- Search & Filters Card -->
     <div class="filter-card">
-        <form method="GET" action="<?= APP_URL ?>/salesorder" class="filter-grid">
+        <form id="filterForm" method="GET" action="<?= APP_URL ?>/salesorder" class="filter-grid">
             
-            <!-- Search Text -->
-            <div class="sf-form-group">
-                <label>Search Order</label>
-                <div class="sf-input-wrap">
-                    <i class="fa-solid fa-magnifying-glass sf-input-icon"></i>
-                    <input type="text" name="search" value="<?= htmlspecialchars($data['search'] ?? '') ?>" placeholder="SO No, customer..." class="sf-input">
-                </div>
-            </div>
+            <!-- Hidden Search Text -->
+            <input type="hidden" name="search" id="mainSearchInput" value="<?= htmlspecialchars($data['search'] ?? '') ?>">
 
             <!-- Customer Filter -->
             <div class="sf-form-group">
@@ -454,6 +438,18 @@
         </div>
     <?php endif; ?>
 
+</div>
+
+<!-- Command Bar -->
+<div class="cmd-bar">
+    <div class="cmd-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" placeholder="Search orders..." value="<?= htmlspecialchars($data['search'] ?? '') ?>" onkeypress="if(event.key === 'Enter') { document.getElementById('mainSearchInput').value = this.value; document.getElementById('filterForm').submit(); }">
+    </div>
+    <div class="cmd-divider"></div>
+    <a href="<?= APP_URL ?>/sales/create?type=sales_order" class="cmd-cta">
+        <i class="fa-solid fa-plus"></i> Create Sales Order
+    </a>
 </div>
 
 <!-- Delete Authentication Modal -->
