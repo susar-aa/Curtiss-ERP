@@ -1225,8 +1225,8 @@ if (!function_exists('hasPermission')) {
                         <a href="<?= APP_URL ?>/creditnote" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-money"></i></div>
                             <div class="mega-list-item-content">
-                                <div class="title">Credit Notes</div>
-                                <div class="desc">Issue client refunds</div>
+                                <div class="title">Customer Returns</div>
+                                <div class="desc">Process customer returns</div>
                             </div>
                         </a>
                         <?php endif; ?>
