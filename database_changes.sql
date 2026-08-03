@@ -289,9 +289,124 @@ ALTER TABLE petty_cash_reimbursements ADD COLUMN IF NOT EXISTS bank_account_id I
 ALTER TABLE petty_cash_reimbursements ADD COLUMN IF NOT EXISTS status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending' AFTER bank_account_id;
 ALTER TABLE petty_cash_reimbursements ADD COLUMN IF NOT EXISTS description TEXT NULL AFTER status;
 ALTER TABLE petty_cash_reimbursements ADD COLUMN IF NOT EXISTS approved_by INT NULL AFTER created_by;
+-- 7. Route Settlement: Add verification, audit, and mobile tracking to pending_collections table
+ALTER TABLE pending_collections ADD COLUMN is_verified TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE pending_collections ADD COLUMN is_flagged TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE pending_collections ADD COLUMN adjusted_amount DECIMAL(12,2) NULL;
+ALTER TABLE pending_collections ADD COLUMN verification_notes TEXT NULL;
+ALTER TABLE pending_collections ADD COLUMN verified_by INT NULL;
+ALTER TABLE pending_collections ADD COLUMN verified_at DATETIME NULL;
+ALTER TABLE pending_collections ADD COLUMN mobile_local_id INT NULL;
+ALTER TABLE pending_collections ADD COLUMN mobile_rep_id INT NULL;
+ALTER TABLE pending_collections ADD COLUMN uuid VARCHAR(255) NULL;
+ALTER TABLE pending_collections ADD COLUMN debit_account_id INT NULL;
+ALTER TABLE pending_collections ADD COLUMN credit_account_id INT NULL;
+
+-- 8. Supplier Management & GRN: Add Service Bills tracking to Goods Receipt Notes
+ALTER TABLE goods_receipt_notes ADD COLUMN due_date DATE NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN service_period VARCHAR(100) NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN amount DECIMAL(15,2) NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN tax DECIMAL(15,2) NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN total_amount DECIMAL(15,2) NULL;
+ALTER TABLE goods_receipt_notes ADD COLUMN status ENUM('Unpaid', 'Partially Paid', 'Paid') DEFAULT 'Unpaid';
+ALTER TABLE goods_receipt_notes ADD COLUMN attachment VARCHAR(255) NULL;
+
+-- 9. App Release Management: Create app_releases Table
+CREATE TABLE IF NOT EXISTS app_releases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    version VARCHAR(50) NOT NULL UNIQUE,
+    build_version INT NULL,
+    version_name VARCHAR(50) NULL,
+    package_name VARCHAR(255) NULL,
+    app_name VARCHAR(255) NULL,
+    major INT NOT NULL,
+    minor INT NOT NULL,
+    patch INT NOT NULL,
+    release_notes TEXT NULL,
+    apk_path VARCHAR(255) NOT NULL,
+    force_update TINYINT(1) NOT NULL DEFAULT 0,
+    is_latest TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 10. Reporting Module: Create saved_reports and scheduled_reports Tables
+CREATE TABLE IF NOT EXISTS saved_reports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    report_key VARCHAR(100) NOT NULL,
+    view_name VARCHAR(255) NOT NULL,
+    filters TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS scheduled_reports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    report_key VARCHAR(100) NOT NULL,
+    frequency VARCHAR(50) NOT NULL,
+    email_recipient VARCHAR(255) NOT NULL,
+    filters TEXT NOT NULL,
+    last_run_at TIMESTAMP NULL DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 11. Status Fields additions (Critical for Customers list and mobile synchronization)
+ALTER TABLE customers ADD COLUMN status VARCHAR(20) DEFAULT 'active';
+ALTER TABLE item_categories ADD COLUMN status VARCHAR(20) DEFAULT 'active';
+ALTER TABLE mca_areas ADD COLUMN status VARCHAR(20) DEFAULT 'active';
+ALTER TABLE customer_payments ADD COLUMN status VARCHAR(20) DEFAULT 'Active';
+
+-- 12. Register these migrations in the system table to prevent rerun triggers
+INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_customers');
+INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_item_categories');
+INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_mca_areas');
+INSERT IGNORE INTO migrations (migration) VALUES ('add_status_to_customer_payments');
+
+-- 13. Petty Cash Module: Re-initialize / Update Configuration & create History tables
+-- (Runs on server/production to resolve incorrect initial schema from the old migration definition)
+DROP TABLE IF EXISTS petty_cash_config;
+CREATE TABLE petty_cash_config (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    limit_amount DECIMAL(15,2) NOT NULL DEFAULT 50000.00,
+    custodian_id INT NOT NULL,
+    require_approval TINYINT(1) DEFAULT 1,
+    default_funding_account_id INT NOT NULL,
+    reimbursement_threshold DECIMAL(15,2) DEFAULT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Seed the initial configuration
+-- Dynamically resolved: custodian_id points to Admin (ID 2 or 1), default_funding_account_id points to an Asset account (e.g., Cheque/Bank account)
+INSERT INTO petty_cash_config (id, limit_amount, custodian_id, require_approval, default_funding_account_id, reimbursement_threshold) 
+VALUES (1, 50000.00, 1, 1, (SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' ORDER BY account_code ASC LIMIT 1), 10000.00)
+ON DUPLICATE KEY UPDATE limit_amount = 50000.00;
+
+CREATE TABLE IF NOT EXISTS petty_cash_config_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    limit_amount DECIMAL(15,2) NOT NULL,
+    custodian_id INT NOT NULL,
+    require_approval TINYINT(1) DEFAULT 1,
+    default_funding_account_id INT NOT NULL,
+    reimbursement_threshold DECIMAL(15,2) DEFAULT NULL,
+    changed_by INT NOT NULL,
+    changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    action VARCHAR(50) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO migrations (migration) VALUES ('create_petty_cash_config_history');
+INSERT IGNORE INTO migrations (migration) VALUES ('upgrade_petty_cash_config_table');
+
+-- 14. Petty Cash Module: Schema upgrade for reimbursements & transactions tables
+-- (Runs on production/server to ensure missing columns such as approved_by exist)
+ALTER TABLE petty_cash_reimbursements ADD COLUMN IF NOT EXISTS approved_by INT NULL AFTER created_by;
 ALTER TABLE petty_cash_reimbursements ADD COLUMN IF NOT EXISTS approved_at DATETIME NULL AFTER approved_by;
 ALTER TABLE petty_cash_transactions ADD COLUMN IF NOT EXISTS approved_by INT NULL AFTER created_by;
 ALTER TABLE petty_cash_transactions ADD COLUMN IF NOT EXISTS approved_at DATETIME NULL AFTER approved_by;
+
+INSERT IGNORE INTO migrations (migration) VALUES ('upgrade_petty_cash_tables_columns');
 
 -- Register all migrations as executed
 INSERT IGNORE INTO migrations (migration) VALUES 
@@ -304,10 +419,69 @@ INSERT IGNORE INTO migrations (migration) VALUES
 ('upgrade_petty_cash_tables_columns');
 
 -- -------------------------------------------------------------
--- Cheques & Supplier Payments Enhancements
+-- Supplier Payments & Cheques Module Schema
 -- -------------------------------------------------------------
-ALTER TABLE supplier_payments ADD COLUMN IF NOT EXISTS bank_account_id INT NULL DEFAULT NULL AFTER journal_entry_id, ADD INDEX IF NOT EXISTS (bank_account_id);
-ALTER TABLE cheques ADD COLUMN IF NOT EXISTS supplier_payment_id INT NULL DEFAULT NULL AFTER bank_account_id, ADD INDEX IF NOT EXISTS (supplier_payment_id);
+CREATE TABLE IF NOT EXISTS `supplier_payments` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `vendor_id` INT NULL DEFAULT NULL,
+    `service_provider_id` INT NULL DEFAULT NULL,
+    `amount` DECIMAL(15,2) NOT NULL,
+    `unallocated_amount` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    `payment_date` DATE NOT NULL,
+    `payment_method` VARCHAR(50) NOT NULL,
+    `reference` VARCHAR(100) NULL,
+    `notes` TEXT NULL,
+    `journal_entry_id` INT NULL DEFAULT NULL,
+    `bank_account_id` INT NULL DEFAULT NULL,
+    `status` ENUM('Active', 'Reversed') DEFAULT 'Active',
+    `created_by` INT NOT NULL,
+    `reversed_by` INT NULL DEFAULT NULL,
+    `reversed_at` DATETIME NULL DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (`vendor_id`),
+    INDEX (`service_provider_id`),
+    INDEX (`bank_account_id`),
+    INDEX (`journal_entry_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `supplier_payment_allocations` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `supplier_payment_id` INT NOT NULL,
+    `grn_id` INT NOT NULL,
+    `amount` DECIMAL(15,2) NOT NULL,
+    `is_reversed` TINYINT(1) DEFAULT 0,
+    `reversed_by` INT NULL DEFAULT NULL,
+    `reversed_at` DATETIME NULL DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (`supplier_payment_id`),
+    INDEX (`grn_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `cheques` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `vendor_id` INT NULL DEFAULT NULL,
+    `service_provider_id` INT NULL DEFAULT NULL,
+    `customer_id` INT NULL DEFAULT NULL,
+    `payee_name` VARCHAR(255) NULL DEFAULT NULL,
+    `bank_name` VARCHAR(100) NOT NULL,
+    `cheque_number` VARCHAR(50) NOT NULL,
+    `amount` DECIMAL(15,2) NOT NULL,
+    `banking_date` DATE NOT NULL,
+    `status` ENUM('Pending', 'Cleared', 'Bounced', 'Cancelled') DEFAULT 'Pending',
+    `bank_account_id` INT NULL DEFAULT NULL,
+    `supplier_payment_id` INT NULL DEFAULT NULL,
+    `created_by` INT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (`vendor_id`),
+    INDEX (`customer_id`),
+    INDEX (`bank_account_id`),
+    INDEX (`supplier_payment_id`),
+    INDEX (`cheque_number`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Ensure columns exist if table was already created in earlier versions
+ALTER TABLE supplier_payments ADD COLUMN IF NOT EXISTS bank_account_id INT NULL DEFAULT NULL AFTER journal_entry_id;
+ALTER TABLE cheques ADD COLUMN IF NOT EXISTS supplier_payment_id INT NULL DEFAULT NULL AFTER bank_account_id;
 ALTER TABLE cheques ADD COLUMN IF NOT EXISTS payee_name VARCHAR(255) NULL DEFAULT NULL AFTER cheque_number;
 
 -- Ensure 2050 Outstanding Cheques (Issued) Account Exists
@@ -317,6 +491,7 @@ WHERE NOT EXISTS (SELECT 1 FROM chart_of_accounts WHERE account_code = '2050');
 
 -- Register migrations
 INSERT IGNORE INTO migrations (migration) VALUES 
+('create_supplier_payments_tables'),
 ('supplier_payments_bank_account_id'),
 ('cheques_supplier_payment_id'),
 ('coa_outstanding_cheques_account'),

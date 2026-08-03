@@ -1097,6 +1097,47 @@ class MigrationManager {
             'items_damaged_qty' => "ALTER TABLE items ADD COLUMN damaged_qty DECIMAL(15,2) DEFAULT 0.00",
             'item_variation_options_damaged_qty' => "ALTER TABLE item_variation_options ADD COLUMN damaged_qty DECIMAL(15,2) DEFAULT 0.00",
             'stock_ledger_stock_status' => "ALTER TABLE stock_ledger ADD COLUMN stock_status VARCHAR(50) DEFAULT 'Good'",
+            'create_supplier_payments_tables' => function(PDO $dbh) {
+                $dbh->exec("
+                    CREATE TABLE IF NOT EXISTS supplier_payments (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        vendor_id INT NULL DEFAULT NULL,
+                        service_provider_id INT NULL DEFAULT NULL,
+                        amount DECIMAL(15,2) NOT NULL,
+                        unallocated_amount DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+                        payment_date DATE NOT NULL,
+                        payment_method VARCHAR(50) NOT NULL,
+                        reference VARCHAR(100) NULL,
+                        notes TEXT NULL,
+                        journal_entry_id INT NULL DEFAULT NULL,
+                        bank_account_id INT NULL DEFAULT NULL,
+                        status ENUM('Active', 'Reversed') DEFAULT 'Active',
+                        created_by INT NOT NULL,
+                        reversed_by INT NULL DEFAULT NULL,
+                        reversed_at DATETIME NULL DEFAULT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        INDEX (vendor_id),
+                        INDEX (service_provider_id),
+                        INDEX (bank_account_id),
+                        INDEX (journal_entry_id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ");
+                $dbh->exec("
+                    CREATE TABLE IF NOT EXISTS supplier_payment_allocations (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        supplier_payment_id INT NOT NULL,
+                        grn_id INT NOT NULL,
+                        amount DECIMAL(15,2) NOT NULL,
+                        is_reversed TINYINT(1) DEFAULT 0,
+                        reversed_by INT NULL DEFAULT NULL,
+                        reversed_at DATETIME NULL DEFAULT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        INDEX (supplier_payment_id),
+                        INDEX (grn_id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                ");
+                return true;
+            },
             'supplier_payments_bank_account_id' => "ALTER TABLE supplier_payments ADD COLUMN bank_account_id INT NULL DEFAULT NULL AFTER journal_entry_id, ADD INDEX (bank_account_id)",
             'cheques_supplier_payment_id' => "ALTER TABLE cheques ADD COLUMN supplier_payment_id INT NULL DEFAULT NULL AFTER bank_account_id, ADD INDEX (supplier_payment_id)",
             'coa_outstanding_cheques_account' => function(PDO $dbh) {

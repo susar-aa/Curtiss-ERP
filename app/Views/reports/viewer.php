@@ -1,12 +1,12 @@
 <?php
 $reportKey = $data['reportKey'];
 $metadata = $data['metadata'];
-$customers = $data['customers'];
-$suppliers = $data['suppliers'];
-$products = $data['products'];
-$warehouses = $data['warehouses'];
-$routes = $data['routes'];
-$categories = $data['categories'];
+$customers = $data['customers'] ?? [];
+$suppliers = $data['suppliers'] ?? [];
+$products = $data['products'] ?? [];
+$warehouses = $data['warehouses'] ?? [];
+$routes = $data['routes'] ?? [];
+$categories = $data['categories'] ?? [];
 $brands = $data['brands'] ?? [];
 $groups = $data['groups'] ?? [];
 $vehicles = $data['vehicles'] ?? [];
@@ -18,1155 +18,1435 @@ $payment_methods = $data['payment_methods'] ?? [];
 $statuses = $data['statuses'] ?? [];
 ?>
 
+<!-- SF Pro / Inter Font & Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+
 <style>
-    .viewer-layout {
-        display: flex;
-        gap: 20px;
-        padding: 20px;
-        max-width: 1600px;
-        margin: 0 auto;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
-    /* Filter Sidebar */
-    .filter-sidebar {
-        width: 320px;
-        flex-shrink: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-    }
-
-    .card {
-        background: #ffffff;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-        padding: 20px;
-    }
-
-    .card-title {
-        font-size: 15px;
-        font-weight: 700;
-        color: #1e293b;
-        margin: 0 0 15px 0;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        border-bottom: 1px solid #f1f5f9;
-        padding-bottom: 10px;
-    }
-
-    .card-title i {
-        color: #0066cc;
-        font-size: 18px;
-    }
-
-    .form-group {
-        margin-bottom: 15px;
-    }
-
-    .form-group:last-child {
-        margin-bottom: 0;
-    }
-
-    .form-group label {
-        display: block;
-        font-size: 12.5px;
-        font-weight: 600;
-        color: #475569;
-        margin-bottom: 6px;
-    }
-
-    .form-control {
-        width: 100%;
-        padding: 8px 12px;
-        border: 1px solid #cbd5e1;
-        border-radius: 6px;
-        font-size: 13.5px;
-        background-color: #fff;
-        color: #1e293b;
-        transition: border-color 0.2s;
-    }
-
-    .form-control:focus {
-        border-color: #0066cc;
-        outline: none;
-    }
-
-    .btn {
-        width: 100%;
-        padding: 10px;
-        border-radius: 6px;
-        font-size: 13.5px;
-        font-weight: 600;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        transition: all 0.2s;
-        border: none;
-    }
-
-    .btn-primary {
-        background: #0066cc;
-        color: #fff;
-    }
-
-    .btn-primary:hover {
-        background: #0052a3;
-    }
-
-    .btn-secondary {
-        background: #f1f5f9;
-        color: #475569;
-        border: 1px solid #cbd5e1;
-        margin-top: 10px;
-    }
-
-    .btn-secondary:hover {
-        background: #e2e8f0;
-    }
-
-    /* Main Preview Panel */
-    .preview-panel {
-        flex-grow: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-        min-width: 0; /* Prevents table overflow from breaking flex box */
-    }
-
-    .preview-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        flex-wrap: wrap;
-        gap: 15px;
-    }
-
-    .report-meta h1 {
-        font-size: 24px;
-        font-weight: 700;
-        color: #1e293b;
-        margin: 0;
-    }
-
-    .report-meta .breadcrumb {
-        font-size: 13px;
-        color: #64748b;
-        margin-bottom: 5px;
-    }
-
-    .report-actions {
-        display: flex;
-        gap: 10px;
-    }
-
-    .action-btn {
-        background: #ffffff;
-        border: 1px solid #cbd5e1;
-        border-radius: 6px;
-        padding: 8px 14px;
-        font-size: 13px;
-        font-weight: 600;
-        color: #475569;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        position: relative;
-    }
-
-    .action-btn:hover {
-        background: #f8fafc;
-        border-color: #94a3b8;
-    }
-
-    .dropdown-menu {
-        display: none;
-        position: absolute;
-        top: 100%;
-        right: 0;
-        background: #ffffff;
-        border: 1px solid #cbd5e1;
-        border-radius: 6px;
-        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-        z-index: 100;
-        min-width: 140px;
-        margin-top: 5px;
-    }
-
-    .dropdown-menu a {
-        display: block;
-        padding: 8px 12px;
-        color: #475569;
-        text-decoration: none;
-        font-size: 13px;
-    }
-
-    .dropdown-menu a:hover {
-        background: #f1f5f9;
-        color: #0066cc;
-    }
-
-    /* Simulation mode warning alert */
-    .sim-alert {
-        background: #fef2f2;
-        border: 1px solid #fee2e2;
-        border-left: 4px solid #ef4444;
-        border-radius: 8px;
-        padding: 12px 16px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        color: #991b1b;
-        font-size: 13.5px;
-    }
-
-    .sim-alert i {
-        font-size: 20px;
-    }
-
-    /* Search and filter controls inside table card */
-    .table-toolbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-        gap: 15px;
-    }
-
-    .search-input-wrapper {
-        position: relative;
-        width: 280px;
-    }
-
-    .search-input-wrapper i {
-        position: absolute;
-        left: 10px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #94a3b8;
-    }
-
-    .search-input-wrapper input {
-        padding-left: 32px;
-    }
-
-    /* Elegant Responsive Table Styles */
-    .table-container {
-        overflow-x: auto;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
-    }
-
-    .report-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13.5px;
-        text-align: left;
-    }
-
-    .report-table th {
-        background: #f8fafc;
-        color: #475569;
-        font-weight: 650;
-        padding: 12px 16px;
-        border-bottom: 2px solid #e2e8f0;
-        cursor: pointer;
-        user-select: none;
-        position: relative;
-    }
-
-    .report-table th:hover {
-        background: #f1f5f9;
-    }
-
-    .report-table th.sorted-asc::after {
-        content: ' ▲';
-        font-size: 9px;
-        color: #0066cc;
-    }
-
-    .report-table th.sorted-desc::after {
-        content: ' ▼';
-        font-size: 9px;
-        color: #0066cc;
-    }
-
-    .report-table td {
-        padding: 12px 16px;
-        border-bottom: 1px solid #e2e8f0;
-        color: #1e293b;
-    }
-
-    .report-table tr:hover {
-        background: #f8fafc;
-    }
-
-    /* Subtotal & Grand Total Rows */
-    .total-row {
-        font-weight: 750;
-        background: #f8fafc;
-    }
-
-    .total-row td {
-        border-top: 2px double #cbd5e1;
-        border-bottom: 2px double #cbd5e1;
-        color: #0f172a;
-    }
-
-    /* Drilldown badge links */
-    .drilldown-link {
-        color: #0066cc;
-        font-weight: 600;
-        text-decoration: none;
-        border-bottom: 1px dashed #0066cc;
-    }
-
-    .drilldown-link:hover {
-        color: #0047b3;
-        border-bottom-style: solid;
-    }
-
-    .badge-completed {
-        background: #dcfce7;
-        color: #15803d;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 11px;
-        font-weight: 600;
-    }
-
-    .badge-pending {
-        background: #fef3c7;
-        color: #b45309;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 11px;
-        font-weight: 600;
-    }
-
-    /* Pagination Footer */
-    .pagination-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 15px;
-        padding-top: 15px;
-        border-top: 1px solid #e2e8f0;
-    }
-
-    .pagination-info {
-        font-size: 13px;
-        color: #64748b;
-    }
-
-    .pagination-controls {
-        display: flex;
-        gap: 5px;
-        align-items: center;
-    }
-
-    .page-btn {
-        background: #fff;
-        border: 1px solid #cbd5e1;
-        padding: 6px 12px;
-        font-size: 13px;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-
-    .page-btn:hover:not(:disabled) {
-        background: #f1f5f9;
-    }
-
-    .page-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .page-btn.active {
-        background: #0066cc;
-        color: #fff;
-        border-color: #0066cc;
-    }
-
-    /* Spinner loading overlay */
-    .loading-overlay {
-        position: relative;
-    }
-
-    .spinner {
-        display: none;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #0066cc;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 1s linear infinite;
-        z-index: 10;
-    }
-
-    @keyframes spin {
-        0% { transform: translate(-50%, -50%) rotate(0deg); }
-        100% { transform: translate(-50%, -50%) rotate(360deg); }
-    }
-
-    /* Print Stylesheet integration */
-    @media print {
-        header, footer, .filter-sidebar, .preview-header, .table-toolbar, .pagination-footer, .no-print {
-            display: none !important;
-        }
-        body, .viewer-layout, .preview-panel {
-            background: #fff !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            width: 100% !important;
-        }
-        .table-container {
-            border: none !important;
-        }
-        .report-table th {
-            background: #e2e8f0 !important;
-            color: #000 !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
-        .report-table td {
-            border-bottom: 1px solid #cbd5e1 !important;
-        }
-    }
-
-    @media (prefers-color-scheme: dark) {
-        .card {
-            background: #1e1e1e;
-            border-color: #2e2e2e;
-        }
-        .card-title {
-            color: #e2e8f0;
-            border-color: #2e2e2e;
-        }
-        .form-control {
-            background-color: #252525;
-            border-color: #3e3e3e;
-            color: #e2e8f0;
-        }
-        .action-btn {
-            background-color: #252525;
-            border-color: #3e3e3e;
-            color: #cbd5e1;
-        }
-        .action-btn:hover {
-            background-color: #2d2d2d;
-        }
-        .dropdown-menu {
-            background-color: #1e1e1e;
-            border-color: #3e3e3e;
-        }
-        .dropdown-menu a {
-            color: #cbd5e1;
-        }
-        .dropdown-menu a:hover {
-            background-color: #2d2d2d;
-        }
-        .report-meta h1 {
-            color: #ffffff;
-        }
-        .report-table th {
-            background-color: #252525;
-            color: #cbd5e1;
-            border-color: #3e3e3e;
-        }
-        .report-table td {
-            color: #cbd5e1;
-            border-color: #2e2e2e;
-        }
-        .report-table tr:hover {
-            background-color: rgba(255, 255, 255, 0.03);
-        }
-        .total-row {
-            background-color: #252525;
-        }
-        .total-row td {
-            color: #ffffff;
-            border-top-color: #3e3e3e;
-            border-bottom-color: #3e3e3e;
-        }
-    }
-    
-    /* Drilldown & Interactive UI Styles */
-    .interactive-cell {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        position: relative;
-        width: 100%;
-    }
-
-    .drilldown-trigger {
-        color: #0066cc;
-        font-weight: 600;
-        cursor: pointer;
-        border-bottom: 1px dashed #0066cc;
-    }
-
-    .drilldown-trigger:hover {
-        color: #0047b3;
-        border-bottom-style: solid;
-    }
-
-    .cell-actions {
-        opacity: 0;
-        display: inline-flex;
-        gap: 4px;
-        margin-left: auto;
-        transition: opacity 0.2s ease;
-    }
-
-    .interactive-cell:hover .cell-actions {
-        opacity: 1;
-    }
-
-    .cell-action-btn {
-        background: none;
-        border: none;
-        padding: 2px;
-        color: #64748b;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        border-radius: 4px;
-        text-decoration: none;
-    }
-
-    .cell-action-btn:hover {
-        background: #f1f5f9;
-        color: #0066cc;
-    }
-
-    /* Side Panel Quick View */
-    .quickview-panel {
-        position: fixed;
-        top: 0;
-        right: -480px;
-        width: 480px;
-        height: 100%;
-        background: #ffffff;
-        box-shadow: -5px 0 25px rgba(0,0,0,0.15);
-        z-index: 1000;
-        transition: right 0.3s ease;
-        display: flex;
-        flex-direction: column;
-        border-left: 1px solid #e2e8f0;
-    }
-
-    .quickview-panel.active {
-        right: 0;
-    }
-
-    .quickview-header {
-        padding: 16px 20px;
-        border-bottom: 1px solid #e2e8f0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #f8fafc;
-    }
-
-    .quickview-header h3 {
-        margin: 0;
-        font-size: 15px;
-        font-weight: 700;
-        color: #0f172a;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .quickview-close {
-        background: none;
-        border: none;
-        font-size: 22px;
-        color: #64748b;
-        cursor: pointer;
-        line-height: 1;
-        padding: 4px;
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-    }
-
-    .quickview-close:hover {
-        background: #fee2e2;
-        color: #ef4444;
-    }
-
-    .quickview-body {
-        padding: 20px;
-        overflow-y: auto;
-        flex-grow: 1;
-        position: relative;
-    }
-
-    .quickview-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(15, 23, 42, 0.4);
-        z-index: 999;
-        display: none;
-        backdrop-filter: blur(2px);
-    }
-
-    .quickview-backdrop.active {
-        display: block;
-    }
-
-    .quickview-spinner {
-        display: none;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #0066cc;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 0.8s linear infinite;
-        z-index: 10;
-    }
-
-    /* Quickview components styling */
-    .qv-card {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 15px;
-    }
-
-    .qv-title {
-        font-size: 13px;
-        font-weight: 700;
-        color: #475569;
-        text-transform: uppercase;
-        margin-bottom: 10px;
-        border-bottom: 1px solid #e2e8f0;
-        padding-bottom: 5px;
-    }
-
-    .qv-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-    }
-
-    .qv-field {
-        margin-bottom: 5px;
-    }
-
-    .qv-field label {
-        display: block;
-        font-size: 11px;
-        color: #64748b;
-        font-weight: 600;
-        text-transform: uppercase;
-    }
-
-    .qv-field span {
-        font-size: 13.5px;
-        color: #0f172a;
-        font-weight: 500;
-    }
-
-    .qv-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 12.5px;
-        margin-top: 5px;
-    }
-
-    .qv-table th {
-        text-align: left;
-        background: #e2e8f0;
-        padding: 6px 10px;
-        color: #475569;
-        font-weight: 600;
-    }
-
-    .qv-table td {
-        padding: 8px 10px;
-        border-bottom: 1px solid #e2e8f0;
-        color: #1e293b;
-    }
-
-    .qv-table tr:hover {
-        background: #f1f5f9;
-    }
-
-    .qv-badge-stat {
-        display: inline-block;
-        padding: 10px;
-        border-radius: 6px;
-        text-align: center;
-        background: #f0fdf4;
-        border: 1px solid #bbf7d0;
-        color: #166534;
-    }
-
-    .qv-badge-stat.danger {
-        background: #fef2f2;
-        border: 1px solid #fecaca;
-        color: #991b1b;
-    }
-
-    .qv-action-bar {
-        display: flex;
-        gap: 10px;
-        margin-top: 15px;
-    }
-
-    .qv-btn {
-        flex-grow: 1;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 13px;
-        font-weight: 600;
-        text-align: center;
-        cursor: pointer;
-        text-decoration: none;
-        border: none;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-    }
-
-    .qv-btn-primary {
-        background: #0066cc;
-        color: white;
-    }
-
-    .qv-btn-primary:hover {
-        background: #0052a3;
-    }
-
-    .qv-btn-secondary {
-        background: #f1f5f9;
-        color: #475569;
-        border: 1px solid #cbd5e1;
-    }
-
-    .qv-btn-secondary:hover {
-        background: #e2e8f0;
-    }
-
-    /* Dark Mode support */
-    @media (prefers-color-scheme: dark) {
-        .cell-action-btn:hover {
-            background: #2d2d2d;
-            color: #38bdf8;
-        }
-        .quickview-panel {
-            background: #1e1e1e;
-            border-left-color: #2e2e2e;
-        }
-        .quickview-header {
-            background: #252525;
-            border-bottom-color: #2e2e2e;
-        }
-        .quickview-header h3 {
-            color: #ffffff;
-        }
-        .quickview-close:hover {
-            background: #7f1d1d;
-            color: #fca5a5;
-        }
-        .qv-card {
-            background: #252525;
-            border-color: #2e2e2e;
-        }
-        .qv-title {
-            color: #cbd5e1;
-            border-bottom-color: #2e2e2e;
-        }
-        .qv-field span {
-            color: #ffffff;
-        }
-        .qv-table th {
-            background: #2d2d2d;
-            color: #cbd5e1;
-        }
-        .qv-table td {
-            border-bottom-color: #2e2e2e;
-            color: #cbd5e1;
-        }
-        .qv-table tr:hover {
-            background: rgba(255,255,255,0.03);
-        }
-        .qv-btn-secondary {
-            background: #252525;
-            color: #cbd5e1;
-            border-color: #3e3e3e;
-        }
-        .qv-btn-secondary:hover {
-            background: #2d2d2d;
-        }
-    }
+/* ============================================================
+   SF PRO + APPLE DESIGN LANGUAGE — REPORT ENGINE VIEWER
+   ============================================================ */
+
+:root {
+    --c-bg:           #f2f2f7;
+    --c-surface:      #ffffff;
+    --c-surface2:     #f9f9fb;
+    --c-surface3:     #f4f4f8;
+    --c-fill:         rgba(120,120,128,0.08);
+    --c-fill2:        rgba(120,120,128,0.14);
+    --c-separator:    rgba(60,60,67,0.12);
+    --c-separator2:   rgba(60,60,67,0.06);
+
+    --c-blue:         #007aff;
+    --c-blue-light:   #e5f2ff;
+    --c-blue-mid:     #b3d6ff;
+    --c-green:        #34c759;
+    --c-green-light:  #e6f9ec;
+    --c-orange:       #ff9500;
+    --c-orange-light: #fff4e5;
+    --c-red:          #ff3b30;
+    --c-red-light:    #fff0ef;
+    --c-purple:       #af52de;
+    --c-purple-light: #f6e8ff;
+    --c-teal:         #30b0c7;
+    --c-teal-light:   #e8f8fa;
+
+    --f-system: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', sans-serif;
+    --f-mono:   ui-monospace, 'SF Mono', 'Menlo', 'Monaco', monospace;
+
+    --t-primary:   #1c1c1e;
+    --t-secondary: #636366;
+    --t-tertiary:  #aeaeb2;
+    --t-label:     #8e8e93;
+
+    --shadow-xs:  0 1px 2px rgba(0,0,0,0.04);
+    --shadow-sm:  0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-md:  0 8px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+    --shadow-xl:  0 24px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.06);
+
+    --r-xs: 6px;
+    --r-sm: 10px;
+    --r-md: 14px;
+    --r-lg: 20px;
+    --r-xl: 24px;
+    --r-pill: 999px;
+
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-ios:    cubic-bezier(0.25, 0.1, 0.25, 1);
+    --dur-fast:    0.18s;
+    --dur-mid:     0.28s;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --c-bg:           #121212;
+        --c-surface:      #1e1e2e;
+        --c-surface2:     #161622;
+        --c-surface3:     #252538;
+        --c-fill:         rgba(255,255,255,0.08);
+        --c-fill2:        rgba(255,255,255,0.12);
+        --c-separator:    rgba(255,255,255,0.15);
+        --c-separator2:   rgba(255,255,255,0.08);
+        --t-primary:      #f5f5f7;
+        --t-secondary:    #a1a1aa;
+        --t-tertiary:     #71717a;
+        --t-label:        #52525b;
+        --c-blue-light:   rgba(0,122,255,0.15);
+        --c-green-light:  rgba(52,199,89,0.15);
+        --c-orange-light: rgba(255,149,0,0.15);
+        --c-red-light:    rgba(255,59,48,0.15);
+        --c-purple-light: rgba(175,82,222,0.15);
+    }
+}
+
+.report-root {
+    font-family: var(--f-system);
+    font-size: 14px;
+    color: var(--t-primary);
+    background: var(--c-bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+}
+
+.viewer-container {
+    max-width: 1680px;
+    margin: 0 auto;
+    padding: 20px 24px 80px;
+}
+
+/* Header & Breadcrumb */
+.report-top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.breadcrumb-shelf {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--t-secondary);
+    margin-bottom: 6px;
+}
+
+.breadcrumb-shelf a {
+    color: var(--c-blue);
+    text-decoration: none;
+    transition: opacity var(--dur-fast);
+}
+
+.breadcrumb-shelf a:hover {
+    text-decoration: underline;
+}
+
+.category-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: var(--r-pill);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--c-blue-light);
+    color: var(--c-blue);
+}
+
+.report-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.report-title {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--t-primary);
+    margin: 0;
+    line-height: 1.2;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Apple Buttons */
+.sf-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border-radius: var(--r-pill);
+    font-size: 13.5px;
+    font-weight: 600;
+    font-family: var(--f-system);
+    cursor: pointer;
+    border: 0.5px solid var(--c-separator);
+    background: var(--c-surface);
+    color: var(--t-primary);
+    box-shadow: var(--shadow-xs);
+    transition: all var(--dur-fast) var(--ease-ios);
+    text-decoration: none;
+    user-select: none;
+    position: relative;
+}
+
+.sf-btn:hover {
+    background: var(--c-fill);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.sf-btn:active {
+    transform: scale(0.98);
+}
+
+.sf-btn-primary {
+    background: var(--c-blue);
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(0,122,255,0.25);
+}
+
+.sf-btn-primary:hover {
+    background: #0066e6;
+    color: #ffffff;
+    box-shadow: 0 6px 16px rgba(0,122,255,0.35);
+}
+
+.sf-btn-secondary {
+    background: var(--c-surface2);
+    color: var(--t-secondary);
+}
+
+.sf-btn-icon {
+    padding: 9px 12px;
+}
+
+/* Stat Cards (KPI Summary Bar) */
+.kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+}
+
+.kpi-card {
+    background: var(--c-surface);
+    border-radius: var(--r-xl);
+    padding: 16px 20px;
+    box-shadow: var(--shadow-sm);
+    border: 0.5px solid var(--c-separator);
+    transition: transform var(--dur-fast) var(--ease-ios), box-shadow var(--dur-fast) var(--ease-ios);
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+}
+
+.kpi-card.blue::before   { background: var(--c-blue); }
+.kpi-card.green::before  { background: var(--c-green); }
+.kpi-card.orange::before { background: var(--c-orange); }
+.kpi-card.purple::before { background: var(--c-purple); }
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.kpi-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--r-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 19px;
+    flex-shrink: 0;
+}
+
+.kpi-card.blue   .kpi-icon { background: var(--c-blue-light);   color: var(--c-blue); }
+.kpi-card.green  .kpi-icon { background: var(--c-green-light);  color: var(--c-green); }
+.kpi-card.orange .kpi-icon { background: var(--c-orange-light); color: var(--c-orange); }
+.kpi-card.purple .kpi-icon { background: var(--c-purple-light); color: var(--c-purple); }
+
+.kpi-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+}
+
+.kpi-num {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--t-primary);
+    line-height: 1.15;
+    margin-bottom: 2px;
+    font-family: var(--f-mono);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kpi-lbl {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--t-label);
+    white-space: nowrap;
+}
+
+/* Two-column Layout */
+.viewer-layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+/* Filter Sidebar */
+.filter-sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: sticky;
+    top: 20px;
+}
+
+.sf-card {
+    background: var(--c-surface);
+    border-radius: var(--r-xl);
+    border: 0.5px solid var(--c-separator);
+    box-shadow: var(--shadow-sm);
+    padding: 20px;
+}
+
+.sf-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 0.5px solid var(--c-separator2);
+}
+
+.sf-card-title {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--t-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.sf-card-title i {
+    color: var(--c-blue);
+    font-size: 18px;
+}
+
+/* Preset Date Chips */
+.date-preset-shelf {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 14px;
+}
+
+.preset-chip {
+    padding: 4px 10px;
+    border-radius: var(--r-pill);
+    font-size: 11.5px;
+    font-weight: 600;
+    background: var(--c-surface2);
+    border: 0.5px solid var(--c-separator);
+    color: var(--t-secondary);
+    cursor: pointer;
+    transition: all var(--dur-fast);
+}
+
+.preset-chip:hover {
+    background: var(--c-fill);
+    color: var(--t-primary);
+}
+
+.preset-chip.active {
+    background: var(--c-blue);
+    color: #ffffff;
+    border-color: var(--c-blue);
+}
+
+/* Form Fields */
+.sf-form-group {
+    margin-bottom: 14px;
+}
+
+.sf-form-group:last-child {
+    margin-bottom: 0;
+}
+
+.sf-form-label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--t-label);
+    margin-bottom: 6px;
+}
+
+.sf-input, .sf-select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 0.5px solid var(--c-separator);
+    border-radius: var(--r-sm);
+    font-size: 13.5px;
+    font-family: var(--f-system);
+    background-color: var(--c-surface2);
+    color: var(--t-primary);
+    transition: all var(--dur-fast);
+    outline: none;
+    box-sizing: border-box;
+}
+
+.sf-input:focus, .sf-select:focus {
+    background-color: var(--c-surface);
+    border-color: var(--c-blue);
+    box-shadow: 0 0 0 3px rgba(0,122,255,0.14);
+}
+
+/* Main Preview Panel */
+.preview-panel {
+    flex-grow: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Simulation Alert */
+.sim-alert {
+    background: var(--c-red-light);
+    border: 0.5px solid rgba(255,59,48,0.25);
+    border-left: 4px solid var(--c-red);
+    border-radius: var(--r-md);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--c-red);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* Table Card */
+.table-panel {
+    background: var(--c-surface);
+    border-radius: var(--r-xl);
+    border: 0.5px solid var(--c-separator);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    position: relative;
+}
+
+.table-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    border-bottom: 0.5px solid var(--c-separator);
+    background: var(--c-surface);
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.table-search-box {
+    position: relative;
+    width: 280px;
+}
+
+.table-search-box i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--t-label);
+    font-size: 15px;
+    pointer-events: none;
+}
+
+.table-search-input {
+    width: 100%;
+    padding: 8px 12px 8px 34px;
+    border: 0.5px solid var(--c-separator);
+    border-radius: var(--r-pill);
+    font-size: 13px;
+    background: var(--c-surface2);
+    color: var(--t-primary);
+    outline: none;
+    transition: all var(--dur-fast);
+    box-sizing: border-box;
+}
+
+.table-search-input:focus {
+    background: var(--c-surface);
+    border-color: var(--c-blue);
+    box-shadow: 0 0 0 3px rgba(0,122,255,0.12);
+}
+
+.table-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--t-secondary);
+}
+
+.page-size-select {
+    padding: 5px 10px;
+    border-radius: var(--r-sm);
+    border: 0.5px solid var(--c-separator);
+    background: var(--c-surface2);
+    color: var(--t-primary);
+    font-size: 12.5px;
+    font-weight: 500;
+    outline: none;
+}
+
+/* Scrollable Table */
+.table-scroll {
+    overflow-x: auto;
+    position: relative;
+    max-height: 720px;
+}
+
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    text-align: left;
+}
+
+.report-table thead th {
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--t-label);
+    background: var(--c-surface2);
+    border-bottom: 0.5px solid var(--c-separator);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    user-select: none;
+    transition: background var(--dur-fast);
+}
+
+.report-table thead th:hover {
+    background: var(--c-fill2);
+}
+
+.report-table thead th.sortable {
+    cursor: pointer;
+}
+
+.report-table thead th.sorted-asc::after {
+    content: ' ▲';
+    font-size: 9px;
+    color: var(--c-blue);
+    margin-left: 4px;
+}
+
+.report-table thead th.sorted-desc::after {
+    content: ' ▼';
+    font-size: 9px;
+    color: var(--c-blue);
+    margin-left: 4px;
+}
+
+.report-table tbody tr {
+    transition: background var(--dur-fast);
+    border-bottom: 0.5px solid var(--c-separator2);
+}
+
+.report-table tbody tr:hover {
+    background: var(--c-fill);
+}
+
+.report-table td {
+    padding: 12px 16px;
+    color: var(--t-primary);
+    vertical-align: middle;
+}
+
+.report-table td.numeric-cell {
+    font-family: var(--f-mono);
+    font-feature-settings: "tnum";
+    font-variant-numeric: tabular-nums;
+}
+
+/* Total Rows */
+.report-table tfoot tr.total-row {
+    background: var(--c-surface2);
+    font-weight: 750;
+    border-top: 1.5px solid var(--c-separator);
+    border-bottom: 1.5px solid var(--c-separator);
+}
+
+.report-table tfoot tr.total-row td {
+    color: var(--t-primary);
+    font-weight: 700;
+    font-family: var(--f-mono);
+}
+
+.report-table tfoot tr.grand-total-row {
+    background: var(--c-surface3);
+    font-weight: 800;
+    border-top: 2px solid var(--c-separator);
+    border-bottom: 2px double var(--c-separator);
+}
+
+.report-table tfoot tr.grand-total-row td {
+    color: var(--t-primary);
+    font-weight: 800;
+    font-size: 14px;
+    font-family: var(--f-mono);
+}
+
+/* Badges & Status Pills */
+.sf-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: var(--r-pill);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.sf-badge-success { background: var(--c-green-light); color: var(--c-green); }
+.sf-badge-warning { background: var(--c-orange-light); color: var(--c-orange); }
+.sf-badge-danger  { background: var(--c-red-light); color: var(--c-red); }
+.sf-badge-info    { background: var(--c-blue-light); color: var(--c-blue); }
+.sf-badge-neutral { background: var(--c-fill2); color: var(--t-secondary); }
+
+/* Interactive Cells & Drilldowns */
+.drill-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.drill-link {
+    color: var(--c-blue);
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    border-bottom: 1px dashed rgba(0,122,255,0.4);
+    transition: all var(--dur-fast);
+}
+
+.drill-link:hover {
+    color: #0056cc;
+    border-bottom-style: solid;
+}
+
+.drill-actions {
+    opacity: 0;
+    display: inline-flex;
+    gap: 3px;
+    margin-left: auto;
+    transition: opacity var(--dur-fast);
+}
+
+.drill-cell:hover .drill-actions {
+    opacity: 1;
+}
+
+.drill-action-btn {
+    background: transparent;
+    border: none;
+    padding: 3px 5px;
+    color: var(--t-tertiary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    border-radius: var(--r-xs);
+    font-size: 13px;
+    text-decoration: none;
+    transition: all var(--dur-fast);
+}
+
+.drill-action-btn:hover {
+    background: var(--c-fill2);
+    color: var(--c-blue);
+}
+
+/* Pagination Footer */
+.table-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    border-top: 0.5px solid var(--c-separator);
+    background: var(--c-surface);
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.pagination-info {
+    font-size: 13px;
+    color: var(--t-secondary);
+    font-weight: 500;
+}
+
+.pagination-controls {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.pagination-btn {
+    background: var(--c-surface2);
+    border: 0.5px solid var(--c-separator);
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: var(--r-sm);
+    color: var(--t-primary);
+    cursor: pointer;
+    transition: all var(--dur-fast);
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: var(--c-fill2);
+}
+
+.pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pagination-btn.active {
+    background: var(--c-blue);
+    color: #ffffff;
+    border-color: var(--c-blue);
+}
+
+/* Dropdown Menus */
+.sf-dropdown-wrap {
+    position: relative;
+}
+
+.sf-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--c-surface);
+    border-radius: var(--r-md);
+    border: 0.5px solid var(--c-separator);
+    box-shadow: var(--shadow-xl);
+    min-width: 170px;
+    padding: 6px;
+    z-index: 200;
+    display: none;
+    animation: menuFadeIn 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+@keyframes menuFadeIn {
+    from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.sf-dropdown-menu.show {
+    display: block;
+}
+
+.sf-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--t-primary);
+    text-decoration: none;
+    border-radius: var(--r-xs);
+    cursor: pointer;
+    transition: background var(--dur-fast);
+}
+
+.sf-dropdown-item:hover {
+    background: var(--c-fill);
+    color: var(--c-blue);
+}
+
+.sf-dropdown-item i {
+    font-size: 16px;
+}
+
+/* Loading Overlay & Skeleton */
+.loading-curtain {
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(2px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+    .loading-curtain {
+        background: rgba(30,30,46,0.75);
+    }
+}
+
+.loading-curtain.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sf-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3.5px solid var(--c-fill2);
+    border-top-color: var(--c-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Side Quick View Drawer (Apple Sheet style) */
+.quickview-drawer {
+    position: fixed;
+    top: 0;
+    right: -520px;
+    width: 500px;
+    height: 100%;
+    background: var(--c-surface);
+    box-shadow: var(--shadow-xl);
+    z-index: 1050;
+    transition: right 0.32s var(--ease-ios);
+    display: flex;
+    flex-direction: column;
+    border-left: 0.5px solid var(--c-separator);
+}
+
+.quickview-drawer.active {
+    right: 0;
+}
+
+.quickview-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    backdrop-filter: blur(4px);
+    z-index: 1040;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.quickview-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.quickview-head {
+    padding: 18px 22px;
+    border-bottom: 0.5px solid var(--c-separator);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--c-surface2);
+}
+
+.quickview-head h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--t-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.quickview-close-btn {
+    background: var(--c-fill);
+    border: none;
+    color: var(--t-secondary);
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all var(--dur-fast);
+}
+
+.quickview-close-btn:hover {
+    background: var(--c-red-light);
+    color: var(--c-red);
+}
+
+.quickview-content-body {
+    padding: 20px 22px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.qv-subcard {
+    background: var(--c-surface2);
+    border-radius: var(--r-md);
+    border: 0.5px solid var(--c-separator);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.qv-subcard-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--t-label);
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 0.5px solid var(--c-separator2);
+}
+
+.qv-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.qv-field label {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--t-label);
+    margin-bottom: 2px;
+}
+
+.qv-field span, .qv-field strong {
+    font-size: 13.5px;
+    color: var(--t-primary);
+}
+
+.qv-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+}
+
+.qv-table th {
+    padding: 8px 10px;
+    background: var(--c-fill);
+    color: var(--t-label);
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: left;
+}
+
+.qv-table td {
+    padding: 8px 10px;
+    border-bottom: 0.5px solid var(--c-separator2);
+    color: var(--t-primary);
+}
+
+/* Empty State */
+.empty-state {
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.empty-icon {
+    font-size: 48px;
+    color: var(--t-tertiary);
+    margin-bottom: 14px;
+}
+
+.empty-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--t-primary);
+    margin-bottom: 6px;
+}
+
+.empty-sub {
+    font-size: 13px;
+    color: var(--t-secondary);
+    max-width: 320px;
+    margin: 0 auto 16px;
+}
+
+/* Print Stylesheet */
+@media print {
+    .no-print, .filter-sidebar, .report-top-header .header-actions, .table-toolbar, .table-footer, .drill-actions, .quickview-drawer, .quickview-backdrop {
+        display: none !important;
+    }
+    body, .report-root, .viewer-container, .viewer-layout, .preview-panel, .table-panel {
+        background: #fff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+    .report-table thead th {
+        background: #f1f5f9 !important;
+        color: #000 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
 </style>
 
-<div class="viewer-layout">
-    <!-- Filter Panel Sidebar -->
-    <div class="filter-sidebar no-print">
-        <!-- Main Filter Selection -->
-        <div class="card">
-            <div class="card-title">
-                <i class="ph ph-sliders"></i>
-                <span>Report Filters</span>
+<div class="report-root">
+    <div class="viewer-container">
+        
+        <!-- Header & Breadcrumbs -->
+        <div class="report-top-header">
+            <div>
+                <div class="breadcrumb-shelf">
+                    <a href="<?= APP_URL ?>/report"><i class="ph ph-squares-four"></i> Reports Hub</a>
+                    <span>/</span>
+                    <span class="category-tag"><?= htmlspecialchars(ucfirst($metadata['category'])) ?></span>
+                </div>
+                <div class="report-title-row">
+                    <h1 class="report-title"><?= htmlspecialchars($metadata['title']) ?></h1>
+                </div>
             </div>
-            <form id="filterForm">
-                <?php if (in_array('date_range', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Start Date</label>
-                        <input type="date" class="form-control" name="start_date" id="filter_start_date" value="<?= date('Y-m-01') ?>">
-                    </div>
-                    <div class="form-group">
-                        <label>End Date</label>
-                        <input type="date" class="form-control" name="end_date" id="filter_end_date" value="<?= date('Y-m-d') ?>">
-                    </div>
-                <?php endif; ?>
 
-                <?php if (in_array('customer', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Customer</label>
-                        <select class="form-control" name="customer" id="filter_customer">
-                            <option value="">-- All Customers --</option>
-                            <?php foreach ($customers as $c): ?>
-                                <option value="<?= $c->id ?>"><?= htmlspecialchars($c->name) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (in_array('supplier', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Supplier / Vendor</label>
-                        <select class="form-control" name="supplier" id="filter_supplier">
-                            <option value="">-- All Suppliers --</option>
-                            <?php foreach ($suppliers as $s): ?>
-                                <option value="<?= $s->id ?>"><?= htmlspecialchars($s->name) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (in_array('product', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Product</label>
-                        <select class="form-control" name="product" id="filter_product">
-                            <option value="">-- All Products --</option>
-                            <?php foreach ($products as $p): ?>
-                                <option value="<?= $p->id ?>"><?= htmlspecialchars($p->name) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (in_array('warehouse', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Warehouse</label>
-                        <select class="form-control" name="warehouse" id="filter_warehouse">
-                            <option value="">-- All Warehouses --</option>
-                            <?php foreach ($warehouses as $w): ?>
-                                <option value="<?= $w->id ?>"><?= htmlspecialchars($w->name) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (in_array('category', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Item Category</label>
-                        <select class="form-control" name="category" id="filter_category">
-                            <option value="">-- All Categories --</option>
-                            <?php foreach ($categories as $cat): ?>
-                                <option value="<?= $cat->id ?>"><?= htmlspecialchars($cat->name) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (in_array('route', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Route</label>
-                        <select class="form-control" name="route" id="filter_route">
-                            <option value="">-- All Routes --</option>
-                            <?php foreach ($routes as $r): ?>
-                                <option value="<?= $r->id ?>"><?= htmlspecialchars($r->route_name) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (in_array('rep', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Sales Rep</label>
-                        <select class="form-control" name="rep" id="filter_rep">
-                            <option value="">-- All Reps --</option>
-                            <?php foreach ($reps as $r): ?>
-                                <option value="<?= $r->id ?>"><?= htmlspecialchars($r->name) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (in_array('payment_method', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Payment Method</label>
-                        <select class="form-control" name="payment_method" id="filter_payment_method">
-                            <option value="">-- All Methods --</option>
-                            <?php foreach ($payment_methods as $pm): ?>
-                                <option value="<?= $pm->id ?>"><?= htmlspecialchars($pm->name) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (in_array('status', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Status</label>
-                        <select class="form-control" name="status" id="filter_status">
-                            <option value="">-- All Statuses --</option>
-                            <?php foreach ($statuses as $st): ?>
-                                <option value="<?= $st->id ?>"><?= htmlspecialchars($st->name) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (in_array('brand', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Brand</label>
-                        <select class="form-control" name="brand" id="filter_brand">
-                            <option value="">-- All Brands --</option>
-                            <?php foreach ($brands as $b): ?>
-                                <option value="<?= htmlspecialchars($b->brand) ?>"><?= htmlspecialchars($b->brand) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (in_array('group', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Customer Group</label>
-                        <select class="form-control" name="group" id="filter_group">
-                            <option value="">-- All Groups --</option>
-                            <?php foreach ($groups as $g): ?>
-                                <option value="<?= htmlspecialchars($g->name) ?>"><?= htmlspecialchars($g->name) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (in_array('vehicle', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Vehicle</label>
-                        <select class="form-control" name="vehicle" id="filter_vehicle">
-                            <option value="">-- All Vehicles --</option>
-                            <?php foreach ($vehicles as $v): ?>
-                                <option value="<?= htmlspecialchars($v->vehicle_number) ?>"><?= htmlspecialchars($v->vehicle_number) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (in_array('driver', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Driver</label>
-                        <select class="form-control" name="driver" id="filter_driver">
-                            <option value="">-- All Drivers --</option>
-                            <?php foreach ($drivers as $d): ?>
-                                <option value="<?= htmlspecialchars($d->name) ?>"><?= htmlspecialchars($d->name) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (in_array('partner', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Partner / Helper</label>
-                        <select class="form-control" name="partner" id="filter_partner">
-                            <option value="">-- All Partners --</option>
-                            <?php foreach ($partners as $p): ?>
-                                <option value="<?= htmlspecialchars($p->name) ?>"><?= htmlspecialchars($p->name) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (in_array('territory', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Territory</label>
-                        <select class="form-control" name="territory" id="filter_territory">
-                            <option value="">-- All Territories --</option>
-                            <?php foreach ($territories as $t): ?>
-                                <option value="<?= htmlspecialchars($t->territory) ?>"><?= htmlspecialchars($t->territory) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <?php if (in_array('tb_type', $metadata['filters'] ?? [])): ?>
-                    <div class="form-group">
-                        <label>Trial Balance Type</label>
-                        <select class="form-control" name="tb_type" id="filter_tb_type">
-                            <option value="pre_closing">Pre-Closing</option>
-                            <option value="post_closing">Post-Closing (Include Year-End)</option>
-                        </select>
-                    </div>
-                <?php endif; ?>
-
-                <button type="button" class="btn btn-primary" onclick="loadReportData(1)" style="margin-top: 15px;">
-                    <i class="ph ph-arrow-clockwise"></i> Generate Report
-                </button>
-                <button type="button" class="btn btn-secondary" onclick="resetAllFilters()">
-                    Reset Filters
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Main Report Preview Table -->
-    <div class="preview-panel">
-        <div class="preview-header">
-            <div class="report-meta">
-                <div class="breadcrumb">Reports / <?= htmlspecialchars(ucfirst($metadata['category'])) ?></div>
-                <h1><?= htmlspecialchars($metadata['title']) ?></h1>
-            </div>
-            <div class="report-actions no-print">
-                <!-- Share Button -->
-                <div style="position:relative;">
-                    <button class="action-btn" onclick="toggleDropdown('shareMenu')">
-                        <i class="ph ph-share-network"></i> Share <i class="ph ph-caret-down"></i>
+            <!-- Header Action Buttons -->
+            <div class="header-actions no-print">
+                <!-- Share Dropdown -->
+                <div class="sf-dropdown-wrap">
+                    <button class="sf-btn" onclick="toggleDropdown('shareMenu')">
+                        <i class="ph ph-share-network"></i> Share <i class="ph ph-caret-down" style="font-size: 11px;"></i>
                     </button>
-                    <div class="dropdown-menu" id="shareMenu">
-                        <a href="javascript:void(0)" onclick="copyShareLink()"><i class="ph ph-link"></i> Copy Link</a>
-                        <a href="javascript:void(0)" onclick="emailShare()"><i class="ph ph-envelope"></i> Email link</a>
-                        <a href="javascript:void(0)" onclick="whatsappShare()"><i class="ph ph-whatsapp-logo"></i> WhatsApp Share</a>
+                    <div class="sf-dropdown-menu" id="shareMenu">
+                        <div class="sf-dropdown-item" onclick="copyShareLink()"><i class="ph ph-link"></i> Copy Link</div>
+                        <div class="sf-dropdown-item" onclick="emailShare()"><i class="ph ph-envelope"></i> Email Report</div>
+                        <div class="sf-dropdown-item" onclick="whatsappShare()"><i class="ph ph-whatsapp-logo"></i> WhatsApp</div>
                     </div>
                 </div>
 
                 <!-- Print Button -->
-                <button class="action-btn" onclick="openPrintLayout()">
+                <button class="sf-btn" onclick="openPrintLayout()">
                     <i class="ph ph-printer"></i> Print
                 </button>
 
                 <!-- Export Dropdown -->
-                <div style="position:relative;">
-                    <button class="action-btn" onclick="toggleDropdown('exportMenu')">
-                        <i class="ph ph-download"></i> Export <i class="ph ph-caret-down"></i>
+                <div class="sf-dropdown-wrap">
+                    <button class="sf-btn sf-btn-primary" onclick="toggleDropdown('exportMenu')">
+                        <i class="ph ph-download-simple"></i> Export <i class="ph ph-caret-down" style="font-size: 11px;"></i>
                     </button>
-                    <div class="dropdown-menu" id="exportMenu">
-                        <a href="javascript:void(0)" onclick="triggerExport('excel')"><i class="ph ph-file-xls"></i> Excel (.xls)</a>
-                        <a href="javascript:void(0)" onclick="triggerExport('csv')"><i class="ph ph-file-csv"></i> CSV (.csv)</a>
-                        <a href="javascript:void(0)" onclick="triggerExport('word')"><i class="ph ph-file-doc"></i> Word (.doc)</a>
-                        <a href="javascript:void(0)" onclick="triggerExport('xml')"><i class="ph ph-file-xml"></i> XML</a>
-                        <a href="javascript:void(0)" onclick="triggerExport('json')"><i class="ph ph-file-code"></i> JSON</a>
+                    <div class="sf-dropdown-menu" id="exportMenu">
+                        <div class="sf-dropdown-item" onclick="triggerExport('excel')"><i class="ph ph-file-xls" style="color:#107c41;"></i> Excel (.xls)</div>
+                        <div class="sf-dropdown-item" onclick="triggerExport('csv')"><i class="ph ph-file-csv" style="color:#0284c7;"></i> CSV (.csv)</div>
+                        <div class="sf-dropdown-item" onclick="triggerExport('word')"><i class="ph ph-file-doc" style="color:#185abd;"></i> Word (.doc)</div>
+                        <div class="sf-dropdown-item" onclick="triggerExport('xml')"><i class="ph ph-file-code" style="color:#d97706;"></i> XML</div>
+                        <div class="sf-dropdown-item" onclick="triggerExport('json')"><i class="ph ph-brackets-curly" style="color:#7c3aed;"></i> JSON</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Simulation mode warning alert -->
-        <div class="sim-alert" id="simAlert" style="display:none;">
-            <i class="ph ph-warning-circle"></i>
-            <div>
-                <strong>Simulation Mode Active:</strong> The table database relation for this report is currently undergoing system migration. Below values are high-fidelity mockups provided to preview formatting layout.
+        <!-- KPI Summary Cards (Auto-Calculated) -->
+        <div class="kpi-row no-print" id="kpiRow">
+            <div class="kpi-card blue">
+                <div class="kpi-icon"><i class="ph ph-rows"></i></div>
+                <div class="kpi-info">
+                    <div class="kpi-num" id="kpiTotalRecords">-</div>
+                    <div class="kpi-lbl">Total Records</div>
+                </div>
+            </div>
+            <div class="kpi-card green" id="kpiPrimaryCard" style="display:none;">
+                <div class="kpi-icon"><i class="ph ph-currency-dollar"></i></div>
+                <div class="kpi-info">
+                    <div class="kpi-num" id="kpiPrimaryVal">-</div>
+                    <div class="kpi-lbl" id="kpiPrimaryLbl">Total Sum</div>
+                </div>
+            </div>
+            <div class="kpi-card orange" id="kpiSecondaryCard" style="display:none;">
+                <div class="kpi-icon"><i class="ph ph-chart-pie-slice"></i></div>
+                <div class="kpi-info">
+                    <div class="kpi-num" id="kpiSecondaryVal">-</div>
+                    <div class="kpi-lbl" id="kpiSecondaryLbl">Secondary Metric</div>
+                </div>
+            </div>
+            <div class="kpi-card purple" id="kpiTertiaryCard" style="display:none;">
+                <div class="kpi-icon"><i class="ph ph-trend-up"></i></div>
+                <div class="kpi-info">
+                    <div class="kpi-num" id="kpiTertiaryVal">-</div>
+                    <div class="kpi-lbl" id="kpiTertiaryLbl">Additional Metric</div>
+                </div>
             </div>
         </div>
 
-        <!-- Interactive Table Card -->
-        <div class="card" style="padding: 15px; position:relative;">
-            <div class="spinner" id="tableSpinner"></div>
-            <div class="loading-overlay" id="tableOverlay">
-                <div class="table-toolbar no-print">
-                    <div class="search-input-wrapper">
-                        <i class="ph ph-magnifying-glass"></i>
-                        <input type="text" class="form-control" id="tableSearch" placeholder="Filter rows in view..." onkeyup="clientFilterRows()">
+        <!-- Two Column Main Layout -->
+        <div class="viewer-layout">
+            
+            <!-- Left Filter Sidebar -->
+            <div class="filter-sidebar no-print">
+                <div class="sf-card">
+                    <div class="sf-card-header">
+                        <h2 class="sf-card-title"><i class="ph ph-funnel-simple"></i> Report Filters</h2>
+                        <button type="button" class="preset-chip" onclick="resetAllFilters()" title="Reset to defaults">Reset</button>
                     </div>
-                    <div style="font-size: 13px; color: #64748b;">
-                        Showing Page size: 
-                        <select id="limitSelect" onchange="loadReportData(1)" style="padding:4px 8px; border-radius:4px; border:1px solid #cbd5e1;">
-                            <option value="25">25 rows</option>
-                            <option value="50" selected>50 rows</option>
-                            <option value="100">100 rows</option>
-                        </select>
-                    </div>
-                </div>
 
-                <!-- Scrollable Table -->
-                <div class="table-container" id="printableArea">
-                    <table class="report-table" id="reportDataTable">
-                        <thead>
-                            <tr id="tableHeaders">
-                                <!-- Headers injected dynamically by JS -->
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody">
-                            <!-- Body rows injected dynamically -->
-                        </tbody>
-                        <tfoot id="tableFoot">
-                            <!-- Totals injected dynamically -->
-                        </tfoot>
-                    </table>
-                </div>
+                    <form id="filterForm" onsubmit="event.preventDefault(); loadReportData(1);">
+                        
+                        <?php if (in_array('date_range', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Date Range Presets</label>
+                                <div class="date-preset-shelf">
+                                    <span class="preset-chip" onclick="setDatePreset('today', this)">Today</span>
+                                    <span class="preset-chip" onclick="setDatePreset('this_month', this)">This Month</span>
+                                    <span class="preset-chip" onclick="setDatePreset('last_month', this)">Last Month</span>
+                                    <span class="preset-chip" onclick="setDatePreset('this_year', this)">This Year</span>
+                                    <span class="preset-chip" onclick="setDatePreset('all_time', this)">All Time</span>
+                                </div>
+                            </div>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Start Date</label>
+                                <input type="date" class="sf-input" name="start_date" id="filter_start_date" value="<?= date('Y-m-01') ?>">
+                            </div>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">End Date</label>
+                                <input type="date" class="sf-input" name="end_date" id="filter_end_date" value="<?= date('Y-m-d') ?>">
+                            </div>
+                        <?php endif; ?>
 
-                <!-- Pagination footer controls -->
-                <div class="pagination-footer no-print">
-                    <div class="pagination-info" id="paginationInfo">
-                        Showing 0 to 0 of 0 entries
-                    </div>
-                    <div class="pagination-controls" id="paginationControls">
-                        <!-- Controls injected by JS -->
-                    </div>
+                        <?php if (in_array('customer', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Customer</label>
+                                <select class="sf-select" name="customer" id="filter_customer">
+                                    <option value="">-- All Customers --</option>
+                                    <?php foreach ($customers as $c): ?>
+                                        <option value="<?= $c->id ?>"><?= htmlspecialchars($c->name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array('supplier', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Supplier / Vendor</label>
+                                <select class="sf-select" name="supplier" id="filter_supplier">
+                                    <option value="">-- All Suppliers --</option>
+                                    <?php foreach ($suppliers as $s): ?>
+                                        <option value="<?= $s->id ?>"><?= htmlspecialchars($s->name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array('product', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Product / Item</label>
+                                <select class="sf-select" name="product" id="filter_product">
+                                    <option value="">-- All Products --</option>
+                                    <?php foreach ($products as $p): ?>
+                                        <option value="<?= $p->id ?>"><?= htmlspecialchars($p->name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array('warehouse', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Warehouse</label>
+                                <select class="sf-select" name="warehouse" id="filter_warehouse">
+                                    <option value="">-- All Warehouses --</option>
+                                    <?php foreach ($warehouses as $w): ?>
+                                        <option value="<?= $w->id ?>"><?= htmlspecialchars($w->name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array('category', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Category</label>
+                                <select class="sf-select" name="category" id="filter_category">
+                                    <option value="">-- All Categories --</option>
+                                    <?php foreach ($categories as $cat): ?>
+                                        <option value="<?= $cat->id ?>"><?= htmlspecialchars($cat->name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array('route', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Route</label>
+                                <select class="sf-select" name="route" id="filter_route">
+                                    <option value="">-- All Routes --</option>
+                                    <?php foreach ($routes as $r): ?>
+                                        <option value="<?= $r->id ?>"><?= htmlspecialchars($r->route_name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array('rep', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Sales Rep</label>
+                                <select class="sf-select" name="rep" id="filter_rep">
+                                    <option value="">-- All Reps --</option>
+                                    <?php foreach ($reps as $r): ?>
+                                        <option value="<?= $r->id ?>"><?= htmlspecialchars($r->name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array('payment_method', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Payment Method</label>
+                                <select class="sf-select" name="payment_method" id="filter_payment_method">
+                                    <option value="">-- All Methods --</option>
+                                    <?php foreach ($payment_methods as $pm): ?>
+                                        <option value="<?= $pm->id ?>"><?= htmlspecialchars($pm->name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array('status', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Status</label>
+                                <select class="sf-select" name="status" id="filter_status">
+                                    <option value="">-- All Statuses --</option>
+                                    <?php foreach ($statuses as $st): ?>
+                                        <option value="<?= $st->id ?>"><?= htmlspecialchars($st->name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array('brand', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Brand</label>
+                                <select class="sf-select" name="brand" id="filter_brand">
+                                    <option value="">-- All Brands --</option>
+                                    <?php foreach ($brands as $b): ?>
+                                        <option value="<?= htmlspecialchars($b->brand) ?>"><?= htmlspecialchars($b->brand) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array('group', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Customer Group</label>
+                                <select class="sf-select" name="group" id="filter_group">
+                                    <option value="">-- All Groups --</option>
+                                    <?php foreach ($groups as $g): ?>
+                                        <option value="<?= htmlspecialchars($g->name) ?>"><?= htmlspecialchars($g->name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array('vehicle', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Vehicle</label>
+                                <select class="sf-select" name="vehicle" id="filter_vehicle">
+                                    <option value="">-- All Vehicles --</option>
+                                    <?php foreach ($vehicles as $v): ?>
+                                        <option value="<?= htmlspecialchars($v->vehicle_number) ?>"><?= htmlspecialchars($v->vehicle_number) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array('driver', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Driver</label>
+                                <select class="sf-select" name="driver" id="filter_driver">
+                                    <option value="">-- All Drivers --</option>
+                                    <?php foreach ($drivers as $d): ?>
+                                        <option value="<?= htmlspecialchars($d->name) ?>"><?= htmlspecialchars($d->name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array('partner', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Partner / Helper</label>
+                                <select class="sf-select" name="partner" id="filter_partner">
+                                    <option value="">-- All Partners --</option>
+                                    <?php foreach ($partners as $p): ?>
+                                        <option value="<?= htmlspecialchars($p->name) ?>"><?= htmlspecialchars($p->name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array('territory', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Territory</label>
+                                <select class="sf-select" name="territory" id="filter_territory">
+                                    <option value="">-- All Territories --</option>
+                                    <?php foreach ($territories as $t): ?>
+                                        <option value="<?= htmlspecialchars($t->territory) ?>"><?= htmlspecialchars($t->territory) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (in_array('tb_type', $metadata['filters'] ?? [])): ?>
+                            <div class="sf-form-group">
+                                <label class="sf-form-label">Trial Balance Type</label>
+                                <select class="sf-select" name="tb_type" id="filter_tb_type">
+                                    <option value="pre_closing">Pre-Closing</option>
+                                    <option value="post_closing">Post-Closing (Include Year-End)</option>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+
+                        <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 8px;">
+                            <button type="submit" class="sf-btn sf-btn-primary" style="width: 100%;">
+                                <i class="ph ph-funnel"></i> Apply Filters
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
+
+            <!-- Right Preview & Data Table Panel -->
+            <div class="preview-panel">
+                
+                <!-- Simulation Notice Alert -->
+                <div class="sim-alert" id="simAlert" style="display: none;">
+                    <i class="ph ph-warning-circle" style="font-size: 20px;"></i>
+                    <div id="simAlertText"></div>
+                </div>
+
+                <!-- Table Card -->
+                <div class="table-panel">
+                    <!-- Loading Curtain -->
+                    <div class="loading-curtain" id="tableLoadingCurtain">
+                        <div class="sf-spinner"></div>
+                        <div style="font-size: 13px; font-weight: 600; color: var(--t-secondary);">Loading live report data...</div>
+                    </div>
+
+                    <!-- Toolbar -->
+                    <div class="table-toolbar no-print">
+                        <div class="table-search-box">
+                            <i class="ph ph-magnifying-glass"></i>
+                            <input type="text" class="table-search-input" id="tableSearch" placeholder="Filter rows in view..." onkeyup="clientFilterRows()">
+                        </div>
+
+                        <div class="table-toolbar-right">
+                            <span>Rows per page:</span>
+                            <select id="limitSelect" class="page-size-select" onchange="loadReportData(1)">
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                                <option value="250">250</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Table Scroll Area -->
+                    <div class="table-scroll" id="printableArea">
+                        <table class="report-table" id="reportDataTable">
+                            <thead>
+                                <tr id="tableHeaders">
+                                    <!-- Injected via JavaScript -->
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody">
+                                <!-- Injected via JavaScript -->
+                            </tbody>
+                            <tfoot id="tableFoot">
+                                <!-- Injected via JavaScript -->
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- Pagination Footer -->
+                    <div class="table-footer no-print">
+                        <div class="pagination-info" id="paginationInfo">
+                            Showing 0 to 0 of 0 entries
+                        </div>
+                        <div class="pagination-controls" id="paginationControls">
+                            <!-- Injected via JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </div>
+
     </div>
 </div>
 
-<!-- Side Panel Quick View -->
-<div class="quickview-panel no-print" id="quickviewPanel">
-    <div class="quickview-header">
-        <h3 id="quickviewTitle"><i class="ph ph-eye"></i> Quick View</h3>
-        <button class="quickview-close" onclick="closeQuickView()">&times;</button>
-    </div>
-    <div class="quickview-body">
-        <div class="quickview-spinner" id="quickviewSpinner"></div>
-        <div id="quickviewContent">
-            <!-- Dynamic content injected by javascript -->
-        </div>
-    </div>
-</div>
+<!-- Side Quick View Drawer -->
 <div class="quickview-backdrop no-print" id="quickviewBackdrop" onclick="closeQuickView()"></div>
+<div class="quickview-drawer no-print" id="quickviewDrawer">
+    <div class="quickview-head">
+        <h3 id="quickviewTitle"><i class="ph ph-eye"></i> Quick View</h3>
+        <button class="quickview-close-btn" onclick="closeQuickView()"><i class="ph ph-x"></i></button>
+    </div>
+    <div class="quickview-content-body" id="quickviewContentBody">
+        <!-- Injected via JavaScript -->
+    </div>
+</div>
 
 <script>
     const reportKey = '<?= $reportKey ?>';
@@ -1178,25 +1458,8 @@ $statuses = $data['statuses'] ?? [];
     let currentRows = [];
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Render headers first
-        const headerRow = document.getElementById('tableHeaders');
-        headerRow.innerHTML = '';
-        for (const [colKey, def] of Object.entries(columnsMeta)) {
-            const th = document.createElement('th');
-            th.textContent = def.label;
-            if (def.align === 'right') {
-                th.style.textAlign = 'right';
-            }
-            if (def.sortable) {
-                th.style.cursor = 'pointer';
-                th.onclick = function() { toggleTableSort(colKey); };
-            }
-            th.setAttribute('data-col-key', colKey);
-            headerRow.appendChild(th);
-        }
-
-        // Initialize Breadcrumbs
-        updateBreadcrumbs();
+        // Render Header Columns
+        renderTableHeaders();
 
         // Pre-fill filters from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
@@ -1207,38 +1470,89 @@ $statuses = $data['statuses'] ?? [];
             }
         }
 
-        // Load initial data
+        // Initialize First Fetch
         loadReportData(1);
 
-        // Click outside drops handler
+        // Global click handler to close dropdowns
         window.addEventListener('click', function(e) {
-            if (!e.target.closest('.action-btn')) {
-                document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
+            if (!e.target.closest('.sf-dropdown-wrap')) {
+                document.querySelectorAll('.sf-dropdown-menu').forEach(m => m.classList.remove('show'));
             }
         });
     });
 
+    function renderTableHeaders() {
+        const headerRow = document.getElementById('tableHeaders');
+        headerRow.innerHTML = '';
+        for (const [colKey, def] of Object.entries(columnsMeta)) {
+            const th = document.createElement('th');
+            th.textContent = def.label;
+            if (def.align === 'right') {
+                th.style.textAlign = 'right';
+            }
+            if (def.sortable !== false) {
+                th.classList.add('sortable');
+                th.onclick = function() { toggleTableSort(colKey); };
+            }
+            th.setAttribute('data-col-key', colKey);
+            headerRow.appendChild(th);
+        }
+    }
+
     function toggleDropdown(id) {
-        document.querySelectorAll('.dropdown-menu').forEach(m => {
-            if (m.id !== id) m.style.display = 'none';
+        document.querySelectorAll('.sf-dropdown-menu').forEach(m => {
+            if (m.id !== id) m.classList.remove('show');
         });
         const m = document.getElementById(id);
-        m.style.display = m.style.display === 'block' ? 'none' : 'block';
+        if (m) m.classList.toggle('show');
+    }
+
+    function setDatePreset(type, el) {
+        document.querySelectorAll('.date-preset-shelf .preset-chip').forEach(c => c.classList.remove('active'));
+        if (el) el.classList.add('active');
+
+        const now = new Date();
+        const startInput = document.getElementById('filter_start_date');
+        const endInput = document.getElementById('filter_end_date');
+        if (!startInput || !endInput) return;
+
+        const fmt = d => d.toISOString().split('T')[0];
+
+        if (type === 'today') {
+            startInput.value = fmt(now);
+            endInput.value = fmt(now);
+        } else if (type === 'this_month') {
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            startInput.value = fmt(start);
+            endInput.value = fmt(now);
+        } else if (type === 'last_month') {
+            const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const end = new Date(now.getFullYear(), now.getMonth(), 0);
+            startInput.value = fmt(start);
+            endInput.value = fmt(end);
+        } else if (type === 'this_year') {
+            const start = new Date(now.getFullYear(), 0, 1);
+            startInput.value = fmt(start);
+            endInput.value = fmt(now);
+        } else if (type === 'all_time') {
+            startInput.value = '2000-01-01';
+            endInput.value = fmt(now);
+        }
+        loadReportData(1);
     }
 
     function resetAllFilters() {
         document.getElementById('filterForm').reset();
+        document.querySelectorAll('.date-preset-shelf .preset-chip').forEach(c => c.classList.remove('active'));
         loadReportData(1);
     }
 
     function loadReportData(page) {
         currentPage = page;
-        const spinner = document.getElementById('tableSpinner');
-        const overlay = document.getElementById('tableOverlay');
-        spinner.style.display = 'block';
-        overlay.style.opacity = '0.4';
+        const curtain = document.getElementById('tableLoadingCurtain');
+        curtain.classList.add('active');
 
-        // Collect filters
+        // Form parameters
         const form = document.getElementById('filterForm');
         const formData = new FormData(form);
         const params = new URLSearchParams();
@@ -1257,48 +1571,104 @@ $statuses = $data['statuses'] ?? [];
         fetch('<?= APP_URL ?>/report/fetch_data?' + params.toString())
             .then(res => res.json())
             .then(data => {
-                spinner.style.display = 'none';
-                overlay.style.opacity = '1';
+                curtain.classList.remove('active');
 
                 if (!data.success) {
                     alert('Error loading report: ' + data.message);
                     return;
                 }
 
-                // Show simulation notice if applicable
+                // Simulation Warning
                 const simAlert = document.getElementById('simAlert');
                 if (data.simulation) {
                     simAlert.style.display = 'flex';
-                    let errorText = "Simulation Mode: Real Database Table is Missing. Displaying Simulated Data.";
+                    let errorText = "Simulation Mode Active: Real Database Table is Missing. Displaying Simulated Data.";
                     if (data.db_error) {
-                        errorText += " (Error: " + data.db_error + ")";
+                        errorText += " (" + data.db_error + ")";
                     }
-                    simAlert.querySelector('div').innerHTML = `<strong>Warning:</strong> ${errorText}`;
+                    document.getElementById('simAlertText').innerHTML = `<strong>Notice:</strong> ${errorText}`;
                 } else {
                     simAlert.style.display = 'none';
                 }
 
-                currentRows = data.rows;
-                totalEntries = data.total_rows;
-                
+                currentRows = data.rows || [];
+                totalEntries = data.total_rows || 0;
+
+                updateKpis(data);
                 renderTableBody(data.rows);
                 renderTableFoot(data.grand_totals);
                 renderPagination(page, data.total_rows);
             })
             .catch(err => {
-                spinner.style.display = 'none';
-                overlay.style.opacity = '1';
+                curtain.classList.remove('active');
                 console.error(err);
             });
+    }
+
+    function updateKpis(data) {
+        document.getElementById('kpiTotalRecords').textContent = (data.total_rows || 0).toLocaleString();
+
+        const totals = data.grand_totals || {};
+        const sumCols = Object.keys(columnsMeta).filter(k => columnsMeta[k].total === 'sum');
+
+        // Primary KPI
+        const primCard = document.getElementById('kpiPrimaryCard');
+        if (sumCols.length > 0) {
+            const firstCol = sumCols[0];
+            const val = totals[firstCol] !== undefined ? totals[firstCol] : 0;
+            const def = columnsMeta[firstCol];
+            document.getElementById('kpiPrimaryLbl').textContent = 'TOTAL ' + def.label.toUpperCase();
+            document.getElementById('kpiPrimaryVal').textContent = (def.type === 'currency' ? 'Rs. ' : '') + parseFloat(val).toLocaleString(undefined, {minimumFractionDigits: def.type === 'currency' ? 2 : 0, maximumFractionDigits: def.type === 'currency' ? 2 : 0});
+            primCard.style.display = 'flex';
+        } else {
+            primCard.style.display = 'none';
+        }
+
+        // Secondary KPI
+        const secCard = document.getElementById('kpiSecondaryCard');
+        if (sumCols.length > 1) {
+            const secondCol = sumCols[1];
+            const val = totals[secondCol] !== undefined ? totals[secondCol] : 0;
+            const def = columnsMeta[secondCol];
+            document.getElementById('kpiSecondaryLbl').textContent = 'TOTAL ' + def.label.toUpperCase();
+            document.getElementById('kpiSecondaryVal').textContent = (def.type === 'currency' ? 'Rs. ' : '') + parseFloat(val).toLocaleString(undefined, {minimumFractionDigits: def.type === 'currency' ? 2 : 0, maximumFractionDigits: def.type === 'currency' ? 2 : 0});
+            secCard.style.display = 'flex';
+        } else {
+            secCard.style.display = 'none';
+        }
+
+        // Tertiary KPI
+        const terCard = document.getElementById('kpiTertiaryCard');
+        if (sumCols.length > 2) {
+            const thirdCol = sumCols[2];
+            const val = totals[thirdCol] !== undefined ? totals[thirdCol] : 0;
+            const def = columnsMeta[thirdCol];
+            document.getElementById('kpiTertiaryLbl').textContent = 'TOTAL ' + def.label.toUpperCase();
+            document.getElementById('kpiTertiaryVal').textContent = (def.type === 'currency' ? 'Rs. ' : '') + parseFloat(val).toLocaleString(undefined, {minimumFractionDigits: def.type === 'currency' ? 2 : 0, maximumFractionDigits: def.type === 'currency' ? 2 : 0});
+            terCard.style.display = 'flex';
+        } else {
+            terCard.style.display = 'none';
+        }
     }
 
     function renderTableBody(rows) {
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = '';
 
-        if (rows.length === 0) {
+        if (!rows || rows.length === 0) {
             const colCount = Object.keys(columnsMeta).length;
-            tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;color:#888;padding:30px;">No matching records found.</td></tr>`;
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="${colCount}">
+                        <div class="empty-state">
+                            <div class="empty-icon"><i class="ph ph-tray"></i></div>
+                            <div class="empty-title">No Records Found</div>
+                            <div class="empty-sub">No data matching your selected filters were found. Try adjusting or resetting your filter criteria.</div>
+                            <button type="button" class="sf-btn sf-btn-secondary" onclick="resetAllFilters()"><i class="ph ph-arrow-counter-clockwise"></i> Reset Filters</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
             return;
         }
 
@@ -1311,30 +1681,36 @@ $statuses = $data['statuses'] ?? [];
                 if (def.align === 'right') {
                     td.style.textAlign = 'right';
                 }
+                if (def.type === 'currency' || def.type === 'number') {
+                    td.classList.add('numeric-cell');
+                }
 
                 // Check for interactive drilldown
                 const drill = detectDrilldown(colKey, r, def);
 
-                // Formatting cell types
                 if (def.type === 'currency') {
                     td.textContent = 'Rs. ' + parseFloat(val || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 } else if (def.type === 'number') {
                     td.textContent = parseInt(val || 0).toLocaleString();
                 } else if (def.type === 'badge') {
-                    const cleanVal = (val || '').toLowerCase();
-                    if (cleanVal === 'completed' || cleanVal === 'paid' || cleanVal === 'active') {
-                        td.innerHTML = `<span class="badge-completed">${val}</span>`;
+                    const cleanVal = String(val || '').toLowerCase();
+                    if (cleanVal === 'completed' || cleanVal === 'paid' || cleanVal === 'active' || cleanVal === 'cleared') {
+                        td.innerHTML = `<span class="sf-badge sf-badge-success">${val}</span>`;
+                    } else if (cleanVal === 'pending' || cleanVal === 'unpaid' || cleanVal === 'partial') {
+                        td.innerHTML = `<span class="sf-badge sf-badge-warning">${val}</span>`;
+                    } else if (cleanVal === 'voided' || cleanVal === 'bounced' || cleanVal === 'cancelled' || cleanVal === 'overdue') {
+                        td.innerHTML = `<span class="sf-badge sf-badge-danger">${val}</span>`;
                     } else {
-                        td.innerHTML = `<span class="badge-pending">${val}</span>`;
+                        td.innerHTML = `<span class="sf-badge sf-badge-neutral">${val}</span>`;
                     }
                 } else if (drill) {
                     const tabUrl = getDrilldownUrl(drill.type, drill.id, drill.val);
                     td.innerHTML = `
-                        <div class="interactive-cell">
-                            <span class="drilldown-trigger" onclick="handleDrilldownClick(event, '${drill.type}', '${drill.id}', '${drill.val}')">${drill.val}</span>
-                            <span class="cell-actions no-print">
-                                <a href="${tabUrl}" target="_blank" title="Open in New Tab" class="cell-action-btn"><i class="ph ph-arrow-square-out"></i></a>
-                                <button type="button" onclick="triggerQuickView('${drill.type}', '${drill.id}', '${drill.val}')" title="Quick View" class="cell-action-btn"><i class="ph ph-eye"></i></button>
+                        <div class="drill-cell">
+                            <span class="drill-link" onclick="handleDrilldownClick(event, '${drill.type}', '${drill.id}', '${drill.val}')">${drill.val}</span>
+                            <span class="drill-actions no-print">
+                                <a href="${tabUrl}" target="_blank" title="Open in New Tab" class="drill-action-btn"><i class="ph ph-arrow-square-out"></i></a>
+                                <button type="button" onclick="triggerQuickView('${drill.type}', '${drill.id}', '${drill.val}')" title="Quick View" class="drill-action-btn"><i class="ph ph-eye"></i></button>
                             </span>
                         </div>
                     `;
@@ -1351,7 +1727,9 @@ $statuses = $data['statuses'] ?? [];
         const tfoot = document.getElementById('tableFoot');
         tfoot.innerHTML = '';
 
-        // 1. Calculate Page Subtotals
+        if (!currentRows || currentRows.length === 0) return;
+
+        // 1. Page Subtotal Row
         const subRow = document.createElement('tr');
         subRow.className = 'total-row';
         let firstCol = true;
@@ -1360,6 +1738,9 @@ $statuses = $data['statuses'] ?? [];
             const td = document.createElement('td');
             if (def.align === 'right') {
                 td.style.textAlign = 'right';
+            }
+            if (def.type === 'currency' || def.type === 'number') {
+                td.classList.add('numeric-cell');
             }
 
             if (firstCol) {
@@ -1378,9 +1759,9 @@ $statuses = $data['statuses'] ?? [];
         }
         tfoot.appendChild(subRow);
 
-        // 2. Query Grand Totals (from server response)
+        // 2. Query Grand Totals Row
         const grandRow = document.createElement('tr');
-        grandRow.className = 'total-row';
+        grandRow.className = 'grand-total-row';
         firstCol = true;
 
         for (const [colKey, def] of Object.entries(columnsMeta)) {
@@ -1388,9 +1769,12 @@ $statuses = $data['statuses'] ?? [];
             if (def.align === 'right') {
                 td.style.textAlign = 'right';
             }
+            if (def.type === 'currency' || def.type === 'number') {
+                td.classList.add('numeric-cell');
+            }
 
             if (firstCol) {
-                td.textContent = 'Grand Total';
+                td.textContent = 'Grand Total (' + totalEntries.toLocaleString() + ' records)';
                 firstCol = false;
             } else if (def.total === 'sum' && grandTotals && grandTotals[colKey] !== undefined) {
                 const totalVal = parseFloat(grandTotals[colKey]);
@@ -1411,20 +1795,24 @@ $statuses = $data['statuses'] ?? [];
             currentSortDir = 'ASC';
         }
 
-        // Highlight header
-        document.querySelectorAll('.report-table th').forEach(th => {
-            th.className = '';
+        // Highlight Active Header
+        document.querySelectorAll('.report-table thead th').forEach(th => {
+            th.classList.remove('sorted-asc', 'sorted-desc');
         });
-        const activeTh = document.querySelector(`.report-table th[data-col-key="${colKey}"]`);
+        const activeTh = document.querySelector(`.report-table thead th[data-col-key="${colKey}"]`);
         if (activeTh) {
-            activeTh.className = currentSortDir === 'ASC' ? 'sorted-asc' : 'sorted-desc';
+            activeTh.classList.add(currentSortDir === 'ASC' ? 'sorted-asc' : 'sorted-desc');
         }
 
         loadReportData(1);
     }
 
     function clientFilterRows() {
-        const query = document.getElementById('tableSearch').value.toLowerCase();
+        const query = document.getElementById('tableSearch').value.toLowerCase().trim();
+        if (!query) {
+            renderTableBody(currentRows);
+            return;
+        }
         const filtered = currentRows.filter(r => {
             return Object.values(r).some(val => String(val).toLowerCase().includes(query));
         });
@@ -1435,65 +1823,62 @@ $statuses = $data['statuses'] ?? [];
         const limit = parseInt(document.getElementById('limitSelect').value);
         const totalPages = Math.ceil(total / limit) || 1;
         
-        // Info label
         const start = total === 0 ? 0 : (page - 1) * limit + 1;
         const end = Math.min(page * limit, total);
-        document.getElementById('paginationInfo').textContent = `Showing ${start} to ${end} of ${total} entries`;
+        document.getElementById('paginationInfo').textContent = `Showing ${start.toLocaleString()} to ${end.toLocaleString()} of ${total.toLocaleString()} entries`;
 
-        // Page buttons
         const controls = document.getElementById('paginationControls');
         controls.innerHTML = '';
 
-        // Previous
+        // Prev Button
         const prev = document.createElement('button');
-        prev.className = 'page-btn';
-        prev.textContent = 'Previous';
+        prev.className = 'pagination-btn';
+        prev.innerHTML = `<i class="ph ph-caret-left"></i>`;
         prev.disabled = page === 1;
         prev.onclick = function() { loadReportData(page - 1); };
         controls.appendChild(prev);
 
-        // Individual numbers
+        // Page Number Buttons
         let startPage = Math.max(1, page - 2);
         let endPage = Math.min(totalPages, page + 2);
 
         for (let i = startPage; i <= endPage; i++) {
             const btn = document.createElement('button');
-            btn.className = 'page-btn' + (i === page ? ' active' : '');
+            btn.className = 'pagination-btn' + (i === page ? ' active' : '');
             btn.textContent = i;
             btn.onclick = function() { loadReportData(i); };
             controls.appendChild(btn);
         }
 
-        // Next
+        // Next Button
         const next = document.createElement('button');
-        next.className = 'page-btn';
-        next.textContent = 'Next';
+        next.className = 'pagination-btn';
+        next.innerHTML = `<i class="ph ph-caret-right"></i>`;
         next.disabled = page === totalPages;
         next.onclick = function() { loadReportData(page + 1); };
         controls.appendChild(next);
     }
 
-    // --- Share features ---
+    // --- Share Functions ---
     function copyShareLink() {
-        const url = window.location.href;
-        navigator.clipboard.writeText(url).then(() => {
-            alert('Share URL link copied to clipboard successfully!');
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            alert('Report URL copied to clipboard!');
         });
     }
 
     function emailShare() {
         const url = encodeURIComponent(window.location.href);
-        const subject = encodeURIComponent('Curtiss ERP Live Report View');
-        window.location.href = `mailto:?subject=${subject}&body=Check out this live Curtiss ERP Report:%0D%0A${url}`;
+        const subject = encodeURIComponent('Curtiss ERP Live Report: ' + '<?= htmlspecialchars($metadata['title']) ?>');
+        window.location.href = `mailto:?subject=${subject}&body=View the live report in Curtiss ERP:%0D%0A${url}`;
     }
 
     function whatsappShare() {
         const url = encodeURIComponent(window.location.href);
-        const text = encodeURIComponent('Check out this live Curtiss ERP Report: ') + url;
+        const text = encodeURIComponent('Curtiss ERP Report - <?= htmlspecialchars($metadata['title']) ?>: ') + url;
         window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
     }
 
-    // --- Export trigger ---
+    // --- Export Handler ---
     function triggerExport(format) {
         const form = document.getElementById('filterForm');
         const formData = new FormData(form);
@@ -1507,7 +1892,7 @@ $statuses = $data['statuses'] ?? [];
         window.location.href = `<?= APP_URL ?>/report/export/${reportKey}?` + params.toString();
     }
 
-    // --- Dedicated high-fidelity print window layout ---
+    // --- High Fidelity Print Window ---
     function openPrintLayout() {
         const form = document.getElementById('filterForm');
         const formData = new FormData(form);
@@ -1524,7 +1909,6 @@ $statuses = $data['statuses'] ?? [];
         let id = row.id || row[`${type}_id`] || '';
         let val = row[colKey] !== undefined ? row[colKey] : '';
 
-        // Auto-detect based on colKey if not specified
         if (!type) {
             const keyLower = colKey.toLowerCase();
             if (keyLower.includes('customer')) {
@@ -1575,26 +1959,14 @@ $statuses = $data['statuses'] ?? [];
                     type = 'grn';
                 } else if (valStr.startsWith('PO-') || rowType === 'po') {
                     type = 'po';
-                } else if (valStr.startsWith('PAY-') || valStr.startsWith('REC-') || valStr.startsWith('Pay:') || rowType === 'payment') {
-                    if (reportKey === 'supplier_statement') {
-                        type = 'supplier_payment';
-                    } else {
-                        type = 'payment';
-                    }
                 } else {
-                    if (reportKey === 'supplier_statement') {
-                        type = 'supplier_payment';
-                    } else {
-                        type = 'payment';
-                    }
+                    type = reportKey === 'supplier_statement' ? 'supplier_payment' : 'payment';
                 }
                 id = row.id || '';
             }
         }
 
         if (!type || !val) return null;
-
-        // Ensure we have correct id fallback
         if (!id && row.id) id = row.id;
 
         return { type, id, val };
@@ -1622,11 +1994,11 @@ $statuses = $data['statuses'] ?? [];
                 filterParam = 'warehouse';
                 break;
             case 'route':
-                rKey = 'stock_movement'; // or dynamic routes
+                rKey = 'stock_movement';
                 filterParam = 'route';
                 break;
             case 'rep':
-                rKey = 'sales_summary'; // or rep commission
+                rKey = 'sales_summary';
                 filterParam = 'rep';
                 break;
             case 'invoice':
@@ -1670,22 +2042,23 @@ $statuses = $data['statuses'] ?? [];
         return 'Rs. ' + parseFloat(val || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
 
-    // --- Side Panel Quick View Actions ---
+    // --- Side Quick View Drawer Trigger ---
     function triggerQuickView(type, id, number) {
-        const panel = document.getElementById('quickviewPanel');
+        const drawer = document.getElementById('quickviewDrawer');
         const backdrop = document.getElementById('quickviewBackdrop');
-        const spinner = document.getElementById('quickviewSpinner');
-        const content = document.getElementById('quickviewContent');
+        const content = document.getElementById('quickviewContentBody');
         const title = document.getElementById('quickviewTitle');
 
-        // Show panel & spinner
-        panel.classList.add('active');
+        drawer.classList.add('active');
         backdrop.classList.add('active');
-        spinner.style.display = 'block';
-        content.innerHTML = '';
-        title.innerHTML = `<i class="ph ph-eye"></i> Loading...`;
+        content.innerHTML = `
+            <div style="padding: 40px; text-align: center;">
+                <div class="sf-spinner" style="margin: 0 auto 12px;"></div>
+                <div style="font-size: 13px; color: var(--t-secondary);">Loading ${type} details...</div>
+            </div>
+        `;
+        title.innerHTML = `<i class="ph ph-eye"></i> Quick Preview`;
 
-        // Build request parameters
         const params = new URLSearchParams();
         params.append('type', type);
         if (id) params.append('id', id);
@@ -1694,64 +2067,61 @@ $statuses = $data['statuses'] ?? [];
         fetch('<?= APP_URL ?>/report/quick_view?' + params.toString())
             .then(res => res.json())
             .then(data => {
-                spinner.style.display = 'none';
                 if (!data.success) {
-                    title.innerHTML = `<i class="ph ph-warning-circle" style="color: #ef4444;"></i> Error`;
-                    content.innerHTML = `<div style="color: #ef4444; padding: 10px; font-weight: 600;">${data.message || 'Record not found.'}</div>`;
+                    title.innerHTML = `<i class="ph ph-warning-circle" style="color: var(--c-red);"></i> Error`;
+                    content.innerHTML = `<div style="color: var(--c-red); padding: 20px; font-weight: 600;">${data.message || 'Record details not found.'}</div>`;
                     return;
                 }
 
-                // Title header styling
-                title.innerHTML = `<i class="ph ph-eye"></i> ${type.toUpperCase()} QUICK PREVIEW`;
+                title.innerHTML = `<i class="ph ph-eye"></i> ${type.toUpperCase()} PREVIEW`;
                 renderQuickViewContent(type, data);
             })
             .catch(err => {
-                spinner.style.display = 'none';
-                title.innerHTML = `<i class="ph ph-warning-circle" style="color: #ef4444;"></i> Error`;
-                content.innerHTML = `<div style="color: #ef4444; padding: 10px;">An error occurred while loading record details.</div>`;
+                title.innerHTML = `<i class="ph ph-warning-circle" style="color: var(--c-red);"></i> Error`;
+                content.innerHTML = `<div style="color: var(--c-red); padding: 20px;">An error occurred while loading record details.</div>`;
                 console.error(err);
             });
     }
 
     function closeQuickView() {
-        document.getElementById('quickviewPanel').classList.remove('active');
+        document.getElementById('quickviewDrawer').classList.remove('active');
         document.getElementById('quickviewBackdrop').classList.remove('active');
     }
 
     function renderQuickViewContent(type, data) {
-        const content = document.getElementById('quickviewContent');
+        const content = document.getElementById('quickviewContentBody');
         const ent = data.entity;
         let html = '';
 
         switch (type) {
             case 'customer':
                 html += `
-                    <div class="qv-card">
-                        <div class="qv-title">Customer Profile</div>
+                    <div class="qv-subcard">
+                        <div class="qv-subcard-title">Customer Profile</div>
                         <div class="qv-grid">
-                            <div class="qv-field" style="grid-column: span 2;"><label>Name</label><span>${ent.name}</span></div>
+                            <div class="qv-field" style="grid-column: span 2;"><label>Name</label><strong>${ent.name}</strong></div>
                             <div class="qv-field"><label>Type</label><span>${ent.customer_type}</span></div>
                             <div class="qv-field"><label>Phone</label><span>${ent.phone || 'N/A'}</span></div>
                             <div class="qv-field"><label>Email</label><span>${ent.email || 'N/A'}</span></div>
-                            <div class="qv-field" style="grid-column: span 2;"><label>Address</label><span>${ent.address || 'N/A'}</span></div>
                             <div class="qv-field"><label>Territory</label><span>${ent.territory || 'N/A'}</span></div>
+                            <div class="qv-field" style="grid-column: span 2;"><label>Address</label><span>${ent.address || 'N/A'}</span></div>
                         </div>
                     </div>
                     
-                    <div class="qv-card" style="text-align: center;">
-                        <div class="qv-title">Outstanding Balance</div>
-                        <div class="qv-badge-stat ${ent.outstanding_balance > 0 ? 'danger' : ''}">
-                            <strong style="font-size: 16px;">${formatCurrency(ent.outstanding_balance)}</strong>
+                    <div class="qv-subcard" style="text-align: center;">
+                        <div class="qv-subcard-title">Outstanding Balance</div>
+                        <div style="font-size: 22px; font-weight: 800; font-family: var(--f-mono); color: ${ent.outstanding_balance > 0 ? 'var(--c-red)' : 'var(--c-green)'};">
+                            ${formatCurrency(ent.outstanding_balance)}
                         </div>
                     </div>
 
-                    <div class="qv-card">
-                        <div class="qv-title">Recent Invoices</div>
+                    <div class="qv-subcard">
+                        <div class="qv-subcard-title">Recent Invoices</div>
                         <table class="qv-table">
                             <thead>
                                 <tr>
                                     <th>Date</th>
-                                    <th>Inv Number</th>
+                                    <th>Invoice #</th>
                                     <th style="text-align: right;">Amount</th>
                                     <th>Status</th>
                                 </tr>
@@ -1760,68 +2130,44 @@ $statuses = $data['statuses'] ?? [];
                                 ${data.invoices && data.invoices.length > 0 ? data.invoices.map(inv => `
                                     <tr>
                                         <td>${inv.invoice_date}</td>
-                                        <td><a href="javascript:void(0)" onclick="triggerQuickView('invoice', '${inv.id}', '${inv.invoice_number}')" style="color: #0066cc; font-weight: 600; text-decoration: none;">${inv.invoice_number}</a></td>
-                                        <td style="text-align: right;">${formatCurrency(inv.total_amount)}</td>
-                                        <td><span class="${inv.status.toLowerCase() === 'paid' ? 'badge-completed' : 'badge-pending'}">${inv.status}</span></td>
+                                        <td><a href="javascript:void(0)" onclick="triggerQuickView('invoice', '${inv.id}', '${inv.invoice_number}')" style="color: var(--c-blue); font-weight: 600;">${inv.invoice_number}</a></td>
+                                        <td style="text-align: right; font-family: var(--f-mono);">${formatCurrency(inv.total_amount)}</td>
+                                        <td><span class="sf-badge ${inv.status.toLowerCase() === 'paid' ? 'sf-badge-success' : 'sf-badge-warning'}">${inv.status}</span></td>
                                     </tr>
-                                `).join('') : '<tr><td colspan="4" style="text-align: center; color: #888;">No recent invoices</td></tr>'}
+                                `).join('') : '<tr><td colspan="4" style="text-align: center; color: var(--t-tertiary);">No recent invoices</td></tr>'}
                             </tbody>
                         </table>
                     </div>
 
-                    <div class="qv-card">
-                        <div class="qv-title">Recent Payments</div>
-                        <table class="qv-table">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Reference</th>
-                                    <th style="text-align: right;">Amount</th>
-                                    <th>Method</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${data.payments && data.payments.length > 0 ? data.payments.map(pay => `
-                                    <tr>
-                                        <td>${pay.payment_date}</td>
-                                        <td><a href="javascript:void(0)" onclick="triggerQuickView('payment', '${pay.id}', '${pay.reference}')" style="color: #0066cc; font-weight: 600; text-decoration: none;">${pay.reference}</a></td>
-                                        <td style="text-align: right;">${formatCurrency(pay.amount)}</td>
-                                        <td>${pay.payment_method}</td>
-                                    </tr>
-                                `).join('') : '<tr><td colspan="4" style="text-align: center; color: #888;">No recent payments</td></tr>'}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="qv-action-bar">
-                        <a href="${getDrilldownUrl('customer', ent.id, ent.name)}" class="qv-btn qv-btn-primary"><i class="ph ph-file-text"></i> View Statement</a>
-                        <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary">Close</button>
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <a href="${getDrilldownUrl('customer', ent.id, ent.name)}" class="sf-btn sf-btn-primary" style="flex: 1;"><i class="ph ph-file-text"></i> Customer Statement</a>
+                        <button onclick="closeQuickView()" class="sf-btn sf-btn-secondary">Close</button>
                     </div>
                 `;
                 break;
 
             case 'product':
                 html += `
-                    <div class="qv-card">
-                        <div class="qv-title">Product Details</div>
+                    <div class="qv-subcard">
+                        <div class="qv-subcard-title">Product Details</div>
                         <div class="qv-grid">
-                            <div class="qv-field"><label>SKU / Code</label><span>${ent.item_code}</span></div>
-                            <div class="qv-field"><label>Brand</label><span>${ent.brand}</span></div>
+                            <div class="qv-field"><label>SKU / Code</label><strong>${ent.item_code}</strong></div>
+                            <div class="qv-field"><label>Brand</label><span>${ent.brand || 'N/A'}</span></div>
                             <div class="qv-field" style="grid-column: span 2;"><label>Name</label><span>${ent.name}</span></div>
-                            <div class="qv-field"><label>Retail Price</label><span>${formatCurrency(ent.price)}</span></div>
-                            <div class="qv-field"><label>Cost Price</label><span>${formatCurrency(ent.cost)}</span></div>
+                            <div class="qv-field"><label>Retail Price</label><span style="font-family: var(--f-mono); font-weight: 600;">${formatCurrency(ent.price)}</span></div>
+                            <div class="qv-field"><label>Cost Price</label><span style="font-family: var(--f-mono);">${formatCurrency(ent.cost)}</span></div>
                         </div>
                     </div>
 
-                    <div class="qv-card" style="text-align: center;">
-                        <div class="qv-title">Total Stock Level</div>
-                        <div class="qv-badge-stat">
-                            <strong style="font-size: 16px;">${parseInt(ent.qty_on_hand || 0).toLocaleString()} Units</strong>
+                    <div class="qv-subcard" style="text-align: center;">
+                        <div class="qv-subcard-title">Total Stock Level</div>
+                        <div style="font-size: 22px; font-weight: 800; font-family: var(--f-mono); color: var(--c-blue);">
+                            ${parseInt(ent.qty_on_hand || 0).toLocaleString()} Units
                         </div>
                     </div>
 
-                    <div class="qv-card">
-                        <div class="qv-title">Stock By Warehouse</div>
+                    <div class="qv-subcard">
+                        <div class="qv-subcard-title">Stock By Warehouse</div>
                         <table class="qv-table">
                             <thead>
                                 <tr>
@@ -1833,59 +2179,35 @@ $statuses = $data['statuses'] ?? [];
                                 ${data.stock && data.stock.length > 0 ? data.stock.map(st => `
                                     <tr>
                                         <td>${st.warehouse_name}</td>
-                                        <td style="text-align: right; font-weight: 600;">${parseInt(st.quantity).toLocaleString()}</td>
+                                        <td style="text-align: right; font-weight: 600; font-family: var(--f-mono);">${parseInt(st.quantity).toLocaleString()}</td>
                                     </tr>
-                                `).join('') : '<tr><td colspan="2" style="text-align: center; color: #888;">No warehouse stock info</td></tr>'}
+                                `).join('') : '<tr><td colspan="2" style="text-align: center; color: var(--t-tertiary);">No warehouse stock info</td></tr>'}
                             </tbody>
                         </table>
                     </div>
 
-                    <div class="qv-card">
-                        <div class="qv-title">Recent Sales Movements</div>
-                        <table class="qv-table">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Ref Doc</th>
-                                    <th style="text-align: right;">Qty</th>
-                                    <th style="text-align: right;">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${data.sales && data.sales.length > 0 ? data.sales.map(sl => `
-                                    <tr>
-                                        <td>${sl.date}</td>
-                                        <td>${sl.ref}</td>
-                                        <td style="text-align: right;">${parseInt(sl.qty).toLocaleString()}</td>
-                                        <td style="text-align: right;">${formatCurrency(sl.total_value)}</td>
-                                    </tr>
-                                `).join('') : '<tr><td colspan="4" style="text-align: center; color: #888;">No recent sales records</td></tr>'}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="qv-action-bar">
-                        <a href="${getDrilldownUrl('product', ent.id, ent.name)}" class="qv-btn qv-btn-primary"><i class="ph ph-chart-line"></i> Stock Ledger</a>
-                        <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary">Close</button>
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <a href="${getDrilldownUrl('product', ent.id, ent.name)}" class="sf-btn sf-btn-primary" style="flex: 1;"><i class="ph ph-chart-line"></i> Stock Ledger</a>
+                        <button onclick="closeQuickView()" class="sf-btn sf-btn-secondary">Close</button>
                     </div>
                 `;
                 break;
 
             case 'invoice':
                 html += `
-                    <div class="qv-card">
-                        <div class="qv-title">Invoice Details</div>
+                    <div class="qv-subcard">
+                        <div class="qv-subcard-title">Invoice Details</div>
                         <div class="qv-grid">
-                            <div class="qv-field"><label>Number</label><strong style="color: #0066cc;">${ent.invoice_number}</strong></div>
+                            <div class="qv-field"><label>Invoice #</label><strong style="color: var(--c-blue);">${ent.invoice_number}</strong></div>
                             <div class="qv-field"><label>Date</label><span>${ent.invoice_date}</span></div>
                             <div class="qv-field" style="grid-column: span 2;"><label>Customer</label><span>${ent.customer_name}</span></div>
                             <div class="qv-field"><label>Due Date</label><span>${ent.due_date || 'N/A'}</span></div>
-                            <div class="qv-field"><label>Status</label><span class="${ent.status.toLowerCase() === 'paid' ? 'badge-completed' : 'badge-pending'}">${ent.status}</span></div>
+                            <div class="qv-field"><label>Status</label><span class="sf-badge ${ent.status.toLowerCase() === 'paid' ? 'sf-badge-success' : 'sf-badge-warning'}">${ent.status}</span></div>
                         </div>
                     </div>
 
-                    <div class="qv-card">
-                        <div class="qv-title">Items List</div>
+                    <div class="qv-subcard">
+                        <div class="qv-subcard-title">Invoice Items</div>
                         <table class="qv-table">
                             <thead>
                                 <tr>
@@ -1899,333 +2221,73 @@ $statuses = $data['statuses'] ?? [];
                                 ${data.items && data.items.length > 0 ? data.items.map(item => `
                                     <tr>
                                         <td>${item.item_name}</td>
-                                        <td style="text-align: right;">${parseInt(item.quantity).toLocaleString()}</td>
-                                        <td style="text-align: right;">${formatCurrency(item.unit_price)}</td>
-                                        <td style="text-align: right; font-weight: 600;">${formatCurrency(item.total_amount || (item.quantity * item.unit_price))}</td>
+                                        <td style="text-align: right; font-family: var(--f-mono);">${parseInt(item.quantity).toLocaleString()}</td>
+                                        <td style="text-align: right; font-family: var(--f-mono);">${formatCurrency(item.unit_price)}</td>
+                                        <td style="text-align: right; font-family: var(--f-mono); font-weight: 600;">${formatCurrency(item.total_amount || (item.quantity * item.unit_price))}</td>
                                     </tr>
-                                `).join('') : '<tr><td colspan="4" style="text-align: center; color: #888;">No items in invoice</td></tr>'}
+                                `).join('') : '<tr><td colspan="4" style="text-align: center; color: var(--t-tertiary);">No items in invoice</td></tr>'}
                             </tbody>
                         </table>
                     </div>
 
-                    <div class="qv-card">
-                        <div class="qv-title">Financial Summary</div>
+                    <div class="qv-subcard">
+                        <div class="qv-subcard-title">Financial Summary</div>
                         <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px;">
-                            <div style="display: flex; justify-content: space-between;"><span>Subtotal</span><span>${formatCurrency(ent.total)}</span></div>
-                            ${ent.discount > 0 ? `<div style="display: flex; justify-content: space-between; color: #dc2626;"><span>Discount</span><span>-${formatCurrency(ent.discount)}</span></div>` : ''}
-                            ${ent.tax > 0 ? `<div style="display: flex; justify-content: space-between;"><span>Tax</span><span>${formatCurrency(ent.tax)}</span></div>` : ''}
-                            <div style="display: flex; justify-content: space-between; font-weight: 750; border-top: 1px solid #cbd5e1; padding-top: 6px; font-size: 14px;">
-                                <span>Net Total</span><span>${formatCurrency(ent.net_total)}</span>
+                            <div style="display: flex; justify-content: space-between;"><span>Subtotal</span><span style="font-family: var(--f-mono);">${formatCurrency(ent.total)}</span></div>
+                            ${ent.discount > 0 ? `<div style="display: flex; justify-content: space-between; color: var(--c-red);"><span>Discount</span><span style="font-family: var(--f-mono);">-${formatCurrency(ent.discount)}</span></div>` : ''}
+                            ${ent.tax > 0 ? `<div style="display: flex; justify-content: space-between;"><span>Tax</span><span style="font-family: var(--f-mono);">${formatCurrency(ent.tax)}</span></div>` : ''}
+                            <div style="display: flex; justify-content: space-between; font-weight: 750; border-top: 0.5px solid var(--c-separator); padding-top: 6px; font-size: 14px;">
+                                <span>Net Total</span><span style="font-family: var(--f-mono); font-weight: 800; color: var(--c-blue);">${formatCurrency(ent.net_total)}</span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="qv-action-bar">
-                        <a href="<?= APP_URL ?>/sales/show/${ent.id}" target="_blank" class="qv-btn qv-btn-primary"><i class="ph ph-printer"></i> Open Invoice</a>
-                        <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary">Close</button>
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <a href="<?= APP_URL ?>/sales/show/${ent.id}" target="_blank" class="sf-btn sf-btn-primary" style="flex: 1;"><i class="ph ph-printer"></i> Open Invoice</a>
+                        <button onclick="closeQuickView()" class="sf-btn sf-btn-secondary">Close</button>
                     </div>
                 `;
                 break;
 
             case 'supplier':
                 html += `
-                    <div class="qv-card">
-                        <div class="qv-title">Supplier Info</div>
+                    <div class="qv-subcard">
+                        <div class="qv-subcard-title">Supplier Info</div>
                         <div class="qv-grid">
-                            <div class="qv-field" style="grid-column: span 2;"><label>Name</label><span>${ent.name}</span></div>
+                            <div class="qv-field" style="grid-column: span 2;"><label>Name</label><strong>${ent.name}</strong></div>
                             <div class="qv-field"><label>Phone</label><span>${ent.phone || 'N/A'}</span></div>
                             <div class="qv-field"><label>Email</label><span>${ent.email || 'N/A'}</span></div>
                             <div class="qv-field" style="grid-column: span 2;"><label>Address</label><span>${ent.address || 'N/A'}</span></div>
                         </div>
                     </div>
 
-                    <div class="qv-card" style="text-align: center;">
-                        <div class="qv-title">Outstanding Balance</div>
-                        <div class="qv-badge-stat ${ent.outstanding_balance > 0 ? 'danger' : ''}">
-                            <strong style="font-size: 16px;">${formatCurrency(ent.outstanding_balance)}</strong>
+                    <div class="qv-subcard" style="text-align: center;">
+                        <div class="qv-subcard-title">Outstanding Balance</div>
+                        <div style="font-size: 22px; font-weight: 800; font-family: var(--f-mono); color: ${ent.outstanding_balance > 0 ? 'var(--c-red)' : 'var(--c-green)'};">
+                            ${formatCurrency(ent.outstanding_balance)}
                         </div>
                     </div>
 
-                    <div class="qv-card">
-                        <div class="qv-title">Recent Receipts (GRNs)</div>
-                        <table class="qv-table">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>GRN Number</th>
-                                    <th style="text-align: right;">Total Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${data.grns && data.grns.length > 0 ? data.grns.map(grn => `
-                                    <tr>
-                                        <td>${grn.grn_date}</td>
-                                        <td><a href="javascript:void(0)" onclick="triggerQuickView('grn', '${grn.id}', '${grn.grn_number}')" style="color: #0066cc; font-weight: 600; text-decoration: none;">${grn.grn_number}</a></td>
-                                        <td style="text-align: right; font-weight: 600;">${formatCurrency(grn.total)}</td>
-                                    </tr>
-                                `).join('') : '<tr><td colspan="3" style="text-align: center; color: #888;">No recent GRNs</td></tr>'}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="qv-action-bar">
-                        <a href="${getDrilldownUrl('supplier', ent.id, ent.name)}" class="qv-btn qv-btn-primary"><i class="ph ph-file-text"></i> Supplier Statement</a>
-                        <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary">Close</button>
-                    </div>
-                `;
-                break;
-
-            case 'route':
-                html += `
-                    <div class="qv-card">
-                        <div class="qv-title">Route Summary</div>
-                        <div class="qv-grid">
-                            <div class="qv-field" style="grid-column: span 2;"><label>Route Name</label><span>${ent.route_name}</span></div>
-                            <div class="qv-field" style="grid-column: span 2;"><label>Description</label><span>${ent.description}</span></div>
-                        </div>
-                    </div>
-
-                    <div class="qv-card">
-                        <div class="qv-title">Route Analytics</div>
-                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
-                            <div style="display: flex; justify-content: space-between;"><span>Active Customers</span><span style="font-weight: 600;">${ent.cust_count}</span></div>
-                            <div style="display: flex; justify-content: space-between;"><span>Invoices Raised</span><span style="font-weight: 600;">${ent.inv_count}</span></div>
-                            <div style="display: flex; justify-content: space-between;"><span>Total Sales</span><span style="font-weight: 600; color: #1e293b;">${formatCurrency(ent.total_sales)}</span></div>
-                            <div style="display: flex; justify-content: space-between;"><span>Total Collections</span><span style="font-weight: 600; color: #166534;">${formatCurrency(ent.total_collections)}</span></div>
-                            <div style="display: flex; justify-content: space-between; font-weight: 750; border-top: 1px solid #cbd5e1; padding-top: 8px;">
-                                <span>Outstanding Amount</span><span style="color: #dc2626;">${formatCurrency(ent.outstanding)}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="qv-action-bar">
-                        <a href="${getDrilldownUrl('route', ent.id, ent.route_name)}" class="qv-btn qv-btn-primary"><i class="ph ph-compass"></i> Route Statement</a>
-                        <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary">Close</button>
-                    </div>
-                `;
-                break;
-
-            case 'rep':
-                html += `
-                    <div class="qv-card">
-                        <div class="qv-title">Rep Profile</div>
-                        <div class="qv-grid">
-                            <div class="qv-field"><label>Rep Name</label><span style="font-weight: 600;">${ent.name}</span></div>
-                            <div class="qv-field"><label>Designation</label><span>${ent.role}</span></div>
-                            <div class="qv-field" style="grid-column: span 2;"><label>Email</label><span>${ent.email}</span></div>
-                        </div>
-                    </div>
-
-                    <div class="qv-action-bar">
-                        <a href="${getDrilldownUrl('rep', ent.id, ent.name)}" class="qv-btn qv-btn-primary"><i class="ph ph-users"></i> Rep Commission</a>
-                        <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary">Close</button>
-                    </div>
-                `;
-                break;
-
-            case 'grn':
-                html += `
-                    <div class="qv-card">
-                        <div class="qv-title">GRN Details</div>
-                        <div class="qv-grid">
-                            <div class="qv-field"><label>GRN Number</label><strong>${ent.grn_number}</strong></div>
-                            <div class="qv-field"><label>Date</label><span>${ent.grn_date}</span></div>
-                            <div class="qv-field" style="grid-column: span 2;"><label>Supplier</label><span>${ent.supplier_name}</span></div>
-                            <div class="qv-field"><label>Status</label><span class="${ent.is_approved ? 'badge-completed' : 'badge-pending'}">${ent.is_approved ? 'Approved' : 'Pending'}</span></div>
-                            <div class="qv-field"><label>Total Value</label><span style="font-weight: 600;">${formatCurrency(ent.total)}</span></div>
-                        </div>
-                    </div>
-
-                    <div class="qv-action-bar">
-                        <a href="${getDrilldownUrl('grn', ent.id, ent.grn_number)}" target="_blank" class="qv-btn qv-btn-primary"><i class="ph ph-arrow-square-out"></i> Open in New Tab</a>
-                        <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary">Close</button>
-                    </div>
-                `;
-                break;
-
-            case 'po':
-                html += `
-                    <div class="qv-card">
-                        <div class="qv-title">PO Details</div>
-                        <div class="qv-grid">
-                            <div class="qv-field"><label>PO Number</label><strong>${ent.po_number}</strong></div>
-                            <div class="qv-field"><label>Date</label><span>${ent.po_date}</span></div>
-                            <div class="qv-field" style="grid-column: span 2;"><label>Supplier</label><span>${ent.supplier_name}</span></div>
-                            <div class="qv-field"><label>Status</label><span class="badge-completed">${ent.status}</span></div>
-                            <div class="qv-field"><label>Total Amount</label><span style="font-weight: 600;">${formatCurrency(ent.total)}</span></div>
-                        </div>
-                    </div>
-
-                    <div class="qv-action-bar">
-                        <a href="<?= APP_URL ?>/purchase/show/${ent.id}" target="_blank" class="qv-btn qv-btn-primary"><i class="ph ph-printer"></i> Print PO</a>
-                        <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary">Close</button>
-                    </div>
-                `;
-                break;
-
-            case 'payment':
-                html += `
-                    <div class="qv-card">
-                        <div class="qv-title">Payment Info</div>
-                        <div class="qv-grid">
-                            <div class="qv-field"><label>Reference</label><strong>${ent.reference}</strong></div>
-                            <div class="qv-field"><label>Date</label><span>${ent.payment_date}</span></div>
-                            <div class="qv-field" style="grid-column: span 2;"><label>Customer</label><span>${ent.customer_name}</span></div>
-                            <div class="qv-field"><label>Method</label><span>${ent.payment_method}</span></div>
-                            <div class="qv-field"><label>Status</label><span class="badge-completed">${ent.status}</span></div>
-                        </div>
-                        ${ent.payment_method === 'Cheque' ? `
-                            <div style="margin-top: 12px; padding: 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; font-size: 13px; text-align: left;">
-                                <div style="font-weight: 600; color: #b45309; margin-bottom: 4px;">Cheque Details</div>
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    <div><strong>Cheque Number:</strong> ${ent.cheque_number || 'N/A'}</div>
-                                    <div><strong>Bank Name:</strong> ${ent.cheque_bank || 'N/A'}</div>
-                                    <div><strong>Banking Date:</strong> ${ent.cheque_date || 'N/A'}</div>
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
-
-                    <div class="qv-card" style="text-align: center;">
-                        <div class="qv-title">Paid Amount</div>
-                        <div class="qv-badge-stat">
-                            <strong style="font-size: 16px;">${formatCurrency(ent.amount)}</strong>
-                        </div>
-                    </div>
-
-                    <div class="qv-action-bar">
-                        <a href="${getDrilldownUrl('payment', ent.id, ent.reference)}" target="_blank" class="qv-btn qv-btn-primary"><i class="ph ph-arrow-square-out"></i> Open in New Tab</a>
-                        <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary">Close</button>
-                    </div>
-                `;
-                break;
-
-            case 'supplier_payment':
-                html += `
-                    <div class="qv-card">
-                        <div class="qv-title">Supplier Payment Info</div>
-                        <div class="qv-grid">
-                            <div class="qv-field"><label>Reference</label><strong>${ent.reference || 'N/A'}</strong></div>
-                            <div class="qv-field"><label>Date</label><span>${ent.payment_date}</span></div>
-                            <div class="qv-field" style="grid-column: span 2;"><label>Supplier</label><span>${ent.supplier_name}</span></div>
-                            <div class="qv-field"><label>Method</label><span>${ent.payment_method}</span></div>
-                            <div class="qv-field"><label>Status</label><span class="${ent.status === 'Active' ? 'badge-completed' : 'badge-pending'}">${ent.status}</span></div>
-                        </div>
-                        ${ent.payment_method === 'Cheque' ? `
-                            <div style="margin-top: 12px; padding: 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; font-size: 13px; text-align: left;">
-                                <div style="font-weight: 600; color: #b45309; margin-bottom: 4px;">Cheque Details</div>
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    <div><strong>Cheque Number:</strong> ${ent.cheque_number || 'N/A'}</div>
-                                    <div><strong>Bank Name:</strong> ${ent.cheque_bank || 'N/A'}</div>
-                                    <div><strong>Banking Date:</strong> ${ent.cheque_date || 'N/A'}</div>
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
-
-                    <div class="qv-card" style="text-align: center;">
-                        <div class="qv-title">Paid Amount</div>
-                        <div class="qv-badge-stat">
-                            <strong style="font-size: 16px;">${formatCurrency(ent.amount)}</strong>
-                        </div>
-                    </div>
-
-                    <div class="qv-action-bar">
-                        <a href="${getDrilldownUrl('supplier_payment', ent.id, ent.reference)}" target="_blank" class="qv-btn qv-btn-primary"><i class="ph ph-arrow-square-out"></i> Open in New Tab</a>
-                        <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary">Close</button>
-                    </div>
-                `;
-                break;
-
-            case 'cheque':
-                html += `
-                    <div class="qv-card">
-                        <div class="qv-title">Cheque details</div>
-                        <div class="qv-grid">
-                            <div class="qv-field"><label>Cheque Number</label><strong>${ent.cheque_number}</strong></div>
-                            <div class="qv-field"><label>Banking Date</label><span>${ent.banking_date}</span></div>
-                            <div class="qv-field" style="grid-column: span 2;"><label>Bank Name</label><span>${ent.bank_name}</span></div>
-                            <div class="qv-field" style="grid-column: span 2;"><label>Customer</label><span>${ent.customer_name}</span></div>
-                            <div class="qv-field"><label>Status</label><span class="${ent.status.toLowerCase() === 'cleared' ? 'badge-completed' : 'badge-pending'}">${ent.status}</span></div>
-                        </div>
-                    </div>
-
-                    <div class="qv-card" style="text-align: center;">
-                        <div class="qv-title">Cheque Amount</div>
-                        <div class="qv-badge-stat">
-                            <strong style="font-size: 16px;">${formatCurrency(ent.amount)}</strong>
-                        </div>
-                    </div>
-
-                    <div class="qv-action-bar">
-                        <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary" style="width:100%;">Close</button>
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <a href="${getDrilldownUrl('supplier', ent.id, ent.name)}" class="sf-btn sf-btn-primary" style="flex: 1;"><i class="ph ph-file-text"></i> Supplier Statement</a>
+                        <button onclick="closeQuickView()" class="sf-btn sf-btn-secondary">Close</button>
                     </div>
                 `;
                 break;
 
             default:
                 html += `
-                    <div class="qv-card">
-                        <div class="qv-title">Details</div>
-                        <pre style="font-size: 12px; white-space: pre-wrap; word-break: break-all;">${JSON.stringify(ent, null, 2)}</pre>
+                    <div class="qv-subcard">
+                        <div class="qv-subcard-title">Record Details</div>
+                        <pre style="font-size: 12px; white-space: pre-wrap; word-break: break-all; font-family: var(--f-mono);">${JSON.stringify(ent, null, 2)}</pre>
                     </div>
-                    <div class="qv-action-bar">
-                        <button onclick="closeQuickView()" class="qv-btn qv-btn-secondary" style="width:100%;">Close</button>
+                    <div style="margin-top: 20px; display: flex;">
+                        <button onclick="closeQuickView()" class="sf-btn sf-btn-secondary" style="width:100%;">Close</button>
                     </div>
                 `;
                 break;
         }
 
         content.innerHTML = html;
-    }
-
-    // --- Dynamic breadcrumb logic ---
-    function updateBreadcrumbs() {
-        let trail = [];
-        try {
-            trail = JSON.parse(sessionStorage.getItem('report_breadcrumbs') || '[]');
-        } catch (e) {
-            trail = [];
-        }
-        
-        const currentTitle = '<?= htmlspecialchars($metadata['title']) ?>';
-        const currentUrl = window.location.pathname + window.location.search;
-
-        const existingIndex = trail.findIndex(item => item.url.split('?')[0] === currentUrl.split('?')[0]);
-        if (existingIndex !== -1) {
-            trail = trail.slice(0, existingIndex + 1);
-        } else {
-            if (document.referrer && document.referrer.includes('/report/viewer/')) {
-                trail.push({ title: currentTitle, url: currentUrl });
-            } else {
-                trail = [{ title: currentTitle, url: currentUrl }];
-            }
-        }
-        sessionStorage.setItem('report_breadcrumbs', JSON.stringify(trail));
-
-        const container = document.querySelector('.report-meta .breadcrumb');
-        if (container && trail.length > 1) {
-            container.innerHTML = '';
-            trail.forEach((item, idx) => {
-                if (idx > 0) {
-                    container.appendChild(document.createTextNode(' → '));
-                }
-                if (idx === trail.length - 1) {
-                    const span = document.createElement('span');
-                    span.textContent = item.title;
-                    span.style.fontWeight = '600';
-                    span.style.color = '#1e293b';
-                    container.appendChild(span);
-                } else {
-                    const a = document.createElement('a');
-                    a.href = item.url;
-                    a.textContent = item.title;
-                    a.style.color = '#0066cc';
-                    a.style.textDecoration = 'none';
-                    a.className = 'breadcrumb-link';
-                    container.appendChild(a);
-                }
-            });
-        }
     }
 </script>
