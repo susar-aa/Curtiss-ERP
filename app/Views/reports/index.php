@@ -63,7 +63,7 @@ $activeCategoriesCount = count($categories);
 
 <style>
 /* ============================================================
-   SF PRO + APPLE DESIGN LANGUAGE - REPORTS HUB
+   SF PRO + APPLE DESIGN LANGUAGE - REPORTS HUB (SIDE PANEL)
    ============================================================ */
 :root {
     --c-bg:           #f2f2f7;
@@ -109,28 +109,41 @@ $activeCategoriesCount = count($categories);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     --ease-ios:    cubic-bezier(0.25, 0.1, 0.25, 1);
     --dur-fast:    0.18s;
-    --dur-mid:     0.28s;
     --dur-slow:    0.42s;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--c-bg);
 }
 
 .rep-root {
     font-family: var(--f-system);
     font-size: 15px;
     color: var(--t-primary);
-    background: var(--c-bg);
     -webkit-font-smoothing: antialiased;
+    height: calc(100vh - 60px); /* Adjust based on global header if any */
+    display: flex;
+    overflow: hidden;
 }
 
-.rep-wrap {
-    max-width: 1420px;
-    margin: 0 auto;
-    padding: 16px 24px 120px;
+/* Sidebar */
+.rep-sidebar {
+    width: 280px;
+    background: var(--c-surface);
+    border-right: 0.5px solid var(--c-separator);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    z-index: 10;
 }
 
-/* Header */
-.rep-header {
-    margin-bottom: 20px;
+.rep-sidebar-header {
+    padding: 24px 20px 16px;
+    border-bottom: 0.5px solid var(--c-separator2);
 }
+
 .rep-eyebrow {
     font-size: 11px;
     font-weight: 700;
@@ -139,168 +152,162 @@ $activeCategoriesCount = count($categories);
     color: var(--c-blue);
     margin-bottom: 4px;
 }
+
 .rep-title {
-    font-size: 32px;
+    font-size: 24px;
     font-weight: 800;
     letter-spacing: -0.03em;
     color: var(--t-primary);
-    margin: 0 0 6px 0;
-}
-.rep-desc {
-    font-size: 14.5px;
-    color: var(--t-secondary);
-    margin: 0;
-    max-width: 760px;
+    margin: 0 0 16px 0;
 }
 
-/* Stat Cards Row */
-.stat-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-    margin-bottom: 24px;
-    margin-top: 14px;
-}
-.stat-card {
-    background: var(--c-surface);
-    border-radius: var(--r-xl);
-    padding: 18px 22px;
-    box-shadow: var(--shadow-sm);
-    border: 0.5px solid var(--c-separator);
-    transition: transform var(--dur-fast), box-shadow var(--dur-fast);
-    position: relative;
-    overflow: hidden;
+.cmd-search {
     display: flex;
     align-items: center;
-    gap: 16px;
-}
-.stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    border-radius: var(--r-xl) var(--r-xl) 0 0;
-}
-.stat-card.blue::before   { background: var(--c-blue); }
-.stat-card.purple::before { background: var(--c-purple); }
-.stat-card.green::before  { background: var(--c-green); }
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-.stat-icon {
-    width: 48px;
-    height: 48px;
+    gap: 8px;
+    background: var(--c-fill);
     border-radius: var(--r-md);
+    padding: 10px 12px;
+    transition: background var(--dur-fast), box-shadow var(--dur-fast);
+}
+.cmd-search:focus-within {
+    background: var(--c-surface);
+    box-shadow: 0 0 0 2px var(--c-blue-mid);
+}
+.cmd-search i {
+    color: var(--t-tertiary);
+    font-size: 14px;
+}
+.cmd-search input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--t-primary);
+    font-size: 14px;
+    font-weight: 500;
+    font-family: var(--f-system);
+    width: 100%;
+}
+.cmd-search input::placeholder {
+    color: var(--t-label);
+}
+.cmd-kbd {
+    background: var(--c-surface);
+    color: var(--t-secondary);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: var(--f-mono);
+    border: 0.5px solid var(--c-separator);
+}
+
+.rep-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: var(--r-sm);
+    color: var(--t-secondary);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--dur-fast);
+    margin-bottom: 2px;
+}
+.nav-item-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.nav-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
-    flex-shrink: 0;
+    font-size: 13px;
+    background: var(--c-surface2);
+    color: var(--t-tertiary);
+    transition: all var(--dur-fast);
 }
-.stat-card.blue   .stat-icon { background: var(--c-blue-light); color: var(--c-blue); }
-.stat-card.purple .stat-icon { background: var(--c-purple-light); color: var(--c-purple); }
-.stat-card.green  .stat-icon { background: var(--c-green-light); color: var(--c-green); }
-.stat-num {
-    font-size: 24px;
-    font-weight: 800;
+.nav-item:hover {
+    background: var(--c-fill);
     color: var(--t-primary);
-    line-height: 1.1;
-    margin-bottom: 2px;
 }
-.stat-lbl {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--t-label);
+.nav-item:hover .nav-icon {
+    background: #fff;
+    color: var(--t-primary);
+    box-shadow: var(--shadow-xs);
 }
 
-/* Category Filter Shelf */
-.filter-shelf {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 24px;
-}
-.filter-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    background: var(--c-surface);
-    border: 0.5px solid var(--c-separator);
-    border-radius: var(--r-pill);
-    padding: 8px 16px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--t-secondary);
-    box-shadow: var(--shadow-xs);
-    cursor: pointer;
-    transition: all var(--dur-fast) var(--ease-spring);
-    user-select: none;
-}
-.filter-chip:hover {
-    background: var(--c-surface2);
-    color: var(--t-primary);
-    transform: translateY(-1px);
-}
-.filter-chip.active {
+.nav-item.active {
     background: var(--c-blue);
-    border-color: var(--c-blue);
-    color: #ffffff;
-    box-shadow: 0 4px 12px rgba(0,122,255,0.28);
+    color: #fff;
 }
-.filter-chip .chip-count {
+.nav-item.active .nav-icon {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+}
+
+.nav-count {
     font-size: 11px;
     font-weight: 700;
-    padding: 2px 7px;
+    background: var(--c-fill2);
+    padding: 2px 8px;
     border-radius: var(--r-pill);
-    background: var(--c-fill);
     color: inherit;
 }
-.filter-chip.active .chip-count {
+
+.nav-item.active .nav-count {
     background: rgba(255,255,255,0.25);
-    color: #ffffff;
 }
-.filter-reset {
-    background: transparent;
-    border: 0.5px solid var(--c-separator);
-    border-radius: var(--r-pill);
-    padding: 8px 16px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--t-secondary);
-    cursor: pointer;
-    transition: background var(--dur-fast);
+
+/* Main Content */
+.rep-main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 40px;
+    background: var(--c-bg);
 }
-.filter-reset:hover {
-    background: var(--c-fill);
+
+.rep-main-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+.rep-main-title {
+    font-size: 20px;
+    font-weight: 700;
     color: var(--t-primary);
+    margin: 0;
 }
-.filter-count {
-    margin-left: auto;
+.rep-main-meta {
     font-size: 13px;
     color: var(--t-secondary);
     font-weight: 500;
-}
-.filter-count strong {
-    color: var(--t-primary);
-    font-weight: 700;
 }
 
 /* Categories Grid */
 .categories-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
     gap: 20px;
 }
 
 .category-card {
     background: var(--c-surface);
-    border-radius: var(--r-xl);
+    border-radius: var(--r-lg);
     border: 0.5px solid var(--c-separator);
     box-shadow: var(--shadow-sm);
     overflow: hidden;
@@ -342,7 +349,7 @@ $activeCategoriesCount = count($categories);
     min-width: 0;
 }
 .cat-title {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--t-primary);
     margin: 0;
@@ -382,7 +389,7 @@ $activeCategoriesCount = count($categories);
     text-decoration: none;
     color: var(--t-primary);
     border-bottom: 0.5px solid var(--c-separator2);
-    transition: background var(--dur-fast), transform var(--dur-fast);
+    transition: background var(--dur-fast);
 }
 .report-item:last-child {
     border-bottom: none;
@@ -393,10 +400,6 @@ $activeCategoriesCount = count($categories);
 .report-item:hover .rep-name {
     color: var(--c-blue);
 }
-.report-item:hover .rep-arrow {
-    transform: translateX(3px);
-    color: var(--c-blue);
-}
 
 .rep-info {
     display: flex;
@@ -405,7 +408,7 @@ $activeCategoriesCount = count($categories);
     padding-right: 12px;
 }
 .rep-name {
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 600;
     color: var(--t-primary);
     transition: color var(--dur-fast);
@@ -416,7 +419,7 @@ $activeCategoriesCount = count($categories);
     gap: 8px;
 }
 .rep-tag {
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.03em;
@@ -439,11 +442,10 @@ $activeCategoriesCount = count($categories);
 .rep-arrow {
     font-size: 12px;
     color: var(--t-tertiary);
-    transition: transform var(--dur-fast) var(--ease-spring), color var(--dur-fast);
     flex-shrink: 0;
 }
 
-/* Empty State */
+/* Empty Search State */
 .rep-empty {
     grid-column: 1 / -1;
     background: var(--c-surface);
@@ -471,180 +473,91 @@ $activeCategoriesCount = count($categories);
     max-width: 420px;
     margin: 0 auto 18px;
 }
-
-/* Floating Command Bar (Dynamic Island) */
-.cmd-bar {
-    position: fixed;
-    bottom: 28px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(28, 28, 30, 0.92);
-    backdrop-filter: saturate(180%) blur(28px);
-    -webkit-backdrop-filter: saturate(180%) blur(28px);
-    border: 0.5px solid rgba(255,255,255,0.12);
+.filter-reset {
+    background: var(--c-surface);
+    border: 0.5px solid var(--c-separator);
     border-radius: var(--r-pill);
-    padding: 7px 10px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    box-shadow: var(--shadow-xl), 0 0 0 0.5px rgba(0,0,0,0.3);
-    z-index: 1000;
-}
-.cmd-search {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    background: rgba(255,255,255,0.1);
-    border-radius: var(--r-pill);
-    padding: 8px 14px;
-    width: 220px;
-    transition: width var(--dur-slow) var(--ease-ios), background var(--dur-fast);
-}
-.cmd-search:focus-within {
-    width: 340px;
-    background: rgba(255,255,255,0.18);
-}
-.cmd-search i {
-    color: rgba(255,255,255,0.55);
-    font-size: 14px;
-    flex-shrink: 0;
-}
-.cmd-search input {
-    background: transparent;
-    border: none;
-    outline: none;
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-    font-family: var(--f-system);
-    width: 100%;
-}
-.cmd-search input::placeholder {
-    color: rgba(255,255,255,0.45);
-}
-.cmd-kbd {
-    background: rgba(255,255,255,0.15);
-    color: rgba(255,255,255,0.7);
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 10px;
-    font-weight: 700;
-    font-family: var(--f-mono);
-}
-.cmd-divider {
-    width: 0.5px;
-    height: 22px;
-    background: rgba(255,255,255,0.15);
-    margin: 0 3px;
-}
-.cmd-cta {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    background: #fff;
-    color: #1c1c1e;
-    border: none;
-    border-radius: var(--r-pill);
-    padding: 0 16px;
-    height: 38px;
-    font-size: 13.5px;
-    font-weight: 700;
-    font-family: var(--f-system);
-    cursor: pointer;
-    transition: transform var(--dur-fast), background var(--dur-fast);
-    margin-left: 2px;
-}
-.cmd-cta:hover {
-    background: #e5e5ea;
-    transform: scale(0.98);
-}
-.cmd-btn-secondary {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255,255,255,0.1);
-    color: #fff;
-    border: none;
-    border-radius: var(--r-pill);
-    padding: 0 14px;
-    height: 38px;
+    padding: 8px 16px;
     font-size: 13px;
     font-weight: 600;
-    font-family: var(--f-system);
+    color: var(--t-primary);
     cursor: pointer;
-    transition: background var(--dur-fast);
 }
-.cmd-btn-secondary:hover {
-    background: rgba(255,255,255,0.2);
+.filter-reset:hover {
+    background: var(--c-fill);
 }
 
 @media (max-width: 900px) {
-    .stat-row { grid-template-columns: 1fr; }
-    .cmd-search { width: 160px; }
-    .cmd-search:focus-within { width: 220px; }
-    .cmd-kbd { display: none; }
+    .rep-root {
+        flex-direction: column;
+    }
+    .rep-sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 0.5px solid var(--c-separator);
+    }
+    .rep-nav {
+        display: flex;
+        overflow-x: auto;
+        padding: 10px;
+    }
+    .nav-item {
+        flex-direction: column;
+        min-width: 80px;
+        text-align: center;
+        gap: 6px;
+        padding: 8px;
+    }
+    .nav-count {
+        display: none;
+    }
 }
 </style>
 
 <div class="rep-root">
-    <div class="rep-wrap">
-        
-        <!-- Header -->
-        <div class="rep-header">
-            <div class="rep-eyebrow">Enterprise Intelligence & Analytics</div>
+    
+    <!-- Sidebar Panel -->
+    <div class="rep-sidebar">
+        <div class="rep-sidebar-header">
+            <div class="rep-eyebrow">Enterprise Intelligence</div>
             <h1 class="rep-title">Reports Hub</h1>
-            <p class="rep-desc">Unified enterprise reporting engine for real-time operations, drilldown analytics, financial statements, and executive performance metrics.</p>
-        </div>
-
-        <!-- Metric Stat Cards -->
-        <div class="stat-row">
-            <div class="stat-card blue">
-                <div class="stat-icon">
-                    <i class="fa-solid fa-chart-pie"></i>
-                </div>
-                <div>
-                    <div class="stat-num" id="stat_total_reports"><?= $totalReportsCount ?> Available</div>
-                    <div class="stat-lbl">Enterprise Reports</div>
-                </div>
-            </div>
-            <div class="stat-card purple">
-                <div class="stat-icon">
-                    <i class="fa-solid fa-layer-group"></i>
-                </div>
-                <div>
-                    <div class="stat-num"><?= $activeCategoriesCount ?> Modules</div>
-                    <div class="stat-lbl">Operational Categories</div>
-                </div>
-            </div>
-            <div class="stat-card green">
-                <div class="stat-icon">
-                    <i class="fa-solid fa-bolt"></i>
-                </div>
-                <div>
-                    <div class="stat-num">Live Subsecond</div>
-                    <div class="stat-lbl">Aggregated SQL Engine</div>
-                </div>
+            <div class="cmd-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="reportSearch" placeholder="Find reports..." autocomplete="off">
+                <span class="cmd-kbd">/</span>
             </div>
         </div>
-
-        <!-- Filter Pill Shelf -->
-        <div class="filter-shelf">
-            <div class="filter-chip active" data-cat="all" onclick="selectCategoryFilter('all')">
-                <i class="fa-solid fa-grid-2"></i> All Categories
-                <span class="chip-count"><?= $totalReportsCount ?></span>
+        <div class="rep-nav">
+            <div class="nav-item active" data-cat="all" onclick="selectCategory('all', 'All Reports')">
+                <div class="nav-item-left">
+                    <div class="nav-icon"><i class="fa-solid fa-grid-2"></i></div>
+                    <span>All Reports</span>
+                </div>
+                <span class="nav-count"><?= $totalReportsCount ?></span>
             </div>
+            
             <?php foreach ($categories as $catKey => $catTitle): 
                 $count = count($groupedReports[$catKey] ?? []);
                 $meta = $categoryMeta[$catKey] ?? ['icon' => 'fa-folder', 'color' => 'blue'];
             ?>
-                <div class="filter-chip" data-cat="<?= $catKey ?>" onclick="selectCategoryFilter('<?= $catKey ?>')">
-                    <i class="fa-solid <?= $meta['icon'] ?>"></i> <?= htmlspecialchars($catTitle) ?>
-                    <span class="chip-count"><?= $count ?></span>
+                <div class="nav-item" data-cat="<?= $catKey ?>" onclick="selectCategory('<?= $catKey ?>', '<?= htmlspecialchars($catTitle) ?>')">
+                    <div class="nav-item-left">
+                        <div class="nav-icon"><i class="fa-solid <?= $meta['icon'] ?>"></i></div>
+                        <span><?= htmlspecialchars($catTitle) ?></span>
+                    </div>
+                    <span class="nav-count"><?= $count ?></span>
                 </div>
             <?php endforeach; ?>
-            <button class="filter-reset" onclick="resetFilters()">Reset</button>
-            <div class="filter-count">
-                Showing <strong id="visible_count"><?= $totalReportsCount ?></strong> reports
+        </div>
+    </div>
+
+    <!-- Main Content Panel -->
+    <div class="rep-main" id="mainContent">
+        <div class="rep-main-header">
+            <h2 class="rep-main-title" id="mainTitle">All Reports</h2>
+            <div class="rep-main-meta">
+                Showing <strong id="visibleCount"><?= $totalReportsCount ?></strong> reports
             </div>
         </div>
 
@@ -678,9 +591,7 @@ $activeCategoriesCount = count($categories);
                                     <div class="rep-meta">
                                         <span class="rep-tag realtime"><i class="fa-solid fa-circle" style="font-size:6px; margin-right:4px;"></i>Live</span>
                                         <?php if ($isCustom): ?>
-                                            <span class="rep-tag drilldown">Custom View</span>
-                                        <?php else: ?>
-                                            <span class="rep-tag">Server-side</span>
+                                            <span class="rep-tag drilldown">Custom</span>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -694,29 +605,12 @@ $activeCategoriesCount = count($categories);
             <!-- Empty Search State -->
             <div class="rep-empty" id="emptySearchState">
                 <div class="rep-empty-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
-                <div class="rep-empty-title">No matching reports found</div>
-                <div class="rep-empty-desc">We couldn't find any report matching your search query. Try adjusting your keyword or clearing filters.</div>
+                <div class="rep-empty-title">No reports found</div>
+                <div class="rep-empty-desc">We couldn't find any report matching your search query in this category.</div>
                 <button class="filter-reset" onclick="resetFilters()">Clear Filters & Search</button>
             </div>
         </div>
-
     </div>
-</div>
-
-<!-- Floating Command Bar (Dynamic Island) -->
-<div class="cmd-bar">
-    <div class="cmd-search">
-        <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" id="reportSearch" placeholder="Search reports..." autocomplete="off">
-        <span class="cmd-kbd">/</span>
-    </div>
-    <div class="cmd-divider"></div>
-    <button class="cmd-btn-secondary" onclick="resetFilters()">
-        <i class="fa-solid fa-arrow-rotate-left"></i> Reset
-    </button>
-    <button class="cmd-cta" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
-        <i class="fa-solid fa-arrow-up"></i> Top
-    </button>
 </div>
 
 <script>
@@ -725,16 +619,16 @@ $activeCategoriesCount = count($categories);
     const searchInput = document.getElementById('reportSearch');
     const categoriesGrid = document.getElementById('categoriesGrid');
     const emptyState = document.getElementById('emptySearchState');
-    const visibleCountEl = document.getElementById('visible_count');
+    const visibleCountEl = document.getElementById('visibleCount');
+    const mainTitle = document.getElementById('mainTitle');
+    const mainContent = document.getElementById('mainContent');
 
-    // Live search listener
     if (searchInput) {
         searchInput.addEventListener('input', () => {
             filterReports();
         });
     }
 
-    // Keyboard shortcut '/' or 'Ctrl+K' / 'Cmd+K' to focus search
     document.addEventListener('keydown', (e) => {
         if ((e.key === '/' && document.activeElement !== searchInput && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') ||
             ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) {
@@ -744,25 +638,32 @@ $activeCategoriesCount = count($categories);
         }
         if (e.key === 'Escape' && document.activeElement === searchInput) {
             searchInput.blur();
+            searchInput.value = '';
+            filterReports();
         }
     });
 
-    function selectCategoryFilter(cat) {
-        activeCategory = cat;
-        document.querySelectorAll('.filter-chip').forEach(chip => {
-            if (chip.getAttribute('data-cat') === cat) {
-                chip.classList.add('active');
+    function selectCategory(catKey, catTitle) {
+        activeCategory = catKey;
+        mainTitle.innerText = catTitle;
+        
+        document.querySelectorAll('.nav-item').forEach(item => {
+            if (item.getAttribute('data-cat') === catKey) {
+                item.classList.add('active');
             } else {
-                chip.classList.remove('active');
+                item.classList.remove('active');
             }
         });
+        
+        // Scroll to top of main content
+        mainContent.scrollTop = 0;
+        
         filterReports();
     }
 
     function filterReports() {
         const query = (searchInput.value || '').trim().toLowerCase();
         let totalVisibleReports = 0;
-        let visibleCardsCount = 0;
 
         const cards = document.querySelectorAll('.category-card');
         cards.forEach(card => {
@@ -788,11 +689,8 @@ $activeCategoriesCount = count($categories);
 
             if (visibleInCard > 0) {
                 card.style.display = 'flex';
-                visibleCardsCount++;
                 const countBadge = card.querySelector('.cat-badge');
-                if (countBadge) {
-                    countBadge.innerText = visibleInCard;
-                }
+                if (countBadge) countBadge.innerText = visibleInCard;
             } else {
                 card.style.display = 'none';
             }
@@ -808,9 +706,7 @@ $activeCategoriesCount = count($categories);
     }
 
     function resetFilters() {
-        if (searchInput) {
-            searchInput.value = '';
-        }
-        selectCategoryFilter('all');
+        if (searchInput) searchInput.value = '';
+        selectCategory('all', 'All Reports');
     }
 </script>
