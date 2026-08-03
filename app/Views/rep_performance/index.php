@@ -114,6 +114,9 @@ if ($hasPerfData) {
     bottom: 28px;
     left: 50%;
     transform: translateX(-50%);
+    max-width: 95vw;
+    overflow-x: auto;
+    -ms-overflow-style: none; scrollbar-width: none;
     background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -126,16 +129,15 @@ if ($hasPerfData) {
     box-shadow: 0 12px 30px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
     z-index: 1000;
 }
-.rp-filters .rp-fg { margin: 0; min-width: 120px; flex-direction: row; align-items: center; }
-.rp-filters .rp-fg label { display: none; }
-.rp-filters select, .rp-filters input { border-radius: 999px; padding: 8px 14px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); }
-.rp-fg { display:flex;flex-direction:column;gap:4px;min-width:140px; }
-.rp-fg label { font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.7px; }
+.rp-filters::-webkit-scrollbar { display: none; }
+.rp-fg { display:flex;flex-direction:row;align-items:center;min-width:130px; }
+.rp-fg label { display: none; }
 .rp-fg select, .rp-fg input {
-    border:1px solid rgba(0,0,0,.1);border-radius:var(--rad-xs);
-    background:#fff;color:var(--t1);padding:7px 10px;
+    border:1px solid rgba(0,0,0,.1);border-radius:999px;
+    background:#fff;color:var(--t1);padding:8px 14px;
     font-size:13px;font-weight:500;font-family:inherit;
     outline:none;transition:border-color .2s,box-shadow .2s;
+    width: 100%;
 }
 .rp-fg select:focus, .rp-fg input:focus {
     border-color:var(--g2);box-shadow:0 0 0 3px rgba(27,94,32,.12);
@@ -144,7 +146,7 @@ if ($hasPerfData) {
 /* Buttons */
 .rp-btn {
     display:inline-flex;align-items:center;gap:6px;
-    padding:8px 16px;border-radius:var(--rad-xs);
+    padding:8px 16px;border-radius:999px;
     font-size:13px;font-weight:700;font-family:inherit;
     cursor:pointer;border:none;text-decoration:none;transition:all .2s;
 }
@@ -175,7 +177,7 @@ if ($hasPerfData) {
 @keyframes rpIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
 
 /* -- Content layout ------------------------------------------- */
-.rp-content { padding:24px 32px; }
+.rp-content { padding:24px 32px 100px; }
 
 /* Grids */
 .rp-row { display:flex; flex-wrap:wrap; gap:18px; margin-bottom:18px; }
@@ -404,7 +406,7 @@ if ($hasPerfData) {
             <?php endforeach; ?>
         </select>
     </div>
-    <div style="display:flex;gap:8px;align-items:flex-end;">
+    <div style="display:flex;gap:8px;align-items:center;">
         <button type="submit" class="rp-btn rp-btn-primary"><i class="ph ph-funnel-simple"></i> Apply</button>
         <a href="<?=APP_URL?>/repperformance" class="rp-btn rp-btn-ghost"><i class="ph ph-arrow-counter-clockwise"></i></a>
     </div>
