@@ -110,12 +110,25 @@ if ($hasPerfData) {
 
 /* -- Filter bar ----------------------------------------------- */
 .rp-filters {
-    padding:14px 32px;
-    background:rgba(255,255,255,.70);
-    backdrop-filter:blur(16px);
-    border-bottom:1px solid rgba(0,0,0,.06);
-    display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 999px;
+    padding: 10px 16px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
+    z-index: 1000;
 }
+.rp-filters .rp-fg { margin: 0; min-width: 120px; flex-direction: row; align-items: center; }
+.rp-filters .rp-fg label { display: none; }
+.rp-filters select, .rp-filters input { border-radius: 999px; padding: 8px 14px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); }
 .rp-fg { display:flex;flex-direction:column;gap:4px;min-width:140px; }
 .rp-fg label { font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.7px; }
 .rp-fg select, .rp-fg input {
