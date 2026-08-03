@@ -869,96 +869,264 @@ if ($hasPerfData) {
      PANE 5 - PAYROLL & COMMISSIONS
 ══════════════════════════════════════════════════════════ -->
 <div id="rp5" class="rp-pane">
-<?php if(isset($data['perf_data']['payroll'])): $pr = $data['perf_data']['payroll']; ?>
-    <div class="rp-content" style="max-width: 800px; margin: 0 auto;">
-        <div class="rp-card">
-            <div class="rp-card-head" style="border-bottom: 1px solid var(--mac-border); padding-bottom: 15px; margin-bottom: 20px;">
-                <h4 class="rp-card-title"><i class="ph ph-wallet" style="color:var(--t1)"></i> Payroll &amp; Earnings Estimate</h4>
-                <span class="rp-badge badge-g">Estimated for period</span>
-            </div>
-            
-            <div style="display: flex; flex-direction: column; gap: 15px; font-size: 14px;">
-                <!-- Base Salary -->
-                <div style="display: flex; justify-content: space-between; padding: 12px 16px; background: rgba(0,0,0,0.02); border-radius: 8px;">
-                    <div>
-                        <strong style="color: var(--t1); display: block;">Base Monthly Salary</strong>
-                        <span style="font-size: 12px; color: var(--t3);">From employee directory</span>
-                    </div>
-                    <div style="font-weight: 600; color: var(--t1);">
-                        Rs <?= number_format($pr['base_salary'], 2) ?>
-                    </div>
+<?php if(isset($data['perf_data']['payroll'])): $pr = $data['perf_data']['payroll']; 
+    $collTarget = floatval($data['rep_targets']->collection_efficiency_target ?? 80.00);
+    $pvTarget   = floatval($data['rep_targets']->productive_visits_target ?? 0);
+    $wdTarget   = floatval($data['rep_targets']->working_days_target ?? 0);
+    $pvAchieved = intval($data['perf_data']['productive_visits'] ?? 0);
+    $wdAchieved = intval($data['perf_data']['active_route_days'] ?? 0);
+    $collAchieved = floatval($data['perf_data']['collection_efficiency'] ?? 0);
+    $pvPct = $pvTarget > 0 ? min(100, round(($pvAchieved / $pvTarget) * 100)) : ($pvAchieved > 0 ? 100 : 0);
+    $wdPct = $wdTarget > 0 ? min(100, round(($wdAchieved / $wdTarget) * 100)) : ($wdAchieved > 0 ? 100 : 0);
+    $collPct = $collTarget > 0 ? min(100, round(($collAchieved / $collTarget) * 100)) : 0;
+?>
+<style>
+.pr-wrap { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.pr-summary-banner {
+    background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 50%, #0369a1 100%);
+    border-radius: 18px; padding: 28px 32px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;
+    position: relative; overflow: hidden;
+    box-shadow: 0 8px 32px rgba(27,94,32,.35);
+}
+.pr-summary-banner::before {
+    content:''; position:absolute; top:-40px; right:-40px;
+    width:200px; height:200px; border-radius:50%;
+    background: rgba(255,255,255,.07);
+}
+.pr-summary-banner::after {
+    content:''; position:absolute; bottom:-60px; left:20%;
+    width:160px; height:160px; border-radius:50%;
+    background: rgba(255,255,255,.05);
+}
+.pr-banner-left { position: relative; z-index:1; }
+.pr-banner-left h3 { font-size:13px; font-weight:700; color:rgba(255,255,255,.65); text-transform:uppercase; letter-spacing:.8px; margin:0 0 4px; }
+.pr-banner-left p { font-size:12px; color:rgba(255,255,255,.5); margin:6px 0 0; }
+.pr-banner-amount { position: relative; z-index:1; text-align:right; }
+.pr-banner-amount .lbl { font-size:12px; font-weight:700; color:rgba(255,255,255,.6); text-transform:uppercase; letter-spacing:.5px; }
+.pr-banner-amount .val { font-size:38px; font-weight:900; color:#fff; line-height:1.1; }
+.pr-banner-base { display:inline-flex; align-items:center; gap:6px; margin-top:6px; background:rgba(255,255,255,.15); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.2); border-radius:30px; padding:4px 14px; font-size:12px; font-weight:700; color:rgba(255,255,255,.85); }
+
+.pr-section-title { font-size:11px; font-weight:800; color:var(--t3); text-transform:uppercase; letter-spacing:.8px; margin:0 0 10px; }
+
+.pr-line-item {
+    background: rgba(255,255,255,.85); backdrop-filter: blur(12px);
+    border: 1px solid rgba(0,0,0,.06); border-radius: 14px;
+    padding: 16px 20px; display:flex; align-items:center; gap:16px;
+    transition: box-shadow .2s, transform .2s;
+}
+.pr-line-item:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,.08); }
+.pr-line-icon {
+    width:42px; height:42px; border-radius:12px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:20px;
+}
+.pr-line-body { flex:1; min-width:0; }
+.pr-line-name { font-size:14px; font-weight:700; color:var(--t1); margin-bottom:3px; }
+.pr-line-desc { font-size:12px; color:var(--t3); }
+.pr-line-progress { margin-top:8px; }
+.pr-line-progress-bar-wrap { height:5px; background:rgba(0,0,0,.07); border-radius:3px; overflow:hidden; margin-bottom:4px; }
+.pr-line-progress-bar { height:100%; border-radius:3px; transition: width 1.2s cubic-bezier(.34,1.56,.64,1); }
+.pr-line-progress-labels { display:flex; justify-content:space-between; font-size:11px; font-weight:600; color:var(--t4); }
+.pr-line-amount { flex-shrink:0; text-align:right; }
+.pr-line-amount .val { font-size:16px; font-weight:800; }
+.pr-line-amount .pct-badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:700; margin-top:4px; }
+.pr-earned { color: var(--g1); }
+.pr-zero   { color: var(--t4); }
+.pr-divider { border:none; border-top: 1px solid rgba(0,0,0,.07); margin:4px 0; }
+</style>
+
+<div class="rp-content" style="padding-top:24px; padding-bottom:100px;">
+    <div class="pr-wrap">
+        <!-- Total Banner -->
+        <div class="pr-summary-banner">
+            <div class="pr-banner-left">
+                <h3>💰 Payroll & Earnings Estimate</h3>
+                <p>Estimated for the selected period. For accurate monthly payroll, ensure the date range spans a full working month.</p>
+                <div class="pr-banner-base">
+                    <i class="ph ph-user"></i> Base Salary: Rs <?= number_format($pr['base_salary'], 0) ?>/month
                 </div>
+            </div>
+            <div class="pr-banner-amount">
+                <div class="lbl">Total Estimated</div>
+                <div class="val">Rs <?= number_format($pr['total_earnings'], 0) ?></div>
+            </div>
+        </div>
+
+        <!-- Commission -->
+        <div>
+            <div class="pr-section-title">Sales Performance</div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
 
                 <!-- Sales Commission -->
-                <div style="display: flex; justify-content: space-between; padding: 12px 16px; border: 1px solid var(--mac-border); border-radius: 8px;">
-                    <div>
-                        <strong style="color: var(--t1); display: block;">Sales Commission</strong>
-                        <span style="font-size: 12px; color: var(--t3);"><?= floatval($pr['settings']->sales_commission_pct ?? 0) ?>% of Net Sales (Rs <?= number_format($data['perf_data']['net_sales'],0) ?>)</span>
+                <div class="pr-line-item">
+                    <div class="pr-line-icon" style="background:rgba(27,94,32,.1); color:var(--g1);">
+                        <i class="ph ph-chart-line-up"></i>
                     </div>
-                    <div style="font-weight: 600; color: var(--g1);">
-                        + Rs <?= number_format($pr['sales_commission'], 2) ?>
+                    <div class="pr-line-body">
+                        <div class="pr-line-name">Sales Commission</div>
+                        <div class="pr-line-desc"><?= floatval($pr['settings']->sales_commission_pct ?? 0) ?>% of Net Sales &nbsp;·&nbsp; Net Sales: Rs <?= number_format($data['perf_data']['net_sales'],0) ?></div>
+                    </div>
+                    <div class="pr-line-amount">
+                        <div class="val <?= $pr['sales_commission'] > 0 ? 'pr-earned' : 'pr-zero' ?>">+ Rs <?= number_format($pr['sales_commission'], 2) ?></div>
                     </div>
                 </div>
 
                 <!-- Sales Incentive -->
-                <div style="display: flex; justify-content: space-between; padding: 12px 16px; border: 1px solid var(--mac-border); border-radius: 8px;">
-                    <div>
-                        <strong style="color: var(--t1); display: block;">Sales Incentive</strong>
-                        <span style="font-size: 12px; color: var(--t3);">Min: Rs <?= number_format($pr['settings']->sales_incentive_min_value ?? 0,0) ?> | Rate: <?= floatval($pr['settings']->sales_incentive_pct ?? 0) ?>% | Cap: Rs <?= number_format($pr['settings']->sales_incentive_max_limit ?? 0,0) ?></span>
+                <div class="pr-line-item">
+                    <div class="pr-line-icon" style="background:rgba(180,83,9,.1); color:var(--a1);">
+                        <i class="ph ph-trophy"></i>
                     </div>
-                    <div style="font-weight: 600; color: <?= $pr['sales_incentive']>0 ? 'var(--g1)' : 'var(--t3)' ?>;">
-                        + Rs <?= number_format($pr['sales_incentive'], 2) ?>
+                    <div class="pr-line-body">
+                        <div class="pr-line-name">Sales Incentive</div>
+                        <div class="pr-line-desc">
+                            Min: Rs <?= number_format($pr['settings']->sales_incentive_min_value ?? 0, 0) ?>
+                            &nbsp;·&nbsp; Rate: <?= floatval($pr['settings']->sales_incentive_pct ?? 0) ?>%
+                            &nbsp;·&nbsp; Cap: Rs <?= number_format($pr['settings']->sales_incentive_max_limit ?? 0, 0) ?>
+                        </div>
+                    </div>
+                    <div class="pr-line-amount">
+                        <div class="val <?= $pr['sales_incentive'] > 0 ? 'pr-earned' : 'pr-zero' ?>">+ Rs <?= number_format($pr['sales_incentive'], 2) ?></div>
+                        <?php if($pr['sales_incentive'] > 0): ?>
+                            <div class="pct-badge" style="background:rgba(27,94,32,.1); color:var(--g1);">✓ Qualified</div>
+                        <?php else: ?>
+                            <div class="pct-badge" style="background:rgba(0,0,0,.06); color:var(--t4);">Below Min</div>
+                        <?php endif; ?>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Activity Bonuses -->
+        <div>
+            <div class="pr-section-title">Activity Bonuses</div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
 
                 <!-- Productive Visits Bonus -->
-                <div style="display: flex; justify-content: space-between; padding: 12px 16px; border: 1px solid var(--mac-border); border-radius: 8px;">
-                    <div>
-                        <strong style="color: var(--t1); display: block;">Productive Visits Bonus</strong>
-                        <span style="font-size: 12px; color: var(--t3);">Achieved: <?= $data['perf_data']['productive_visits'] ?> (Target: <?= floatval($data['rep_targets']->productive_visits_target ?? 0) ?>)</span>
+                <div class="pr-line-item">
+                    <div class="pr-line-icon" style="background:rgba(3,105,161,.1); color:var(--b1);">
+                        <i class="ph ph-check-circle"></i>
                     </div>
-                    <div style="font-weight: 600; color: <?= $pr['productive_visits_bonus']>0 ? 'var(--g1)' : 'var(--t3)' ?>;">
-                        + Rs <?= number_format($pr['productive_visits_bonus'], 2) ?>
+                    <div class="pr-line-body">
+                        <div class="pr-line-name">Productive Visits Bonus</div>
+                        <?php if($pvTarget > 0): ?>
+                        <div class="pr-line-progress">
+                            <div class="pr-line-progress-bar-wrap">
+                                <div class="pr-line-progress-bar" style="width:<?= $pvPct ?>%; background:<?= $pvPct >= 100 ? 'var(--g2)' : ($pvPct >= 70 ? 'var(--a2)' : 'var(--r2)') ?>;"></div>
+                            </div>
+                            <div class="pr-line-progress-labels">
+                                <span><?= $pvAchieved ?> achieved</span>
+                                <span><?= $pvPct ?>% of target <?= $pvTarget ?></span>
+                            </div>
+                        </div>
+                        <?php else: ?>
+                        <div class="pr-line-desc">No target set · Achieved: <?= $pvAchieved ?></div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="pr-line-amount">
+                        <div class="val <?= $pr['productive_visits_bonus'] > 0 ? 'pr-earned' : 'pr-zero' ?>">+ Rs <?= number_format($pr['productive_visits_bonus'], 2) ?></div>
+                        <?php if($pvPct >= 100): ?>
+                            <div class="pct-badge" style="background:rgba(27,94,32,.1); color:var(--g1);">✓ Target Hit</div>
+                        <?php elseif($pvTarget > 0): ?>
+                            <div class="pct-badge" style="background:rgba(0,0,0,.06); color:var(--t4);"><?= $pvPct ?>%</div>
+                        <?php endif; ?>
                     </div>
                 </div>
 
                 <!-- Working Days Bonus -->
-                <div style="display: flex; justify-content: space-between; padding: 12px 16px; border: 1px solid var(--mac-border); border-radius: 8px;">
-                    <div>
-                        <strong style="color: var(--t1); display: block;">Working Days Bonus</strong>
-                        <span style="font-size: 12px; color: var(--t3);">Achieved: <?= $data['perf_data']['active_route_days'] ?> (Target: <?= floatval($data['rep_targets']->working_days_target ?? 0) ?>)</span>
+                <div class="pr-line-item">
+                    <div class="pr-line-icon" style="background:rgba(6,95,70,.1); color:#065f46;">
+                        <i class="ph ph-calendar-check"></i>
                     </div>
-                    <div style="font-weight: 600; color: <?= $pr['working_days_bonus']>0 ? 'var(--g1)' : 'var(--t3)' ?>;">
-                        + Rs <?= number_format($pr['working_days_bonus'], 2) ?>
+                    <div class="pr-line-body">
+                        <div class="pr-line-name">Working Days Bonus</div>
+                        <?php if($wdTarget > 0): ?>
+                        <div class="pr-line-progress">
+                            <div class="pr-line-progress-bar-wrap">
+                                <div class="pr-line-progress-bar" style="width:<?= $wdPct ?>%; background:<?= $wdPct >= 100 ? 'var(--g2)' : ($wdPct >= 70 ? 'var(--a2)' : 'var(--r2)') ?>;"></div>
+                            </div>
+                            <div class="pr-line-progress-labels">
+                                <span><?= $wdAchieved ?> days achieved</span>
+                                <span><?= $wdPct ?>% of target <?= $wdTarget ?> days</span>
+                            </div>
+                        </div>
+                        <?php else: ?>
+                        <div class="pr-line-desc">No target set · Achieved: <?= $wdAchieved ?> days</div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="pr-line-amount">
+                        <div class="val <?= $pr['working_days_bonus'] > 0 ? 'pr-earned' : 'pr-zero' ?>">+ Rs <?= number_format($pr['working_days_bonus'], 2) ?></div>
+                        <?php if($wdPct >= 100): ?>
+                            <div class="pct-badge" style="background:rgba(27,94,32,.1); color:var(--g1);">✓ Target Hit</div>
+                        <?php elseif($wdTarget > 0): ?>
+                            <div class="pct-badge" style="background:rgba(0,0,0,.06); color:var(--t4);"><?= $wdPct ?>%</div>
+                        <?php endif; ?>
                     </div>
                 </div>
 
-                <!-- Collection Bonus -->
-                <?php $collTarget = floatval($data['rep_targets']->collection_efficiency_target ?? 80.00); ?>
-                <div style="display: flex; justify-content: space-between; padding: 12px 16px; border: 1px solid var(--mac-border); border-radius: 8px;">
-                    <div>
-                        <strong style="color: var(--t1); display: block;">Collection Efficiency Bonus</strong>
-                        <span style="font-size: 12px; color: var(--t3);">Achieved: <?= round($data['perf_data']['collection_efficiency'],1) ?>% (Target: <?= $collTarget ?>%)</span>
+                <!-- Collection Efficiency Bonus -->
+                <div class="pr-line-item">
+                    <div class="pr-line-icon" style="background:rgba(109,40,217,.1); color:var(--v1);">
+                        <i class="ph ph-hand-coins"></i>
                     </div>
-                    <div style="font-weight: 600; color: <?= $pr['collection_bonus']>0 ? 'var(--g1)' : 'var(--t3)' ?>;">
-                        + Rs <?= number_format($pr['collection_bonus'], 2) ?>
+                    <div class="pr-line-body">
+                        <div class="pr-line-name">Collection Efficiency Bonus</div>
+                        <div class="pr-line-progress">
+                            <div class="pr-line-progress-bar-wrap">
+                                <div class="pr-line-progress-bar" style="width:<?= $collPct ?>%; background:<?= $collPct >= 100 ? 'var(--g2)' : ($collPct >= 70 ? 'var(--a2)' : 'var(--r2)') ?>;"></div>
+                            </div>
+                            <div class="pr-line-progress-labels">
+                                <span><?= round($collAchieved, 1) ?>% achieved</span>
+                                <span>Target: <?= $collTarget ?>%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pr-line-amount">
+                        <div class="val <?= $pr['collection_bonus'] > 0 ? 'pr-earned' : 'pr-zero' ?>">+ Rs <?= number_format($pr['collection_bonus'], 2) ?></div>
+                        <?php if($collAchieved >= $collTarget && $collTarget > 0): ?>
+                            <div class="pct-badge" style="background:rgba(27,94,32,.1); color:var(--g1);">✓ Target Hit</div>
+                        <?php else: ?>
+                            <div class="pct-badge" style="background:rgba(0,0,0,.06); color:var(--t4);"><?= $collPct ?>%</div>
+                        <?php endif; ?>
                     </div>
                 </div>
 
-                <!-- Total Earnings -->
-                <div style="display: flex; justify-content: space-between; padding: 16px; margin-top: 10px; background: linear-gradient(135deg, rgba(27,94,32,0.05), rgba(0,0,0,0.02)); border: 1px solid rgba(27,94,32,0.2); border-radius: 12px;">
-                    <div style="font-size: 16px; font-weight: 700; color: var(--t1);">Total Estimated Earnings</div>
-                    <div style="font-size: 20px; font-weight: 800; color: var(--g1);">
-                        Rs <?= number_format($pr['total_earnings'], 2) ?>
-                    </div>
-                </div>
-                
-                <p style="font-size: 11px; color: #888; text-align: center; margin-top: 5px;">
-                    * This is an estimate based on the selected date range. Ensure the date range spans a full working month for accurate monthly payroll preview.
-                </p>
             </div>
         </div>
+
+        <!-- Breakdown Summary -->
+        <div class="rp-card">
+            <div class="rp-card-head">
+                <h4 class="rp-card-title"><i class="ph ph-list-numbers" style="color:var(--t3);"></i> Earnings Breakdown</h4>
+            </div>
+            <div style="padding:16px 20px;">
+                <table style="width:100%; font-size:13px; border-collapse:collapse;">
+                    <?php
+                    $items = [
+                        ['Base Monthly Salary',         $pr['base_salary'],              '--t1', false],
+                        ['Sales Commission',            $pr['sales_commission'],          '--g1', true],
+                        ['Sales Incentive',             $pr['sales_incentive'],           '--g1', true],
+                        ['Productive Visits Bonus',     $pr['productive_visits_bonus'],   '--g1', true],
+                        ['Working Days Bonus',          $pr['working_days_bonus'],        '--g1', true],
+                        ['Collection Efficiency Bonus', $pr['collection_bonus'],          '--g1', true],
+                    ];
+                    foreach($items as $i=>$item): ?>
+                    <tr style="border-bottom:1px solid rgba(0,0,0,.05);">
+                        <td style="padding:10px 8px; color:var(--t2); font-weight:500;"><?= $item[0] ?></td>
+                        <td style="padding:10px 8px; text-align:right; font-weight:700; color:var(<?= $item[3] && $item[1] > 0 ? $item[2] : '--t3' ?>);">
+                            <?= $item[3] ? '+ ' : '' ?>Rs <?= number_format($item[1], 2) ?>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <tr style="background:rgba(27,94,32,.05);">
+                        <td style="padding:14px 8px; font-weight:800; font-size:15px; color:var(--t1);">Total Estimated Earnings</td>
+                        <td style="padding:14px 8px; text-align:right; font-weight:900; font-size:18px; color:var(--g1);">Rs <?= number_format($pr['total_earnings'], 2) ?></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
     </div>
+</div>
 <?php endif; ?>
 </div>
 
