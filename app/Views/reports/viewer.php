@@ -543,7 +543,7 @@ $statuses = $data['statuses'] ?? [];
 
 /* Scrollable Table */
 .table-scroll {
-    overflow-x: auto;
+    overflow: auto;
     position: relative;
     max-height: 720px;
 }
@@ -616,6 +616,13 @@ $statuses = $data['statuses'] ?? [];
 }
 
 /* Total Rows */
+.report-table tfoot {
+    position: sticky;
+    bottom: -1px;
+    z-index: 10;
+    box-shadow: 0 -1px 0 var(--c-separator);
+}
+
 .report-table tfoot tr.total-row {
     background: var(--c-surface2);
     font-weight: 750;

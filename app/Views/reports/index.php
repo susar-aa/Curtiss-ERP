@@ -401,6 +401,30 @@ body {
     color: var(--c-blue);
 }
 
+/* Expanded State for Single Category View */
+.category-card.expanded {
+    grid-column: 1 / -1;
+}
+.category-card.expanded .reports-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    padding: 16px;
+    background: var(--c-surface2);
+}
+.category-card.expanded .report-item {
+    background: var(--c-surface);
+    border: 0.5px solid var(--c-separator);
+    border-radius: var(--r-sm);
+    box-shadow: var(--shadow-xs);
+    transition: transform var(--dur-fast), box-shadow var(--dur-fast), border-color var(--dur-fast);
+}
+.category-card.expanded .report-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+    border-color: rgba(0,122,255,0.3);
+}
+
 .rep-info {
     display: flex;
     flex-direction: column;
@@ -691,8 +715,15 @@ body {
                 card.style.display = 'flex';
                 const countBadge = card.querySelector('.cat-badge');
                 if (countBadge) countBadge.innerText = visibleInCard;
+                
+                if (activeCategory !== 'all') {
+                    card.classList.add('expanded');
+                } else {
+                    card.classList.remove('expanded');
+                }
             } else {
                 card.style.display = 'none';
+                card.classList.remove('expanded');
             }
         });
 
