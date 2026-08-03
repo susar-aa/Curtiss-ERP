@@ -1102,37 +1102,7 @@ $statuses = $data['statuses'] ?? [];
             </div>
         </div>
 
-        <!-- KPI Summary Cards (Auto-Calculated) -->
-        <div class="kpi-row no-print" id="kpiRow">
-            <div class="kpi-card blue">
-                <div class="kpi-icon"><i class="ph ph-rows"></i></div>
-                <div class="kpi-info">
-                    <div class="kpi-num" id="kpiTotalRecords">-</div>
-                    <div class="kpi-lbl">Total Records</div>
-                </div>
-            </div>
-            <div class="kpi-card green" id="kpiPrimaryCard" style="display:none;">
-                <div class="kpi-icon"><i class="ph ph-currency-dollar"></i></div>
-                <div class="kpi-info">
-                    <div class="kpi-num" id="kpiPrimaryVal">-</div>
-                    <div class="kpi-lbl" id="kpiPrimaryLbl">Total Sum</div>
-                </div>
-            </div>
-            <div class="kpi-card orange" id="kpiSecondaryCard" style="display:none;">
-                <div class="kpi-icon"><i class="ph ph-chart-pie-slice"></i></div>
-                <div class="kpi-info">
-                    <div class="kpi-num" id="kpiSecondaryVal">-</div>
-                    <div class="kpi-lbl" id="kpiSecondaryLbl">Secondary Metric</div>
-                </div>
-            </div>
-            <div class="kpi-card purple" id="kpiTertiaryCard" style="display:none;">
-                <div class="kpi-icon"><i class="ph ph-trend-up"></i></div>
-                <div class="kpi-info">
-                    <div class="kpi-num" id="kpiTertiaryVal">-</div>
-                    <div class="kpi-lbl" id="kpiTertiaryLbl">Additional Metric</div>
-                </div>
-            </div>
-        </div>
+
 
         <!-- Two Column Main Layout -->
         <div class="viewer-layout">
@@ -1417,6 +1387,40 @@ $statuses = $data['statuses'] ?? [];
                                 <!-- Injected via JavaScript -->
                             </tfoot>
                         </table>
+                    </div>
+
+                    <div style="padding: 20px 20px 0;">
+                        <!-- KPI Summary Cards (Auto-Calculated) moved to bottom -->
+                        <div class="kpi-row no-print" id="kpiRow" style="margin-bottom: 0;">
+                            <div class="kpi-card blue">
+                                <div class="kpi-icon"><i class="ph ph-rows"></i></div>
+                                <div class="kpi-info">
+                                    <div class="kpi-num" id="kpiTotalRecords">-</div>
+                                    <div class="kpi-lbl">Total Records</div>
+                                </div>
+                            </div>
+                            <div class="kpi-card green" id="kpiPrimaryCard" style="display:none;">
+                                <div class="kpi-icon"><i class="ph ph-currency-dollar"></i></div>
+                                <div class="kpi-info">
+                                    <div class="kpi-num" id="kpiPrimaryVal">-</div>
+                                    <div class="kpi-lbl" id="kpiPrimaryLbl">Total Sum</div>
+                                </div>
+                            </div>
+                            <div class="kpi-card orange" id="kpiSecondaryCard" style="display:none;">
+                                <div class="kpi-icon"><i class="ph ph-chart-pie-slice"></i></div>
+                                <div class="kpi-info">
+                                    <div class="kpi-num" id="kpiSecondaryVal">-</div>
+                                    <div class="kpi-lbl" id="kpiSecondaryLbl">Secondary Metric</div>
+                                </div>
+                            </div>
+                            <div class="kpi-card purple" id="kpiTertiaryCard" style="display:none;">
+                                <div class="kpi-icon"><i class="ph ph-trend-up"></i></div>
+                                <div class="kpi-info">
+                                    <div class="kpi-num" id="kpiTertiaryVal">-</div>
+                                    <div class="kpi-lbl" id="kpiTertiaryLbl">Additional Metric</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Pagination Footer -->
