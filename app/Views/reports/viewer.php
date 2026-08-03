@@ -1390,37 +1390,7 @@ $statuses = $data['statuses'] ?? [];
                     </div>
 
                     <div style="padding: 20px 20px 0;">
-                        <!-- KPI Summary Cards (Auto-Calculated) moved to bottom -->
-                        <div class="kpi-row no-print" id="kpiRow" style="margin-bottom: 0;">
-                            <div class="kpi-card blue">
-                                <div class="kpi-icon"><i class="ph ph-rows"></i></div>
-                                <div class="kpi-info">
-                                    <div class="kpi-num" id="kpiTotalRecords">-</div>
-                                    <div class="kpi-lbl">Total Records</div>
-                                </div>
-                            </div>
-                            <div class="kpi-card green" id="kpiPrimaryCard" style="display:none;">
-                                <div class="kpi-icon"><i class="ph ph-currency-dollar"></i></div>
-                                <div class="kpi-info">
-                                    <div class="kpi-num" id="kpiPrimaryVal">-</div>
-                                    <div class="kpi-lbl" id="kpiPrimaryLbl">Total Sum</div>
-                                </div>
-                            </div>
-                            <div class="kpi-card orange" id="kpiSecondaryCard" style="display:none;">
-                                <div class="kpi-icon"><i class="ph ph-chart-pie-slice"></i></div>
-                                <div class="kpi-info">
-                                    <div class="kpi-num" id="kpiSecondaryVal">-</div>
-                                    <div class="kpi-lbl" id="kpiSecondaryLbl">Secondary Metric</div>
-                                </div>
-                            </div>
-                            <div class="kpi-card purple" id="kpiTertiaryCard" style="display:none;">
-                                <div class="kpi-icon"><i class="ph ph-trend-up"></i></div>
-                                <div class="kpi-info">
-                                    <div class="kpi-num" id="kpiTertiaryVal">-</div>
-                                    <div class="kpi-lbl" id="kpiTertiaryLbl">Additional Metric</div>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- KPI Summary Cards removed by request -->
                     </div>
 
                     <!-- Pagination Footer -->
@@ -1610,49 +1580,7 @@ $statuses = $data['statuses'] ?? [];
     }
 
     function updateKpis(data) {
-        document.getElementById('kpiTotalRecords').textContent = (data.total_rows || 0).toLocaleString();
-
-        const totals = data.grand_totals || {};
-        const sumCols = Object.keys(columnsMeta).filter(k => columnsMeta[k].total === 'sum');
-
-        // Primary KPI
-        const primCard = document.getElementById('kpiPrimaryCard');
-        if (sumCols.length > 0) {
-            const firstCol = sumCols[0];
-            const val = totals[firstCol] !== undefined ? totals[firstCol] : 0;
-            const def = columnsMeta[firstCol];
-            document.getElementById('kpiPrimaryLbl').textContent = 'TOTAL ' + def.label.toUpperCase();
-            document.getElementById('kpiPrimaryVal').textContent = (def.type === 'currency' ? 'Rs. ' : '') + parseFloat(val).toLocaleString(undefined, {minimumFractionDigits: def.type === 'currency' ? 2 : 0, maximumFractionDigits: def.type === 'currency' ? 2 : 0});
-            primCard.style.display = 'flex';
-        } else {
-            primCard.style.display = 'none';
-        }
-
-        // Secondary KPI
-        const secCard = document.getElementById('kpiSecondaryCard');
-        if (sumCols.length > 1) {
-            const secondCol = sumCols[1];
-            const val = totals[secondCol] !== undefined ? totals[secondCol] : 0;
-            const def = columnsMeta[secondCol];
-            document.getElementById('kpiSecondaryLbl').textContent = 'TOTAL ' + def.label.toUpperCase();
-            document.getElementById('kpiSecondaryVal').textContent = (def.type === 'currency' ? 'Rs. ' : '') + parseFloat(val).toLocaleString(undefined, {minimumFractionDigits: def.type === 'currency' ? 2 : 0, maximumFractionDigits: def.type === 'currency' ? 2 : 0});
-            secCard.style.display = 'flex';
-        } else {
-            secCard.style.display = 'none';
-        }
-
-        // Tertiary KPI
-        const terCard = document.getElementById('kpiTertiaryCard');
-        if (sumCols.length > 2) {
-            const thirdCol = sumCols[2];
-            const val = totals[thirdCol] !== undefined ? totals[thirdCol] : 0;
-            const def = columnsMeta[thirdCol];
-            document.getElementById('kpiTertiaryLbl').textContent = 'TOTAL ' + def.label.toUpperCase();
-            document.getElementById('kpiTertiaryVal').textContent = (def.type === 'currency' ? 'Rs. ' : '') + parseFloat(val).toLocaleString(undefined, {minimumFractionDigits: def.type === 'currency' ? 2 : 0, maximumFractionDigits: def.type === 'currency' ? 2 : 0});
-            terCard.style.display = 'flex';
-        } else {
-            terCard.style.display = 'none';
-        }
+        // KPI feature removed
     }
 
     function renderTableBody(rows) {
