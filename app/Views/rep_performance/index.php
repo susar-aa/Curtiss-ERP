@@ -114,6 +114,8 @@ if ($hasPerfData) {
     border-bottom:1px solid rgba(0,0,0,.06);
     display:flex;padding:12px 32px;gap:16px;align-items:flex-end;
     flex-wrap:wrap;
+    position: relative;
+    z-index: 100;
 }
 .rp-fg { display:flex;flex-direction:column;gap:5px; }
 .rp-fg label { font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px; display: block; }
