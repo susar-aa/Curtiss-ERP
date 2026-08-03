@@ -101,6 +101,14 @@ class RepPerformance {
         // 2. Fetch Sales Invoices Grand Total Expression helper
         $invoiceTotalExpr = "SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0))";
 
+        foreach ($routesDetail as $r) {
+            $rId = intval($r->id);
+            $this->db->query("SELECT {$invoiceTotalExpr} as route_sales FROM invoices i WHERE i.rep_route_id = :rid AND i.status != 'Voided'");
+            $this->db->bind(':rid', $rId);
+            $rsRow = $this->db->single();
+            $r->sales = floatval($rsRow->route_sales ?? 0);
+        }
+
         // KPI: Total Sales & Net Sales
         $salesSql = "SELECT {$invoiceTotalExpr} as total_sales, COUNT(i.id) as invoice_count 
                      FROM invoices i
