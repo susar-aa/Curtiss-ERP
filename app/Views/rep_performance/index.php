@@ -112,11 +112,10 @@ if ($hasPerfData) {
 .rp-filters {
     position: fixed;
     bottom: 28px;
-    left: 50%;
-    transform: translateX(-50%);
-    max-width: 95vw;
-    overflow-x: auto;
-    -ms-overflow-style: none; scrollbar-width: none;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: max-content;
     background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -365,8 +364,9 @@ if ($hasPerfData) {
     <div class="rp-fg">
         <label>Representative</label>
         <select name="rep_user_id" onchange="this.form.submit()">
+            <option value="">All Representatives (Total)</option>
             <?php foreach($data['reps'] as $r): ?>
-                <option value="<?=$r->id?>" <?=$data['selected_rep_id']==$r->id?'selected':''?>>
+                <option value="<?=$r->id?>" <?= (isset($data['selected_rep_id']) && $data['selected_rep_id'] == $r->id) ? 'selected' : ''?>>
                     <?=htmlspecialchars($r->username)?> — <?=htmlspecialchars($r->first_name.' '.$r->last_name)?>
                 </option>
             <?php endforeach; ?>
@@ -770,7 +770,7 @@ if ($hasPerfData) {
 
         <?php if($hasPerfData):
             $pR=$data['perf_data']; $cR=$data['compare_data']??null; $tR=$data['team_avg'];
-            $selName=''; $cmpName='';
+            $selName='All Representatives'; $cmpName='';
             foreach($data['reps'] as $r){ if($r->id==$data['selected_rep_id']) $selName=$r->username; if($r->id==($data['compare_rep_id']??0)) $cmpName=$r->username; }
             $rows=[
                 ['Metric','Selected Rep','Competitor','Team Avg'],
@@ -1013,7 +1013,7 @@ Chart.defaults.plugins.tooltip.bodyFont={size:12,weight:'500'};
 // 7. Compare Chart
 <?php if(!empty($data['compare_data'])):
     $pR=$data['perf_data'];$cR=$data['compare_data'];$tR=$data['team_avg'];
-    $sn=''; $cn='';
+    $sn='All Representatives'; $cn='';
     foreach($data['reps'] as $r){ if($r->id==$data['selected_rep_id']) $sn=$r->username; if($r->id==($data['compare_rep_id']??0)) $cn=$r->username; }
 ?>
 (()=>{

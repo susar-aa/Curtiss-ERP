@@ -29,10 +29,7 @@ class RepPerformanceController extends Controller {
         $reps = $db->resultSet() ?: [];
 
         // 2. Resolve active filter parameters
-        $repUserId = isset($_GET['rep_user_id']) ? intval($_GET['rep_user_id']) : 0;
-        if ($repUserId === 0 && !empty($reps)) {
-            $repUserId = intval($reps[0]->id);
-        }
+        $repUserId = isset($_GET['rep_user_id']) && $_GET['rep_user_id'] !== '' ? intval($_GET['rep_user_id']) : 0;
 
         // Handle month/year filters (defaulting to the current month & year)
         $month = $_GET['month'] ?? date('m');
@@ -58,6 +55,57 @@ class RepPerformanceController extends Controller {
         if ($repUserId > 0) {
             $perfData = $this->perfModel->calculatePerformance($repUserId, $startDate, $endDate, $routeId, $areaId);
             $monthlyTrend = $this->perfModel->getMonthlyTrend($repUserId, 6);
+        } else {
+            // Aggregate all reps for Total View
+            $count = 0;
+            $kpiScoresSum = [];
+
+            foreach ($reps as $r) {
+                $temp = $this->perfModel->calculatePerformance(intval($r->id), $startDate, $endDate, $routeId, $areaId);
+                if (empty($perfData)) {
+                    $perfData = $temp;
+                    $kpiScoresSum = $temp['kpi_scores'] ?? [];
+                } else {
+                    foreach ($temp as $key => $val) {
+                        if (is_numeric($val)) {
+                            $perfData[$key] += $val;
+                        }
+                    }
+                    if (isset($temp['kpi_scores'])) {
+                        foreach ($temp['kpi_scores'] as $kKey => $kVal) {
+                            if (!isset($kpiScoresSum[$kKey])) {
+                                $kpiScoresSum[$kKey] = $kVal;
+                            } else {
+                                $kpiScoresSum[$kKey]['target'] += $kVal['target'] ?? 0;
+                                $kpiScoresSum[$kKey]['actual'] += $kVal['actual'] ?? 0;
+                                $kpiScoresSum[$kKey]['clamped_score'] += $kVal['clamped_score'] ?? 0;
+                            }
+                        }
+                    }
+                }
+                $count++;
+            }
+
+            if ($count > 0 && !empty($perfData)) {
+                $perfData['avg_invoice_value'] = $perfData['invoice_count'] > 0 ? $perfData['net_sales'] / $perfData['invoice_count'] : 0;
+                $perfData['productive_visit_rate'] = $perfData['total_visited'] > 0 ? ($perfData['productive_visits'] / $perfData['total_visited']) * 100 : 0;
+                $perfData['customer_conversion_rate'] = $perfData['total_visited'] > 0 ? ($perfData['productive_visits'] / $perfData['total_visited']) * 100 : 0;
+                $perfData['collection_efficiency'] = $perfData['total_outstanding'] > 0 ? ($perfData['total_collections'] / $perfData['total_outstanding']) * 100 : 0;
+                $perfData['route_completion_rate'] = $perfData['total_routes'] > 0 ? ($perfData['completed_routes'] / $perfData['total_routes']) * 100 : 0;
+                $perfData['avg_sales_per_route'] = $perfData['total_routes'] > 0 ? $perfData['net_sales'] / $perfData['total_routes'] : 0;
+                
+                $perfData['overall_score'] = $perfData['overall_score'] / $count;
+
+                foreach ($kpiScoresSum as $kKey => &$kVal) {
+                    if ($kVal['target'] > 0) {
+                        $kVal['achievement_pct'] = ($kVal['actual'] / $kVal['target']) * 100;
+                    } else {
+                        $kVal['achievement_pct'] = $kVal['actual'] > 0 ? 100.0 : 0.0;
+                    }
+                    $kVal['clamped_score'] = $kVal['clamped_score'] / $count;
+                }
+                $perfData['kpi_scores'] = $kpiScoresSum;
+            }
         }
 
         // 5. Compute comparisons if requested
