@@ -137,7 +137,11 @@
                     </div>
                 </div>
 
-                <div style="margin-top: 20px; text-align: right;">
+                <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer;">
+                        <input type="checkbox" name="apply_all_months" value="1" checked style="width: 16px; height: 16px;">
+                        Apply to all months of the year (by default)
+                    </label>
                     <button type="submit" class="btn"><i class="ph ph-floppy-disk"></i> Save Representative Targets</button>
                 </div>
             </form>

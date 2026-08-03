@@ -165,8 +165,8 @@ if ($hasPerfData) {
 .rp-content { padding:24px 32px; }
 
 /* Grids */
-.rp-row { display:flex; gap:18px; margin-bottom:18px; }
-.rp-row > * { flex:1; min-width:0; }
+.rp-row { display:flex; flex-wrap:wrap; gap:18px; margin-bottom:18px; }
+.rp-row > * { flex:1 1 220px; min-width: 220px; }
 .rp-col-3 { flex:0 0 calc(33.333% - 12px); }
 .rp-col-2 { flex:0 0 calc(50% - 9px); }
 .rp-col-4 { flex:0 0 calc(25% - 13.5px); }
@@ -424,11 +424,12 @@ if ($hasPerfData) {
         <?php
         $kpiCards = [
             ['label'=>'Net Sales','val'=>'Rs '.number_format($p['net_sales'],0),'sub'=>$p['invoice_count'].' invoices · Returns Rs '.number_format($p['total_returns'],0),'color1'=>'#1b5e20','color2'=>'#43a047','dim'=>'rgba(27,94,32,.08)','icon'=>'ph-chart-line-up','pct'=>($p['kpi_scores']['sales_amount']['target']??0)>0?min(100,($p['net_sales']/($p['kpi_scores']['sales_amount']['target']))*100):null,'target'=>($p['kpi_scores']['sales_amount']['target']??0)>0?'Target Rs '.number_format($p['kpi_scores']['sales_amount']['target'],0):null],
-            ['label'=>'Total Collections','val'=>'Rs '.number_format($p['total_collections'],0),'sub'=>'Efficiency: '.number_format($p['collection_efficiency'],1).'%','color1'=>'#6d28d9','color2'=>'#7c3aed','dim'=>'rgba(109,40,217,.08)','icon'=>'ph-hand-coins','pct'=>min(100,$p['collection_efficiency']),'target'=>null],
-            ['label'=>'Productive Visits','val'=>$p['productive_visits'].' / '.$p['total_visited'],'sub'=>'New: '.$p['new_customers_added'].' · Repeat: '.$p['repeat_customers'],'color1'=>'#0369a1','color2'=>'#0284c7','dim'=>'rgba(3,105,161,.08)','icon'=>'ph-users','pct'=>($p['kpi_scores']['productive_visit_rate']['target']??0)>0?min(100,($p['productive_visits']/($p['kpi_scores']['productive_visit_rate']['target']))*100):null,'target'=>($p['kpi_scores']['productive_visit_rate']['target']??0)>0?'Target: '.$p['kpi_scores']['productive_visit_rate']['target'].' prod. visits':null],
-            ['label'=>'Routes Completed','val'=>$p['completed_routes'].' / '.$p['total_routes'],'sub'=>'Completion: '.number_format($p['route_completion_rate'],1).'%','color1'=>'#b45309','color2'=>'#d97706','dim'=>'rgba(180,83,9,.08)','icon'=>'ph-map-trifold','pct'=>$p['total_routes']>0?min(100,$p['route_completion_rate']):null,'target'=>null],
-            ['label'=>'Total Expenses','val'=>'Rs '.number_format($p['total_expenses'],0),'sub'=>'Fuel Rs '.number_format($p['fuel_expenses'],0).' · Other Rs '.number_format($p['other_expenses'],0),'color1'=>'#991b1b','color2'=>'#dc2626','dim'=>'rgba(220,38,38,.08)','icon'=>'ph-money','pct'=>null,'target'=>'Sales/Expense Ratio: '.number_format($p['sales_to_expense_ratio'],1).'%'],
-            ['label'=>'Cash & Cheque','val'=>'Rs '.number_format($p['cash_collections']+$p['cheque_collections'],0),'sub'=>'Cash Rs '.number_format($p['cash_collections'],0).' · Cheque Rs '.number_format($p['cheque_collections'],0),'color1'=>'#065f46','color2'=>'#059669','dim'=>'rgba(6,95,70,.08)','icon'=>'ph-wallet','pct'=>$p['total_collections']>0?min(100,(($p['cash_collections']+$p['cheque_collections'])/$p['total_collections'])*100):null,'target'=>'Cash+Cheque of total collections'],
+            ['label'=>'Total Collections','val'=>'Rs '.number_format($p['total_collections'],0),'sub'=>'Cash, Cheque & Bank Transfer','color1'=>'#6d28d9','color2'=>'#7c3aed','dim'=>'rgba(109,40,217,.08)','icon'=>'ph-hand-coins','pct'=>min(100,$p['collection_efficiency']),'target'=>'Efficiency: '.number_format($p['collection_efficiency'],1).'%'],
+            ['label'=>'Total Credit','val'=>'Rs '.number_format($p['total_outstanding'],0),'sub'=>'Total Outstanding Amount','color1'=>'#0369a1','color2'=>'#0284c7','dim'=>'rgba(3,105,161,.08)','icon'=>'ph-credit-card','pct'=>null,'target'=>'Credit Limit: Rs '.number_format($p['credit_limit'],0)],
+            ['label'=>'Productive Visits','val'=>$p['productive_visits'],'sub'=>'Total bills billed','color1'=>'#1b5e20','color2'=>'#43a047','dim'=>'rgba(27,94,32,.08)','icon'=>'ph-check-circle','pct'=>($p['kpi_scores']['productive_visit_rate']['target']??0)>0?min(100,($p['productive_visits']/($p['kpi_scores']['productive_visit_rate']['target']))*100):null,'target'=>($p['kpi_scores']['productive_visit_rate']['target']??0)>0?'Target: '.$p['kpi_scores']['productive_visit_rate']['target'].' bills':null],
+            ['label'=>'Total Unproductive Visits','val'=>$p['unproductive_visits'],'sub'=>'Visits with no sales','color1'=>'#991b1b','color2'=>'#dc2626','dim'=>'rgba(220,38,38,.08)','icon'=>'ph-x-circle','pct'=>null,'target'=>null],
+            ['label'=>'Total Visits','val'=>$p['total_visited'],'sub'=>'Productive + Unproductive','color1'=>'#b45309','color2'=>'#d97706','dim'=>'rgba(180,83,9,.08)','icon'=>'ph-users','pct'=>($p['kpi_scores']['total_visits']['target']??0)>0?min(100,($p['total_visited']/($p['kpi_scores']['total_visits']['target']))*100):null,'target'=>($p['kpi_scores']['total_visits']['target']??0)>0?'Target: '.$p['kpi_scores']['total_visits']['target'].' visits':null],
+            ['label'=>'Total Working Days','val'=>$p['working_days'],'sub'=>'Active route days','color1'=>'#065f46','color2'=>'#059669','dim'=>'rgba(6,95,70,.08)','icon'=>'ph-calendar-check','pct'=>($p['kpi_scores']['route_completion']['target']??0)>0?min(100,($p['working_days']/($p['kpi_scores']['route_completion']['target']))*100):null,'target'=>($p['kpi_scores']['route_completion']['target']??0)>0?'Target: '.$p['kpi_scores']['route_completion']['target'].' days':null],
         ];
         foreach($kpiCards as $kc):
         ?>

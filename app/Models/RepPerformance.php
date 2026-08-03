@@ -160,7 +160,8 @@ class RepPerformance {
             $this->db->bind(':area_id', $areaId);
         }
         $prodVisitsRow = $this->db->single();
-        $productiveVisits = intval($prodVisitsRow->active_customers ?? 0);
+        // User definition: Productive Visits means total bills billed.
+        $productiveVisits = $invoiceCount;
 
         $unprodVisitsSql = "SELECT COUNT(*) as unprod_count 
                             FROM unproductive_visits uv
@@ -320,9 +321,8 @@ class RepPerformance {
         $routeDaysRow = $this->db->single();
         $activeRouteDays = intval($routeDaysRow->active_days ?? 0);
 
-        // Working Days (difference in days)
-        $diff = date_diff(date_create($startDate), date_create($endDate));
-        $workingDays = max(1, intval($diff->format("%a")) + 1);
+        // Working Days (defined as route count on month by user request)
+        $workingDays = $activeRouteDays;
 
         $avgDailySales = $activeRouteDays > 0 ? $netSales / $activeRouteDays : 0.00;
         $avgDailyVisits = $activeRouteDays > 0 ? $totalVisits / $activeRouteDays : 0.00;

@@ -123,8 +123,22 @@ class SettingsController extends Controller {
                     'working_days_target' => intval($_POST['working_days_target'] ?? 0),
                     'credit_limit' => floatval($_POST['credit_limit'] ?? 0.00)
                 ];
-                if ($this->perfModel->saveRepTargets($postData)) {
-                    $this->logActivity('Update Rep Targets', 'Analytics', "Updated targets for Rep User ID {$selectedRepId} for {$year}-{$month}.");
+                $applyAll = !empty($_POST['apply_all_months']);
+                
+                $success = true;
+                if ($applyAll) {
+                    for ($m = 1; $m <= 12; $m++) {
+                        $postData['month'] = str_pad($m, 2, '0', STR_PAD_LEFT);
+                        if (!$this->perfModel->saveRepTargets($postData)) {
+                            $success = false;
+                        }
+                    }
+                } else {
+                    $success = $this->perfModel->saveRepTargets($postData);
+                }
+
+                if ($success) {
+                    $this->logActivity('Update Rep Targets', 'Analytics', "Updated targets for Rep User ID {$selectedRepId} for {$year}" . ($applyAll ? " (All Months)" : "-{$month}"));
                     $data['success'] = 'Representative targets updated successfully.';
                 } else {
                     $data['error'] = 'Failed to save representative targets.';
