@@ -143,30 +143,30 @@ class SettingsController extends Controller {
                 $applyAll = false;
                 
                 // Save only the global target record
-                $this->db->query("SELECT id FROM rep_targets WHERE user_id = :uid AND month = :m AND year = :y");
-                $this->db->bind(':uid', $postData['user_id']);
-                $this->db->bind(':m', $postData['month']);
-                $this->db->bind(':y', $postData['year']);
-                $existing = $this->db->single();
+                $db->query("SELECT id FROM rep_targets WHERE user_id = :uid AND month = :m AND year = :y");
+                $db->bind(':uid', $postData['user_id']);
+                $db->bind(':m', $postData['month']);
+                $db->bind(':y', $postData['year']);
+                $existing = $db->single();
 
                 if ($existing) {
-                    $this->db->query("UPDATE rep_targets SET sales_target=:st, productive_visits_target=:pvt, total_visits_target=:tvt, working_days_target=:wdt, collection_efficiency_target=:coll, new_customers_target=:newc, credit_limit=:cl WHERE id=:id");
-                    $this->db->bind(':id', $existing->id);
+                    $db->query("UPDATE rep_targets SET sales_target=:st, productive_visits_target=:pvt, total_visits_target=:tvt, working_days_target=:wdt, collection_efficiency_target=:coll, new_customers_target=:newc, credit_limit=:cl WHERE id=:id");
+                    $db->bind(':id', $existing->id);
                 } else {
-                    $this->db->query("INSERT INTO rep_targets (user_id, month, year, sales_target, productive_visits_target, total_visits_target, working_days_target, collection_efficiency_target, new_customers_target, credit_limit) 
+                    $db->query("INSERT INTO rep_targets (user_id, month, year, sales_target, productive_visits_target, total_visits_target, working_days_target, collection_efficiency_target, new_customers_target, credit_limit) 
                                         VALUES (:uid, :m, :y, :st, :pvt, :tvt, :wdt, :coll, :newc, :cl)");
-                    $this->db->bind(':uid', $postData['user_id']);
-                    $this->db->bind(':m', $postData['month']);
-                    $this->db->bind(':y', $postData['year']);
+                    $db->bind(':uid', $postData['user_id']);
+                    $db->bind(':m', $postData['month']);
+                    $db->bind(':y', $postData['year']);
                 }
-                $this->db->bind(':st', $postData['sales_target']);
-                $this->db->bind(':pvt', $postData['productive_visits_target']);
-                $this->db->bind(':tvt', $postData['total_visits_target']);
-                $this->db->bind(':wdt', $postData['working_days_target']);
-                $this->db->bind(':coll', $postData['collection_efficiency_target']);
-                $this->db->bind(':newc', $postData['new_customers_target']);
-                $this->db->bind(':cl', $postData['credit_limit']);
-                $this->db->execute();
+                $db->bind(':st', $postData['sales_target']);
+                $db->bind(':pvt', $postData['productive_visits_target']);
+                $db->bind(':tvt', $postData['total_visits_target']);
+                $db->bind(':wdt', $postData['working_days_target']);
+                $db->bind(':coll', $postData['collection_efficiency_target']);
+                $db->bind(':newc', $postData['new_customers_target']);
+                $db->bind(':cl', $postData['credit_limit']);
+                $db->execute();
 
                 $this->logActivity('Update Rep Targets', 'Analytics', 'Updated global performance targets.');
                 $data['success'] = 'Global Performance Targets saved successfully.';
