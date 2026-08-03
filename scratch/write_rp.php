@@ -1,4 +1,10 @@
 <?php
+/*  Write the fully-redesigned rep performance view.
+    Run with:  php scratch\write_rp.php
+*/
+
+$view = <<<'PHPEOF'
+<?php
 /* ── DATA PREP ──────────────────────────────────────────────── */
 $p          = $data['perf_data'] ?? [];
 $hasPerfData = !empty($p);
@@ -12,7 +18,7 @@ if ($hasPerfData) {
     usort($activities, fn($a,$b)=>strtotime($b['date'])-strtotime($a['date']));
 }
 ?>
-<!-- Rep Performance Premium UI -->
+<!– Rep Performance Premium UI –>
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 
@@ -770,19 +776,11 @@ if ($hasPerfData) {
         ?>
         <div style="overflow-x:auto;border-top:1px solid rgba(0,0,0,.06);">
             <div class="rp-cmp-grid">
-                <?php foreach($rows as $i=>$row):
-                    $isHead = ($i === 0);
-                    $c0 = $isHead ? 'rp-cmp-hd' : 'rp-cmp-cell';
-                    $c1 = $isHead ? 'rp-cmp-hd hl' : 'rp-cmp-cell hl';
-                    $c2 = $isHead ? 'rp-cmp-hd hl2' : 'rp-cmp-cell hl2';
-                    $v0 = $isHead ? $row[0] : '<strong>'.$row[0].'</strong>';
-                    $v1 = $isHead ? ($selName ?: $row[1]) : $row[1];
-                    $v2 = $isHead ? ($cmpName ?: $row[2]) : $row[2];
-                ?>
-                    <div class="<?=$c0?>"><?=$v0?></div>
-                    <div class="<?=$c1?>"><?=$v1?></div>
-                    <div class="<?=$c2?>"><?=$v2?></div>
-                    <div class="<?=$c0?>"><?=$row[3]?></div>
+                <?php foreach($rows as $i=>$row): $isHead=$i===0; ?>
+                    <div class="<?=$isHead?'rp-cmp-hd':'rp-cmp-cell'"><?=$isHead?$row[0]:'<strong class="strong">'.$row[0].'</strong>'?></div>
+                    <div class="<?=$isHead?'rp-cmp-hd hl':'rp-cmp-cell hl'"><?=$isHead?($selName?:$row[1]):$row[1]?></div>
+                    <div class="<?=$isHead?'rp-cmp-hd hl2':'rp-cmp-cell hl2'"><?=$isHead?($cmpName?:$row[2]):$row[2]?></div>
+                    <div class="<?=$isHead?'rp-cmp-hd':'rp-cmp-cell'"><?=$row[3]?></div>
                 <?php endforeach; ?>
             </div>
         </div>
@@ -1023,3 +1021,12 @@ Chart.defaults.plugins.tooltip.bodyFont={size:12,weight:'500'};
 })();
 <?php endif; ?>
 </script>
+PHPEOF;
+
+file_put_contents(
+    __DIR__ . '/../app/Views/rep_performance/index.php',
+    $view
+);
+echo "Written: " . strlen($view) . " bytes\n";
+echo "PHP lint: ";
+passthru('php -l ' . __DIR__ . '/../app/Views/rep_performance/index.php');
