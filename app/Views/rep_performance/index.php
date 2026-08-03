@@ -135,9 +135,10 @@ if ($hasPerfData) {
     border:1px solid rgba(0,0,0,.1);border-radius:999px;
     background:#fff;color:var(--t1);padding:8px 14px;
     font-size:13px;font-weight:500;font-family:inherit;
-    outline:none;transition:border-color .2s,box-shadow .2s;
+    outline:none;
     width: 100%;
 }
+.rp-fg input { transition: border-color .2s, box-shadow .2s; }
 .rp-fg select:focus, .rp-fg input:focus {
     border-color:var(--g2);box-shadow:0 0 0 3px rgba(27,94,32,.12);
 }
