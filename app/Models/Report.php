@@ -499,8 +499,25 @@ class Report {
         $this->db->query("SELECT DISTINCT territory FROM customers WHERE territory IS NOT NULL AND territory != '' ORDER BY territory ASC");
         $data['territories'] = $this->db->resultSet() ?: [];
 
-        $this->db->query("SELECT id, username as name FROM users WHERE role = 'rep' ORDER BY username ASC");
-        $data['reps'] = $this->db->resultSet() ?: [];
+        $this->db->query("
+            SELECT DISTINCT u.id, 
+                   COALESCE(NULLIF(TRIM(CONCAT(COALESCE(e.first_name, ''), ' ', COALESCE(e.last_name, ''))), ''), u.username) as name 
+            FROM users u 
+            LEFT JOIN employees e ON u.employee_id = e.id
+            LEFT JOIN user_roles ur ON u.id = ur.user_id
+            LEFT JOIN roles r ON ur.role_id = r.id
+            WHERE LOWER(u.role) LIKE '%rep%' 
+               OR LOWER(r.name) LIKE '%rep%'
+               OR u.id IN (SELECT DISTINCT user_id FROM rep_daily_routes WHERE user_id IS NOT NULL)
+               OR u.id IN (SELECT DISTINCT created_by FROM invoices WHERE created_by IS NOT NULL)
+            ORDER BY name ASC
+        ");
+        $reps = $this->db->resultSet() ?: [];
+        if (empty($reps)) {
+            $this->db->query("SELECT id, username as name FROM users ORDER BY username ASC");
+            $reps = $this->db->resultSet() ?: [];
+        }
+        $data['reps'] = $reps;
 
         return $data;
     }

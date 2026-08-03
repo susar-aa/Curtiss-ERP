@@ -1105,6 +1105,23 @@ class MigrationManager {
                     $dbh->exec("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('2050', 'Outstanding Cheques (Issued)', 'Liability', 'Current Liability', 0.00, 1)");
                 }
                 return true;
+            },
+            'cheques_payee_name_column' => function(PDO $dbh) {
+                // Check if payee_name exists
+                $q = $dbh->query("SHOW COLUMNS FROM cheques LIKE 'payee_name'");
+                if (!$q->fetch()) {
+                    $dbh->exec("ALTER TABLE cheques ADD COLUMN payee_name VARCHAR(255) NULL DEFAULT NULL AFTER cheque_number");
+                }
+                // Backfill payee_name from drawer or payee if drawer exists
+                try {
+                    $qDrawer = $dbh->query("SHOW COLUMNS FROM cheques LIKE 'drawer'");
+                    if ($qDrawer->fetch()) {
+                        $dbh->exec("UPDATE cheques SET payee_name = drawer WHERE (payee_name IS NULL OR payee_name = '') AND drawer IS NOT NULL AND drawer != ''");
+                    }
+                } catch (Exception $e) {
+                    // Ignore if drawer column does not exist
+                }
+                return true;
             }
         ];
 

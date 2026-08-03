@@ -654,6 +654,59 @@
     }
 
 
+    function numberToWords(amount) {
+        const num = parseFloat(amount);
+        if (isNaN(num) || num === 0) return "Zero Rupees Only";
+
+        const units = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+            'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+        const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+        function convertSection(n) {
+            let str = '';
+            if (n >= 100) {
+                str += units[Math.floor(n / 100)] + ' Hundred ';
+                n %= 100;
+            }
+            if (n >= 20) {
+                str += tens[Math.floor(n / 10)] + ' ';
+                n %= 10;
+            }
+            if (n > 0) {
+                str += units[n] + ' ';
+            }
+            return str.trim();
+        }
+
+        const integerPart = Math.floor(Math.abs(num));
+        const decimalPart = Math.round((Math.abs(num) - integerPart) * 100);
+
+        let crore = Math.floor(integerPart / 10000000);
+        let remainder = integerPart % 10000000;
+        let lakh = Math.floor(remainder / 100000);
+        remainder %= 100000;
+        let thousand = Math.floor(remainder / 1000);
+        remainder %= 1000;
+        let hundredAndRest = remainder;
+
+        let result = '';
+        if (crore > 0) result += convertSection(crore) + ' Crore ';
+        if (lakh > 0) result += convertSection(lakh) + ' Lakh ';
+        if (thousand > 0) result += convertSection(thousand) + ' Thousand ';
+        if (hundredAndRest > 0) result += convertSection(hundredAndRest) + ' ';
+
+        result = result.trim();
+        if (!result) result = 'Zero';
+        result += ' Rupees';
+
+        if (decimalPart > 0) {
+            result += ' and ' + convertSection(decimalPart) + ' Cents';
+        }
+        result += ' Only';
+
+        return result;
+    }
+
     function viewCheque(bank, date, amount, drawer, cnum) {
         document.getElementById('view_bank').innerText = bank;
         
@@ -662,15 +715,7 @@
         document.getElementById('view_date').innerText = d.getDate().toString().padStart(2, '0') + '/' + (d.getMonth()+1).toString().padStart(2, '0') + '/' + d.getFullYear();
         
         document.getElementById('view_amount').innerText = parseFloat(amount).toLocaleString('en-IN', {minimumFractionDigits: 2});
-        
-        let words = '';
-        if (typeof numberToWords === 'function') {
-            words = numberToWords(amount);
-        } else {
-            words = "Rupees " + amount + " Only"; 
-        }
-        document.getElementById('view_words').innerText = words;
-        
+        document.getElementById('view_words').innerText = numberToWords(amount);
         document.getElementById('view_payee').innerText = drawer + " (Auth Signatory)";
         
         // Randomize MICR looking numbers using the actual cheque number as base

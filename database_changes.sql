@@ -303,5 +303,21 @@ INSERT IGNORE INTO migrations (migration) VALUES
 ('upgrade_petty_cash_config_table'),
 ('upgrade_petty_cash_tables_columns');
 
+-- -------------------------------------------------------------
+-- Cheques & Supplier Payments Enhancements
+-- -------------------------------------------------------------
+ALTER TABLE supplier_payments ADD COLUMN IF NOT EXISTS bank_account_id INT NULL DEFAULT NULL AFTER journal_entry_id, ADD INDEX IF NOT EXISTS (bank_account_id);
+ALTER TABLE cheques ADD COLUMN IF NOT EXISTS supplier_payment_id INT NULL DEFAULT NULL AFTER bank_account_id, ADD INDEX IF NOT EXISTS (supplier_payment_id);
+ALTER TABLE cheques ADD COLUMN IF NOT EXISTS payee_name VARCHAR(255) NULL DEFAULT NULL AFTER cheque_number;
 
+-- Ensure 2050 Outstanding Cheques (Issued) Account Exists
+INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active)
+SELECT '2050', 'Outstanding Cheques (Issued)', 'Liability', 'Current Liability', 0.00, 1
+WHERE NOT EXISTS (SELECT 1 FROM chart_of_accounts WHERE account_code = '2050');
 
+-- Register migrations
+INSERT IGNORE INTO migrations (migration) VALUES 
+('supplier_payments_bank_account_id'),
+('cheques_supplier_payment_id'),
+('coa_outstanding_cheques_account'),
+('cheques_payee_name_column');

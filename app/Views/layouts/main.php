@@ -1656,8 +1656,8 @@ if (!function_exists('hasPermission')) {
                         <a href="<?= APP_URL ?>/report" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-chart-line-up"></i></div>
                             <div class="mega-list-item-content">
-                                <div class="title">Financial Reports Hub</div>
-                                <div class="desc">Statements & summaries</div>
+                                <div class="title">Reports Hub</div>
+                                <div class="desc">Enterprise business reports</div>
                             </div>
                         </a>
                         <a href="<?= APP_URL ?>/budget" class="mega-list-item">

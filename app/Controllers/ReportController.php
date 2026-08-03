@@ -33,7 +33,7 @@ class ReportController extends Controller {
         }
 
         $data = [
-            'title' => 'Central Reporting Hub',
+            'title' => 'Reports Hub',
             'content_view' => 'reports/index',
             'categories' => $categories,
             'grouped_reports' => $groupedReports

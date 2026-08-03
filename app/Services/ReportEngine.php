@@ -394,17 +394,20 @@ class ReportEngine {
                 'filters' => ['date_range', 'customer', 'rep', 'route', 'territory', 'group'],
                 'date_column' => 'i.invoice_date',
                 'columns' => [
-                    'customer_name' => ['label' => 'Customer Name', 'type' => 'text', 'sortable' => true],
+                    'customer_name' => ['label' => 'Customer Name', 'type' => 'text', 'drilldown' => 'customer', 'sortable' => true],
                     'phone' => ['label' => 'Phone', 'type' => 'text'],
                     'invoice_count' => ['label' => 'Invoices Count', 'type' => 'number', 'align' => 'right', 'total' => 'sum'],
                     'total_sales' => ['label' => 'Total Sales', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
-                    'paid_amount' => ['label' => 'Paid Amount', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
-                    'outstanding' => ['label' => 'Outstanding', 'type' => 'currency', 'align' => 'right', 'total' => 'sum']
+                    'paid_amount' => ['label' => 'Receipts/Paid', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
+                    'outstanding' => ['label' => 'Net Outstanding', 'type' => 'currency', 'align' => 'right', 'total' => 'sum']
                 ],
-                'sql' => "SELECT c.name as customer_name, c.phone, COUNT(i.id) as invoice_count,
+                'sql' => "SELECT c.id, c.name as customer_name, c.phone, COUNT(i.id) as invoice_count,
                                  SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as total_sales,
-                                 SUM(CASE WHEN i.status = 'Paid' THEN (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) ELSE 0 END) as paid_amount,
-                                 SUM(CASE WHEN i.status != 'Paid' THEN (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) ELSE 0 END) as outstanding,
+                                 COALESCE((SELECT SUM(amount) FROM customer_payments WHERE customer_id = c.id AND status = 'Active'), 0) as paid_amount,
+                                 (COALESCE(c.opening_balance, 0) + 
+                                  COALESCE((SELECT SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) FROM invoices WHERE customer_id = c.id AND status != 'Voided'), 0) - 
+                                  COALESCE((SELECT SUM(amount) FROM customer_payments WHERE customer_id = c.id AND status = 'Active'), 0) - 
+                                  COALESCE((SELECT SUM(total_amount) FROM credit_notes WHERE customer_id = c.id), 0)) as outstanding,
                                  i.customer_id, i.created_by, i.rep_route_id, c.territory, c.customer_type
                           FROM invoices i
                           JOIN customers c ON i.customer_id = c.id
@@ -473,30 +476,101 @@ class ReportEngine {
             ],
 
             // 4. Customer Reports
+            'customer_outstanding' => [
+                'title' => 'Customer Outstanding Report',
+                'category' => 'customer',
+                'filters' => ['customer', 'rep', 'route', 'territory', 'group'],
+                'columns' => [
+                    'customer_code' => ['label' => 'Customer Code', 'type' => 'text', 'sortable' => true],
+                    'customer_name' => ['label' => 'Customer Name', 'type' => 'text', 'drilldown' => 'customer', 'sortable' => true],
+                    'phone' => ['label' => 'Phone', 'type' => 'text'],
+                    'territory' => ['label' => 'Territory', 'type' => 'text', 'sortable' => true],
+                    'credit_limit' => ['label' => 'Credit Limit', 'type' => 'currency', 'align' => 'right'],
+                    'opening_balance' => ['label' => 'Opening Bal', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
+                    'total_billed' => ['label' => 'Total Invoiced', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
+                    'total_paid' => ['label' => 'Total Receipts', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
+                    'total_credited' => ['label' => 'Credit Notes', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
+                    'outstanding_balance' => ['label' => 'Net Balance', 'type' => 'currency', 'align' => 'right', 'total' => 'sum', 'sortable' => true]
+                ],
+                'sql' => "SELECT c.id, c.customer_code, c.name as customer_name, c.phone, c.territory,
+                                 COALESCE(c.credit_limit, 0) as credit_limit,
+                                 COALESCE(c.opening_balance, 0) as opening_balance,
+                                 COALESCE(inv.total_billed, 0) as total_billed,
+                                 COALESCE(pmt.total_paid, 0) as total_paid,
+                                 COALESCE(cn.total_credited, 0) as total_credited,
+                                 (COALESCE(c.opening_balance, 0) + COALESCE(inv.total_billed, 0) - COALESCE(pmt.total_paid, 0) - COALESCE(cn.total_credited, 0)) as outstanding_balance,
+                                 c.id as customer_id, c.customer_type
+                          FROM customers c
+                          LEFT JOIN (
+                              SELECT customer_id, 
+                                     SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_billed
+                              FROM invoices 
+                              WHERE status != 'Voided'
+                              GROUP BY customer_id
+                          ) inv ON c.id = inv.customer_id
+                          LEFT JOIN (
+                              SELECT customer_id, SUM(amount) as total_paid
+                              FROM customer_payments 
+                              WHERE status = 'Active'
+                              GROUP BY customer_id
+                          ) pmt ON c.id = pmt.customer_id
+                          LEFT JOIN (
+                              SELECT customer_id, SUM(total_amount) as total_credited
+                              FROM credit_notes
+                              GROUP BY customer_id
+                          ) cn ON c.id = cn.customer_id
+                          WHERE 1=1
+                          HAVING (outstanding_balance > 0.01 OR outstanding_balance < -0.01)"
+            ],
             'customer_aging' => [
                 'title' => 'Customer Aging Report',
                 'category' => 'customer',
                 'filters' => ['customer', 'rep', 'route', 'territory', 'group'],
                 'columns' => [
-                    'customer_name' => ['label' => 'Customer Name', 'type' => 'text'],
-                    'current' => ['label' => 'Current', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
-                    'thirty' => ['label' => '1 - 30 Days', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
-                    'sixty' => ['label' => '31 - 60 Days', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
-                    'ninety' => ['label' => '61 - 90 Days', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
-                    'older' => ['label' => '90+ Days', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
-                    'total' => ['label' => 'Outstanding', 'type' => 'currency', 'align' => 'right', 'total' => 'sum']
+                    'customer_name' => ['label' => 'Customer Name', 'type' => 'text', 'drilldown' => 'customer', 'sortable' => true],
+                    'current' => ['label' => 'Current (0-30d)', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
+                    'thirty' => ['label' => '31 - 60 Days', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
+                    'sixty' => ['label' => '61 - 90 Days', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
+                    'ninety' => ['label' => '90+ Days', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
+                    'total' => ['label' => 'Total Outstanding', 'type' => 'currency', 'align' => 'right', 'total' => 'sum']
                 ],
-                'sql' => "SELECT c.name as customer_name, i.customer_id, i.created_by, i.rep_route_id, c.territory, c.customer_type,
-                                 SUM(CASE WHEN DATEDIFF(NOW(), i.invoice_date) <= 0 THEN (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) ELSE 0 END) as current,
-                                 SUM(CASE WHEN DATEDIFF(NOW(), i.invoice_date) > 0 AND DATEDIFF(NOW(), i.invoice_date) <= 30 THEN (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) ELSE 0 END) as `thirty`,
-                                 SUM(CASE WHEN DATEDIFF(NOW(), i.invoice_date) > 30 AND DATEDIFF(NOW(), i.invoice_date) <= 60 THEN (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) ELSE 0 END) as `sixty`,
-                                 SUM(CASE WHEN DATEDIFF(NOW(), i.invoice_date) > 60 AND DATEDIFF(NOW(), i.invoice_date) <= 90 THEN (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) ELSE 0 END) as `ninety`,
-                                 SUM(CASE WHEN DATEDIFF(NOW(), i.invoice_date) > 90 THEN (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) ELSE 0 END) as `older`,
-                                 SUM(i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)) as total
-                          FROM invoices i
-                          JOIN customers c ON i.customer_id = c.id
-                          WHERE i.status != 'Paid' AND i.status != 'Voided'
-                          GROUP BY c.id, c.name, i.customer_id, i.created_by, i.rep_route_id, c.territory, c.customer_type"
+                'sql' => "SELECT c.id, c.name as customer_name, c.id as customer_id, c.territory, c.customer_type,
+                                 COALESCE(aging.current_bal, 0) as `current`,
+                                 COALESCE(aging.thirty_bal, 0) as `thirty`,
+                                 COALESCE(aging.sixty_bal, 0) as `sixty`,
+                                 (COALESCE(aging.ninety_bal, 0) + COALESCE(c.opening_balance, 0)) as `ninety`,
+                                 (COALESCE(c.opening_balance, 0) + COALESCE(inv.total_billed, 0) - COALESCE(pmt.total_paid, 0) - COALESCE(cn.total_credited, 0)) as total
+                          FROM customers c
+                          LEFT JOIN (
+                              SELECT customer_id, 
+                                     SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) as total_billed
+                              FROM invoices 
+                              WHERE status != 'Voided'
+                              GROUP BY customer_id
+                          ) inv ON c.id = inv.customer_id
+                          LEFT JOIN (
+                              SELECT customer_id, SUM(amount) as total_paid
+                              FROM customer_payments 
+                              WHERE status = 'Active'
+                              GROUP BY customer_id
+                          ) pmt ON c.id = pmt.customer_id
+                          LEFT JOIN (
+                              SELECT customer_id, SUM(total_amount) as total_credited
+                              FROM credit_notes
+                              GROUP BY customer_id
+                          ) cn ON c.id = cn.customer_id
+                          LEFT JOIN (
+                              SELECT customer_id,
+                                     SUM(CASE WHEN DATEDIFF(NOW(), invoice_date) <= 30 THEN (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) ELSE 0 END) as current_bal,
+                                     SUM(CASE WHEN DATEDIFF(NOW(), invoice_date) > 30 AND DATEDIFF(NOW(), invoice_date) <= 60 THEN (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) ELSE 0 END) as thirty_bal,
+                                     SUM(CASE WHEN DATEDIFF(NOW(), invoice_date) > 60 AND DATEDIFF(NOW(), invoice_date) <= 90 THEN (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) ELSE 0 END) as sixty_bal,
+                                     SUM(CASE WHEN DATEDIFF(NOW(), invoice_date) > 90 THEN (total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)) ELSE 0 END) as ninety_bal
+                              FROM invoices
+                              WHERE status != 'Paid' AND status != 'Voided'
+                              GROUP BY customer_id
+                          ) aging ON c.id = aging.customer_id
+                          WHERE 1=1
+                          HAVING (total > 0.01 OR total < -0.01)"
             ],
             'customer_statement' => [
                 'title' => 'Customer Statement',
@@ -950,6 +1024,9 @@ class ReportEngine {
                 $params[':rep'] = $filters['rep'];
             } elseif (preg_match('/\br\.user_id\b/', $baseSql)) {
                 $clauses[] = "r.user_id = :rep";
+                $params[':rep'] = $filters['rep'];
+            } elseif (strpos($baseSql, 'customers') !== false) {
+                $clauses[] = "(c.id IN (SELECT customer_id FROM invoices WHERE created_by = :rep) OR c.id IN (SELECT inv.customer_id FROM rep_daily_routes r JOIN invoices inv ON inv.rep_route_id = r.id WHERE r.user_id = :rep))";
                 $params[':rep'] = $filters['rep'];
             }
         }
