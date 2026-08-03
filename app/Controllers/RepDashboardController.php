@@ -18,6 +18,15 @@ class RepDashboardController extends Controller {
         $this->db = new Database();
     }
 
+    public function index() {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'message' => 'API endpoint not found on server. Please ensure RepDashboardController.php and RepPerformance.php are updated on your live server.'
+        ]);
+        exit;
+    }
+
     public function api_login() {
         header('Content-Type: application/json');
         
@@ -1761,6 +1770,60 @@ class RepDashboardController extends Controller {
                 'total_pages' => $totalPages
             ]
         ]);
+        exit;
+    }
+
+    public function api_get_performance_analytics() {
+        header('Content-Type: application/json');
+        
+        $userId = 0;
+        if (isset($_SERVER['HTTP_X_USER_ID'])) {
+            $userId = intval($_SERVER['HTTP_X_USER_ID']);
+        } elseif (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            if (isset($headers['X-User-ID'])) {
+                $userId = intval($headers['X-User-ID']);
+            } elseif (isset($headers['x-user-id'])) {
+                $userId = intval($headers['x-user-id']);
+            }
+        }
+        if ($userId <= 0 && isset($_GET['user_id'])) {
+            $userId = intval($_GET['user_id']);
+        }
+
+        if ($userId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Missing or invalid user ID.']);
+            exit;
+        }
+
+        // Validate user is active
+        $this->db->query("SELECT id FROM users WHERE id = :id AND (status = 'active' OR status = 'Active' OR status IS NULL)");
+        $this->db->bind(':id', $userId);
+        if (!$this->db->single()) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized or inactive user.']);
+            exit;
+        }
+
+        $startDate = isset($_GET['start_date']) && !empty($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01');
+        $endDate   = isset($_GET['end_date']) && !empty($_GET['end_date'])   ? $_GET['end_date']   : date('Y-m-d');
+
+        try {
+            $perfModel = $this->model('RepPerformance');
+            $perfData = $perfModel->calculatePerformance($userId, $startDate, $endDate);
+            echo json_encode([
+                'success' => true,
+                'data' => $perfData,
+                'period' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate
+                ]
+            ]);
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error calculating performance: ' . $e->getMessage()
+            ]);
+        }
         exit;
     }
 
