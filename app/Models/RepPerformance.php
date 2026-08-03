@@ -531,6 +531,75 @@ class RepPerformance {
 
         $overallPerformanceScore = $totalWeight > 0 ? ($achievedWeightedScore / ($totalWeight / 100)) : 0.00;
 
+        // ---- PAYROLL & COMMISSIONS ENGINE ----
+        $this->db->query("SELECT e.base_salary FROM users u LEFT JOIN employees e ON u.employee_id = e.id WHERE u.id = :uid");
+        $this->db->bind(':uid', $repUserId);
+        $empRow = $this->db->single();
+        $baseSalary = $empRow ? floatval($empRow->base_salary) : 0.00;
+
+        $this->db->query("SELECT * FROM company_settings LIMIT 1");
+        $compSet = $this->db->single();
+        if (!$compSet) {
+            $compSet = (object)[
+                'sales_commission_pct' => 0,
+                'sales_incentive_min_value' => 0,
+                'sales_incentive_pct' => 0,
+                'sales_incentive_max_limit' => 0,
+                'productive_visits_payout' => 0,
+                'working_days_payout' => 0,
+                'collection_efficiency_payout' => 0
+            ];
+        }
+
+        $salesCommission = ($netSales * floatval($compSet->sales_commission_pct ?? 0)) / 100;
+        
+        $salesIncentive = 0;
+        $minSalesVal = floatval($compSet->sales_incentive_min_value ?? 0);
+        if ($netSales >= $minSalesVal && $minSalesVal > 0) {
+            $salesIncentive = ($netSales * floatval($compSet->sales_incentive_pct ?? 0)) / 100;
+            $maxLimit = floatval($compSet->sales_incentive_max_limit ?? 0);
+            if ($salesIncentive > $maxLimit && $maxLimit > 0) {
+                $salesIncentive = $maxLimit;
+            }
+        }
+        
+        $prodVisitsBonus = 0;
+        $targetVisits = floatval($repTargets->productive_visits_target ?? 0);
+        if ($productiveVisits >= $targetVisits && $targetVisits > 0) {
+            $prodVisitsBonus = floatval($compSet->productive_visits_payout ?? 0);
+        }
+
+        $workDaysBonus = 0;
+        $targetDays = floatval($repTargets->working_days_target ?? 0);
+        if ($activeRouteDays >= $targetDays && $targetDays > 0) {
+            $workDaysBonus = floatval($compSet->working_days_payout ?? 0);
+        }
+
+        $collBonus = 0;
+        $collTarget = 80.0;
+        foreach ($kpiConfigs as $kpi) {
+            if ($kpi->kpi_key === 'collection_efficiency') {
+                $collTarget = floatval($kpi->target_value);
+                break;
+            }
+        }
+        if ($collectionEfficiency >= $collTarget && $collTarget > 0) {
+            $collBonus = floatval($compSet->collection_efficiency_payout ?? 0);
+        }
+
+        $totalEarnings = $baseSalary + $salesCommission + $salesIncentive + $prodVisitsBonus + $workDaysBonus + $collBonus;
+
+        $payrollData = [
+            'base_salary' => $baseSalary,
+            'sales_commission' => $salesCommission,
+            'sales_incentive' => $salesIncentive,
+            'productive_visits_bonus' => $prodVisitsBonus,
+            'working_days_bonus' => $workDaysBonus,
+            'collection_bonus' => $collBonus,
+            'total_earnings' => $totalEarnings,
+            'settings' => $compSet
+        ];
+
         return [
             // Totals
             'total_sales' => $totalSales,
@@ -591,7 +660,8 @@ class RepPerformance {
             // Scoring
             'kpi_scores' => $kpiScores,
             'routes_detail' => $routesDetail,
-            'overall_score' => $overallPerformanceScore
+            'overall_score' => $overallPerformanceScore,
+            'payroll' => $payrollData
         ];
     }
 
@@ -600,10 +670,7 @@ class RepPerformance {
      * Defaults to 0 if not set.
      */
     public function getRepTargets(int $userId, string $month, string $year): object {
-        $this->db->query("SELECT * FROM rep_targets WHERE user_id = :uid AND month = :m AND year = :y LIMIT 1");
-        $this->db->bind(':uid', $userId);
-        $this->db->bind(':m', $month);
-        $this->db->bind(':y', $year);
+        $this->db->query("SELECT * FROM rep_targets WHERE user_id = 0 AND month = '00' AND year = '0000' LIMIT 1");
         $row = $this->db->single();
         if ($row) {
             return $row;

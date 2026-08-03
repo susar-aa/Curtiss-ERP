@@ -72,41 +72,12 @@
     <!-- Right Content Panel -->
     <div style="flex: 1 1 500px;">
         
-        <!-- Filter Selector -->
-        <div class="settings-card">
-            <h3 style="margin-top:0; font-size: 15px; color: #1e293b; margin-bottom: 15px;"><i class="ph ph-funnel"></i> Select Representative &amp; Period</h3>
-            <form method="GET" action="<?= APP_URL ?>/settings/rep_targets" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: flex-end;">
-                <div>
-                    <label for="rep_user_id">Representative</label>
-                    <select name="rep_user_id" id="rep_user_id" class="form-control" onchange="this.form.submit()">
-                        <?php foreach ($data['reps'] as $r): ?>
-                            <option value="<?= $r->id ?>" <?= $data['selected_rep_id'] == $r->id ? 'selected' : '' ?>><?= htmlspecialchars($r->username) ?> (<?= htmlspecialchars($r->first_name . ' ' . $r->last_name) ?>)</option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div>
-                    <label for="month">Target Month</label>
-                    <select name="month" id="month" class="form-control" onchange="this.form.submit()">
-                        <?php for ($m = 1; $m <= 12; $m++): $mVal = str_pad((string)$m, 2, '0', STR_PAD_LEFT); ?>
-                            <option value="<?= $mVal ?>" <?= $data['month'] === $mVal ? 'selected' : '' ?>><?= date('F', mktime(0, 0, 0, $m, 1)) ?></option>
-                        <?php endfor; ?>
-                    </select>
-                </div>
-                <div>
-                    <label for="year">Target Year</label>
-                    <select name="year" id="year" class="form-control" onchange="this.form.submit()">
-                        <?php for ($y = date('Y') + 1; $y >= 2024; $y--): ?>
-                            <option value="<?= $y ?>" <?= $data['year'] == $y ? 'selected' : '' ?>><?= $y ?></option>
-                        <?php endfor; ?>
-                    </select>
-                </div>
-            </form>
-        </div>
+        <!-- Filter Selector Removed for Global Default Targets -->
 
         <!-- Form 1: Rep Targets Form -->
         <div class="settings-card">
             <h3 style="margin-top:0; border-bottom: 1px solid var(--mac-border, #cbd5e1); padding-bottom: 10px; font-size: 16px; color:#1e293b;">
-                <i class="ph ph-user-focus"></i> Targets for <?= htmlspecialchars(array_values(array_filter($data['reps'], fn($r) => $r->id == $data['selected_rep_id']))[0]->username ?? 'Representative') ?> (<?= date('F Y', mktime(0, 0, 0, intval($data['month']), 1, intval($data['year']))) ?>)
+                <i class="ph ph-target"></i> Global Default Performance Targets
             </h3>
             
             <form method="POST" action="<?= APP_URL ?>/settings/rep_targets?rep_user_id=<?= $data['selected_rep_id'] ?>&month=<?= $data['month'] ?>&year=<?= $data['year'] ?>" style="margin-top: 15px;">
@@ -137,12 +108,8 @@
                     </div>
                 </div>
 
-                <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
-                    <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer;">
-                        <input type="checkbox" name="apply_all_months" value="1" checked style="width: 16px; height: 16px;">
-                        Apply to all months of the year (by default)
-                    </label>
-                    <button type="submit" class="btn"><i class="ph ph-floppy-disk"></i> Save Representative Targets</button>
+                <div style="margin-top: 20px; display: flex; justify-content: flex-end; align-items: center;">
+                    <button type="submit" class="btn"><i class="ph ph-floppy-disk"></i> Save Global Targets</button>
                 </div>
             </form>
         </div>

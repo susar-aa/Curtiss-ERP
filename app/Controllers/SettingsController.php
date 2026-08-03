@@ -46,6 +46,25 @@ class SettingsController extends Controller {
                 }
             }
 
+            // Handle Payroll Settings Update
+            if (isset($_POST['update_payroll_settings'])) {
+                $payrollData = [
+                    'sales_commission_pct' => floatval($_POST['sales_commission_pct'] ?? 0),
+                    'sales_incentive_min_value' => floatval($_POST['sales_incentive_min_value'] ?? 0),
+                    'sales_incentive_pct' => floatval($_POST['sales_incentive_pct'] ?? 0),
+                    'sales_incentive_max_limit' => floatval($_POST['sales_incentive_max_limit'] ?? 0),
+                    'productive_visits_payout' => floatval($_POST['productive_visits_payout'] ?? 0),
+                    'working_days_payout' => floatval($_POST['working_days_payout'] ?? 0),
+                    'collection_efficiency_payout' => floatval($_POST['collection_efficiency_payout'] ?? 0),
+                ];
+                
+                if ($this->companyModel->updatePayrollSettings($payrollData)) {
+                    $data['success'] = "Payroll & Commissions settings updated successfully.";
+                } else {
+                    $data['error'] = "Failed to update payroll settings.";
+                }
+            }
+
             // Handle Logo Upload
             if (isset($_POST['upload_logo']) && isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
                 $fileTmpPath = $_FILES['logo']['tmp_name'];
@@ -87,13 +106,9 @@ class SettingsController extends Controller {
                     ORDER BY u.username ASC");
         $reps = $db->resultSet() ?: [];
 
-        $selectedRepId = isset($_GET['rep_user_id']) ? intval($_GET['rep_user_id']) : 0;
-        if ($selectedRepId === 0 && !empty($reps)) {
-            $selectedRepId = intval($reps[0]->id);
-        }
-
-        $month = $_GET['month'] ?? date('m');
-        $year = $_GET['year'] ?? date('Y');
+        $selectedRepId = 0;
+        $month = '00';
+        $year = '0000';
 
         $data = [
             'title' => 'Rep Targets & KPI Weights',
@@ -123,26 +138,34 @@ class SettingsController extends Controller {
                     'working_days_target' => intval($_POST['working_days_target'] ?? 0),
                     'credit_limit' => floatval($_POST['credit_limit'] ?? 0.00)
                 ];
-                $applyAll = !empty($_POST['apply_all_months']);
+                $applyAll = false;
                 
-                $success = true;
-                if ($applyAll) {
-                    for ($m = 1; $m <= 12; $m++) {
-                        $postData['month'] = str_pad($m, 2, '0', STR_PAD_LEFT);
-                        if (!$this->perfModel->saveRepTargets($postData)) {
-                            $success = false;
-                        }
-                    }
-                } else {
-                    $success = $this->perfModel->saveRepTargets($postData);
-                }
+                // Save only the global target record
+                $this->db->query("SELECT id FROM rep_targets WHERE user_id = :uid AND month = :m AND year = :y");
+                $this->db->bind(':uid', $postData['user_id']);
+                $this->db->bind(':m', $postData['month']);
+                $this->db->bind(':y', $postData['year']);
+                $existing = $this->db->single();
 
-                if ($success) {
-                    $this->logActivity('Update Rep Targets', 'Analytics', "Updated targets for Rep User ID {$selectedRepId} for {$year}" . ($applyAll ? " (All Months)" : "-{$month}"));
-                    $data['success'] = 'Representative targets updated successfully.';
+                if ($existing) {
+                    $this->db->query("UPDATE rep_targets SET sales_target=:st, productive_visits_target=:pvt, total_visits_target=:tvt, working_days_target=:wdt, credit_limit=:cl WHERE id=:id");
+                    $this->db->bind(':id', $existing->id);
                 } else {
-                    $data['error'] = 'Failed to save representative targets.';
+                    $this->db->query("INSERT INTO rep_targets (user_id, month, year, sales_target, productive_visits_target, total_visits_target, working_days_target, credit_limit) 
+                                        VALUES (:uid, :m, :y, :st, :pvt, :tvt, :wdt, :cl)");
+                    $this->db->bind(':uid', $postData['user_id']);
+                    $this->db->bind(':m', $postData['month']);
+                    $this->db->bind(':y', $postData['year']);
                 }
+                $this->db->bind(':st', $postData['sales_target']);
+                $this->db->bind(':pvt', $postData['productive_visits_target']);
+                $this->db->bind(':tvt', $postData['total_visits_target']);
+                $this->db->bind(':wdt', $postData['working_days_target']);
+                $this->db->bind(':cl', $postData['credit_limit']);
+                $this->db->execute();
+
+                $this->logActivity('Update Rep Targets', 'Analytics', 'Updated global performance targets.');
+                $data['success'] = 'Global Performance Targets saved successfully.';
             } elseif (isset($_POST['save_weights'])) {
                 $configs = $_POST['configs'] ?? [];
                 if ($this->perfModel->updateKpiConfigs($configs)) {

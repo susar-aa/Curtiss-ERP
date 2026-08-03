@@ -425,6 +425,7 @@ if ($hasPerfData) {
     <button class="rp-tab" onclick="rpTab('rp2',this)"><i class="ph ph-chart-bar"></i> Analytics</button>
     <button class="rp-tab" onclick="rpTab('rp3',this)"><i class="ph ph-git-diff"></i> Compare</button>
     <button class="rp-tab" onclick="rpTab('rp4',this)"><i class="ph ph-trophy"></i> Leaderboard</button>
+    <button class="rp-tab" onclick="rpTab('rp5',this)"><i class="ph ph-wallet"></i> Payroll</button>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
@@ -861,6 +862,109 @@ if ($hasPerfData) {
         <?php $rank++; endforeach; ?>
     </div>
 </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PANE 5 - PAYROLL & COMMISSIONS
+══════════════════════════════════════════════════════════ -->
+<div id="rp5" class="rp-pane">
+<?php if(isset($data['perf_data']['payroll'])): $pr = $data['perf_data']['payroll']; ?>
+    <div class="rp-content" style="max-width: 800px; margin: 0 auto;">
+        <div class="rp-card">
+            <div class="rp-card-head" style="border-bottom: 1px solid var(--mac-border); padding-bottom: 15px; margin-bottom: 20px;">
+                <h4 class="rp-card-title"><i class="ph ph-wallet" style="color:var(--t1)"></i> Payroll &amp; Earnings Estimate</h4>
+                <span class="rp-badge badge-g">Estimated for period</span>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px; font-size: 14px;">
+                <!-- Base Salary -->
+                <div style="display: flex; justify-content: space-between; padding: 12px 16px; background: rgba(0,0,0,0.02); border-radius: 8px;">
+                    <div>
+                        <strong style="color: var(--t1); display: block;">Base Monthly Salary</strong>
+                        <span style="font-size: 12px; color: var(--t3);">From employee directory</span>
+                    </div>
+                    <div style="font-weight: 600; color: var(--t1);">
+                        Rs <?= number_format($pr['base_salary'], 2) ?>
+                    </div>
+                </div>
+
+                <!-- Sales Commission -->
+                <div style="display: flex; justify-content: space-between; padding: 12px 16px; border: 1px solid var(--mac-border); border-radius: 8px;">
+                    <div>
+                        <strong style="color: var(--t1); display: block;">Sales Commission</strong>
+                        <span style="font-size: 12px; color: var(--t3);"><?= floatval($pr['settings']->sales_commission_pct ?? 0) ?>% of Net Sales (Rs <?= number_format($data['perf_data']['net_sales'],0) ?>)</span>
+                    </div>
+                    <div style="font-weight: 600; color: var(--g1);">
+                        + Rs <?= number_format($pr['sales_commission'], 2) ?>
+                    </div>
+                </div>
+
+                <!-- Sales Incentive -->
+                <div style="display: flex; justify-content: space-between; padding: 12px 16px; border: 1px solid var(--mac-border); border-radius: 8px;">
+                    <div>
+                        <strong style="color: var(--t1); display: block;">Sales Incentive</strong>
+                        <span style="font-size: 12px; color: var(--t3);">Min: Rs <?= number_format($pr['settings']->sales_incentive_min_value ?? 0,0) ?> | Rate: <?= floatval($pr['settings']->sales_incentive_pct ?? 0) ?>% | Cap: Rs <?= number_format($pr['settings']->sales_incentive_max_limit ?? 0,0) ?></span>
+                    </div>
+                    <div style="font-weight: 600; color: <?= $pr['sales_incentive']>0 ? 'var(--g1)' : 'var(--t3)' ?>;">
+                        + Rs <?= number_format($pr['sales_incentive'], 2) ?>
+                    </div>
+                </div>
+
+                <!-- Productive Visits Bonus -->
+                <div style="display: flex; justify-content: space-between; padding: 12px 16px; border: 1px solid var(--mac-border); border-radius: 8px;">
+                    <div>
+                        <strong style="color: var(--t1); display: block;">Productive Visits Bonus</strong>
+                        <span style="font-size: 12px; color: var(--t3);">Achieved: <?= $data['perf_data']['productive_visits'] ?> (Target: <?= floatval($data['rep_targets']->productive_visits_target ?? 0) ?>)</span>
+                    </div>
+                    <div style="font-weight: 600; color: <?= $pr['productive_visits_bonus']>0 ? 'var(--g1)' : 'var(--t3)' ?>;">
+                        + Rs <?= number_format($pr['productive_visits_bonus'], 2) ?>
+                    </div>
+                </div>
+
+                <!-- Working Days Bonus -->
+                <div style="display: flex; justify-content: space-between; padding: 12px 16px; border: 1px solid var(--mac-border); border-radius: 8px;">
+                    <div>
+                        <strong style="color: var(--t1); display: block;">Working Days Bonus</strong>
+                        <span style="font-size: 12px; color: var(--t3);">Achieved: <?= $data['perf_data']['active_route_days'] ?> (Target: <?= floatval($data['rep_targets']->working_days_target ?? 0) ?>)</span>
+                    </div>
+                    <div style="font-weight: 600; color: <?= $pr['working_days_bonus']>0 ? 'var(--g1)' : 'var(--t3)' ?>;">
+                        + Rs <?= number_format($pr['working_days_bonus'], 2) ?>
+                    </div>
+                </div>
+
+                <!-- Collection Bonus -->
+                <?php 
+                    $collTarget = 80.0;
+                    foreach ($data['kpi_configs'] as $kpi) {
+                        if ($kpi->kpi_key === 'collection_efficiency') { $collTarget = floatval($kpi->target_value); break; }
+                    }
+                ?>
+                <div style="display: flex; justify-content: space-between; padding: 12px 16px; border: 1px solid var(--mac-border); border-radius: 8px;">
+                    <div>
+                        <strong style="color: var(--t1); display: block;">Collection Efficiency Bonus</strong>
+                        <span style="font-size: 12px; color: var(--t3);">Achieved: <?= round($data['perf_data']['collection_efficiency'],1) ?>% (Target: <?= $collTarget ?>%)</span>
+                    </div>
+                    <div style="font-weight: 600; color: <?= $pr['collection_bonus']>0 ? 'var(--g1)' : 'var(--t3)' ?>;">
+                        + Rs <?= number_format($pr['collection_bonus'], 2) ?>
+                    </div>
+                </div>
+
+                <!-- Total Earnings -->
+                <div style="display: flex; justify-content: space-between; padding: 16px; margin-top: 10px; background: linear-gradient(135deg, rgba(27,94,32,0.05), rgba(0,0,0,0.02)); border: 1px solid rgba(27,94,32,0.2); border-radius: 12px;">
+                    <div style="font-size: 16px; font-weight: 700; color: var(--t1);">Total Estimated Earnings</div>
+                    <div style="font-size: 20px; font-weight: 800; color: var(--g1);">
+                        Rs <?= number_format($pr['total_earnings'], 2) ?>
+                    </div>
+                </div>
+                
+                <p style="font-size: 11px; color: #888; text-align: center; margin-top: 5px;">
+                    * This is an estimate based on the selected date range. Ensure the date range spans a full working month for accurate monthly payroll preview.
+                </p>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
 </div>
 
 </div><!-- .rp -->

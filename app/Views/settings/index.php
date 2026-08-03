@@ -117,6 +117,60 @@
                 </form>
             </div>
 
+            <!-- Payroll & Commissions Settings Form -->
+            <div class="card" style="background:#fff; border: 1px solid var(--mac-border, #cbd5e1); border-radius:8px; padding:20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); margin-top: 20px;">
+                <h3 style="margin-top:0; border-bottom: 1px solid var(--mac-border, #cbd5e1); padding-bottom: 10px; font-size: 16px; color:#1e293b;"><i class="ph ph-wallet"></i> Payroll &amp; Commissions Configurations</h3>
+                <form action="<?= APP_URL ?>/settings" method="POST">
+                    <input type="hidden" name="csrf_token" value="<?= $data['csrf_token'] ?>">
+                    <input type="hidden" name="update_payroll_settings" value="1">
+                    
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <div class="form-group" style="flex: 1 1 200px;">
+                            <label>Sales Commission Percentage (%)</label>
+                            <input type="number" step="0.01" name="sales_commission_pct" class="form-control" value="<?= htmlspecialchars($data['settings']->sales_commission_pct ?? '0.00') ?>" required>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 15px; margin-bottom: 15px; border-top: 1px dashed var(--mac-border, #cbd5e1); padding-top: 15px;">
+                        <h4 style="margin: 0 0 10px 0; color: #0066cc; font-size: 14px;">Sales Incentive Thresholds</h4>
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                            <div class="form-group" style="flex: 1 1 180px;">
+                                <label>Minimum Sales Value (LKR)</label>
+                                <input type="number" step="0.01" name="sales_incentive_min_value" class="form-control" value="<?= htmlspecialchars($data['settings']->sales_incentive_min_value ?? '0.00') ?>" required>
+                            </div>
+                            <div class="form-group" style="flex: 1 1 180px;">
+                                <label>Sales Incentive (%)</label>
+                                <input type="number" step="0.01" name="sales_incentive_pct" class="form-control" value="<?= htmlspecialchars($data['settings']->sales_incentive_pct ?? '0.00') ?>" required>
+                            </div>
+                            <div class="form-group" style="flex: 1 1 180px;">
+                                <label>Max Incentive Limit (LKR)</label>
+                                <input type="number" step="0.01" name="sales_incentive_max_limit" class="form-control" value="<?= htmlspecialchars($data['settings']->sales_incentive_max_limit ?? '0.00') ?>" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 15px; margin-bottom: 20px; border-top: 1px dashed var(--mac-border, #cbd5e1); padding-top: 15px;">
+                        <h4 style="margin: 0 0 10px 0; color: #0066cc; font-size: 14px;">Fixed Bonus Payouts (LKR)</h4>
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                            <div class="form-group" style="flex: 1 1 180px;">
+                                <label>Productive Visits Achieved</label>
+                                <input type="number" step="0.01" name="productive_visits_payout" class="form-control" value="<?= htmlspecialchars($data['settings']->productive_visits_payout ?? '0.00') ?>" required>
+                            </div>
+                            <div class="form-group" style="flex: 1 1 180px;">
+                                <label>Working Days Achieved</label>
+                                <input type="number" step="0.01" name="working_days_payout" class="form-control" value="<?= htmlspecialchars($data['settings']->working_days_payout ?? '0.00') ?>" required>
+                            </div>
+                            <div class="form-group" style="flex: 1 1 180px;">
+                                <label>Collection Target Achieved</label>
+                                <input type="number" step="0.01" name="collection_efficiency_payout" class="form-control" value="<?= htmlspecialchars($data['settings']->collection_efficiency_payout ?? '0.00') ?>" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn" style="background:#1b5e20;">Save Payroll Settings</button>
+                </form>
+            </div>
+
             <!-- Logo Upload -->
             <div class="card" style="background:#fff; border: 1px solid var(--mac-border, #cbd5e1); border-radius:8px; padding:20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
                 <h3 style="margin-top:0; border-bottom: 1px solid var(--mac-border, #cbd5e1); padding-bottom: 10px; font-size: 16px; color:#1e293b;">Company Logo</h3>

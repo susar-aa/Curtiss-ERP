@@ -496,3 +496,14 @@ INSERT IGNORE INTO migrations (migration) VALUES
 ('cheques_supplier_payment_id'),
 ('coa_outstanding_cheques_account'),
 ('cheques_payee_name_column');
+
+-- Add Payroll & Commission configuration columns to company_settings
+ALTER TABLE `company_settings` 
+ADD COLUMN `sales_commission_pct` DECIMAL(5,2) DEFAULT 0.00,
+ADD COLUMN `sales_incentive_min_value` DECIMAL(15,2) DEFAULT 0.00,
+ADD COLUMN `sales_incentive_pct` DECIMAL(5,2) DEFAULT 0.00,
+ADD COLUMN `sales_incentive_max_limit` DECIMAL(15,2) DEFAULT 0.00,
+ADD COLUMN `productive_visits_payout` DECIMAL(15,2) DEFAULT 0.00,
+ADD COLUMN `working_days_payout` DECIMAL(15,2) DEFAULT 0.00,
+ADD COLUMN `collection_efficiency_payout` DECIMAL(15,2) DEFAULT 0.00;
+
