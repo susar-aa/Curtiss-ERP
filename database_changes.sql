@@ -525,3 +525,7 @@ CREATE TABLE IF NOT EXISTS rep_targets (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY rep_month_year (user_id, month, year)
 );
+
+-- Ensure columns exist if rep_targets table was previously created
+ALTER TABLE rep_targets ADD COLUMN IF NOT EXISTS collection_efficiency_target DECIMAL(5,2) DEFAULT 80.00;
+ALTER TABLE rep_targets ADD COLUMN IF NOT EXISTS new_customers_target INT DEFAULT 5;
