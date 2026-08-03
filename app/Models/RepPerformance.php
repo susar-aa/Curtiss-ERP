@@ -590,6 +590,15 @@ class RepPerformance {
             $collBonus = floatval($compSet->collection_efficiency_payout ?? 0);
         }
 
+        $salesTarget = floatval($repTargets->sales_target ?? 0);
+        $salesNeeded = ($salesTarget > 0 && $netSales < $salesTarget) ? ($salesTarget - $netSales) : 0.00;
+        $targetDays = floatval($repTargets->working_days_target ?? 0);
+        $remainingDays = $targetDays - $activeRouteDays;
+        $avgSalesNeededPerDay = ($salesNeeded > 0 && $remainingDays > 0) ? ($salesNeeded / $remainingDays) : ($salesNeeded > 0 ? $salesNeeded : 0.00);
+        $collTargetPct = floatval($repTargets->collection_efficiency_target ?? 80.00);
+        $targetCollectionAmount = ($outstandingAmount * $collTargetPct) / 100.0;
+        $collectionsNeeded = ($outstandingAmount > 0 && $totalCollections < $targetCollectionAmount) ? ($targetCollectionAmount - $totalCollections) : 0.00;
+
         $totalEarnings = $baseSalary + $salesCommission + $salesIncentive + $prodVisitsBonus + $workDaysBonus + $collBonus;
 
         $payrollData = [
@@ -604,6 +613,15 @@ class RepPerformance {
         ];
 
         return [
+            // Target Requirement Metrics
+            'sales_target' => $salesTarget,
+            'sales_needed_for_target' => $salesNeeded,
+            'working_days_target' => $targetDays,
+            'remaining_working_days' => $remainingDays,
+            'avg_sales_needed_per_day' => $avgSalesNeededPerDay,
+            'collection_target_pct' => $collTargetPct,
+            'target_collection_amount' => $targetCollectionAmount,
+            'collections_needed_for_target' => $collectionsNeeded,
             // Totals
             'total_sales' => $totalSales,
             'total_returns' => $totalReturns,
@@ -664,7 +682,8 @@ class RepPerformance {
             'kpi_scores' => $kpiScores,
             'routes_detail' => $routesDetail,
             'overall_score' => $overallPerformanceScore,
-            'payroll' => $payrollData
+            'payroll' => $payrollData,
+            'targets' => $repTargets
         ];
     }
 
@@ -673,6 +692,16 @@ class RepPerformance {
      * Defaults to 0 if not set.
      */
     public function getRepTargets(int $userId, string $month, string $year): object {
+        if ($userId > 0) {
+            $this->db->query("SELECT * FROM rep_targets WHERE user_id = :uid AND month = :m AND year = :y LIMIT 1");
+            $this->db->bind(':uid', $userId);
+            $this->db->bind(':m', $month);
+            $this->db->bind(':y', $year);
+            $row = $this->db->single();
+            if ($row) {
+                return $row;
+            }
+        }
         $this->db->query("SELECT * FROM rep_targets WHERE user_id = 0 AND month = '00' AND year = '0000' LIMIT 1");
         $row = $this->db->single();
         if ($row) {
