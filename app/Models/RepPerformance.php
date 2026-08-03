@@ -495,31 +495,39 @@ class RepPerformance {
                 $target = floatval($repTargets->total_visits_target);
                 $actual = floatval($totalVisits);
             } elseif ($cfg->kpi_key === 'collection_efficiency') {
+                $target = floatval($repTargets->collection_efficiency_target ?? 80.00);
                 $actual = $collectionEfficiency;
             } elseif ($cfg->kpi_key === 'new_customers') {
+                $target = floatval($repTargets->new_customers_target ?? 5);
                 $actual = floatval($newCustomers);
             } elseif ($cfg->kpi_key === 'route_completion') {
                 $target = floatval($repTargets->working_days_target);
                 $actual = floatval($activeRouteDays);
             }
 
-            $achievementPct = 0.00;
+            // Automated Scoring logic (simplified, 0-100 max)
+            $rawScore = 0;
             if ($target > 0) {
-                $achievementPct = ($actual / $target) * 100;
-            } else {
-                $achievementPct = $actual > 0 ? 100.00 : 0.00;
+                $rawScore = ($actual / $target) * 100;
+            } elseif ($actual > 0) {
+                $rawScore = 100; // Over-achieved 0 target
             }
 
-            $clampedScore = min($maxScore, max($minScore, $achievementPct));
-            $weightedContrib = $clampedScore * ($weight / 100);
+            // Cap the score at 100% implicitly
+            $clampedScore = max(0, min(100, $rawScore));
+            
+            $weightedContrib = 0;
+            if ($weight > 0) {
+                $weightedContrib = ($clampedScore / 100) * $weight;
+            }
 
             $kpiScores[$cfg->kpi_key] = [
+                'kpi_key' => $cfg->kpi_key,
                 'name' => $cfg->kpi_name,
-                'actual' => $actual,
-                'target' => $target,
-                'achievement_pct' => $achievementPct,
-                'clamped_score' => $clampedScore,
                 'weight' => $weight,
+                'target' => $target,
+                'actual' => $actual,
+                'achievement_pct' => $clampedScore, // Renamed back for view compatibility
                 'contribution' => $weightedContrib
             ];
 
@@ -576,13 +584,8 @@ class RepPerformance {
         }
 
         $collBonus = 0;
-        $collTarget = 80.0;
-        foreach ($kpiConfigs as $kpi) {
-            if ($kpi->kpi_key === 'collection_efficiency') {
-                $collTarget = floatval($kpi->target_value);
-                break;
-            }
-        }
+        $collTarget = floatval($repTargets->collection_efficiency_target ?? 80.00);
+        
         if ($collectionEfficiency >= $collTarget && $collTarget > 0) {
             $collBonus = floatval($compSet->collection_efficiency_payout ?? 0);
         }
@@ -685,6 +688,8 @@ class RepPerformance {
             'productive_visits_target' => 0,
             'total_visits_target' => 0,
             'working_days_target' => 0,
+            'collection_efficiency_target' => 80.00,
+            'new_customers_target' => 5,
             'credit_limit' => 0.00
         ];
     }
@@ -694,13 +699,15 @@ class RepPerformance {
      */
     public function saveRepTargets(array $data): bool {
         $this->db->query("
-            INSERT INTO rep_targets (user_id, month, year, sales_target, productive_visits_target, total_visits_target, working_days_target, credit_limit)
-            VALUES (:uid, :m, :y, :sales, :prod, :total, :days, :credit)
+            INSERT INTO rep_targets (user_id, month, year, sales_target, productive_visits_target, total_visits_target, working_days_target, collection_efficiency_target, new_customers_target, credit_limit)
+            VALUES (:uid, :m, :y, :sales, :prod, :total, :days, :coll, :newc, :credit)
             ON DUPLICATE KEY UPDATE
                 sales_target = VALUES(sales_target),
                 productive_visits_target = VALUES(productive_visits_target),
                 total_visits_target = VALUES(total_visits_target),
                 working_days_target = VALUES(working_days_target),
+                collection_efficiency_target = VALUES(collection_efficiency_target),
+                new_customers_target = VALUES(new_customers_target),
                 credit_limit = VALUES(credit_limit)
         ");
         $this->db->bind(':uid', intval($data['user_id']));
@@ -710,6 +717,8 @@ class RepPerformance {
         $this->db->bind(':prod', intval($data['productive_visits_target']));
         $this->db->bind(':total', intval($data['total_visits_target']));
         $this->db->bind(':days', intval($data['working_days_target']));
+        $this->db->bind(':coll', floatval($data['collection_efficiency_target'] ?? 80.00));
+        $this->db->bind(':newc', intval($data['new_customers_target'] ?? 5));
         $this->db->bind(':credit', floatval($data['credit_limit']));
         
         return $this->db->execute();

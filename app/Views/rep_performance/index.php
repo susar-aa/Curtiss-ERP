@@ -934,12 +934,7 @@ if ($hasPerfData) {
                 </div>
 
                 <!-- Collection Bonus -->
-                <?php 
-                    $collTarget = 80.0;
-                    foreach ($data['kpi_configs'] as $kpi) {
-                        if ($kpi->kpi_key === 'collection_efficiency') { $collTarget = floatval($kpi->target_value); break; }
-                    }
-                ?>
+                <?php $collTarget = floatval($data['rep_targets']->collection_efficiency_target ?? 80.00); ?>
                 <div style="display: flex; justify-content: space-between; padding: 12px 16px; border: 1px solid var(--mac-border); border-radius: 8px;">
                     <div>
                         <strong style="color: var(--t1); display: block;">Collection Efficiency Bonus</strong>

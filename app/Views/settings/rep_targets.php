@@ -106,6 +106,14 @@
                         <input type="number" name="credit_limit" id="credit_limit" step="0.01" min="0" class="form-control" value="<?= floatval($data['rep_targets']->credit_limit) ?>" required>
                         <small style="font-size: 11px; color:#64748b; display:block; margin-top:4px;">Billing will not be restricted; this is for dashboard comparisons.</small>
                     </div>
+                    <div class="form-group">
+                        <label for="collection_efficiency_target">Collection Efficiency Target (%) *</label>
+                        <input type="number" name="collection_efficiency_target" id="collection_efficiency_target" step="0.01" min="0" max="100" class="form-control" value="<?= floatval($data['rep_targets']->collection_efficiency_target ?? 80.00) ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_customers_target">New Customers Target (Count) *</label>
+                        <input type="number" name="new_customers_target" id="new_customers_target" min="0" class="form-control" value="<?= intval($data['rep_targets']->new_customers_target ?? 5) ?>" required>
+                    </div>
                 </div>
 
                 <div style="margin-top: 20px; display: flex; justify-content: flex-end; align-items: center;">
@@ -131,10 +139,7 @@
                     <thead>
                         <tr>
                             <th>Evaluation Dimension</th>
-                            <th>Weight Assigned (%)</th>
-                            <th>Default Base Target</th>
-                            <th>Min Clamped Score</th>
-                            <th>Max Clamped Score</th>
+                            <th style="text-align: right;">Weight Assigned (%)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -144,17 +149,8 @@
                                     <strong><?= htmlspecialchars($cfg->kpi_name) ?></strong>
                                     <input type="hidden" name="configs[<?= $cfg->kpi_key ?>][kpi_key]" value="<?= $cfg->kpi_key ?>">
                                 </td>
-                                <td>
-                                    <input type="number" name="configs[<?= $cfg->kpi_key ?>][weight]" value="<?= floatval($cfg->weight) ?>" step="0.5" min="0" max="100" class="form-control" style="padding: 6px; width: 80px; display:inline-block;"> %
-                                </td>
-                                <td>
-                                    <input type="number" name="configs[<?= $cfg->kpi_key ?>][target_value]" value="<?= floatval($cfg->target_value) ?>" step="0.01" min="0" class="form-control" style="padding: 6px; width: 140px; display:inline-block;">
-                                </td>
-                                <td>
-                                    <input type="number" name="configs[<?= $cfg->kpi_key ?>][min_score]" value="<?= intval($cfg->min_score) ?>" min="0" class="form-control" style="padding: 6px; width: 80px; display:inline-block;">
-                                </td>
-                                <td>
-                                    <input type="number" name="configs[<?= $cfg->kpi_key ?>][max_score]" value="<?= intval($cfg->max_score) ?>" min="0" class="form-control" style="padding: 6px; width: 80px; display:inline-block;">
+                                <td style="text-align: right;">
+                                    <input type="number" name="configs[<?= $cfg->kpi_key ?>][weight]" value="<?= floatval($cfg->weight) ?>" step="0.5" min="0" max="100" class="form-control" style="padding: 6px; width: 100px; display:inline-block; text-align: right;"> %
                                 </td>
                             </tr>
                         <?php endforeach; ?>

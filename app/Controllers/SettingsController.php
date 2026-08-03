@@ -136,6 +136,8 @@ class SettingsController extends Controller {
                     'productive_visits_target' => intval($_POST['productive_visits_target'] ?? 0),
                     'total_visits_target' => intval($_POST['total_visits_target'] ?? 0),
                     'working_days_target' => intval($_POST['working_days_target'] ?? 0),
+                    'collection_efficiency_target' => floatval($_POST['collection_efficiency_target'] ?? 80.00),
+                    'new_customers_target' => intval($_POST['new_customers_target'] ?? 5),
                     'credit_limit' => floatval($_POST['credit_limit'] ?? 0.00)
                 ];
                 $applyAll = false;
@@ -148,11 +150,11 @@ class SettingsController extends Controller {
                 $existing = $this->db->single();
 
                 if ($existing) {
-                    $this->db->query("UPDATE rep_targets SET sales_target=:st, productive_visits_target=:pvt, total_visits_target=:tvt, working_days_target=:wdt, credit_limit=:cl WHERE id=:id");
+                    $this->db->query("UPDATE rep_targets SET sales_target=:st, productive_visits_target=:pvt, total_visits_target=:tvt, working_days_target=:wdt, collection_efficiency_target=:coll, new_customers_target=:newc, credit_limit=:cl WHERE id=:id");
                     $this->db->bind(':id', $existing->id);
                 } else {
-                    $this->db->query("INSERT INTO rep_targets (user_id, month, year, sales_target, productive_visits_target, total_visits_target, working_days_target, credit_limit) 
-                                        VALUES (:uid, :m, :y, :st, :pvt, :tvt, :wdt, :cl)");
+                    $this->db->query("INSERT INTO rep_targets (user_id, month, year, sales_target, productive_visits_target, total_visits_target, working_days_target, collection_efficiency_target, new_customers_target, credit_limit) 
+                                        VALUES (:uid, :m, :y, :st, :pvt, :tvt, :wdt, :coll, :newc, :cl)");
                     $this->db->bind(':uid', $postData['user_id']);
                     $this->db->bind(':m', $postData['month']);
                     $this->db->bind(':y', $postData['year']);
@@ -161,6 +163,8 @@ class SettingsController extends Controller {
                 $this->db->bind(':pvt', $postData['productive_visits_target']);
                 $this->db->bind(':tvt', $postData['total_visits_target']);
                 $this->db->bind(':wdt', $postData['working_days_target']);
+                $this->db->bind(':coll', $postData['collection_efficiency_target']);
+                $this->db->bind(':newc', $postData['new_customers_target']);
                 $this->db->bind(':cl', $postData['credit_limit']);
                 $this->db->execute();
 
