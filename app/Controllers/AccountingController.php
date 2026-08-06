@@ -72,7 +72,26 @@ class AccountingController extends Controller {
                         'parent_id' => null
                     ];
                     if (!empty($postData['account_code']) && !empty($postData['account_name'])) {
-                        if ($this->coaModel->addAccount($postData)) { $data['success'] = 'Main Account added successfully.'; } 
+                        if ($this->coaModel->addAccount($postData)) { 
+                            $data['success'] = 'Main Account added successfully.'; 
+                            
+                            // Handle Opening Balance
+                            $openingBalance = floatval($_POST['opening_balance'] ?? 0);
+                            if ($openingBalance > 0) {
+                                // Fetch the newly created account by code
+                                $newAcc = null;
+                                foreach ($this->coaModel->getAccounts() as $a) {
+                                    if ($a->account_code === $code) { $newAcc = $a; break; }
+                                }
+                                if ($newAcc) {
+                                    $obType = $_POST['opening_balance_type'] ?? 'Debit';
+                                    $obDate = $_POST['opening_balance_date'] ?? date('Y-m-d');
+                                    $obNotes = trim($_POST['opening_balance_notes'] ?? '');
+                                    $this->coaModel->postOpeningBalance($newAcc->id, $openingBalance, $obType, $obDate, $obNotes, $_SESSION['user_id']);
+                                    $data['success'] .= ' Opening balance posted.';
+                                }
+                            }
+                        } 
                         else { $data['error'] = 'Failed to add account. Account Code may already exist.'; }
                     } else { $data['error'] = 'Code and Name are required.'; }
                 }
@@ -112,7 +131,26 @@ class AccountingController extends Controller {
                             'account_category' => $category, // Sub-accounts MUST inherit the parent's category
                             'parent_id' => $parent->id
                         ];
-                        if ($this->coaModel->addAccount($postData)) { $data['success'] = 'Sub-Account added successfully.'; } 
+                        if ($this->coaModel->addAccount($postData)) { 
+                            $data['success'] = 'Sub-Account added successfully.'; 
+                            
+                            // Handle Opening Balance
+                            $openingBalance = floatval($_POST['opening_balance'] ?? 0);
+                            if ($openingBalance > 0) {
+                                // Fetch the newly created account by code
+                                $newAcc = null;
+                                foreach ($this->coaModel->getAccounts() as $a) {
+                                    if ($a->account_code === $code) { $newAcc = $a; break; }
+                                }
+                                if ($newAcc) {
+                                    $obType = $_POST['opening_balance_type'] ?? 'Debit';
+                                    $obDate = $_POST['opening_balance_date'] ?? date('Y-m-d');
+                                    $obNotes = trim($_POST['opening_balance_notes'] ?? '');
+                                    $this->coaModel->postOpeningBalance($newAcc->id, $openingBalance, $obType, $obDate, $obNotes, $_SESSION['user_id']);
+                                    $data['success'] .= ' Opening balance posted.';
+                                }
+                            }
+                        } 
                         else { $data['error'] = 'Failed to add account. Account Code may already exist.'; }
                     }
                 } else {
@@ -639,6 +677,108 @@ class AccountingController extends Controller {
             }
         }
         header('Location: ' . APP_URL . '/accounting/journal');
+        exit;
+    }
+
+    public function adjustments(): void {
+        if ($_SESSION['role'] !== 'Admin' && $_SESSION['role'] !== 'Accountant') {
+            die("Access Denied: Only Administrators or Accountants can manage balance adjustments.");
+        }
+
+        $this->generateCsrfToken();
+        $data = [
+            'title' => 'Balance Adjustments',
+            'content_view' => 'accounting/adjustments',
+            'accounts' => $this->coaModel->getAccounts(),
+            'error' => '',
+            'success' => '',
+            'start_date' => $_GET['start_date'] ?? date('Y-m-01'),
+            'end_date' => $_GET['end_date'] ?? date('Y-m-d'),
+            'search' => $_GET['search'] ?? ''
+        ];
+
+        if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'adjust') {
+            $this->validateCsrfOrDie();
+
+            $accountId = intval($_POST['account_id']);
+            $type = $_POST['adjustment_type'];
+            $amount = floatval($_POST['amount']);
+            $date = $_POST['adjustment_date'];
+            $reason = trim($_POST['reason']);
+
+            if ($amount <= 0) {
+                $data['error'] = 'Amount must be greater than zero.';
+            } elseif (empty($reason)) {
+                $data['error'] = 'Reason is required for auditing purposes.';
+            } else {
+                $result = $this->coaModel->addBalanceAdjustment($accountId, $type, $amount, $date, $reason, $_SESSION['user_id']);
+                if ($result === true) {
+                    $data['success'] = 'Balance adjustment posted successfully.';
+                } else {
+                    $data['error'] = $result;
+                }
+            }
+        }
+
+        $filters = [
+            'start_date' => $data['start_date'],
+            'end_date' => $data['end_date'],
+            'search' => $data['search']
+        ];
+        $data['history'] = $this->coaModel->getAdjustmentsHistory($filters);
+
+        // Handle Excel Export
+        if (isset($_GET['export']) && $_GET['export'] == 'true') {
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename=balance_adjustments_' . date('Ymd_His') . '.csv');
+            $output = fopen('php://output', 'w');
+            fputcsv($output, ['Date', 'Account Code', 'Account Name', 'Type', 'Previous Balance', 'Adjustment', 'New Balance', 'Reason', 'User']);
+            foreach ($data['history'] as $h) {
+                fputcsv($output, [
+                    date('Y-m-d', strtotime($h->adjustment_date)),
+                    $h->account_code,
+                    $h->account_name,
+                    $h->adjustment_type,
+                    number_format($h->previous_balance, 2, '.', ''),
+                    ($h->adjustment_type == 'Increase' ? '+' : '-') . number_format($h->amount, 2, '.', ''),
+                    number_format($h->new_balance, 2, '.', ''),
+                    $h->reason,
+                    $h->username
+                ]);
+            }
+            fclose($output);
+            exit;
+        }
+
+        $this->view('layouts/main', $data);
+    }
+
+    public function export_coa(): void {
+        if ($_SESSION['role'] !== 'Admin' && $_SESSION['role'] !== 'Accountant') {
+            die("Access Denied: Only Administrators or Accountants can export Chart of Accounts.");
+        }
+
+        $accounts = $this->coaModel->getAccounts();
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=chart_of_accounts_' . date('Ymd') . '.csv');
+        $output = fopen('php://output', 'w');
+        
+        fputcsv($output, ['Account Code', 'Account Name', 'Type', 'Category', 'Parent Account', 'Status', 'Current Balance']);
+        
+        foreach ($accounts as $acc) {
+            fputcsv($output, [
+                $acc->account_code,
+                $acc->account_name,
+                $acc->account_type,
+                $acc->account_category,
+                $acc->parent_name ?: 'Main Account',
+                $acc->is_active ? 'Active' : 'Inactive',
+                number_format($acc->balance, 2, '.', '')
+            ]);
+        }
+        
+        fclose($output);
         exit;
     }
 }

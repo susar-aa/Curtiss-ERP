@@ -499,4 +499,212 @@ class ChartOfAccount {
         $this->db->bind(':aid', $accountId);
         return $this->db->resultSet() ?: [];
     }
+
+    public function postOpeningBalance($accountId, $amount, $type, $date, $notes, $userId) {
+        try {
+            $this->db->beginTransaction();
+            
+            // Check if account 3999 exists, create if not
+            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '3999'");
+            $obAcc = $this->db->single();
+            if (!$obAcc) {
+                $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, is_active, balance) VALUES ('3999', 'Opening Balance Equity', 'Equity', 'Equity', 1, 0.00)");
+                $this->db->execute();
+                $obAccId = $this->db->lastInsertId();
+            } else {
+                $obAccId = $obAcc->id;
+            }
+
+            $ref = 'OB-' . date('Ymd-His');
+            $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) VALUES (:date, :ref, :desc, :uid, 'Posted')");
+            $this->db->bind(':date', $date);
+            $this->db->bind(':ref', $ref);
+            $this->db->bind(':desc', !empty($notes) ? $notes : "Opening Balance Setup");
+            $this->db->bind(':uid', $userId);
+            $this->db->execute();
+            $jeId = $this->db->lastInsertId();
+
+            if ($type == 'Debit') {
+                // Debit the new account, Credit OB Equity
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit, description) VALUES (:jid, :aid, :amount, 0.00, 'Opening Balance Debit')");
+                $this->db->bind(':jid', $jeId);
+                $this->db->bind(':aid', $accountId);
+                $this->db->bind(':amount', $amount);
+                $this->db->execute();
+
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit, description) VALUES (:jid, :aid, 0.00, :amount, 'Opening Balance Offset')");
+                $this->db->bind(':jid', $jeId);
+                $this->db->bind(':aid', $obAccId);
+                $this->db->bind(':amount', $amount);
+                $this->db->execute();
+            } else {
+                // Credit the new account, Debit OB Equity
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit, description) VALUES (:jid, :aid, 0.00, :amount, 'Opening Balance Credit')");
+                $this->db->bind(':jid', $jeId);
+                $this->db->bind(':aid', $accountId);
+                $this->db->bind(':amount', $amount);
+                $this->db->execute();
+
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit, description) VALUES (:jid, :aid, :amount, 0.00, 'Opening Balance Offset')");
+                $this->db->bind(':jid', $jeId);
+                $this->db->bind(':aid', $obAccId);
+                $this->db->bind(':amount', $amount);
+                $this->db->execute();
+            }
+
+            // Update balances for both accounts
+            $this->db->query("SELECT account_type, balance FROM chart_of_accounts WHERE id = :id");
+            $this->db->bind(':id', $accountId);
+            $accType = $this->db->single()->account_type;
+            
+            $balanceUpdate = 0;
+            if (in_array($accType, ['Asset', 'Expense'])) {
+                $balanceUpdate = $type == 'Debit' ? $amount : -$amount;
+            } else {
+                $balanceUpdate = $type == 'Credit' ? $amount : -$amount;
+            }
+            $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :id");
+            $this->db->bind(':amt', $balanceUpdate);
+            $this->db->bind(':id', $accountId);
+            $this->db->execute();
+
+            // OB Equity is Equity type, so Credit increases, Debit decreases
+            $obBalanceUpdate = $type == 'Debit' ? $amount : -$amount; // If new acc is debit, OB is credit (+), if new acc is credit, OB is debit (-)
+            $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :id");
+            $this->db->bind(':amt', $obBalanceUpdate);
+            $this->db->bind(':id', $obAccId);
+            $this->db->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (PDOException $e) {
+            $this->db->rollBack();
+            return false;
+        }
+    }
+
+    public function addBalanceAdjustment($accountId, $adjustmentType, $amount, $date, $reason, $userId) {
+        try {
+            $this->db->beginTransaction();
+
+            $this->db->query("SELECT account_type, balance FROM chart_of_accounts WHERE id = :id FOR UPDATE");
+            $this->db->bind(':id', $accountId);
+            $targetAcc = $this->db->single();
+            if (!$targetAcc) throw new Exception("Account not found");
+
+            $previousBalance = $targetAcc->balance;
+            $newBalance = $adjustmentType == 'Increase' ? $previousBalance + $amount : $previousBalance - $amount;
+
+            // Check if 5999 Balance Adjustment account exists
+            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '5999'");
+            $adjAcc = $this->db->single();
+            if (!$adjAcc) {
+                $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, is_active, balance) VALUES ('5999', 'Balance Adjustment', 'Expense', 'Operating Expense', 1, 0.00)");
+                $this->db->execute();
+                $adjAccId = $this->db->lastInsertId();
+            } else {
+                $adjAccId = $adjAcc->id;
+            }
+
+            // Create Journal Entry
+            $ref = 'ADJ-' . date('Ymd-His');
+            $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) VALUES (:date, :ref, :desc, :uid, 'Posted')");
+            $this->db->bind(':date', $date);
+            $this->db->bind(':ref', $ref);
+            $this->db->bind(':desc', "Balance Adjustment: " . $reason);
+            $this->db->bind(':uid', $userId);
+            $this->db->execute();
+            $jeId = $this->db->lastInsertId();
+
+            $isDebit = false;
+            if (in_array($targetAcc->account_type, ['Asset', 'Expense'])) {
+                $isDebit = $adjustmentType == 'Increase';
+            } else {
+                $isDebit = $adjustmentType == 'Decrease';
+            }
+
+            if ($isDebit) {
+                // Debit target, Credit Adjustment
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit, description) VALUES (:jid, :aid, :amt, 0.00, :desc)");
+                $this->db->bind(':jid', $jeId); $this->db->bind(':aid', $accountId); $this->db->bind(':amt', $amount); $this->db->bind(':desc', $reason);
+                $this->db->execute();
+
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit, description) VALUES (:jid, :aid, 0.00, :amt, :desc)");
+                $this->db->bind(':jid', $jeId); $this->db->bind(':aid', $adjAccId); $this->db->bind(':amt', $amount); $this->db->bind(':desc', 'Offset for ' . $reason);
+                $this->db->execute();
+            } else {
+                // Credit target, Debit Adjustment
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit, description) VALUES (:jid, :aid, 0.00, :amt, :desc)");
+                $this->db->bind(':jid', $jeId); $this->db->bind(':aid', $accountId); $this->db->bind(':amt', $amount); $this->db->bind(':desc', $reason);
+                $this->db->execute();
+
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit, description) VALUES (:jid, :aid, :amt, 0.00, :desc)");
+                $this->db->bind(':jid', $jeId); $this->db->bind(':aid', $adjAccId); $this->db->bind(':amt', $amount); $this->db->bind(':desc', 'Offset for ' . $reason);
+                $this->db->execute();
+            }
+
+            // Update COA balances
+            $this->db->query("UPDATE chart_of_accounts SET balance = :nb WHERE id = :id");
+            $this->db->bind(':nb', $newBalance);
+            $this->db->bind(':id', $accountId);
+            $this->db->execute();
+
+            // Adj Acc is Expense. Debit increases it, Credit decreases it.
+            $adjBalanceUpdate = $isDebit ? -$amount : $amount; 
+            $this->db->query("UPDATE chart_of_accounts SET balance = balance + :amt WHERE id = :id");
+            $this->db->bind(':amt', $adjBalanceUpdate);
+            $this->db->bind(':id', $adjAccId);
+            $this->db->execute();
+
+            // Insert into audit table
+            $this->db->query("INSERT INTO balance_adjustments (account_id, journal_entry_id, adjustment_type, amount, previous_balance, new_balance, adjustment_date, reason, created_by) 
+                              VALUES (:aid, :jid, :type, :amt, :prev, :new_bal, :date, :reason, :uid)");
+            $this->db->bind(':aid', $accountId);
+            $this->db->bind(':jid', $jeId);
+            $this->db->bind(':type', $adjustmentType);
+            $this->db->bind(':amt', $amount);
+            $this->db->bind(':prev', $previousBalance);
+            $this->db->bind(':new_bal', $newBalance);
+            $this->db->bind(':date', $date);
+            $this->db->bind(':reason', $reason);
+            $this->db->bind(':uid', $userId);
+            $this->db->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            return $e->getMessage();
+        }
+    }
+
+    public function getAdjustmentsHistory($filters = []) {
+        $sql = "SELECT b.*, c.account_code, c.account_name, u.username 
+                FROM balance_adjustments b 
+                JOIN chart_of_accounts c ON b.account_id = c.id 
+                JOIN users u ON b.created_by = u.id 
+                WHERE 1=1";
+        $params = [];
+
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND b.adjustment_date >= :start_date";
+            $params[':start_date'] = $filters['start_date'];
+        }
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND b.adjustment_date <= :end_date";
+            $params[':end_date'] = $filters['end_date'];
+        }
+        if (!empty($filters['search'])) {
+            $sql .= " AND (b.reason LIKE :search OR c.account_name LIKE :search OR c.account_code LIKE :search)";
+            $params[':search'] = '%' . $filters['search'] . '%';
+        }
+
+        $sql .= " ORDER BY b.adjustment_date DESC, b.id DESC";
+
+        $this->db->query($sql);
+        foreach ($params as $key => $val) {
+            $this->db->bind($key, $val);
+        }
+        return $this->db->resultSet() ?: [];
+    }
 }
