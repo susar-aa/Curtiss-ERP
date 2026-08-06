@@ -539,6 +539,35 @@ foreach($data['accounts'] as $acc) {
                     </select>
                 </div>
 
+                <div id="openingBalanceSection" style="background: var(--c-surface2); padding: 16px; border-radius: var(--r-sm); border: 0.5px solid var(--c-separator); margin-bottom: 16px;">
+                    <div style="font-size: 13px; font-weight: 700; color: var(--t-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-scale-balanced" style="color: var(--c-blue);"></i> Opening Balance (Optional)
+                    </div>
+                    <div class="grid-2">
+                        <div class="sf-group">
+                            <label>Amount (Rs)</label>
+                            <input type="number" step="0.01" name="opening_balance" id="formOpeningBalance" class="sf-input" placeholder="0.00">
+                        </div>
+                        <div class="sf-group">
+                            <label>Balance Type</label>
+                            <select name="opening_balance_type" id="formOpeningBalanceType" class="sf-input">
+                                <option value="Debit">Debit (Dr)</option>
+                                <option value="Credit">Credit (Cr)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="sf-group">
+                            <label>Date</label>
+                            <input type="date" name="opening_balance_date" id="formOpeningBalanceDate" class="sf-input" value="<?= date('Y-m-d') ?>">
+                        </div>
+                        <div class="sf-group">
+                            <label>Notes</label>
+                            <input type="text" name="opening_balance_notes" id="formOpeningBalanceNotes" class="sf-input" placeholder="Optional notes...">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="sf-group" id="statusGroup" style="display:none;">
                     <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 600; text-transform: none;">
                         <input type="checkbox" name="is_active" id="formStatus" value="1" style="width:16px; height:16px;"> Active Ledger
@@ -611,6 +640,8 @@ foreach($data['accounts'] as $acc) {
     <div class="cmd-divider"></div>
     <button type="button" class="cmd-icon" onclick="openModal('add_main')" title="Add Main Account"><i class="fa-solid fa-folder-plus"></i></button>
     <button type="button" class="cmd-icon" onclick="openModal('add_sub')" title="Add Sub-Account"><i class="fa-solid fa-file-circle-plus"></i></button>
+    <div class="cmd-divider"></div>
+    <a href="<?= APP_URL ?>/accounting/export_coa" class="cmd-icon" title="Export Chart of Accounts"><i class="fa-solid fa-file-excel"></i></a>
 </div>
 
 <script>
@@ -650,6 +681,7 @@ foreach($data['accounts'] as $acc) {
         const categoryGroup = document.getElementById('categoryGroup');
         const formCategory = document.getElementById('formCategory');
         const statusGroup = document.getElementById('statusGroup');
+        const openingBalanceSection = document.getElementById('openingBalanceSection');
         const btn = document.getElementById('submitBtn');
 
         // Reset fields
@@ -667,6 +699,7 @@ foreach($data['accounts'] as $acc) {
             typeGroup.style.display = 'block';
             categoryGroup.style.display = 'block';
             statusGroup.style.display = 'none';
+            openingBalanceSection.style.display = 'block';
             btn.innerText = 'Save Main Account';
             document.getElementById('formType').required = true;
             formCategory.required = true;
@@ -680,6 +713,7 @@ foreach($data['accounts'] as $acc) {
             typeGroup.style.display = 'none';
             categoryGroup.style.display = 'none';
             statusGroup.style.display = 'none';
+            openingBalanceSection.style.display = 'block';
             btn.innerText = 'Save Sub-Account';
             document.getElementById('formParent').required = true;
             document.getElementById('formType').required = false; // Inherited
@@ -701,6 +735,7 @@ foreach($data['accounts'] as $acc) {
             }
             
             statusGroup.style.display = 'block';
+            openingBalanceSection.style.display = 'none';
             btn.innerText = 'Update Account';
             document.getElementById('formType').required = true;
             document.getElementById('formParent').required = false;
