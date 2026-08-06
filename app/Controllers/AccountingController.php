@@ -739,9 +739,9 @@ class AccountingController extends Controller {
                     $h->account_code,
                     $h->account_name,
                     $h->adjustment_type,
-                    number_format($h->previous_balance, 2, '.', ''),
-                    ($h->adjustment_type == 'Increase' ? '+' : '-') . number_format($h->amount, 2, '.', ''),
-                    number_format($h->new_balance, 2, '.', ''),
+                    number_format((float)$h->previous_balance, 2, '.', ''),
+                    ($h->adjustment_type == 'Increase' ? '+' : '-') . number_format((float)$h->amount, 2, '.', ''),
+                    number_format((float)$h->new_balance, 2, '.', ''),
                     $h->reason,
                     $h->username
                 ]);
@@ -774,7 +774,7 @@ class AccountingController extends Controller {
                 $acc->account_category,
                 $acc->parent_name ?: 'Main Account',
                 $acc->is_active ? 'Active' : 'Inactive',
-                number_format($acc->balance, 2, '.', '')
+                number_format((float)$acc->balance, 2, '.', '')
             ]);
         }
         
