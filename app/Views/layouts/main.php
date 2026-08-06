@@ -1570,6 +1570,13 @@ if (!function_exists('hasPermission')) {
                                     <div class="desc">Manual adjustments</div>
                                 </div>
                             </a>
+                            <a href="<?= APP_URL ?>/accounting/adjustments" class="mega-card">
+                                <div class="icon"><i class="ph ph-sliders"></i></div>
+                                <div class="mega-card-text">
+                                    <div class="title">Balance Adjust</div>
+                                    <div class="desc">Ledger corrections</div>
+                                </div>
+                            </a>
                             <a href="<?= APP_URL ?>/accounting/recurring" class="mega-card">
                                 <div class="icon"><i class="ph ph-arrows-clockwise"></i></div>
                                 <div class="mega-card-text">
@@ -1903,6 +1910,7 @@ if (!function_exists('hasPermission')) {
                         <?php if (hasPermission('accounting')): ?>
                             <a href="<?= APP_URL ?>/accounting/coa" class="fs-link"><i class="ph ph-notebook"></i> Chart of Accts</a>
                             <a href="<?= APP_URL ?>/accounting/journal" class="fs-link"><i class="ph ph-pen-nib"></i> Journal Entries</a>
+                            <a href="<?= APP_URL ?>/accounting/adjustments" class="fs-link"><i class="ph ph-sliders"></i> Balance Adjustments</a>
                             <a href="<?= APP_URL ?>/accounting/recurring" class="fs-link"><i class="ph ph-arrows-clockwise"></i> Recurring Entries</a>
                             <a href="<?= APP_URL ?>/accounting/close_year" class="fs-link"><i class="ph ph-lock"></i> Close Financial Year</a>
                             <a href="<?= APP_URL ?>/banking" class="fs-link"><i class="ph ph-bank"></i> Banking</a>

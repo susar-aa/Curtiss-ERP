@@ -641,6 +641,7 @@ foreach($data['accounts'] as $acc) {
     <button type="button" class="cmd-icon" onclick="openModal('add_main')" title="Add Main Account"><i class="fa-solid fa-folder-plus"></i></button>
     <button type="button" class="cmd-icon" onclick="openModal('add_sub')" title="Add Sub-Account"><i class="fa-solid fa-file-circle-plus"></i></button>
     <div class="cmd-divider"></div>
+    <a href="<?= APP_URL ?>/accounting/adjustments" class="cmd-icon" title="Balance Adjustments"><i class="fa-solid fa-sliders"></i></a>
     <a href="<?= APP_URL ?>/accounting/export_coa" class="cmd-icon" title="Export Chart of Accounts"><i class="fa-solid fa-file-excel"></i></a>
 </div>
 
