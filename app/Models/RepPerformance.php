@@ -567,7 +567,7 @@ class RepPerformance {
             ];
         }
 
-        $salesCommission = ($netSales * floatval($compSet->sales_commission_pct ?? 0)) / 100;
+        $salesCommission = ($totalCollections * floatval($compSet->sales_commission_pct ?? 0)) / 100;
         
         $salesIncentive = 0;
         $minSalesVal = floatval($compSet->sales_incentive_min_value ?? 0);

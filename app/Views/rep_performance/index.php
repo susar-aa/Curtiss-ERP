@@ -990,8 +990,8 @@ if ($hasPerfData) {
                             <i class="ph ph-chart-line-up"></i>
                         </div>
                         <div class="pr-line-body">
-                            <div class="pr-line-name">Sales Commission</div>
-                            <div class="pr-line-desc"><?= floatval($pr['settings']->sales_commission_pct ?? 0) ?>% of Net Sales &nbsp;·&nbsp; Net Sales: Rs <?= number_format($data['perf_data']['net_sales'],0) ?></div>
+                            <div class="pr-line-name">Commission</div>
+                            <div class="pr-line-desc"><?= floatval($pr['settings']->sales_commission_pct ?? 0) ?>% of Collections &nbsp;·&nbsp; Total Collections: Rs <?= number_format($data['perf_data']['total_collections'],0) ?></div>
                         </div>
                         <div class="pr-line-amount">
                             <div class="val <?= $pr['sales_commission'] > 0 ? 'pr-earned' : 'pr-zero' ?>">+ Rs <?= number_format($pr['sales_commission'], 2) ?></div>
@@ -1146,7 +1146,7 @@ if ($hasPerfData) {
                     <?php
                     $items = [
                         ['Base Monthly Salary',         $pr['base_salary'],              '--t1', false],
-                        ['Sales Commission',            $pr['sales_commission'],          '--g1', true],
+                        ['Commission',            $pr['sales_commission'],          '--g1', true],
                         ['Sales Incentive',             $pr['sales_incentive'],           '--g1', true],
                         ['Productive Visits Bonus',     $pr['productive_visits_bonus'],   '--g1', true],
                         ['Working Days Bonus',          $pr['working_days_bonus'],        '--g1', true],

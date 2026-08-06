@@ -126,7 +126,7 @@
                     
                     <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                         <div class="form-group" style="flex: 1 1 200px;">
-                            <label>Sales Commission Percentage (%)</label>
+                            <label>Commission Percentage (%) (on Collections)</label>
                             <input type="number" step="0.01" name="sales_commission_pct" class="form-control" value="<?= htmlspecialchars($data['settings']->sales_commission_pct ?? '0.00') ?>" required>
                         </div>
                     </div>
