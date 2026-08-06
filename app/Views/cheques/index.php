@@ -464,6 +464,8 @@
     <button class="cmd-cta" onclick="openModal('addModal')">
         <i class="fa-solid fa-plus"></i> Record Cheque
     </button>
+    <div class="cmd-divider"></div>
+    <a href="<?= APP_URL ?>/cheque?export=true<?= !empty($data['search']) ? '&search=' . urlencode($data['search']) : '' ?>" class="cmd-cta" style="background: var(--c-surface2); color: var(--t-primary); padding: 0 14px;" title="Export Excel"><i class="fa-solid fa-file-excel"></i></a>
 </div>
 
 <!-- Add Modal -->

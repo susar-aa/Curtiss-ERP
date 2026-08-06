@@ -118,6 +118,28 @@ class ChequeController extends Controller {
             $data['success'] = "Cheque record " . htmlspecialchars($_GET['success']) . " successfully!";
         }
 
+        if (isset($_GET['export']) && $_GET['export'] == 'true') {
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename=cheques_export_' . date('Ymd_His') . '.csv');
+            $output = fopen('php://output', 'w');
+            fputcsv($output, ['Cheque Number', 'Bank Name', 'Payee / Customer', 'Amount', 'Banking Date', 'Status', 'Type']);
+            
+            foreach ($cheques as $chk) {
+                $type = !empty($chk->bank_account_id) ? 'Issued' : 'Received';
+                fputcsv($output, [
+                    $chk->cheque_number,
+                    $chk->bank_name,
+                    $chk->payee_name,
+                    number_format((float)$chk->amount, 2, '.', ''),
+                    $chk->banking_date,
+                    $chk->status,
+                    $type
+                ]);
+            }
+            fclose($output);
+            exit;
+        }
+
         $this->view('layouts/main', $data);
     }
 }
