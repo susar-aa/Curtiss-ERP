@@ -1549,8 +1549,8 @@ $statuses = $data['statuses'] ?? [];
             if (value) params.append(key, value);
         }
 
-        fetch('<?= APP_URL ?>/report/fetch_data?' + params.toString())
-            .then(res => res.json())
+        fetch(`<?= APP_URL ?>/report/fetch_data?` + params.toString() + `&_t=${Date.now()}`)
+            .then(response => response.json())
             .then(data => {
                 curtain.classList.remove('active');
 
@@ -1828,7 +1828,7 @@ $statuses = $data['statuses'] ?? [];
             if (value) params.append(key, value);
         }
 
-        window.location.href = `<?= APP_URL ?>/report/export/${reportKey}?` + params.toString();
+        window.location.href = `<?= APP_URL ?>/report/export/${reportKey}?` + params.toString() + `&_t=${Date.now()}`;
     }
 
     // --- High Fidelity Print Window ---
