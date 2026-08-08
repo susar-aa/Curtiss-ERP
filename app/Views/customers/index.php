@@ -1136,9 +1136,14 @@ foreach ($data['customers'] ?? [] as $cust) {
                                 <input type="number" step="0.01" name="opening_balance" class="sf-input" value="<?= htmlspecialchars($c->opening_balance ?? '0.00') ?>">
                             </div>
                             <div class="sf-group">
-                                <label>Credit Limit (Rs)</label>
-                                <input type="number" step="0.01" name="credit_limit" class="sf-input" value="<?= htmlspecialchars($c->credit_limit ?? '0.00') ?>">
+                                <label>Opening Balance Date</label>
+                                <input type="date" name="opening_balance_date" class="sf-input" value="<?= htmlspecialchars($c->opening_balance_date ?? date('Y-m-d')) ?>">
                             </div>
+                        </div>
+                        
+                        <div class="sf-group">
+                            <label>Credit Limit (Rs)</label>
+                            <input type="number" step="0.01" name="credit_limit" class="sf-input" value="<?= htmlspecialchars($c->credit_limit ?? '0.00') ?>">
                         </div>
                         
                         <div class="sf-group">

@@ -82,7 +82,8 @@ class CustomerController extends Controller {
                     'mca_id' => $mcaId,
                     'territory' => $territoryName,
                     'credit_limit' => isset($_POST['credit_limit']) ? floatval($_POST['credit_limit']) : 0.00,
-                    'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00
+                    'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00,
+                    'opening_balance_date' => !empty($_POST['opening_balance_date']) ? $_POST['opening_balance_date'] : date('Y-m-d')
                 ];
 
                 if (!empty($addData['name'])) {
@@ -116,7 +117,8 @@ class CustomerController extends Controller {
                     'mca_id' => $mcaId,
                     'territory' => $territoryName,
                     'credit_limit' => isset($_POST['credit_limit']) ? floatval($_POST['credit_limit']) : 0.00,
-                    'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00
+                    'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00,
+                    'opening_balance_date' => !empty($_POST['opening_balance_date']) ? $_POST['opening_balance_date'] : date('Y-m-d')
                 ];
 
                 if (!empty($updateData['name'])) {

@@ -159,8 +159,8 @@ class Customer {
         $reviewedByUserId = $data['reviewed_by_user_id'] ?? null;
         $reviewedAt = $data['reviewed_at'] ?? null;
 
-        $this->db->query("INSERT INTO customers (name, email, phone, whatsapp, address, latitude, longitude, mca_id, territory, credit_limit, customer_type, notes, uuid, opening_balance, review_status, created_by_user_id, reviewed_by_user_id, reviewed_at) 
-                          VALUES (:name, :email, :phone, :whatsapp, :address, :lat, :lng, :mca_id, :territory, :credit_limit, :customer_type, :notes, :uuid, :opening_balance, :review_status, :created_by_user_id, :reviewed_by_user_id, :reviewed_at)");
+        $this->db->query("INSERT INTO customers (name, email, phone, whatsapp, address, latitude, longitude, mca_id, territory, credit_limit, customer_type, notes, uuid, opening_balance, opening_balance_date, review_status, created_by_user_id, reviewed_by_user_id, reviewed_at) 
+                          VALUES (:name, :email, :phone, :whatsapp, :address, :lat, :lng, :mca_id, :territory, :credit_limit, :customer_type, :notes, :uuid, :opening_balance, :opening_balance_date, :review_status, :created_by_user_id, :reviewed_by_user_id, :reviewed_at)");
         $this->db->bind(':name', $data['name']);
         $this->db->bind(':email', $data['email'] ?: null);
         $this->db->bind(':phone', $data['phone'] ?: null);
@@ -187,9 +187,9 @@ class Customer {
     }
 
     public function updateCustomer($data) {
-        $sql = "UPDATE customers SET name = :name, email = :email, phone = :phone, whatsapp = :whatsapp, address = :address, 
-                          latitude = :lat, longitude = :lng, mca_id = :mca_id, territory = :territory, 
-                          credit_limit = :credit_limit, customer_type = :customer_type, notes = :notes, uuid = :uuid, opening_balance = :opening_balance";
+        $sql = "UPDATE customers SET name = :name, email = :email, phone = :phone, whatsapp = :whatsapp, 
+                          address = :address, latitude = :lat, longitude = :lng, mca_id = :mca_id, territory = :territory, 
+                          credit_limit = :credit_limit, customer_type = :customer_type, notes = :notes, uuid = :uuid, opening_balance = :opening_balance, opening_balance_date = :opening_balance_date";
         
         if (array_key_exists('review_status', $data)) {
             $sql .= ", review_status = :review_status";
@@ -222,6 +222,7 @@ class Customer {
         $this->db->bind(':notes', $data['notes'] ?: null);
         $this->db->bind(':uuid', $data['uuid'] ?? null);
         $this->db->bind(':opening_balance', $data['opening_balance'] ?? 0.00);
+        $this->db->bind(':opening_balance_date', $data['opening_balance_date'] ?? null);
 
         if (array_key_exists('review_status', $data)) {
             $this->db->bind(':review_status', $data['review_status']);
@@ -236,7 +237,106 @@ class Customer {
             $this->db->bind(':reviewed_at', $data['reviewed_at']);
         }
 
-        return $this->db->execute();
+        $result = $this->db->execute();
+        
+        if ($result && isset($data['opening_balance'])) {
+            $this->syncOpeningBalanceAccounting($data['id'], $data['opening_balance'], $data['opening_balance_date'] ?? date('Y-m-d'), $_SESSION['user_id'] ?? 1);
+        }
+        
+        return $result;
+    }
+
+    private function syncOpeningBalanceAccounting($customerId, $amount, $date, $userId) {
+        // 1. Find AR Account
+        $this->db->query("SELECT * FROM chart_of_accounts WHERE account_code = '1200' LIMIT 1");
+        $arAccount = $this->db->single();
+        if (!$arAccount) return false;
+
+        // 2. Find Equity Account
+        $this->db->query("SELECT * FROM chart_of_accounts WHERE account_code = '3900' OR account_name LIKE '%Opening Balance Equity%' LIMIT 1");
+        $eqAccount = $this->db->single();
+        if (!$eqAccount) {
+            // Create Equity Account dynamically if it doesn't exist to ensure balance
+            $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, is_active) VALUES ('3900', 'Opening Balance Equity', 'Equity', 'Equity', 1)");
+            $this->db->execute();
+            
+            $this->db->query("SELECT * FROM chart_of_accounts WHERE account_code = '3900' LIMIT 1");
+            $eqAccount = $this->db->single();
+        }
+
+        $ref = "OPBAL-CUST-" . $customerId;
+        
+        // 3. Reverse existing Journal Entry
+        $this->db->query("SELECT id FROM journal_entries WHERE reference = :ref LIMIT 1");
+        $this->db->bind(':ref', $ref);
+        $existingJe = $this->db->single();
+
+        if ($existingJe) {
+            $this->db->query("SELECT * FROM transactions WHERE journal_entry_id = :jid");
+            $this->db->bind(':jid', $existingJe->id);
+            $oldTxns = $this->db->resultSet();
+
+            foreach ($oldTxns as $txn) {
+                $this->db->query("SELECT account_type FROM chart_of_accounts WHERE id = :id");
+                $this->db->bind(':id', $txn->account_id);
+                $acc = $this->db->single();
+
+                $sql = "UPDATE chart_of_accounts SET balance = balance ";
+                $sql .= in_array($acc->account_type, ['Asset', 'Expense']) ? "- :debit + :credit " : "+ :debit - :credit ";
+                $sql .= "WHERE id = :id";
+                $this->db->query($sql);
+                $this->db->bind(':debit', $txn->debit);
+                $this->db->bind(':credit', $txn->credit);
+                $this->db->bind(':id', $txn->account_id);
+                $this->db->execute();
+            }
+
+            $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
+            $this->db->bind(':jid', $existingJe->id);
+            $this->db->execute();
+
+            $this->db->query("DELETE FROM journal_entries WHERE id = :jid");
+            $this->db->bind(':jid', $existingJe->id);
+            $this->db->execute();
+        }
+
+        // 4. Create new Journal Entry if amount > 0
+        if ($amount > 0) {
+            $desc = "Opening Balance for Customer ID " . $customerId;
+            $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) VALUES (:date, :ref, :desc, :uid, 'Posted')");
+            $this->db->bind(':date', $date);
+            $this->db->bind(':ref', $ref);
+            $this->db->bind(':desc', $desc);
+            $this->db->bind(':uid', $userId);
+            $this->db->execute();
+            $newJeId = $this->db->lastInsertId();
+
+            $lines = [
+                ['account_id' => $arAccount->id, 'debit' => $amount, 'credit' => 0],
+                ['account_id' => $eqAccount->id, 'debit' => 0, 'credit' => $amount]
+            ];
+
+            foreach ($lines as $line) {
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, :cred)");
+                $this->db->bind(':jid', $newJeId);
+                $this->db->bind(':aid', $line['account_id']);
+                $this->db->bind(':deb', $line['debit']);
+                $this->db->bind(':cred', $line['credit']);
+                $this->db->execute();
+
+                $this->db->query("SELECT account_type FROM chart_of_accounts WHERE id = :id");
+                $this->db->bind(':id', $line['account_id']);
+                $acc = $this->db->single();
+                $sql = "UPDATE chart_of_accounts SET balance = balance ";
+                $sql .= in_array($acc->account_type, ['Asset', 'Expense']) ? "+ :debit - :credit " : "- :debit + :credit ";
+                $sql .= "WHERE id = :id";
+                $this->db->query($sql);
+                $this->db->bind(':debit', $line['debit']);
+                $this->db->bind(':credit', $line['credit']);
+                $this->db->bind(':id', $line['account_id']);
+                $this->db->execute();
+            }
+        }
     }
 
     public function recordPayment($data, $userId) {
