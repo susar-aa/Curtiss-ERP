@@ -129,6 +129,9 @@ class Customer {
             UNION ALL
             SELECT 'Cheque Returned' as type, id, CONCAT('Cheque #', cheque_number, ' (', bank_name, ') - ', status) as ref, banking_date as date, amount as debit, 0 as credit, created_at 
             FROM cheques WHERE customer_id = :c4 AND status IN ('Returned', 'Rejected', 'Bounced')
+            UNION ALL
+            SELECT 'Opening Bal' as type, id, 'System generated' as ref, COALESCE(opening_balance_date, DATE(created_at)) as date, opening_balance as debit, 0 as credit, created_at 
+            FROM customers WHERE id = :c5 AND opening_balance > 0
             ORDER BY date ASC, created_at ASC
         ";
         $this->db->query($sql);
@@ -136,6 +139,7 @@ class Customer {
         $this->db->bind(':c2', $id);
         $this->db->bind(':c3', $id);
         $this->db->bind(':c4', $id);
+        $this->db->bind(':c5', $id);
         $ledger = $this->db->resultSet();
 
         $balance = 0;
