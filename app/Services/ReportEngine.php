@@ -413,23 +413,28 @@ class ReportEngine {
                 ],
                 'sql' => "SELECT ii.description as item_name, SUM(ii.quantity) as total_qty,
                                  SUM(
-                                     ii.total 
-                                     - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (ii.total * i.global_discount_val / 100) ELSE (ii.total / NULLIF(i.total_amount, 0) * i.global_discount_val) END, 0) 
-                                     + COALESCE((ii.total / NULLIF(i.total_amount, 0)) * i.tax_amount, 0)
+                                     COALESCE(
+                                         (ii.total / NULLIF((SELECT SUM(total) FROM invoice_items WHERE invoice_id = i.id), 0)) 
+                                         * (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)), 
+                                         0
+                                     )
                                  ) as total_revenue,
                                  SUM(ii.quantity * COALESCE(ii.cost_at_sale, 0)) as total_cost,
                                  SUM(
-                                     (ii.total 
-                                     - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (ii.total * i.global_discount_val / 100) ELSE (ii.total / NULLIF(i.total_amount, 0) * i.global_discount_val) END, 0) 
-                                     + COALESCE((ii.total / NULLIF(i.total_amount, 0)) * i.tax_amount, 0))
+                                     COALESCE(
+                                         (ii.total / NULLIF((SELECT SUM(total) FROM invoice_items WHERE invoice_id = i.id), 0)) 
+                                         * (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0)), 
+                                         0
+                                     )
                                      - (ii.quantity * COALESCE(ii.cost_at_sale, 0))
                                  ) as gross_profit,
                                  ii.item_id, it.category_id, it.brand
-                          FROM invoice_items ii
-                          JOIN invoices i ON ii.invoice_id = i.id
-                          LEFT JOIN items it ON ii.item_id = it.id
-                          WHERE i.status != 'Voided' /*WHERE_CLAUSE*/
-                          GROUP BY ii.description, ii.item_id, it.category_id, it.brand"
+                           FROM invoice_items ii
+                           JOIN invoices i ON ii.invoice_id = i.id
+                           JOIN customers c ON i.customer_id = c.id
+                           LEFT JOIN items it ON ii.item_id = it.id
+                           WHERE i.status != 'Voided' /*WHERE_CLAUSE*/
+                           GROUP BY ii.description, ii.item_id, it.category_id, it.brand"
             ],
 
             // 3. Procurement Reports
