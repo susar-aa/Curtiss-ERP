@@ -412,9 +412,18 @@ class ReportEngine {
                     'gross_profit' => ['label' => 'Gross Profit', 'type' => 'currency', 'align' => 'right', 'total' => 'sum']
                 ],
                 'sql' => "SELECT ii.description as item_name, SUM(ii.quantity) as total_qty,
-                                 SUM(ii.total) as total_revenue,
+                                 SUM(
+                                     ii.total 
+                                     - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (ii.total * i.global_discount_val / 100) ELSE (ii.total / NULLIF(i.total_amount, 0) * i.global_discount_val) END, 0) 
+                                     + COALESCE((ii.total / NULLIF(i.total_amount, 0)) * i.tax_amount, 0)
+                                 ) as total_revenue,
                                  SUM(ii.quantity * COALESCE(ii.cost_at_sale, 0)) as total_cost,
-                                 SUM(ii.total - (ii.quantity * COALESCE(ii.cost_at_sale, 0))) as gross_profit,
+                                 SUM(
+                                     (ii.total 
+                                     - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (ii.total * i.global_discount_val / 100) ELSE (ii.total / NULLIF(i.total_amount, 0) * i.global_discount_val) END, 0) 
+                                     + COALESCE((ii.total / NULLIF(i.total_amount, 0)) * i.tax_amount, 0))
+                                     - (ii.quantity * COALESCE(ii.cost_at_sale, 0))
+                                 ) as gross_profit,
                                  ii.item_id, it.category_id, it.brand
                           FROM invoice_items ii
                           JOIN invoices i ON ii.invoice_id = i.id
@@ -1004,7 +1013,7 @@ class ReportEngine {
             if (preg_match('/\bi\.created_by\b/', $baseSql)) {
                 $clauses[] = "i.created_by = :rep";
             } elseif (preg_match('/\bcp\.created_by\b/', $baseSql)) {
-                $clauses[] = "cp.created_by = :rep";
+                $clauses[] = "(cp.created_by = :rep OR cp.rep_route_id IN (SELECT id FROM rep_daily_routes WHERE user_id = :rep) OR cp.customer_id IN (SELECT customer_id FROM invoices WHERE created_by = :rep))";
             } elseif (preg_match('/\br\.user_id\b/', $baseSql)) {
                 $clauses[] = "r.user_id = :rep";
             } elseif (strpos($baseSql, 'customers') !== false) {
