@@ -36,7 +36,7 @@ class GalleryController extends Controller {
                         
                         $galleryImages[] = [
                             'filename' => $file,
-                            'url' => APP_URL . '/public/uploads/products/' . $file,
+                            'url' => APP_URL . '/uploads/products/' . $file,
                             'path' => 'public/uploads/products/' . $file,
                             'size' => filesize($path),
                             'upload_date' => filemtime($path),
