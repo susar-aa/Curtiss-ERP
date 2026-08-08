@@ -240,12 +240,22 @@ class RepPerformance {
         $avgSalesPerVisit = $totalVisits > 0 ? $netSales / $totalVisits : 0.00;
 
         // Collections
-        $collectionsSql = "SELECT payment_method, SUM(amount) as total_collected 
-                           FROM customer_payments 
-                           WHERE rep_route_id IN ($routeIdsPlaceholder) AND status != 'Reversed'
-                             AND payment_date BETWEEN :start AND :end
-                           GROUP BY payment_method";
+        $collectionsSql = "SELECT cp.payment_method, SUM(cp.amount) as total_collected 
+                           FROM customer_payments cp
+                           JOIN customers c ON cp.customer_id = c.id
+                           WHERE (cp.rep_route_id IN ($routeIdsPlaceholder) 
+                                  OR cp.created_by = :uid 
+                                  OR cp.customer_id IN (SELECT customer_id FROM invoices WHERE created_by = :uid))
+                             AND cp.status = 'Active'
+                             AND cp.payment_date BETWEEN :start AND :end";
+                             
+        if ($routeId) {
+            $collectionsSql .= " AND cp.rep_route_id = " . intval($routeId);
+        }
+        
+        $collectionsSql .= " GROUP BY cp.payment_method";
         $this->db->query($collectionsSql);
+        $this->db->bind(':uid', $repUserId);
         $this->db->bind(':start', $startDate);
         $this->db->bind(':end', $endDate);
         $collectionRows = $this->db->resultSet() ?: [];

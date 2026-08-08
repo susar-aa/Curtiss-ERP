@@ -3250,3 +3250,31 @@ Params: Array
 )
 
 
+2026-08-08 21:46:57 - Report: credit_collection
+SQL: SELECT cp.payment_date, c.name as customer_name, cp.payment_method, cp.reference, cp.amount,
+                                 cp.customer_id, cp.created_by, cp.rep_route_id, cp.id
+                          FROM customer_payments cp
+                          JOIN customers c ON cp.customer_id = c.id
+                          WHERE cp.status = 'Active'  AND cp.payment_date >= :start_date AND cp.payment_date <= :end_date AND (cp.created_by = :rep OR cp.rep_route_id IN (SELECT id FROM rep_daily_routes WHERE user_id = :rep) OR cp.customer_id IN (SELECT customer_id FROM invoices WHERE created_by = :rep))
+Params: Array
+(
+    [:start_date] => 2026-08-01 00:00:00
+    [:end_date] => 2026-08-31 23:59:59
+    [:rep] => 1
+)
+
+
+2026-08-08 21:47:37 - Report: credit_collection
+SQL: SELECT cp.payment_date, c.name as customer_name, cp.payment_method, cp.reference, cp.amount,
+                                 cp.customer_id, cp.created_by, cp.rep_route_id, cp.id
+                          FROM customer_payments cp
+                          JOIN customers c ON cp.customer_id = c.id
+                          WHERE cp.status = 'Active'  AND cp.payment_date >= :start_date AND cp.payment_date <= :end_date AND (cp.created_by = :rep OR cp.rep_route_id IN (SELECT id FROM rep_daily_routes WHERE user_id = :rep) OR cp.customer_id IN (SELECT customer_id FROM invoices WHERE created_by = :rep))
+Params: Array
+(
+    [:start_date] => 2026-08-01 00:00:00
+    [:end_date] => 2026-08-31 23:59:59
+    [:rep] => 11
+)
+
+
