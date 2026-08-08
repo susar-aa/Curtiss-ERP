@@ -20,7 +20,7 @@ class BackupController extends Controller {
         $files = [];
         if ($handle = opendir($backupDir)) {
             while (false !== ($entry = readdir($handle))) {
-                if ($entry != "." && $entry != ".." && pathinfo($entry, PATHINFO_EXTENSION) == 'sql') {
+                if ($entry != "." && $entry != ".." && pathinfo($entry, PATHINFO_EXTENSION) == 'zip') {
                     $files[] = [
                         'filename' => $entry,
                         'size' => filesize($backupDir . $entry),
@@ -57,63 +57,107 @@ class BackupController extends Controller {
     }
 
     public function generate() {
+        // Increase limits for intensive backup process
+        ini_set('memory_limit', '512M');
+        set_time_limit(300);
+
         try {
             $pdo = $this->db->getDbHandler();
-            
-            // Get all tables
+            $rootDir = dirname(__DIR__, 2);
+            $backupDir = $rootDir . '/writable/backups/';
+            if (!is_dir($backupDir)) {
+                mkdir($backupDir, 0777, true);
+            }
+
+            $timestamp = date('Ymd_His');
+            $sqlFilename = 'db_' . DB_NAME . '_' . $timestamp . '.sql';
+            $sqlFilePath = $backupDir . $sqlFilename;
+            $zipFilename = 'backup_' . DB_NAME . '_' . $timestamp . '.zip';
+            $zipFilePath = $backupDir . $zipFilename;
+
+            // 1. Generate SQL File (Stream to disk to prevent RAM exhaustion)
+            $fp = fopen($sqlFilePath, 'w');
+            if (!$fp) throw new Exception("Unable to create temporary SQL file.");
+
+            fwrite($fp, "-- Curtiss ERP System Backup\n");
+            fwrite($fp, "-- Generated: " . date('Y-m-d H:i:s') . "\n");
+            fwrite($fp, "-- Database: " . DB_NAME . "\n\n");
+            fwrite($fp, "SET FOREIGN_KEY_CHECKS=0;\n\n");
+
             $tables = [];
             $result = $pdo->query("SHOW TABLES");
             while ($row = $result->fetch(PDO::FETCH_NUM)) {
                 $tables[] = $row[0];
             }
 
-            $sql = "-- Curtiss ERP System Backup\n";
-            $sql .= "-- Generated: " . date('Y-m-d H:i:s') . "\n";
-            $sql .= "-- Database: " . DB_NAME . "\n\n";
-            $sql .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
-
             foreach ($tables as $table) {
-                // Get table structure
                 $structResult = $pdo->query("SHOW CREATE TABLE `$table`");
                 $structRow = $structResult->fetch(PDO::FETCH_NUM);
-                $sql .= "DROP TABLE IF EXISTS `$table`;\n";
-                $sql .= $structRow[1] . ";\n\n";
+                fwrite($fp, "DROP TABLE IF EXISTS `$table`;\n");
+                fwrite($fp, $structRow[1] . ";\n\n");
 
-                // Get table data
                 $dataResult = $pdo->query("SELECT * FROM `$table`");
                 $columnCount = $dataResult->columnCount();
 
                 while ($row = $dataResult->fetch(PDO::FETCH_NUM)) {
-                    $sql .= "INSERT INTO `$table` VALUES(";
+                    $insertSql = "INSERT INTO `$table` VALUES(";
                     for ($j = 0; $j < $columnCount; $j++) {
                         if (isset($row[$j])) {
-                            // Escape strings
                             $escaped = str_replace(array("\x00", "\n", "\r", "\\", "'", "\x1a"), array('\\0', '\\n', '\\r', '\\\\', "\\'", '\\Z'), $row[$j]);
-                            $sql .= "'" . $escaped . "'";
+                            $insertSql .= "'" . $escaped . "'";
                         } else {
-                            $sql .= "NULL";
+                            $insertSql .= "NULL";
                         }
-                        if ($j < ($columnCount - 1)) {
-                            $sql .= ",";
-                        }
+                        if ($j < ($columnCount - 1)) $insertSql .= ",";
                     }
-                    $sql .= ");\n";
+                    $insertSql .= ");\n";
+                    fwrite($fp, $insertSql);
                 }
-                $sql .= "\n";
+                fwrite($fp, "\n");
+            }
+            fwrite($fp, "SET FOREIGN_KEY_CHECKS=1;\n");
+            fclose($fp);
+
+            // 2. Create ZIP Archive
+            $zip = new ZipArchive();
+            if ($zip->open($zipFilePath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
+                throw new Exception("Cannot create ZIP archive.");
             }
 
-            $sql .= "SET FOREIGN_KEY_CHECKS=1;\n";
+            // Add SQL Dump
+            $zip->addFile($sqlFilePath, $sqlFilename);
 
-            $backupDir = '../writable/backups/';
-            if (!is_dir($backupDir)) {
-                mkdir($backupDir, 0777, true);
+            // Add .env file
+            if (file_exists($rootDir . '/.env')) {
+                $zip->addFile($rootDir . '/.env', '.env');
             }
 
-            $filename = 'backup_' . DB_NAME . '_' . date('Ymd_His') . '.sql';
-            file_put_contents($backupDir . $filename, $sql);
+            // Add uploads directory
+            $uploadsDir = $rootDir . '/public/uploads';
+            if (is_dir($uploadsDir)) {
+                $files = new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($uploadsDir, RecursiveDirectoryIterator::SKIP_DOTS),
+                    RecursiveIteratorIterator::LEAVES_ONLY
+                );
+                foreach ($files as $name => $file) {
+                    if (!$file->isDir()) {
+                        $filePath = $file->getRealPath();
+                        // Compute relative path
+                        $relativePath = 'public/uploads/' . ltrim(str_replace('\\', '/', substr($filePath, strlen(realpath($uploadsDir)))), '/');
+                        $zip->addFile($filePath, $relativePath);
+                    }
+                }
+            }
 
-            $this->logActivity('System Backup Generated', 'System', "Backup filename: $filename");
-            $_SESSION['flash_success'] = "Backup file $filename generated successfully.";
+            $zip->close();
+
+            // Cleanup SQL file
+            if (file_exists($sqlFilePath)) {
+                unlink($sqlFilePath);
+            }
+
+            $this->logActivity('System Backup Generated', 'System', "Backup filename: $zipFilename");
+            $_SESSION['flash_success'] = "Full system backup $zipFilename generated successfully.";
 
         } catch (Exception $e) {
             $_SESSION['flash_error'] = "Backup failed: " . $e->getMessage();
@@ -124,13 +168,12 @@ class BackupController extends Controller {
     }
 
     public function download($filename) {
-        // Prevent directory traversal
         $filename = basename($filename);
         $filePath = '../writable/backups/' . $filename;
 
-        if (file_exists($filePath) && pathinfo($filePath, PATHINFO_EXTENSION) == 'sql') {
+        if (file_exists($filePath) && pathinfo($filePath, PATHINFO_EXTENSION) == 'zip') {
             header('Content-Description: File Transfer');
-            header('Content-Type: application/octet-stream');
+            header('Content-Type: application/zip');
             header('Content-Disposition: attachment; filename="' . $filename . '"');
             header('Expires: 0');
             header('Cache-Control: must-revalidate');
@@ -150,10 +193,10 @@ class BackupController extends Controller {
         $filename = basename($filename);
         $filePath = '../writable/backups/' . $filename;
 
-        if (file_exists($filePath) && pathinfo($filePath, PATHINFO_EXTENSION) == 'sql') {
+        if (file_exists($filePath) && pathinfo($filePath, PATHINFO_EXTENSION) == 'zip') {
             unlink($filePath);
             $this->logActivity('System Backup Deleted', 'System', "Deleted backup file: $filename");
-            $_SESSION['flash_success'] = "Backup file deleted successfully.";
+            $_SESSION['flash_success'] = "Backup archive deleted successfully.";
         } else {
             $_SESSION['flash_error'] = "Backup file not found.";
         }
@@ -163,51 +206,99 @@ class BackupController extends Controller {
 
     public function restore() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            // Increase limits for extraction and DB import
+            ini_set('memory_limit', '512M');
+            set_time_limit(300);
+            
             $pdo = $this->db->getDbHandler();
-            $sqlContent = '';
+            $zipFilePath = '';
 
             // Handle file upload or server file restoration
             if (isset($_POST['server_file']) && !empty($_POST['server_file'])) {
                 $filename = basename($_POST['server_file']);
-                $filePath = '../writable/backups/' . $filename;
-                if (file_exists($filePath) && pathinfo($filePath, PATHINFO_EXTENSION) == 'sql') {
-                    $sqlContent = file_get_contents($filePath);
-                } else {
-                    $_SESSION['flash_error'] = "Server backup file not found.";
-                    header('Location: ' . APP_URL . '/backup');
-                    exit;
-                }
+                $zipFilePath = '../writable/backups/' . $filename;
             } elseif (isset($_FILES['backup_file']) && $_FILES['backup_file']['error'] === UPLOAD_ERR_OK) {
-                $fileTmpPath = $_FILES['backup_file']['tmp_name'];
+                $zipFilePath = $_FILES['backup_file']['tmp_name'];
                 $fileName = $_FILES['backup_file']['name'];
-                if (strtolower(pathinfo($fileName, PATHINFO_EXTENSION)) == 'sql') {
-                    $sqlContent = file_get_contents($fileTmpPath);
-                } else {
-                    $_SESSION['flash_error'] = "Invalid file type. Only SQL files are supported.";
+                if (strtolower(pathinfo($fileName, PATHINFO_EXTENSION)) != 'zip') {
+                    $_SESSION['flash_error'] = "Invalid file type. Only ZIP archives are supported.";
                     header('Location: ' . APP_URL . '/backup');
                     exit;
                 }
             } else {
-                $_SESSION['flash_error'] = "Please select a backup file to restore.";
+                $_SESSION['flash_error'] = "Please select a backup archive to restore.";
                 header('Location: ' . APP_URL . '/backup');
                 exit;
             }
 
-            if (!empty($sqlContent)) {
+            if (file_exists($zipFilePath)) {
                 try {
-                    // Temporarily disable foreign keys and execute queries
-                    $pdo->exec("SET FOREIGN_KEY_CHECKS=0;");
-                    
-                    // Execute the entire SQL script
-                    $pdo->exec($sqlContent);
-                    
-                    $pdo->exec("SET FOREIGN_KEY_CHECKS=1;");
-                    
-                    $this->logActivity('System Restored', 'System', "Database restored successfully.");
-                    $_SESSION['flash_success'] = "Database restored successfully!";
+                    $rootDir = dirname(__DIR__, 2);
+                    $zip = new ZipArchive();
+                    if ($zip->open($zipFilePath) === TRUE) {
+                        
+                        // 1. Find and Restore Database
+                        $sqlFileIndex = -1;
+                        for ($i = 0; $i < $zip->numFiles; $i++) {
+                            $stat = $zip->statIndex($i);
+                            if (pathinfo($stat['name'], PATHINFO_EXTENSION) == 'sql') {
+                                $sqlFileIndex = $i;
+                                break;
+                            }
+                        }
+
+                        if ($sqlFileIndex !== -1) {
+                            $sqlFileName = $zip->getNameIndex($sqlFileIndex);
+                            $fp = $zip->getStream($sqlFileName);
+                            if (!$fp) throw new Exception("Failed to read SQL stream from ZIP.");
+                            
+                            $pdo->exec("SET FOREIGN_KEY_CHECKS=0;");
+                            
+                            $query = '';
+                            while (!feof($fp)) {
+                                $line = fgets($fp);
+                                if (trim($line) == '' || strpos(trim($line), '--') === 0) continue;
+                                $query .= $line;
+                                if (substr(trim($line), -1) == ';') {
+                                    $pdo->exec($query);
+                                    $query = '';
+                                }
+                            }
+                            fclose($fp);
+                            $pdo->exec("SET FOREIGN_KEY_CHECKS=1;");
+                        }
+
+                        // 2. Extract Files (Uploads)
+                        // Extract specific paths to their original locations
+                        for ($i = 0; $i < $zip->numFiles; $i++) {
+                            $filename = $zip->getNameIndex($i);
+                            
+                            if (strpos($filename, 'public/uploads/') === 0) {
+                                // Extract to root dir
+                                $dest = $rootDir . '/' . $filename;
+                                $dir = dirname($dest);
+                                if (!is_dir($dir)) mkdir($dir, 0777, true);
+                                copy("zip://".$zipFilePath."#".$filename, $dest);
+                            }
+                            
+                            // Restore .env file securely as a backup to avoid overwriting live credentials
+                            if ($filename === '.env') {
+                                copy("zip://".$zipFilePath."#".$filename, $rootDir . '/.env.restored');
+                            }
+                        }
+                        
+                        $zip->close();
+                        
+                        $this->logActivity('System Restored', 'System', "Database and assets restored from archive.");
+                        $_SESSION['flash_success'] = "System restored successfully! (Note: .env file was extracted as .env.restored to prevent overwriting live credentials)";
+                    } else {
+                        throw new Exception("Failed to open ZIP archive.");
+                    }
                 } catch (Exception $e) {
                     $_SESSION['flash_error'] = "Restore failed: " . $e->getMessage();
                 }
+            } else {
+                $_SESSION['flash_error'] = "Archive file not found.";
             }
         }
         header('Location: ' . APP_URL . '/backup');

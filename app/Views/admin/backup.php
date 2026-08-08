@@ -175,10 +175,10 @@
         <!-- Backup Section -->
         <div class="glass-card">
             <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 16px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
-                <i class="ph ph-file-arrow-down" style="color: var(--text-accent);"></i> Create Database Backup
+                <i class="ph ph-file-arrow-down" style="color: var(--text-accent);"></i> Create Full System Backup
             </h3>
             <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">
-                Generates a native SQL dump of the system database (`<?= DB_NAME ?>`), including all definitions and data. Files are securely archived in the server environment.
+                Generates a complete ZIP archive including the database (`<?= DB_NAME ?>`), `public/uploads/` (images/documents), and environment configuration. Files are securely archived in the server environment.
             </p>
             <a href="<?= APP_URL ?>/backup/generate" class="btn"><i class="ph ph-rocket-launch"></i> Run Full Backup Now</a>
         </div>
@@ -186,17 +186,17 @@
         <!-- Restore Section -->
         <div class="glass-card">
             <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 16px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
-                <i class="ph ph-file-arrow-up" style="color: #ef4444;"></i> Upload &amp; Restore SQL
+                <i class="ph ph-file-arrow-up" style="color: #ef4444;"></i> Upload &amp; Restore Archive
             </h3>
             <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
-                Select a local `.sql` backup file to upload and execute on the database server.
+                Select a local `.zip` backup archive to upload and restore the system state.
             </p>
             <form action="<?= APP_URL ?>/backup/restore" method="POST" enctype="multipart/form-data">
                 <div class="form-group" style="margin-bottom: 12px;">
-                    <input type="file" name="backup_file" class="form-control" accept=".sql" required>
+                    <input type="file" name="backup_file" class="form-control" accept=".zip" required>
                 </div>
-                <button type="submit" class="btn btn-danger" onclick="return confirm('WARNING: Restoring the database will overwrite all current tables and transactional entries. Are you sure you want to continue?')">
-                    <i class="ph ph-warning-circle"></i> Upload &amp; Restore Database
+                <button type="submit" class="btn btn-danger" onclick="return confirm('WARNING: Restoring the system will overwrite current tables and replace asset files. Are you sure you want to continue?')">
+                    <i class="ph ph-warning-circle"></i> Upload &amp; Restore System
                 </button>
             </form>
         </div>
@@ -220,7 +220,7 @@
                 </thead>
                 <tbody>
                     <?php if(empty($data['files'])): ?>
-                    <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 40px;">No database backups generated yet.</td></tr>
+                    <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 40px;">No system backups generated yet.</td></tr>
                     <?php else: foreach($data['files'] as $f): ?>
                     <tr>
                         <td>
@@ -230,7 +230,7 @@
                             <span style="font-size: 13px; font-weight: 500; color: var(--text-main);"><?= date('d M Y - h:i A', $f['date']) ?></span>
                         </td>
                         <td>
-                            <strong style="font-size: 12.5px;"><?= round($f['size'] / 1024, 2) ?> KB</strong>
+                            <strong style="font-size: 12.5px;"><?= round($f['size'] / 1024 / 1024, 2) ?> MB</strong>
                         </td>
                         <td style="text-align: right; display: flex; justify-content: flex-end; gap: 8px;">
                             <!-- Restore Server File -->
