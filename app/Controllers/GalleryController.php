@@ -16,8 +16,11 @@ class GalleryController extends Controller {
     public function index() {
         $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
         $files = [];
-        if (file_exists($uploadDir)) {
-            $files = array_diff(scandir($uploadDir), array('.', '..'));
+        if (is_dir($uploadDir)) {
+            $scanned = scandir($uploadDir);
+            if (is_array($scanned)) {
+                $files = array_diff($scanned, array('.', '..'));
+            }
         }
 
         $usedImagesMap = $this->galleryModel->getAllUsedImages();

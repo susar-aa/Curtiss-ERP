@@ -79,34 +79,37 @@ class Gallery {
         }
 
         // 2. Check item_images table
-        $this->db->query("SELECT ii.image_path, i.id as item_id, i.name, i.sku FROM item_images ii LEFT JOIN items i ON ii.item_id = i.id");
-        $itemImages = $this->db->resultSet();
-        
-        foreach ($itemImages as $imgRow) {
-            if (!empty($imgRow->image_path)) {
-                $basename = basename($imgRow->image_path);
-                
-                // Only add if not already added by the primary/variation checks to avoid duplicates
-                $alreadyAdded = false;
-                if (isset($usedImages[$basename])) {
-                    foreach ($usedImages[$basename] as $existing) {
-                        if ($existing['item_id'] == $imgRow->item_id) {
-                            $alreadyAdded = true;
-                            break;
+        $this->db->query("SHOW TABLES LIKE 'item_images'");
+        if ($this->db->single()) {
+            $this->db->query("SELECT ii.image_path, i.id as item_id, i.name, i.sku FROM item_images ii LEFT JOIN items i ON ii.item_id = i.id");
+            $itemImages = $this->db->resultSet();
+            
+            foreach ($itemImages as $imgRow) {
+                if (!empty($imgRow->image_path)) {
+                    $basename = basename($imgRow->image_path);
+                    
+                    // Only add if not already added by the primary/variation checks to avoid duplicates
+                    $alreadyAdded = false;
+                    if (isset($usedImages[$basename])) {
+                        foreach ($usedImages[$basename] as $existing) {
+                            if ($existing['item_id'] == $imgRow->item_id) {
+                                $alreadyAdded = true;
+                                break;
+                            }
                         }
                     }
-                }
-                
-                if (!$alreadyAdded) {
-                    if (!isset($usedImages[$basename])) {
-                        $usedImages[$basename] = [];
+                    
+                    if (!$alreadyAdded) {
+                        if (!isset($usedImages[$basename])) {
+                            $usedImages[$basename] = [];
+                        }
+                        $usedImages[$basename][] = [
+                            'type' => 'App Catalog',
+                            'item_id' => $imgRow->item_id,
+                            'name' => $imgRow->name,
+                            'sku' => $imgRow->sku
+                        ];
                     }
-                    $usedImages[$basename][] = [
-                        'type' => 'Product Image (DB)',
-                        'item_id' => $imgRow->item_id,
-                        'name' => $imgRow->name ?? 'Unknown',
-                        'sku' => $imgRow->sku ?? 'Unknown'
-                    ];
                 }
             }
         }
@@ -122,10 +125,13 @@ class Gallery {
         $basename = basename($imagePath);
         
         // 1. Remove from item_images
-        $this->db->query("DELETE FROM item_images WHERE image_path LIKE :path OR image_path LIKE :basename");
-        $this->db->bind(':path', '%' . $imagePath . '%');
-        $this->db->bind(':basename', '%' . $basename);
-        $this->db->execute();
+        $this->db->query("SHOW TABLES LIKE 'item_images'");
+        if ($this->db->single()) {
+            $this->db->query("DELETE FROM item_images WHERE image_path LIKE :path OR image_path LIKE :basename");
+            $this->db->bind(':path', '%' . $imagePath . '%');
+            $this->db->bind(':basename', '%' . $basename);
+            $this->db->execute();
+        }
 
         // 2. Remove primary image from items
         $this->db->query("UPDATE items SET image_path = NULL WHERE image_path LIKE :path OR image_path LIKE :basename");
