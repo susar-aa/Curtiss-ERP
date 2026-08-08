@@ -9,56 +9,76 @@ class GalleryController extends Controller {
             exit;
         }
         
-        require_once dirname(__DIR__) . '/Models/Gallery.php';
-        $this->galleryModel = new Gallery();
+        restore_exception_handler();
+        restore_error_handler();
+        ini_set('display_errors', 1);
+        error_reporting(E_ALL);
+        
+        try {
+            require_once dirname(__DIR__) . '/Models/Gallery.php';
+            $this->galleryModel = new Gallery();
+        } catch (\Throwable $e) {
+            echo "<pre>Construct Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine() . "</pre>";
+            die();
+        }
     }
 
     public function index() {
-        $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
-        $files = [];
-        if (is_dir($uploadDir)) {
-            $scanned = scandir($uploadDir);
-            if (is_array($scanned)) {
-                $files = array_diff($scanned, array('.', '..'));
-            }
-        }
-
-        $usedImagesMap = $this->galleryModel->getAllUsedImages();
+        restore_exception_handler();
+        restore_error_handler();
+        ini_set('display_errors', 1);
+        error_reporting(E_ALL);
         
-        $galleryImages = [];
-        
-        foreach ($files as $file) {
-            $path = $uploadDir . '/' . $file;
-            if (is_file($path)) {
-                $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-                if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-                    $isUsed = isset($usedImagesMap[$file]);
-                    
-                    $galleryImages[] = [
-                        'filename' => $file,
-                        'url' => APP_URL . '/public/uploads/products/' . $file,
-                        'path' => 'public/uploads/products/' . $file,
-                        'size' => filesize($path),
-                        'upload_date' => filemtime($path),
-                        'is_used' => $isUsed,
-                        'usages' => $isUsed ? $usedImagesMap[$file] : []
-                    ];
+        try {
+            $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
+            $files = [];
+            if (is_dir($uploadDir)) {
+                $scanned = scandir($uploadDir);
+                if (is_array($scanned)) {
+                    $files = array_diff($scanned, array('.', '..'));
                 }
             }
-        }
-        
-        // Sort by newest first
-        usort($galleryImages, function($a, $b) {
-            return $b['upload_date'] <=> $a['upload_date'];
-        });
 
-        $data = [
-            'title' => 'Image Gallery',
-            'images' => $galleryImages,
-            'content_view' => 'gallery/index'
-        ];
-        
-        $this->view('layouts/main', $data);
+            $usedImagesMap = $this->galleryModel->getAllUsedImages();
+            
+            $galleryImages = [];
+            
+            foreach ($files as $file) {
+                $path = $uploadDir . '/' . $file;
+                if (is_file($path)) {
+                    $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+                    if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                        $isUsed = isset($usedImagesMap[$file]);
+                        
+                        $galleryImages[] = [
+                            'filename' => $file,
+                            'url' => APP_URL . '/public/uploads/products/' . $file,
+                            'path' => 'public/uploads/products/' . $file,
+                            'size' => filesize($path),
+                            'upload_date' => filemtime($path),
+                            'is_used' => $isUsed,
+                            'usages' => $isUsed ? $usedImagesMap[$file] : []
+                        ];
+                    }
+                }
+            }
+            
+            // Sort by newest first
+            usort($galleryImages, function($a, $b) {
+                return $b['upload_date'] <=> $a['upload_date'];
+            });
+
+            $data = [
+                'title' => 'Image Gallery',
+                'images' => $galleryImages,
+                'content_view' => 'gallery/index'
+            ];
+            
+            $this->view('layouts/main', $data);
+        } catch (\Throwable $e) {
+            echo "<pre>Index Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine() . "\n" . $e->getTraceAsString() . "</pre>";
+            die();
+        }
     }
 
     public function delete() {
