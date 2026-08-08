@@ -1338,6 +1338,15 @@ if (!function_exists('hasPermission')) {
                     </div>
                     <div class="mega-menu-col">
                         <div class="mega-menu-header">Catalog Setup</div>
+                        <?php if (hasPermission('inventory')): ?>
+                        <a href="<?= APP_URL ?>/gallery" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-image"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Image Gallery</div>
+                                <div class="desc">Manage all product images</div>
+                            </div>
+                        </a>
+                        <?php endif; ?>
                         <?php if (hasPermission('category')): ?>
                         <a href="<?= APP_URL ?>/category" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-tag"></i></div>
