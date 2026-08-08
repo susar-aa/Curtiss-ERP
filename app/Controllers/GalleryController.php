@@ -9,28 +9,12 @@ class GalleryController extends Controller {
             exit;
         }
         
-        restore_exception_handler();
-        restore_error_handler();
-        ini_set('display_errors', 1);
-        error_reporting(E_ALL);
-        
-        try {
-            require_once dirname(__DIR__) . '/Models/Gallery.php';
-            $this->galleryModel = new Gallery();
-        } catch (\Throwable $e) {
-            echo "<pre>Construct Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine() . "</pre>";
-            die();
-        }
+        require_once dirname(__DIR__) . '/Models/Gallery.php';
+        $this->galleryModel = new Gallery();
     }
 
     public function index() {
-        restore_exception_handler();
-        restore_error_handler();
-        ini_set('display_errors', 1);
-        error_reporting(E_ALL);
-        
-        try {
-            $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
+        $uploadDir = dirname(__DIR__, 2) . '/public/uploads/products';
             $files = [];
             if (is_dir($uploadDir)) {
                 $scanned = scandir($uploadDir);
@@ -75,10 +59,6 @@ class GalleryController extends Controller {
             ];
             
             $this->view('layouts/main', $data);
-        } catch (\Throwable $e) {
-            echo "<pre>Index Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine() . "\n" . $e->getTraceAsString() . "</pre>";
-            die();
-        }
     }
 
     public function delete() {

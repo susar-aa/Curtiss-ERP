@@ -16,7 +16,7 @@ class Gallery {
         $usedImages = [];
 
         // 1. Check primary and additional images in items table
-        $this->db->query("SELECT id, name, sku, image_path, additional_images, variations_json FROM items");
+        $this->db->query("SELECT id, name, item_code as sku, image_path, additional_images, variations_json FROM items");
         $items = $this->db->resultSet();
 
         foreach ($items as $item) {
@@ -81,7 +81,7 @@ class Gallery {
         // 2. Check item_images table
         $this->db->query("SHOW TABLES LIKE 'item_images'");
         if ($this->db->single()) {
-            $this->db->query("SELECT ii.image_path, i.id as item_id, i.name, i.sku FROM item_images ii LEFT JOIN items i ON ii.item_id = i.id");
+            $this->db->query("SELECT ii.image_path, i.id as item_id, i.name, i.item_code as sku FROM item_images ii LEFT JOIN items i ON ii.item_id = i.id");
             $itemImages = $this->db->resultSet();
             
             foreach ($itemImages as $imgRow) {
