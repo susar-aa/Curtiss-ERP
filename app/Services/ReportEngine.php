@@ -411,26 +411,26 @@ class ReportEngine {
                     'total_cost' => ['label' => 'Total Cost', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
                     'gross_profit' => ['label' => 'Gross Profit', 'type' => 'currency', 'align' => 'right', 'total' => 'sum']
                 ],
-                'sql' => "SELECT ii.description as item_name, SUM(ii.quantity) as total_qty,
+                'sql' => "SELECT COALESCE(ii.description, 'Uncategorized/No Item') as item_name, SUM(COALESCE(ii.quantity, 0)) as total_qty,
                                  SUM(
                                      COALESCE(
                                          (ii.total / NULLIF((SELECT SUM(total) FROM invoice_items WHERE invoice_id = i.id), 0)) 
                                          * (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0)), 
-                                         0
+                                         (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0) + COALESCE(i.tax_amount, 0))
                                      )
                                  ) as total_revenue,
-                                 SUM(ii.quantity * COALESCE(ii.cost_at_sale, 0)) as total_cost,
+                                 SUM(COALESCE(ii.quantity, 0) * COALESCE(ii.cost_at_sale, 0)) as total_cost,
                                  SUM(
                                      COALESCE(
                                          (ii.total / NULLIF((SELECT SUM(total) FROM invoice_items WHERE invoice_id = i.id), 0)) 
                                          * (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0)), 
-                                         0
+                                         (i.total_amount - COALESCE(CASE WHEN i.global_discount_type = '%' THEN (i.total_amount * i.global_discount_val / 100) ELSE i.global_discount_val END, 0))
                                      )
-                                     - (ii.quantity * COALESCE(ii.cost_at_sale, 0))
+                                     - (COALESCE(ii.quantity, 0) * COALESCE(ii.cost_at_sale, 0))
                                  ) as gross_profit,
                                  ii.item_id, it.category_id, it.brand
-                           FROM invoice_items ii
-                           JOIN invoices i ON ii.invoice_id = i.id
+                           FROM invoices i
+                           LEFT JOIN invoice_items ii ON ii.invoice_id = i.id
                            JOIN customers c ON i.customer_id = c.id
                            LEFT JOIN items it ON ii.item_id = it.id
                            WHERE i.status != 'Voided' /*WHERE_CLAUSE*/
