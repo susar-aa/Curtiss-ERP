@@ -1157,6 +1157,12 @@ class ReportEngine {
             $baseSql = str_replace('/*WHERE_CLAUSE*/', '', $baseSql);
         }
 
+        // LOGGING FOR DEBUGGING
+        $logData = date('Y-m-d H:i:s') . " - Report: " . $reportKey . "\n";
+        $logData .= "SQL: " . $baseSql . "\n";
+        $logData .= "Params: " . print_r($params, true) . "\n\n";
+        file_put_contents(__DIR__ . '/../../report_queries.log', $logData, FILE_APPEND);
+
         // Live execution
         try {
             // Get Total Row count for server-side pagination
