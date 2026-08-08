@@ -64,8 +64,20 @@ try {
         $dataResult = $pdo->query("SELECT * FROM `$table`");
         $columnCount = $dataResult->columnCount();
 
+        $rowCount = 0;
+        $batchSize = 200;
+        $insertSql = "";
+
         while ($row = $dataResult->fetch(PDO::FETCH_NUM)) {
-            $insertSql = "INSERT INTO `$table` VALUES(";
+            if ($rowCount % $batchSize == 0) {
+                if ($rowCount > 0) {
+                    fwrite($fp, $insertSql . ";\n");
+                }
+                $insertSql = "INSERT INTO `$table` VALUES (";
+            } else {
+                $insertSql .= "),(";
+            }
+
             for ($j = 0; $j < $columnCount; $j++) {
                 if (isset($row[$j])) {
                     $escaped = str_replace(array("\x00", "\n", "\r", "\\", "'", "\x1a"), array('\\0', '\\n', '\\r', '\\\\', "\\'", '\\Z'), $row[$j]);
@@ -75,8 +87,10 @@ try {
                 }
                 if ($j < ($columnCount - 1)) $insertSql .= ",";
             }
-            $insertSql .= ");\n";
-            fwrite($fp, $insertSql);
+            $rowCount++;
+        }
+        if ($rowCount > 0) {
+            fwrite($fp, $insertSql . ");\n");
         }
         fwrite($fp, "\n");
     }

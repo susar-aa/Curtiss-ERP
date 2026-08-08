@@ -99,8 +99,20 @@ class BackupController extends Controller {
                 $dataResult = $pdo->query("SELECT * FROM `$table`");
                 $columnCount = $dataResult->columnCount();
 
+                $rowCount = 0;
+                $batchSize = 200;
+                $insertSql = "";
+
                 while ($row = $dataResult->fetch(PDO::FETCH_NUM)) {
-                    $insertSql = "INSERT INTO `$table` VALUES(";
+                    if ($rowCount % $batchSize == 0) {
+                        if ($rowCount > 0) {
+                            fwrite($fp, $insertSql . ";\n");
+                        }
+                        $insertSql = "INSERT INTO `$table` VALUES (";
+                    } else {
+                        $insertSql .= "),(";
+                    }
+                    
                     for ($j = 0; $j < $columnCount; $j++) {
                         if (isset($row[$j])) {
                             $escaped = str_replace(array("\x00", "\n", "\r", "\\", "'", "\x1a"), array('\\0', '\\n', '\\r', '\\\\', "\\'", '\\Z'), $row[$j]);
@@ -110,8 +122,10 @@ class BackupController extends Controller {
                         }
                         if ($j < ($columnCount - 1)) $insertSql .= ",";
                     }
-                    $insertSql .= ");\n";
-                    fwrite($fp, $insertSql);
+                    $rowCount++;
+                }
+                if ($rowCount > 0) {
+                    fwrite($fp, $insertSql . ");\n");
                 }
                 fwrite($fp, "\n");
             }
@@ -253,8 +267,10 @@ class BackupController extends Controller {
                             if (!$fp) throw new Exception("Failed to read SQL stream from ZIP.");
                             
                             $pdo->exec("SET FOREIGN_KEY_CHECKS=0;");
+                            $pdo->exec("SET autocommit=0;"); // Disable autocommit to massively speed up bulk inserts
                             
                             $query = '';
+                            $queryCount = 0;
                             while (!feof($fp)) {
                                 $line = fgets($fp);
                                 if (trim($line) == '' || strpos(trim($line), '--') === 0) continue;
@@ -262,9 +278,18 @@ class BackupController extends Controller {
                                 if (substr(trim($line), -1) == ';') {
                                     $pdo->exec($query);
                                     $query = '';
+                                    $queryCount++;
+                                    
+                                    // Commit every 1000 queries to prevent memory buildup
+                                    if ($queryCount % 1000 == 0) {
+                                        $pdo->exec("COMMIT;");
+                                        $pdo->exec("SET autocommit=0;");
+                                    }
                                 }
                             }
                             fclose($fp);
+                            $pdo->exec("COMMIT;");
+                            $pdo->exec("SET autocommit=1;");
                             $pdo->exec("SET FOREIGN_KEY_CHECKS=1;");
                         }
 
