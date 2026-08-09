@@ -11,6 +11,7 @@
             --text-main: #333;
             --border-color: rgba(0, 0, 0, 0.1);
             --primary-blue: #0066cc;
+            --splash-bg: #ffffff;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -20,6 +21,7 @@
                 --text-main: #e0e0e0;
                 --border-color: rgba(255, 255, 255, 0.1);
                 --primary-blue: #0a84ff;
+                --splash-bg: #111118;
             }
         }
 
@@ -47,6 +49,87 @@
             max-width: 360px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            position: absolute;
+            z-index: 10;
+        }
+
+        .login-card.active {
+            opacity: 1;
+            pointer-events: all;
+            position: relative;
+        }
+
+        .splash-screen {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--splash-bg);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease, visibility 0.8s;
+        }
+
+        .splash-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        #lottie-container {
+            width: 300px;
+            height: 300px;
+            transition: opacity 0.5s ease;
+        }
+
+        .welcome-content {
+            opacity: 0;
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: opacity 0.8s ease;
+            pointer-events: none;
+        }
+        
+        .welcome-content.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .welcome-title {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+            color: var(--text-main);
+        }
+
+        .welcome-subtitle {
+            font-size: 16px;
+            color: #888;
+            margin-bottom: 30px;
+        }
+        
+        .btn-large {
+            padding: 14px 32px;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+            box-shadow: 0 4px 15px rgba(0, 102, 204, 0.3);
+        }
+
+        .btn-large:hover {
+            background: #005bb5;
+            transform: translateY(-2px);
         }
 
         .logo {
@@ -117,8 +200,20 @@
             display: block;
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
 </head>
 <body>
+
+    <!-- Splash Screen -->
+    <div class="splash-screen" id="splashScreen">
+        <div id="lottie-container"></div>
+        
+        <div class="welcome-content" id="welcomeContent">
+            <div class="welcome-title">Welcome to Curtiss ERP</div>
+            <div class="welcome-subtitle">Enterprise Business Engine</div>
+            <button class="btn-large" onclick="showLogin()">Go to Login</button>
+        </div>
+    </div>
 
     <div class="login-card">
         <div class="logo"> CURTISS ERP</div>
@@ -163,6 +258,45 @@
         </form>
     </div>
 
+    <script>
+        // Check if there is an error message, if so, skip splash screen directly
+        const hasErrors = <?= (!empty($data['lockout_err']) || !empty($data['csrf_err']) || !empty($data['system_err']) || !empty($data['username_err']) || !empty($data['password_err'])) ? 'true' : 'false' ?>;
+        
+        const splashScreen = document.getElementById('splashScreen');
+        const loginCard = document.querySelector('.login-card');
+        const lottieContainer = document.getElementById('lottie-container');
+        const welcomeContent = document.getElementById('welcomeContent');
+
+        if (hasErrors) {
+            splashScreen.style.display = 'none';
+            loginCard.classList.add('active');
+        } else {
+            // Load Lottie animation
+            const anim = lottie.loadAnimation({
+                container: lottieContainer,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                path: '<?= APP_URL ?>/assets/lottie/scene.json' // path to Lottie JSON
+            });
+
+            // After 3 seconds, hide animation and show welcome
+            setTimeout(() => {
+                lottieContainer.style.opacity = '0';
+                setTimeout(() => {
+                    lottieContainer.style.display = 'none';
+                    welcomeContent.classList.add('active');
+                }, 500); // Wait for fade out
+            }, 3000);
+        }
+
+        function showLogin() {
+            splashScreen.classList.add('hidden');
+            setTimeout(() => {
+                loginCard.classList.add('active');
+            }, 400); // Show login card halfway through splash fade
+        }
+    </script>
     <?php if(isset($data['debug_console'])): ?>
     <script>
         console.error("ERP DEBUG LOG: <?= $data['debug_console'] ?>");
