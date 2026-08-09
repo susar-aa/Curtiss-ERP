@@ -33,6 +33,18 @@ class User {
         return $this->db->resultSet();
     }
 
+
+    public function getLoginEligibleUsers() {
+        $this->db->query("
+            SELECT id, username, role, employee_id 
+            FROM users 
+            WHERE role IN ('Admin', 'Office Staff', 'Accountant') 
+            AND status = 'Active' 
+            ORDER BY role ASC, username ASC
+        ");
+        return $this->db->resultSet();
+    }
+
     public function findUserByUsername($username) {
         $this->db->query("SELECT * FROM users WHERE username = :username");
         $this->db->bind(':username', $username);
