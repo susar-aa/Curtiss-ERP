@@ -208,22 +208,7 @@
             flex: 0 0 clamp(160px, 20vw, 220px);
         }
 
-        .user-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 20px;
-            padding: 32px 20px 24px;
-            display: flex; flex-direction: column; align-items: center;
-            text-align: center; cursor: pointer;
-            position: relative; overflow: hidden;
-            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 0 0 1px rgba(255,255,255,0.6) inset;
-            opacity: 0; transform: translateY(30px) scale(0.95);
-            transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1),
-                        box-shadow 0.25s ease, border-color 0.25s ease,
-                        background 0.25s ease;
-            /* width is set by .user-card flex rule above */
-        }
+
         .user-card.animated {
             opacity: 1; transform: translateY(0) scale(1);
         }
@@ -644,7 +629,7 @@ const usersData  = <?= json_encode($data['eligible_users'] ?? []) ?>;
 const screenSelect   = document.getElementById('screenSelect');
 const screenPassword = document.getElementById('screenPassword');
 const siteHeader     = document.getElementById('siteHeader');
-const taglineText    = document.getElementById('taglineText');
+
 const alertZone      = document.getElementById('alertZone');
 
 function showScreen(newId) {
