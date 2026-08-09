@@ -122,7 +122,7 @@
         .screen-tagline { display: none; }
 
         /* ===================== SCREEN WRAPPER ===================== */
-        .screen-container { width: 100%; max-width: 900px; }
+        .screen-container { width: 100%; max-width: 1400px; margin: 0 auto; }
 
         .screen {
             display: none;
@@ -468,7 +468,7 @@
     </header>
 
     <!-- Alert zone -->
-    <div class="alert-zone" id="alertZone" style="width:100%;max-width:900px;">
+    <div class="alert-zone" id="alertZone" style="width:100%;max-width:1400px;">
         <?php if(!empty($data['lockout_err'])): ?>
         <div class="alert alert-error">&#9888;&nbsp; <?= $data['lockout_err'] ?></div>
         <?php endif; ?>
