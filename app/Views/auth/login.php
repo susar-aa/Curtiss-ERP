@@ -75,7 +75,7 @@
         /* ===================== SPLASH ===================== */
         #splashScreen {
             position: fixed; inset: 0; z-index: 9999;
-            background: linear-gradient(135deg, #eef2ff 0%, #f0f9ff 100%);
+            background: #ffffff;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center; gap: 0;
             transition: opacity 0.8s cubic-bezier(0.4,0,0.2,1), visibility 0.8s;
@@ -104,11 +104,14 @@
             display: flex; align-items: center; gap: 12px; margin-bottom: 6px;
         }
         .logo-mark {
-            width: 42px; height: 42px; border-radius: 12px;
-            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            width: 44px; height: 44px; border-radius: 10px;
+            overflow: hidden; background: #ffffff;
             display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: 900; font-size: 18px;
-            box-shadow: 0 4px 14px rgba(37,99,235,0.35);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+            border: 1px solid rgba(0,0,0,0.08);
+        }
+        .logo-mark img {
+            width: 36px; height: 36px; object-fit: contain;
         }
         .logo-name {
             font-size: 20px; font-weight: 800; letter-spacing: -0.4px;
@@ -116,10 +119,7 @@
         }
         .logo-name span { color: var(--accent); }
 
-        .screen-tagline {
-            font-size: 13px; font-weight: 500;
-            color: var(--text-muted); letter-spacing: 0.3px;
-        }
+        .screen-tagline { display: none; }
 
         /* ===================== SCREEN WRAPPER ===================== */
         .screen-container { width: 100%; max-width: 900px; }
@@ -179,11 +179,33 @@
             background: #fffbeb; border: 1px solid rgba(245,158,11,0.2); color: #b45309;
         }
 
-        /* User Cards Grid */
+        /* User Cards — single horizontal scrollable row */
+        .user-grid-wrap {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: visible;
+            padding-bottom: 12px;
+            /* hide scrollbar but keep functionality */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .user-grid-wrap::-webkit-scrollbar { display: none; }
+
         .user-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
             gap: 20px;
+            /* center when cards fit; scroll when they overflow */
+            width: max-content;
+            min-width: 100%;
+            justify-content: center;
+            padding: 4px 4px 4px 4px;
+        }
+
+        /* Per-card width adapts to viewport */
+        .user-card {
+            flex: 0 0 clamp(160px, 20vw, 220px);
         }
 
         .user-card {
@@ -200,6 +222,7 @@
             transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1),
                         box-shadow 0.25s ease, border-color 0.25s ease,
                         background 0.25s ease;
+            /* width is set by .user-card flex rule above */
         }
         .user-card.animated {
             opacity: 1; transform: translateY(0) scale(1);
@@ -440,10 +463,11 @@
     <!-- Header -->
     <header class="site-header" id="siteHeader">
         <div class="logo-lockup">
-            <div class="logo-mark">C</div>
+            <div class="logo-mark">
+                <img src="<?= APP_URL ?>/icon-192.png" alt="Curtiss Logo">
+            </div>
             <div class="logo-name">CURTISS <span>ERP</span></div>
         </div>
-        <div class="screen-tagline" id="taglineText">Identify yourself to continue</div>
     </header>
 
     <!-- Alert zone -->
@@ -467,7 +491,7 @@
                 <h1>Who are <span>you?</span></h1>
                 <p>Select your account below to sign in securely</p>
             </div>
-            <div class="user-grid" id="userGrid">
+            <div class="user-grid-wrap"><div class="user-grid" id="userGrid">
                 <?php
                 $eligible_users = $data['eligible_users'] ?? [];
                 if (empty($eligible_users)):
@@ -506,7 +530,7 @@
                     </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
-            </div>
+            </div></div><!-- /user-grid-wrap -->
         </div>
 
         <!-- SCREEN 2: Password -->
