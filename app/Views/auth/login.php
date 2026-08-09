@@ -304,11 +304,11 @@
                     </div>
                 <?php else: ?>
                     <?php foreach ($eligible_users as $user): ?>
-                    <div class="user-card" onclick="selectUser('<?= htmlspecialchars($user->username) ?>', '<?= htmlspecialchars($user->role) ?>')">
+                    <div class="user-card" onclick="selectUser('<?= htmlspecialchars($user->username) ?>', '<?= htmlspecialchars($user->full_name) ?>', '<?= htmlspecialchars($user->role) ?>')">
                         <div class="user-avatar">
-                            <?= strtoupper(substr($user->username, 0, 1)) ?>
+                            <?= strtoupper(substr($user->full_name, 0, 1)) ?>
                         </div>
-                        <div class="user-name"><?= htmlspecialchars($user->username) ?></div>
+                        <div class="user-name"><?= htmlspecialchars($user->full_name) ?></div>
                         <div class="user-role"><?= htmlspecialchars($user->role) ?></div>
                     </div>
                     <?php endforeach; ?>
@@ -419,11 +419,11 @@
             }
         }
 
-        function selectUser(username, role) {
+        function selectUser(username, fullName, role) {
             formUsernameInput.value = username;
-            selectedUsernameDisplay.textContent = username;
+            selectedUsernameDisplay.textContent = fullName;
             selectedUserRole.textContent = role;
-            selectedAvatar.textContent = username.charAt(0).toUpperCase();
+            selectedAvatar.textContent = fullName.charAt(0).toUpperCase();
             
             // Clear any previous alerts when switching users
             document.getElementById('alertContainer').style.display = 'none';
@@ -444,10 +444,14 @@
             if (hasErrors && previouslySelectedUsername) {
                 // Find role of previously selected user
                 let role = "User";
+                let fullName = previouslySelectedUsername;
                 const userObj = eligibleUsers.find(u => u.username === previouslySelectedUsername);
-                if (userObj) role = userObj.role;
+                if (userObj) {
+                    role = userObj.role;
+                    fullName = userObj.full_name;
+                }
                 
-                selectUser(previouslySelectedUsername, role);
+                selectUser(previouslySelectedUsername, fullName, role);
                 document.getElementById('alertContainer').style.display = 'block'; // Show errors
             } else {
                 showScreen('userSelectionScreen');
