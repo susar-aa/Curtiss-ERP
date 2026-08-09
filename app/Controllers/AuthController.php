@@ -30,7 +30,8 @@ class AuthController extends Controller {
             'password_err' => '',
             'csrf_err' => '',
             'lockout_err' => '',
-            'system_err' => ''
+            'system_err' => '',
+            'eligible_users' => $this->userModel->getLoginEligibleUsers()
         ];
 
         // Rate Limiting lockout check
