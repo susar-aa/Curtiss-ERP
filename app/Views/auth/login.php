@@ -693,8 +693,6 @@ function selectUser(username, fullName, role, avatarClass, badgeClass) {
     // Hide global alerts (they will show in card)
     alertZone.style.display = 'none';
 
-    taglineText.textContent = 'Enter your password to authorize';
-
     showScreen('screenPassword');
     setTimeout(() => {
         const pwd = document.getElementById('password');
@@ -705,7 +703,6 @@ function selectUser(username, fullName, role, avatarClass, badgeClass) {
 function goBack() {
     document.getElementById('formUsername').value = '';
     document.getElementById('password').value = '';
-    taglineText.textContent = 'Identify yourself to continue';
     alertZone.style.display = 'none';
     showScreen('screenSelect');
 }
