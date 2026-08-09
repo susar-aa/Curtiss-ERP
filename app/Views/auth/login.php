@@ -205,10 +205,22 @@
 
         /* Per-card width adapts to viewport */
         .user-card {
-            flex: 0 0 clamp(160px, 20vw, 220px);
+            flex: 1 1 200px;
+            max-width: 240px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 32px 20px 24px;
+            display: flex; flex-direction: column; align-items: center;
+            text-align: center; cursor: pointer;
+            position: relative; overflow: hidden;
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 0 0 1px rgba(255,255,255,0.6) inset;
+            opacity: 0; transform: translateY(30px) scale(0.95);
+            transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1),
+                        box-shadow 0.25s ease, border-color 0.25s ease,
+                        background 0.25s ease;
         }
-
-
         .user-card.animated {
             opacity: 1; transform: translateY(0) scale(1);
         }
@@ -449,7 +461,7 @@
     <header class="site-header" id="siteHeader">
         <div class="logo-lockup">
             <div class="logo-mark">
-                <img src="<?= APP_URL ?>/icon-192.png" alt="Curtiss Logo">
+                <img src="<?= APP_URL ?>/favicon.ico" alt="Curtiss Logo" style="width: 24px; height: 24px;">
             </div>
             <div class="logo-name">CURTISS <span>ERP</span></div>
         </div>
