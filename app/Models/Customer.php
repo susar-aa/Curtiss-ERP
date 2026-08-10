@@ -179,6 +179,7 @@ class Customer {
         $this->db->bind(':notes', $data['notes'] ?: null);
         $this->db->bind(':uuid', $data['uuid'] ?? null);
         $this->db->bind(':opening_balance', $data['opening_balance'] ?? 0.00);
+        $this->db->bind(':opening_balance_date', $data['opening_balance_date'] ?? null);
         $this->db->bind(':review_status', $reviewStatus);
         $this->db->bind(':created_by_user_id', $createdByUserId);
         $this->db->bind(':reviewed_by_user_id', $reviewedByUserId);
