@@ -959,8 +959,8 @@ class Item {
             $this->db->bind(':id', $id);
             $this->db->execute();
 
-            // Delete item itself
-            $this->db->query("DELETE FROM items WHERE id = :id");
+            // Soft delete item itself
+            $this->db->query("UPDATE items SET status = 'inactive', updated_at = CURRENT_TIMESTAMP WHERE id = :id");
             $this->db->bind(':id', $id);
             $this->db->execute();
 

@@ -87,7 +87,13 @@ class RepDashboardController extends Controller {
     public function sync_pull() {
         ini_set('memory_limit', '512M');
         header('Content-Type: application/json');
+        
+        date_default_timezone_set('UTC');
+        
         try {
+            $this->db->query("SET time_zone = '+00:00'");
+            $this->db->execute();
+            
             $userId = 0;
             if (isset($_SERVER['HTTP_X_USER_ID'])) {
                 $userId = intval($_SERVER['HTTP_X_USER_ID']);
@@ -601,7 +607,7 @@ class RepDashboardController extends Controller {
             echo ',"active_route_invoices":' . json_encode($activeRouteInvsJson);
             echo ',"active_route_invoice_items":' . json_encode($activeRouteItemsJson);
             echo ',"discount_rules":' . json_encode($discountRulesJson);
-            echo ',"system_date":' . json_encode(date('Y-m-d H:i:s'));
+            echo ',"system_date":' . json_encode(gmdate('Y-m-d H:i:s'));
             echo '}';
             exit;
         } catch (Throwable $e) {
