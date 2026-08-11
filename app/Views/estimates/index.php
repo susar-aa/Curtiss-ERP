@@ -724,6 +724,11 @@ foreach($data['estimates'] as $est) {
                                     <i class="ph-bold ph-eye"></i>
                                 </a>
                                 <?php if($est->status !== 'Invoiced'): ?>
+                                    <a href="<?= APP_URL ?>/estimate/edit/<?= $est->id ?>" class="act-btn view" title="Edit Quotation" style="color:var(--c-blue);">
+                                        <i class="ph-bold ph-pencil-simple"></i>
+                                    </a>
+                                <?php endif; ?>
+                                <?php if($est->status !== 'Invoiced'): ?>
                                     <button type="button" onclick="openConvertModal(<?= $est->id ?>, '<?= htmlspecialchars($est->estimate_number) ?>')" class="act-btn convert" title="Convert to Real Invoice">
                                         <i class="ph-bold ph-arrow-right"></i> Invoice
                                     </button>

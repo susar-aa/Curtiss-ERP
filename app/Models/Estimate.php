@@ -78,4 +78,48 @@ class Estimate {
         $this->db->bind(':id', $id);
         return $this->db->execute();
     }
+
+    public function updateEstimate($id, $estimateData, $items) {
+        try {
+            $this->db->beginTransaction();
+
+            $totalAmount = 0;
+            foreach ($items as $item) {
+                $totalAmount += ($item['qty'] * $item['price']);
+            }
+
+            // Update Header
+            $this->db->query("UPDATE estimates SET customer_id = :cust_id, estimate_date = :edate, expiry_date = :expdate, total_amount = :total WHERE id = :id");
+            $this->db->bind(':cust_id', $estimateData['customer_id']);
+            $this->db->bind(':edate', $estimateData['date']);
+            $this->db->bind(':expdate', $estimateData['expiry_date']);
+            $this->db->bind(':total', $totalAmount);
+            $this->db->bind(':id', $id);
+            $this->db->execute();
+
+            // Delete old items
+            $this->db->query("DELETE FROM estimate_items WHERE estimate_id = :id");
+            $this->db->bind(':id', $id);
+            $this->db->execute();
+
+            // Insert new items
+            foreach ($items as $item) {
+                $itemTotal = $item['qty'] * $item['price'];
+                $this->db->query("INSERT INTO estimate_items (estimate_id, description, quantity, unit_price, total) 
+                                  VALUES (:eid, :desc, :qty, :price, :total)");
+                $this->db->bind(':eid', $id);
+                $this->db->bind(':desc', $item['desc']);
+                $this->db->bind(':qty', $item['qty']);
+                $this->db->bind(':price', $item['price']);
+                $this->db->bind(':total', $itemTotal);
+                $this->db->execute();
+            }
+
+            $this->db->commit();
+            return true;
+        } catch (PDOException $e) {
+            $this->db->rollBack();
+            return false;
+        }
+    }
 }

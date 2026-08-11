@@ -38,6 +38,9 @@
 <body>
     <div class="controls">
         <a href="<?= APP_URL ?>/estimate" class="btn btn-outline">&larr; Back to Estimates</a>
+        <?php if($data['estimate']->status !== 'Invoiced'): ?>
+            <a href="<?= APP_URL ?>/estimate/edit/<?= $data['estimate']->id ?>" class="btn btn-outline" style="background:#f1f5f9; color:#0f172a; border-color:#cbd5e1;"><i class="ph-bold ph-pencil-simple"></i> Edit Quotation</a>
+        <?php endif; ?>
         <button onclick="window.print()" class="btn">Print / Save as PDF</button>
     </div>
     <div class="invoice-box">
