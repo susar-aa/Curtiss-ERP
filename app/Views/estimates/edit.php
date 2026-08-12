@@ -939,21 +939,7 @@
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-        // --- LOAD EXISTING DATA ---
-    const existingCustId = "<?= $data['estimate']->customer_id ?>";
-    if (existingCustId) {
-        const cMatch = customerList.find(c => c.id == existingCustId);
-        if (cMatch) selectCustomer(cMatch);
-    }
-
-    const existingItems = <?= json_encode($data['estimate_items'] ?? []) ?>;
-    if (existingItems && existingItems.length > 0) {
-        existingItems.forEach(item => {
-            addLineItem(item.description, parseFloat(item.unit_price), parseFloat(item.quantity));
-        });
-    }
-
-    // ═══ 1. REALTIME CUSTOMER SEARCH & SELECTION ═══
+        // ═══ 1. REALTIME CUSTOMER SEARCH & SELECTION ═══
     const custSearchInput = document.getElementById('customerSearch');
     const custResultsList = document.getElementById('customerSearchResults');
     const custIdInput = document.getElementById('customerIdInput');
@@ -1347,4 +1333,19 @@
     function toggleShortcutsModal() {
         document.getElementById('shortcutsModal').classList.toggle('active');
     }
+    // --- LOAD EXISTING DATA ---
+    const existingCustId = "<?= $data['estimate']->customer_id ?>";
+    if (existingCustId) {
+        const cMatch = customerList.find(c => c.id == existingCustId);
+        if (cMatch) selectCustomer(cMatch);
+    }
+
+    const existingItems = <?= json_encode($data['estimate_items'] ?? []) ?>;
+    if (existingItems && existingItems.length > 0) {
+        existingItems.forEach(item => {
+            addLineItem(item.description, parseFloat(item.unit_price), parseFloat(item.quantity));
+        });
+    }
+
+
 </script>
