@@ -1343,7 +1343,7 @@
     const existingItems = <?= json_encode($data['estimate_items'] ?? []) ?>;
     if (existingItems && existingItems.length > 0) {
         existingItems.forEach(item => {
-            addLineItem(item.description, parseFloat(item.unit_price), parseFloat(item.quantity));
+            addItemRow(item.description, parseFloat(item.quantity), parseFloat(item.unit_price));
         });
     }
 
