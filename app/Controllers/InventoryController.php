@@ -1718,6 +1718,13 @@ class InventoryController extends Controller {
             $diff = $newQtyInt - $oldQty;
             $res = $this->itemModel->updateStockOnly($id, $newQtyInt);
             if ($res) {
+                require_once __DIR__ . '/../Services/FirebaseStockService.php';
+                $this->db->query("SELECT quantity_on_hand, quantity_reserved FROM items WHERE id = :id");
+                $this->db->bind(':id', $id);
+                $itRow = $this->db->single();
+                if ($itRow) {
+                    (new FirebaseStockService())->broadcast_stock_update($id, floatval($itRow->quantity_on_hand), floatval($itRow->quantity_reserved));
+                }
                 $this->logActivity(
                     'Stock Adjustment', 
                     'Inventory', 

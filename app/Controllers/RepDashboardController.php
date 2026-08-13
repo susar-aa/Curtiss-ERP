@@ -84,6 +84,56 @@ class RepDashboardController extends Controller {
         }
     }
 
+    public function update_fcm_token() {
+        header('Content-Type: application/json');
+        
+        $userId = 0;
+        if (isset($_SERVER['HTTP_X_USER_ID'])) {
+            $userId = intval($_SERVER['HTTP_X_USER_ID']);
+        } elseif (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            if (isset($headers['X-User-ID'])) {
+                $userId = intval($headers['X-User-ID']);
+            }
+        }
+        
+        if ($userId <= 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            return;
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!isset($input['fcm_token'])) {
+            echo json_encode(['status' => 'error', 'message' => 'Missing FCM token']);
+            return;
+        }
+        
+        $token = $input['fcm_token'];
+        
+        // Add column if it doesn't exist
+        try {
+            $this->db->query("SHOW COLUMNS FROM users LIKE 'fcm_token'");
+            if (empty($this->db->resultSet())) {
+                $this->db->query("ALTER TABLE users ADD COLUMN fcm_token VARCHAR(255) NULL");
+                $this->db->execute();
+            }
+        } catch (\Exception $e) {
+            // Ignore if error occurs checking/adding column
+        }
+        
+        $this->db->query("UPDATE users SET fcm_token = :token WHERE id = :id");
+        $this->db->bind(':token', $token);
+        $this->db->bind(':id', $userId);
+        
+        if ($this->db->execute()) {
+            echo json_encode(['status' => 'success', 'message' => 'Token updated successfully']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to update token']);
+        }
+    }
+
+    
+
     public function sync_pull() {
         ini_set('memory_limit', '512M');
         header('Content-Type: application/json');
@@ -1258,6 +1308,16 @@ class RepDashboardController extends Controller {
                                 }
                                 $this->logActivity('Update Invoice', 'Billing', "Updated Invoice {$invNo} via mobile sync", $existingInv->id);
                                 
+                                // Broadcast FCM Stock update
+                                foreach ($itemsPayload as $it) {
+                                    $this->db->query("SELECT quantity_on_hand, quantity_reserved FROM items WHERE id = :id");
+                                    $this->db->bind(':id', $it['item_id']);
+                                    $itemRow = $this->db->single();
+                                    if ($itemRow) {
+                                        (new FirebaseStockService())->broadcast_stock_update($it['item_id'], floatval($itemRow->quantity_on_hand), floatval($itemRow->quantity_reserved), $userId);
+                                    }
+                                }
+                                
                                 $this->db->query("SELECT invoice_date FROM invoices WHERE id = :id");
                                 $this->db->bind(':id', $existingInv->id);
                                 $invRow = $this->db->single();
@@ -1394,6 +1454,14 @@ class RepDashboardController extends Controller {
                         foreach ($itemsPayload as $it) {
                             if ($it['discount_value'] > 0) {
                                 $this->logActivity('Apply Discount', 'Billing', "Applied item-wise discount Rs: " . number_format($it['discount_value'], 2) . " on product in Invoice {$invNo}", $invoiceId);
+                            }
+                            
+                            // Broadcast FCM Stock update
+                            $this->db->query("SELECT quantity_on_hand, quantity_reserved FROM items WHERE id = :id");
+                            $this->db->bind(':id', $it['item_id']);
+                            $itemRow = $this->db->single();
+                            if ($itemRow) {
+                                (new FirebaseStockService())->broadcast_stock_update($it['item_id'], floatval($itemRow->quantity_on_hand), floatval($itemRow->quantity_reserved), $userId);
                             }
                         }
 

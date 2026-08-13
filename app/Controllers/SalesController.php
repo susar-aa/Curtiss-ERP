@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../Services/FirebaseStockService.php';
+
 class SalesController extends Controller {
     private $salesModel;
     private $itemModel;
@@ -706,6 +708,23 @@ class SalesController extends Controller {
                                 'invoice' => $invoiceData,
                                 'items' => $itemsPayload
                             ];
+                            
+                            // [Firebase RTDB & FCM] Broadcast stock update for all items in the invoice
+                            $fbs = new FirebaseStockService();
+                            $notifiedItems = [];
+                            foreach ($itemsPayload as $pl) {
+                                $parts = explode('|', $pl['item_selection'] ?? '');
+                                $itemId = intval($parts[0] ?? 0);
+                                if ($itemId > 0 && !in_array($itemId, $notifiedItems)) {
+                                    $this->db->query("SELECT quantity_on_hand, quantity_reserved FROM items WHERE id = :id");
+                                    $this->db->bind(':id', $itemId);
+                                    $itRow = $this->db->single();
+                                    if ($itRow) {
+                                        $fbs->broadcast_stock_update($itemId, floatval($itRow->quantity_on_hand), floatval($itRow->quantity_reserved));
+                                        $notifiedItems[] = $itemId;
+                                    }
+                                }
+                            }
                             $this->logActivity('Edit Invoice', 'Billing', "Updated and re-posted Invoice {$invoiceNumber} for Customer ID {$customerId} totaling Rs: " . number_format($grandTotal, 2), $editingId, $oldValues, $newValues);
                             $_SESSION['flash_success'] = "Sales Order {$invoiceNumber} successfully updated!";
                             
@@ -782,6 +801,23 @@ class SalesController extends Controller {
                                 'invoice' => $invoiceData,
                                 'items' => $itemsPayload
                             ];
+                            
+                            // [Firebase RTDB & FCM] Broadcast stock update for all items in the invoice
+                            $fbs = new FirebaseStockService();
+                            $notifiedItems = [];
+                            foreach ($itemsPayload as $pl) {
+                                $parts = explode('|', $pl['item_selection'] ?? '');
+                                $itemId = intval($parts[0] ?? 0);
+                                if ($itemId > 0 && !in_array($itemId, $notifiedItems)) {
+                                    $this->db->query("SELECT quantity_on_hand, quantity_reserved FROM items WHERE id = :id");
+                                    $this->db->bind(':id', $itemId);
+                                    $itRow = $this->db->single();
+                                    if ($itRow) {
+                                        $fbs->broadcast_stock_update($itemId, floatval($itRow->quantity_on_hand), floatval($itRow->quantity_reserved));
+                                        $notifiedItems[] = $itemId;
+                                    }
+                                }
+                            }
                             $this->logActivity('Create Invoice', 'Billing', "Created and posted Invoice {$invoiceNumber} for Customer ID {$customerId} totaling Rs: " . number_format($grandTotal, 2), $invoiceId, null, $newValues);
                             
                             $fromSalesOrderId = intval($_POST['from_sales_order_id'] ?? 0);
