@@ -681,7 +681,7 @@ class SalesController extends Controller {
                         'notes' => trim($_POST['notes'] ?? ''),
                         'rep_route_id' => $repRouteId,
                         'grand_total' => $grandTotal,
-                        'stock_status' => $isRouteSalesOrder ? 'reserved' : 'deducted'
+                        'stock_status' => 'deducted'
                     ];
 
                     $invoiceModel = $this->model('Invoice');

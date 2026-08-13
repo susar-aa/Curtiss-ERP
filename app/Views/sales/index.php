@@ -1627,13 +1627,13 @@ if ($inv && isset($inv->id)) {
             }
             $hasVars = !empty($item->variations);
             $stockQty = isset($item->qty) ? $item->qty : ($item->quantity_on_hand ?? 0);
-            $baseAvailable = $stockQty - ($item->quantity_reserved ?? 0);
+            $baseAvailable = $stockQty;
             $catName = htmlspecialchars(addslashes((string)($item->category_name ?? '')));
             $sampleCode = htmlspecialchars(addslashes((string)($item->sample_code ?? '')));
             ?>
             <?php if($hasVars): ?>
                 <?php foreach($item->variations as $var): ?>
-                <?php $varAvailable = ($var->quantity_on_hand ?? 0) - ($var->quantity_reserved ?? 0); ?>
+                <?php $varAvailable = ($var->quantity_on_hand ?? 0); ?>
                 { id: "<?= $item->id ?>|<?= $var->id ?>|0", type: "<?= $item->type ?? 'Inventory' ?>", stock: <?= floatval($varAvailable) ?>, code: "<?= htmlspecialchars(addslashes((string)($var->sku ?? $item->item_code ?? ''))) ?>", name: "<?= htmlspecialchars(addslashes((string)($item->name ?? ''))) ?> - <?= htmlspecialchars(addslashes((string)($var->variation_name ?? ''))) ?>: <?= htmlspecialchars(addslashes((string)($var->value_name ?? ''))) ?>", price: <?= floatval(isset($var->price) && $var->price > 0 ? $var->price : ($item->price ?? 0)) ?>, category: "<?= $catName ?>", sample_code: "<?= $sampleCode ?>" },
                 <?php endforeach; ?>
             <?php else: ?>
@@ -2579,7 +2579,7 @@ if ($inv && isset($inv->id)) {
                     for (let i = 0; i < catalog.length; i++) {
                         let parts = catalog[i].id.split('|');
                         if (parts[0] == productId) {
-                            const available = parseFloat(data.stock_qty) - (parseFloat(data.reserved_qty) || 0);
+                            const available = parseFloat(data.stock_qty) || 0;
                             if (catalog[i].stock !== available) {
                                 catalog[i].stock = available;
                                 stockUpdated = true;

@@ -156,61 +156,32 @@ class RepVarianceService {
                         }
 
                         $diff = $newQty - $oldQty;
-                        if ($line->stock_status === 'reserved') {
-                            if ($varId !== null) {
-                                $db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) + :diff) WHERE id = :var_id");
-                                $db->bind(':diff', $diff);
-                                $db->bind(':var_id', $varId);
-                                $db->execute();
+                        if ($varId !== null) {
+                            $db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :diff) WHERE id = :var_id");
+                            $db->bind(':diff', $diff);
+                            $db->bind(':var_id', $varId);
+                            $db->execute();
 
-                                $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) + :diff) WHERE id = :item_id");
-                                $db->bind(':diff', $diff);
-                                $db->bind(':item_id', $itemId);
-                                $db->execute();
-                            } else {
-                                $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) + :diff) WHERE id = :item_id");
-                                $db->bind(':diff', $diff);
-                                $db->bind(':item_id', $itemId);
-                                $db->execute();
-                            }
-
-                            require_once dirname(__DIR__) . '/Models/StockLedger.php';
-                            $ledger = new StockLedger();
-                            $db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
-                            $db->bind(':id', $itemId);
-                            $itemMeta = $db->single();
-                            $whId = $itemMeta ? $itemMeta->warehouse_id : null;
-                            $itemCost = $itemMeta ? floatval($itemMeta->cost_price > 0 ? $itemMeta->cost_price : 0.00) : 0.00;
-                            $remarks = 'Variance Audit Adjust - Reserved Stock (Delta: ' . $diff . ')';
-                            $ledger->logMovement($itemId, $varId, ($diff < 0 ? abs($diff) : 0), ($diff > 0 ? $diff : 0), 'Reserved Stock Variance Adjustment', $line->invoice_number, $whId, $userId, $remarks, $itemCost);
+                            require_once dirname(__DIR__) . '/Models/Item.php';
+                            $itemModel = new Item();
+                            $itemModel->updateStockDelta($itemId, -$diff);
                         } else {
-                            if ($varId !== null) {
-                                $db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :diff) WHERE id = :var_id");
-                                $db->bind(':diff', $diff);
-                                $db->bind(':var_id', $varId);
-                                $db->execute();
+                            require_once dirname(__DIR__) . '/Models/Item.php';
+                            $itemModel = new Item();
+                            $itemModel->updateStockDelta($itemId, -$diff);
+                        }
 
-                                require_once dirname(__DIR__) . '/Models/Item.php';
-                                $itemModel = new Item();
-                                $itemModel->updateStockDelta($itemId, -$diff);
-                            } else {
-                                require_once dirname(__DIR__) . '/Models/Item.php';
-                                $itemModel = new Item();
-                                $itemModel->updateStockDelta($itemId, -$diff);
-                            }
-
-                            require_once dirname(__DIR__) . '/Models/StockLedger.php';
-                            $ledger = new StockLedger();
-                            $db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
-                            $db->bind(':id', $itemId);
-                            $itemMeta = $db->single();
-                            $whId = $itemMeta ? $itemMeta->warehouse_id : null;
-                            $itemCost = $itemMeta ? floatval($itemMeta->cost_price > 0 ? $itemMeta->cost_price : 0.00) : 0.00;
-                            if ($diff > 0) {
-                                $ledger->logMovement($itemId, $varId, 0, $diff, 'Sales Invoice Variance Increase', $line->invoice_number, $whId, $userId, 'Variance Audit Adjust', $itemCost);
-                            } else {
-                                $ledger->logMovement($itemId, $varId, abs($diff), 0, 'Sales Invoice Variance Decrease', $line->invoice_number, $whId, $userId, 'Variance Audit Adjust', $itemCost);
-                            }
+                        require_once dirname(__DIR__) . '/Models/StockLedger.php';
+                        $ledger = new StockLedger();
+                        $db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
+                        $db->bind(':id', $itemId);
+                        $itemMeta = $db->single();
+                        $whId = $itemMeta ? $itemMeta->warehouse_id : null;
+                        $itemCost = $itemMeta ? floatval($itemMeta->cost_price > 0 ? $itemMeta->cost_price : 0.00) : 0.00;
+                        if ($diff > 0) {
+                            $ledger->logMovement($itemId, $varId, 0, $diff, 'Sales Invoice Variance Increase', $line->invoice_number, $whId, $userId, 'Variance Audit Adjust', $itemCost);
+                        } else {
+                            $ledger->logMovement($itemId, $varId, abs($diff), 0, 'Sales Invoice Variance Decrease', $line->invoice_number, $whId, $userId, 'Variance Audit Adjust', $itemCost);
                         }
 
                         if (!in_array($invoiceId, $modifiedInvoices)) {
@@ -266,54 +237,28 @@ class RepVarianceService {
                             $db->bind(':iid', $invoiceId);
                             $invMeta = $db->single();
                             $invNum = $invMeta ? $invMeta->invoice_number : '';
-                            $stockStatus = $invMeta ? $invMeta->stock_status : 'picked';
 
-                            if ($stockStatus === 'reserved') {
-                                if ($varId !== null) {
-                                    $db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) + :qty) WHERE id = :var_id");
-                                    $db->bind(':qty', $newQty);
-                                    $db->bind(':var_id', $varId);
-                                    $db->execute();
+                            if ($varId !== null) {
+                                $db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :var_id");
+                                $db->bind(':qty', $newQty);
+                                $db->bind(':var_id', $varId);
+                                $db->execute();
 
-                                    $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) + :qty) WHERE id = :item_id");
-                                    $db->bind(':qty', $newQty);
-                                    $db->bind(':item_id', $itemId);
-                                    $db->execute();
-                                } else {
-                                    $db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) + :qty) WHERE id = :item_id");
-                                    $db->bind(':qty', $newQty);
-                                    $db->bind(':item_id', $itemId);
-                                    $db->execute();
-                                }
-
-                                require_once dirname(__DIR__) . '/Models/StockLedger.php';
-                                $ledger = new StockLedger();
-                                $whId = $itemRow->warehouse_id;
-                                $itemCost = floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00);
-                                $remarks = 'Variance Audit Adjust - Reserved Stock Added (Qty: ' . $newQty . ')';
-                                $ledger->logMovement($itemId, $varId, 0, $newQty, 'Reserved Stock Variance Adjustment', $invNum, $whId, $userId, $remarks, $itemCost);
+                                require_once dirname(__DIR__) . '/Models/Item.php';
+                                $itemModel = new Item();
+                                $itemModel->updateStockDelta($itemId, -$newQty);
                             } else {
-                                if ($varId !== null) {
-                                    $db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :var_id");
-                                    $db->bind(':qty', $newQty);
-                                    $db->bind(':var_id', $varId);
-                                    $db->execute();
-
-                                    require_once dirname(__DIR__) . '/Models/Item.php';
-                                    $itemModel = new Item();
-                                    $itemModel->updateStockDelta($itemId, -$newQty);
-                                } else {
-                                    require_once dirname(__DIR__) . '/Models/Item.php';
-                                    $itemModel = new Item();
-                                    $itemModel->updateStockDelta($itemId, -$newQty);
-                                }
-
-                                require_once dirname(__DIR__) . '/Models/StockLedger.php';
-                                $ledger = new StockLedger();
-                                $whId = $itemRow->warehouse_id;
-                                $itemCost = floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00);
-                                $ledger->logMovement($itemId, $varId, 0, $newQty, 'Sales Invoice Variance Increase', $invNum, $whId, $userId, 'Variance Audit Adjust', $itemCost);
+                                require_once dirname(__DIR__) . '/Models/Item.php';
+                                $itemModel = new Item();
+                                $itemModel->updateStockDelta($itemId, -$newQty);
                             }
+
+                            require_once dirname(__DIR__) . '/Models/StockLedger.php';
+                            $ledger = new StockLedger();
+                            $whId = $itemRow->warehouse_id;
+                            $itemCost = floatval($itemRow->cost_price > 0 ? $itemRow->cost_price : 0.00);
+                            $remarks = 'Variance Audit Adjust - Sales Invoice Added (Qty: ' . $newQty . ')';
+                            $ledger->logMovement($itemId, $varId, 0, $newQty, 'Sales Invoice Variance Increase', $invNum, $whId, $userId, $remarks, $itemCost);
 
                             if (!in_array($invoiceId, $modifiedInvoices)) {
                                 $modifiedInvoices[] = $invoiceId;

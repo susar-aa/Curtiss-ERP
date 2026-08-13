@@ -139,15 +139,14 @@ class DriverInvoice {
             $invoice = $this->db->single();
             if (!$invoice) throw new Exception("Invoice not found.");
 
-            // 3. Update reservation stock in database
+            // 3. Update physical stock in database (Driver invoices are physically deducted now)
             if ($item->item_id) {
-                $this->db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :diff) WHERE id = :id");
-                $this->db->bind(':diff', $diffQty);
-                $this->db->bind(':id', $item->item_id);
-                $this->db->execute();
+                require_once '../app/Models/Item.php';
+                $itemModel = new Item();
+                $itemModel->updateStockDelta($item->item_id, $diffQty);
             }
             if ($item->variation_option_id) {
-                $this->db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :diff) WHERE id = :id");
+                $this->db->query("UPDATE item_variation_options SET quantity_on_hand = quantity_on_hand + :diff WHERE id = :id");
                 $this->db->bind(':diff', $diffQty);
                 $this->db->bind(':id', $item->variation_option_id);
                 $this->db->execute();
@@ -195,15 +194,14 @@ class DriverInvoice {
             $invoiceId = $item->invoice_id;
             $oldQty = floatval($item->quantity);
 
-            // 2. Release full reservation stock
+            // 2. Release physical stock
             if ($item->item_id) {
-                $this->db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :diff) WHERE id = :id");
-                $this->db->bind(':diff', $oldQty);
-                $this->db->bind(':id', $item->item_id);
-                $this->db->execute();
+                require_once '../app/Models/Item.php';
+                $itemModel = new Item();
+                $itemModel->updateStockDelta($item->item_id, $oldQty);
             }
             if ($item->variation_option_id) {
-                $this->db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :diff) WHERE id = :id");
+                $this->db->query("UPDATE item_variation_options SET quantity_on_hand = quantity_on_hand + :diff WHERE id = :id");
                 $this->db->bind(':diff', $oldQty);
                 $this->db->bind(':id', $item->variation_option_id);
                 $this->db->execute();

@@ -29,15 +29,15 @@ while (true) {
             $itemId = $row->item_id;
 
             // Get current stock
-            $db->query("SELECT quantity_on_hand FROM items WHERE id = :id");
+            $db->query("SELECT quantity_on_hand, quantity_reserved FROM items WHERE id = :id");
             $db->bind(':id', $itemId);
             $item = $db->single();
 
             if ($item) {
                 // Broadcast to Firebase
                 // Note: We don't have the user ID of who caused this, so it broadcasts to everyone
-                $firebaseService->broadcast_stock_update($itemId, $item->quantity_on_hand, -1);
-                echo "[" . date('Y-m-d H:i:s') . "] Synced Item $itemId -> Stock: " . $item->quantity_on_hand . "\n";
+                $firebaseService->broadcast_stock_update($itemId, $item->quantity_on_hand, 0);
+                echo "[" . date('Y-m-d H:i:s') . "] Synced Item $itemId -> Stock: " . $item->quantity_on_hand . ", Reserved: 0\n";
                 @ob_flush(); flush();
             }
 

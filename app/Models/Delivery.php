@@ -585,153 +585,119 @@ class Delivery {
 
                 $isDelivered = ($invoice->delivery_status !== 'Cancelled' && $invoice->delivery_status !== 'Postponed');
                 if ($isDelivered) {
-                    if ($invoice->stock_status === 'reserved') {
-                        foreach ($items as $item) {
-                            $qty = floatval($item->quantity);
-                            $loadedQty = floatval($item->loaded_quantity);
-                            $itemId = $item->item_id;
-                            $varId = $item->variation_option_id;
-
-                            if (!$itemId && !empty($item->description)) {
-                                $this->db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
-                                $this->db->bind(':name', $item->description);
-                                $rowItem = $this->db->single();
-                                if ($rowItem) $itemId = $rowItem->id;
-                            }
-
-                            if ($itemId) {
-                                require_once '../app/Models/Item.php';
-                                $itemModel = new Item();
-                                $itemModel->updateStockDelta($itemId, -$qty);
-
-                                $this->db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :loadedQty) WHERE id = :id");
-                                $this->db->bind(':loadedQty', $loadedQty);
-                                $this->db->bind(':id', $itemId);
-                                $this->db->execute();
-                            }
-                            if ($varId) {
-                                $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
-                                $this->db->bind(':qty', $qty);
-                                $this->db->bind(':id', $varId);
-                                $this->db->execute();
-
-                                $this->db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :loadedQty) WHERE id = :id");
-                                $this->db->bind(':loadedQty', $loadedQty);
-                                $this->db->bind(':id', $varId);
-                                $this->db->execute();
-                            }
-
-                            $fifo->depleteStock($itemId, $varId, $qty, $item->id, null);
-
-                            // Log stock movement in ledger (depletion)
-                            require_once '../app/Models/StockLedger.php';
-                            $ledger = new StockLedger();
-                            $isFreeIssue = (floatval($item->unit_price ?? 0) <= 0 
-                                            || floatval($item->total ?? 0) <= 0 
-                                            || (isset($item->discount_type) && in_array($item->discount_type, ['Free Issue', 'Free']))
-                                            || strpos($item->description ?? '', '(Free') !== false);
-
-                            $movType = $isFreeIssue ? 'Promotional Free Issue' : 'Sales Invoice';
-                            $remarks = $isFreeIssue ? 'Delivery Finalized - Free Issue Stock Deducted' : 'Delivery Finalized - Stock Deducted';
-
-                            $ledger->logMovement($itemId, $varId ?: null, 0, $qty, $movType, $invNum, $whId, $adminUserId, $remarks, $itemCost);
-                        }
-                        $this->db->query("UPDATE invoices SET stock_status = 'deducted' WHERE id = :iid");
-                        $this->db->bind(':iid', $invoice->id);
-                        $this->db->execute();
-
-                        // BUG-1 FIX: Promote Draft JE to Posted upon physical delivery finalization
-                        $jid = $invoice->journal_entry_id;
-                        if ($jid) {
-                            $this->db->query("SELECT status FROM journal_entries WHERE id = :jid");
+                    // BUG-1 FIX: Promote Draft JE to Posted upon physical delivery finalization
+                    $jid = $invoice->journal_entry_id;
+                    if ($jid) {
+                        $this->db->query("SELECT status FROM journal_entries WHERE id = :jid");
+                        $this->db->bind(':jid', $jid);
+                        $jeRow = $this->db->single();
+                        if ($jeRow && $jeRow->status === 'Draft') {
+                            // 1. Promote JE status to Posted
+                            $this->db->query("UPDATE journal_entries SET status = 'Posted' WHERE id = :jid");
                             $this->db->bind(':jid', $jid);
-                            $jeRow = $this->db->single();
-                            if ($jeRow && $jeRow->status === 'Draft') {
-                                // 1. Promote JE status to Posted
-                                $this->db->query("UPDATE journal_entries SET status = 'Posted' WHERE id = :jid");
+                            $this->db->execute();
+
+                            // 2. Calculate true current grand total
+                            $subTotal = floatval($invoice->total_amount ?? 0);
+                            $globalDiscVal = floatval($invoice->global_discount_val ?? 0);
+                            $globalDiscType = $invoice->global_discount_type ?? 'Rs';
+                            $globalDisc = ($globalDiscType === '%') ? ($subTotal * $globalDiscVal / 100) : $globalDiscVal;
+                            $grandTotal = max(0, $subTotal - $globalDisc) + floatval($invoice->tax_amount ?? 0);
+
+                            // 3. Resolve AR and Revenue transaction account IDs from the JE
+                            $this->db->query("SELECT account_id FROM transactions WHERE journal_entry_id = :jid AND debit > 0 LIMIT 1");
+                            $this->db->bind(':jid', $jid);
+                            $arTx = $this->db->single();
+
+                            $this->db->query("SELECT account_id FROM transactions WHERE journal_entry_id = :jid AND credit > 0 LIMIT 1");
+                            $this->db->bind(':jid', $jid);
+                            $revTx = $this->db->single();
+
+                            if ($arTx) {
+                                $this->db->query("UPDATE transactions SET debit = :amt WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
+                                $this->db->bind(':amt', $grandTotal);
                                 $this->db->bind(':jid', $jid);
+                                $this->db->bind(':aid', $arTx->account_id);
                                 $this->db->execute();
 
-                                // 2. Calculate true current grand total
-                                $subTotal = floatval($invoice->total_amount ?? 0);
-                                $globalDiscVal = floatval($invoice->global_discount_val ?? 0);
-                                $globalDiscType = $invoice->global_discount_type ?? 'Rs';
-                                $globalDisc = ($globalDiscType === '%') ? ($subTotal * $globalDiscVal / 100) : $globalDiscVal;
-                                $grandTotal = max(0, $subTotal - $globalDisc) + floatval($invoice->tax_amount ?? 0);
+                                $this->db->updateAccountBalance($arTx->account_id, $grandTotal, 0);
+                            }
 
-                                // 3. Resolve AR and Revenue transaction account IDs from the JE
-                                $this->db->query("SELECT account_id FROM transactions WHERE journal_entry_id = :jid AND debit > 0 LIMIT 1");
+                            if ($revTx) {
+                                $this->db->query("UPDATE transactions SET credit = :amt WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
+                                $this->db->bind(':amt', $grandTotal);
                                 $this->db->bind(':jid', $jid);
-                                $arTx = $this->db->single();
+                                $this->db->bind(':aid', $revTx->account_id);
+                                $this->db->execute();
 
-                                $this->db->query("SELECT account_id FROM transactions WHERE journal_entry_id = :jid AND credit > 0 LIMIT 1");
-                                $this->db->bind(':jid', $jid);
-                                $revTx = $this->db->single();
-
-                                if ($arTx) {
-                                    $this->db->query("UPDATE transactions SET debit = :amt WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
-                                    $this->db->bind(':amt', $grandTotal);
-                                    $this->db->bind(':jid', $jid);
-                                    $this->db->bind(':aid', $arTx->account_id);
-                                    $this->db->execute();
-
-                                    $this->db->updateAccountBalance($arTx->account_id, $grandTotal, 0);
-                                }
-
-                                if ($revTx) {
-                                    $this->db->query("UPDATE transactions SET credit = :amt WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
-                                    $this->db->bind(':amt', $grandTotal);
-                                    $this->db->bind(':jid', $jid);
-                                    $this->db->bind(':aid', $revTx->account_id);
-                                    $this->db->execute();
-
-                                    $this->db->updateAccountBalance($revTx->account_id, 0, $grandTotal);
-                                }
+                                $this->db->updateAccountBalance($revTx->account_id, 0, $grandTotal);
                             }
                         }
                     }
                 } else {
-                    if ($invoice->stock_status === 'reserved') {
-                        foreach ($items as $item) {
-                            $loadedQty = floatval($item->loaded_quantity);
-                            $itemId = $item->item_id;
-                            $varId = $item->variation_option_id;
+                    // Invoice is Cancelled/Postponed - revert physical stock deduction since it was deducted at creation
+                    require_once '../app/Models/FIFO.php';
+                    $fifo = new FIFO();
+                    require_once '../app/Models/Item.php';
+                    $itemModel = new Item();
+                    require_once '../app/Models/StockLedger.php';
+                    $ledger = new StockLedger();
 
-                            if (!$itemId && !empty($item->description)) {
-                                $this->db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
-                                $this->db->bind(':name', $item->description);
-                                $rowItem = $this->db->single();
-                                if ($rowItem) $itemId = $rowItem->id;
-                            }
+                    foreach ($items as $item) {
+                        $loadedQty = floatval($item->loaded_quantity);
+                        $itemId = $item->item_id;
+                        $varId = $item->variation_option_id;
 
-                            if ($itemId) {
-                                $this->db->query("UPDATE items SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :loadedQty) WHERE id = :id");
-                                $this->db->bind(':loadedQty', $loadedQty);
-                                $this->db->bind(':id', $itemId);
-                                $this->db->execute();
-                            }
-                            if ($varId) {
-                                $this->db->query("UPDATE item_variation_options SET quantity_reserved = GREATEST(0, CAST(quantity_reserved AS SIGNED) - :loadedQty) WHERE id = :id");
-                                $this->db->bind(':loadedQty', $loadedQty);
-                                $this->db->bind(':id', $varId);
-                                $this->db->execute();
-                            }
+                        if (!$itemId && !empty($item->description)) {
+                            $this->db->query("SELECT id FROM items WHERE name = :name LIMIT 1");
+                            $this->db->bind(':name', $item->description);
+                            $rowItem = $this->db->single();
+                            if ($rowItem) $itemId = $rowItem->id;
                         }
-                        $this->db->query("UPDATE invoices SET stock_status = 'returned' WHERE id = :iid");
-                        $this->db->bind(':iid', $invoice->id);
-                        $this->db->execute();
 
-                        // BUG-1 FIX: Void Draft JE if delivery is Cancelled / Postponed
-                        $jid = $invoice->journal_entry_id;
-                        if ($jid) {
-                            $this->db->query("SELECT status FROM journal_entries WHERE id = :jid");
+                        if ($itemId) {
+                            $itemModel->updateStockDelta($itemId, $loadedQty);
+                        }
+                        if ($varId) {
+                            $this->db->query("UPDATE item_variation_options SET quantity_on_hand = quantity_on_hand + :loadedQty WHERE id = :id");
+                            $this->db->bind(':loadedQty', $loadedQty);
+                            $this->db->bind(':id', $varId);
+                            $this->db->execute();
+                        }
+
+                        $fifo->revertDepletion($item->id, null);
+
+                        $this->db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
+                        $this->db->bind(':id', $itemId);
+                        $itemRow = $this->db->single();
+                        $whId = $itemRow ? $itemRow->warehouse_id : null;
+                        $itemCost = floatval($item->cost_at_sale ?? ($itemRow->cost_price ?? 0.00));
+
+                        $isFreeIssue = (floatval($item->unit_price ?? 0) <= 0 
+                                        || floatval($item->total ?? 0) <= 0 
+                                        || (isset($item->discount_type) && in_array($item->discount_type, ['Free Issue', 'Free']))
+                                        || strpos($item->description ?? '', '(Free') !== false);
+
+                        $movType = $isFreeIssue ? 'Promotional Free Issue Reversion' : 'Sales Invoice Reversion';
+                        $remarks = $isFreeIssue ? 'Delivery Cancelled - Free Issue Stock Reverted' : 'Delivery Cancelled - Stock Reverted';
+
+                        $ledger->logMovement($itemId, $varId, $loadedQty, 0, $movType, $invNum, $whId, $adminUserId, $remarks, $itemCost);
+                    }
+
+                    $this->db->query("UPDATE invoices SET stock_status = 'returned' WHERE id = :iid");
+                    $this->db->bind(':iid', $invoice->id);
+                    $this->db->execute();
+
+                    // BUG-1 FIX: Void Draft JE if delivery is Cancelled / Postponed
+                    $jid = $invoice->journal_entry_id;
+                    if ($jid) {
+                        $this->db->query("SELECT status FROM journal_entries WHERE id = :jid");
+                        $this->db->bind(':jid', $jid);
+                        $jeRow = $this->db->single();
+                        if ($jeRow && $jeRow->status === 'Draft') {
+                            $this->db->query("UPDATE journal_entries SET status = 'Voided' WHERE id = :jid");
                             $this->db->bind(':jid', $jid);
-                            $jeRow = $this->db->single();
-                            if ($jeRow && $jeRow->status === 'Draft') {
-                                $this->db->query("UPDATE journal_entries SET status = 'Voided' WHERE id = :jid");
-                                $this->db->bind(':jid', $jid);
-                                $this->db->execute();
-                            }
+                            $this->db->execute();
                         }
                     }
                 }

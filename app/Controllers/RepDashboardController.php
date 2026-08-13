@@ -1415,7 +1415,7 @@ class RepDashboardController extends Controller {
                         'notes' => 'Created via Mobile App Sync',
                         'rep_route_id' => $routeServerId ?: null,
                         'grand_total' => floatval($inv['grand_total']),
-                        'stock_status' => 'reserved' // Keep as reserved Sales Order until finalized
+                        'stock_status' => 'deducted' // Deduct physical stock immediately
                     ];
 
                     $invoiceId = $this->invoiceModel->createInvoiceWithAccounting(
