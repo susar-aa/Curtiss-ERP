@@ -1308,19 +1308,7 @@ class RepDashboardController extends Controller {
                                 }
                                 $this->logActivity('Update Invoice', 'Billing', "Updated Invoice {$invNo} via mobile sync", $existingInv->id);
                                 
-                                // Broadcast FCM Stock update
-                                foreach ($itemsPayload as $it) {
-                                    $parts = explode('|', $it['item_selection']);
-                                    $itemId = intval($parts[0]);
-                                    if ($itemId > 0) {
-                                        $this->db->query("SELECT quantity_on_hand, quantity_reserved FROM items WHERE id = :id");
-                                        $this->db->bind(':id', $itemId);
-                                        $itemRow = $this->db->single();
-                                        if ($itemRow) {
-                                            (new FirebaseStockService())->broadcast_stock_update($itemId, floatval($itemRow->quantity_on_hand), floatval($itemRow->quantity_reserved), $userId);
-                                        }
-                                    }
-                                }
+                                // Note: Firebase stock update is now handled by MySQL trigger and background daemon
                                 
                                 $this->db->query("SELECT invoice_date FROM invoices WHERE id = :id");
                                 $this->db->bind(':id', $existingInv->id);
@@ -1460,17 +1448,7 @@ class RepDashboardController extends Controller {
                                 $this->logActivity('Apply Discount', 'Billing', "Applied item-wise discount Rs: " . number_format($it['discount_value'], 2) . " on product in Invoice {$invNo}", $invoiceId);
                             }
                             
-                            // Broadcast FCM Stock update
-                            $parts = explode('|', $it['item_selection']);
-                            $itemId = intval($parts[0]);
-                            if ($itemId > 0) {
-                                $this->db->query("SELECT quantity_on_hand, quantity_reserved FROM items WHERE id = :id");
-                                $this->db->bind(':id', $itemId);
-                                $itemRow = $this->db->single();
-                                if ($itemRow) {
-                                    (new FirebaseStockService())->broadcast_stock_update($itemId, floatval($itemRow->quantity_on_hand), floatval($itemRow->quantity_reserved), $userId);
-                                }
-                            }
+                            // Note: Firebase stock update is now handled by MySQL trigger and background daemon
                         }
 
                         $this->db->query("SELECT invoice_date FROM invoices WHERE id = :id");
