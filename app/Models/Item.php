@@ -623,10 +623,13 @@ class Item {
      */
     public function updateStockDelta($id, $delta, $variationOptionId = null) {
         if ($variationOptionId) {
-            $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :delta) WHERE id = :id");
+            $sql = "UPDATE item_variation_options SET quantity_on_hand = CAST(quantity_on_hand AS SIGNED) + :delta WHERE id = :id";
+            $this->db->query($sql);
             $this->db->bind(':id', $variationOptionId);
             $this->db->bind(':delta', $delta);
             $this->db->execute();
+            
+            // Allow negative stock (backorders) to prevent phantom stock duplication on reversal
 
             // Calculate parent total stock as sum of variations to prevent drift
             $this->db->query("SELECT SUM(quantity_on_hand) AS total_qty FROM item_variation_options WHERE item_id = :item_id");
@@ -655,20 +658,23 @@ class Item {
         } else {
             $qtyUpdates = [];
             if ($this->hasQtyColumn) {
-                $qtyUpdates[] = "qty = GREATEST(0, CAST(qty AS SIGNED) + :delta)";
+                $qtyUpdates[] = "qty = CAST(qty AS SIGNED) + :delta";
             }
             if ($this->hasQuantityOnHandColumn) {
-                $qtyUpdates[] = "quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :delta)";
+                $qtyUpdates[] = "quantity_on_hand = CAST(quantity_on_hand AS SIGNED) + :delta";
             }
             if (empty($qtyUpdates)) {
-                $qtyUpdates[] = "quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :delta)";
+                $qtyUpdates[] = "quantity_on_hand = CAST(quantity_on_hand AS SIGNED) + :delta";
             }
             $qtyUpdatesStr = implode(', ', $qtyUpdates);
 
-            $this->db->query("UPDATE items SET {$qtyUpdatesStr} WHERE id = :id");
+            $sql = "UPDATE items SET {$qtyUpdatesStr} WHERE id = :id";
+            $this->db->query($sql);
             $this->db->bind(':id', $id);
             $this->db->bind(':delta', $delta);
-            return $this->db->execute();
+            $res = $this->db->execute();
+            // Allow negative stock (backorders) to prevent phantom stock duplication on reversal
+            return $res;
         }
     }
 

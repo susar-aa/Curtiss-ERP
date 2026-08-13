@@ -37,6 +37,22 @@ class Invoice {
         try {
             $this->db->beginTransaction();
 
+            // PRE-INSERT STOCK LOCKING & VERIFICATION
+            require_once __DIR__ . '/../Services/StockMovementService.php';
+            $stockService = new \App\Services\StockMovementService();
+            
+            $stockDemands = [];
+            foreach ($items as $item) {
+                $parts = explode('|', $item['item_selection']);
+                $stockDemands[] = [
+                    'item_id' => $parts[0] ?? null,
+                    'variation_option_id' => isset($parts[1]) && $parts[1] !== 'MIX' && $parts[1] !== '0' ? $parts[1] : null,
+                    'quantity' => $item['quantity']
+                ];
+            }
+            $stockService->lockAndVerifyAvailability($stockDemands);
+            // End Stock Verification
+
             $stockStatus = $invoiceData['stock_status'] ?? 'deducted';
             $jeStatus = 'Posted';
 
@@ -76,6 +92,42 @@ class Invoice {
                 $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('4050', 'Discounts Allowed', 'Expense', 'Discounts', 0.00, 1)");
                 $this->db->execute();
                 $discountAccountId = $this->db->lastInsertId();
+            }
+
+            // Resolve COGS Account (Code 5000)
+            $cogsAccountId = null;
+            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '5000' OR account_name LIKE '%Cost of Goods%' LIMIT 1");
+            $cogsRow = $this->db->single();
+            if ($cogsRow) {
+                $cogsAccountId = $cogsRow->id;
+            } else {
+                $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('5000', 'Cost of Goods Sold (COGS)', 'Expense', 'Cost of Goods Sold', 0.00, 1)");
+                $this->db->execute();
+                $cogsAccountId = $this->db->lastInsertId();
+            }
+
+            // Resolve Inventory Asset Account (Code 1300)
+            $inventoryAccountId = null;
+            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1300' OR account_name LIKE '%Inventory Asset%' LIMIT 1");
+            $invRow = $this->db->single();
+            if ($invRow) {
+                $inventoryAccountId = $invRow->id;
+            } else {
+                $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('1300', 'Inventory Asset', 'Asset', 'Current Assets', 0.00, 1)");
+                $this->db->execute();
+                $inventoryAccountId = $this->db->lastInsertId();
+            }
+
+            // Resolve Tax Payable Account (Code 2110)
+            $taxAccountId = null;
+            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '2110' OR account_name LIKE '%Tax Payable%' OR account_name LIKE '%Sales Tax%' LIMIT 1");
+            $taxRow = $this->db->single();
+            if ($taxRow) {
+                $taxAccountId = $taxRow->id;
+            } else {
+                $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('2110', 'VAT / Sales Tax Payable', 'Liability', 'Current Liabilities', 0.00, 1)");
+                $this->db->execute();
+                $taxAccountId = $this->db->lastInsertId();
             }
 
             $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
@@ -123,10 +175,25 @@ class Invoice {
                 $this->db->updateAccountBalance($revenueAccountId, 0, $grossRevenue);
             }
 
+            $taxAmount = $netGrandTotal - ($grossRevenue - $totalDiscountAmount);
+
+            // 4. CREDIT: Tax Payable (Liability) = Tax Amount (if > 0)
+            if ($taxAmount > 0.001 && $taxAccountId) {
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, 0, :credit)");
+                $this->db->bind(':journal_id', $journalEntryId);
+                $this->db->bind(':account_id', $taxAccountId);
+                $this->db->bind(':credit', $taxAmount);
+                $this->db->execute();
+
+                if ($jeStatus === 'Posted') {
+                    $this->db->updateAccountBalance($taxAccountId, 0, $taxAmount);
+                }
+            }
+
             $stockStatus = $invoiceData['stock_status'] ?? 'deducted';
             $uuid = $invoiceData['uuid'] ?? null;
-            $this->db->query("INSERT INTO invoices (invoice_number, uuid, customer_id, rep_route_id, invoice_date, due_date, payment_term_id, total_amount, global_discount_val, global_discount_type, notes, journal_entry_id, created_by, status, stock_status) 
-                              VALUES (:invoice_number, :uuid, :customer_id, :rep_route_id, :invoice_date, :due_date, :payment_term_id, :total_amount, :global_discount_val, :global_discount_type, :notes, :journal_entry_id, :created_by, 'Unpaid', :stock_status)");
+            $this->db->query("INSERT INTO invoices (invoice_number, uuid, customer_id, rep_route_id, invoice_date, due_date, payment_term_id, total_amount, tax_amount, global_discount_val, global_discount_type, notes, journal_entry_id, created_by, status, stock_status) 
+                              VALUES (:invoice_number, :uuid, :customer_id, :rep_route_id, :invoice_date, :due_date, :payment_term_id, :total_amount, :tax_amount, :global_discount_val, :global_discount_type, :notes, :journal_entry_id, :created_by, 'Unpaid', :stock_status)");
             $this->db->bind(':invoice_number', $invoiceData['invoice_number']);
             $this->db->bind(':uuid', $uuid);
             $this->db->bind(':customer_id', $invoiceData['customer_id']);
@@ -135,6 +202,7 @@ class Invoice {
             $this->db->bind(':due_date', $invoiceData['due_date']);
             $this->db->bind(':payment_term_id', $invoiceData['payment_term_id'] ?? null);
             $this->db->bind(':total_amount', $invoiceData['subtotal']);
+            $this->db->bind(':tax_amount', $taxAmount > 0 ? $taxAmount : 0.0);
             $this->db->bind(':global_discount_val', $invoiceData['global_discount_val']);
             $this->db->bind(':global_discount_type', $invoiceData['global_discount_type']);
             $this->db->bind(':notes', $invoiceData['notes']);
@@ -144,8 +212,10 @@ class Invoice {
             $this->db->execute();
             $invoiceId = $this->db->lastInsertId();
 
-            require_once '../app/Models/FIFO.php';
+            require_once __DIR__ . '/FIFO.php';
             $fifo = new FIFO();
+            
+            $totalCogs = 0.0;
 
             foreach ($items as $item) {
                 $parts = explode('|', $item['item_selection']);
@@ -168,12 +238,12 @@ class Invoice {
 
                 // Direct creation deducts from Physical stock immediately (with unsigned underflow safety)
                 if ($itemId) {
-                    require_once '../app/Models/Item.php';
+                    require_once __DIR__ . '/Item.php';
                     $itemModel = new Item();
                     $itemModel->updateStockDelta($itemId, -$item['quantity']);
                 }
                 if ($varId) {
-                    $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) - :qty) WHERE id = :id");
+                    $this->db->query("UPDATE item_variation_options SET quantity_on_hand = CAST(quantity_on_hand AS SIGNED) - :qty WHERE id = :id");
                     $this->db->bind(':qty', $item['quantity']);
                     $this->db->bind(':id', $varId);
                     $this->db->execute();
@@ -183,7 +253,7 @@ class Invoice {
                 $avgCost = $fifo->depleteStock($itemId, $varId, $item['quantity'], $invoiceItemId, null);
 
                 // Log stock movement in ledger
-                require_once '../app/Models/StockLedger.php';
+                require_once __DIR__ . '/StockLedger.php';
                 $ledger = new StockLedger();
                 $this->db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
                 $this->db->bind(':id', $itemId);
@@ -200,6 +270,32 @@ class Invoice {
                 $remarks = $isFreeIssue ? 'Free Issue Promotional Stock Deduction' : 'Sales Invoice Direct Deduction';
 
                 $ledger->logMovement($itemId, $varId, 0, $item['quantity'], $movType, $invoiceData['invoice_number'], $whId, $userId, $remarks, $itemCost);
+                $totalCogs += ($itemCost * floatval($item['quantity']));
+            }
+
+            // 4. DEBIT: COGS (Expense) & CREDIT: Inventory (Asset)
+            if ($totalCogs > 0.001 && $cogsAccountId && $inventoryAccountId) {
+                // Debit COGS
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, :debit, 0)");
+                $this->db->bind(':journal_id', $journalEntryId);
+                $this->db->bind(':account_id', $cogsAccountId);
+                $this->db->bind(':debit', $totalCogs);
+                $this->db->execute();
+                
+                if ($jeStatus === 'Posted') {
+                    $this->db->updateAccountBalance($cogsAccountId, $totalCogs, 0);
+                }
+
+                // Credit Inventory
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, 0, :credit)");
+                $this->db->bind(':journal_id', $journalEntryId);
+                $this->db->bind(':account_id', $inventoryAccountId);
+                $this->db->bind(':credit', $totalCogs);
+                $this->db->execute();
+                
+                if ($jeStatus === 'Posted') {
+                    $this->db->updateAccountBalance($inventoryAccountId, 0, $totalCogs);
+                }
             }
 
             $this->db->commit();
@@ -236,7 +332,7 @@ class Invoice {
             $this->db->bind(':id', $invoiceId);
             $oldItems = $this->db->resultSet();
 
-            require_once '../app/Models/FIFO.php';
+            require_once __DIR__ . '/FIFO.php';
             $fifo = new FIFO();
 
             foreach ($oldItems as $oldItem) {
@@ -245,7 +341,7 @@ class Invoice {
 
                 // Reverse the physical deduction: Add back to quantity_on_hand
                 if ($itemId) {
-                    require_once '../app/Models/Item.php';
+                    require_once __DIR__ . '/Item.php';
                     $itemModel = new Item();
                     $itemModel->updateStockDelta($itemId, $oldItem->quantity);
                 }
@@ -260,7 +356,7 @@ class Invoice {
                 $fifo->revertDepletion($oldItem->id, null);
 
                 // Log stock movement in ledger (reversion/addition)
-                require_once '../app/Models/StockLedger.php';
+                require_once __DIR__ . '/StockLedger.php';
                 $ledger = new StockLedger();
                 $this->db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
                 $this->db->bind(':id', $itemId);
@@ -316,35 +412,37 @@ class Invoice {
             }
 
             // 3. RE-POST REVISED JOURNAL ENTRIES
+            // Calculate new item-wise and global discounts
+            $itemGrossTotal = 0.0;
+            $itemDiscountTotal = 0.0;
+            foreach ($items as $item) {
+                $qty = floatval($item['quantity'] ?? 0);
+                $unitPrice = floatval($item['unit_price'] ?? 0);
+                $lineGross = $qty * $unitPrice;
+                
+                $discVal = floatval($item['discount_value'] ?? 0);
+                $discType = $item['discount_type'] ?? 'Rs';
+                $lineDisc = ($discType === '%') ? ($lineGross * $discVal / 100) : $discVal;
+
+                $itemGrossTotal += $lineGross;
+                $itemDiscountTotal += $lineDisc;
+            }
+
+            $subtotal = floatval($invoiceData['subtotal'] ?? 0);
+            $globalDiscVal = floatval($invoiceData['global_discount_val'] ?? 0);
+            $globalDiscType = $invoiceData['global_discount_type'] ?? 'Rs';
+            $globalDiscAmount = ($globalDiscType === '%') ? ($subtotal * $globalDiscVal / 100) : $globalDiscVal;
+
+            $totalDiscountAmount = $itemDiscountTotal + $globalDiscAmount;
+            $grossRevenue = ($itemGrossTotal > 0) ? $itemGrossTotal : ($subtotal + $itemDiscountTotal);
+            $netGrandTotal = floatval($invoiceData['grand_total'] ?? ($subtotal - $globalDiscAmount));
+            $taxAmount = $netGrandTotal - ($grossRevenue - $totalDiscountAmount);
+
             if ($jid) {
                 $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
                 $this->db->bind(':jid', $jid);
                 $this->db->execute();
 
-                // Calculate new item-wise and global discounts
-                $itemGrossTotal = 0.0;
-                $itemDiscountTotal = 0.0;
-                foreach ($items as $item) {
-                    $qty = floatval($item['quantity'] ?? 0);
-                    $unitPrice = floatval($item['unit_price'] ?? 0);
-                    $lineGross = $qty * $unitPrice;
-                    
-                    $discVal = floatval($item['discount_value'] ?? 0);
-                    $discType = $item['discount_type'] ?? 'Rs';
-                    $lineDisc = ($discType === '%') ? ($lineGross * $discVal / 100) : $discVal;
-
-                    $itemGrossTotal += $lineGross;
-                    $itemDiscountTotal += $lineDisc;
-                }
-
-                $subtotal = floatval($invoiceData['subtotal'] ?? 0);
-                $globalDiscVal = floatval($invoiceData['global_discount_val'] ?? 0);
-                $globalDiscType = $invoiceData['global_discount_type'] ?? 'Rs';
-                $globalDiscAmount = ($globalDiscType === '%') ? ($subtotal * $globalDiscVal / 100) : $globalDiscVal;
-
-                $totalDiscountAmount = $itemDiscountTotal + $globalDiscAmount;
-                $grossRevenue = ($itemGrossTotal > 0) ? $itemGrossTotal : ($subtotal + $itemDiscountTotal);
-                $netGrandTotal = floatval($invoiceData['grand_total'] ?? ($subtotal - $globalDiscAmount));
 
                 $discountAccountId = null;
                 $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '4050' OR account_name LIKE '%Discount%' LIMIT 1");
@@ -355,6 +453,42 @@ class Invoice {
                     $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('4050', 'Discounts Allowed', 'Expense', 'Discounts', 0.00, 1)");
                     $this->db->execute();
                     $discountAccountId = $this->db->lastInsertId();
+                }
+
+                // Resolve COGS Account (Code 5000)
+                $cogsAccountId = null;
+                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '5000' OR account_name LIKE '%Cost of Goods%' LIMIT 1");
+                $cogsRow = $this->db->single();
+                if ($cogsRow) {
+                    $cogsAccountId = $cogsRow->id;
+                } else {
+                    $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('5000', 'Cost of Goods Sold (COGS)', 'Expense', 'Cost of Goods Sold', 0.00, 1)");
+                    $this->db->execute();
+                    $cogsAccountId = $this->db->lastInsertId();
+                }
+    
+                // Resolve Inventory Asset Account (Code 1300)
+                $inventoryAccountId = null;
+                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1300' OR account_name LIKE '%Inventory Asset%' LIMIT 1");
+                $invRow = $this->db->single();
+                if ($invRow) {
+                    $inventoryAccountId = $invRow->id;
+                } else {
+                    $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('1300', 'Inventory Asset', 'Asset', 'Current Assets', 0.00, 1)");
+                    $this->db->execute();
+                    $inventoryAccountId = $this->db->lastInsertId();
+                }
+
+                // Resolve Tax Payable Account (Code 2110)
+                $taxAccountId = null;
+                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '2110' OR account_name LIKE '%Tax Payable%' OR account_name LIKE '%Sales Tax%' LIMIT 1");
+                $taxRow = $this->db->single();
+                if ($taxRow) {
+                    $taxAccountId = $taxRow->id;
+                } else {
+                    $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('2110', 'VAT / Sales Tax Payable', 'Liability', 'Current Liabilities', 0.00, 1)");
+                    $this->db->execute();
+                    $taxAccountId = $this->db->lastInsertId();
                 }
 
                 // 1. DEBIT: Accounts Receivable (Asset) = Net Grand Total
@@ -388,15 +522,29 @@ class Invoice {
                 if ($isPosted) {
                     $this->db->updateAccountBalance($revenueAccountId, 0, $grossRevenue);
                 }
+
+                // 4. CREDIT: Tax Payable (Liability) = Tax Amount (if > 0)
+                if ($taxAmount > 0.001 && $taxAccountId) {
+                    $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, 0, :credit)");
+                    $this->db->bind(':journal_id', $jid);
+                    $this->db->bind(':account_id', $taxAccountId);
+                    $this->db->bind(':credit', $taxAmount);
+                    $this->db->execute();
+
+                    if ($isPosted) {
+                        $this->db->updateAccountBalance($taxAccountId, 0, $taxAmount);
+                    }
+                }
             }
 
-            // 4. UPDATE TOP-LEVEL RECORD & PRESERVE stock_status
+            // 5. UPDATE TOP-LEVEL RECORD & PRESERVE stock_status
             $this->db->query("UPDATE invoices SET 
                                 customer_id = :customer_id, 
                                 invoice_date = :invoice_date, 
                                 due_date = :due_date, 
                                 payment_term_id = :payment_term_id,
                                 total_amount = :total_amount, 
+                                tax_amount = :tax_amount,
                                 global_discount_val = :global_discount_val, 
                                 global_discount_type = :global_discount_type, 
                                 notes = :notes,
@@ -407,6 +555,7 @@ class Invoice {
             $this->db->bind(':due_date', $invoiceData['due_date']);
             $this->db->bind(':payment_term_id', $invoiceData['payment_term_id'] ?? null);
             $this->db->bind(':total_amount', $invoiceData['subtotal']);
+            $this->db->bind(':tax_amount', $taxAmount > 0 ? $taxAmount : 0.0);
             $this->db->bind(':global_discount_val', $invoiceData['global_discount_val']);
             $this->db->bind(':global_discount_type', $invoiceData['global_discount_type']);
             $this->db->bind(':notes', $invoiceData['notes']);
@@ -415,6 +564,7 @@ class Invoice {
             $this->db->execute();
 
             // 5. INSERT REVISED ITEMS & APPLY STOCK RESERVATIONS OR DEDUCTIONS
+            $totalCogs = 0.0;
             foreach ($items as $item) {
                 $parts = explode('|', $item['item_selection']);
                 $itemId = $parts[0] ?? null;
@@ -436,7 +586,7 @@ class Invoice {
 
                 // Deduct from Main Product Quantity on Hand directly since the invoice is now finalized (unsigned underflow safety)
                 if ($itemId) {
-                    require_once '../app/Models/Item.php';
+                    require_once __DIR__ . '/Item.php';
                     $itemModel = new Item();
                     $itemModel->updateStockDelta($itemId, -$item['quantity']);
                 }
@@ -451,7 +601,7 @@ class Invoice {
                 $avgCost = $fifo->depleteStock($itemId, $varId, $item['quantity'], $newInvoiceItemId, null);
 
                 // Log stock movement in ledger (new deduction)
-                require_once '../app/Models/StockLedger.php';
+                require_once __DIR__ . '/StockLedger.php';
                 $ledger = new StockLedger();
                 $this->db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
                 $this->db->bind(':id', $itemId);
@@ -468,6 +618,31 @@ class Invoice {
                 $remarks = $isFreeIssue ? 'Invoice Updated - New Free Issue Stock Deducted' : 'Invoice Updated - New Stock Deducted';
 
                 $ledger->logMovement($itemId, $varId, 0, $item['quantity'], $movType, $invoiceData['invoice_number'], $whId, $userId, $remarks, $itemCost);
+                $totalCogs += ($itemCost * floatval($item['quantity']));
+            }
+
+            if ($jid && $totalCogs > 0.001 && $cogsAccountId && $inventoryAccountId) {
+                // Debit COGS
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, :debit, 0)");
+                $this->db->bind(':journal_id', $jid);
+                $this->db->bind(':account_id', $cogsAccountId);
+                $this->db->bind(':debit', $totalCogs);
+                $this->db->execute();
+                
+                if ($isPosted) {
+                    $this->db->updateAccountBalance($cogsAccountId, $totalCogs, 0);
+                }
+
+                // Credit Inventory
+                $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:journal_id, :account_id, 0, :credit)");
+                $this->db->bind(':journal_id', $jid);
+                $this->db->bind(':account_id', $inventoryAccountId);
+                $this->db->bind(':credit', $totalCogs);
+                $this->db->execute();
+                
+                if ($isPosted) {
+                    $this->db->updateAccountBalance($inventoryAccountId, 0, $totalCogs);
+                }
             }
 
             $this->db->commit();
@@ -500,7 +675,7 @@ class Invoice {
             $this->db->bind(':id', $invoiceId);
             $oldItems = $this->db->resultSet() ?: [];
 
-            require_once '../app/Models/FIFO.php';
+            require_once __DIR__ . '/FIFO.php';
             $fifo = new FIFO();
 
             foreach ($oldItems as $oldItem) {
@@ -508,7 +683,7 @@ class Invoice {
                 $varId = $oldItem->variation_option_id ?? null;
 
                 if ($itemId) {
-                    require_once '../app/Models/Item.php';
+                    require_once __DIR__ . '/Item.php';
                     $itemModel = new Item();
                     $itemModel->updateStockDelta($itemId, $oldItem->quantity);
                 }
@@ -521,7 +696,7 @@ class Invoice {
 
                 $fifo->revertDepletion($oldItem->id, null);
 
-                require_once '../app/Models/StockLedger.php';
+                require_once __DIR__ . '/StockLedger.php';
                 $ledger = new StockLedger();
                 $this->db->query("SELECT warehouse_id, cost_price FROM items WHERE id = :id");
                 $this->db->bind(':id', $itemId);

@@ -263,8 +263,21 @@ class AuthController extends Controller {
             
             $this->logActivity('API Login', 'Auth', "Driver '{$user->username}' successfully logged in via API.", $user->id);
 
+            // Generate secure API token
+            $apiToken = bin2hex(random_bytes(32));
+            $expiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
+            
+            // Re-instantiate DB connection since it's an AuthController
+            $db = new \Core\Database();
+            $db->query("UPDATE users SET api_token = :token, api_token_expires_at = :expires WHERE id = :id");
+            $db->bind(':token', $apiToken);
+            $db->bind(':expires', $expiresAt);
+            $db->bind(':id', $user->id);
+            $db->execute();
+
             echo json_encode([
                 'success' => true,
+                'token' => $apiToken,
                 'user_id' => intval($user->id),
                 'username' => $user->username
             ]);

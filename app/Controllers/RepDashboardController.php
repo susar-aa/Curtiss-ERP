@@ -17,6 +17,31 @@ class RepDashboardController extends Controller {
         $this->invoiceModel = $this->model('Invoice');
         $this->db = new Database();
     }
+    private function validate_api_token() {
+        $token = '';
+        if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            if (preg_match('/Bearer\s(\S+)/i', $_SERVER['HTTP_AUTHORIZATION'], $matches)) {
+                $token = $matches[1];
+            }
+        } elseif (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+            if (preg_match('/Bearer\s(\S+)/i', $authHeader, $matches)) {
+                $token = $matches[1];
+            }
+        }
+        
+        if (empty($token)) {
+            return 0;
+        }
+
+        $this->db->query("SELECT id FROM users WHERE api_token = :token AND api_token_expires_at > NOW() AND status = 'Active'");
+        $this->db->bind(':token', $token);
+        $user = $this->db->single();
+        
+        return $user ? intval($user->id) : 0;
+    }
+
 
     public function index() {
         header('Content-Type: application/json');
@@ -68,8 +93,19 @@ class RepDashboardController extends Controller {
             $firstName = $emp ? $emp->first_name : $user->username;
             $lastName = $emp ? $emp->last_name : '';
             
+            // Generate secure API token
+            $apiToken = bin2hex(random_bytes(32));
+            $expiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
+            
+            $this->db->query("UPDATE users SET api_token = :token, api_token_expires_at = :expires WHERE id = :id");
+            $this->db->bind(':token', $apiToken);
+            $this->db->bind(':expires', $expiresAt);
+            $this->db->bind(':id', $user->id);
+            $this->db->execute();
+            
             echo json_encode([
                 'success' => true,
+                'token' => $apiToken,
                 'user' => [
                     'id' => intval($user->id),
                     'employee_id' => intval($user->employee_id),
@@ -86,16 +122,7 @@ class RepDashboardController extends Controller {
 
     public function update_fcm_token() {
         header('Content-Type: application/json');
-        
-        $userId = 0;
-        if (isset($_SERVER['HTTP_X_USER_ID'])) {
-            $userId = intval($_SERVER['HTTP_X_USER_ID']);
-        } elseif (function_exists('getallheaders')) {
-            $headers = getallheaders();
-            if (isset($headers['X-User-ID'])) {
-                $userId = intval($headers['X-User-ID']);
-            }
-        }
+        $userId = $this->validate_api_token();
         
         if ($userId <= 0) {
             echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
@@ -743,6 +770,7 @@ class RepDashboardController extends Controller {
         ];
 
         try {
+            $this->db->beginTransaction();
             // 1. Process Customers
             if (isset($payload['customers']) && is_array($payload['customers'])) {
                 $processCustomerUpdate = function($c, $serverId) {
@@ -1315,11 +1343,14 @@ class RepDashboardController extends Controller {
                                 $invRow = $this->db->single();
                                 $serverTime = $invRow ? $invRow->invoice_date : date('Y-m-d H:i:s');
 
+                                $isRemapped = ($invNo !== $inv['invoice_number']);
                                 $mappings['invoices'][] = [
                                     'local_id' => $localId,
                                     'server_id' => intval($existingInv->id),
                                     'invoice_number' => $invNo,
-                                    'server_timestamp' => $serverTime
+                                    'server_timestamp' => $serverTime,
+                                    'remapped' => $isRemapped,
+                                    'new_invoice_number' => $isRemapped ? $invNo : null
                                 ];
                                 continue;
                             } else {
@@ -1329,11 +1360,14 @@ class RepDashboardController extends Controller {
                             }
                         } else {
                             // Already finalized, treat as synced and skip
+                            $isRemapped = ($existingInv->invoice_number !== $inv['invoice_number']);
                             $mappings['invoices'][] = [
                                 'local_id' => $localId,
                                 'server_id' => intval($existingInv->id),
                                 'invoice_number' => $existingInv->invoice_number,
-                                'server_timestamp' => $existingInv->invoice_date
+                                'server_timestamp' => $existingInv->invoice_date,
+                                'remapped' => $isRemapped,
+                                'new_invoice_number' => $isRemapped ? $existingInv->invoice_number : null
                             ];
                             continue;
                         }
@@ -1456,16 +1490,24 @@ class RepDashboardController extends Controller {
                         $invRow = $this->db->single();
                         $serverTime = $invRow ? $invRow->invoice_date : date('Y-m-d H:i:s');
 
+                        $isRemapped = ($invNo !== $inv['invoice_number']);
                         $mappings['invoices'][] = [
                             'local_id' => $localId,
                             'server_id' => intval($invoiceId),
                             'invoice_number' => $invNo,
-                            'server_timestamp' => $serverTime
+                            'server_timestamp' => $serverTime,
+                            'remapped' => $isRemapped,
+                            'new_invoice_number' => $isRemapped ? $invNo : null
                         ];
                     } else {
                         $err = isset($_SESSION['invoice_error']) ? $_SESSION['invoice_error'] : 'Unknown error during creation';
                         unset($_SESSION['invoice_error']);
-                        throw new Exception("Invoice creation failed for invoice number {$invNo}: " . $err);
+                        $mappings['errors'][] = [
+                            'local_id' => $localId,
+                            'type' => 'invoice',
+                            'invoice_number' => $invNo,
+                            'error' => "Stock Conflict / Creation Failed: " . $err
+                        ];
                     }
                 }
             }
@@ -1582,6 +1624,7 @@ class RepDashboardController extends Controller {
                 }
             }
 
+            $this->db->commit();
             echo json_encode([
                 'success' => true,
                 'mappings' => $mappings
@@ -1589,6 +1632,7 @@ class RepDashboardController extends Controller {
             exit;
 
         } catch (Exception $e) {
+            $this->db->rollBack();
             echo json_encode([
                 'success' => false,
                 'message' => 'Sync push processing exception: ' . $e->getMessage()

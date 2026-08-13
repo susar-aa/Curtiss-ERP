@@ -120,7 +120,7 @@ class Report {
                 (ii.total - (ii.quantity * COALESCE(ii.cost_at_sale, 0))) as profit
             FROM invoice_items ii
             JOIN invoices i ON ii.invoice_id = i.id
-            WHERE i.status != 'Voided' AND i.invoice_date BETWEEN :start AND :end
+            WHERE i.status != 'Voided' AND ii.quantity > 0 AND i.invoice_date BETWEEN :start AND :end
             ORDER BY sale_date DESC, invoice_number DESC
         ");
         $this->db->bind(':start', $start);
@@ -188,7 +188,7 @@ class Report {
                    COALESCE(SUM(ii.total - (ii.quantity * COALESCE(ii.cost_at_sale, 0))), 0) as gross_profit
             FROM invoice_items ii
             JOIN invoices i ON ii.invoice_id = i.id
-            WHERE i.invoice_date BETWEEN :start AND :end AND i.status != 'Voided'
+            WHERE i.invoice_date BETWEEN :start AND :end AND i.status != 'Voided' AND ii.quantity > 0
             GROUP BY ii.description
             ORDER BY total_revenue DESC
         ");

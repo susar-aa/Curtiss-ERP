@@ -238,24 +238,26 @@ class JournalEntry {
             $lines = $this->db->resultSet();
 
             // 3. Revert impact on COA balances
-            foreach ($lines as $line) {
-                $this->db->query("SELECT account_type FROM chart_of_accounts WHERE id = :aid FOR UPDATE");
-                $this->db->bind(':aid', $line->account_id);
-                $account = $this->db->single();
+            if ($entry->status === 'Posted') {
+                foreach ($lines as $line) {
+                    $this->db->query("SELECT account_type FROM chart_of_accounts WHERE id = :aid FOR UPDATE");
+                    $this->db->bind(':aid', $line->account_id);
+                    $account = $this->db->single();
 
-                $balanceUpdateSql = "UPDATE chart_of_accounts SET balance = balance ";
-                if (in_array($account->account_type, [COA_TYPE_ASSET, COA_TYPE_EXPENSE])) {
-                    $balanceUpdateSql .= "- :debit + :credit ";
-                } else {
-                    $balanceUpdateSql .= "+ :debit - :credit ";
+                    $balanceUpdateSql = "UPDATE chart_of_accounts SET balance = balance ";
+                    if (in_array($account->account_type, [COA_TYPE_ASSET, COA_TYPE_EXPENSE])) {
+                        $balanceUpdateSql .= "- :debit + :credit ";
+                    } else {
+                        $balanceUpdateSql .= "+ :debit - :credit ";
+                    }
+                    $balanceUpdateSql .= "WHERE id = :aid";
+
+                    $this->db->query($balanceUpdateSql);
+                    $this->db->bind(':debit', $line->debit);
+                    $this->db->bind(':credit', $line->credit);
+                    $this->db->bind(':aid', $line->account_id);
+                    $this->db->execute();
                 }
-                $balanceUpdateSql .= "WHERE id = :aid";
-
-                $this->db->query($balanceUpdateSql);
-                $this->db->bind(':debit', $line->debit);
-                $this->db->bind(':credit', $line->credit);
-                $this->db->bind(':aid', $line->account_id);
-                $this->db->execute();
             }
 
             // 4. Update journal entry status to Voided

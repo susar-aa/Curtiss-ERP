@@ -15,19 +15,27 @@ echo "Starting Real-Time Stock Sync Daemon...\n";
 
 while (true) {
     try {
-        // Fetch pending items
-        $db->query("SELECT DISTINCT item_id FROM firebase_stock_sync_queue");
-        $pendingItems = $db->resultSet();
+        // Fetch pending queue rows
+        $db->query("SELECT id, item_id FROM firebase_stock_sync_queue");
+        $pendingRows = $db->resultSet();
 
-        if (empty($pendingItems)) {
+        if (empty($pendingRows)) {
             // Sleep for 1 second if no updates
             sleep(1);
             continue;
         }
 
-        foreach ($pendingItems as $row) {
+        // Group queue IDs by item_id
+        $itemsToProcess = [];
+        foreach ($pendingRows as $row) {
             $itemId = $row->item_id;
+            if (!isset($itemsToProcess[$itemId])) {
+                $itemsToProcess[$itemId] = [];
+            }
+            $itemsToProcess[$itemId][] = $row->id;
+        }
 
+        foreach ($itemsToProcess as $itemId => $queueIds) {
             // Get current stock
             $db->query("SELECT quantity_on_hand, quantity_reserved FROM items WHERE id = :id");
             $db->bind(':id', $itemId);
@@ -41,9 +49,17 @@ while (true) {
                 @ob_flush(); flush();
             }
 
-            // Remove from queue
-            $db->query("DELETE FROM firebase_stock_sync_queue WHERE item_id = :item_id");
-            $db->bind(':item_id', $itemId);
+            // Remove specifically fetched IDs from queue to prevent race conditions
+            $placeholders = [];
+            foreach ($queueIds as $idx => $qId) {
+                $placeholders[] = ':qid_' . $idx;
+            }
+            $placeholdersStr = implode(',', $placeholders);
+            
+            $db->query("DELETE FROM firebase_stock_sync_queue WHERE id IN ($placeholdersStr)");
+            foreach ($queueIds as $idx => $qId) {
+                $db->bind(':qid_' . $idx, $qId);
+            }
             $db->execute();
         }
 

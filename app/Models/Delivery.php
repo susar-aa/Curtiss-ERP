@@ -688,13 +688,41 @@ class Delivery {
                     $this->db->bind(':iid', $invoice->id);
                     $this->db->execute();
 
-                    // BUG-1 FIX: Void Draft JE if delivery is Cancelled / Postponed
+                    // BUG-1 FIX: Void JE if delivery is Cancelled / Postponed and revert balances safely
                     $jid = $invoice->journal_entry_id;
                     if ($jid) {
                         $this->db->query("SELECT status FROM journal_entries WHERE id = :jid");
                         $this->db->bind(':jid', $jid);
                         $jeRow = $this->db->single();
-                        if ($jeRow && $jeRow->status === 'Draft') {
+                        
+                        if ($jeRow && $jeRow->status !== 'Voided') {
+                            if ($jeRow->status === 'Posted') {
+                                $this->db->query("SELECT * FROM transactions WHERE journal_entry_id = :id");
+                                $this->db->bind(':id', $jid);
+                                $lines = $this->db->resultSet();
+                                
+                                foreach ($lines as $line) {
+                                    $this->db->query("SELECT account_type FROM chart_of_accounts WHERE id = :aid FOR UPDATE");
+                                    $this->db->bind(':aid', $line->account_id);
+                                    $account = $this->db->single();
+                                    
+                                    if ($account) {
+                                        $balanceUpdateSql = "UPDATE chart_of_accounts SET balance = balance ";
+                                        if (in_array($account->account_type, [COA_TYPE_ASSET, COA_TYPE_EXPENSE])) {
+                                            $balanceUpdateSql .= "- :debit + :credit ";
+                                        } else {
+                                            $balanceUpdateSql .= "+ :debit - :credit ";
+                                        }
+                                        $balanceUpdateSql .= "WHERE id = :aid";
+                                        
+                                        $this->db->query($balanceUpdateSql);
+                                        $this->db->bind(':debit', $line->debit);
+                                        $this->db->bind(':credit', $line->credit);
+                                        $this->db->bind(':aid', $line->account_id);
+                                        $this->db->execute();
+                                    }
+                                }
+                            }
                             $this->db->query("UPDATE journal_entries SET status = 'Voided' WHERE id = :jid");
                             $this->db->bind(':jid', $jid);
                             $this->db->execute();
@@ -735,7 +763,7 @@ class Delivery {
                                 $itemModel->updateStockDelta($itemId, $adjustment);
                             }
                             if ($varId !== null) {
-                                $this->db->query("UPDATE item_variation_options SET quantity_on_hand = GREATEST(0, CAST(quantity_on_hand AS SIGNED) + :adj) WHERE id = :id");
+                                $this->db->query("UPDATE item_variation_options SET quantity_on_hand = CAST(quantity_on_hand AS SIGNED) + :adj WHERE id = :id");
                                 $this->db->bind(':adj', $adjustment);
                                 $this->db->bind(':id', $varId);
                                 $this->db->execute();

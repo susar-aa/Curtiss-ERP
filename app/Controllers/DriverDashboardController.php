@@ -9,6 +9,32 @@ class DriverDashboardController extends Controller {
             header('Location: ' . APP_URL . '/driver/auth/login');
             exit;
         }
+    private function validate_api_token() {
+        $token = '';
+        if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            if (preg_match('/Bearer\s(\S+)/i', $_SERVER['HTTP_AUTHORIZATION'], $matches)) {
+                $token = $matches[1];
+            }
+        } elseif (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+            if (preg_match('/Bearer\s(\S+)/i', $authHeader, $matches)) {
+                $token = $matches[1];
+            }
+        }
+        
+        if (empty($token)) {
+            return 0;
+        }
+
+        $db = new \Core\Database();
+        $db->query("SELECT id FROM users WHERE api_token = :token AND api_token_expires_at > NOW() AND status = 'Active'");
+        $db->bind(':token', $token);
+        $user = $db->single();
+        
+        return $user ? intval($user->id) : 0;
+    }
+
         $this->routeModel = $this->model('DriverRoute');
     }
 
@@ -225,7 +251,7 @@ class DriverDashboardController extends Controller {
         ini_set('memory_limit', '512M');
         header('Content-Type: application/json');
         try {
-            $userId = intval($_GET['user_id'] ?? 0);
+            $userId = $this->validate_api_token();
             if ($userId <= 0) {
                 echo json_encode(['success' => false, 'message' => 'Invalid User ID.']);
                 exit;
@@ -362,7 +388,7 @@ class DriverDashboardController extends Controller {
         $postData = json_decode($rawInput, true) ?: [];
         file_put_contents($logPath, "[" . date('Y-m-d H:i:s') . "] DECODED PAYLOAD:\n" . print_r($postData, true) . "\n\n", FILE_APPEND);
         
-        $userId = intval($postData['user_id'] ?? 0);
+        $userId = $this->validate_api_token();
         $routeId = intval($postData['route_id'] ?? 0);
         
         if ($userId <= 0 || $routeId <= 0) {

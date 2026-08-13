@@ -278,13 +278,25 @@ class DriverInvoice {
         $this->db->execute();
 
         // Ledger adjustments
-        $this->db->query("SELECT id, account_code FROM chart_of_accounts WHERE account_code IN ('1200', '4000')");
-        $accounts = $this->db->resultSet();
-        $accMap = [];
-        foreach($accounts as $a) { $accMap[$a->account_code] = $a->id; }
+        $arAcc = null;
+        $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Asset' AND (account_name LIKE '%Receivable%' OR account_code = '1200') LIMIT 1");
+        $arRow = $this->db->single();
+        if ($arRow) $arAcc = $arRow->id;
 
-        $arAcc = $accMap['1200'] ?? null;
-        $salesAcc = $accMap['4000'] ?? null;
+        $salesAcc = null;
+        $this->db->query("SELECT id FROM chart_of_accounts WHERE account_type = 'Revenue' AND (account_name LIKE '%Sales%' OR account_code = '4000') LIMIT 1");
+        $salesRow = $this->db->single();
+        if ($salesRow) $salesAcc = $salesRow->id;
+
+        $discountAcc = null;
+        $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '4050' OR account_name LIKE '%Discount%' LIMIT 1");
+        $discRow = $this->db->single();
+        if ($discRow) $discountAcc = $discRow->id;
+
+        $taxAcc = null;
+        $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '2110' OR account_name LIKE '%Tax Payable%' OR account_name LIKE '%Sales Tax%' LIMIT 1");
+        $taxRow = $this->db->single();
+        if ($taxRow) $taxAcc = $taxRow->id;
 
         if ($arAcc && $salesAcc) {
             $jid = $invoice->journal_entry_id;
@@ -295,10 +307,55 @@ class DriverInvoice {
                 $jeStatus = $jeRow ? $jeRow->status : 'Draft';
                 $invNum = $jeRow ? $jeRow->reference : ($invoice->invoice_number ?? $invoice->id);
 
-                $diff = $newGrandTotal - $oldGrandTotal;
+                $newGrossRevenue = 0.0;
+                $newItemDiscount = 0.0;
+                foreach ($items as $item) {
+                    $qty = floatval($item->quantity);
+                    $unitPrice = floatval($item->unit_price);
+                    $lineGross = $qty * $unitPrice;
+                    
+                    $discVal = floatval($item->discount_value);
+                    $discType = $item->discount_type;
+                    $lineDisc = ($discType === '%') ? ($lineGross * $discVal / 100) : $discVal;
 
-                if ($jeStatus === 'Posted') {
-                    if (abs($diff) > 0.001) {
+                    $newGrossRevenue += $lineGross;
+                    $newItemDiscount += $lineDisc;
+                }
+                $newGrossRevenue = ($newGrossRevenue > 0) ? $newGrossRevenue : ($subTotal + $newItemDiscount);
+                $newTotalDiscount = $newItemDiscount + $globalDisc;
+
+                $currentAR = 0.0;
+                $currentSales = 0.0;
+                $currentDiscount = 0.0;
+                $currentTax = 0.0;
+
+                $this->db->query("SELECT account_id, SUM(debit) as deb, SUM(credit) as cred 
+                                  FROM transactions 
+                                  WHERE journal_entry_id = :jid OR journal_entry_id IN (
+                                      SELECT id FROM journal_entries WHERE reference = :adj_ref
+                                  ) GROUP BY account_id");
+                $this->db->bind(':jid', $jid);
+                $this->db->bind(':adj_ref', 'VAR-ADJ-' . $invNum);
+                $txSums = $this->db->resultSet();
+                
+                if ($txSums) {
+                    foreach ($txSums as $ts) {
+                        if ($ts->account_id == $arAcc) $currentAR = floatval($ts->deb) - floatval($ts->cred);
+                        if ($ts->account_id == $salesAcc) $currentSales = floatval($ts->cred) - floatval($ts->deb);
+                        if ($discountAcc && $ts->account_id == $discountAcc) $currentDiscount = floatval($ts->deb) - floatval($ts->cred);
+                        if ($taxAcc && $ts->account_id == $taxAcc) $currentTax = floatval($ts->cred) - floatval($ts->deb);
+                    }
+                }
+
+                $deltaAR = $newGrandTotal - $currentAR;
+                $deltaSales = $newGrossRevenue - $currentSales;
+                $deltaDiscount = $newTotalDiscount - $currentDiscount;
+                $deltaTax = $taxAmount - $currentTax;
+
+                if (abs($deltaAR) > 0.001 || abs($deltaSales) > 0.001 || abs($deltaDiscount) > 0.001 || abs($deltaTax) > 0.001) {
+                    $adjJid = $jid;
+
+                    if ($jeStatus === 'Posted') {
                         $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
                                           VALUES (CURDATE(), :ref, :desc, :uid, 'Posted')");
                         $this->db->bind(':ref', 'VAR-ADJ-' . $invNum);
@@ -306,51 +363,35 @@ class DriverInvoice {
                         $this->db->bind(':uid', $_SESSION['user_id'] ?? 1);
                         $this->db->execute();
                         $adjJid = $this->db->lastInsertId();
+                    }
 
-                        if ($diff > 0) {
-                            $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :amt, 0)");
-                            $this->db->bind(':jid', $adjJid);
-                            $this->db->bind(':aid', $arAcc);
-                            $this->db->bind(':amt', $diff);
-                            $this->db->execute();
-                            $this->db->updateAccountBalance($arAcc, $diff, 0);
+                    $deltas = [
+                        ['acc' => $arAcc, 'val' => $deltaAR, 'isDeb' => true],
+                        ['acc' => $discountAcc, 'val' => $deltaDiscount, 'isDeb' => true],
+                        ['acc' => $salesAcc, 'val' => $deltaSales, 'isDeb' => false],
+                        ['acc' => $taxAcc, 'val' => $deltaTax, 'isDeb' => false],
+                    ];
 
-                            $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :amt)");
-                            $this->db->bind(':jid', $adjJid);
-                            $this->db->bind(':aid', $salesAcc);
-                            $this->db->bind(':amt', $diff);
-                            $this->db->execute();
-                            $this->db->updateAccountBalance($salesAcc, 0, $diff);
+                    foreach ($deltas as $d) {
+                        if (!$d['acc'] || abs($d['val']) <= 0.001) continue;
+                        $deb = 0; $cred = 0;
+                        if ($d['isDeb']) {
+                            if ($d['val'] > 0) $deb = $d['val']; else $cred = abs($d['val']);
                         } else {
-                            $absDiff = abs($diff);
-                            $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :amt, 0)");
-                            $this->db->bind(':jid', $adjJid);
-                            $this->db->bind(':aid', $salesAcc);
-                            $this->db->bind(':amt', $absDiff);
-                            $this->db->execute();
-                            $this->db->updateAccountBalance($salesAcc, $absDiff, 0);
+                            if ($d['val'] > 0) $cred = $d['val']; else $deb = abs($d['val']);
+                        }
 
-                            $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, 0, :amt)");
-                            $this->db->bind(':jid', $adjJid);
-                            $this->db->bind(':aid', $arAcc);
-                            $this->db->bind(':amt', $absDiff);
-                            $this->db->execute();
-                            $this->db->updateAccountBalance($arAcc, 0, $absDiff);
+                        $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit) VALUES (:jid, :aid, :deb, :cred)");
+                        $this->db->bind(':jid', $adjJid);
+                        $this->db->bind(':aid', $d['acc']);
+                        $this->db->bind(':deb', $deb);
+                        $this->db->bind(':cred', $cred);
+                        $this->db->execute();
+
+                        if ($jeStatus === 'Posted') {
+                            $this->db->updateAccountBalance($d['acc'], $deb, $cred);
                         }
                     }
-                } else {
-                    // Draft JE: update draft transaction amounts directly
-                    $this->db->query("UPDATE transactions SET debit = :new_amt WHERE journal_entry_id = :jid AND account_id = :aid AND debit > 0");
-                    $this->db->bind(':new_amt', $newGrandTotal);
-                    $this->db->bind(':jid', $jid);
-                    $this->db->bind(':aid', $arAcc);
-                    $this->db->execute();
-
-                    $this->db->query("UPDATE transactions SET credit = :new_amt WHERE journal_entry_id = :jid AND account_id = :aid AND credit > 0");
-                    $this->db->bind(':new_amt', $newGrandTotal);
-                    $this->db->bind(':jid', $jid);
-                    $this->db->bind(':aid', $salesAcc);
-                    $this->db->execute();
                 }
             }
         }
