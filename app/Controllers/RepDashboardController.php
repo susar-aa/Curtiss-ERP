@@ -1310,11 +1310,15 @@ class RepDashboardController extends Controller {
                                 
                                 // Broadcast FCM Stock update
                                 foreach ($itemsPayload as $it) {
-                                    $this->db->query("SELECT quantity_on_hand, quantity_reserved FROM items WHERE id = :id");
-                                    $this->db->bind(':id', $it['item_id']);
-                                    $itemRow = $this->db->single();
-                                    if ($itemRow) {
-                                        (new FirebaseStockService())->broadcast_stock_update($it['item_id'], floatval($itemRow->quantity_on_hand), floatval($itemRow->quantity_reserved), $userId);
+                                    $parts = explode('|', $it['item_selection']);
+                                    $itemId = intval($parts[0]);
+                                    if ($itemId > 0) {
+                                        $this->db->query("SELECT quantity_on_hand, quantity_reserved FROM items WHERE id = :id");
+                                        $this->db->bind(':id', $itemId);
+                                        $itemRow = $this->db->single();
+                                        if ($itemRow) {
+                                            (new FirebaseStockService())->broadcast_stock_update($itemId, floatval($itemRow->quantity_on_hand), floatval($itemRow->quantity_reserved), $userId);
+                                        }
                                     }
                                 }
                                 
@@ -1457,11 +1461,15 @@ class RepDashboardController extends Controller {
                             }
                             
                             // Broadcast FCM Stock update
-                            $this->db->query("SELECT quantity_on_hand, quantity_reserved FROM items WHERE id = :id");
-                            $this->db->bind(':id', $it['item_id']);
-                            $itemRow = $this->db->single();
-                            if ($itemRow) {
-                                (new FirebaseStockService())->broadcast_stock_update($it['item_id'], floatval($itemRow->quantity_on_hand), floatval($itemRow->quantity_reserved), $userId);
+                            $parts = explode('|', $it['item_selection']);
+                            $itemId = intval($parts[0]);
+                            if ($itemId > 0) {
+                                $this->db->query("SELECT quantity_on_hand, quantity_reserved FROM items WHERE id = :id");
+                                $this->db->bind(':id', $itemId);
+                                $itemRow = $this->db->single();
+                                if ($itemRow) {
+                                    (new FirebaseStockService())->broadcast_stock_update($itemId, floatval($itemRow->quantity_on_hand), floatval($itemRow->quantity_reserved), $userId);
+                                }
                             }
                         }
 
