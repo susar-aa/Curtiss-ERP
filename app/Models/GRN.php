@@ -188,23 +188,15 @@ class GRN {
                 // 1. Record FIFO stock receipt batch
                 $fifo->recordReceipt($item->item_id, $item->item_variation_option_id, $grnId, $item->quantity, $item->unit_cost);
 
-                // 2. Update Master Item Stock, Cost, Margins and Prices
+                // 2. Update Master Item Stock and Cost
                 $this->db->query("
                     UPDATE items 
                     SET quantity_on_hand = COALESCE(quantity_on_hand, 0) + :qty, 
-                        price = :sprice, 
-                        wholesale_price = :wprice, 
-                        cost_price = :cost, 
-                        retail_margin = :rmargin, 
-                        wholesale_margin = :wmargin 
+                        cost_price = :cost
                     WHERE id = :iid
                 ");
                 $this->db->bind(':qty', $item->quantity);
-                $this->db->bind(':sprice', $item->selling_price);
-                $this->db->bind(':wprice', $item->wholesale_price);
                 $this->db->bind(':cost', $item->unit_cost);
-                $this->db->bind(':rmargin', $item->retail_margin);
-                $this->db->bind(':wmargin', $item->wholesale_margin);
                 $this->db->bind(':iid', $item->item_id);
                 $this->db->execute();
 
@@ -213,12 +205,10 @@ class GRN {
                     $this->db->query("
                         UPDATE item_variation_options 
                         SET quantity_on_hand = COALESCE(quantity_on_hand, 0) + :qty, 
-                            price = :sprice, 
                             cost = :cost 
                         WHERE id = :vid
                     ");
                     $this->db->bind(':qty', $item->quantity);
-                    $this->db->bind(':sprice', $item->selling_price);
                     $this->db->bind(':cost', $item->unit_cost);
                     $this->db->bind(':vid', $item->item_variation_option_id);
                     $this->db->execute();

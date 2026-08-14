@@ -890,7 +890,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                                             <input type="hidden" name="desc[]" class="desc-hidden" value="<?= htmlspecialchars($displayName) ?>">
                                         </td>
                                         <td>
-                                            <input type="number" name="qty[]" step="1" min="1" value="<?= $item->quantity ?>" class="form-control-cell num qty-input" oninput="calculateRowPrices(this.closest('tr'))" required>
+                                            <input type="number" name="qty[]" step="any" min="0.01" value="<?= $item->quantity ?>" class="form-control-cell num qty-input" oninput="calculateRowPrices(this.closest('tr'))" required>
                                         </td>
                                         <td>
                                             <input type="number" name="price[]" step="0.01" min="0" value="<?= number_format($unitCost, 2, '.', '') ?>" class="form-control-cell num cost-input" oninput="calculateRowPrices(this.closest('tr'))" required>
@@ -1499,7 +1499,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                 <input type="hidden" name="desc[]" class="desc-hidden" value="${escapeHtml(desc)}">
             </td>
             <td>
-                <input type="number" name="qty[]" step="1" min="1" value="${qty}" class="form-control-cell num qty-input" oninput="calculateRowPrices(this.closest('tr'))" required>
+                <input type="number" name="qty[]" step="any" min="0.01" value="${qty}" class="form-control-cell num qty-input" oninput="calculateRowPrices(this.closest('tr'))" required>
             </td>
             <td>
                 <input type="number" name="price[]" step="0.01" min="0" value="${cost.toFixed(2)}" class="form-control-cell num cost-input" oninput="calculateRowPrices(this.closest('tr'))" required>
