@@ -1,156 +1,40 @@
-2026-08-01 15:12:23.585  8268-8268  MIUIInput               com.example.curtiss                  I  [MotionEvent] ViewRootImpl windowName 'com.example.curtiss/com.example.curtiss.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=27669849, downTime=27669849, phoneEventTime=1785577343577 } moveCount:0
-2026-08-01 15:12:23.593  8268-8268  MirrorManager           com.example.curtiss                  W  this model don't Support
-2026-08-01 15:12:23.593  8268-8268  VRI[MainActivity]       com.example.curtiss                  D  getMiuiFreeformStackInfo mTmpFrames.miuiFreeFormStackInfo: null
-2026-08-01 15:12:23.608  8268-8376  example.curtiss         com.example.curtiss                  E  FrameInsert open fail: No such file or directory
-2026-08-01 15:12:23.629  8268-8274  example.curtiss         com.example.curtiss                  W  Cleared Reference was only reachable from finalizer (only reported once)
-2026-08-01 15:12:23.676  8268-8268  HandWritingStubImpl     com.example.curtiss                  I  setCurrentKeyboardType: 1
-2026-08-01 15:12:23.676  8268-8268  MIUIInput               com.example.curtiss                  I  [MotionEvent] ViewRootImpl windowName 'com.example.curtiss/com.example.curtiss.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=27669946, downTime=27669849, phoneEventTime=1785577343675 } moveCount:0
-2026-08-01 15:12:23.689  8268-8376  SKIA                    com.example.curtiss                  I  CreateGraphicsPipeline pipeline cache hit. elpased time: 0.23 ms.
-2026-08-01 15:12:23.837  8268-8282  ActivityThread          com.example.curtiss                  I  HardwareRenderer preload  done
-2026-08-01 15:12:23.837  1793-3331  TransitionChain         system_server                        E  Mismatch between current collecting (TransitionRecord{ee14092 id=642 type=OPEN flags=0x0 c=[
-                                                                                                       ChangeInfo{b704fea container=Task{6a08bc6 #335 type=standard A=10286:com.example.curtiss} flags=0x0}
-                                                                                                       ChangeInfo{2782db container=DefaultTaskDisplayArea@119938186 flags=0x0}
-                                                                                                       ChangeInfo{b13a178 container=ActivityRecord{176237155 u0 com.example.curtiss/.BillingActivity t335} flags=0x0}
-                                                                                                       ChangeInfo{d5e8051 container=Display{#0 state=ON size=1600x2560 ROTATION_0} flags=0x0}
-                                                                                                       ChangeInfo{bfb80b6 container=ActivityRecord{264630493 u0 com.example.curtiss/.MainActivity t335} flags=0x0}
-                                                                                                    ]
-                                                                                                    }) and chain (TransitionRecord{ee14092 id=642 type=OPEN flags=0x0 c=[
-                                                                                                       ChangeInfo{b704fea container=Task{6a08bc6 #335 type=standard A=10286:com.example.curtiss} flags=0x0}
-                                                                                                       ChangeInfo{2782db container=DefaultTaskDisplayArea@119938186 flags=0x0}
-                                                                                                       ChangeInfo{b13a178 container=ActivityRecord{176237155 u0 com.example.curtiss/.BillingActivity t335} flags=0x0}
-                                                                                                       ChangeInfo{d5e8051 container=Display{#0 state=ON size=1600x2560 ROTATION_0} flags=0x0}
-                                                                                                       ChangeInfo{bfb80b6 container=ActivityRecord{264630493 u0 com.example.curtiss/.MainActivity t335} flags=0x0}
-                                                                                                    ]
-                                                                                                    })
-2026-08-01 15:12:23.840  1793-3331  TransitionChain         system_server                        E  Mismatch between current collecting (TransitionRecord{ee14092 id=642 type=OPEN flags=0x0 c=[
-                                                                                                       ChangeInfo{b704fea container=Task{6a08bc6 #335 type=standard A=10286:com.example.curtiss} flags=0x0}
-                                                                                                       ChangeInfo{2782db container=DefaultTaskDisplayArea@119938186 flags=0x0}
-                                                                                                       ChangeInfo{b13a178 container=ActivityRecord{176237155 u0 com.example.curtiss/.BillingActivity t335} flags=0x0}
-                                                                                                       ChangeInfo{d5e8051 container=Display{#0 state=ON size=1600x2560 ROTATION_0} flags=0x0}
-                                                                                                       ChangeInfo{bfb80b6 container=ActivityRecord{264630493 u0 com.example.curtiss/.MainActivity t335} flags=0x0}
-                                                                                                    ]
-                                                                                                    }) and chain (TransitionRecord{ee14092 id=642 type=OPEN flags=0x0 c=[
-                                                                                                       ChangeInfo{b704fea container=Task{6a08bc6 #335 type=standard A=10286:com.example.curtiss} flags=0x0}
-                                                                                                       ChangeInfo{2782db container=DefaultTaskDisplayArea@119938186 flags=0x0}
-                                                                                                       ChangeInfo{b13a178 container=ActivityRecord{176237155 u0 com.example.curtiss/.BillingActivity t335} flags=0x0}
-                                                                                                       ChangeInfo{d5e8051 container=Display{#0 state=ON size=1600x2560 ROTATION_0} flags=0x0}
-                                                                                                       ChangeInfo{bfb80b6 container=ActivityRecord{264630493 u0 com.example.curtiss/.MainActivity t335} flags=0x0}
-                                                                                                    ]
-                                                                                                    })
-2026-08-01 15:12:23.861  8268-8268  example.curtiss         com.example.curtiss                  I  AssetManager2(0xb400006fd581acf8) locale list changing from [] to [en-US]
-2026-08-01 15:12:23.877  8268-8268  DecorView               com.example.curtiss                  D  updateFreeformOutlineFromActivity, inFreeform=false,inFreeformWindowMode=false
-2026-08-01 15:12:23.884  8268-8268  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 64, height = 64, encodedFormat = 4
-2026-08-01 15:12:23.884  8268-8268  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
-2026-08-01 15:12:23.896  8268-8268  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 64, height = 64, encodedFormat = 4
-2026-08-01 15:12:23.896  8268-8268  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
-2026-08-01 15:12:23.917  8268-8268  ScrollerOp...ionManager com.example.curtiss                  D  registerConfigChangedListener
-2026-08-01 15:12:23.948  8268-8268  ScrollerOp...ionManager com.example.curtiss                  D  registerConfigChangedListener
-2026-08-01 15:12:23.959 13340-13456 MiuiPadHom...gerWrapper com.miui.home                        E  getRecentTasksForceIncludingTaskIdIfValid: getRecentTasks: size=1
-                                                                                                     mainTaskId=335   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.example.curtiss/com.example.curtiss.SplashActivity} }
-2026-08-01 15:12:23.971  8268-8268  ScrollerOp...ionManager com.example.curtiss                  D  registerConfigChangedListener
-2026-08-01 15:12:23.974 13340-13456 MiuiPadHom...gerWrapper com.miui.home                        E  getRecentTasksForceIncludingTaskIdIfValid: getRecentTasks: size=1
-                                                                                                     mainTaskId=335   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.example.curtiss/com.example.curtiss.SplashActivity} }
-2026-08-01 15:12:24.002  8268-8268  ScrollerOp...ionManager com.example.curtiss                  D  registerConfigChangedListener
-2026-08-01 15:12:24.059  8268-8268  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 38, height = 33, encodedFormat = 4
-2026-08-01 15:12:24.059  8268-8268  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
-2026-08-01 15:12:24.060  8268-8268  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 38, height = 33, encodedFormat = 4
-2026-08-01 15:12:24.060  8268-8268  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
-2026-08-01 15:12:24.061  8268-8268  HWUI                    com.example.curtiss                  D  ImageDecoder_nDecodeBitmap: width = 38, height = 33, encodedFormat = 4
-2026-08-01 15:12:24.061  8268-8268  HWUI                    com.example.curtiss                  W  Image decoding logging dropped!
-2026-08-01 15:12:24.071  8268-8268  TransactionExecutor     com.example.curtiss                  E  Failed to execute the transaction: tId:529142312 ClientTransaction{
-                                                                                                    tId:529142312   transactionItems=[
-                                                                                                    tId:529142312     LaunchActivityItem{activityToken=android.os.BinderProxy@8d1eddb,intent=Intent { xflg=0x4 cmp=com.example.curtiss/.BillingActivity },ident=176237155,info=ActivityInfo{316aa17 com.example.curtiss.BillingActivity},curConfig={1.0 ?mcc0mnc [en_US] ldltr sw711dp w711dp h1091dp 360dpi lrg port finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 1600, 2560) mAppBounds=Rect(0, 0 - 1600, 2524) mMaxBounds=Rect(0, 0 - 1600, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.2 s.1427 fontWeightAdjustment=0/d/0 themeChanged=0 themeChangedFlags=0 display=0 extraData = Bundle[EMPTY_PARCEL] screenType=0/0},overrideConfig={1.0 ?mcc0mnc [en_US] ldltr sw711dp w711dp h1091dp 360dpi lrg port finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 1600, 2560) mAppBounds=Rect(0, 0 - 1600, 2524) mMaxBounds=Rect(0, 0 - 1600, 2560) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0 mInSplitScreen=false letterBoxed=false foScaled=false isSpecificEmbedded=false embeddingScale=1.0} as.2 s.3 fontWeightAdjustment=0/d/0 themeChanged=0 themeChangedFlags=0 display=0 extraData = Bundle[{}] screenType=0/0},deviceId=0,referrer=com.example.curtiss,procState=2,state=null,persistentState=null,pendingResults=null,pendingNewIntents=null,sceneTransitionInfo=null,profilerInfo=null,assistToken=android.os.BinderProxy@a5d9458,shareableActivityToken=android.os.BinderProxy@11b29b1,activityWindowInfo=ActivityWindowInfo{isEmbedded=false, taskBounds=Rect(0, 0 - 1600, 2560), taskFragmentBounds=Rect(0, 0 - 1600, 2560), inOwnOrganizerProcess=true}}
-                                                                                                    tId:529142312     ResumeActivityItem{mActivityToken=android.os.BinderProxy@8d1eddb,procState=-1,isForward=true,shouldSendCompatFakeFocus=false}
-                                                                                                    tId:529142312     Target activity: com.example.curtiss.BillingActivity
-                                                                                                    tId:529142312   ]
-                                                                                                    tId:529142312 }
-2026-08-01 15:12:24.071  8268-8268  AndroidRuntime          com.example.curtiss                  D  Shutting down VM
-2026-08-01 15:12:24.072  8268-8268  AndroidRuntime          com.example.curtiss                  E  FATAL EXCEPTION: main
-                                                                                                    Process: com.example.curtiss, PID: 8268
-                                                                                                    java.lang.RuntimeException: Unable to start activity ComponentInfo{com.example.curtiss/com.example.curtiss.BillingActivity}: java.lang.ClassCastException: androidx.recyclerview.widget.RecyclerView cannot be cast to android.widget.GridView
-                                                                                                    	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4721)
-                                                                                                    	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4950)
-                                                                                                    	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:222)
-                                                                                                    	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:136)
-                                                                                                    	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:106)
-                                                                                                    	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:83)
-                                                                                                    	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:3103)
-                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:114)
-                                                                                                    	at android.os.Looper.loopOnce(Looper.java:274)
-                                                                                                    	at android.os.Looper.loop(Looper.java:369)
-                                                                                                    	at android.app.ActivityThread.main(ActivityThread.java:10090)
-                                                                                                    	at java.lang.reflect.Method.invoke(Native Method)
-                                                                                                    	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:616)
-                                                                                                    	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1137)
-                                                                                                    Caused by: java.lang.ClassCastException: androidx.recyclerview.widget.RecyclerView cannot be cast to android.widget.GridView
-                                                                                                    	at com.example.curtiss.BillingActivity.onCreate(BillingActivity.java:138)
-                                                                                                    	at android.app.Activity.performCreate(Activity.java:9428)
-                                                                                                    	at android.app.Activity.performCreate(Activity.java:9371)
-                                                                                                    	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1537)
-                                                                                                    	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4703)
-                                                                                                    	... 13 more
-2026-08-01 15:12:24.071  8268-8268  pool-9-thread-1         com.example.curtiss                  W  type=1400 audit(0.0:146382): avc:  denied  { search } for  name="miuilog" dev="dm-73" ino=704 scontext=u:r:untrusted_app:s0:c30,c257,c512,c768 tcontext=u:object_r:data_log_file:s0 tclass=dir permissive=0 app=com.example.curtiss
-2026-08-01 15:12:24.075  8268-8268  pool-9-thread-1         com.example.curtiss                  W  type=1400 audit(0.0:146383): avc:  denied  { search } for  name="miuilog" dev="dm-73" ino=704 scontext=u:r:untrusted_app:s0:c30,c257,c512,c768 tcontext=u:object_r:data_log_file:s0 tclass=dir permissive=0 app=com.example.curtiss
-2026-08-01 15:12:24.075  8268-8268  pool-9-thread-1         com.example.curtiss                  W  type=1400 audit(0.0:146384): avc:  denied  { search } for  name="miuilog" dev="dm-73" ino=704 scontext=u:r:untrusted_app:s0:c30,c257,c512,c768 tcontext=u:object_r:data_log_file:s0 tclass=dir permissive=0 app=com.example.curtiss
-2026-08-01 15:12:24.075  8268-8268  pool-9-thread-1         com.example.curtiss                  W  type=1400 audit(0.0:146385): avc:  denied  { search } for  name="miuilog" dev="dm-73" ino=704 scontext=u:r:untrusted_app:s0:c30,c257,c512,c768 tcontext=u:object_r:data_log_file:s0 tclass=dir permissive=0 app=com.example.curtiss
-2026-08-01 15:12:24.075  8268-8268  pool-9-thread-1         com.example.curtiss                  W  type=1400 audit(0.0:146386): avc:  denied  { search } for  name="miuilog" dev="dm-73" ino=704 scontext=u:r:untrusted_app:s0:c30,c257,c512,c768 tcontext=u:object_r:data_log_file:s0 tclass=dir permissive=0 app=com.example.curtiss
-2026-08-01 15:12:24.079  8268-8662  FileUtils               com.example.curtiss                  W  Failed to chmod(/data/miuilog/stability/jetrace): android.system.ErrnoException: chmod failed: EACCES (Permission denied)
-2026-08-01 15:12:24.079  8268-8662  RuntimeInitImpl         com.example.curtiss                  W  dump java trace fail /data/miuilog/stability/jetrace/2026-08-01-15-12-24-075_com.example.curtiss_8268.trace.tmp: open failed: EACCES (Permission denied)
-2026-08-01 15:12:24.081  8268-8268  ScoutUtils              com.example.curtiss                  W  Failed to mkdir /data/miuilog/stability/hprof/
-2026-08-01 15:12:24.083  4505-4747  JavaExceptionHandler    com.miui.daemon                      E  Process: com.example.curtiss, PID: 8268
-                                                                                                    java.lang.RuntimeException: Unable to start activity ComponentInfo{com.example.curtiss/com.example.curtiss.BillingActivity}: java.lang.ClassCastException: androidx.recyclerview.widget.RecyclerView cannot be cast to android.widget.GridView
-                                                                                                    	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4721)
-                                                                                                    	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4950)
-                                                                                                    	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:222)
-                                                                                                    	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:136)
-                                                                                                    	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:106)
-                                                                                                    	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:83)
-                                                                                                    	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:3103)
-                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:114)
-                                                                                                    	at android.os.Looper.loopOnce(Looper.java:274)
-                                                                                                    	at android.os.Looper.loop(Looper.java:369)
-                                                                                                    	at android.app.ActivityThread.main(ActivityThread.java:10090)
-                                                                                                    	at java.lang.reflect.Method.invoke(Native Method)
-                                                                                                    	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:616)
-                                                                                                    	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1137)
-                                                                                                    Caused by: java.lang.ClassCastException: androidx.recyclerview.widget.RecyclerView cannot be cast to android.widget.GridView
-                                                                                                    	at com.example.curtiss.BillingActivity.onCreate(BillingActivity.java:138)
-                                                                                                    	at android.app.Activity.performCreate(Activity.java:9428)
-                                                                                                    	at android.app.Activity.performCreate(Activity.java:9371)
-                                                                                                    	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1537)
-                                                                                                    	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4703)
-                                                                                                    	... 13 more
-2026-08-01 15:12:24.159 13340-13456 MiuiPadHom...gerWrapper com.miui.home                        E  getRecentTasksForceIncludingTaskIdIfValid: getRecentTasks: size=1
-                                                                                                     mainTaskId=335   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.example.curtiss/com.example.curtiss.SplashActivity} }
-2026-08-01 15:12:24.712  1793-3284  TransitionChain         system_server                        E  Mismatch between current collecting (TransitionRecord{ee14092 id=642 type=OPEN flags=0x0 c=[
-                                                                                                       ChangeInfo{5f0f51a container=Task{2a27f61 #260 type=home} flags=0x0}
-                                                                                                       ChangeInfo{b704fea container=Task{6a08bc6 #335 type=standard A=10286:com.example.curtiss} flags=0x0}
-                                                                                                       ChangeInfo{e62784b container=Task{6c2b999 #261 type=home I=com.miui.home/.launcher.Launcher} flags=0x0}
-                                                                                                       ChangeInfo{2782db container=DefaultTaskDisplayArea@119938186 flags=0x0}
-                                                                                                       ChangeInfo{b13a178 container=ActivityRecord{176237155 u0 com.example.curtiss/.BillingActivity t335 f}} flags=0x0}
-                                                                                                       ChangeInfo{5964228 container=ActivityRecord{178696349 u0 com.miui.home/.launcher.Launcher t261} flags=0x0}
-                                                                                                       ChangeInfo{d5e8051 container=Display{#0 state=ON size=1600x2560 ROTATION_0} flags=0x0}
-                                                                                                       ChangeInfo{bfb80b6 container=ActivityRecord{264630493 u0 com.example.curtiss/.MainActivity t335 f}} flags=0x0}
-                                                                                                    ]
-                                                                                                    }) and chain (TransitionRecord{ee14092 id=642 type=OPEN flags=0x0 c=[
-                                                                                                       ChangeInfo{5f0f51a container=Task{2a27f61 #260 type=home} flags=0x0}
-                                                                                                       ChangeInfo{b704fea container=Task{6a08bc6 #335 type=standard A=10286:com.example.curtiss} flags=0x0}
-                                                                                                       ChangeInfo{e62784b container=Task{6c2b999 #261 type=home I=com.miui.home/.launcher.Launcher} flags=0x0}
-                                                                                                       ChangeInfo{2782db container=DefaultTaskDisplayArea@119938186 flags=0x0}
-                                                                                                       ChangeInfo{b13a178 container=ActivityRecord{176237155 u0 com.example.curtiss/.BillingActivity t335 f}} flags=0x0}
-                                                                                                       ChangeInfo{5964228 container=ActivityRecord{178696349 u0 com.miui.home/.launcher.Launcher t261} flags=0x0}
-                                                                                                       ChangeInfo{d5e8051 container=Display{#0 state=ON size=1600x2560 ROTATION_0} flags=0x0}
-                                                                                                       ChangeInfo{bfb80b6 container=ActivityRecord{264630493 u0 com.example.curtiss/.MainActivity t335 f}} flags=0x0}
-                                                                                                    ]
-                                                                                                    })
-2026-08-01 15:12:24.796 13340-13456 MiuiPadHom...gerWrapper com.miui.home                        E  getRecentTasksForceIncludingTaskIdIfValid: getRecentTasks: size=1
-                                                                                                     mainTaskId=335   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.example.curtiss/com.example.curtiss.SplashActivity} }
-2026-08-01 15:12:24.814 13340-13456 MiuiPadHom...gerWrapper com.miui.home                        E  getRecentTasksForceIncludingTaskIdIfValid: getRecentTasks: size=1
-                                                                                                     mainTaskId=335   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.example.curtiss/com.example.curtiss.SplashActivity} }
-2026-08-01 15:12:24.888  1793-1990  WindowManager           system_server                        E   source = Task{6a08bc6 #335 type=standard A=10286:com.example.curtiss} excludeMiuiNavBar = true excludeMiuiStatusBar = true excludeIme = false excludeNavBar = true miuiNavSurfaceControl = Surface(name=NavigationBar Container of Task = 335#9336)/@0xf1686b4 miuiStatusSurfaceControl = Surface(name=StatusBar Container of Task = 335#9338)/@0x3ef5a20
-2026-08-01 15:12:28.896  8268-8270  example.curtiss         com.example.curtiss                  I  Thread[2,tid=8270,WaitingInMainSignalCatcherLoop,Thread*=0xb400006e5580b6f0,peer=0x20025f8,"Signal Catcher"]: reacting to signal 3
-2026-08-01 15:12:28.897  8268-8270  example.curtiss         com.example.curtiss                  I  
-2026-08-01 15:12:29.006  1793-2820  HyperSentinel           system_server                        E  ->pid:8268,processName:"com.example.curtiss",Rss Memory Size Change 245360kb -> 308188kb
-2026-08-01 15:12:29.236  1793-2820  HyperSentinel           system_server                        E  ->pid:8268,processName:"com.example.curtiss",Rss Memory Size Change 308188kb -> 388384kb
-2026-08-01 15:12:29.722  8268-8270  libc                    com.example.curtiss                  I  tombstoned_notify_completion, socket: 189
-2026-08-01 15:12:29.722  8268-8270  example.curtiss         com.example.curtiss                  I  Wrote stack traces to tombstoned
+Aug 13, 2026 14:00:04	ruwinda@falcon
+Rep (Sales Representative)	Update Customer (Billing Completion)	Customer	Completed missing profile details via billing customer info completion: AMNA STORES. Changes: Location changed from 'None' to '7.4886717, 80.3647149', Route changed from 'Kurunegala To Galagedara' to 'KURU 03', MCA changed from '48' to '72' ID: 360184	175.157.168.222	
+Diff
+Aug 12, 2026 14:21:36	ruwinda@falcon
+Rep (Sales Representative)	Update Customer (Billing Completion)	Customer	Completed missing profile details via billing customer info completion: AMNA STORES. Changes: Shop Name changed from 'AMNA BAG CENTER - KURUNEGALA' to 'AMNA STORES', Address changed from 'MOSQUE ROAD KURUNEGALA' to 'AMNA STORES MOSQUE ROAD KURUNEGALA 0714808854, MOSQUE ROAD, KURUNEGALA' ID: 360184	175.157.168.222	
+Diff
+Aug 11, 2026 07:51:34	ruwinda@falcon
+Rep (Sales Representative)	Update Customer (Billing Completion)	Customer	Completed missing profile details via billing customer info completion: AMNA STORES. Changes: Shop Name changed from 'AMNA STORES - KURUNEGALA' to 'AMNA STORES' ID: 360184	175.157.130.139	
+Diff
+Aug 10, 2026 18:44:21	susar.aa
+Admin	Update Customer	Customer	Updated profile details for Customer ID 360184 (AMNA STORES - KURUNEGALA)	112.134.176.32	-
+Aug 08, 2026 18:26:26	ruwinda@falcon
+Rep (Sales Representative)	Update Customer (Billing Completion)	Customer	Completed missing profile details via billing customer info completion: AMNA STORES. Changes: Shop Name changed from 'AMNA STORES - KURUNEGALA' to 'AMNA STORES', Address changed from 'MOSQUE ROAD, KURUNEGALA' to 'AMNA STORES MOSQUE ROAD KURUNEGALA 0714808854, MOSQUE ROAD, KURUNEGALA' ID: 360184	175.157.160.45	
+Diff
+Aug 08, 2026 16:30:59	susar.aa
+Admin	Update Customer	Customer	Updated profile details for Customer ID 360184 (AMNA STORES - KURUNEGALA)	112.134.180.226	-
+Aug 06, 2026 08:21:09	ruwinda@falcon
+Rep (Sales Representative)	Update Customer (Billing Completion)	Customer	Completed missing profile details via billing customer info completion: AMNA STORES. Changes: Shop Name changed from 'AMNA STORES - KURUNEGALA' to 'AMNA STORES', Address changed from 'MOSQUE ROAD KURUNEGALA' to 'AMNA STORES MOSQUE ROAD KURUNEGALA 0714808854, MOSQUE ROAD, KURUNEGALA', Route changed from 'KURUNEGALA' to 'Kurunegala To Galagedara', MCA changed from '72' to '48' ID: 360184	175.157.101.28	
+Diff
+Aug 05, 2026 18:38:14	susar.aa
+Admin	Update Customer	Customer	Updated profile details for Customer ID 360184 (AMNA STORES - KURUNEGALA)	112.134.180.226	-
+Aug 05, 2026 18:33:02	susar.aa
+Admin	Update Customer	Customer	Updated profile details for Customer ID 360184 (AMNA STORES)	112.134.180.226	-
+Aug 04, 2026 21:00:03	ruwinda@falcon
+Rep (Sales Representative)	Update Customer (Billing Completion)	Customer	Completed missing profile details via billing customer info completion: AMNA STORES. Changes: Shop Name changed from 'AMNA STORES - KURUNEGALA' to 'AMNA STORES', Address changed from 'MOSQUE ROAD, KURUNEGALA' to 'AMNA STORES MOSQUE ROAD KURUNEGALA 0714808854, MOSQUE ROAD, KURUNEGALA' ID: 360184	175.157.101.28	
+Diff
+Aug 04, 2026 20:25:23	susar.aa
+Admin	Update Customer	Customer	Updated profile details for Customer ID 360184 (AMNA STORES - KURUNEGALA)	112.134.180.226	-
+Aug 03, 2026 08:28:16	ruwinda@falcon
+Rep (Sales Representative)	Update Customer (Billing Completion)	Customer	Completed missing profile details via billing customer info completion: AMNA STORES. Changes: Shop Name changed from 'AMNA BAG CENTER - KURUNEGALA' to 'AMNA STORES', Address changed from 'MOSQUE ROAD KURUNEGALA' to 'AMNA STORES MOSQUE ROAD KURUNEGALA 0714808854, MOSQUE ROAD, KURUNEGALA' ID: 360184	112.134.180.226	
+Diff
+Jul 28, 2026 11:13:33	ruwinda@falcon
+Rep (Sales Representative)	Update Customer (Billing Completion)	Customer	Completed missing profile details via billing customer info completion: AMNA STORES. Changes: Phone Number changed from '712634488' to '0712634488', WhatsApp Number changed from '712634488' to '0712634488' ID: 360184	175.157.115.125	
+Diff
+Jul 22, 2026 13:50:10	ruwinda@falcon
+Rep (Sales Representative)	Update Customer (Billing Completion)	Customer	Completed missing profile details via billing customer info completion: AMNA STORES. Changes: Phone Number changed from 'None' to '0712634488', WhatsApp Number changed from 'None' to '0712634488', Route changed from 'None' to 'Kurunegala To Galagedara', MCA changed from 'None' to '48' ID: 360184	175.157.133.175	
+Diff
+Jul 14, 2026 15:02:53	susar.aa
+Admin	Add Customer	Customer	Registered new customer profile 'AMNA STORES' via CSV import. ID: 360184	112.134.183.53	
+Diff

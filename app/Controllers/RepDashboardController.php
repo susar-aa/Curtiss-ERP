@@ -792,6 +792,45 @@ class RepDashboardController extends Controller {
 
                     $territory = $c['territory'] ?? ($existingCust ? $existingCust->territory : null);
 
+                    $source = (isset($c['sync_source']) && $c['sync_source'] == 'Billing Customer Information Completion') 
+                        ? 'Billing Customer Information Completion' 
+                        : 'Mobile Sync';
+
+                    $updateData = [
+                        'id' => $serverId,
+                        'name' => $c['name'],
+                        'email' => $c['email'] ?? ($existingCust ? $existingCust->email : null),
+                        'phone' => $c['phone'] ?? ($existingCust ? $existingCust->phone : null),
+                        'whatsapp' => $c['whatsapp'] ?? ($existingCust ? $existingCust->whatsapp : null),
+                        'address' => $c['address'] ?? ($existingCust ? $existingCust->address : null),
+                        'lat' => (floatval($c['latitude'] ?? 0) != 0.0) ? floatval($c['latitude']) : ($existingCust ? $existingCust->latitude : null),
+                        'lng' => (floatval($c['longitude'] ?? 0) != 0.0) ? floatval($c['longitude']) : ($existingCust ? $existingCust->longitude : null),
+                        'mca_id' => $mcaId,
+                        'territory' => $territory,
+                        'credit_limit' => isset($c['credit_limit']) ? floatval($c['credit_limit']) : ($existingCust ? floatval($existingCust->credit_limit) : 0.00),
+                        'customer_type' => $c['customer_type'] ?? ($existingCust ? $existingCust->customer_type : 'Standard'),
+                        'notes' => $c['notes'] ?? ($existingCust ? $existingCust->notes : null),
+                        'uuid' => $c['uuid'] ?? ($existingCust ? $existingCust->uuid : null)
+                    ];
+
+                    if ($existingCust && $source === 'Billing Customer Information Completion') {
+                        // SAFEGUARD: If this is an automatic checkout sync, DO NOT overwrite fields that the Admin already populated on the server!
+                        if (!empty(trim($existingCust->name))) $updateData['name'] = $existingCust->name;
+                        if (!empty(trim($existingCust->email))) $updateData['email'] = $existingCust->email;
+                        if (!empty(trim($existingCust->phone))) $updateData['phone'] = $existingCust->phone;
+                        if (!empty(trim($existingCust->whatsapp))) $updateData['whatsapp'] = $existingCust->whatsapp;
+                        if (!empty(trim($existingCust->address))) $updateData['address'] = $existingCust->address;
+                        if (!empty(trim($existingCust->territory))) $updateData['territory'] = $existingCust->territory;
+                        if (!empty($existingCust->mca_id)) $updateData['mca_id'] = $existingCust->mca_id;
+                        
+                        $oldLat = floatval($existingCust->latitude ?? 0);
+                        $oldLng = floatval($existingCust->longitude ?? 0);
+                        if ($oldLat != 0.0 || $oldLng != 0.0) {
+                            $updateData['lat'] = $oldLat;
+                            $updateData['lng'] = $oldLng;
+                        }
+                    }
+
                     $oldValues = [];
                     $newValues = [];
                     $changes = [];
@@ -809,8 +848,8 @@ class RepDashboardController extends Controller {
                         // Location comparison
                         $oldLat = floatval($existingCust->latitude ?? 0);
                         $oldLng = floatval($existingCust->longitude ?? 0);
-                        $newLat = floatval($c['latitude'] ?? 0);
-                        $newLng = floatval($c['longitude'] ?? 0);
+                        $newLat = floatval($updateData['lat'] ?? 0);
+                        $newLng = floatval($updateData['lng'] ?? 0);
 
                         if ($newLat != 0.0 || $newLng != 0.0) {
                             $oldLoc = ($oldLat != 0.0 || $oldLng != 0.0) ? "{$oldLat}, {$oldLng}" : "None";
@@ -824,11 +863,7 @@ class RepDashboardController extends Controller {
 
                         foreach ($fieldsToCompare as $dbKey => $label) {
                             $oldVal = $existingCust->$dbKey ?? null;
-                            if ($dbKey === 'mca_id') {
-                                $newVal = $mcaId;
-                            } else {
-                                $newVal = $c[$dbKey === 'territory' ? 'territory' : ($dbKey === 'name' ? 'name' : ($dbKey === 'phone' ? 'phone' : ($dbKey === 'whatsapp' ? 'whatsapp' : $dbKey)))] ?? null;
-                            }
+                            $newVal = $updateData[$dbKey] ?? null;
 
                             if ($newVal !== null && trim(strval($oldVal ?? '')) !== trim(strval($newVal ?? ''))) {
                                 $oldValues[$dbKey] = $oldVal;
@@ -838,37 +873,19 @@ class RepDashboardController extends Controller {
                         }
                     }
 
-                    $this->customerModel->updateCustomer([
-                        'id' => $serverId,
-                        'name' => $c['name'],
-                        'email' => $c['email'] ?? ($existingCust ? $existingCust->email : null),
-                        'phone' => $c['phone'] ?? ($existingCust ? $existingCust->phone : null),
-                        'whatsapp' => $c['whatsapp'] ?? ($existingCust ? $existingCust->whatsapp : null),
-                        'address' => $c['address'] ?? ($existingCust ? $existingCust->address : null),
-                        'lat' => ($newLat != 0.0) ? $newLat : ($existingCust ? $existingCust->latitude : null),
-                        'lng' => ($newLng != 0.0) ? $newLng : ($existingCust ? $existingCust->longitude : null),
-                        'mca_id' => $mcaId,
-                        'territory' => $territory,
-                        'credit_limit' => isset($c['credit_limit']) ? floatval($c['credit_limit']) : ($existingCust ? floatval($existingCust->credit_limit) : 0.00),
-                        'customer_type' => $c['customer_type'] ?? ($existingCust ? $existingCust->customer_type : 'Standard'),
-                        'notes' => $c['notes'] ?? ($existingCust ? $existingCust->notes : null),
-                        'uuid' => $c['uuid'] ?? ($existingCust ? $existingCust->uuid : null)
-                    ]);
-
-                    $source = (isset($c['sync_source']) && $c['sync_source'] == 'Billing Customer Information Completion') 
-                        ? 'Billing Customer Information Completion' 
-                        : 'Mobile Sync';
+                    $this->customerModel->updateCustomer($updateData);
 
                     $actionName = ($source == 'Billing Customer Information Completion') ? 'Update Customer (Billing Completion)' : 'Update Customer';
-
                     $desc = ($source == 'Billing Customer Information Completion')
-                        ? "Completed missing profile details via billing customer info completion: {$c['name']}"
-                        : "Updated customer profile via mobile sync: {$c['name']}";
+                        ? "Completed missing profile details via billing customer info completion: {$updateData['name']}"
+                        : "Updated customer profile via mobile sync: {$updateData['name']}";
 
                     if (!empty($changes)) {
                         $desc .= ". Changes: " . implode(', ', $changes);
                     }
-                    $this->logActivity($actionName, 'Customer', $desc, $serverId, $oldValues, $newValues);
+                    if (!empty($changes) || $source != 'Billing Customer Information Completion') {
+                        $this->logActivity($actionName, 'Customer', $desc, $serverId, $oldValues, $newValues);
+                    }
                 };
 
                 foreach ($payload['customers'] as $c) {
