@@ -11,6 +11,7 @@ class Database {
     private $error;
     private $currentSql = '';
     private $boundParams = [];
+    private static $transactionDepth = 0;
 
     public function __construct() {
         $dsn = 'mysql:host=' . $this->host . ';dbname=' . $this->dbname . ';charset=utf8mb4';
@@ -152,16 +153,39 @@ class Database {
     }
     
     public function beginTransaction() {
-        return $this->dbh->beginTransaction();
+        if (self::$transactionDepth == 0) {
+            $this->dbh->beginTransaction();
+        } else {
+            $this->dbh->exec("SAVEPOINT LEVEL" . self::$transactionDepth);
+        }
+        self::$transactionDepth++;
+        return true;
     }
 
     public function commit() {
-        return $this->dbh->commit();
+        if (self::$transactionDepth > 0) {
+            self::$transactionDepth--;
+            if (self::$transactionDepth == 0) {
+                return $this->dbh->commit();
+            } else {
+                $this->dbh->exec("RELEASE SAVEPOINT LEVEL" . self::$transactionDepth);
+            }
+            return true;
+        }
+        return false;
     }
 
     public function rollBack() {
-        if ($this->dbh->inTransaction()) {
-            return $this->dbh->rollBack();
+        if (self::$transactionDepth > 0) {
+            self::$transactionDepth--;
+            if (self::$transactionDepth == 0) {
+                if ($this->dbh->inTransaction()) {
+                    return $this->dbh->rollBack();
+                }
+            } else {
+                $this->dbh->exec("ROLLBACK TO SAVEPOINT LEVEL" . self::$transactionDepth);
+            }
+            return true;
         }
         return false;
     }
