@@ -94,12 +94,7 @@ $isStatusPaid = in_array($statusStr, ['paid', 'completed']);
 $isFullyPaid = ($estimatePaidAmount >= ($thisInvoiceGrandTotal - 0.01) && $thisInvoiceGrandTotal > 0) || $isStatusPaid;
 $isPartiallyPaid = (!$isFullyPaid && $estimatePaidAmount > 0.01);
 
-$previousBalance = $totalOutstanding;
-if (in_array($data['estimate']->status, ['Unpaid', 'Draft', 'Pending'])) {
-    $previousBalance -= $thisInvoiceGrandTotal;
-}
-$amountDueNow = $previousBalance + $thisInvoiceGrandTotal;
-$showUnpaid = in_array($data['estimate']->status, ['Unpaid', 'Draft', 'Pending']) && ($previousBalance > 0.01 || $previousBalance < -0.01);
+$invoiceBalance = max(0, $thisInvoiceGrandTotal - $estimatePaidAmount);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1093,20 +1088,25 @@ $showUnpaid = in_array($data['estimate']->status, ['Unpaid', 'Draft', 'Pending']
                         <?php endif; ?>
 
                         <tr class="grand-total-row">
-                            <th>Current Total:</th>
+                            <th>Estimate Total:</th>
                             <td><?= number_format($thisInvoiceGrandTotal, 2) ?></td>
                         </tr>
 
-                        <?php if($showUnpaid): ?>
+                        <?php if ($estimatePaidAmount > 0.01): ?>
                             <tr>
-                                <th>Previous Balance:</th>
-                                <td><?= number_format($previousBalance, 2) ?></td>
+                                <th>Payments Applied:</th>
+                                <td>-<?= number_format($estimatePaidAmount, 2) ?></td>
                             </tr>
-                            <tr class="due-row">
-                                <th>Total Due Now:</th>
-                                <td><?= number_format($amountDueNow, 2) ?></td>
+                            <tr>
+                                <th>Estimate Balance:</th>
+                                <td><?= number_format($invoiceBalance, 2) ?></td>
                             </tr>
                         <?php endif; ?>
+
+                        <tr class="due-row">
+                            <th style="padding-top: 10px;">Total Account Balance:</th>
+                            <td style="padding-top: 10px;"><?= number_format($totalOutstanding, 2) ?></td>
+                        </tr>
                     </table>
                 </div>
             </div>
@@ -1277,17 +1277,21 @@ $showUnpaid = in_array($data['estimate']->status, ['Unpaid', 'Draft', 'Pending']
                             <td class="mso-num" style="border-top: 2px solid #000; border-bottom: 2px solid #000; font-weight: bold; padding: 6px;"><?= $thisInvoiceGrandTotal ?></td>
                         </tr>
 
-                        <?php if($showUnpaid): ?>
+                        <?php if ($estimatePaidAmount > 0.01): ?>
                             <tr>
-                                <th style="text-align: right; padding: 4px;">Previous Balance:</th>
-                                <td class="mso-num" style="padding: 4px;"><?= $previousBalance ?></td>
+                                <th style="text-align: right; padding: 4px;">Payments Applied:</th>
+                                <td class="mso-num" style="padding: 4px;">-<?= $estimatePaidAmount ?></td>
                             </tr>
                             <tr>
-                                <td colspan="4"></td>
-                                <th style="border-bottom: 2px solid #000; text-align: right; padding: 6px;">Total Amount Due:</th>
-                                <td class="mso-num" style="border-bottom: 2px solid #000; font-weight: bold; padding: 6px;"><?= $amountDueNow ?></td>
+                                <th style="text-align: right; padding: 4px;">Estimate Balance:</th>
+                                <td class="mso-num" style="padding: 4px;"><?= $invoiceBalance ?></td>
                             </tr>
                         <?php endif; ?>
+                        <tr>
+                            <td colspan="4"></td>
+                            <th style="border-bottom: 2px solid #000; text-align: right; padding: 6px;">Total Account Balance:</th>
+                            <td class="mso-num" style="border-bottom: 2px solid #000; font-weight: bold; padding: 6px;"><?= $totalOutstanding ?></td>
+                        </tr>
 
                     </table>
                 </body>

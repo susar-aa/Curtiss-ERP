@@ -450,12 +450,8 @@ $invoices = $data['invoices'];
 
             $thisInvoiceGrandTotal = $netSubTotal + $invoice->tax_amount;
 
-            $previousBalance = $totalOutstanding;
-            if (in_array($invoice->status, ['Unpaid', 'Draft'])) {
-                $previousBalance -= $thisInvoiceGrandTotal;
-            }
-            $amountDueNow = $previousBalance + $thisInvoiceGrandTotal;
-            $showUnpaid = in_array($invoice->status, ['Unpaid', 'Draft']) && ($previousBalance > 0.01 || $previousBalance < -0.01);
+            $invoicePaidAmount = floatval($invoicePaid ?? 0);
+            $invoiceBalance = max(0, $thisInvoiceGrandTotal - $invoicePaidAmount);
         ?>
         <div class="page-wrapper">
             <div class="main-content">
@@ -595,16 +591,20 @@ $invoices = $data['invoices'];
                                 <td><?= number_format($thisInvoiceGrandTotal, 2) ?></td>
                             </tr>
 
-                            <?php if($showUnpaid): ?>
+                            <?php if ($invoicePaidAmount > 0.01): ?>
                                 <tr>
-                                    <th>Previous Balance:</th>
-                                    <td><?= number_format($previousBalance, 2) ?></td>
+                                    <th>Payments Applied:</th>
+                                    <td>-<?= number_format($invoicePaidAmount, 2) ?></td>
                                 </tr>
-                                <tr class="due-row">
-                                    <th>Total Amount Due:</th>
-                                    <td><?= number_format($amountDueNow, 2) ?></td>
+                                <tr>
+                                    <th>Invoice Balance:</th>
+                                    <td><?= number_format($invoiceBalance, 2) ?></td>
                                 </tr>
                             <?php endif; ?>
+                            <tr class="due-row">
+                                <th style="padding-top: 10px;">Total Account Balance:</th>
+                                <td style="padding-top: 10px;"><?= number_format($totalOutstanding, 2) ?></td>
+                            </tr>
                         </table>
                     </div>
                 </div>
