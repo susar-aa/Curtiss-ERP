@@ -183,15 +183,22 @@ class RepTracking {
         }
         $placeholdersStr = implode(',', $placeholders);
 
-        $this->db->query("SELECT id FROM deliveries WHERE rep_route_id IN ($placeholdersStr) OR secondary_rep_route_id IN ($placeholdersStr) ORDER BY id DESC LIMIT 1");
+        $this->db->query("SELECT id FROM deliveries WHERE rep_route_id IN ($placeholdersStr) OR secondary_rep_route_id IN ($placeholdersStr)");
         foreach ($routeIds as $index => $id) {
             $this->db->bind(":rid_" . $index, intval($id));
         }
-        $latestDel = $this->db->single();
-        if (!$latestDel) {
+        $latestDels = $this->db->resultSet();
+        if (empty($latestDels)) {
             return [];
         }
-        $latestDeliveryId = $latestDel->id;
+        
+        $deliveryIds = [];
+        $delPlaceholders = [];
+        foreach ($latestDels as $idx => $del) {
+            $deliveryIds[] = intval($del->id);
+            $delPlaceholders[] = ":del_id_" . $idx;
+        }
+        $delPlaceholdersStr = implode(',', $delPlaceholders);
 
         $this->db->query("
             SELECT dpi.item_id,
@@ -214,12 +221,14 @@ class RepTracking {
             FROM delivery_picking_items dpi
             LEFT JOIN items it ON dpi.item_id = it.id
             LEFT JOIN item_categories ic ON it.category_id = ic.id
-            WHERE dpi.delivery_id = :delivery_id
+            WHERE dpi.delivery_id IN ($delPlaceholdersStr)
             GROUP BY dpi.item_id, COALESCE(dpi.variation_option_id, 0), dpi.item_name, COALESCE(ic.name, 'Uncategorized')
             HAVING (SUM(COALESCE(dpi.final_loaded_qty, dpi.required_qty)) > 0 OR SUM(dpi.required_qty) > 0)
             ORDER BY category_name ASC, dpi.item_name ASC
         ");
-        $this->db->bind(':delivery_id', $latestDeliveryId);
+        foreach ($deliveryIds as $idx => $dId) {
+            $this->db->bind(":del_id_" . $idx, $dId);
+        }
         foreach ($routeIds as $index => $id) {
             $this->db->bind(":rid_" . $index, intval($id));
         }
