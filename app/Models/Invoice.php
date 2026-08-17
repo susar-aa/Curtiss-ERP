@@ -118,11 +118,17 @@ class Invoice {
                 $inventoryAccountId = $this->db->lastInsertId();
             }
 
-            // Resolve Tax Payable Account (Code 2110)
+            // Resolve Tax Payable Account
             $taxAccountId = null;
-            if (!empty($invoiceData['vat_account_id'])) {
-                $taxAccountId = intval($invoiceData['vat_account_id']);
-            } else {
+            if (!empty($invoiceData['tax_rate_id'])) {
+                $this->db->query("SELECT liability_account_id FROM tax_rates WHERE id = :id");
+                $this->db->bind(':id', $invoiceData['tax_rate_id']);
+                $taxRow = $this->db->single();
+                if ($taxRow && !empty($taxRow->liability_account_id)) {
+                    $taxAccountId = intval($taxRow->liability_account_id);
+                }
+            }
+            if (empty($taxAccountId)) {
                 $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '2110' OR account_name LIKE '%Tax Payable%' OR account_name LIKE '%Sales Tax%' LIMIT 1");
                 $taxRow = $this->db->single();
                 if ($taxRow) {
@@ -196,8 +202,8 @@ class Invoice {
 
             $stockStatus = $invoiceData['stock_status'] ?? 'deducted';
             $uuid = $invoiceData['uuid'] ?? null;
-            $this->db->query("INSERT INTO invoices (invoice_number, uuid, customer_id, rep_route_id, invoice_date, due_date, payment_term_id, total_amount, tax_amount, global_discount_val, global_discount_type, notes, journal_entry_id, created_by, status, stock_status, customer_vat_number) 
-                              VALUES (:invoice_number, :uuid, :customer_id, :rep_route_id, :invoice_date, :due_date, :payment_term_id, :total_amount, :tax_amount, :global_discount_val, :global_discount_type, :notes, :journal_entry_id, :created_by, 'Unpaid', :stock_status, :customer_vat_number)");
+            $this->db->query("INSERT INTO invoices (invoice_number, uuid, customer_id, rep_route_id, invoice_date, due_date, payment_term_id, total_amount, tax_amount, tax_rate_id, global_discount_val, global_discount_type, notes, journal_entry_id, created_by, status, stock_status, customer_vat_number) 
+                              VALUES (:invoice_number, :uuid, :customer_id, :rep_route_id, :invoice_date, :due_date, :payment_term_id, :total_amount, :tax_amount, :tax_rate_id, :global_discount_val, :global_discount_type, :notes, :journal_entry_id, :created_by, 'Unpaid', :stock_status, :customer_vat_number)");
             $this->db->bind(':invoice_number', $invoiceData['invoice_number']);
             $this->db->bind(':uuid', $uuid);
             $this->db->bind(':customer_id', $invoiceData['customer_id']);
@@ -207,6 +213,7 @@ class Invoice {
             $this->db->bind(':payment_term_id', $invoiceData['payment_term_id'] ?? null);
             $this->db->bind(':total_amount', $invoiceData['subtotal']);
             $this->db->bind(':tax_amount', $taxAmount > 0 ? $taxAmount : 0.0);
+            $this->db->bind(':tax_rate_id', $invoiceData['tax_rate_id'] ?? null);
             $this->db->bind(':global_discount_val', $invoiceData['global_discount_val']);
             $this->db->bind(':global_discount_type', $invoiceData['global_discount_type']);
             $this->db->bind(':notes', $invoiceData['notes']);
@@ -484,11 +491,17 @@ class Invoice {
                     $inventoryAccountId = $this->db->lastInsertId();
                 }
 
-                // Resolve Tax Payable Account (Code 2110)
+                // Resolve Tax Payable Account
                 $taxAccountId = null;
-                if (!empty($invoiceData['vat_account_id'])) {
-                    $taxAccountId = intval($invoiceData['vat_account_id']);
-                } else {
+                if (!empty($invoiceData['tax_rate_id'])) {
+                    $this->db->query("SELECT liability_account_id FROM tax_rates WHERE id = :id");
+                    $this->db->bind(':id', $invoiceData['tax_rate_id']);
+                    $taxRow = $this->db->single();
+                    if ($taxRow && !empty($taxRow->liability_account_id)) {
+                        $taxAccountId = intval($taxRow->liability_account_id);
+                    }
+                }
+                if (empty($taxAccountId)) {
                     $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '2110' OR account_name LIKE '%Tax Payable%' OR account_name LIKE '%Sales Tax%' LIMIT 1");
                     $taxRow = $this->db->single();
                     if ($taxRow) {
@@ -554,6 +567,7 @@ class Invoice {
                                 payment_term_id = :payment_term_id,
                                 total_amount = :total_amount, 
                                 tax_amount = :tax_amount,
+                                tax_rate_id = :tax_rate_id,
                                 global_discount_val = :global_discount_val, 
                                 global_discount_type = :global_discount_type, 
                                 notes = :notes,
@@ -566,6 +580,7 @@ class Invoice {
             $this->db->bind(':payment_term_id', $invoiceData['payment_term_id'] ?? null);
             $this->db->bind(':total_amount', $invoiceData['subtotal']);
             $this->db->bind(':tax_amount', $taxAmount > 0 ? $taxAmount : 0.0);
+            $this->db->bind(':tax_rate_id', $invoiceData['tax_rate_id'] ?? null);
             $this->db->bind(':global_discount_val', $invoiceData['global_discount_val']);
             $this->db->bind(':global_discount_type', $invoiceData['global_discount_type']);
             $this->db->bind(':notes', $invoiceData['notes']);

@@ -117,39 +117,7 @@
                 </form>
             </div>
 
-            <!-- VAT Configuration Settings Form -->
-            <div class="card" style="background:#fff; border: 1px solid var(--mac-border, #cbd5e1); border-radius:8px; padding:20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); margin-top: 20px;" id="vat-settings">
-                <h3 style="margin-top:0; border-bottom: 1px solid var(--mac-border, #cbd5e1); padding-bottom: 10px; font-size: 16px; color:#1e293b;"><i class="ph ph-receipt"></i> VAT / Tax Invoicing Configurations</h3>
-                <form action="<?= APP_URL ?>/settings" method="POST">
-                    <input type="hidden" name="csrf_token" value="<?= $data['csrf_token'] ?>">
-                    <input type="hidden" name="update_vat_settings" value="1">
-                    
-                    <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
-                        <input type="checkbox" name="is_vat_enabled" id="is_vat_enabled" <?= !empty($data['settings']->is_vat_enabled) ? 'checked' : '' ?> style="width: 18px; height: 18px;">
-                        <label for="is_vat_enabled" style="margin: 0; font-size: 15px;">Enable VAT Invoicing System</label>
-                    </div>
 
-                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                        <div class="form-group" style="flex: 1 1 200px;">
-                            <label>Default VAT Percentage (%)</label>
-                            <input type="number" step="0.01" name="vat_percentage" class="form-control" value="<?= htmlspecialchars($data['settings']->vat_percentage ?? '0.00') ?>" required>
-                        </div>
-                        <div class="form-group" style="flex: 1 1 200px;">
-                            <label>VAT Liability Account</label>
-                            <select name="vat_account_id" class="form-control" required>
-                                <option value="">-- Select VAT Liability Account --</option>
-                                <?php foreach($data['liability_accounts'] as $acc): ?>
-                                    <option value="<?= $acc->id ?>" <?= (isset($data['settings']->vat_account_id) && $data['settings']->vat_account_id == $acc->id) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($acc->account_code . ' - ' . $acc->account_name) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <button type="submit" class="btn" style="background:#1b5e20;">Save VAT Settings</button>
-                </form>
-            </div>
 
             <!-- Payroll & Commissions Settings Form -->
             <div class="card" style="background:#fff; border: 1px solid var(--mac-border, #cbd5e1); border-radius:8px; padding:20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); margin-top: 20px;">

@@ -667,20 +667,15 @@ class SalesController extends Controller {
                             $overLimitAmount = $projectedOutstanding - $creditLimit;
                             throw new Exception("Credit Limit Exceeded: Billed invoice brings {$customerName}'s outstanding balance to Rs. " . number_format($projectedOutstanding, 2) . ", which exceeds the credit limit of Rs. " . number_format($creditLimit, 2) . " by Rs. " . number_format($overLimitAmount, 2) . ".");
                         }
-                    }
+                    }                    $customerModel = $this->model('Customer');
+                    $customerObj = $customerModel->getCustomerById($customerId);
+                    $customerVatNumber = $customerObj ? $customerObj->vat_number : null;
 
-                    $companyModel = $this->model('Company');
-                    $compSettings = $companyModel->getSettings();
-                    $isVatEnabled = !empty($compSettings->is_vat_enabled) ? 1 : 0;
-                    $vatAccountId = !empty($compSettings->vat_account_id) ? intval($compSettings->vat_account_id) : null;
-                    
+                    $taxRateId = !empty($_POST['tax_rate_id']) ? intval($_POST['tax_rate_id']) : null;
                     $taxAmount = 0.00;
-                    $customerVatNumber = null;
-                    if ($isVatEnabled) {
-                        $taxAmount = floatval($_POST['tax_amount'] ?? 0);
-                        if ($customerObj) {
-                            $customerVatNumber = $customerObj->vat_number ?? null;
-                        }
+                    
+                    if (isset($_POST['tax_amount']) && floatval($_POST['tax_amount']) > 0) {
+                        $taxAmount = floatval($_POST['tax_amount']);
                     }
 
                     $invoiceData = [
@@ -697,7 +692,7 @@ class SalesController extends Controller {
                         'grand_total' => $grandTotal + $taxAmount,
                         'stock_status' => 'deducted',
                         'tax_amount' => $taxAmount,
-                        'vat_account_id' => $vatAccountId,
+                        'tax_rate_id' => $taxRateId,
                         'customer_vat_number' => $customerVatNumber
                     ];
 

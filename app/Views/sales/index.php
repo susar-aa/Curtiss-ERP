@@ -11,11 +11,13 @@ if (empty($catalog_items)) {
     $catalog_items = $db->resultSet();
 }
 
-// Fetch VAT settings from company_settings
-$db->query("SELECT is_vat_enabled, vat_percentage FROM company_settings LIMIT 1");
-$compSettings = $db->single();
-$isVatEnabled = $compSettings && !empty($compSettings->is_vat_enabled) ? true : false;
-$vatPercentage = $compSettings ? floatval($compSettings->vat_percentage) : 0;
+// Fetch active tax rate from tax_rates table
+$db->query("SELECT * FROM tax_rates WHERE is_active = 1 LIMIT 1");
+$activeTax = $db->single();
+$isVatEnabled = $activeTax ? true : false;
+$vatPercentage = $activeTax ? floatval($activeTax->rate_percentage) : 0;
+$taxRateId = $activeTax ? intval($activeTax->id) : null;
+$taxName = $activeTax ? $activeTax->tax_name : 'Tax';
 
 // Enforce Wholesale B2B pricing preference and load variations from JSON if needed
 foreach ($catalog_items as $key => $item) {
@@ -1464,9 +1466,12 @@ if ($inv && isset($inv->id)) {
                         </div>
                     </div>
                     <div class="totals-row" id="vatContainer" style="display: <?= $isVatEnabled ? 'flex' : 'none' ?>;">
-                        <span class="totals-label">Tax (VAT <?= $vatPercentage ?>%)</span>
+                        <span class="totals-label"><?= htmlspecialchars($taxName) ?> (<?= $vatPercentage ?>%)</span>
                         <span class="totals-value" id="taxTotalDisplay">0.00</span>
                         <input type="hidden" name="tax_amount" id="taxAmountInput" value="0">
+                        <?php if($taxRateId): ?>
+                            <input type="hidden" name="tax_rate_id" value="<?= $taxRateId ?>">
+                        <?php endif; ?>
                     </div>
                     <div class="totals-row totals-row-grand">
                         <span class="totals-label">Total LKR</span>
