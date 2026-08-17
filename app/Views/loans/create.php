@@ -1,5 +1,4 @@
-<?php require APP_ROOT . '/views/layouts/header.php'; ?>
-<?php require APP_ROOT . '/views/layouts/main.php'; ?>
+
 
 <div class="content">
     <div class="page-header">
@@ -88,4 +87,4 @@
     </div>
 </div>
 
-<?php require APP_ROOT . '/views/layouts/footer.php'; ?>
+

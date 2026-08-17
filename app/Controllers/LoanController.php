@@ -16,10 +16,11 @@ class LoanController extends Controller {
     public function index() {
         $data = [
             'title' => 'Bank Loans',
+            'content_view' => 'loans/index',
             'stats' => $this->loanModel->getDashboardStats(),
             'loans' => $this->loanModel->getLoans()
         ];
-        $this->view('loans/index', $data);
+        $this->view('layouts/main', $data);
     }
 
     public function create() {
@@ -51,9 +52,10 @@ class LoanController extends Controller {
             
             $data = [
                 'title' => 'Register New Loan',
+                'content_view' => 'loans/create',
                 'liabilities' => $liabilities
             ];
-            $this->view('loans/create', $data);
+            $this->view('layouts/main', $data);
         }
     }
 
@@ -66,11 +68,12 @@ class LoanController extends Controller {
         
         $data = [
             'title' => 'Loan Details: ' . htmlspecialchars($loan->lender_name),
+            'content_view' => 'loans/show',
             'loan' => $loan,
             'repayments' => $this->loanModel->getRepayments($id),
             'bank_accounts' => $this->loanModel->getAllBankAccounts()
         ];
-        $this->view('loans/show', $data);
+        $this->view('layouts/main', $data);
     }
 
     public function disburse($id) {

@@ -1,5 +1,4 @@
-<?php require APP_ROOT . '/views/layouts/header.php'; ?>
-<?php require APP_ROOT . '/views/layouts/main.php'; ?>
+
 
 <div class="content">
     <div class="page-header d-flex justify-content-between align-items-center">
@@ -114,4 +113,4 @@
 }
 </style>
 
-<?php require APP_ROOT . '/views/layouts/footer.php'; ?>
+
