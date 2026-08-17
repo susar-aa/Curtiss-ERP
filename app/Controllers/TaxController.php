@@ -52,6 +52,31 @@ class TaxController extends Controller {
                 $this->taxModel->toggleStatus($_POST['tax_id'], $_POST['status']);
                 $data['success'] = 'Tax status updated.';
                 $data['tax_rates'] = $this->taxModel->getAllTaxRates();
+            } elseif ($_POST['action'] == 'edit_tax') {
+                $taxData = [
+                    'id' => $_POST['tax_id'],
+                    'tax_name' => trim($_POST['tax_name']),
+                    'rate_percentage' => floatval($_POST['rate_percentage']),
+                    'liability_account_id' => $_POST['liability_account_id']
+                ];
+                
+                if (!empty($taxData['tax_name']) && $taxData['rate_percentage'] >= 0) {
+                    if ($this->taxModel->updateTaxRate($taxData)) {
+                        $data['success'] = 'Tax Rate updated successfully.';
+                        $data['tax_rates'] = $this->taxModel->getAllTaxRates();
+                    } else {
+                        $data['error'] = 'Database Error: Failed to update tax rate.';
+                    }
+                } else {
+                    $data['error'] = 'Invalid tax configuration provided.';
+                }
+            } elseif ($_POST['action'] == 'delete_tax') {
+                if ($this->taxModel->deleteTaxRate($_POST['tax_id'])) {
+                    $data['success'] = 'Tax Rate deleted successfully.';
+                    $data['tax_rates'] = $this->taxModel->getAllTaxRates();
+                } else {
+                    $data['error'] = 'Failed to delete tax rate. It may be linked to existing invoices or sales orders.';
+                }
             }
         }
 

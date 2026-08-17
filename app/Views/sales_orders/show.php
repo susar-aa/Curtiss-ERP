@@ -181,6 +181,12 @@
                         <span>- Rs: <?= number_format($data['order']->discount, 2) ?></span>
                     </div>
                 <?php endif; ?>
+                <?php if(isset($data['order']->tax_amount) && $data['order']->tax_amount > 0): ?>
+                    <div class="totals-row">
+                        <span>Tax / VAT:</span>
+                        <span>Rs: <?= number_format($data['order']->tax_amount, 2) ?></span>
+                    </div>
+                <?php endif; ?>
                 <div class="totals-row grand-total">
                     <span>Sales Order Total:</span>
                     <span>Rs: <?= number_format($data['order']->grand_total, 2) ?></span>

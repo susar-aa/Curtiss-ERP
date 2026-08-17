@@ -10,6 +10,14 @@ if (empty($catalog_items)) {
     $catalog_items = $db->resultSet();
 }
 
+// Fetch active tax rate from tax_rates table
+$db->query("SELECT * FROM tax_rates WHERE is_active = 1 LIMIT 1");
+$activeTax = $db->single();
+$isVatEnabled = $activeTax ? true : false;
+$vatPercentage = $activeTax ? floatval($activeTax->rate_percentage) : 0;
+$taxRateId = $activeTax ? intval($activeTax->id) : null;
+$taxName = $activeTax ? $activeTax->tax_name : 'Tax';
+
 // Enforce Wholesale B2B pricing preference and load variations from JSON if needed
 foreach ($catalog_items as $key => $item) {
     $billingPrice = 0.00;
@@ -344,6 +352,17 @@ $reps = $db->resultSet();
                                 <option value="%">%</option>
                             </select>
                         </div>
+                    </div>
+                    <div class="qb-totals-row" id="vatContainer" style="display: <?= $isVatEnabled ? 'flex' : 'none' ?>; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="applyTaxToggle" checked onchange="calcTotals()" style="width: 16px; height: 16px; cursor: pointer;">
+                            <label for="applyTaxToggle" style="cursor: pointer; margin: 0; padding: 0; font-weight: bold; width: 100px; text-align: left;"><?= htmlspecialchars($taxName) ?> (<?= $vatPercentage ?>%)</label>
+                        </div>
+                        <span id="taxTotalDisplay">0.00</span>
+                        <input type="hidden" name="tax_amount" id="taxAmountInput" value="0">
+                        <?php if($taxRateId): ?>
+                            <input type="hidden" name="tax_rate_id" value="<?= $taxRateId ?>">
+                        <?php endif; ?>
                     </div>
                     <div class="qb-totals-row" style="font-size: 14px; margin-top: 5px;">
                         <strong>Total LKR</strong>
@@ -687,11 +706,40 @@ $reps = $db->resultSet();
 
         const globalDiscVal = parseFloat(document.getElementById('globalDiscVal').value) || 0;
         const globalDiscType = document.getElementById('globalDiscType').value;
-        let globalDisc = (globalDiscType === '%') ? (subTotal * globalDiscVal / 100) : globalDiscVal;
-        let grandTotal = Math.max(0.00, subTotal - globalDisc);
+        let globalDisc = 0;
+        if (globalDiscType === '%') {
+            globalDisc = subTotal * (globalDiscVal / 100);
+        } else {
+            globalDisc = globalDiscVal;
+        }
 
-        document.getElementById('subTotal').innerText = subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('grandTotal').innerText = grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        let grandTotal = Math.max(subTotal - globalDisc, 0);
+
+        const isVatEnabled = <?= $isVatEnabled ? 'true' : 'false' ?>;
+        const vatPercentage = <?= $vatPercentage ?>;
+        let taxAmount = 0;
+        
+        const applyTaxToggle = document.getElementById('applyTaxToggle');
+        const applyTax = applyTaxToggle ? applyTaxToggle.checked : true;
+        
+        if (isVatEnabled && applyTax) {
+            taxAmount = grandTotal * (vatPercentage / 100);
+            grandTotal += taxAmount;
+        }
+
+        const taxAmountInput = document.getElementById('taxAmountInput');
+        if (taxAmountInput) taxAmountInput.value = taxAmount.toFixed(2);
+        
+        const taxTotalDisplay = document.getElementById('taxTotalDisplay');
+        if (taxTotalDisplay) taxTotalDisplay.innerText = taxAmount.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+        
+        const taxRateIdInput = document.querySelector('input[name="tax_rate_id"]');
+        if (taxRateIdInput) {
+            taxRateIdInput.disabled = !applyTax;
+        }
+
+        document.getElementById('subTotal').innerText = subTotal.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+        document.getElementById('grandTotal').innerText = grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
     }
 
     function calculateDueDateOffset() {

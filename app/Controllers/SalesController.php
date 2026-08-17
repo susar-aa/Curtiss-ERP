@@ -442,6 +442,8 @@ class SalesController extends Controller {
                                             customer_phone = :cust_phone, 
                                             subtotal = :sub, 
                                             discount = :disc, 
+                                            tax_amount = :tax_amt,
+                                            tax_rate_id = :tax_rate,
                                             grand_total = :grand, 
                                             notes = :notes, 
                                             rep_name = :rep, 
@@ -457,6 +459,8 @@ class SalesController extends Controller {
                         $this->db->bind(':cust_phone', $customerPhone);
                         $this->db->bind(':sub', $subtotal);
                         $this->db->bind(':disc', $globalDiscount);
+                        $this->db->bind(':tax_amt', $taxAmount);
+                        $this->db->bind(':tax_rate', $taxRateId);
                         $this->db->bind(':grand', $grandTotal);
                         $this->db->bind(':notes', $_POST['notes'] ?? '');
                         $this->db->bind(':rep', $_POST['rep_name'] ?? '');
@@ -477,14 +481,16 @@ class SalesController extends Controller {
                         $orderId = $editingId;
                     } else {
                         // Insert Sales Order
-                        $this->db->query("INSERT INTO sales_orders (order_number, customer_id, customer_name, customer_phone, billing_type, subtotal, discount, grand_total, notes, rep_name, mca, rep_tp, po_number, order_date, due_date, payment_term_id, status) 
-                                          VALUES (:order_num, :cust_id, :cust_name, :cust_phone, 'wholesale', :sub, :disc, :grand, :notes, :rep, :mca, :rep_tp, :po, :o_date, :d_date, :term_id, 'Pending')");
+                        $this->db->query("INSERT INTO sales_orders (order_number, customer_id, customer_name, customer_phone, billing_type, subtotal, discount, tax_amount, tax_rate_id, grand_total, notes, rep_name, mca, rep_tp, po_number, order_date, due_date, payment_term_id, status) 
+                                          VALUES (:order_num, :cust_id, :cust_name, :cust_phone, 'wholesale', :sub, :disc, :tax_amt, :tax_rate, :grand, :notes, :rep, :mca, :rep_tp, :po, :o_date, :d_date, :term_id, 'Pending')");
                         $this->db->bind(':order_num', $invoiceNumber);
                         $this->db->bind(':cust_id', $customerId);
                         $this->db->bind(':cust_name', $customerName);
                         $this->db->bind(':cust_phone', $customerPhone);
                         $this->db->bind(':sub', $subtotal);
                         $this->db->bind(':disc', $globalDiscount);
+                        $this->db->bind(':tax_amt', $taxAmount);
+                        $this->db->bind(':tax_rate', $taxRateId);
                         $this->db->bind(':grand', $grandTotal);
                         $this->db->bind(':notes', $_POST['notes'] ?? '');
                         $this->db->bind(':rep', $_POST['rep_name'] ?? '');

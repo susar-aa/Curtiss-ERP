@@ -1466,7 +1466,10 @@ if ($inv && isset($inv->id)) {
                         </div>
                     </div>
                     <div class="totals-row" id="vatContainer" style="display: <?= $isVatEnabled ? 'flex' : 'none' ?>;">
-                        <span class="totals-label"><?= htmlspecialchars($taxName) ?> (<?= $vatPercentage ?>%)</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="applyTaxToggle" checked onchange="calcTotals()" style="width: 16px; height: 16px; cursor: pointer;">
+                            <label for="applyTaxToggle" class="totals-label" style="cursor: pointer; margin: 0; padding: 0;"><?= htmlspecialchars($taxName) ?> (<?= $vatPercentage ?>%)</label>
+                        </div>
                         <span class="totals-value" id="taxTotalDisplay">0.00</span>
                         <input type="hidden" name="tax_amount" id="taxAmountInput" value="0">
                         <?php if($taxRateId): ?>
@@ -2242,14 +2245,23 @@ if ($inv && isset($inv->id)) {
         const vatPercentage = <?= $vatPercentage ?>;
         let taxAmount = 0;
         
-        if (isVatEnabled) {
+        const applyTaxToggle = document.getElementById('applyTaxToggle');
+        const applyTax = applyTaxToggle ? applyTaxToggle.checked : true;
+        
+        if (isVatEnabled && applyTax) {
             taxAmount = grandTotal * (vatPercentage / 100);
             grandTotal += taxAmount;
-            const taxAmountInput = document.getElementById('taxAmountInput');
-            if (taxAmountInput) taxAmountInput.value = taxAmount.toFixed(2);
-            
-            const taxTotalDisplay = document.getElementById('taxTotalDisplay');
-            if (taxTotalDisplay) taxTotalDisplay.innerText = taxAmount.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+        }
+
+        const taxAmountInput = document.getElementById('taxAmountInput');
+        if (taxAmountInput) taxAmountInput.value = taxAmount.toFixed(2);
+        
+        const taxTotalDisplay = document.getElementById('taxTotalDisplay');
+        if (taxTotalDisplay) taxTotalDisplay.innerText = taxAmount.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+        
+        const taxRateIdInput = document.querySelector('input[name="tax_rate_id"]');
+        if (taxRateIdInput) {
+            taxRateIdInput.disabled = !applyTax;
         }
 
         console.log("[calcTotals]", { sub_total: subTotal, discount_deducted: globalDisc, tax_amount: taxAmount, grand_total: grandTotal });
