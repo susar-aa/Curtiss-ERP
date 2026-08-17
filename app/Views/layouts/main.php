@@ -1496,6 +1496,13 @@ if (!function_exists('hasPermission')) {
                                 <div class="desc">Process salaries & post ledger</div>
                             </div>
                         </a>
+                        <a href="<?= APP_URL ?>/employeeloan" class="mega-list-item">
+                            <div class="icon-wrapper"><i class="ph ph-hand-coins"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Employee Loans</div>
+                                <div class="desc">Issue & track advances</div>
+                            </div>
+                        </a>
                         <a href="<?= APP_URL ?>/leave" class="mega-list-item">
                             <div class="icon-wrapper"><i class="ph ph-calendar-blank"></i></div>
                             <div class="mega-list-item-content">

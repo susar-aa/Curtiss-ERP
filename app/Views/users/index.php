@@ -359,6 +359,12 @@
                                 <i class="ph ph-note-pencil"></i> Edit
                             </button>
                             
+                            <?php if (!empty($s->employee_id)): ?>
+                                <a href="<?= APP_URL ?>/user/show/<?= $s->employee_id ?>" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; border-radius: 8px; margin-left: 4px;">
+                                    <i class="ph ph-user"></i> Profile
+                                </a>
+                            <?php endif; ?>
+                            
                             <?php if (!empty($s->user_id)): ?>
                                 <?php if ($s->user_id != $_SESSION['user_id']): ?>
                                     <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; border-radius: 8px; border-color: rgba(239, 68, 68, 0.25); color: #ef4444 !important; margin-left: 4px;" 
