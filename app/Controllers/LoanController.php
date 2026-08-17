@@ -47,8 +47,8 @@ class LoanController extends Controller {
                 exit;
             }
         } else {
-            $this->coaModel->db->query("SELECT * FROM chart_of_accounts WHERE account_type = 'Liability' ORDER BY account_code ASC");
-            $liabilities = $this->coaModel->db->resultSet();
+            $accounts = $this->coaModel->getAccounts();
+            $liabilities = array_filter($accounts, function($a) { return $a->account_type == 'Liability'; });
             
             $data = [
                 'title' => 'Register New Loan',
