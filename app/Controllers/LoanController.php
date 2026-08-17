@@ -2,7 +2,6 @@
 class LoanController extends Controller {
     private $loanModel;
     private $coaModel;
-    private $bankAccountModel;
 
     public function __construct() {
         if (!isset($_SESSION['user_id'])) {
@@ -12,7 +11,6 @@ class LoanController extends Controller {
         
         $this->loanModel = $this->model('Loan');
         $this->coaModel = $this->model('ChartOfAccount');
-        $this->bankAccountModel = $this->model('BankAccount');
     }
 
     public function index() {
@@ -70,7 +68,7 @@ class LoanController extends Controller {
             'title' => 'Loan Details: ' . htmlspecialchars($loan->lender_name),
             'loan' => $loan,
             'repayments' => $this->loanModel->getRepayments($id),
-            'bank_accounts' => $this->bankAccountModel->getAllBankAccounts()
+            'bank_accounts' => $this->loanModel->getAllBankAccounts()
         ];
         $this->view('loans/show', $data);
     }

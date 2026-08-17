@@ -6,6 +6,16 @@ class Loan {
         $this->db = new Database();
     }
 
+    public function getAllBankAccounts() {
+        $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1600'");
+        $parent = $this->db->single();
+        $parentId = $parent ? $parent->id : 0;
+        
+        $this->db->query("SELECT id, account_code as account_number, account_name as bank_name FROM chart_of_accounts WHERE parent_id = :pid ORDER BY account_code ASC");
+        $this->db->bind(':pid', $parentId);
+        return $this->db->resultSet() ?: [];
+    }
+
     public function getLoans() {
         $this->db->query("
             SELECT l.*, 
@@ -118,13 +128,7 @@ class Loan {
         $loan = $this->getLoanById($loanId);
         if (!$loan) return;
 
-        // Get the accounts
-        $this->db->query("SELECT * FROM bank_accounts WHERE id = :id");
-        $this->db->bind(':id', $bankAccountId);
-        $bank = $this->db->single();
-        if (!$bank) return;
-
-        $bankCoaId = $bank->chart_of_account_id;
+        $bankCoaId = $bankAccountId; // The UI passes the chart_of_account_id directly
         $liabilityCoaId = $loan->liability_account_id;
 
         // Find Bank Charges Account for Fees (assuming 6100)
@@ -178,12 +182,7 @@ class Loan {
     private function syncRepaymentAccounting($repaymentId, $loanId, $bankAccountId, $principal, $interest, $charges, $total, $userId) {
         $loan = $this->getLoanById($loanId);
         
-        $this->db->query("SELECT * FROM bank_accounts WHERE id = :id");
-        $this->db->bind(':id', $bankAccountId);
-        $bank = $this->db->single();
-        if (!$bank) return;
-
-        $bankCoaId = $bank->chart_of_account_id;
+        $bankCoaId = $bankAccountId; // The UI passes the chart_of_account_id directly
         $liabilityCoaId = $loan->liability_account_id;
 
         $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '6100' LIMIT 1");
