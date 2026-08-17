@@ -666,6 +666,37 @@ class UserController extends Controller {
         exit;
     }
 
+    /**
+     * Show Employee Profile
+     */
+    public function show($id) {
+        $this->checkPermission('user', 'view');
+        
+        $employee = $this->employeeModel->getEmployeeById($id);
+        if (!$employee) {
+            $_SESSION['flash_error'] = 'Employee not found.';
+            header('Location: ' . APP_URL . '/user');
+            exit;
+        }
+
+        require_once APP_ROOT . '/app/Models/EmployeeLoan.php';
+        $loanModel = new EmployeeLoan();
+        
+        $loans = $loanModel->getLoansByEmployeeId($id);
+        $payslips = $this->employeeModel->getEmployeePayslips($id);
+
+        $data = [
+            'title' => 'Employee Profile: ' . $employee->first_name . ' ' . $employee->last_name,
+            'content_view' => 'users/show',
+            'employee' => $employee,
+            'loans' => $loans,
+            'payslips' => $payslips,
+            'loanModel' => $loanModel // To fetch repayments for each loan
+        ];
+
+        $this->view('layouts/main', $data);
+    }
+
     private function getUsernameById($id) {
         $db = new Database();
         $db->query("SELECT username FROM users WHERE id = :id");

@@ -180,4 +180,14 @@ class Employee {
             throw $e;
         }
     }
+
+    public function getEmployeePayslips($employeeId) {
+        $this->db->query("SELECT ps.*, pr.period_start, pr.period_end, pr.run_date 
+                          FROM payroll_slips ps
+                          JOIN payroll_runs pr ON ps.payroll_run_id = pr.id
+                          WHERE ps.employee_id = :employee_id
+                          ORDER BY pr.period_end DESC");
+        $this->db->bind(':employee_id', $employeeId);
+        return $this->db->resultSet();
+    }
 }
