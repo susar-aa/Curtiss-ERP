@@ -1613,6 +1613,13 @@ if (!function_exists('hasPermission')) {
                                 <div class="desc">Accounts and recons</div>
                             </div>
                         </a>
+                        <a href="<?= APP_URL ?>/loan" class="mega-list-item">
+                            <div class="icon-wrapper text-info"><i class="ph ph-vault"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title text-info">Bank Loans</div>
+                                <div class="desc">Manage loans and repayments</div>
+                            </div>
+                        </a>
                         <a href="<?= APP_URL ?>/deposit" class="mega-list-item">
                             <div class="icon-wrapper" style="color: #2e7d32;"><i class="ph ph-receipt"></i></div>
                             <div class="mega-list-item-content">
