@@ -17,6 +17,7 @@ function global_exception_handler(Throwable $exception) {
     $errMessage = "Uncaught Exception: " . $exception->getMessage() . " in " . $exception->getFile() . " on line " . $exception->getLine();
     $logContent = "[" . date('Y-m-d H:i:s') . "] " . $errMessage . "\n" . $exception->getTraceAsString() . "\n\n";
     @file_put_contents($logFile, $logContent, FILE_APPEND);
+    @file_put_contents(__DIR__ . '/error_debug.log', $logContent, FILE_APPEND);
 
     // If it's an API/AJAX request, return structured JSON
     $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || 
@@ -37,7 +38,7 @@ function global_exception_handler(Throwable $exception) {
         if (!headers_sent()) {
             http_response_code(500);
         }
-        $showDetails = (DIRECTORY_SEPARATOR === '\\' || (isset($_SERVER['HTTP_HOST']) && (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false)));
+        $showDetails = true; // FORCE ENABLED FOR DEBUGGING
         ?>
         <!DOCTYPE html>
         <html>
