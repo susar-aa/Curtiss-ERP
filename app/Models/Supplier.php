@@ -234,7 +234,7 @@ class Supplier {
                    END as product_name,
                    i.item_code as sku,
                    COALESCE(ivo.price, i.price) as price,
-                   COALESCE(ivo.cost, i.cost_price) as cost,
+                   COALESCE(ivo.cost, i.cost_price) as cost_price,
                    COALESCE(ivo.quantity_on_hand, i.quantity_on_hand) as quantity_on_hand
             FROM items i
             INNER JOIN item_suppliers i_s ON i.id = i_s.item_id
