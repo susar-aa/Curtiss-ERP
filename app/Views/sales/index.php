@@ -1467,7 +1467,7 @@ if ($inv && isset($inv->id)) {
                     </div>
                     <div class="totals-row" id="vatContainer" style="display: <?= $isVatEnabled ? 'flex' : 'none' ?>;">
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" id="applyTaxToggle" checked onchange="calcTotals()" style="width: 16px; height: 16px; cursor: pointer;">
+                            <input type="checkbox" id="applyTaxToggle" onchange="calcTotals()" style="width: 16px; height: 16px; cursor: pointer;">
                             <label for="applyTaxToggle" class="totals-label" style="cursor: pointer; margin: 0; padding: 0;"><?= htmlspecialchars($taxName) ?> (<?= $vatPercentage ?>%)</label>
                         </div>
                         <span class="totals-value" id="taxTotalDisplay">0.00</span>
@@ -2246,7 +2246,7 @@ if ($inv && isset($inv->id)) {
         let taxAmount = 0;
         
         const applyTaxToggle = document.getElementById('applyTaxToggle');
-        const applyTax = applyTaxToggle ? applyTaxToggle.checked : true;
+        const applyTax = applyTaxToggle ? applyTaxToggle.checked : false;
         
         if (isVatEnabled && applyTax) {
             taxAmount = grandTotal * (vatPercentage / 100);

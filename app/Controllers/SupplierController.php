@@ -64,7 +64,9 @@ class SupplierController extends Controller {
                     'name' => trim($_POST['name'] ?? ''),
                     'email' => trim($_POST['email'] ?? ''),
                     'phone' => trim($_POST['phone'] ?? ''),
-                    'address' => trim($_POST['address'] ?? '')
+                    'address' => trim($_POST['address'] ?? ''),
+                    'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00,
+                    'opening_balance_date' => !empty($_POST['opening_balance_date']) ? $_POST['opening_balance_date'] : date('Y-m-d')
                 ];
                 if (!empty($supplierData['name'])) {
                     if ($this->supplierModel->addSupplier($supplierData)) {
@@ -82,7 +84,9 @@ class SupplierController extends Controller {
                     'name' => trim($_POST['name'] ?? ''),
                     'email' => trim($_POST['email'] ?? ''),
                     'phone' => trim($_POST['phone'] ?? ''),
-                    'address' => trim($_POST['address'] ?? '')
+                    'address' => trim($_POST['address'] ?? ''),
+                    'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00,
+                    'opening_balance_date' => !empty($_POST['opening_balance_date']) ? $_POST['opening_balance_date'] : date('Y-m-d')
                 ];
 
                 if (!empty($updateData['name'])) {

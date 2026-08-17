@@ -29,7 +29,7 @@ class Supplier {
         ");
         $suppliers = $this->db->resultSet();
         foreach ($suppliers as $s) {
-            $s->outstanding_balance = $s->total_billed - $s->total_paid - $s->total_returned;
+            $s->outstanding_balance = floatval($s->opening_balance ?? 0) + $s->total_billed - $s->total_paid - $s->total_returned;
         }
         return $suppliers;
     }
@@ -41,22 +41,77 @@ class Supplier {
     }
 
     public function addSupplier($data) {
-        $this->db->query("INSERT INTO vendors (name, email, phone, address) VALUES (:name, :email, :phone, :address)");
+        $this->db->query("INSERT INTO vendors (name, email, phone, address, opening_balance, opening_balance_date) VALUES (:name, :email, :phone, :address, :opening_balance, :opening_balance_date)");
         $this->db->bind(':name', $data['name']);
         $this->db->bind(':email', $data['email']);
         $this->db->bind(':phone', $data['phone']);
         $this->db->bind(':address', $data['address']);
-        return $this->db->execute();
+        $this->db->bind(':opening_balance', $data['opening_balance'] ?? 0.00);
+        $this->db->bind(':opening_balance_date', $data['opening_balance_date'] ?? null);
+        $result = $this->db->execute();
+        
+        if ($result && isset($data['opening_balance']) && floatval($data['opening_balance']) > 0) {
+            $newId = $this->db->lastInsertId();
+            $this->syncOpeningBalanceAccounting($newId, $data['opening_balance'], $data['opening_balance_date'] ?? date('Y-m-d'), $_SESSION['user_id'] ?? 1);
+        }
+        return $result;
     }
 
     public function updateSupplier($data) {
-        $this->db->query("UPDATE vendors SET name = :name, email = :email, phone = :phone, address = :address WHERE id = :id");
+        $this->db->query("UPDATE vendors SET name = :name, email = :email, phone = :phone, address = :address, opening_balance = :opening_balance, opening_balance_date = :opening_balance_date WHERE id = :id");
         $this->db->bind(':id', $data['id']);
         $this->db->bind(':name', $data['name']);
         $this->db->bind(':email', $data['email']);
         $this->db->bind(':phone', $data['phone']);
         $this->db->bind(':address', $data['address']);
-        return $this->db->execute();
+        $this->db->bind(':opening_balance', $data['opening_balance'] ?? 0.00);
+        $this->db->bind(':opening_balance_date', $data['opening_balance_date'] ?? null);
+        $result = $this->db->execute();
+        
+        if ($result && isset($data['opening_balance'])) {
+            $this->syncOpeningBalanceAccounting($data['id'], $data['opening_balance'], $data['opening_balance_date'] ?? date('Y-m-d'), $_SESSION['user_id'] ?? 1);
+        }
+        return $result;
+    }
+
+    private function syncOpeningBalanceAccounting($supplierId, $amount, $date, $userId) {
+        $this->db->query("SELECT * FROM chart_of_accounts WHERE account_code = '2000' LIMIT 1");
+        $apAccount = $this->db->single();
+        if (!$apAccount) return false;
+
+        $this->db->query("SELECT * FROM chart_of_accounts WHERE account_code = '3000' LIMIT 1");
+        $eqAccount = $this->db->single();
+        if (!$eqAccount) return false;
+
+        $ref = "OB-SUP-" . $supplierId;
+        $this->db->query("DELETE FROM journal_entries WHERE reference = :ref");
+        $this->db->bind(':ref', $ref);
+        $this->db->execute();
+
+        $amount = floatval($amount);
+        if ($amount == 0) return true;
+
+        $this->db->query("INSERT INTO journal_entries (entry_date, reference, account_id, description, debit, credit, created_by) 
+                          VALUES (:date, :ref, :acc, :desc, :debit, 0, :uid)");
+        $this->db->bind(':date', $date);
+        $this->db->bind(':ref', $ref);
+        $this->db->bind(':acc', $eqAccount->id);
+        $this->db->bind(':desc', "Opening Balance for Supplier ID {$supplierId}");
+        $this->db->bind(':debit', $amount);
+        $this->db->bind(':uid', $userId);
+        $this->db->execute();
+
+        $this->db->query("INSERT INTO journal_entries (entry_date, reference, account_id, description, debit, credit, created_by) 
+                          VALUES (:date, :ref, :acc, :desc, 0, :credit, :uid)");
+        $this->db->bind(':date', $date);
+        $this->db->bind(':ref', $ref);
+        $this->db->bind(':acc', $apAccount->id);
+        $this->db->bind(':desc', "Opening Balance for Supplier ID {$supplierId}");
+        $this->db->bind(':credit', $amount);
+        $this->db->bind(':uid', $userId);
+        $this->db->execute();
+
+        return true;
     }
 
     public function getSupplierStats($id) {
@@ -93,12 +148,18 @@ class Supplier {
         $returned = $this->db->single();
 
         $stats = new stdClass();
+        $this->db->query("SELECT opening_balance FROM vendors WHERE id = :id");
+        $this->db->bind(':id', $id);
+        $supObj = $this->db->single();
+        $opening = $supObj ? floatval($supObj->opening_balance) : 0.00;
+
         $stats->total_pos = $poStats->total_pos;
         $stats->total_po_amount = $poStats->total_po_amount;
         $stats->total_billed = $billed->total_billed;
         $stats->total_paid = $paid->total_paid;
         $stats->total_returned = $returned->total_returned;
-        $stats->outstanding = $stats->total_billed - $stats->total_paid - $stats->total_returned;
+        $stats->opening_balance = $opening;
+        $stats->outstanding = $opening + $stats->total_billed - $stats->total_paid - $stats->total_returned;
 
         return $stats;
     }
@@ -132,6 +193,13 @@ class Supplier {
                    sp.created_at
             FROM supplier_payments sp
             WHERE sp.vendor_id = :vid4 AND sp.status = 'Active'
+            UNION ALL
+            SELECT 'Opening Bal' as type, id, 'System generated' as ref, COALESCE(opening_balance_date, DATE(created_at)) as date,
+                   0 as debit,
+                   opening_balance as credit,
+                   created_at
+            FROM vendors
+            WHERE id = :vid5 AND opening_balance > 0
             ORDER BY date ASC, created_at ASC
         ";
         $this->db->query($sql);
@@ -139,6 +207,7 @@ class Supplier {
         $this->db->bind(':vid2', $id);
         $this->db->bind(':vid3', $id);
         $this->db->bind(':vid4', $id);
+        $this->db->bind(':vid5', $id);
         $ledger = $this->db->resultSet();
 
         $balance = 0;
@@ -168,10 +237,11 @@ class Supplier {
                    COALESCE(ivo.cost, i.cost_price) as cost,
                    COALESCE(ivo.quantity_on_hand, i.quantity_on_hand) as quantity_on_hand
             FROM items i
+            INNER JOIN item_suppliers i_s ON i.id = i_s.item_id
             LEFT JOIN item_variation_options ivo ON ivo.item_id = i.id
             LEFT JOIN variations v ON ivo.variation_id = v.id
             LEFT JOIN variation_values vv ON ivo.variation_value_id = vv.id
-            WHERE i.vendor_id = :vid
+            WHERE i_s.supplier_id = :vid
             ORDER BY product_name ASC
         ");
         $this->db->bind(':vid', $id);

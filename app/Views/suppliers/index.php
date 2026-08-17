@@ -610,6 +610,17 @@ foreach ($data['suppliers'] ?? [] as $s) {
                     </div>
                 </div>
                 
+                <div class="grid-2">
+                    <div class="sf-group">
+                        <label>Opening Balance (Rs)</label>
+                        <input type="number" name="opening_balance" step="0.01" class="sf-input" value="<?= htmlspecialchars($sup->opening_balance ?? '0.00') ?>" placeholder="0.00">
+                    </div>
+                    <div class="sf-group">
+                        <label>As of Date</label>
+                        <input type="date" name="opening_balance_date" class="sf-input" value="<?= htmlspecialchars($sup->opening_balance_date ?? date('Y-m-d')) ?>">
+                    </div>
+                </div>
+                
                 <div style="text-align: right; margin-top: 10px;">
                     <button type="submit" class="sf-btn primary">Save Changes</button>
                 </div>
@@ -645,6 +656,16 @@ foreach ($data['suppliers'] ?? [] as $s) {
                 <div class="sf-group">
                     <label>Address</label>
                     <textarea name="address" class="sf-input" rows="2" style="resize:vertical;"></textarea>
+                </div>
+                <div class="grid-2">
+                    <div class="sf-group">
+                        <label>Opening Balance (Rs)</label>
+                        <input type="number" name="opening_balance" step="0.01" class="sf-input" value="0.00" placeholder="0.00">
+                    </div>
+                    <div class="sf-group">
+                        <label>As of Date</label>
+                        <input type="date" name="opening_balance_date" class="sf-input" value="<?= date('Y-m-d') ?>">
+                    </div>
                 </div>
             </div>
             <div class="modal-foot">
