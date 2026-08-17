@@ -25,7 +25,7 @@
                         <label class="form-label">Liability Account (Chart of Accounts) <span class="text-danger">*</span></label>
                         <select name="liability_account_id" class="form-select" required>
                             <option value="">-- Select Liability Account --</option>
-                            <?php foreach ($liabilities as $acc): ?>
+                            <?php foreach ($data['liabilities'] as $acc): ?>
                                 <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->account_code . ' - ' . $acc->account_name) ?></option>
                             <?php endforeach; ?>
                         </select>

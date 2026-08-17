@@ -4,13 +4,13 @@
     <div class="page-header d-flex justify-content-between align-items-center">
         <div>
             <a href="<?= APP_URL ?>/loan" class="text-muted text-decoration-none mb-2 d-inline-block"><i class="ph ph-arrow-left"></i> Back to Loans</a>
-            <h1 class="page-title">Loan: <?= htmlspecialchars($loan->lender_name) ?></h1>
-            <p class="text-muted mb-0">Loan Number: <?= htmlspecialchars($loan->loan_number ?: 'N/A') ?></p>
+            <h1 class="page-title">Loan: <?= htmlspecialchars($data['loan']->lender_name) ?></h1>
+            <p class="text-muted mb-0">Loan Number: <?= htmlspecialchars($data['loan']->loan_number ?: 'N/A') ?></p>
         </div>
         <div>
-            <?php if ($loan->status == 'Pending'): ?>
+            <?php if ($data['loan']->status == 'Pending'): ?>
                 <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#disburseModal"><i class="ph ph-bank"></i> Disburse Loan (Receive Funds)</button>
-            <?php elseif ($loan->status == 'Active'): ?>
+            <?php elseif ($data['loan']->status == 'Active'): ?>
                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#repayModal"><i class="ph ph-money"></i> Add Repayment</button>
             <?php endif; ?>
         </div>
@@ -40,10 +40,10 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if (empty($repayments)): ?>
+                                <?php if (empty($data['repayments'])): ?>
                                     <tr><td colspan="6" class="text-center py-4">No repayments recorded yet.</td></tr>
                                 <?php else: ?>
-                                    <?php foreach($repayments as $rep): ?>
+                                    <?php foreach($data['repayments'] as $rep): ?>
                                     <tr>
                                         <td><?= date('d M Y', strtotime($rep->payment_date)) ?></td>
                                         <td><?= htmlspecialchars($rep->reference ?: '-') ?></td>
@@ -68,45 +68,45 @@
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Status</span>
                         <span class="fw-bold">
-                            <?php if ($loan->status == 'Active'): ?>
+                            <?php if ($data['loan']->status == 'Active'): ?>
                                 <span class="badge bg-success">Active</span>
-                            <?php elseif ($loan->status == 'Pending'): ?>
+                            <?php elseif ($data['loan']->status == 'Pending'): ?>
                                 <span class="badge bg-warning">Pending</span>
-                            <?php elseif ($loan->status == 'Closed'): ?>
+                            <?php elseif ($data['loan']->status == 'Closed'): ?>
                                 <span class="badge bg-secondary">Closed</span>
                             <?php else: ?>
-                                <span class="badge bg-danger"><?= htmlspecialchars($loan->status) ?></span>
+                                <span class="badge bg-danger"><?= htmlspecialchars($data['loan']->status) ?></span>
                             <?php endif; ?>
                         </span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Total Principal</span>
-                        <span class="fw-bold text-dark">Rs. <?= number_format($loan->principal_amount, 2) ?></span>
+                        <span class="fw-bold text-dark">Rs. <?= number_format($data['loan']->principal_amount, 2) ?></span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Interest Rate</span>
-                        <span class="fw-bold text-dark"><?= $loan->interest_rate ?>%</span>
+                        <span class="fw-bold text-dark"><?= $data['loan']->interest_rate ?>%</span>
                     </div>
                     <hr>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Principal Paid</span>
-                        <span class="fw-bold text-success">Rs. <?= number_format($loan->total_principal_paid, 2) ?></span>
+                        <span class="fw-bold text-success">Rs. <?= number_format($data['loan']->total_principal_paid, 2) ?></span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted">Interest Paid</span>
-                        <span class="fw-bold text-warning">Rs. <?= number_format($loan->total_interest_paid, 2) ?></span>
+                        <span class="fw-bold text-warning">Rs. <?= number_format($data['loan']->total_interest_paid, 2) ?></span>
                     </div>
                     <hr>
                     <div class="d-flex justify-content-between mb-0">
                         <span class="text-muted fs-5">Balance</span>
-                        <span class="fw-bold text-danger fs-5">Rs. <?= number_format($loan->principal_balance, 2) ?></span>
+                        <span class="fw-bold text-danger fs-5">Rs. <?= number_format($data['loan']->principal_balance, 2) ?></span>
                     </div>
                     
-                    <?php if ($loan->principal_amount > 0): ?>
+                    <?php if ($data['loan']->principal_amount > 0): ?>
                     <div class="progress mt-4" style="height: 10px;">
-                        <div class="progress-bar bg-success" role="progressbar" style="width: <?= ($loan->total_principal_paid / $loan->principal_amount) * 100 ?>%;"></div>
+                        <div class="progress-bar bg-success" role="progressbar" style="width: <?= ($data['loan']->total_principal_paid / $data['loan']->principal_amount) * 100 ?>%;"></div>
                     </div>
-                    <small class="text-muted text-center d-block mt-2"><?= round(($loan->total_principal_paid / $loan->principal_amount) * 100) ?>% Repaid</small>
+                    <small class="text-muted text-center d-block mt-2"><?= round(($data['loan']->total_principal_paid / $data['loan']->principal_amount) * 100) ?>% Repaid</small>
                     <?php endif; ?>
                 </div>
             </div>
@@ -115,11 +115,11 @@
                 <div class="card-body">
                     <h6 class="mb-3">Loan Details</h6>
                     <ul class="list-unstyled mb-0 text-muted" style="font-size: 14px;">
-                        <li class="mb-2"><strong>Start Date:</strong> <?= date('d M Y', strtotime($loan->loan_start_date)) ?></li>
-                        <li class="mb-2"><strong>Maturity Date:</strong> <?= $loan->maturity_date ? date('d M Y', strtotime($loan->maturity_date)) : 'N/A' ?></li>
-                        <li class="mb-2"><strong>Term:</strong> <?= $loan->loan_term_months ? $loan->loan_term_months . ' Months' : 'N/A' ?></li>
-                        <li class="mb-2"><strong>Frequency:</strong> <?= $loan->repayment_frequency ?></li>
-                        <li><strong>Notes:</strong> <?= nl2br(htmlspecialchars($loan->notes)) ?></li>
+                        <li class="mb-2"><strong>Start Date:</strong> <?= date('d M Y', strtotime($data['loan']->loan_start_date)) ?></li>
+                        <li class="mb-2"><strong>Maturity Date:</strong> <?= $data['loan']->maturity_date ? date('d M Y', strtotime($data['loan']->maturity_date)) : 'N/A' ?></li>
+                        <li class="mb-2"><strong>Term:</strong> <?= $data['loan']->loan_term_months ? $data['loan']->loan_term_months . ' Months' : 'N/A' ?></li>
+                        <li class="mb-2"><strong>Frequency:</strong> <?= $data['loan']->repayment_frequency ?></li>
+                        <li><strong>Notes:</strong> <?= nl2br(htmlspecialchars($data['loan']->notes)) ?></li>
                     </ul>
                 </div>
             </div>
@@ -130,7 +130,7 @@
 <!-- Disburse Modal -->
 <div class="modal fade" id="disburseModal" tabindex="-1">
     <div class="modal-dialog">
-        <form class="modal-content" action="<?= APP_URL ?>/loan/disburse/<?= $loan->id ?>" method="POST">
+        <form class="modal-content" action="<?= APP_URL ?>/loan/disburse/<?= $data['loan']->id ?>" method="POST">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
             <div class="modal-header">
                 <h5 class="modal-title">Disburse Loan Funds</h5>
@@ -142,7 +142,7 @@
                     <label class="form-label">Deposit Into Bank Account <span class="text-danger">*</span></label>
                     <select name="bank_account_id" class="form-select" required>
                         <option value="">-- Select Bank Account --</option>
-                        <?php foreach($bank_accounts as $acc): ?>
+                        <?php foreach($data['bank_accounts'] as $acc): ?>
                             <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->bank_name . ' (' . $acc->account_number . ')') ?></option>
                         <?php endforeach; ?>
                     </select>
@@ -164,7 +164,7 @@
 <!-- Repay Modal -->
 <div class="modal fade" id="repayModal" tabindex="-1">
     <div class="modal-dialog">
-        <form class="modal-content" action="<?= APP_URL ?>/loan/repay/<?= $loan->id ?>" method="POST">
+        <form class="modal-content" action="<?= APP_URL ?>/loan/repay/<?= $data['loan']->id ?>" method="POST">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
             <div class="modal-header">
                 <h5 class="modal-title">Record Repayment</h5>
@@ -179,7 +179,7 @@
                     <label class="form-label">Pay From Bank Account <span class="text-danger">*</span></label>
                     <select name="bank_account_id" class="form-select" required>
                         <option value="">-- Select Bank Account --</option>
-                        <?php foreach($bank_accounts as $acc): ?>
+                        <?php foreach($data['bank_accounts'] as $acc): ?>
                             <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->bank_name . ' (' . $acc->account_number . ')') ?></option>
                         <?php endforeach; ?>
                     </select>

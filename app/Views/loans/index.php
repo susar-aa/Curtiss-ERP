@@ -20,7 +20,7 @@
             <div class="card stat-card border-0 shadow-sm">
                 <div class="card-body">
                     <h6 class="text-muted">Active Loans</h6>
-                    <h3 class="mb-0"><?= $stats->active_loans ?></h3>
+                    <h3 class="mb-0"><?= $data['stats']->active_loans ?></h3>
                 </div>
             </div>
         </div>
@@ -28,7 +28,7 @@
             <div class="card stat-card border-0 shadow-sm">
                 <div class="card-body">
                     <h6 class="text-muted">Total Principal</h6>
-                    <h3 class="mb-0 text-primary">Rs. <?= number_format($stats->total_principal, 2) ?></h3>
+                    <h3 class="mb-0 text-primary">Rs. <?= number_format($data['stats']->total_principal, 2) ?></h3>
                 </div>
             </div>
         </div>
@@ -36,7 +36,7 @@
             <div class="card stat-card border-0 shadow-sm">
                 <div class="card-body">
                     <h6 class="text-muted">Outstanding Principal</h6>
-                    <h3 class="mb-0 text-danger">Rs. <?= number_format($stats->outstanding_principal, 2) ?></h3>
+                    <h3 class="mb-0 text-danger">Rs. <?= number_format($data['stats']->outstanding_principal, 2) ?></h3>
                 </div>
             </div>
         </div>
@@ -44,7 +44,7 @@
             <div class="card stat-card border-0 shadow-sm">
                 <div class="card-body">
                     <h6 class="text-muted">Total Interest Paid</h6>
-                    <h3 class="mb-0 text-warning">Rs. <?= number_format($stats->paid_interest, 2) ?></h3>
+                    <h3 class="mb-0 text-warning">Rs. <?= number_format($data['stats']->paid_interest, 2) ?></h3>
                 </div>
             </div>
         </div>
@@ -69,10 +69,10 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (empty($loans)): ?>
+                        <?php if (empty($data['loans'])): ?>
                         <tr><td colspan="7" class="text-center py-4">No loans found.</td></tr>
                         <?php else: ?>
-                            <?php foreach ($loans as $loan): ?>
+                            <?php foreach ($data['loans'] as $loan): ?>
                             <tr>
                                 <td><?= htmlspecialchars($loan->loan_number ?: 'N/A') ?></td>
                                 <td><strong><?= htmlspecialchars($loan->lender_name) ?></strong></td>
