@@ -77,8 +77,8 @@ class RepVarianceService {
                         $allocated = $sumRow ? floatval($sumRow->current_qty) : 0.0;
                     }
                     
-                    if (abs($allocated - $expected) > 0.01) {
-                        throw new Exception("Cannot complete Variance Audit. The adjusted bills do not match the final loaded stock for product '{$item->item_name}'. (Expected: {$expected}, Allocated: {$allocated})");
+                    if ($allocated > $expected + 0.01) {
+                        throw new Exception("Cannot complete Variance Audit. The adjusted bills exceed the final loaded stock for product '{$item->item_name}'. (Loaded: {$expected}, Allocated: {$allocated})");
                     }
                 }
             }
