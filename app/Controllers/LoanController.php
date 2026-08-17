@@ -59,6 +59,64 @@ class LoanController extends Controller {
         }
     }
 
+    public function edit($id) {
+        $loan = $this->loanModel->getLoanById($id);
+        if (!$loan) {
+            header('Location: ' . APP_URL . '/loan?error=notfound');
+            exit;
+        }
+        
+        // Cannot edit if not Pending (or maybe we allow editing notes? For now, restrict to pending to prevent changing principal/rate)
+        // Let's allow editing but we only update non-financials if Active. The view will handle this.
+        
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $data = [
+                'id' => $id,
+                'lender_name' => trim($_POST['lender_name']),
+                'loan_number' => trim($_POST['loan_number']),
+                'principal_amount' => floatval($_POST['principal_amount']),
+                'interest_rate' => floatval($_POST['interest_rate']),
+                'loan_start_date' => $_POST['loan_start_date'],
+                'loan_term_months' => intval($_POST['loan_term_months']),
+                'repayment_frequency' => $_POST['repayment_frequency'],
+                'first_payment_date' => $_POST['first_payment_date'],
+                'maturity_date' => $_POST['maturity_date'],
+                'liability_account_id' => intval($_POST['liability_account_id']),
+                'notes' => trim($_POST['notes'])
+            ];
+            
+            if ($this->loanModel->updateLoan($data)) {
+                header('Location: ' . APP_URL . '/loan/show/' . $id . '?success=updated');
+                exit;
+            } else {
+                header('Location: ' . APP_URL . '/loan/edit/' . $id . '?error=failed');
+                exit;
+            }
+        } else {
+            $accounts = $this->coaModel->getAccounts();
+            $liabilities = array_filter($accounts, function($a) { return $a->account_type == 'Liability'; });
+            
+            $data = [
+                'title' => 'Edit Loan',
+                'content_view' => 'loans/edit',
+                'loan' => $loan,
+                'liabilities' => $liabilities
+            ];
+            $this->view('layouts/main', $data);
+        }
+    }
+
+    public function delete($id) {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            if ($this->loanModel->deleteLoan($id)) {
+                header('Location: ' . APP_URL . '/loan?success=deleted');
+            } else {
+                header('Location: ' . APP_URL . '/loan?error=delete_failed_active');
+            }
+            exit;
+        }
+    }
+
     public function show($id) {
         $loan = $this->loanModel->getLoanById($id);
         if (!$loan) {

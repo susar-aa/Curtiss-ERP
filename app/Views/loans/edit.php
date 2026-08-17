@@ -1,6 +1,9 @@
 <?php
+$loan = $data['loan'] ?? null;
 $liabilities = $data['liabilities'] ?? [];
 $flashError = $_GET['error'] ?? null;
+
+$isPending = ($loan && $loan->status === 'Pending');
 ?>
 
 <!-- Inter Font & FontAwesome Icons -->
@@ -55,6 +58,7 @@ $flashError = $_GET['error'] ?? null;
     color: var(--t-primary); transition: border-color var(--dur-fast);
 }
 .form-control:focus, .form-select:focus { outline: none; border-color: var(--c-blue); background: var(--c-surface); }
+.form-control:read-only { background: var(--c-separator); cursor: not-allowed; opacity: 0.7; }
 
 .btn-apple {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -72,87 +76,97 @@ $flashError = $_GET['error'] ?? null;
         <a href="<?= APP_URL ?>/loan" class="btn-back"><i class="fa-solid fa-chevron-left"></i> Back to Loans</a>
         
         <div class="loan-header">
-            <h1 class="loan-title">Register New Loan</h1>
+            <h1 class="loan-title">Edit Loan</h1>
         </div>
 
         <?php if ($flashError): ?>
-        <div class="sf-alert error"><i class="fa-solid fa-circle-exclamation"></i> Failed to create loan. Please check your inputs.</div>
+        <div class="sf-alert error"><i class="fa-solid fa-circle-exclamation"></i> Failed to update loan. Please check your inputs.</div>
+        <?php endif; ?>
+
+        <?php if (!$isPending): ?>
+        <div class="sf-alert" style="background: rgba(255, 149, 0, 0.1); color: var(--c-orange);"><i class="fa-solid fa-triangle-exclamation"></i> <strong>Notice:</strong> Financial details cannot be edited because this loan is already active or closed.</div>
         <?php endif; ?>
 
         <div class="card-apple">
-            <form action="<?= APP_URL ?>/loan/create" method="POST">
+            <form action="<?= APP_URL ?>/loan/edit/<?= $loan->id ?>" method="POST">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="form-group">
                         <label class="form-label">Lender / Bank Name <span style="color:var(--c-red)">*</span></label>
-                        <input type="text" name="lender_name" class="form-control" required placeholder="e.g. Bank of Ceylon">
+                        <input type="text" name="lender_name" class="form-control" required value="<?= htmlspecialchars($loan->lender_name) ?>">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Loan Number (Optional)</label>
-                        <input type="text" name="loan_number" class="form-control" placeholder="e.g. LN-100293">
+                        <input type="text" name="loan_number" class="form-control" value="<?= htmlspecialchars($loan->loan_number) ?>">
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Liability Account (Chart of Accounts) <span style="color:var(--c-red)">*</span></label>
-                    <select name="liability_account_id" class="form-select" required>
+                    <select name="liability_account_id" class="form-select" required <?= !$isPending ? 'style="pointer-events:none; background:var(--c-separator);"' : '' ?>>
                         <option value="">-- Select Liability Account --</option>
                         <?php foreach ($liabilities as $acc): ?>
-                            <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->account_code . ' - ' . $acc->account_name) ?></option>
+                            <option value="<?= $acc->id ?>" <?= $loan->liability_account_id == $acc->id ? 'selected' : '' ?>><?= htmlspecialchars($acc->account_code . ' - ' . $acc->account_name) ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <?php if (!$isPending): ?>
+                        <input type="hidden" name="liability_account_id" value="<?= $loan->liability_account_id ?>">
+                    <?php endif; ?>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="form-group">
                         <label class="form-label">Principal Amount (Rs.) <span style="color:var(--c-red)">*</span></label>
-                        <input type="number" step="0.01" name="principal_amount" class="form-control" required placeholder="0.00">
+                        <input type="number" step="0.01" name="principal_amount" class="form-control" required value="<?= htmlspecialchars($loan->principal_amount) ?>" <?= !$isPending ? 'readonly' : '' ?>>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Annual Interest Rate (%) <span style="color:var(--c-red)">*</span></label>
-                        <input type="number" step="0.01" name="interest_rate" class="form-control" required placeholder="e.g. 12.5">
+                        <input type="number" step="0.01" name="interest_rate" class="form-control" required value="<?= htmlspecialchars($loan->interest_rate) ?>" <?= !$isPending ? 'readonly' : '' ?>>
                     </div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="form-group">
                         <label class="form-label">Loan Start Date <span style="color:var(--c-red)">*</span></label>
-                        <input type="date" name="loan_start_date" class="form-control" required value="<?= date('Y-m-d') ?>">
+                        <input type="date" name="loan_start_date" class="form-control" required value="<?= htmlspecialchars($loan->loan_start_date) ?>" <?= !$isPending ? 'readonly' : '' ?>>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Term (Months) <span style="color:var(--c-red)">*</span></label>
-                        <input type="number" name="loan_term_months" class="form-control" required placeholder="e.g. 36">
+                        <input type="number" name="loan_term_months" class="form-control" required value="<?= htmlspecialchars($loan->loan_term_months) ?>" <?= !$isPending ? 'readonly' : '' ?>>
                     </div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
                     <div class="form-group">
                         <label class="form-label">Repayment Frequency <span style="color:var(--c-red)">*</span></label>
-                        <select name="repayment_frequency" class="form-select" required>
-                            <option value="Monthly">Monthly</option>
-                            <option value="Quarterly">Quarterly</option>
-                            <option value="Annually">Annually</option>
-                            <option value="One-Time">One-Time (Bullet)</option>
+                        <select name="repayment_frequency" class="form-select" required <?= !$isPending ? 'style="pointer-events:none; background:var(--c-separator);"' : '' ?>>
+                            <option value="Monthly" <?= $loan->repayment_frequency == 'Monthly' ? 'selected' : '' ?>>Monthly</option>
+                            <option value="Quarterly" <?= $loan->repayment_frequency == 'Quarterly' ? 'selected' : '' ?>>Quarterly</option>
+                            <option value="Annually" <?= $loan->repayment_frequency == 'Annually' ? 'selected' : '' ?>>Annually</option>
+                            <option value="One-Time" <?= $loan->repayment_frequency == 'One-Time' ? 'selected' : '' ?>>One-Time (Bullet)</option>
                         </select>
+                        <?php if (!$isPending): ?>
+                            <input type="hidden" name="repayment_frequency" value="<?= htmlspecialchars($loan->repayment_frequency) ?>">
+                        <?php endif; ?>
                     </div>
                     <div class="form-group">
                         <label class="form-label">First Payment Date</label>
-                        <input type="date" name="first_payment_date" class="form-control">
+                        <input type="date" name="first_payment_date" class="form-control" value="<?= htmlspecialchars($loan->first_payment_date) ?>" <?= !$isPending ? 'readonly' : '' ?>>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Maturity Date</label>
-                        <input type="date" name="maturity_date" class="form-control">
+                        <input type="date" name="maturity_date" class="form-control" value="<?= htmlspecialchars($loan->maturity_date) ?>" <?= !$isPending ? 'readonly' : '' ?>>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Notes (Optional)</label>
-                    <textarea name="notes" class="form-control" rows="3" style="resize:vertical;"></textarea>
+                    <textarea name="notes" class="form-control" rows="3" style="resize:vertical;"><?= htmlspecialchars($loan->notes) ?></textarea>
                 </div>
 
                 <div style="margin-top: 30px;">
-                    <button type="submit" class="btn-apple">Register Loan</button>
+                    <button type="submit" class="btn-apple">Save Changes</button>
                 </div>
             </form>
         </div>

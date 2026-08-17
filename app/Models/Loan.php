@@ -69,6 +69,45 @@ class Loan {
         return $this->db->execute() ? $this->db->lastInsertId() : false;
     }
 
+    public function updateLoan($data) {
+        $this->db->query("UPDATE loans 
+            SET liability_account_id = :liability_acc, lender_name = :lender, loan_number = :loan_no, 
+                principal_amount = :principal, interest_rate = :interest, loan_start_date = :start_date, 
+                loan_term_months = :term, repayment_frequency = :freq, first_payment_date = :first_pay, 
+                maturity_date = :maturity, notes = :notes, updated_at = CURRENT_TIMESTAMP
+            WHERE id = :id");
+        
+        $this->db->bind(':id', $data['id']);
+        $this->db->bind(':liability_acc', $data['liability_account_id']);
+        $this->db->bind(':lender', $data['lender_name']);
+        $this->db->bind(':loan_no', $data['loan_number']);
+        $this->db->bind(':principal', $data['principal_amount']);
+        $this->db->bind(':interest', $data['interest_rate']);
+        $this->db->bind(':start_date', !empty($data['loan_start_date']) ? $data['loan_start_date'] : null);
+        $this->db->bind(':term', !empty($data['loan_term_months']) ? $data['loan_term_months'] : null);
+        $this->db->bind(':freq', $data['repayment_frequency']);
+        $this->db->bind(':first_pay', !empty($data['first_payment_date']) ? $data['first_payment_date'] : null);
+        $this->db->bind(':maturity', !empty($data['maturity_date']) ? $data['maturity_date'] : null);
+        $this->db->bind(':notes', $data['notes']);
+
+        return $this->db->execute();
+    }
+
+    public function deleteLoan($id) {
+        // Prevent deletion if the loan has already been disbursed or has repayments
+        $loan = $this->getLoanById($id);
+        if (!$loan) return false;
+        
+        // Cannot delete if active or closed
+        if ($loan->status != 'Pending') {
+            return false;
+        }
+
+        $this->db->query("DELETE FROM loans WHERE id = :id");
+        $this->db->bind(':id', $id);
+        return $this->db->execute();
+    }
+
     public function disburseLoan($loanId, $bankAccountId, $processingFees, $userId) {
         $loan = $this->getLoanById($loanId);
         if (!$loan || $loan->status != 'Pending') return false;
