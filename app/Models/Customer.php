@@ -163,8 +163,8 @@ class Customer {
         $reviewedByUserId = $data['reviewed_by_user_id'] ?? null;
         $reviewedAt = $data['reviewed_at'] ?? null;
 
-        $this->db->query("INSERT INTO customers (name, email, phone, whatsapp, address, latitude, longitude, mca_id, territory, credit_limit, customer_type, notes, uuid, opening_balance, opening_balance_date, review_status, created_by_user_id, reviewed_by_user_id, reviewed_at) 
-                          VALUES (:name, :email, :phone, :whatsapp, :address, :lat, :lng, :mca_id, :territory, :credit_limit, :customer_type, :notes, :uuid, :opening_balance, :opening_balance_date, :review_status, :created_by_user_id, :reviewed_by_user_id, :reviewed_at)");
+        $this->db->query("INSERT INTO customers (name, email, phone, whatsapp, address, latitude, longitude, mca_id, territory, credit_limit, customer_type, notes, uuid, vat_number, opening_balance, opening_balance_date, review_status, created_by_user_id, reviewed_by_user_id, reviewed_at) 
+                          VALUES (:name, :email, :phone, :whatsapp, :address, :lat, :lng, :mca_id, :territory, :credit_limit, :customer_type, :notes, :uuid, :vat_number, :opening_balance, :opening_balance_date, :review_status, :created_by_user_id, :reviewed_by_user_id, :reviewed_at)");
         $this->db->bind(':name', $data['name']);
         $this->db->bind(':email', $data['email'] ?: null);
         $this->db->bind(':phone', $data['phone'] ?: null);
@@ -178,6 +178,7 @@ class Customer {
         $this->db->bind(':customer_type', $data['customer_type'] ?? 'Standard');
         $this->db->bind(':notes', $data['notes'] ?: null);
         $this->db->bind(':uuid', $data['uuid'] ?? null);
+        $this->db->bind(':vat_number', $data['vat_number'] ?? null);
         $this->db->bind(':opening_balance', $data['opening_balance'] ?? 0.00);
         $this->db->bind(':opening_balance_date', $data['opening_balance_date'] ?? null);
         $this->db->bind(':review_status', $reviewStatus);
@@ -194,7 +195,7 @@ class Customer {
     public function updateCustomer($data) {
         $sql = "UPDATE customers SET name = :name, email = :email, phone = :phone, whatsapp = :whatsapp, 
                           address = :address, latitude = :lat, longitude = :lng, mca_id = :mca_id, territory = :territory, 
-                          credit_limit = :credit_limit, customer_type = :customer_type, notes = :notes, uuid = :uuid, opening_balance = :opening_balance, opening_balance_date = :opening_balance_date";
+                          credit_limit = :credit_limit, customer_type = :customer_type, notes = :notes, uuid = :uuid, vat_number = :vat_number, opening_balance = :opening_balance, opening_balance_date = :opening_balance_date";
         
         if (array_key_exists('review_status', $data)) {
             $sql .= ", review_status = :review_status";
@@ -226,6 +227,7 @@ class Customer {
         $this->db->bind(':customer_type', $data['customer_type'] ?? 'Standard');
         $this->db->bind(':notes', $data['notes'] ?: null);
         $this->db->bind(':uuid', $data['uuid'] ?? null);
+        $this->db->bind(':vat_number', $data['vat_number'] ?? null);
         $this->db->bind(':opening_balance', $data['opening_balance'] ?? 0.00);
         $this->db->bind(':opening_balance_date', $data['opening_balance_date'] ?? null);
 

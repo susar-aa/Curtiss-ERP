@@ -669,6 +669,20 @@ class SalesController extends Controller {
                         }
                     }
 
+                    $companyModel = $this->model('Company');
+                    $compSettings = $companyModel->getSettings();
+                    $isVatEnabled = !empty($compSettings->is_vat_enabled) ? 1 : 0;
+                    $vatAccountId = !empty($compSettings->vat_account_id) ? intval($compSettings->vat_account_id) : null;
+                    
+                    $taxAmount = 0.00;
+                    $customerVatNumber = null;
+                    if ($isVatEnabled) {
+                        $taxAmount = floatval($_POST['tax_amount'] ?? 0);
+                        if ($customerObj) {
+                            $customerVatNumber = $customerObj->vat_number ?? null;
+                        }
+                    }
+
                     $invoiceData = [
                         'customer_id' => $customerId,
                         'invoice_number' => $invoiceNumber,
@@ -680,8 +694,11 @@ class SalesController extends Controller {
                         'global_discount_type' => $globalDiscountType,
                         'notes' => trim($_POST['notes'] ?? ''),
                         'rep_route_id' => $repRouteId,
-                        'grand_total' => $grandTotal,
-                        'stock_status' => 'deducted'
+                        'grand_total' => $grandTotal + $taxAmount,
+                        'stock_status' => 'deducted',
+                        'tax_amount' => $taxAmount,
+                        'vat_account_id' => $vatAccountId,
+                        'customer_vat_number' => $customerVatNumber
                     ];
 
                     $invoiceModel = $this->model('Invoice');

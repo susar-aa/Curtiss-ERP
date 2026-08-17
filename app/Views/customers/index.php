@@ -1141,9 +1141,15 @@ foreach ($data['customers'] ?? [] as $cust) {
                             </div>
                         </div>
                         
-                        <div class="sf-group">
-                            <label>Credit Limit (Rs)</label>
-                            <input type="number" step="0.01" name="credit_limit" class="sf-input" value="<?= htmlspecialchars($c->credit_limit ?? '0.00') ?>">
+                        <div class="grid-2">
+                            <div class="sf-group">
+                                <label>Credit Limit (Rs)</label>
+                                <input type="number" step="0.01" name="credit_limit" class="sf-input" value="<?= htmlspecialchars($c->credit_limit ?? '0.00') ?>">
+                            </div>
+                            <div class="sf-group">
+                                <label>VAT / Tax Number</label>
+                                <input type="text" name="vat_number" class="sf-input" value="<?= htmlspecialchars($c->vat_number ?? '') ?>" placeholder="e.g. VAT-123456">
+                            </div>
                         </div>
                         
                         <div class="sf-group">
@@ -1306,6 +1312,11 @@ foreach ($data['customers'] ?? [] as $cust) {
                         <label>Credit Limit (Rs)</label>
                         <input type="number" step="0.01" name="credit_limit" class="sf-input" placeholder="0.00" value="0.00">
                     </div>
+                </div>
+                
+                <div class="sf-group">
+                    <label>VAT / Tax Number</label>
+                    <input type="text" name="vat_number" class="sf-input" placeholder="e.g. VAT-123456">
                 </div>
                 
                 <div class="sf-group">

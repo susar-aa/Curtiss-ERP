@@ -11,6 +11,12 @@ if (empty($catalog_items)) {
     $catalog_items = $db->resultSet();
 }
 
+// Fetch VAT settings from company_settings
+$db->query("SELECT is_vat_enabled, vat_percentage FROM company_settings LIMIT 1");
+$compSettings = $db->single();
+$isVatEnabled = $compSettings && !empty($compSettings->is_vat_enabled) ? true : false;
+$vatPercentage = $compSettings ? floatval($compSettings->vat_percentage) : 0;
+
 // Enforce Wholesale B2B pricing preference and load variations from JSON if needed
 foreach ($catalog_items as $key => $item) {
     $billingPrice = 0.00;
@@ -1457,6 +1463,11 @@ if ($inv && isset($inv->id)) {
                             </select>
                         </div>
                     </div>
+                    <div class="totals-row" id="vatContainer" style="display: <?= $isVatEnabled ? 'flex' : 'none' ?>;">
+                        <span class="totals-label">Tax (VAT <?= $vatPercentage ?>%)</span>
+                        <span class="totals-value" id="taxTotalDisplay">0.00</span>
+                        <input type="hidden" name="tax_amount" id="taxAmountInput" value="0">
+                    </div>
                     <div class="totals-row totals-row-grand">
                         <span class="totals-label">Total LKR</span>
                         <span class="totals-value" id="grandTotal">0.00</span>
@@ -2222,7 +2233,21 @@ if ($inv && isset($inv->id)) {
         let globalDisc = (globalDiscType === '%') ? (subTotal * globalDiscVal / 100) : globalDiscVal;
         let grandTotal = Math.max(subTotal - globalDisc, 0);
 
-        console.log("[calcTotals]", { sub_total: subTotal, discount_deducted: globalDisc, grand_total: grandTotal });
+        const isVatEnabled = <?= $isVatEnabled ? 'true' : 'false' ?>;
+        const vatPercentage = <?= $vatPercentage ?>;
+        let taxAmount = 0;
+        
+        if (isVatEnabled) {
+            taxAmount = grandTotal * (vatPercentage / 100);
+            grandTotal += taxAmount;
+            const taxAmountInput = document.getElementById('taxAmountInput');
+            if (taxAmountInput) taxAmountInput.value = taxAmount.toFixed(2);
+            
+            const taxTotalDisplay = document.getElementById('taxTotalDisplay');
+            if (taxTotalDisplay) taxTotalDisplay.innerText = taxAmount.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+        }
+
+        console.log("[calcTotals]", { sub_total: subTotal, discount_deducted: globalDisc, tax_amount: taxAmount, grand_total: grandTotal });
 
         document.getElementById('subTotal').innerText  = subTotal.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
         document.getElementById('grandTotal').innerText = grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});

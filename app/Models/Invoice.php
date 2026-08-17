@@ -120,14 +120,18 @@ class Invoice {
 
             // Resolve Tax Payable Account (Code 2110)
             $taxAccountId = null;
-            $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '2110' OR account_name LIKE '%Tax Payable%' OR account_name LIKE '%Sales Tax%' LIMIT 1");
-            $taxRow = $this->db->single();
-            if ($taxRow) {
-                $taxAccountId = $taxRow->id;
+            if (!empty($invoiceData['vat_account_id'])) {
+                $taxAccountId = intval($invoiceData['vat_account_id']);
             } else {
-                $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('2110', 'VAT / Sales Tax Payable', 'Liability', 'Current Liabilities', 0.00, 1)");
-                $this->db->execute();
-                $taxAccountId = $this->db->lastInsertId();
+                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '2110' OR account_name LIKE '%Tax Payable%' OR account_name LIKE '%Sales Tax%' LIMIT 1");
+                $taxRow = $this->db->single();
+                if ($taxRow) {
+                    $taxAccountId = $taxRow->id;
+                } else {
+                    $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('2110', 'VAT / Sales Tax Payable', 'Liability', 'Current Liabilities', 0.00, 1)");
+                    $this->db->execute();
+                    $taxAccountId = $this->db->lastInsertId();
+                }
             }
 
             $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status) 
@@ -175,7 +179,7 @@ class Invoice {
                 $this->db->updateAccountBalance($revenueAccountId, 0, $grossRevenue);
             }
 
-            $taxAmount = $netGrandTotal - ($grossRevenue - $totalDiscountAmount);
+            $taxAmount = isset($invoiceData['tax_amount']) ? floatval($invoiceData['tax_amount']) : ($netGrandTotal - ($grossRevenue - $totalDiscountAmount));
 
             // 4. CREDIT: Tax Payable (Liability) = Tax Amount (if > 0)
             if ($taxAmount > 0.001 && $taxAccountId) {
@@ -192,8 +196,8 @@ class Invoice {
 
             $stockStatus = $invoiceData['stock_status'] ?? 'deducted';
             $uuid = $invoiceData['uuid'] ?? null;
-            $this->db->query("INSERT INTO invoices (invoice_number, uuid, customer_id, rep_route_id, invoice_date, due_date, payment_term_id, total_amount, tax_amount, global_discount_val, global_discount_type, notes, journal_entry_id, created_by, status, stock_status) 
-                              VALUES (:invoice_number, :uuid, :customer_id, :rep_route_id, :invoice_date, :due_date, :payment_term_id, :total_amount, :tax_amount, :global_discount_val, :global_discount_type, :notes, :journal_entry_id, :created_by, 'Unpaid', :stock_status)");
+            $this->db->query("INSERT INTO invoices (invoice_number, uuid, customer_id, rep_route_id, invoice_date, due_date, payment_term_id, total_amount, tax_amount, global_discount_val, global_discount_type, notes, journal_entry_id, created_by, status, stock_status, customer_vat_number) 
+                              VALUES (:invoice_number, :uuid, :customer_id, :rep_route_id, :invoice_date, :due_date, :payment_term_id, :total_amount, :tax_amount, :global_discount_val, :global_discount_type, :notes, :journal_entry_id, :created_by, 'Unpaid', :stock_status, :customer_vat_number)");
             $this->db->bind(':invoice_number', $invoiceData['invoice_number']);
             $this->db->bind(':uuid', $uuid);
             $this->db->bind(':customer_id', $invoiceData['customer_id']);
@@ -209,6 +213,7 @@ class Invoice {
             $this->db->bind(':journal_entry_id', $journalEntryId);
             $this->db->bind(':created_by', $userId);
             $this->db->bind(':stock_status', $stockStatus);
+            $this->db->bind(':customer_vat_number', $invoiceData['customer_vat_number'] ?? null);
             $this->db->execute();
             $invoiceId = $this->db->lastInsertId();
 
@@ -436,7 +441,7 @@ class Invoice {
             $totalDiscountAmount = $itemDiscountTotal + $globalDiscAmount;
             $grossRevenue = ($itemGrossTotal > 0) ? $itemGrossTotal : ($subtotal + $itemDiscountTotal);
             $netGrandTotal = floatval($invoiceData['grand_total'] ?? ($subtotal - $globalDiscAmount));
-            $taxAmount = $netGrandTotal - ($grossRevenue - $totalDiscountAmount);
+            $taxAmount = isset($invoiceData['tax_amount']) ? floatval($invoiceData['tax_amount']) : ($netGrandTotal - ($grossRevenue - $totalDiscountAmount));
 
             if ($jid) {
                 $this->db->query("DELETE FROM transactions WHERE journal_entry_id = :jid");
@@ -481,14 +486,18 @@ class Invoice {
 
                 // Resolve Tax Payable Account (Code 2110)
                 $taxAccountId = null;
-                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '2110' OR account_name LIKE '%Tax Payable%' OR account_name LIKE '%Sales Tax%' LIMIT 1");
-                $taxRow = $this->db->single();
-                if ($taxRow) {
-                    $taxAccountId = $taxRow->id;
+                if (!empty($invoiceData['vat_account_id'])) {
+                    $taxAccountId = intval($invoiceData['vat_account_id']);
                 } else {
-                    $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('2110', 'VAT / Sales Tax Payable', 'Liability', 'Current Liabilities', 0.00, 1)");
-                    $this->db->execute();
-                    $taxAccountId = $this->db->lastInsertId();
+                    $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '2110' OR account_name LIKE '%Tax Payable%' OR account_name LIKE '%Sales Tax%' LIMIT 1");
+                    $taxRow = $this->db->single();
+                    if ($taxRow) {
+                        $taxAccountId = $taxRow->id;
+                    } else {
+                        $this->db->query("INSERT INTO chart_of_accounts (account_code, account_name, account_type, account_category, balance, is_active) VALUES ('2110', 'VAT / Sales Tax Payable', 'Liability', 'Current Liabilities', 0.00, 1)");
+                        $this->db->execute();
+                        $taxAccountId = $this->db->lastInsertId();
+                    }
                 }
 
                 // 1. DEBIT: Accounts Receivable (Asset) = Net Grand Total
@@ -548,7 +557,8 @@ class Invoice {
                                 global_discount_val = :global_discount_val, 
                                 global_discount_type = :global_discount_type, 
                                 notes = :notes,
-                                stock_status = :stock_status
+                                stock_status = :stock_status,
+                                customer_vat_number = :customer_vat_number
                               WHERE id = :id");
             $this->db->bind(':customer_id', $invoiceData['customer_id']);
             $this->db->bind(':invoice_date', $invoiceData['invoice_date']);
@@ -560,6 +570,7 @@ class Invoice {
             $this->db->bind(':global_discount_type', $invoiceData['global_discount_type']);
             $this->db->bind(':notes', $invoiceData['notes']);
             $this->db->bind(':stock_status', $oldStockStatus);
+            $this->db->bind(':customer_vat_number', $invoiceData['customer_vat_number'] ?? null);
             $this->db->bind(':id', $invoiceId);
             $this->db->execute();
 

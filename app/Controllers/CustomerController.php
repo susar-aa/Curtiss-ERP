@@ -83,7 +83,8 @@ class CustomerController extends Controller {
                     'territory' => $territoryName,
                     'credit_limit' => isset($_POST['credit_limit']) ? floatval($_POST['credit_limit']) : 0.00,
                     'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00,
-                    'opening_balance_date' => !empty($_POST['opening_balance_date']) ? $_POST['opening_balance_date'] : date('Y-m-d')
+                    'opening_balance_date' => !empty($_POST['opening_balance_date']) ? $_POST['opening_balance_date'] : date('Y-m-d'),
+                    'vat_number' => trim($_POST['vat_number'] ?? '')
                 ];
 
                 if (!empty($addData['name'])) {
@@ -118,7 +119,8 @@ class CustomerController extends Controller {
                     'territory' => $territoryName,
                     'credit_limit' => isset($_POST['credit_limit']) ? floatval($_POST['credit_limit']) : 0.00,
                     'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00,
-                    'opening_balance_date' => !empty($_POST['opening_balance_date']) ? $_POST['opening_balance_date'] : date('Y-m-d')
+                    'opening_balance_date' => !empty($_POST['opening_balance_date']) ? $_POST['opening_balance_date'] : date('Y-m-d'),
+                    'vat_number' => trim($_POST['vat_number'] ?? '')
                 ];
 
                 if (!empty($updateData['name'])) {
@@ -159,7 +161,8 @@ class CustomerController extends Controller {
                         'opening_balance' => isset($_POST['opening_balance']) ? floatval($_POST['opening_balance']) : 0.00,
                         'review_status' => 'Reviewed',
                         'reviewed_by_user_id' => $_SESSION['user_id'],
-                        'reviewed_at' => date('Y-m-d H:i:s')
+                        'reviewed_at' => date('Y-m-d H:i:s'),
+                        'vat_number' => trim($_POST['vat_number'] ?? '')
                     ];
 
                     $oldValues = [];
@@ -177,7 +180,8 @@ class CustomerController extends Controller {
                         'mca_id' => 'Territory ID',
                         'territory' => 'Territory Name',
                         'credit_limit' => 'Credit Limit',
-                        'opening_balance' => 'Opening Balance'
+                        'opening_balance' => 'Opening Balance',
+                        'vat_number' => 'VAT Number'
                     ];
 
                     foreach ($fieldsToCompare as $dbKey => $label) {

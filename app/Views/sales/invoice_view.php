@@ -937,7 +937,7 @@ $invoiceBalance = max(0, $thisInvoiceGrandTotal - $invoicePaidAmount);
                 </div>
 
                 <div class="invoice-meta">
-                    <div class="document-title">Invoice</div>
+                    <div class="document-title"><?= ($taxAmount > 0) ? 'Tax Invoice' : 'Invoice' ?></div>
                     <table class="meta-table">
                         <tr>
                             <th>Invoice No:</th>
@@ -976,6 +976,7 @@ $invoiceBalance = max(0, $thisInvoiceGrandTotal - $invoicePaidAmount);
                     <div class="customer-details">
                         <?php if(!empty($data['invoice']->address)) echo nl2br(htmlspecialchars($data['invoice']->address)) . '<br>'; ?>
                         <?php if(!empty($data['invoice']->phone)) echo '<strong>Tel:</strong> ' . htmlspecialchars($data['invoice']->phone); ?>
+                        <?php if(!empty($data['invoice']->customer_vat_number)) echo '<br><strong>VAT No:</strong> ' . htmlspecialchars($data['invoice']->customer_vat_number); ?>
                     </div>
                 </div>
 
@@ -1082,7 +1083,7 @@ $invoiceBalance = max(0, $thisInvoiceGrandTotal - $invoicePaidAmount);
                         
                         <?php if($taxAmount > 0): ?>
                         <tr>
-                            <th>Tax (<?= htmlspecialchars($data['invoice']->tax_name ?? 'Tax') ?> <?= $data['invoice']->rate_percentage ?? '' ?>%):</th>
+                            <th>Tax (VAT):</th>
                             <td><?= number_format($taxAmount, 2) ?></td>
                         </tr>
                         <?php endif; ?>

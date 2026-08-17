@@ -14,10 +14,15 @@ class SettingsController extends Controller {
     }
 
     public function index() {
+        $this->db = new Database();
+        $this->db->query("SELECT id, account_name, account_code FROM chart_of_accounts WHERE account_type = 'Liability' ORDER BY account_name ASC");
+        $liabilityAccounts = $this->db->resultSet();
+
         $data = [
             'title' => 'Company Settings',
             'content_view' => 'settings/index',
             'settings' => $this->companyModel->getSettings(),
+            'liability_accounts' => $liabilityAccounts,
             'active_tab' => 'company',
             'csrf_token' => $this->generateCsrfToken(),
             'error' => '',
@@ -44,6 +49,28 @@ class SettingsController extends Controller {
                 } else {
                     $data['error'] = "Company Name is required.";
                 }
+            }
+
+            // Handle VAT Settings Update
+            if (isset($_POST['update_vat_settings'])) {
+                $current = $this->companyModel->getSettings();
+                $postData = [
+                    'company_name' => $current->company_name,
+                    'email' => $current->email,
+                    'phone' => $current->phone,
+                    'address' => $current->address,
+                    'tax_number' => trim($_POST['tax_number'] ?? $current->tax_number),
+                    'ecommerce_store_url' => $current->ecommerce_store_url,
+                    'facebook_page_id' => $current->facebook_page_id,
+                    'facebook_access_token' => $current->facebook_access_token,
+                    'vat_percentage' => trim($_POST['vat_percentage'] ?? 0),
+                    'vat_account_id' => trim($_POST['vat_account_id'] ?? null),
+                    'is_vat_enabled' => isset($_POST['is_vat_enabled']) ? 1 : 0
+                ];
+                
+                $this->companyModel->updateSettings($postData);
+                $data['success'] = "VAT Settings updated successfully.";
+                $data['active_tab'] = 'vat';
             }
 
             // Handle Payroll Settings Update
