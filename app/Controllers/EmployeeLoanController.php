@@ -133,7 +133,7 @@ class EmployeeLoanController extends Controller {
                     ['account_id' => $bankAccountId, 'debit' => 0, 'credit' => $loan->principal_amount, 'description' => 'Bank Payment']
                 ];
 
-                require_once APP_ROOT . '/app/Models/JournalEntry.php';
+                require_once __DIR__ . '/../Models/JournalEntry.php';
                 $journalModel = new JournalEntry();
 
                 $postResult = $journalModel->postEntry(date('Y-m-d'), $reference, $desc, $lines, $_SESSION['user_id']);
@@ -170,7 +170,7 @@ class EmployeeLoanController extends Controller {
                     ['account_id' => $employeeLoansAcc->id, 'debit' => 0, 'credit' => $principal, 'description' => 'Loan Principal Repayment']
                 ];
 
-                require_once APP_ROOT . '/app/Models/JournalEntry.php';
+                require_once __DIR__ . '/../Models/JournalEntry.php';
                 $journalModel = new JournalEntry();
                 $postResult = $journalModel->postEntry(date('Y-m-d'), $reference, $desc, $lines, $_SESSION['user_id']);
 

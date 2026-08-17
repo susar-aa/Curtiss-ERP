@@ -32,7 +32,7 @@ class Expense {
                 ['account_id' => $paymentAccountId, 'debit' => 0, 'credit' => $data['amount'], 'description' => $data['description']]
             ];
 
-            require_once APP_ROOT . '/app/Models/JournalEntry.php';
+            require_once __DIR__ . '/JournalEntry.php';
             $journalModel = new JournalEntry();
 
             $postResult = $journalModel->postEntry($data['expense_date'], $ref, $desc, $lines, $userId);

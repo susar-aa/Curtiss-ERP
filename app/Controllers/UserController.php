@@ -679,7 +679,7 @@ class UserController extends Controller {
             exit;
         }
 
-        require_once APP_ROOT . '/app/Models/EmployeeLoan.php';
+        require_once __DIR__ . '/../Models/EmployeeLoan.php';
         $loanModel = new EmployeeLoan();
         
         $loans = $loanModel->getLoansByEmployeeId($id);

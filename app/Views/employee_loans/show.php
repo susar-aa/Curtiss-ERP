@@ -1,4 +1,4 @@
-<?php require APP_ROOT . '/app/Views/layouts/header.php'; ?>
+
 
 <?php
 $loan = $data['loan'];
@@ -143,4 +143,4 @@ $loan = $data['loan'];
     </div>
 </div>
 
-<?php require APP_ROOT . '/app/Views/layouts/footer.php'; ?>
+

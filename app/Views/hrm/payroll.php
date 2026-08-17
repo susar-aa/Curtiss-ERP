@@ -1,4 +1,4 @@
-<?php require APP_ROOT . '/app/Views/layouts/header.php'; ?>
+
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Payroll Runs</h2>
@@ -85,5 +85,3 @@
         </form>
     </div>
 </div>
-
-<?php require APP_ROOT . '/app/Views/layouts/footer.php'; ?>

@@ -1,4 +1,4 @@
-<?php require APP_ROOT . '/app/Views/layouts/header.php'; ?>
+
 <?php 
 $run = $data['run']; 
 $slips = $data['slips'];
@@ -177,4 +177,4 @@ $totalDed = array_sum(array_column($slips, 'loan_deduction')) + array_sum(array_
     </div>
 </div>
 
-<?php require APP_ROOT . '/app/Views/layouts/footer.php'; ?>
+

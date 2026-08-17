@@ -1,4 +1,4 @@
-<?php require APP_ROOT . '/app/Views/layouts/header.php'; ?>
+
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>New Employee Loan</h2>
@@ -73,4 +73,4 @@
     </div>
 </div>
 
-<?php require APP_ROOT . '/app/Views/layouts/footer.php'; ?>
+

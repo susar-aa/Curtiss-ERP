@@ -1,4 +1,4 @@
-<?php require APP_ROOT . '/app/Views/layouts/header.php'; ?>
+
 <?php $emp = $data['employee']; ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -153,4 +153,4 @@
     </div>
 </div>
 
-<?php require APP_ROOT . '/app/Views/layouts/footer.php'; ?>
+

@@ -187,7 +187,7 @@ class Payroll {
                 $lines[1]['credit'] += $totalLoanDeductions;
             }
 
-            require_once APP_ROOT . '/app/Models/JournalEntry.php';
+            require_once __DIR__ . '/JournalEntry.php';
             $journalModel = new JournalEntry();
 
             $postResult = $journalModel->postEntry(date('Y-m-d'), $reference, $desc, $lines, $userId);
@@ -241,7 +241,7 @@ class Payroll {
                 ['account_id' => $bankAccId, 'debit' => 0, 'credit' => $totalNet, 'description' => 'Bank Payment']
             ];
 
-            require_once APP_ROOT . '/app/Models/JournalEntry.php';
+            require_once __DIR__ . '/JournalEntry.php';
             $journalModel = new JournalEntry();
 
             $postResult = $journalModel->postEntry($paymentDate, $reference, $desc, $lines, $userId);
@@ -259,7 +259,7 @@ class Payroll {
             $this->db->execute();
 
             // Process Loan Repayments
-            require_once APP_ROOT . '/app/Models/EmployeeLoan.php';
+            require_once __DIR__ . '/EmployeeLoan.php';
             $loanModel = new EmployeeLoan();
 
             foreach ($slips as $s) {
