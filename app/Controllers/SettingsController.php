@@ -195,8 +195,8 @@ class SettingsController extends Controller {
                 $db->bind(':cl', $postData['credit_limit']);
                 $db->execute();
 
-                $this->logActivity('Update Rep Targets', 'Analytics', 'Updated global performance targets.');
-                $data['success'] = 'Global Performance Targets saved successfully.';
+                $this->logActivity('Update Rep Targets', 'Analytics', 'Updated performance targets.');
+                $data['success'] = 'Performance Targets saved successfully.';
             } elseif (isset($_POST['save_weights'])) {
                 $configs = $_POST['configs'] ?? [];
                 if ($this->perfModel->updateKpiConfigs($configs)) {
