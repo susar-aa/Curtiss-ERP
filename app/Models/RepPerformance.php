@@ -715,15 +715,29 @@ class RepPerformance {
      */
     public function getRepTargets(int $userId, string $month, string $year): object {
         if ($userId > 0) {
+            // 1. Exact match (User + Month + Year)
             $this->db->query("SELECT * FROM rep_targets WHERE user_id = :uid AND month = :m AND year = :y LIMIT 1");
             $this->db->bind(':uid', $userId);
             $this->db->bind(':m', $month);
             $this->db->bind(':y', $year);
             $row = $this->db->single();
-            if ($row) {
-                return $row;
-            }
+            if ($row) return $row;
+
+            // 2. User + Year match + All Months
+            $this->db->query("SELECT * FROM rep_targets WHERE user_id = :uid AND month = '00' AND year = :y LIMIT 1");
+            $this->db->bind(':uid', $userId);
+            $this->db->bind(':y', $year);
+            $row = $this->db->single();
+            if ($row) return $row;
+
+            // 3. User Default (User + All Months + All Years)
+            $this->db->query("SELECT * FROM rep_targets WHERE user_id = :uid AND month = '00' AND year = '0000' LIMIT 1");
+            $this->db->bind(':uid', $userId);
+            $row = $this->db->single();
+            if ($row) return $row;
         }
+        
+        // 4. Global Default (user_id = 0)
         $this->db->query("SELECT * FROM rep_targets WHERE user_id = 0 AND month = '00' AND year = '0000' LIMIT 1");
         $row = $this->db->single();
         if ($row) {
