@@ -8,7 +8,7 @@ class EmployeeLoan {
 
     public function getAllLoans() {
         $this->db->query("
-            SELECT el.*, e.first_name, e.last_name, e.employee_code, e.department,
+            SELECT el.*, e.first_name, e.last_name, e.department,
                    COALESCE((SELECT SUM(principal_amount) FROM employee_loan_repayments WHERE employee_loan_id = el.id), 0) as total_principal_paid,
                    COALESCE((SELECT SUM(interest_amount) FROM employee_loan_repayments WHERE employee_loan_id = el.id), 0) as total_interest_paid
             FROM employee_loans el
@@ -25,7 +25,7 @@ class EmployeeLoan {
 
     public function getLoanById($id) {
         $this->db->query("
-            SELECT el.*, e.first_name, e.last_name, e.employee_code, e.department,
+            SELECT el.*, e.first_name, e.last_name, e.department,
                    COALESCE((SELECT SUM(principal_amount) FROM employee_loan_repayments WHERE employee_loan_id = el.id), 0) as total_principal_paid,
                    COALESCE((SELECT SUM(interest_amount) FROM employee_loan_repayments WHERE employee_loan_id = el.id), 0) as total_interest_paid
             FROM employee_loans el 

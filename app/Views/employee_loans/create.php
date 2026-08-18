@@ -63,7 +63,7 @@
                 <select name="employee_id" class="form-select select2" required>
                     <option value="">-- Select Employee --</option>
                     <?php foreach($data['employees'] as $emp): ?>
-                        <option value="<?= $emp->id ?>"><?= htmlspecialchars($emp->first_name . ' ' . $emp->last_name . ' (' . $emp->employee_code . ')') ?></option>
+                        <option value="<?= $emp->id ?>"><?= htmlspecialchars($emp->first_name . ' ' . $emp->last_name) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
