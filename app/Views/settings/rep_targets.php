@@ -72,12 +72,45 @@
     <!-- Right Content Panel -->
     <div style="flex: 1 1 500px;">
         
-        <!-- Filter Selector Removed for Global Default Targets -->
+        <!-- Target Selector Form -->
+        <div class="settings-card" style="margin-bottom: 20px;">
+            <form method="GET" action="<?= APP_URL ?>/settings/rep_targets" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                    <label>Select Representative</label>
+                    <select name="rep_user_id" class="form-control" onchange="this.form.submit()">
+                        <option value="0">Global Default Targets</option>
+                        <?php foreach($data['reps'] as $rep): ?>
+                            <option value="<?= $rep->id ?>" <?= $data['selected_rep_id'] == $rep->id ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($rep->first_name . ' ' . $rep->last_name . ' (' . $rep->username . ')') ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0; width: 120px;">
+                    <label>Month</label>
+                    <select name="month" class="form-control" onchange="this.form.submit()">
+                        <option value="00">All Months</option>
+                        <?php for($m=1; $m<=12; $m++): $mStr = str_pad($m, 2, '0', STR_PAD_LEFT); ?>
+                            <option value="<?= $mStr ?>" <?= $data['month'] == $mStr ? 'selected' : '' ?>><?= date("F", mktime(0, 0, 0, $m, 10)) ?></option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0; width: 100px;">
+                    <label>Year</label>
+                    <select name="year" class="form-control" onchange="this.form.submit()">
+                        <option value="0000">All Years</option>
+                        <?php $cy = date('Y'); for($y=$cy-2; $y<=$cy+2; $y++): ?>
+                            <option value="<?= $y ?>" <?= $data['year'] == $y ? 'selected' : '' ?>><?= $y ?></option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
+            </form>
+        </div>
 
         <!-- Form 1: Rep Targets Form -->
         <div class="settings-card">
             <h3 style="margin-top:0; border-bottom: 1px solid var(--mac-border, #cbd5e1); padding-bottom: 10px; font-size: 16px; color:#1e293b;">
-                <i class="ph ph-target"></i> Global Default Performance Targets
+                <i class="ph ph-target"></i> <?= $data['selected_rep_id'] == 0 ? 'Global Default' : 'Representative Specific' ?> Performance Targets
             </h3>
             
             <form method="POST" action="<?= APP_URL ?>/settings/rep_targets?rep_user_id=<?= $data['selected_rep_id'] ?>&month=<?= $data['month'] ?>&year=<?= $data['year'] ?>" style="margin-top: 15px;">

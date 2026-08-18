@@ -133,9 +133,9 @@ class SettingsController extends Controller {
                     ORDER BY u.username ASC");
         $reps = $db->resultSet() ?: [];
 
-        $selectedRepId = 0;
-        $month = '00';
-        $year = '0000';
+        $selectedRepId = isset($_GET['rep_user_id']) ? intval($_GET['rep_user_id']) : 0;
+        $month = isset($_GET['month']) && $_GET['month'] !== '' ? $_GET['month'] : '00';
+        $year = isset($_GET['year']) && $_GET['year'] !== '' ? $_GET['year'] : '0000';
 
         $data = [
             'title' => 'Rep Targets & KPI Weights',

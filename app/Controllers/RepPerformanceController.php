@@ -89,10 +89,21 @@ class RepPerformanceController extends Controller {
             if ($count > 0 && !empty($perfData)) {
                 $perfData['avg_invoice_value'] = $perfData['invoice_count'] > 0 ? $perfData['net_sales'] / $perfData['invoice_count'] : 0;
                 $perfData['productive_visit_rate'] = $perfData['total_visited'] > 0 ? ($perfData['productive_visits'] / $perfData['total_visited']) * 100 : 0;
-                $perfData['customer_conversion_rate'] = $perfData['total_visited'] > 0 ? ($perfData['productive_visits'] / $perfData['total_visited']) * 100 : 0;
-                $perfData['collection_efficiency'] = $perfData['total_outstanding'] > 0 ? ($perfData['total_collections'] / $perfData['total_outstanding']) * 100 : 0;
+                $perfData['customer_conversion_rate'] = $perfData['total_visited'] > 0 ? ($perfData['active_customers'] / $perfData['total_visited']) * 100 : 0;
+                $perfData['collection_efficiency'] = $perfData['total_sales'] > 0 ? ($perfData['total_collections'] / $perfData['total_sales']) * 100 : 0;
                 $perfData['route_completion_rate'] = $perfData['total_routes'] > 0 ? ($perfData['completed_routes'] / $perfData['total_routes']) * 100 : 0;
                 $perfData['avg_sales_per_route'] = $perfData['total_routes'] > 0 ? $perfData['net_sales'] / $perfData['total_routes'] : 0;
+                $perfData['avg_customers_per_route'] = $perfData['total_routes'] > 0 ? $perfData['active_customers'] / $perfData['total_routes'] : 0;
+                $perfData['avg_sales_per_visit'] = $perfData['total_visited'] > 0 ? $perfData['net_sales'] / $perfData['total_visited'] : 0;
+                $perfData['expense_per_route'] = $perfData['total_routes'] > 0 ? $perfData['total_expenses'] / $perfData['total_routes'] : 0;
+                $perfData['sales_to_expense_ratio'] = $perfData['net_sales'] > 0 ? ($perfData['total_expenses'] / $perfData['net_sales']) * 100 : 0;
+                $perfData['avg_daily_sales'] = $perfData['active_route_days'] > 0 ? $perfData['net_sales'] / $perfData['active_route_days'] : 0;
+                $perfData['avg_daily_visits'] = $perfData['active_route_days'] > 0 ? $perfData['total_visited'] / $perfData['active_route_days'] : 0;
+                $perfData['avg_daily_collections'] = $perfData['active_route_days'] > 0 ? $perfData['total_collections'] / $perfData['active_route_days'] : 0;
+                $perfData['sales_per_productive_visit'] = $perfData['productive_visits'] > 0 ? $perfData['net_sales'] / $perfData['productive_visits'] : 0;
+                $perfData['sales_per_customer'] = $perfData['active_customers'] > 0 ? $perfData['net_sales'] / $perfData['active_customers'] : 0;
+                $perfData['avg_sales_needed_per_day'] = ($perfData['sales_needed_for_target'] > 0 && $perfData['remaining_working_days'] > 0) ? ($perfData['sales_needed_for_target'] / $perfData['remaining_working_days']) : ($perfData['sales_needed_for_target'] > 0 ? $perfData['sales_needed_for_target'] : 0);
+                $perfData['collection_target_pct'] = $perfData['collection_target_pct'] / $count;
                 
                 $perfData['overall_score'] = $perfData['overall_score'] / $count;
 
@@ -279,6 +290,33 @@ class RepPerformanceController extends Controller {
         }
         
         fclose($output);
+        exit;
+    }
+
+    public function save_targets() {
+        $this->checkPermission('reptracking', 'create_edit');
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = [
+                'user_id' => intval($_POST['target_user_id'] ?? 0),
+                'month' => $_POST['target_month'] ?? '00',
+                'year' => $_POST['target_year'] ?? '0000',
+                'sales_target' => floatval($_POST['sales_target'] ?? 0),
+                'productive_visits_target' => floatval($_POST['productive_visits_target'] ?? 0),
+                'total_visits_target' => floatval($_POST['total_visits_target'] ?? 0),
+                'working_days_target' => floatval($_POST['working_days_target'] ?? 0),
+                'collection_efficiency_target' => floatval($_POST['collection_efficiency_target'] ?? 0),
+                'new_customers_target' => floatval($_POST['new_customers_target'] ?? 0),
+                'credit_limit' => floatval($_POST['credit_limit'] ?? 0),
+            ];
+            
+            if ($this->perfModel->saveRepTargets($data)) {
+                $this->logActivity('Update Rep Targets', 'Analytics', "Updated performance targets for User ID {$data['user_id']} ({$data['month']}/{$data['year']})");
+                $_SESSION['flash_success'] = 'Representative targets saved successfully.';
+            } else {
+                $_SESSION['flash_error'] = 'Failed to save targets.';
+            }
+        }
+        header('Location: ' . APP_URL . '/repperformance');
         exit;
     }
 }

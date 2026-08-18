@@ -168,6 +168,8 @@ class RepPerformance {
             $this->db->bind(':area_id', $areaId);
         }
         $prodVisitsRow = $this->db->single();
+        $activeCustomersCount = intval($prodVisitsRow->active_customers ?? 0);
+        
         // User definition: Productive Visits means total bills billed.
         $productiveVisits = $invoiceCount;
 
@@ -228,7 +230,7 @@ class RepPerformance {
 
         // Rates
         $productiveVisitRate = $totalVisits > 0 ? ($productiveVisits / $totalVisits) * 100 : 0.00;
-        $customerConversionRate = $totalVisits > 0 ? ($productiveVisits / $totalVisits) * 100 : 0.00;
+        $customerConversionRate = $totalVisits > 0 ? ($activeCustomersCount / $totalVisits) * 100 : 0.00;
 
         // Route Performance
         $totalRoutes = count($routes);
@@ -346,7 +348,7 @@ class RepPerformance {
         $avgDailyVisits = $activeRouteDays > 0 ? $totalVisits / $activeRouteDays : 0.00;
         $avgDailyCollections = $activeRouteDays > 0 ? $totalCollections / $activeRouteDays : 0.00;
         $salesPerProductiveVisit = $productiveVisits > 0 ? $netSales / $productiveVisits : 0.00;
-        $salesPerCustomer = $productiveVisits > 0 ? $netSales / $productiveVisits : 0.00;
+        $salesPerCustomer = $activeCustomersCount > 0 ? $netSales / $activeCustomersCount : 0.00;
 
         // Top Categories
         $topCategoriesSql = "SELECT c.name as category_name, SUM(ii.total) as total_sales 
@@ -523,7 +525,7 @@ class RepPerformance {
                 $actual = floatval($activeRouteDays);
             }
 
-            // Automated Scoring logic (simplified, 0-100 max)
+            // Automated Scoring logic
             $rawScore = 0;
             if ($target > 0) {
                 $rawScore = ($actual / $target) * 100;
@@ -531,8 +533,8 @@ class RepPerformance {
                 $rawScore = 100; // Over-achieved 0 target
             }
 
-            // Cap the score at 100% implicitly
-            $clampedScore = max(0, min(100, $rawScore));
+            // Cap the score within the configured bounds
+            $clampedScore = max($minScore, min($maxScore, $rawScore));
             
             $weightedContrib = 0;
             if ($weight > 0) {
@@ -613,9 +615,11 @@ class RepPerformance {
         $targetDays = floatval($repTargets->working_days_target ?? 0);
         $remainingDays = $targetDays - $activeRouteDays;
         $avgSalesNeededPerDay = ($salesNeeded > 0 && $remainingDays > 0) ? ($salesNeeded / $remainingDays) : ($salesNeeded > 0 ? $salesNeeded : 0.00);
+        
+        // Collection target amount should be based on Total Sales since Efficiency is (Collections / Sales)
         $collTargetPct = floatval($repTargets->collection_efficiency_target ?? 80.00);
-        $targetCollectionAmount = ($outstandingAmount * $collTargetPct) / 100.0;
-        $collectionsNeeded = ($outstandingAmount > 0 && $totalCollections < $targetCollectionAmount) ? ($targetCollectionAmount - $totalCollections) : 0.00;
+        $targetCollectionAmount = ($totalSales * $collTargetPct) / 100.0;
+        $collectionsNeeded = ($targetCollectionAmount > 0 && $totalCollections < $targetCollectionAmount) ? ($targetCollectionAmount - $totalCollections) : 0.00;
 
         $totalEarnings = $baseSalary + $salesCommission + $salesIncentive + $prodVisitsBonus + $workDaysBonus + $collBonus;
 
@@ -651,7 +655,7 @@ class RepPerformance {
             'productive_visits' => $productiveVisits,
             'unproductive_visits' => $unproductiveVisits,
             'new_customers_added' => $newCustomers,
-            'active_customers' => $productiveVisits,
+            'active_customers' => $activeCustomersCount,
             'repeat_customers' => $repeatCustomers,
             'productive_visit_rate' => $productiveVisitRate,
             'customer_conversion_rate' => $customerConversionRate,
