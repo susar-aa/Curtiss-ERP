@@ -8,24 +8,76 @@ class JournalEntry {
         $this->db = new Database();
     }
 
-    public function getAllEntries(?int $limit = null, ?int $offset = null): array {
+    public function getAllEntries(?int $limit = null, ?int $offset = null, array $filters = []): array {
         $sql = "SELECT je.*, u.username 
                 FROM journal_entries je 
-                JOIN users u ON je.created_by = u.id 
-                ORDER BY je.entry_date DESC, je.id DESC";
+                LEFT JOIN users u ON je.created_by = u.id 
+                WHERE 1=1";
+        
+        $params = [];
+        if (!empty($filters['search'])) {
+            $sql .= " AND (je.reference LIKE :search OR je.description LIKE :search)";
+            $params[':search'] = '%' . $filters['search'] . '%';
+        }
+        if (!empty($filters['status']) && $filters['status'] !== 'All') {
+            $sql .= " AND je.status = :status";
+            $params[':status'] = $filters['status'];
+        }
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND je.entry_date >= :start_date";
+            $params[':start_date'] = $filters['start_date'];
+        }
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND je.entry_date <= :end_date";
+            $params[':end_date'] = $filters['end_date'];
+        }
+        
+        $sql .= " ORDER BY je.entry_date DESC, je.id DESC";
+        
         if ($limit !== null && $offset !== null) {
             $sql .= " LIMIT :limit OFFSET :offset";
         }
+        
         $this->db->query($sql);
+        
+        foreach ($params as $key => $val) {
+            $this->db->bind($key, $val);
+        }
+        
         if ($limit !== null && $offset !== null) {
             $this->db->bind(':limit', (int)$limit, PDO::PARAM_INT);
             $this->db->bind(':offset', (int)$offset, PDO::PARAM_INT);
         }
+        
         return $this->db->resultSet() ?: [];
     }
 
-    public function getEntriesCount(): int {
-        $this->db->query("SELECT COUNT(*) as total FROM journal_entries");
+    public function getEntriesCount(array $filters = []): int {
+        $sql = "SELECT COUNT(*) as total FROM journal_entries je WHERE 1=1";
+        
+        $params = [];
+        if (!empty($filters['search'])) {
+            $sql .= " AND (je.reference LIKE :search OR je.description LIKE :search)";
+            $params[':search'] = '%' . $filters['search'] . '%';
+        }
+        if (!empty($filters['status']) && $filters['status'] !== 'All') {
+            $sql .= " AND je.status = :status";
+            $params[':status'] = $filters['status'];
+        }
+        if (!empty($filters['start_date'])) {
+            $sql .= " AND je.entry_date >= :start_date";
+            $params[':start_date'] = $filters['start_date'];
+        }
+        if (!empty($filters['end_date'])) {
+            $sql .= " AND je.entry_date <= :end_date";
+            $params[':end_date'] = $filters['end_date'];
+        }
+        
+        $this->db->query($sql);
+        foreach ($params as $key => $val) {
+            $this->db->bind($key, $val);
+        }
+        
         $row = $this->db->single();
         return $row ? (int)$row->total : 0;
     }

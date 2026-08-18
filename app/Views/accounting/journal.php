@@ -1,209 +1,494 @@
 <?php
-// Journal Entry View
+// Journal Entry View Redesigned
+// Dynamic Stats
+$totalEntries = $data['total_entries'] ?? 0;
+$postedCount = 0;
+$voidedCount = 0;
+$draftCount = 0;
+foreach ($data['entries'] ?? [] as $entry) {
+    if ($entry->status === 'Posted') $postedCount++;
+    if ($entry->status === 'Voided') $voidedCount++;
+    if ($entry->status === 'Draft') $draftCount++;
+}
+$search = $data['filters']['search'] ?? '';
+$status = $data['filters']['status'] ?? 'All';
+$startDate = $data['filters']['start_date'] ?? '';
+$endDate = $data['filters']['end_date'] ?? '';
 ?>
+
+<!-- Inter Font & FontAwesome Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
 <style>
-    .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .btn { padding: 8px 16px; background: #0066cc; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
-    .btn:hover { background: #005bb5; }
-    .btn-secondary { background: #e0e0e0; color: #333; }
-    .btn-secondary:hover { background: #ccc; }
-    .btn-danger { background: #ff3b30; padding: 6px 10px; font-size: 12px;}
-    
-    .form-group { margin-bottom: 15px; }
-    .form-group label { display: block; margin-bottom: 5px; font-size: 13px; font-weight: 500; }
-    .form-control { width: 100%; padding: 8px 12px; border: 1px solid var(--mac-border); border-radius: 4px; background: transparent; color: var(--text-main); box-sizing: border-box; }
-    
-    .journal-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    .journal-table th, .journal-table td { padding: 10px; text-align: left; border-bottom: 1px solid var(--mac-border); }
-    .journal-table th { background-color: rgba(0,0,0,0.02); font-weight: 600; font-size: 13px; }
-    .journal-table input[type="number"] { width: 120px; text-align: right; }
-    
-    .totals-row { font-weight: bold; background-color: rgba(0,102,204,0.05); }
-    .diff-warning { color: #ff3b30; font-size: 12px; font-weight: bold; display: none; }
-    
-    .alert { padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 14px; }
-    .alert-error { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
-    .alert-success { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+/* ============================================================
+   SF PRO + APPLE DESIGN LANGUAGE - GENERAL JOURNAL
+   ============================================================ */
+
+:root {
+    --c-bg:           #f2f2f7;
+    --c-surface:      #ffffff;
+    --c-surface2:     #f9f9fb;
+    --c-fill:         rgba(120,120,128,0.12);
+    --c-fill2:        rgba(120,120,128,0.16);
+    --c-separator:    rgba(60,60,67,0.12);
+    --c-separator2:   rgba(60,60,67,0.06);
+
+    --c-blue:         #007aff;
+    --c-blue-light:   #e5f2ff;
+    --c-blue-mid:     #b3d6ff;
+    --c-green:        #34c759;
+    --c-green-light:  #e6f9ec;
+    --c-orange:       #ff9500;
+    --c-orange-light: #fff4e5;
+    --c-red:          #ff3b30;
+    --c-red-light:    #fff0ef;
+
+    --f-system: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', sans-serif;
+
+    --t-primary:   #1c1c1e;
+    --t-secondary: #636366;
+    --t-tertiary:  #aeaeb2;
+    --t-label:     #8e8e93;
+
+    --shadow-xs:  0 1px 2px rgba(0,0,0,0.04);
+    --shadow-sm:  0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-md:  0 8px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+    --shadow-xl:  0 24px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.06);
+
+    --r-xs: 6px;
+    --r-sm: 10px;
+    --r-md: 14px;
+    --r-lg: 20px;
+    --r-xl: 26px;
+    --r-pill: 999px;
+
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-ios:    cubic-bezier(0.25, 0.1, 0.25, 1);
+    --dur-fast:    0.18s;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --c-bg:           #121212;
+        --c-surface:      #1e1e2e;
+        --c-surface2:     #161622;
+        --c-fill:         rgba(255,255,255,0.08);
+        --c-fill2:        rgba(255,255,255,0.12);
+        --c-separator:    rgba(255,255,255,0.15);
+        --c-separator2:   rgba(255,255,255,0.08);
+        --t-primary:   #f5f5f7;
+        --t-secondary: #a1a1aa;
+        --t-tertiary:  #71717a;
+        --t-label:     #52525b;
+    }
+}
+
+.cust-root {
+    font-family: var(--f-system);
+    font-size: 15px;
+    color: var(--t-primary);
+    background: var(--c-bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.cust-wrap {
+    max-width: 1420px;
+    margin: 0 auto;
+    padding: 16px 24px 100px;
+}
+
+/* ---- Stat Cards ---- */
+.stat-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+}
+.stat-card {
+    background: var(--c-surface);
+    border-radius: var(--r-xl);
+    padding: 16px 20px;
+    box-shadow: var(--shadow-sm);
+    border: 0.5px solid var(--c-separator);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: transform var(--dur-fast), box-shadow var(--dur-fast);
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2.5px; border-radius: var(--r-xl) var(--r-xl) 0 0; }
+.stat-card.blue::before  { background: var(--c-blue); }
+.stat-card.orange::before { background: var(--c-orange); }
+.stat-card.red::before   { background: var(--c-red); }
+.stat-card.green::before { background: var(--c-green); }
+
+.stat-icon { width: 46px; height: 46px; border-radius: var(--r-sm); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.stat-card.blue .stat-icon { background: var(--c-blue-light); color: var(--c-blue); }
+.stat-card.orange .stat-icon { background: var(--c-orange-light); color: var(--c-orange); }
+.stat-card.red .stat-icon { background: var(--c-red-light); color: var(--c-red); }
+.stat-card.green .stat-icon { background: var(--c-green-light); color: var(--c-green); }
+
+.stat-info { display: flex; flex-direction: column; justify-content: center; }
+.stat-num { font-size: 22px; font-weight: 700; letter-spacing: -0.04em; color: var(--t-primary); line-height: 1.1; margin-bottom: 2px; }
+.stat-lbl { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--t-label); }
+
+/* ---- Filter Shelf ---- */
+.filter-shelf { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 20px; }
+.filter-shelf form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; width: 100%; }
+.filter-input, .filter-select {
+    background: var(--c-surface); border: 0.5px solid var(--c-separator); border-radius: var(--r-pill);
+    padding: 7px 14px; font-size: 13px; font-weight: 500; color: var(--t-primary); box-shadow: var(--shadow-xs);
+    outline: none; transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.filter-input:focus, .filter-select:focus { border-color: var(--c-blue); box-shadow: 0 0 0 3px rgba(0,122,255,0.12); }
+.filter-btn {
+    background: var(--c-blue); color: #fff; border: none; border-radius: var(--r-pill);
+    padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: transform var(--dur-fast), filter var(--dur-fast);
+}
+.filter-btn:hover { filter: brightness(1.1); }
+.filter-btn:active { transform: scale(0.96); }
+.filter-reset {
+    background: transparent; border: 0.5px solid var(--c-separator); border-radius: var(--r-pill);
+    padding: 7px 14px; font-size: 13px; font-weight: 600; color: var(--t-secondary); cursor: pointer; text-decoration: none;
+}
+.filter-reset:hover { background: var(--c-fill); color: var(--t-primary); }
+
+/* ---- Table Panel ---- */
+.table-panel { background: var(--c-surface); border-radius: var(--r-xl); border: 0.5px solid var(--c-separator); box-shadow: var(--shadow-sm); overflow: hidden; position: relative; margin-bottom: 30px;}
+.cust-table { width: 100%; border-collapse: collapse; }
+.cust-table thead th { padding: 13px 18px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--t-label); background: var(--c-surface2); border-bottom: 0.5px solid var(--c-separator); white-space: nowrap; text-align: left; }
+.cust-table tbody tr { transition: background var(--dur-fast); border-bottom: 0.5px solid var(--c-separator2); }
+.cust-table tbody tr:last-child { border-bottom: none; }
+.cust-table tbody tr:hover { background: var(--c-fill2); }
+.cust-table td { padding: 14px 18px; font-size: 14px; color: var(--t-primary); vertical-align: middle; }
+
+/* ---- Create Entry Panel ---- */
+.create-panel { background: var(--c-surface); border-radius: var(--r-xl); border: 0.5px solid var(--c-separator); box-shadow: var(--shadow-md); padding: 20px 24px; margin-bottom: 30px; display: none; }
+.create-panel.active { display: block; animation: slideDown 0.3s var(--ease-spring); }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+.create-panel h3 { margin-top: 0; margin-bottom: 16px; font-size: 18px; font-weight: 700; color: var(--t-primary); }
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--t-secondary); }
+.form-control { width: 100%; padding: 10px 14px; border: 1px solid var(--c-separator); border-radius: var(--r-sm); background: var(--c-surface2); color: var(--t-primary); font-size: 14px; outline: none; transition: border-color 0.2s; box-sizing: border-box;}
+.form-control:focus { border-color: var(--c-blue); background: var(--c-surface); }
+.journal-input-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+.journal-input-table th { padding: 10px; font-size: 12px; font-weight: 600; color: var(--t-label); text-transform: uppercase; border-bottom: 1px solid var(--c-separator); text-align: left; }
+.journal-input-table td { padding: 8px; border-bottom: 1px solid var(--c-separator2); }
+.journal-input-table input[type="number"] { text-align: right; }
+.totals-row { font-weight: 700; background: var(--c-surface2); }
+.totals-row td { padding: 12px 8px !important; }
+.diff-warning { color: var(--c-red); font-size: 13px; font-weight: 600; display: none; }
+
+/* ---- Badges & Alerts ---- */
+.sf-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: var(--r-xs); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+.sf-badge.badge-posted { background: var(--c-green-light); color: var(--c-green); }
+.sf-badge.badge-voided { background: var(--c-red-light); color: var(--c-red); text-decoration: line-through; }
+.sf-badge.badge-draft { background: var(--c-orange-light); color: var(--c-orange); }
+
+.sf-alert { display: flex; align-items: flex-start; gap: 12px; background: var(--c-surface); border-radius: var(--r-md); padding: 14px 16px; margin-bottom: 20px; box-shadow: var(--shadow-xs); border: 0.5px solid var(--c-separator); border-left-width: 3.5px; font-size: 14px; }
+.sf-alert.success { border-left-color: var(--c-green); }
+.sf-alert.error { border-left-color: var(--c-red); }
+.sf-alert-icon { font-size: 18px; flex-shrink: 0; padding-top: 1px; }
+.sf-alert.success .sf-alert-icon { color: var(--c-green); }
+.sf-alert.error .sf-alert-icon { color: var(--c-red); }
+
+/* ---- Buttons ---- */
+.sf-btn { padding: 9px 16px; border-radius: var(--r-md); font-size: 13.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border: 0.5px solid transparent; cursor: pointer; transition: transform var(--dur-fast) var(--ease-spring), filter var(--dur-fast); text-decoration: none; }
+.sf-btn:active { transform: scale(0.97); }
+.sf-btn.primary { background: var(--c-blue); color: #fff; }
+.sf-btn.neutral { background: var(--c-surface); border-color: var(--c-separator); color: var(--t-primary); box-shadow: var(--shadow-xs); }
+.sf-btn.neutral:hover { background: var(--c-surface2); }
+.sf-btn.danger { background: var(--c-red-light); color: var(--c-red); border-color: transparent;}
+.sf-btn.danger:hover { background: var(--c-red); color: #fff;}
+
+/* ---- Command Bar ---- */
+.cmd-bar { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: rgba(28, 28, 30, 0.92); backdrop-filter: saturate(180%) blur(28px); -webkit-backdrop-filter: saturate(180%) blur(28px); border: 0.5px solid rgba(255,255,255,0.12); border-radius: var(--r-pill); padding: 7px 10px; display: flex; align-items: center; gap: 4px; box-shadow: var(--shadow-xl), 0 0 0 0.5px rgba(0,0,0,0.3); z-index: 100; }
+.cmd-cta { display: flex; align-items: center; gap: 7px; background: #fff; color: #1c1c1e; border: none; border-radius: var(--r-pill); padding: 8px 16px; font-size: 14px; font-weight: 700; font-family: var(--f-system); cursor: pointer; transition: transform var(--dur-fast) var(--ease-spring), opacity var(--dur-fast); }
+.cmd-cta:hover { opacity: 0.9; }
+.cmd-cta:active { transform: scale(0.95); }
+
+/* Pagination */
+.pagination { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-top: 0.5px solid var(--c-separator); font-size: 13px; color: var(--t-secondary); }
+.page-links { display: flex; gap: 5px; }
+.page-link { padding: 6px 12px; background: var(--c-surface); border: 0.5px solid var(--c-separator); border-radius: var(--r-md); color: var(--t-primary); text-decoration: none; font-weight: 500; transition: background var(--dur-fast); }
+.page-link:hover { background: var(--c-fill); }
+.page-link.active { background: var(--c-blue); color: #fff; border-color: var(--c-blue); }
 </style>
 
-<div class="card">
-    <div class="header-actions">
-        <h2>General Journal</h2>
-    </div>
+<div class="cust-root">
+    <div class="cust-wrap">
+        
+        <?php if(!empty($data['error'])): ?>
+            <div class="sf-alert error">
+                <i class="fa-solid fa-circle-exclamation sf-alert-icon"></i>
+                <div>
+                    <div class="sf-alert-title">Error</div>
+                    <div class="sf-alert-msg"><?= $data['error'] ?></div>
+                </div>
+            </div>
+        <?php endif; ?>
+        <?php if(!empty($data['success'])): ?>
+            <div class="sf-alert success">
+                <i class="fa-solid fa-circle-check sf-alert-icon"></i>
+                <div>
+                    <div class="sf-alert-title">Success</div>
+                    <div class="sf-alert-msg"><?= $data['success'] ?></div>
+                </div>
+            </div>
+        <?php endif; ?>
 
-    <?php if(!empty($data['error'])): ?>
-        <div class="alert alert-error"><?= $data['error'] ?></div>
-    <?php endif; ?>
-    <?php if(!empty($data['success'])): ?>
-        <div class="alert alert-success"><?= $data['success'] ?></div>
-    <?php endif; ?>
+        <!-- Stat Cards -->
+        <div class="stat-row">
+            <div class="stat-card blue">
+                <div class="stat-icon"><i class="fa-solid fa-book-journal-whills"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num"><?= number_format($totalEntries) ?></div>
+                    <div class="stat-lbl">Total Entries</div>
+                </div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-icon"><i class="fa-solid fa-check-double"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num"><?= number_format($postedCount) ?></div>
+                    <div class="stat-lbl">Posted Entries</div>
+                </div>
+            </div>
+            <div class="stat-card red">
+                <div class="stat-icon"><i class="fa-solid fa-ban"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num"><?= number_format($voidedCount) ?></div>
+                    <div class="stat-lbl">Voided Entries</div>
+                </div>
+            </div>
+        </div>
 
-    <form action="<?= APP_URL ?>/accounting/journal" method="POST" id="journalForm" style="background: rgba(0,0,0,0.02); padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid var(--mac-border);">
-        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
-        <div class="form-group" style="margin-bottom: 20px; max-width: 550px;">
-            <label style="font-weight: 600; font-size: 13px;">Load Journal Template</label>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <select id="templateSelector" class="form-control" onchange="loadTemplate(this.value)" style="flex: 1;">
-                    <option value="">-- Select Template --</option>
-                    <option value="rent">Record Rent Expense (Debit Rent Expense, Credit Cash/Bank)</option>
-                    <option value="utility">Record Utility Bill (Debit Utilities Expense, Credit Cash/Bank)</option>
-                    <option value="revenue">Record Customer Payment (Debit Cash/Bank, Credit Account Receivable)</option>
-                    <option value="payroll">Record Payroll (Debit Salaries Expense, Credit Cash/Bank)</option>
+        <!-- Filter Shelf -->
+        <div class="filter-shelf">
+            <form action="<?= APP_URL ?>/accounting/journal" method="GET">
+                <input type="text" name="search" class="filter-input" placeholder="Search ref or description..." value="<?= htmlspecialchars($search) ?>" style="width: 200px;">
+                <select name="status" class="filter-select">
+                    <option value="All" <?= $status === 'All' ? 'selected' : '' ?>>All Statuses</option>
+                    <option value="Posted" <?= $status === 'Posted' ? 'selected' : '' ?>>Posted</option>
+                    <option value="Voided" <?= $status === 'Voided' ? 'selected' : '' ?>>Voided</option>
+                    <option value="Draft" <?= $status === 'Draft' ? 'selected' : '' ?>>Draft</option>
                 </select>
-                <button type="button" id="undoTemplateBtn" class="btn btn-secondary hidden" onclick="undoTemplateLoad()" style="font-size: 12px; height: 38px; white-space: nowrap;">Undo Load</button>
-            </div>
-        </div>
-        
-        <div style="display: flex; gap: 20px;">
-            <div class="form-group" style="flex: 1;">
-                <label>Date</label>
-                <input type="date" name="entry_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
-            </div>
-            <div class="form-group" style="flex: 1;">
-                <label>Reference #</label>
-                <input type="text" name="reference" class="form-control" placeholder="e.g. INV-1001">
-            </div>
-            <div class="form-group" style="flex: 2;">
-                <label>Description</label>
-                <input type="text" name="description" class="form-control" placeholder="Memo for this journal entry..." required>
-            </div>
+                <input type="date" name="start_date" class="filter-input" value="<?= htmlspecialchars($startDate) ?>" title="Start Date">
+                <span style="color: var(--t-tertiary); font-weight: 500;">to</span>
+                <input type="date" name="end_date" class="filter-input" value="<?= htmlspecialchars($endDate) ?>" title="End Date">
+                
+                <button type="submit" class="filter-btn"><i class="fa-solid fa-filter"></i> Apply</button>
+                <a href="<?= APP_URL ?>/accounting/journal" class="filter-reset">Reset</a>
+            </form>
         </div>
 
-        <table class="journal-table" id="linesTable">
-            <thead>
-                <tr>
-                    <th style="width: 35%;">Account</th>
-                    <th style="width: 35%;">Description / Memo</th>
-                    <th style="width: 13%;">Debit (Rs:)</th>
-                    <th style="width: 13%;">Credit (Rs:)</th>
-                    <th style="width: 4%;"></th>
-                </tr>
-            </thead>
-            <tbody id="journalBody">
-                <!-- Initial 2 lines required for double entry -->
-                <tr>
-                    <td>
-                        <select name="account_id[]" class="form-control" required>
-                            <option value="">Select Account...</option>
-                            <?php foreach($data['accounts'] as $acc): ?>
-                                <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->account_code . ' - ' . $acc->account_name) ?></option>
-                            <?php endforeach; ?>
+        <!-- Create Journal Entry Panel (Hidden by default) -->
+        <div class="create-panel" id="createPanel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3>New Journal Entry</h3>
+                <button type="button" class="sf-btn neutral" onclick="toggleCreatePanel()"><i class="fa-solid fa-xmark"></i> Close</button>
+            </div>
+            <form action="<?= APP_URL ?>/accounting/journal" method="POST" id="journalForm">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                
+                <div class="form-group" style="max-width: 550px; background: var(--c-surface2); padding: 12px; border-radius: var(--r-md); border: 0.5px solid var(--c-separator); margin-bottom: 20px;">
+                    <label>Load Journal Template</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <select id="templateSelector" class="form-control" onchange="loadTemplate(this.value)" style="flex: 1; background: var(--c-surface);">
+                            <option value="">-- Select Template --</option>
+                            <option value="rent">Record Rent Expense (Debit Rent, Credit Bank)</option>
+                            <option value="utility">Record Utility Bill (Debit Utilities, Credit Bank)</option>
+                            <option value="revenue">Record Customer Payment (Debit Bank, Credit AR)</option>
+                            <option value="payroll">Record Payroll (Debit Salaries, Credit Bank)</option>
                         </select>
-                    </td>
-                    <td><input type="text" name="line_description[]" class="form-control" placeholder="Line-specific note (optional)"></td>
-                    <td><input type="number" name="debit[]" class="form-control debit-input" step="0.01" min="0" onchange="calcTotals()"></td>
-                    <td><input type="number" name="credit[]" class="form-control credit-input" step="0.01" min="0" onchange="calcTotals()"></td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td>
-                        <select name="account_id[]" class="form-control" required>
-                            <option value="">Select Account...</option>
-                            <?php foreach($data['accounts'] as $acc): ?>
-                                <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->account_code . ' - ' . $acc->account_name) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </td>
-                    <td><input type="text" name="line_description[]" class="form-control" placeholder="Line-specific note (optional)"></td>
-                    <td><input type="number" name="debit[]" class="form-control debit-input" step="0.01" min="0" onchange="calcTotals()"></td>
-                    <td><input type="number" name="credit[]" class="form-control credit-input" step="0.01" min="0" onchange="calcTotals()"></td>
-                    <td></td>
-                </tr>
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="2">
-                        <button type="button" class="btn btn-secondary" onclick="addRow()" style="font-size: 12px;">+ Add Line</button>
-                    </td>
-                    <td class="totals-row" id="totalDebit">0.00</td>
-                    <td class="totals-row" id="totalCredit">0.00</td>
-                    <td></td>
-                </tr>
-            </tfoot>
-        </table>
-        
-        <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
-            <span class="diff-warning" id="diffWarning">Error: Debits and Credits must balance!</span>
-            <button type="submit" class="btn" id="btnSubmit" style="margin-left: auto;">Post Journal Entry</button>
-        </div>
-    </form>
+                        <button type="button" id="undoTemplateBtn" class="sf-btn neutral" style="display:none;" onclick="undoTemplateLoad()">Undo</button>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 20px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Date</label>
+                        <input type="date" name="entry_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Reference #</label>
+                        <input type="text" name="reference" class="form-control" placeholder="e.g. INV-1001">
+                    </div>
+                    <div class="form-group" style="flex: 2;">
+                        <label>Description</label>
+                        <input type="text" name="description" class="form-control" placeholder="Memo for this journal entry..." required>
+                    </div>
+                </div>
 
-    <h3>Recent Journal Entries</h3>
-    <table class="journal-table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Reference</th>
-                <th>Description</th>
-                <th>Status</th>
-                <th>Posted By</th>
-                <th style="text-align: right; width: 100px;">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if(empty($data['entries'])): ?>
-            <tr><td colspan="6" style="text-align: center; color: #888;">No entries found.</td></tr>
-            <?php else: ?>
-                <?php foreach($data['entries'] as $entry): ?>
-                <tr>
-                    <td><?= date('M d, Y', strtotime($entry->entry_date)) ?></td>
-                    <td><strong><?= htmlspecialchars($entry->reference) ?></strong></td>
-                    <td><?= htmlspecialchars($entry->description) ?></td>
-                    <td>
-                        <?php if($entry->status === 'Posted'): ?>
-                            <span style="color: #2e7d32; font-weight: bold;">✓ <?= $entry->status ?></span>
-                        <?php elseif($entry->status === 'Voided'): ?>
-                            <span style="color: #c62828; text-decoration: line-through; font-weight: bold;"><?= $entry->status ?></span>
-                        <?php else: ?>
-                            <span style="color: #f59e0b; font-weight: bold;"><?= $entry->status ?></span>
-                        <?php endif; ?>
-                    </td>
-                    <td><?= htmlspecialchars($entry->username) ?></td>
-                    <td style="text-align: right;">
-                        <?php if($entry->status === 'Posted' && !$entry->is_closed): ?>
-                            <form action="<?= APP_URL ?>/accounting/void_journal" method="POST" onsubmit="return confirm('Are you sure you want to void this journal entry? This will reverse all ledger balances for these accounts.')" style="display:inline;">
-                                <input type="hidden" name="entry_id" value="<?= $entry->id ?>">
-                                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
-                                <button type="submit" class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;">Void</button>
-                            </form>
-                        <?php else: ?>
-                            <span style="color: #aaa; font-size: 11px;">-</span>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </tbody>
-    </table>
-
-    <!-- Pagination Controls -->
-    <?php if ($data['total_pages'] > 1): ?>
-    <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
-        <div style="color: var(--t-secondary);">
-            Showing page <?= $data['page'] ?> of <?= $data['total_pages'] ?> (<?= $data['total_entries'] ?> total entries)
+                <table class="journal-input-table" id="linesTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 35%;">Account</th>
+                            <th style="width: 35%;">Description / Memo</th>
+                            <th style="width: 13%;">Debit (Rs)</th>
+                            <th style="width: 13%;">Credit (Rs)</th>
+                            <th style="width: 4%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="journalBody">
+                        <!-- Initial 2 lines -->
+                        <tr>
+                            <td>
+                                <select name="account_id[]" class="form-control" required>
+                                    <option value="">Select Account...</option>
+                                    <?php foreach($data['accounts'] as $acc): ?>
+                                        <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->account_code . ' - ' . $acc->account_name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </td>
+                            <td><input type="text" name="line_description[]" class="form-control" placeholder="Line-specific note"></td>
+                            <td><input type="number" name="debit[]" class="form-control debit-input" step="0.01" min="0" onchange="calcTotals()"></td>
+                            <td><input type="number" name="credit[]" class="form-control credit-input" step="0.01" min="0" onchange="calcTotals()"></td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <select name="account_id[]" class="form-control" required>
+                                    <option value="">Select Account...</option>
+                                    <?php foreach($data['accounts'] as $acc): ?>
+                                        <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->account_code . ' - ' . $acc->account_name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </td>
+                            <td><input type="text" name="line_description[]" class="form-control" placeholder="Line-specific note"></td>
+                            <td><input type="number" name="debit[]" class="form-control debit-input" step="0.01" min="0" onchange="calcTotals()"></td>
+                            <td><input type="number" name="credit[]" class="form-control credit-input" step="0.01" min="0" onchange="calcTotals()"></td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2">
+                                <button type="button" class="sf-btn neutral" onclick="addRow()"><i class="fa-solid fa-plus"></i> Add Line</button>
+                            </td>
+                            <td class="totals-row" id="totalDebit">0.00</td>
+                            <td class="totals-row" id="totalCredit">0.00</td>
+                            <td class="totals-row"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+                    <span class="diff-warning" id="diffWarning"><i class="fa-solid fa-circle-exclamation"></i> Debits and Credits must balance!</span>
+                    <button type="submit" class="sf-btn primary" id="btnSubmit" style="margin-left: auto;">Post Journal Entry</button>
+                </div>
+            </form>
         </div>
-        <div style="display: flex; gap: 5px;">
-            <?php if ($data['page'] > 1): ?>
-                <a href="?page=<?= $data['page'] - 1 ?>" class="btn btn-secondary" style="padding: 5px 10px; text-decoration: none; font-size: 12px;">&laquo; Previous</a>
-            <?php endif; ?>
-            
-            <?php 
-            $start = max(1, $data['page'] - 2);
-            $end = min($data['total_pages'], $data['page'] + 2);
-            for ($i = $start; $i <= $end; $i++): 
+
+        <!-- Main Data Table -->
+        <div class="table-panel">
+            <table class="cust-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Reference</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th>Posted By</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if(empty($data['entries'])): ?>
+                    <tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--t-tertiary);">No entries found matching criteria.</td></tr>
+                    <?php else: ?>
+                        <?php foreach($data['entries'] as $entry): ?>
+                        <tr>
+                            <td style="font-weight: 500;"><?= date('M d, Y', strtotime($entry->entry_date)) ?></td>
+                            <td><strong><?= htmlspecialchars($entry->reference) ?></strong></td>
+                            <td style="color: var(--t-secondary);"><?= htmlspecialchars($entry->description) ?></td>
+                            <td>
+                                <?php if($entry->status === 'Posted'): ?>
+                                    <span class="sf-badge badge-posted"><span class="dot"></span><?= $entry->status ?></span>
+                                <?php elseif($entry->status === 'Voided'): ?>
+                                    <span class="sf-badge badge-voided"><span class="dot"></span><?= $entry->status ?></span>
+                                <?php else: ?>
+                                    <span class="sf-badge badge-draft"><span class="dot"></span><?= $entry->status ?></span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= htmlspecialchars($entry->username) ?></td>
+                            <td style="text-align: right;">
+                                <?php if($entry->status === 'Posted' && !$entry->is_closed): ?>
+                                    <form action="<?= APP_URL ?>/accounting/void_journal" method="POST" onsubmit="return confirm('Are you sure you want to void this journal entry? This will reverse all ledger balances for these accounts.')" style="display:inline;">
+                                        <input type="hidden" name="entry_id" value="<?= $entry->id ?>">
+                                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+                                        <button type="submit" class="sf-btn danger"><i class="fa-solid fa-ban"></i> Void</button>
+                                    </form>
+                                <?php else: ?>
+                                    <span style="color: var(--t-tertiary); font-size: 13px;">Locked</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+
+            <!-- Pagination -->
+            <?php if ($data['total_pages'] > 1): 
+                // Build query string for pagination links to preserve filters
+                $qArgs = [];
+                if (!empty($search)) $qArgs['search'] = $search;
+                if ($status !== 'All') $qArgs['status'] = $status;
+                if (!empty($startDate)) $qArgs['start_date'] = $startDate;
+                if (!empty($endDate)) $qArgs['end_date'] = $endDate;
+                $qString = http_build_query($qArgs);
+                if (!empty($qString)) $qString = '&' . $qString;
             ?>
-                <a href="?page=<?= $i ?>" class="btn <?= $i === $data['page'] ? '' : 'btn-secondary' ?>" style="padding: 5px 10px; text-decoration: none; font-size: 12px;"><?= $i ?></a>
-            <?php endfor; ?>
+            <div class="pagination">
+                <div>Showing page <?= $data['page'] ?> of <?= $data['total_pages'] ?> (<?= $data['total_entries'] ?> total entries)</div>
+                <div class="page-links">
+                    <?php if ($data['page'] > 1): ?>
+                        <a href="?page=<?= $data['page'] - 1 ?><?= $qString ?>" class="page-link">&laquo; Prev</a>
+                    <?php endif; ?>
+                    
+                    <?php 
+                    $start = max(1, $data['page'] - 2);
+                    $end = min($data['total_pages'], $data['page'] + 2);
+                    for ($i = $start; $i <= $end; $i++): 
+                    ?>
+                        <a href="?page=<?= $i ?><?= $qString ?>" class="page-link <?= $i === $data['page'] ? 'active' : '' ?>"><?= $i ?></a>
+                    <?php endfor; ?>
 
-            <?php if ($data['page'] < $data['total_pages']): ?>
-                <a href="?page=<?= $data['page'] + 1 ?>" class="btn btn-secondary" style="padding: 5px 10px; text-decoration: none; font-size: 12px;">Next &raquo;</a>
+                    <?php if ($data['page'] < $data['total_pages']): ?>
+                        <a href="?page=<?= $data['page'] + 1 ?><?= $qString ?>" class="page-link">Next &raquo;</a>
+                    <?php endif; ?>
+                </div>
+            </div>
             <?php endif; ?>
         </div>
+
     </div>
-    <?php endif; ?>
+</div>
+
+<!-- Command Bar -->
+<div class="cmd-bar">
+    <button class="cmd-cta" onclick="toggleCreatePanel()">
+        <i class="fa-solid fa-plus"></i> New Journal Entry
+    </button>
 </div>
 
 <script>
+    function toggleCreatePanel() {
+        const panel = document.getElementById('createPanel');
+        if (panel.classList.contains('active')) {
+            panel.classList.remove('active');
+            setTimeout(() => { panel.style.display = 'none'; }, 300);
+        } else {
+            panel.style.display = 'block';
+            setTimeout(() => { panel.classList.add('active'); }, 10);
+            window.scrollTo({ top: panel.offsetTop - 20, behavior: 'smooth' });
+        }
+    }
+
     const accountOptions = `
         <option value="">Select Account...</option>
         <?php foreach($data['accounts'] as $acc): ?>
@@ -218,10 +503,10 @@
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><select name="account_id[]" class="form-control" required>${accountOptions}</select></td>
-            <td><input type="text" name="line_description[]" class="form-control" placeholder="Line-specific note (optional)"></td>
+            <td><input type="text" name="line_description[]" class="form-control" placeholder="Line-specific note"></td>
             <td><input type="number" name="debit[]" class="form-control debit-input" step="0.01" min="0" onchange="calcTotals()"></td>
             <td><input type="number" name="credit[]" class="form-control credit-input" step="0.01" min="0" onchange="calcTotals()"></td>
-            <td><button type="button" class="btn btn-danger" onclick="removeRow(this)">X</button></td>
+            <td><button type="button" class="sf-btn danger" onclick="removeRow(this)"><i class="fa-solid fa-trash"></i></button></td>
         `;
         tbody.appendChild(tr);
     }
@@ -253,22 +538,22 @@
         if (linesCount === 0) {
             btnSubmit.disabled = true;
             btnSubmit.style.opacity = '0.5';
-            warning.innerText = 'Error: The journal entry is empty. Please add at least 2 lines.';
+            warning.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Error: The journal entry is empty. Please add at least 2 lines.';
             warning.style.display = 'inline-block';
         } else if (linesCount < 2) {
             btnSubmit.disabled = true;
             btnSubmit.style.opacity = '0.5';
-            warning.innerText = 'Error: A journal entry must have at least 2 lines to balance.';
+            warning.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Error: A journal entry must have at least 2 lines to balance.';
             warning.style.display = 'inline-block';
-        } else if (debits !== credits) {
+        } else if (Math.abs(debits - credits) > 0.001) {
             btnSubmit.disabled = true;
             btnSubmit.style.opacity = '0.5';
-            warning.innerText = 'Error: Debits and Credits must balance!';
+            warning.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Error: Debits and Credits must balance!';
             warning.style.display = 'inline-block';
         } else if (debits === 0) {
             btnSubmit.disabled = true;
             btnSubmit.style.opacity = '0.5';
-            warning.innerText = 'Error: Total Debit and Credit amounts must be greater than zero.';
+            warning.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Error: Total Debit and Credit amounts must be greater than zero.';
             warning.style.display = 'inline-block';
         } else {
             btnSubmit.disabled = false;
@@ -319,63 +604,26 @@
         
         previousState.lines.forEach((line, index) => {
             const tr = document.createElement('tr');
-            const isInitial = index < 2; // Initial rows don't have delete button
+            const isInitial = index < 2; 
             tr.innerHTML = `
                 <td><select name="account_id[]" class="form-control" required>${accountOptions}</select></td>
-                <td><input type="text" name="line_description[]" class="form-control" placeholder="Line-specific note (optional)" value="${escapeHtml(line.line_description)}"></td>
+                <td><input type="text" name="line_description[]" class="form-control" placeholder="Line-specific note" value="${escapeHtml(line.line_description)}"></td>
                 <td><input type="number" name="debit[]" class="form-control debit-input" step="0.01" min="0" value="${line.debit}" onchange="calcTotals()"></td>
                 <td><input type="number" name="credit[]" class="form-control credit-input" step="0.01" min="0" value="${line.credit}" onchange="calcTotals()"></td>
-                <td>${isInitial ? '' : '<button type="button" class="btn btn-danger" onclick="removeRow(this)">X</button>'}</td>
+                <td>${isInitial ? '' : '<button type="button" class="sf-btn danger" onclick="removeRow(this)"><i class="fa-solid fa-trash"></i></button>'}</td>
             `;
             tbody.appendChild(tr);
             tr.querySelector('select').value = line.account_id;
         });
 
         previousState = null;
-        document.getElementById('undoTemplateBtn').classList.add('hidden');
-        
-        showFeedback("Prior state restored successfully.");
+        document.getElementById('undoTemplateBtn').style.display = 'none';
         calcTotals();
     }
 
-    function showFeedback(message) {
-        let toast = document.getElementById('journalFeedbackToast');
-        if (!toast) {
-            toast = document.createElement('div');
-            toast.id = 'journalFeedbackToast';
-            toast.style.position = 'fixed';
-            toast.style.bottom = '20px';
-            toast.style.right = '20px';
-            toast.style.background = '#34c759';
-            toast.style.color = '#fff';
-            toast.style.padding = '12px 24px';
-            toast.style.borderRadius = '8px';
-            toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-            toast.style.zIndex = '9999';
-            toast.style.fontFamily = 'sans-serif';
-            toast.style.fontSize = '14px';
-            toast.style.fontWeight = '600';
-            toast.style.transition = 'opacity 0.3s, transform 0.3s';
-            document.body.appendChild(toast);
-        }
-        toast.textContent = message;
-        toast.style.opacity = '1';
-        toast.style.transform = 'translateY(0)';
-        toast.classList.remove('hidden');
-        
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(10px)';
-            setTimeout(() => {
-                toast.classList.add('hidden');
-            }, 300);
-        }, 3000);
-    }
-    
     function loadTemplate(type) {
         if (!type) return;
 
-        // Check if there is existing data that would be lost
         let hasData = false;
         const tbody = document.getElementById('journalBody');
         const selects = tbody.querySelectorAll('select');
@@ -384,28 +632,22 @@
         const descInput = document.querySelector('input[name="description"]');
         const refInput = document.querySelector('input[name="reference"]');
         
-        if (descInput.value || refInput.value) {
-            hasData = true;
-        }
+        if (descInput.value || refInput.value) hasData = true;
         selects.forEach(sel => { if (sel.value) hasData = true; });
         debits.forEach(deb => { if (deb.value && parseFloat(deb.value) > 0) hasData = true; });
         credits.forEach(cred => { if (cred.value && parseFloat(cred.value) > 0) hasData = true; });
 
         if (hasData) {
-            if (!confirm("Loading this template will clear your current journal lines. Do you want to proceed?")) {
+            if (!confirm("Loading this template will clear your current journal lines. Proceed?")) {
                 document.getElementById('templateSelector').value = '';
                 return;
             }
         }
 
-        // Capture current state before loading new template
         captureState();
-        document.getElementById('undoTemplateBtn').classList.remove('hidden');
+        document.getElementById('undoTemplateBtn').style.display = 'inline-block';
 
-        // Clear existing lines to start fresh
         tbody.innerHTML = '';
-
-        // Add 2 lines
         addRow();
         addRow();
 
@@ -425,7 +667,7 @@
             match2 = options2.find(opt => opt.text.toLowerCase().includes('cash') || opt.text.toLowerCase().includes('bank'));
         } else if (type === 'utility') {
             memo = "Utility Bill payment";
-            match1 = options1.find(opt => opt.text.toLowerCase().includes('utilit') || opt.text.toLowerCase().includes('electricity') || opt.text.toLowerCase().includes('water'));
+            match1 = options1.find(opt => opt.text.toLowerCase().includes('utilit') || opt.text.toLowerCase().includes('electric') || opt.text.toLowerCase().includes('water'));
             match2 = options2.find(opt => opt.text.toLowerCase().includes('cash') || opt.text.toLowerCase().includes('bank'));
         } else if (type === 'revenue') {
             memo = "Record customer payment receipt";
@@ -440,19 +682,11 @@
         if (match1) newSelects[0].value = match1.value;
         if (match2) newSelects[1].value = match2.value;
 
-        // Set memo
         document.querySelector('input[name="description"]').value = memo;
-
-        // Pre-fill placeholder/focus
         newDebits[0].focus();
-        
-        // Reset selector
         document.getElementById('templateSelector').value = '';
-
-        showFeedback("Template loaded! Rent/Utilities/Revenue/Payroll accounts pre-filled.");
         calcTotals();
     }
     
-    // Run once on load to disable button initially
     calcTotals();
 </script>

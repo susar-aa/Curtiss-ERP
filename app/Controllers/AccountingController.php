@@ -317,12 +317,19 @@ class AccountingController extends Controller {
     public function journal(): void {
         $this->generateCsrfToken();
         
+        $filters = [
+            'search' => $_GET['search'] ?? '',
+            'status' => $_GET['status'] ?? 'All',
+            'start_date' => $_GET['start_date'] ?? '',
+            'end_date' => $_GET['end_date'] ?? ''
+        ];
+        
         $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
         if ($page < 1) $page = 1;
         $limit = 20;
         $offset = ($page - 1) * $limit;
         
-        $totalEntries = $this->journalModel->getEntriesCount();
+        $totalEntries = $this->journalModel->getEntriesCount($filters);
         $totalPages = ceil($totalEntries / $limit);
         if ($totalPages < 1) $totalPages = 1;
         if ($page > $totalPages) {
@@ -330,7 +337,7 @@ class AccountingController extends Controller {
             $offset = ($page - 1) * $limit;
         }
 
-        $entries = $this->journalModel->getAllEntries($limit, $offset);
+        $entries = $this->journalModel->getAllEntries($limit, $offset, $filters);
 
         $data = [
             'title' => 'General Journal',
@@ -340,6 +347,7 @@ class AccountingController extends Controller {
             'page' => $page,
             'total_pages' => $totalPages,
             'total_entries' => $totalEntries,
+            'filters' => $filters,
             'error' => '',
             'success' => ''
         ];
