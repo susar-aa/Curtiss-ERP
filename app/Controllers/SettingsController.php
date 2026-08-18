@@ -133,9 +133,9 @@ class SettingsController extends Controller {
                     ORDER BY u.username ASC");
         $reps = $db->resultSet() ?: [];
 
-        $selectedRepId = isset($_GET['rep_user_id']) ? intval($_GET['rep_user_id']) : 0;
-        $month = isset($_GET['month']) && $_GET['month'] !== '' ? $_GET['month'] : '00';
-        $year = isset($_GET['year']) && $_GET['year'] !== '' ? $_GET['year'] : '0000';
+        $selectedRepId = isset($_POST['rep_user_id']) ? intval($_POST['rep_user_id']) : (isset($_GET['rep_user_id']) ? intval($_GET['rep_user_id']) : 0);
+        $month = isset($_POST['month']) && $_POST['month'] !== '' ? $_POST['month'] : (isset($_GET['month']) && $_GET['month'] !== '' ? $_GET['month'] : '00');
+        $year = isset($_POST['year']) && $_POST['year'] !== '' ? $_POST['year'] : (isset($_GET['year']) && $_GET['year'] !== '' ? $_GET['year'] : '0000');
 
         $data = [
             'title' => 'Rep Targets & KPI Weights',
@@ -155,6 +155,7 @@ class SettingsController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Check which form was submitted (Save Targets or Save Global Weights)
             if (isset($_POST['save_targets'])) {
+                error_log("SAVE TARGETS SUBMITTED: GET=" . json_encode($_GET) . " POST=" . json_encode($_POST));
                 $postData = [
                     'user_id' => $selectedRepId,
                     'month' => $month,

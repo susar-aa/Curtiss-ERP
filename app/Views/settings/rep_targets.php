@@ -113,9 +113,12 @@
                 <i class="ph ph-target"></i> <?= $data['selected_rep_id'] == 0 ? 'Global Default' : 'Representative Specific' ?> Performance Targets
             </h3>
             
-            <form method="POST" action="<?= APP_URL ?>/settings/rep_targets?rep_user_id=<?= $data['selected_rep_id'] ?>&month=<?= $data['month'] ?>&year=<?= $data['year'] ?>" style="margin-top: 15px;">
+            <form method="POST" action="<?= APP_URL ?>/settings/rep_targets" style="margin-top: 15px;">
                 <input type="hidden" name="csrf_token" value="<?= $data['csrf_token'] ?>">
                 <input type="hidden" name="save_targets" value="1">
+                <input type="hidden" name="rep_user_id" value="<?= $data['selected_rep_id'] ?>">
+                <input type="hidden" name="month" value="<?= $data['month'] ?>">
+                <input type="hidden" name="year" value="<?= $data['year'] ?>">
                 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
                     <div class="form-group">
@@ -164,9 +167,12 @@
                 Define how much weight each metric contributes to the overall representative performance score. All weights must sum up to 100%.
             </p>
             
-            <form method="POST" action="<?= APP_URL ?>/settings/rep_targets?rep_user_id=<?= $data['selected_rep_id'] ?>&month=<?= $data['month'] ?>&year=<?= $data['year'] ?>" style="margin-top: 15px;">
+            <form method="POST" action="<?= APP_URL ?>/settings/rep_targets" style="margin-top: 15px;">
                 <input type="hidden" name="csrf_token" value="<?= $data['csrf_token'] ?>">
                 <input type="hidden" name="save_weights" value="1">
+                <input type="hidden" name="rep_user_id" value="<?= $data['selected_rep_id'] ?>">
+                <input type="hidden" name="month" value="<?= $data['month'] ?>">
+                <input type="hidden" name="year" value="<?= $data['year'] ?>">
                 
                 <table class="perf-table">
                     <thead>
