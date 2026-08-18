@@ -113,7 +113,7 @@
                 <i class="ph ph-target"></i> <?= $data['selected_rep_id'] == 0 ? 'Global Default' : 'Representative Specific' ?> Performance Targets
             </h3>
             
-            <form method="POST" action="<?= APP_URL ?>/settings/rep_targets" style="margin-top: 15px;">
+            <form method="POST" action="<?= APP_URL ?>/settings/rep_targets" style="margin-top: 15px;" data-resilient="false">
                 <input type="hidden" name="csrf_token" value="<?= $data['csrf_token'] ?>">
                 <input type="hidden" name="save_targets" value="1">
                 <input type="hidden" name="rep_user_id" value="<?= $data['selected_rep_id'] ?>">
@@ -167,7 +167,7 @@
                 Define how much weight each metric contributes to the overall representative performance score. All weights must sum up to 100%.
             </p>
             
-            <form method="POST" action="<?= APP_URL ?>/settings/rep_targets" style="margin-top: 15px;">
+            <form method="POST" action="<?= APP_URL ?>/settings/rep_targets" style="margin-top: 15px;" data-resilient="false">
                 <input type="hidden" name="csrf_token" value="<?= $data['csrf_token'] ?>">
                 <input type="hidden" name="save_weights" value="1">
                 <input type="hidden" name="rep_user_id" value="<?= $data['selected_rep_id'] ?>">
