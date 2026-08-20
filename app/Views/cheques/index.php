@@ -499,7 +499,7 @@
                                             <td style="text-align: right; font-weight: 600;"><?= number_format($chk->amount, 2) ?></td>
                                             <td style="text-align: center;"><?= date('d-M-Y', strtotime($chk->banking_date)) ?></td>
                                             <td style="text-align: right;">
-                                                <button type="button" class="sf-btn" style="background:var(--c-red); color:white; font-size: 12px; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer;" onclick="openReturnModal(<?= $chk->id ?>, '<?= htmlspecialchars(addslashes($chk->cheque_number)) ?>', '<?= htmlspecialchars(addslashes($chk->customer_name ?? $chk->payee_name)) ?>', <?= $chk->amount ?>)">
+                                                <button type="button" class="sf-btn" style="background:var(--c-red); color:white; font-size: 12px; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer;" onclick="openReturnModal(<?= $chk->id ?>, '<?= htmlspecialchars(addslashes($chk->cheque_number ?: '')) ?>', '<?= htmlspecialchars(addslashes($chk->customer_name ?? $chk->payee_name ?? '')) ?>', <?= $chk->amount ?: 0 ?>)">
                                                     Mark Returned
                                                 </button>
                                             </td>

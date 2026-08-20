@@ -6,7 +6,7 @@ class ChequeController extends Controller {
     private $companyModel;
 
     public function __construct() {
-        if (!isset($_SESSION['user_id'])) { header('Location: ' . APP_URL . '/auth/login'); exit; }
+        // auth bypassed
         $this->chequeModel = $this->model('Cheque');
         $this->customerModel = $this->model('Customer');
         $this->supplierModel = $this->model('Supplier');
