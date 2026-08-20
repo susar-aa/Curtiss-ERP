@@ -4,6 +4,10 @@ $db = new Database();
 $totalOutstanding = 0;
 if (!empty($data['invoice']->customer_id)) {
     // Failsafe: Fetch the customer's true total outstanding balance for the "Previous Balance" calculation
+    $db->query("SELECT opening_balance FROM customers WHERE id = :id");
+    $db->bind(':id', $data['invoice']->customer_id);
+    $openingBal = $db->single()->opening_balance ?? 0;
+
     $db->query("
         SELECT 
             COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) as total_billed
@@ -20,7 +24,7 @@ if (!empty($data['invoice']->customer_id)) {
     $db->bind(':id', $data['invoice']->customer_id);
     $credited = $db->single()->total_credited ?? 0;
 
-    $totalOutstanding = $billed - $paid - $credited;
+    $totalOutstanding = $openingBal + $billed - $paid - $credited;
 }
 
 // Fetch sales representative information

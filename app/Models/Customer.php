@@ -127,7 +127,7 @@ class Customer {
             SELECT 'Credit Note' as type, id, credit_note_number as ref, note_date as date, 0 as debit, total_amount as credit, created_at 
             FROM credit_notes WHERE customer_id = :c3
             UNION ALL
-            SELECT 'Cheque Returned' as type, id, CONCAT('Cheque #', cheque_number, ' (', bank_name, ') - ', status) as ref, banking_date as date, amount as debit, 0 as credit, created_at 
+            SELECT 'Cheque Returned' as type, id, CONCAT('Cheque #', cheque_number, ' (', bank_name, ') - ', status, IF(return_reason IS NOT NULL, CONCAT(' [', return_reason, ']'), '')) as ref, COALESCE(returned_date, banking_date) as date, (amount + COALESCE(return_charge, 0)) as debit, 0 as credit, created_at 
             FROM cheques WHERE customer_id = :c4 AND status IN ('Returned', 'Rejected', 'Bounced')
             UNION ALL
             SELECT 'Opening Bal' as type, id, 'System generated' as ref, COALESCE(opening_balance_date, DATE(created_at)) as date, opening_balance as debit, 0 as credit, created_at 

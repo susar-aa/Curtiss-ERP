@@ -1938,6 +1938,7 @@ if (!function_exists('hasPermission')) {
                             <a href="<?= APP_URL ?>/accounting/close_year" class="fs-link"><i class="ph ph-lock"></i> Close Financial Year</a>
                             <a href="<?= APP_URL ?>/banking" class="fs-link"><i class="ph ph-bank"></i> Banking</a>
                             <a href="<?= APP_URL ?>/deposit" class="fs-link"><i class="ph ph-receipt"></i> Bank Deposits</a>
+                            <a href="<?= APP_URL ?>/chequereturn" class="fs-link"><i class="ph ph-arrow-u-down-left"></i> Cheque Returns</a>
                         <?php endif; ?>
                         <?php if (hasPermission('customerpayment')): ?><a href="<?= APP_URL ?>/customerpayment" class="fs-link"><i class="ph ph-hand-coins"></i> Customer Payments</a><?php endif; ?>
                         <?php if (hasPermission('supplierpayment')): ?><a href="<?= APP_URL ?>/payment" class="fs-link"><i class="ph ph-hand-deposit"></i> Payments</a><?php endif; ?>

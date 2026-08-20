@@ -97,6 +97,46 @@ class Cheque {
         return $this->db->execute();
     }
 
+    public function returnCustomerCheque($chequeId, $reason, $date, $charge, $chargeAccountId, $userId) {
+        try {
+            $this->db->beginTransaction();
+
+            $this->db->query("SELECT status, bank_account_id FROM cheques WHERE id = :id FOR UPDATE");
+            $this->db->bind(':id', $chequeId);
+            $old = $this->db->single();
+
+            if (!$old || in_array($old->status, ['Bounced', 'Returned', 'Cancelled'])) {
+                $this->db->rollBack();
+                return false;
+            }
+
+            $this->db->query("UPDATE cheques 
+                              SET status = 'Returned', 
+                                  return_reason = :reason, 
+                                  returned_date = :rdate, 
+                                  return_charge = :charge, 
+                                  return_charge_account_id = :cacc, 
+                                  returned_by = :uid 
+                              WHERE id = :id");
+            $this->db->bind(':id', $chequeId);
+            $this->db->bind(':reason', $reason);
+            $this->db->bind(':rdate', $date);
+            $this->db->bind(':charge', floatval($charge));
+            $this->db->bind(':cacc', !empty($chargeAccountId) ? intval($chargeAccountId) : null);
+            $this->db->bind(':uid', $userId);
+            $this->db->execute();
+
+            $this->postChequeJournalEntry($chequeId, 'Returned', $old->status);
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            error_log("returnCustomerCheque error: " . $e->getMessage());
+            return false;
+        }
+    }
+
     private function postChequeJournalEntry($chequeId, $newStatus, $oldStatus) {
         $this->db->query("SELECT * FROM cheques WHERE id = :id");
         $this->db->bind(':id', $chequeId);
@@ -177,6 +217,15 @@ class Cheque {
                     ['account_id' => $arAccountId, 'debit' => $amount, 'credit' => 0.00, 'description' => $desc],
                     ['account_id' => $creditAccount, 'debit' => 0.00, 'credit' => $amount, 'description' => $desc]
                 ];
+                
+                if (isset($chk->return_charge) && $chk->return_charge > 0 && !empty($chk->return_charge_account_id)) {
+                    $chargeAmt = floatval($chk->return_charge);
+                    $chargeAcc = intval($chk->return_charge_account_id);
+                    // Record the return charge: Debit the selected expense account, Credit the Bank/Cheque in Hand
+                    $lines[] = ['account_id' => $chargeAcc, 'debit' => $chargeAmt, 'credit' => 0.00, 'description' => "Return Charge for Cheque #" . $chequeNum];
+                    $lines[] = ['account_id' => $creditAccount, 'debit' => 0.00, 'credit' => $chargeAmt, 'description' => "Return Charge for Cheque #" . $chequeNum];
+                }
+                
                 $this->insertJournalEntry($bankingDate, $ref, $desc, $lines, $uid);
 
                 // Reverse corresponding active customer payment and re-open invoices to Unpaid
