@@ -240,6 +240,11 @@ class ChartOfAccount {
         return $parentId;
     }
 
+    public function getExpenseAccounts() {
+        $this->db->query("SELECT * FROM chart_of_accounts WHERE account_type = 'Expense' AND is_active = 1 ORDER BY account_code ASC");
+        return $this->db->resultSet() ?: [];
+    }
+
     public function getBankAccounts($parentId) {
         $this->db->query("SELECT coa.*, ba.id as bank_account_id, ba.bank_name, ba.branch_name, ba.branch_code, 
                                  ba.account_holder_name, ba.account_number, ba.nickname, ba.account_type, ba.currency, 
