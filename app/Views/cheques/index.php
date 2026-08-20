@@ -494,7 +494,7 @@
                                                     <?= htmlspecialchars($chk->cheque_number) ?>
                                                 </span>
                                             </td>
-                                            <td><strong style="font-weight:600;"><?= htmlspecialchars($chk->customer_name ?? $chk->payee_name) ?></strong></td>
+                                            <td><strong style="font-weight:600;"><?= htmlspecialchars($chk->customer_name ?? $chk->payee_name ?? '') ?></strong></td>
                                             <td><?= htmlspecialchars($chk->bank_name) ?></td>
                                             <td style="text-align: right; font-weight: 600;"><?= number_format($chk->amount, 2) ?></td>
                                             <td style="text-align: center;"><?= date('d-M-Y', strtotime($chk->banking_date)) ?></td>
