@@ -1075,11 +1075,7 @@ $invoiceBalance = max(0, $thisInvoiceGrandTotal - $estimatePaidAmount);
                             </tr>
                         <?php endif; ?>
 
-                        <tr>
-                            <th>Net Subtotal:</th>
-                            <td><?= number_format($netSubTotal, 2) ?></td>
-                        </tr>
-                        
+
                         <?php if($taxAmount > 0): ?>
                         <tr>
                             <th>Tax (<?= htmlspecialchars($data['estimate']->tax_name ?? 'Tax') ?> <?= $data['estimate']->rate_percentage ?? '' ?>%):</th>
@@ -1087,10 +1083,6 @@ $invoiceBalance = max(0, $thisInvoiceGrandTotal - $estimatePaidAmount);
                         </tr>
                         <?php endif; ?>
 
-                        <tr class="grand-total-row">
-                            <th>Estimate Total:</th>
-                            <td><?= number_format($thisInvoiceGrandTotal, 2) ?></td>
-                        </tr>
 
                         <?php if ($estimatePaidAmount > 0.01): ?>
                             <tr>
@@ -1103,10 +1095,6 @@ $invoiceBalance = max(0, $thisInvoiceGrandTotal - $estimatePaidAmount);
                             </tr>
                         <?php endif; ?>
 
-                        <tr class="due-row">
-                            <th style="padding-top: 10px;">Total Account Balance:</th>
-                            <td style="padding-top: 10px;"><?= number_format($totalOutstanding, 2) ?></td>
-                        </tr>
                     </table>
                 </div>
             </div>
@@ -1260,10 +1248,6 @@ $invoiceBalance = max(0, $thisInvoiceGrandTotal - $estimatePaidAmount);
                         </tr>
                         <?php endif; ?>
 
-                        <tr>
-                            <th style="text-align: right; padding: 4px;">Net Subtotal:</th>
-                            <td class="mso-num" style="padding: 4px;"><?= $netSubTotal ?></td>
-                        </tr>
 
                         <?php if($taxAmount > 0): ?>
                         <tr>
@@ -1272,10 +1256,6 @@ $invoiceBalance = max(0, $thisInvoiceGrandTotal - $estimatePaidAmount);
                         </tr>
                         <?php endif; ?>
 
-                        <tr>
-                            <th style="border-top: 2px solid #000; border-bottom: 2px solid #000; text-align: right; padding: 6px;">Current Estimate Total:</th>
-                            <td class="mso-num" style="border-top: 2px solid #000; border-bottom: 2px solid #000; font-weight: bold; padding: 6px;"><?= $thisInvoiceGrandTotal ?></td>
-                        </tr>
 
                         <?php if ($estimatePaidAmount > 0.01): ?>
                             <tr>
@@ -1287,12 +1267,6 @@ $invoiceBalance = max(0, $thisInvoiceGrandTotal - $estimatePaidAmount);
                                 <td class="mso-num" style="padding: 4px;"><?= $invoiceBalance ?></td>
                             </tr>
                         <?php endif; ?>
-                        <tr>
-                            <td colspan="4"></td>
-                            <th style="border-bottom: 2px solid #000; text-align: right; padding: 6px;">Total Account Balance:</th>
-                            <td class="mso-num" style="border-bottom: 2px solid #000; font-weight: bold; padding: 6px;"><?= $totalOutstanding ?></td>
-                        </tr>
-
                     </table>
                 </body>
                 </html>
