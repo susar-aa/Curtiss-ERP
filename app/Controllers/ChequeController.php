@@ -71,6 +71,7 @@ class ChequeController extends Controller {
             'kpi_cleared' => $totalCleared,
             'kpi_next_date' => $nextBankingDate,
             'kpi_next_amount' => $nextBankingAmount,
+            'expense_accounts' => $this->coaModel->getExpenseAccounts(),
             'error' => '',
             'success' => ''
         ];
@@ -110,6 +111,21 @@ class ChequeController extends Controller {
             } elseif ($_POST['action'] == 'delete_cheque') {
                 if ($this->chequeModel->deleteCheque($_POST['delete_id'])) {
                     header('Location: ' . APP_URL . '/cheque?success=deleted'); exit;
+                } else {
+                    header('Location: ' . APP_URL . '/cheque?error=delete_failed'); exit;
+                }
+            } elseif ($_POST['action'] == 'process_return') {
+                $cheque_id = $_POST['cheque_id'];
+                $return_reason = $_POST['return_reason'] === 'Other' ? trim($_POST['other_reason']) : $_POST['return_reason'];
+                $return_date = $_POST['return_date'];
+                $return_charge = !empty($_POST['return_charge']) ? floatval($_POST['return_charge']) : 0;
+                $charge_account_id = !empty($_POST['charge_account_id']) ? intval($_POST['charge_account_id']) : null;
+                $returned_by = $_SESSION['user_id'];
+
+                if ($this->chequeModel->returnCustomerCheque($cheque_id, $return_reason, $return_date, $return_charge, $charge_account_id, $returned_by)) {
+                    header('Location: ' . APP_URL . '/cheque?success=Cheque marked as returned and customer payment reversed.'); exit;
+                } else {
+                    header('Location: ' . APP_URL . '/cheque?error=Failed to process cheque return.'); exit;
                 }
             }
         }
