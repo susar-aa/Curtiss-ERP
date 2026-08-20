@@ -12,6 +12,7 @@ class Payment {
     public function getCustomerOutstandingList() {
         $this->db->query("
             SELECT c.id, c.name, c.phone, c.email,
+                   c.opening_balance + 
                    (SELECT COALESCE(SUM(total_amount - COALESCE(CASE WHEN global_discount_type = '%' THEN (total_amount * global_discount_val / 100) ELSE global_discount_val END, 0) + COALESCE(tax_amount, 0)), 0) FROM invoices WHERE customer_id = c.id AND status != 'Voided') 
                    - 
                    (SELECT COALESCE(SUM(amount), 0) FROM customer_payments WHERE customer_id = c.id AND status = 'Active') 
