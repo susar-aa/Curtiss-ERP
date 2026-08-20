@@ -865,7 +865,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                                                     if ($item->item_variation_option_id && !empty($catItem->variations)) {
                                                         foreach($catItem->variations as $v) {
                                                             if ($v->id == $item->item_variation_option_id) {
-                                                                $displayName = "{$catItem->name} - {$v->variation_name}: {$v->value_name}";
+                                                                $displayName = "{$catItem->name} - {$v->value_name}";
                                                                 if ($v->sku) $sku = $v->sku;
                                                             }
                                                         }
@@ -890,7 +890,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                                             <input type="hidden" name="desc[]" class="desc-hidden" value="<?= htmlspecialchars($displayName) ?>">
                                         </td>
                                         <td>
-                                            <input type="number" name="qty[]" step="any" min="0.01" value="<?= $item->quantity ?>" class="form-control-cell num qty-input" oninput="calculateRowPrices(this.closest('tr'))" required>
+                                            <input type="number" name="qty[]" step="any" min="0.01" value="<?= $item->quantity ?>" class="form-control-cell num qty-input" oninput="calculateRowPrices(this.closest('tr'), false)" required>
                                         </td>
                                         <td>
                                             <input type="number" name="price[]" step="0.01" min="0" value="<?= number_format($unitCost, 2, '.', '') ?>" class="form-control-cell num cost-input" oninput="calculateRowPrices(this.closest('tr'))" required>
@@ -1021,9 +1021,9 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                 searchableItems.push({
                     item_id: item.id,
                     var_opt_id: v.id,
-                    display_name: `${item.name} - ${v.variation_name}: ${v.value_name}`,
+                    display_name: `${item.name} - ${v.value_name}`,
                     name: item.name,
-                    variation_label: `${v.variation_name}: ${v.value_name}`,
+                    variation_label: `${v.value_name}`,
                     sku: v.sku || item.item_code || '',
                     vendor_id: item.vendor_id,
                     cost: parseFloat(v.cost && parseFloat(v.cost) > 0 ? v.cost : (item.cost_price && parseFloat(item.cost_price) > 0 ? item.cost_price : (item.cost ?? 0))),
@@ -1362,7 +1362,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
     });
 
     // ═══ TABLE CALCULATIONS & TWO-WAY REACTIVE PRICING ═══
-    function calculateRowPrices(row) {
+    function calculateRowPrices(row, updatePrices = true) {
         if (!row) return;
         const qtyInput = row.querySelector('.qty-input');
         const costInput = row.querySelector('.cost-input');
@@ -1382,7 +1382,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
             lineTotalDisplay.textContent = lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
-        if (cost > 0) {
+        if (updatePrices && cost > 0) {
             const calculatedRetail = cost + (cost * retailMargin / 100);
             const calculatedWholesale = cost + (cost * wholesaleMargin / 100);
             if (retailPriceInput) retailPriceInput.value = calculatedRetail.toFixed(2);
@@ -1499,7 +1499,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                 <input type="hidden" name="desc[]" class="desc-hidden" value="${escapeHtml(desc)}">
             </td>
             <td>
-                <input type="number" name="qty[]" step="any" min="0.01" value="${qty}" class="form-control-cell num qty-input" oninput="calculateRowPrices(this.closest('tr'))" required>
+                <input type="number" name="qty[]" step="any" min="0.01" value="${qty}" class="form-control-cell num qty-input" oninput="calculateRowPrices(this.closest('tr'), false)" required>
             </td>
             <td>
                 <input type="number" name="price[]" step="0.01" min="0" value="${cost.toFixed(2)}" class="form-control-cell num cost-input" oninput="calculateRowPrices(this.closest('tr'))" required>
@@ -1609,7 +1609,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                     row.querySelector('.retail-price-input').value = retailPrice.toFixed(2);
                     row.querySelector('.wholesale-price-input').value = wholesalePrice.toFixed(2);
                     
-                    calculateRowPrices(row);
+                    calculateRowPrices(row, false);
 
                     const qtyInput = row.querySelector('.qty-input');
                     if (qtyInput) {
@@ -1688,7 +1688,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
         poBody.querySelectorAll('tr').forEach(row => {
             bindInlineRowSearch(row);
             bindRowEnterTraversal(row);
-            calculateRowPrices(row);
+            calculateRowPrices(row, false);
         });
         renumberRows();
         recalcGrandTotals();
