@@ -2,79 +2,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
-<style>
-/* ============================================================
-   SF PRO + APPLE DESIGN LANGUAGE — CHEQUE MANAGEMENT
-   ============================================================ */
-:root {
-    --c-bg:           #f2f2f7;
-    --c-surface:      #ffffff;
-    --c-surface2:     #f9f9fb;
-    --c-fill:         rgba(120,120,128,0.12);
-    --c-fill2:        rgba(120,120,128,0.16);
-    --c-separator:    rgba(60,60,67,0.12);
-    --c-separator2:   rgba(60,60,67,0.06);
-
-    --c-blue:         #007aff;
-    --c-blue-light:   #e5f2ff;
-    --c-green:        #34c759;
-    --c-green-light:  #e6f9ec;
-    --c-orange:       #ff9500;
-    --c-orange-light: #fff4e5;
-    --c-red:          #ff3b30;
-    --c-red-light:    #fff0ef;
-    --c-purple:       #af52de;
-    --c-purple-light: #f5eeff;
-
-    --f-system: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', sans-serif;
-    --f-mono:   ui-monospace, 'SF Mono', 'Menlo', 'Monaco', monospace;
-
-    --t-primary:   #1c1c1e;
-    --t-secondary: #636366;
-    --t-label:     #8e8e93;
-
-    --shadow-xs:  0 1px 2px rgba(0,0,0,0.04);
-    --shadow-sm:  0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
-    --shadow-md:  0 8px 24px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
-    --shadow-xl:  0 24px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.06);
-
-    --r-md: 14px;
-    --r-xl: 26px;
-    --r-pill: 999px;
-
-    --dur-fast:    0.18s;
-    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.inv-wrap {
-    max-width: 1420px; margin: 0 auto;
-    padding: 0px 24px 140px;
-    font-family: var(--f-system);
-    color: var(--t-primary);
-}
-
-.inv-header { margin-bottom: 28px; }
-.inv-eyebrow {
-    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
-    text-transform: uppercase; color: var(--c-blue); margin-bottom: 6px;
-}
-.inv-title { font-size: 32px; font-weight: 700; letter-spacing: -0.03em; color: var(--t-primary); }
-
-.sf-alert {
-    display: flex; align-items: flex-start; gap: 12px;
-    background: var(--c-surface); border-radius: var(--r-md);
-    padding: 14px 16px; margin-bottom: 20px;
-    box-shadow: var(--shadow-xs); border: 0.5px solid var(--c-separator);
-    border-left-width: 3px; font-size: 14px;
-}
-.sf-alert.success { border-left-color: var(--c-green); }
-.sf-alert.error   { border-left-color: var(--c-red); }
-.sf-alert-icon { font-size: 18px; flex-shrink: 0; padding-top: 1px; }
-.sf-alert.success .sf-alert-icon { color: var(--c-green); }
-.sf-alert.error   .sf-alert-icon { color: var(--c-red); }
-.sf-alert-title { font-weight: 600; color: var(--t-primary); margin-bottom: 2px; }
-.sf-alert-msg   { color: var(--t-secondary); font-size: 13px; }
-
+<<style>
 /* KPI Grid */
 .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }
 .kpi-card {
@@ -87,7 +15,7 @@
 .kpi-val { font-size: 28px; font-weight: 700; color: var(--t-primary); }
 .kpi-sub { font-size: 13px; color: var(--t-label); font-weight: 500; }
 
-/* Table Section */
+/* Table Section Date Group */
 .date-group {
     background: var(--c-surface2); padding: 10px 16px;
     font-size: 13px; font-weight: 600; color: var(--t-secondary);
@@ -96,22 +24,6 @@
     display: flex; justify-content: space-between;
 }
 .date-group.overdue { background: var(--c-red-light); color: var(--c-red); border-color: rgba(255,59,48,0.2); }
-
-.table-panel {
-    background: var(--c-surface); border-radius: var(--r-xl);
-    border: 0.5px solid var(--c-separator); box-shadow: var(--shadow-sm);
-    overflow: hidden; margin-bottom: 20px;
-}
-.inv-table { width: 100%; border-collapse: collapse; }
-.inv-table thead th {
-    padding: 13px 18px; font-size: 11px; font-weight: 700;
-    letter-spacing: 0.06em; text-transform: uppercase;
-    color: var(--t-label); background: var(--c-surface2);
-    border-bottom: 0.5px solid var(--c-separator); text-align: left;
-}
-.inv-table tbody tr { transition: background var(--dur-fast); border-bottom: 0.5px solid var(--c-separator2); }
-.inv-table tbody tr:hover { background: var(--c-fill2); }
-.inv-table td { padding: 14px 18px; font-size: 14px; color: var(--t-primary); vertical-align: middle; }
 
 /* Badges */
 .sf-badge {
@@ -174,45 +86,6 @@
 }
 .cmd-cta:hover { background: #e5e5ea; transform: scale(0.97); }
 
-/* SF Modals */
-.sf-modal {
-    display: none; position: fixed; inset: 0; z-index: 9999;
-    background: rgba(0,0,0,0.4); backdrop-filter: blur(8px);
-    align-items: center; justify-content: center; opacity: 0;
-    transition: opacity var(--dur-fast);
-}
-.sf-modal.open { display: flex; opacity: 1; }
-.sf-modal-box {
-    background: var(--c-surface); width: 540px;
-    border-radius: var(--r-xl); padding: 32px;
-    box-shadow: var(--shadow-xl); border: 0.5px solid var(--c-separator);
-    transform: scale(0.95); transition: transform var(--dur-fast) var(--ease-spring);
-}
-.sf-modal.open .sf-modal-box { transform: scale(1); }
-.sf-modal-box h3 { margin-top: 0; font-size: 22px; margin-bottom: 20px; color: var(--t-primary); }
-.sf-form-group { margin-bottom: 16px; }
-.sf-form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--t-secondary); margin-bottom: 6px; }
-.sf-input {
-    width: 100%; padding: 10px 14px;
-    background: var(--c-surface2); border: 1px solid var(--c-separator);
-    border-radius: var(--r-md); font-family: var(--f-system);
-    font-size: 14px; color: var(--t-primary); box-sizing: border-box;
-    transition: border-color var(--dur-fast), background var(--dur-fast);
-}
-.sf-input:focus { outline: none; border-color: var(--c-blue); background: var(--c-surface); }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.sf-modal-acts { display: flex; justify-content: flex-end; gap: 10px; margin-top: 28px; }
-.sf-btn {
-    padding: 10px 20px; border-radius: var(--r-pill); font-weight: 600; font-size: 14px;
-    border: none; cursor: pointer; transition: background var(--dur-fast); font-family: var(--f-system);
-}
-.sf-btn-ghost { background: var(--c-fill); color: var(--t-primary); }
-.sf-btn-ghost:hover { background: var(--c-fill2); }
-.sf-btn-primary { background: var(--c-blue); color: #fff; }
-.sf-btn-primary:hover { background: #006ce6; }
-.sf-btn-danger { background: var(--c-red); color: #fff; }
-.sf-btn-danger:hover { background: #e03228; }
-
 /* Cheque Viewer Modal */
 .cheque-paper {
     width: 100%; height: 260px;
@@ -236,10 +109,15 @@
 .sf-seg-btn.active { background: var(--c-surface); color: var(--t-primary); box-shadow: var(--shadow-sm); }
 .chq-section { display: none; }
 .chq-section.active { display: block; }
-
 </style>
 
-<div class="inv-wrap">
+<div class="sf-container">
+    <div class="sf-page-header">
+        <div class="sf-page-title">
+            <h1>Cheque Management</h1>
+            <p>Track issuing and receiving of company cheques</p>
+        </div>
+    </div>
 
     <!-- Alerts -->
     <?php if(isset($_GET['success'])): ?>
@@ -311,7 +189,8 @@
                             <span>Deposit Rs: <?= number_format($dayTotal, 2) ?></span>
                         </div>
                         <div class="table-panel" style="border-radius: 0; border-top: none; margin-bottom: 0;">
-                            <table class="inv-table">
+                            <div class="table-responsive">
+                                <table class="sf-table">
                                 <thead>
                                     <tr>
                                         <th style="width: 25%;">Customer (Drawer)</th>
@@ -367,6 +246,7 @@
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -389,7 +269,8 @@
                             <span>Payment Rs: <?= number_format($dayTotal, 2) ?></span>
                         </div>
                         <div class="table-panel" style="border-radius: 0; border-top: none; margin-bottom: 0;">
-                            <table class="inv-table">
+                            <div class="table-responsive">
+                                <table class="sf-table">
                                 <thead>
                                     <tr>
                                         <th style="width: 25%;">Supplier / Payee</th>
@@ -445,6 +326,7 @@
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>

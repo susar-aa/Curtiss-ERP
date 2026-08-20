@@ -1096,7 +1096,88 @@ if (!function_exists('hasPermission')) {
                 background: rgba(0, 0, 0, 0.05); border-color: rgba(0, 0, 0, 0.08);
             }
         }
-    </style>
+/* ============================================================
+   SF PRO DESIGN SYSTEM (GLOBAL COMPONENT CLASSES)
+   ============================================================ */
+.sf-container {
+    max-width: 1420px; margin: 0 auto;
+    padding: 0px 24px 140px;
+    font-family: var(--f-system, -apple-system, sans-serif);
+    color: var(--t-primary, #1c1c1e);
+}
+
+.sf-page-header { margin-bottom: 28px; }
+.sf-page-title h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.03em; color: var(--t-primary, #1c1c1e); margin-bottom: 6px; }
+.sf-page-title p { font-size: 14px; color: var(--t-secondary, #636366); }
+
+.sf-alert {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--c-surface, #ffffff); border-radius: var(--r-md, 14px);
+    padding: 14px 16px; margin-bottom: 20px;
+    box-shadow: var(--shadow-xs, 0 1px 2px rgba(0,0,0,0.04)); border: 0.5px solid var(--c-separator, rgba(60,60,67,0.12));
+    border-left-width: 3px; font-size: 14px;
+}
+.sf-alert.success { border-left-color: var(--c-green, #34c759); }
+.sf-alert.error   { border-left-color: var(--c-red, #ff3b30); }
+.sf-alert-icon { font-size: 18px; flex-shrink: 0; padding-top: 1px; }
+.sf-alert.success .sf-alert-icon { color: var(--c-green, #34c759); }
+.sf-alert.error   .sf-alert-icon { color: var(--c-red, #ff3b30); }
+.sf-alert-title { font-weight: 600; color: var(--t-primary, #1c1c1e); margin-bottom: 2px; }
+.sf-alert-msg   { color: var(--t-secondary, #636366); font-size: 13px; }
+
+.table-panel {
+    background: var(--c-surface, #ffffff); border-radius: var(--r-xl, 26px);
+    border: 0.5px solid var(--c-separator, rgba(60,60,67,0.12)); box-shadow: var(--shadow-sm, 0 2px 8px rgba(0,0,0,0.06));
+    overflow: hidden; margin-bottom: 20px;
+}
+.sf-table { width: 100%; border-collapse: collapse; }
+.sf-table thead th {
+    padding: 13px 18px; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--t-label, #8e8e93); background: var(--c-surface2, #f9f9fb);
+    border-bottom: 0.5px solid var(--c-separator, rgba(60,60,67,0.12)); text-align: left;
+}
+.sf-table tbody tr { transition: background 0.18s; border-bottom: 0.5px solid var(--c-separator2, rgba(60,60,67,0.06)); }
+.sf-table tbody tr:hover { background: var(--c-fill2, rgba(120,120,128,0.16)); }
+.sf-table td { padding: 14px 18px; font-size: 14px; color: var(--t-primary, #1c1c1e); vertical-align: middle; }
+
+.sf-btn {
+    padding: 10px 20px; border-radius: var(--r-pill, 999px); font-weight: 600; font-size: 14px;
+    border: none; cursor: pointer; transition: background 0.18s; font-family: var(--f-system, -apple-system, sans-serif);
+}
+.sf-btn-ghost { background: var(--c-fill, rgba(120,120,128,0.12)); color: var(--t-primary, #1c1c1e); }
+.sf-btn-ghost:hover { background: var(--c-fill2, rgba(120,120,128,0.16)); }
+.sf-btn-primary { background: var(--c-blue, #007aff); color: #fff; }
+.sf-btn-primary:hover { background: #006ce6; }
+.sf-btn-danger { background: var(--c-red, #ff3b30); color: #fff; }
+.sf-btn-danger:hover { background: #e03228; }
+
+.sf-modal {
+    display: none; position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.4); backdrop-filter: blur(8px);
+    align-items: center; justify-content: center; opacity: 0;
+    transition: opacity 0.18s;
+}
+.sf-modal.open { display: flex; opacity: 1; }
+.sf-modal-box {
+    background: var(--c-surface, #ffffff); width: 540px; max-height: 90vh; overflow-y: auto;
+    border-radius: var(--r-xl, 26px); padding: 32px;
+    box-shadow: var(--shadow-xl, 0 24px 48px rgba(0,0,0,0.14)); border: 0.5px solid var(--c-separator, rgba(60,60,67,0.12));
+    transform: scale(0.95); transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.sf-modal.open .sf-modal-box { transform: scale(1); }
+.sf-modal-box h3 { margin-top: 0; font-size: 22px; margin-bottom: 20px; color: var(--t-primary, #1c1c1e); }
+.sf-form-group { margin-bottom: 16px; }
+.sf-form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--t-secondary, #636366); margin-bottom: 6px; }
+.sf-input {
+    width: 100%; padding: 10px 14px;
+    background: var(--c-surface2, #f9f9fb); border: 1px solid var(--c-separator, rgba(60,60,67,0.12));
+    border-radius: var(--r-md, 14px); font-family: var(--f-system, -apple-system, sans-serif);
+    font-size: 14px; color: var(--t-primary, #1c1c1e); box-sizing: border-box;
+    transition: border-color 0.18s, background 0.18s;
+}
+.sf-input:focus { outline: none; border-color: var(--c-blue, #007aff); background: var(--c-surface, #ffffff); }
+</style>
 </head>
 <body>
 
