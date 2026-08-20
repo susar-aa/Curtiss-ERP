@@ -1152,21 +1152,6 @@ if (!function_exists('hasPermission')) {
 .sf-btn-danger { background: var(--c-red, #ff3b30); color: #fff; }
 .sf-btn-danger:hover { background: #e03228; }
 
-.sf-modal {
-    display: none; position: fixed; inset: 0; z-index: 9999;
-    background: rgba(0,0,0,0.4); backdrop-filter: blur(8px);
-    align-items: center; justify-content: center; opacity: 0;
-    transition: opacity 0.18s;
-}
-.sf-modal.open { display: flex; opacity: 1; }
-.sf-modal-box {
-    background: var(--c-surface, #ffffff); width: 540px; max-height: 90vh; overflow-y: auto;
-    border-radius: var(--r-xl, 26px); padding: 32px;
-    box-shadow: var(--shadow-xl, 0 24px 48px rgba(0,0,0,0.14)); border: 0.5px solid var(--c-separator, rgba(60,60,67,0.12));
-    transform: scale(0.95); transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.sf-modal.open .sf-modal-box { transform: scale(1); }
-.sf-modal-box h3 { margin-top: 0; font-size: 22px; margin-bottom: 20px; color: var(--t-primary, #1c1c1e); }
 .sf-form-group { margin-bottom: 16px; }
 .sf-form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--t-secondary, #636366); margin-bottom: 6px; }
 .sf-input {

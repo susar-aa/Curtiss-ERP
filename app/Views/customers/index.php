@@ -1543,7 +1543,7 @@ foreach ($data['customers'] ?? [] as $cust) {
                 const doc = parser.parseFromString(html, 'text/html');
                 
                 const newContent = doc.getElementById('modal-profile-content-source');
-                const newHeader = doc.getElementById('modal-header-container');
+                const newHeader = doc.getElementById('modal-header-source');
                 
                 if (newContent && newHeader) {
                     document.getElementById('modal-header-container').innerHTML = newHeader.innerHTML;

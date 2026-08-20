@@ -86,6 +86,23 @@
 }
 .cmd-cta:hover { background: #e5e5ea; transform: scale(0.97); }
 
+/* SF Modals */
+.sf-modal {
+    display: none; position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.4); backdrop-filter: blur(8px);
+    align-items: center; justify-content: center; opacity: 0;
+    transition: opacity var(--dur-fast);
+}
+.sf-modal.open { display: flex; opacity: 1; }
+.sf-modal-box {
+    background: var(--c-surface); width: 540px; max-height: 90vh; overflow-y: auto;
+    border-radius: var(--r-xl); padding: 32px;
+    box-shadow: var(--shadow-xl); border: 0.5px solid var(--c-separator);
+    transform: scale(0.95); transition: transform var(--dur-fast) var(--ease-spring);
+}
+.sf-modal.open .sf-modal-box { transform: scale(1); }
+.sf-modal-box h3 { margin-top: 0; font-size: 22px; margin-bottom: 20px; color: var(--t-primary); }
+
 /* Cheque Viewer Modal */
 .cheque-paper {
     width: 100%; height: 260px;
