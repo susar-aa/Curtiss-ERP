@@ -1554,6 +1554,13 @@ if (!function_exists('hasPermission')) {
                                 <div class="desc">Track issuing</div>
                             </div>
                         </a>
+                        <a href="<?= APP_URL ?>/cheque/returns" class="mega-list-item">
+                            <div class="icon-wrapper" style="color: var(--c-red);"><i class="ph ph-arrow-u-down-left"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title">Returned Cheques</div>
+                                <div class="desc">Manage bounces</div>
+                            </div>
+                        </a>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -1917,7 +1924,10 @@ if (!function_exists('hasPermission')) {
                         <?php endif; ?>
                         <?php if (hasPermission('project')): ?><a href="<?= APP_URL ?>/project" class="fs-link"><i class="ph ph-clipboard-text"></i> Projects</a><?php endif; ?>
                         <?php if (hasPermission('vehicle')): ?><a href="<?= APP_URL ?>/vehicle" class="fs-link"><i class="ph ph-car-profile"></i> Vehicles</a><?php endif; ?>
-                        <?php if (hasPermission('cheque')): ?><a href="<?= APP_URL ?>/cheque" class="fs-link"><i class="ph ph-signature"></i> Cheques</a><?php endif; ?>
+                        <?php if (hasPermission('cheque')): ?>
+                            <a href="<?= APP_URL ?>/cheque" class="fs-link"><i class="ph ph-signature"></i> Cheques</a>
+                            <a href="<?= APP_URL ?>/cheque/returns" class="fs-link"><i class="ph ph-arrow-u-down-left" style="color: var(--c-red);"></i> Returned Cheques</a>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php endif; ?>

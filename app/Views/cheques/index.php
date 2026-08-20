@@ -284,7 +284,6 @@
             <div class="sf-segments">
                 <button class="sf-seg-btn active" id="tab-received" onclick="switchChequeTab('received')">Collections (Received)</button>
                 <button class="sf-seg-btn" id="tab-issued" onclick="switchChequeTab('issued')">Payments (Issued)</button>
-                <button class="sf-seg-btn" id="tab-returned" onclick="switchChequeTab('returned')">Returns (Cheques in Hand)</button>
             </div>
         </div>
 
@@ -450,69 +449,6 @@
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
-
-            <!-- Returns Section -->
-            <div id="section-returned" class="chq-section">
-                <?php 
-                $hasPendingReturns = false;
-                if (!empty($data['grouped_received_cheques'])) {
-                    foreach($data['grouped_received_cheques'] as $date => $cheques) {
-                        foreach($cheques as $chk) {
-                            if($chk->status == 'Pending' && empty($chk->bank_account_id)) {
-                                $hasPendingReturns = true;
-                                break 2;
-                            }
-                        }
-                    }
-                }
-                ?>
-                
-                <?php if(!$hasPendingReturns): ?>
-                    <div class="table-panel" style="padding: 60px; text-align: center; color: var(--t-secondary);">
-                        <p>No pending cheques in hand to return.</p>
-                    </div>
-                <?php else: ?>
-                    <div class="table-panel" style="border-radius: 8px;">
-                        <table class="inv-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 15%;">Cheque Number</th>
-                                    <th style="width: 20%;">Customer</th>
-                                    <th style="width: 20%;">Bank</th>
-                                    <th style="width: 15%; text-align: right;">Amount (Rs:)</th>
-                                    <th style="width: 15%; text-align: center;">Banking Date</th>
-                                    <th style="width: 15%; text-align: right;">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach($data['grouped_received_cheques'] as $date => $cheques): ?>
-                                    <?php foreach($cheques as $chk): ?>
-                                        <?php if($chk->status == 'Pending' && empty($chk->bank_account_id)): ?>
-                                        <tr>
-                                            <td>
-                                                <span style="font-family: var(--f-mono); background: var(--c-fill); padding: 4px 8px; border-radius: 6px; font-size: 13px;">
-                                                    <?= htmlspecialchars($chk->cheque_number) ?>
-                                                </span>
-                                            </td>
-                                            <td><strong style="font-weight:600;"><?= htmlspecialchars($chk->customer_name ?? $chk->payee_name ?? '') ?></strong></td>
-                                            <td><?= htmlspecialchars($chk->bank_name) ?></td>
-                                            <td style="text-align: right; font-weight: 600;"><?= number_format($chk->amount, 2) ?></td>
-                                            <td style="text-align: center;"><?= date('d-M-Y', strtotime($chk->banking_date)) ?></td>
-                                            <td style="text-align: right;">
-                                                <button type="button" class="sf-btn" style="background:var(--c-red); color:white; font-size: 12px; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer;" onclick="openReturnModal(<?= $chk->id ?>, '<?= htmlspecialchars(addslashes($chk->cheque_number ?: '')) ?>', '<?= htmlspecialchars(addslashes($chk->customer_name ?? $chk->payee_name ?? '')) ?>', <?= $chk->amount ?: 0 ?>)">
-                                                    Mark Returned
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
-            </div>
-
         <?php endif; ?>
     </div>
 </div>
@@ -661,90 +597,7 @@
     </div>
 </div>
 
-<!-- Return Modal -->
-<div class="sf-modal" id="returnModal">
-    <div class="sf-modal-box">
-        <h3>Mark Cheque as Returned</h3>
-        <form method="POST" action="<?= APP_URL ?>/cheque" id="returnForm">
-            <input type="hidden" name="action" value="process_return">
-            <input type="hidden" name="cheque_id" id="return_cheque_id">
-            
-            <div style="background: var(--c-fill); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
-                You are about to return Cheque #<strong id="disp_cheque_num"></strong> from <strong id="disp_customer"></strong>.
-                <br>Amount: <strong>Rs: <span id="disp_amount"></span></strong>
-            </div>
-
-            <div class="sf-form-group">
-                <label>Return Reason *</label>
-                <select name="return_reason" id="return_reason" class="sf-input" required onchange="toggleOtherReason()">
-                    <option value="">-- Select Reason --</option>
-                    <option value="Insufficient Funds">Insufficient Funds</option>
-                    <option value="Signature Mismatch">Signature Mismatch</option>
-                    <option value="Account Closed">Account Closed</option>
-                    <option value="Payment Stopped">Payment Stopped</option>
-                    <option value="Other">Other</option>
-                </select>
-            </div>
-
-            <div class="sf-form-group" id="other_reason_div" style="display:none;">
-                <label>Specify Reason *</label>
-                <input type="text" name="other_reason" id="other_reason" class="sf-input" placeholder="Enter reason">
-            </div>
-
-            <div class="sf-form-group">
-                <label>Return Date *</label>
-                <input type="date" name="return_date" class="sf-input" value="<?= date('Y-m-d') ?>" required max="<?= date('Y-m-d') ?>">
-            </div>
-            
-            <hr style="border:none; border-top: 1px solid var(--c-separator); margin: 20px 0;">
-            <h4 style="margin-bottom: 12px; font-size: 14px;">Bank Return Charges (Optional)</h4>
-            
-            <div class="sf-form-group">
-                <label>Bank Charge Amount</label>
-                <input type="number" step="0.01" min="0" name="return_charge" class="sf-input" placeholder="0.00">
-            </div>
-
-            <div class="sf-form-group">
-                <label>Expense Account for Charge</label>
-                <select name="charge_account_id" class="sf-input">
-                    <option value="">-- Select Account --</option>
-                    <?php if(!empty($data['expense_accounts'])): foreach($data['expense_accounts'] as $acc): ?>
-                        <option value="<?= $acc->id ?>"><?= htmlspecialchars($acc->account_code . ' - ' . $acc->account_name) ?></option>
-                    <?php endforeach; endif; ?>
-                </select>
-            </div>
-
-            <div class="modal-acts">
-                <button type="button" class="sf-btn sf-btn-ghost" onclick="closeModal('returnModal')">Cancel</button>
-                <button type="submit" class="sf-btn" style="background: var(--c-red); color: white;" onclick="return confirm('Are you sure? This will reverse the customer\'s payment and reopen their invoices.');">Confirm Return</button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <script>
-    function openReturnModal(id, num, customer, amount) {
-        document.getElementById('return_cheque_id').value = id;
-        document.getElementById('disp_cheque_num').textContent = num;
-        document.getElementById('disp_customer').textContent = customer;
-        document.getElementById('disp_amount').textContent = amount.toFixed(2);
-        openModal('returnModal');
-    }
-
-    function toggleOtherReason() {
-        var val = document.getElementById('return_reason').value;
-        var otherDiv = document.getElementById('other_reason_div');
-        var otherInput = document.getElementById('other_reason');
-        if (val === 'Other') {
-            otherDiv.style.display = 'block';
-            otherInput.required = true;
-        } else {
-            otherDiv.style.display = 'none';
-            otherInput.required = false;
-            otherInput.value = '';
-        }
-    }
-
     function openModal(id) { 
         const m = document.getElementById(id);
         m.classList.add('open');
@@ -879,13 +732,11 @@
         // Update Buttons
         document.getElementById('tab-received').classList.remove('active');
         document.getElementById('tab-issued').classList.remove('active');
-        document.getElementById('tab-returned').classList.remove('active');
         document.getElementById('tab-' + tab).classList.add('active');
         
         // Update Sections
         document.getElementById('section-received').classList.remove('active');
         document.getElementById('section-issued').classList.remove('active');
-        document.getElementById('section-returned').classList.remove('active');
         document.getElementById('section-' + tab).classList.add('active');
     }
 

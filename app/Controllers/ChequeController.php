@@ -114,19 +114,6 @@ class ChequeController extends Controller {
                 } else {
                     header('Location: ' . APP_URL . '/cheque?error=delete_failed'); exit;
                 }
-            } elseif ($_POST['action'] == 'process_return') {
-                $cheque_id = $_POST['cheque_id'];
-                $return_reason = $_POST['return_reason'] === 'Other' ? trim($_POST['other_reason']) : $_POST['return_reason'];
-                $return_date = $_POST['return_date'];
-                $return_charge = !empty($_POST['return_charge']) ? floatval($_POST['return_charge']) : 0;
-                $charge_account_id = !empty($_POST['charge_account_id']) ? intval($_POST['charge_account_id']) : null;
-                $returned_by = $_SESSION['user_id'];
-
-                if ($this->chequeModel->returnCustomerCheque($cheque_id, $return_reason, $return_date, $return_charge, $charge_account_id, $returned_by)) {
-                    header('Location: ' . APP_URL . '/cheque?success=Cheque marked as returned and customer payment reversed.'); exit;
-                } else {
-                    header('Location: ' . APP_URL . '/cheque?error=Failed to process cheque return.'); exit;
-                }
             }
         }
 
@@ -154,6 +141,57 @@ class ChequeController extends Controller {
             }
             fclose($output);
             exit;
+        }
+
+        $this->view('layouts/main', $data);
+    }
+
+    public function returns() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'process_return') {
+            $cheque_id = $_POST['cheque_id'];
+            $return_reason = $_POST['return_reason'] === 'Other' ? trim($_POST['other_reason']) : $_POST['return_reason'];
+            $return_date = $_POST['return_date'];
+            $return_charge = !empty($_POST['return_charge']) ? floatval($_POST['return_charge']) : 0;
+            $charge_account_id = !empty($_POST['charge_account_id']) ? intval($_POST['charge_account_id']) : null;
+            $returned_by = $_SESSION['user_id'];
+
+            if ($this->chequeModel->returnCustomerCheque($cheque_id, $return_reason, $return_date, $return_charge, $charge_account_id, $returned_by)) {
+                header('Location: ' . APP_URL . '/cheque/returns?success=Cheque marked as returned and customer payment reversed.'); exit;
+            } else {
+                header('Location: ' . APP_URL . '/cheque/returns?error=Failed to process cheque return.'); exit;
+            }
+        }
+
+        $search = $_GET['search'] ?? '';
+        $cheques = $this->chequeModel->getAllCheques($search);
+        
+        $pendingCheques = [];
+        $returnedCheques = [];
+        
+        foreach ($cheques as $chk) {
+            if ($chk->status == 'Returned') {
+                $returnedCheques[] = $chk;
+            } elseif ($chk->status == 'Pending' && empty($chk->bank_account_id)) {
+                $pendingCheques[] = $chk;
+            }
+        }
+
+        $data = [
+            'title' => 'Returned Cheques',
+            'content_view' => 'cheques/returns',
+            'search' => $search,
+            'pending_cheques' => $pendingCheques,
+            'returned_cheques' => $returnedCheques,
+            'expense_accounts' => $this->coaModel->getExpenseAccounts(),
+            'error' => '',
+            'success' => ''
+        ];
+
+        if (isset($_GET['success'])) {
+            $data['success'] = htmlspecialchars($_GET['success']);
+        }
+        if (isset($_GET['error'])) {
+            $data['error'] = htmlspecialchars($_GET['error']);
         }
 
         $this->view('layouts/main', $data);
