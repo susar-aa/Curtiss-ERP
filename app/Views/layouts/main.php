@@ -1634,6 +1634,13 @@ if (!function_exists('hasPermission')) {
                                 <div class="desc">Cash & cheque bank deposits</div>
                             </div>
                         </a>
+                        <a href="<?= APP_URL ?>/chequereturn" class="mega-list-item">
+                            <div class="icon-wrapper" style="color: #c62828;"><i class="ph ph-arrow-u-down-left"></i></div>
+                            <div class="mega-list-item-content">
+                                <div class="title" style="color: #c62828;">Cheque Returns</div>
+                                <div class="desc">Process bounced cheques</div>
+                            </div>
+                        </a>
                         <?php endif; ?>
                         <?php if (hasPermission('petty_cash')): ?>
                         <a href="<?= APP_URL ?>/pettycash" class="mega-list-item">
