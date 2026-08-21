@@ -402,7 +402,7 @@ class AccountingController extends Controller {
             elseif (empty($lines)) { $data['error'] = 'You must enter at least one transaction line.'; } 
             elseif ($totalDebitCents !== $totalCreditCents) { $data['error'] = 'Accounting Error: Total Debits must equal Total Credits.'; } 
             else {
-                $postResult = $this->journalModel->postEntry($date, $reference, $description, $lines, $_SESSION['user_id']);
+                $postResult = $this->journalModel->postEntry($date, $reference, $description, $lines, $_SESSION['user_id'], true);
                 if ($postResult === true) {
                     $data['success'] = 'Journal Entry successfully posted.';
                     // Recalculate

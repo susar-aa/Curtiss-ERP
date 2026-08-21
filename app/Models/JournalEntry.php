@@ -12,7 +12,7 @@ class JournalEntry {
         $sql = "SELECT je.*, u.username 
                 FROM journal_entries je 
                 LEFT JOIN users u ON je.created_by = u.id 
-                WHERE 1=1";
+                WHERE je.is_manual = 1";
         
         $params = [];
         if (!empty($filters['search'])) {
@@ -53,7 +53,7 @@ class JournalEntry {
     }
 
     public function getEntriesCount(array $filters = []): int {
-        $sql = "SELECT COUNT(*) as total FROM journal_entries je WHERE 1=1";
+        $sql = "SELECT COUNT(*) as total FROM journal_entries je WHERE je.is_manual = 1";
         
         $params = [];
         if (!empty($filters['search'])) {
@@ -82,7 +82,7 @@ class JournalEntry {
         return $row ? (int)$row->total : 0;
     }
 
-    public function postEntry(string $date, string $reference, string $description, array $lines, int $userId): string|bool {
+    public function postEntry(string $date, string $reference, string $description, array $lines, int $userId, bool $isManual = false): string|bool {
         try {
             // Check if period is closed/locked
             $this->db->query("SELECT COUNT(*) as cnt FROM financial_years WHERE :entry_date BETWEEN start_date AND end_date");
@@ -110,12 +110,13 @@ class JournalEntry {
                 }
             }
 
-            $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by) 
-                              VALUES (:entry_date, :reference, :description, :created_by)");
+            $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, is_manual) 
+                              VALUES (:entry_date, :reference, :description, :created_by, :is_manual)");
             $this->db->bind(':entry_date', $date);
             $this->db->bind(':reference', $reference);
             $this->db->bind(':description', $description);
             $this->db->bind(':created_by', $userId);
+            $this->db->bind(':is_manual', $isManual ? 1 : 0);
             $this->db->execute();
             
             $journalId = $this->db->lastInsertId();
