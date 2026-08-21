@@ -789,4 +789,14 @@ class AccountingController extends Controller {
         fclose($output);
         exit;
     }
+
+    public function journal_details(int $id): void {
+        header('Content-Type: application/json');
+        $details = $this->journalModel->getEntryDetails($id);
+        if (!$details) {
+            echo json_encode(['status' => 'error', 'message' => 'Journal entry not found.']);
+            return;
+        }
+        echo json_encode(['status' => 'success', 'data' => $details]);
+    }
 }

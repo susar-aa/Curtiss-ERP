@@ -406,4 +406,28 @@ class JournalEntry {
                           ORDER BY fy.end_date DESC");
         return $this->db->resultSet() ?: [];
     }
+
+    public function getEntryDetails(int $id): array|bool {
+        // 1. Fetch the journal entry details
+        $this->db->query("SELECT je.*, u.username 
+                          FROM journal_entries je 
+                          LEFT JOIN users u ON je.created_by = u.id 
+                          WHERE je.id = :id");
+        $this->db->bind(':id', $id);
+        $entry = $this->db->single();
+        if (!$entry) return false;
+
+        // 2. Fetch the transaction lines with account codes and names
+        $this->db->query("SELECT t.*, c.account_code, c.account_name 
+                          FROM transactions t 
+                          JOIN chart_of_accounts c ON t.account_id = c.id 
+                          WHERE t.journal_entry_id = :id");
+        $this->db->bind(':id', $id);
+        $lines = $this->db->resultSet();
+
+        return [
+            'entry' => $entry,
+            'lines' => $lines ?: []
+        ];
+    }
 }

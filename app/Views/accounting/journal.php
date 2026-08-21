@@ -217,6 +217,22 @@ $endDate = $data['filters']['end_date'] ?? '';
 .page-link { padding: 6px 12px; background: var(--c-surface); border: 0.5px solid var(--c-separator); border-radius: var(--r-md); color: var(--t-primary); text-decoration: none; font-weight: 500; transition: background var(--dur-fast); }
 .page-link:hover { background: var(--c-fill); }
 .page-link.active { background: var(--c-blue); color: #fff; border-color: var(--c-blue); }
+
+/* Journal Details Modal */
+.journal-modal-veil {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.4); backdrop-filter: blur(8px);
+    display: none; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.2s ease;
+}
+.journal-modal-veil.open { display: flex; opacity: 1; }
+.journal-modal-box {
+    background: var(--c-surface); width: 680px; max-width: 90vw; max-height: 85vh;
+    border-radius: var(--r-xl); border: 0.5px solid var(--c-separator);
+    box-shadow: var(--shadow-xl); display: flex; flex-direction: column; overflow: hidden;
+    transform: scale(0.95); transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.journal-modal-veil.open .journal-modal-box { transform: scale(1); }
 </style>
 
 <div class="cust-root">
@@ -415,15 +431,16 @@ $endDate = $data['filters']['end_date'] ?? '';
                                 <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars($entry->username) ?></td>
-                            <td style="text-align: right;">
+                            <td style="text-align: right; display: flex; justify-content: flex-end; gap: 8px; align-items: center;">
+                                <button type="button" class="sf-btn neutral" onclick="viewJournal(<?= $entry->id ?>)" style="padding: 6px 12px; font-size: 12px;"><i class="fa-solid fa-eye"></i> View</button>
                                 <?php if($entry->status === 'Posted' && !$entry->is_closed): ?>
-                                    <form action="<?= APP_URL ?>/accounting/void_journal" method="POST" onsubmit="return confirm('Are you sure you want to void this journal entry? This will reverse all ledger balances for these accounts.')" style="display:inline;">
+                                    <form action="<?= APP_URL ?>/accounting/void_journal" method="POST" onsubmit="return confirm('Are you sure you want to void this journal entry? This will reverse all ledger balances for these accounts.')" style="display:inline; margin: 0;">
                                         <input type="hidden" name="entry_id" value="<?= $entry->id ?>">
                                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
-                                        <button type="submit" class="sf-btn danger"><i class="fa-solid fa-ban"></i> Void</button>
+                                        <button type="submit" class="sf-btn danger" style="padding: 6px 12px; font-size: 12px;"><i class="fa-solid fa-ban"></i> Void</button>
                                     </form>
                                 <?php else: ?>
-                                    <span style="color: var(--t-tertiary); font-size: 13px;">Locked</span>
+                                    <span style="color: var(--t-tertiary); font-size: 13px; padding-right: 6px;">Locked</span>
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -466,6 +483,80 @@ $endDate = $data['filters']['end_date'] ?? '';
             <?php endif; ?>
         </div>
 
+    </div>
+</div>
+
+<!-- Journal Details Modal -->
+<div id="journalDetailsModal" class="journal-modal-veil" onclick="if(event.target === this) closeJournalModal()">
+    <div class="journal-modal-box">
+        <div class="modal-head" style="display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; border-bottom: 0.5px solid var(--c-separator); background: var(--c-surface2);">
+            <h3 class="modal-title" style="margin: 0; font-size: 16px; font-weight: 700;">Journal Entry Details</h3>
+            <button type="button" class="modal-close" onclick="closeJournalModal()" style="background: var(--c-fill); border: none; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body" style="padding: 24px; overflow-y: auto; flex: 1;">
+            <!-- Loader -->
+            <div id="modalLoader" style="display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; padding: 40px 0;">
+                <i class="fa-solid fa-spinner fa-spin" style="font-size: 32px; color: var(--c-blue);"></i>
+                <span style="font-size: 14px; color: var(--t-secondary);">Loading journal details...</span>
+            </div>
+            <!-- Error message -->
+            <div id="modalError" style="display: none; text-align: center; color: var(--c-red); padding: 20px 0;">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size: 36px; margin-bottom: 10px;"></i>
+                <p id="modalErrorMsg" style="margin: 0; font-weight: 500;"></p>
+            </div>
+            <!-- Details Content -->
+            <div id="modalContent" style="display: none;">
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; background: var(--c-surface2); padding: 16px; border-radius: var(--r-md); border: 0.5px solid var(--c-separator);">
+                    <div>
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--t-label); font-weight: 600; margin-bottom: 4px;">Entry Date</div>
+                        <div id="detDate" style="font-weight: 600; color: var(--t-primary);"></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--t-label); font-weight: 600; margin-bottom: 4px;">Reference #</div>
+                        <div id="detRef" style="font-weight: 700; color: var(--c-blue);"></div>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--t-label); font-weight: 600; margin-bottom: 4px;">Description / Memo</div>
+                        <div id="detDesc" style="color: var(--t-primary); font-size: 14px; line-height: 1.4;"></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--t-label); font-weight: 600; margin-bottom: 4px;">Posted By</div>
+                        <div id="detUser" style="color: var(--t-secondary);"></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--t-label); font-weight: 600; margin-bottom: 4px;">Status</div>
+                        <div id="detStatus"></div>
+                    </div>
+                </div>
+
+                <h4 style="margin: 0 0 12px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--t-label);">Transactions / Double-Entry Lines</h4>
+                <div style="border: 0.5px solid var(--c-separator); border-radius: var(--r-md); overflow: hidden;">
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13.5px;">
+                        <thead>
+                            <tr style="background: var(--c-surface2); border-bottom: 0.5px solid var(--c-separator);">
+                                <th style="padding: 10px 14px; font-weight: 600; color: var(--t-secondary);">Account</th>
+                                <th style="padding: 10px 14px; font-weight: 600; color: var(--t-secondary);">Memo</th>
+                                <th style="padding: 10px 14px; font-weight: 600; color: var(--t-secondary); text-align: right; width: 110px;">Debit (Rs)</th>
+                                <th style="padding: 10px 14px; font-weight: 600; color: var(--t-secondary); text-align: right; width: 110px;">Credit (Rs)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detLinesBody">
+                            <!-- Lines will be dynamically added here -->
+                        </tbody>
+                        <tfoot>
+                            <tr style="font-weight: 700; background: var(--c-surface2); border-top: 0.5px solid var(--c-separator);">
+                                <td colspan="2" style="padding: 12px 14px; text-align: right; color: var(--t-secondary);">Total</td>
+                                <td id="detTotalDebit" style="padding: 12px 14px; text-align: right; color: var(--t-primary);">0.00</td>
+                                <td id="detTotalCredit" style="padding: 12px 14px; text-align: right; color: var(--t-primary);">0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot" style="padding: 16px 24px; border-top: 0.5px solid var(--c-separator); background: var(--c-surface2); display: flex; justify-content: flex-end;">
+            <button type="button" class="sf-btn neutral" onclick="closeJournalModal()">Close</button>
+        </div>
     </div>
 </div>
 
@@ -689,4 +780,88 @@ $endDate = $data['filters']['end_date'] ?? '';
     }
     
     calcTotals();
+
+    function viewJournal(id) {
+        const veil = document.getElementById('journalDetailsModal');
+        const loader = document.getElementById('modalLoader');
+        const error = document.getElementById('modalError');
+        const content = document.getElementById('modalContent');
+        
+        // Show modal and loader
+        veil.classList.add('open');
+        loader.style.display = 'flex';
+        error.style.display = 'none';
+        content.style.display = 'none';
+        
+        fetch('<?= APP_URL ?>/accounting/journal_details/' + id)
+            .then(res => res.json())
+            .then(res => {
+                loader.style.display = 'none';
+                if (res.status === 'success') {
+                    const data = res.data;
+                    const entry = data.entry;
+                    const lines = data.lines;
+                    
+                    document.getElementById('detDate').innerText = new Date(entry.entry_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    document.getElementById('detRef').innerText = entry.reference || 'N/A';
+                    document.getElementById('detDesc').innerText = entry.description || 'No description';
+                    document.getElementById('detUser').innerText = entry.username || 'System';
+                    
+                    // Status Badge
+                    const statusEl = document.getElementById('detStatus');
+                    statusEl.innerHTML = '';
+                    if (entry.status === 'Posted') {
+                        statusEl.innerHTML = '<span class="sf-badge badge-posted">' + entry.status + '</span>';
+                    } else if (entry.status === 'Voided') {
+                        statusEl.innerHTML = '<span class="sf-badge badge-voided">' + entry.status + '</span>';
+                    } else {
+                        statusEl.innerHTML = '<span class="sf-badge badge-draft">' + entry.status + '</span>';
+                    }
+                    
+                    // Lines Table
+                    const tbody = document.getElementById('detLinesBody');
+                    tbody.innerHTML = '';
+                    
+                    let totalDebit = 0;
+                    let totalCredit = 0;
+                    
+                    lines.forEach(line => {
+                        const tr = document.createElement('tr');
+                        tr.style.borderBottom = '0.5px solid var(--c-separator2)';
+                        
+                        const debitVal = parseFloat(line.debit) || 0;
+                        const creditVal = parseFloat(line.credit) || 0;
+                        
+                        totalDebit += debitVal;
+                        totalCredit += creditVal;
+                        
+                        tr.innerHTML = `
+                            <td style="padding: 12px 14px;"><strong>${escapeHtml(line.account_code)}</strong> - ${escapeHtml(line.account_name)}</td>
+                            <td style="padding: 12px 14px; color: var(--t-secondary);">${escapeHtml(line.description) || '-'}</td>
+                            <td style="padding: 12px 14px; text-align: right;">${debitVal > 0 ? debitVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</td>
+                            <td style="padding: 12px 14px; text-align: right;">${creditVal > 0 ? creditVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    
+                    document.getElementById('detTotalDebit').innerText = totalDebit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    document.getElementById('detTotalCredit').innerText = totalCredit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    
+                    content.style.display = 'block';
+                } else {
+                    document.getElementById('modalErrorMsg').innerText = res.message || 'Failed to load journal details.';
+                    error.style.display = 'block';
+                }
+            })
+            .catch(err => {
+                loader.style.display = 'none';
+                document.getElementById('modalErrorMsg').innerText = 'An error occurred while fetching details.';
+                error.style.display = 'block';
+                console.error(err);
+            });
+    }
+    
+    function closeJournalModal() {
+        document.getElementById('journalDetailsModal').classList.remove('open');
+    }
 </script>
