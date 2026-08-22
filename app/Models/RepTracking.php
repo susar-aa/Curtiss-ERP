@@ -183,7 +183,7 @@ class RepTracking {
         }
         $placeholdersStr = implode(',', $placeholders);
 
-        $this->db->query("SELECT id FROM deliveries WHERE rep_route_id IN ($placeholdersStr) OR secondary_rep_route_id IN ($placeholdersStr)");
+        $this->db->query("SELECT id FROM deliveries WHERE rep_route_id IN ($placeholdersStr) OR secondary_rep_route_id IN ($placeholdersStr) ORDER BY id DESC LIMIT 1");
         foreach ($routeIds as $index => $id) {
             $this->db->bind(":rid_" . $index, intval($id));
         }
