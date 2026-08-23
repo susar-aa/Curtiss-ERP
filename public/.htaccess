@@ -9,3 +9,10 @@
     # 2. Redirect everything else relative to index.php
     RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
 </IfModule>
+
+<IfModule mod_php.c>
+    php_value max_input_vars 10000
+</IfModule>
+<IfModule mod_php7.c>
+    php_value max_input_vars 10000
+</IfModule>
