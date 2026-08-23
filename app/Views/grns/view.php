@@ -8,15 +8,23 @@ foreach ($data['items'] as $item) {
 // Fetch Pricing Data
 $db = new Database();
 foreach ($data['items'] as $grnItem) {
-    $grnItem->retail_price = 0;
-    $grnItem->wholesale_price = 0;
-    if (!empty($grnItem->item_id)) {
-        $db->query("SELECT price, wholesale_price FROM items WHERE id = :id");
-        $db->bind(':id', $grnItem->item_id);
-        $itemPrices = $db->single();
-        if ($itemPrices) {
-            $grnItem->retail_price = floatval($itemPrices->price ?? 0);
-            $grnItem->wholesale_price = floatval($itemPrices->wholesale_price ?? 0);
+    $grnItem->retail_price = floatval($grnItem->selling_price ?? 0);
+    $grnItem->wholesale_price = floatval($grnItem->wholesale_price ?? 0);
+    
+    // Fallback to live catalog prices for backward compatibility with older GRNs
+    if ($grnItem->retail_price <= 0.001 || $grnItem->wholesale_price <= 0.001) {
+        if (!empty($grnItem->item_id)) {
+            $db->query("SELECT price, wholesale_price FROM items WHERE id = :id");
+            $db->bind(':id', $grnItem->item_id);
+            $itemPrices = $db->single();
+            if ($itemPrices) {
+                if ($grnItem->retail_price <= 0.001) {
+                    $grnItem->retail_price = floatval($itemPrices->price ?? 0);
+                }
+                if ($grnItem->wholesale_price <= 0.001) {
+                    $grnItem->wholesale_price = floatval($itemPrices->wholesale_price ?? 0);
+                }
+            }
         }
     }
 }
