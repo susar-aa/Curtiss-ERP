@@ -325,6 +325,21 @@ class SalesController extends Controller {
      */
     public function store() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Check for max_input_vars truncation safety gate
+            $maxInputVars = intval(ini_get('max_input_vars'));
+            $postCount = count($_POST, COUNT_RECURSIVE);
+            if ($maxInputVars > 0 && $postCount >= $maxInputVars) {
+                try {
+                    $this->logActivity('System Warning', 'Billing', "POST variables count ({$postCount}) reached PHP limit max_input_vars ({$maxInputVars}). Submission blocked to prevent data loss.", null, null, null);
+                } catch (Exception $e) {}
+                
+                $_SESSION['flash_error'] = "Data Safety Gate: The invoice is too large to save safely on this server. PHP limit (max_input_vars = {$maxInputVars}) reached. Please contact your system administrator to increase max_input_vars to 10000.";
+                $type = $_POST['type'] ?? 'invoice';
+                $editingId = intval($_POST['editing_invoice_id'] ?? 0);
+                header('Location: ' . APP_URL . '/sales/create?type=' . $type . ($editingId ? '&id='.$editingId : ''));
+                exit;
+            }
+
             $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
             $invoiceNumber = trim($_POST['invoice_number'] ?? '');

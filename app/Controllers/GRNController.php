@@ -105,6 +105,16 @@ class GRNController extends Controller {
         ];
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'save_grn') {
+            // Check for max_input_vars truncation safety gate
+            $maxInputVars = intval(ini_get('max_input_vars'));
+            $postCount = count($_POST, COUNT_RECURSIVE);
+            if ($maxInputVars > 0 && $postCount >= $maxInputVars) {
+                try {
+                    $this->logActivity('System Warning', 'Inventory', "POST variables count ({$postCount}) reached PHP limit max_input_vars ({$maxInputVars}) during GRN creation. Submission blocked.", null, null, null);
+                } catch (Exception $e) {}
+                
+                $data['error'] = "Data Safety Gate: The GRN is too large to save safely on this server. PHP limit (max_input_vars = {$maxInputVars}) reached. Please contact your system administrator to increase max_input_vars to 10000.";
+            } else {
             $grnData = [
                 'vendor_id' => $_POST['vendor_id'],
                 'po_id' => !empty($_POST['po_id']) ? $_POST['po_id'] : null,
@@ -159,6 +169,7 @@ class GRNController extends Controller {
                  }
              }
          }
+        }
         $this->view('layouts/main', $data);
     }
 
@@ -192,6 +203,16 @@ class GRNController extends Controller {
         ];
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'update_grn') {
+            // Check for max_input_vars truncation safety gate
+            $maxInputVars = intval(ini_get('max_input_vars'));
+            $postCount = count($_POST, COUNT_RECURSIVE);
+            if ($maxInputVars > 0 && $postCount >= $maxInputVars) {
+                try {
+                    $this->logActivity('System Warning', 'Inventory', "POST variables count ({$postCount}) reached PHP limit max_input_vars ({$maxInputVars}) during GRN update. Submission blocked.", null, null, null);
+                } catch (Exception $e) {}
+                
+                $data['error'] = "Data Safety Gate: The GRN is too large to save safely on this server. PHP limit (max_input_vars = {$maxInputVars}) reached. Please contact your system administrator to increase max_input_vars to 10000.";
+            } else {
             $grnData = [
                 'vendor_id' => $_POST['vendor_id'],
                 'receipt_number' => trim($_POST['receipt_number'] ?? '') ?: null,
@@ -246,6 +267,7 @@ class GRNController extends Controller {
                 }
             }
         }
+       }
         $this->view('layouts/main', $data);
     }
 
