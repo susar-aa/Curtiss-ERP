@@ -32,8 +32,8 @@ class GRNController extends Controller {
             ];
             if ($this->grnModel->deleteGRN($grnId)) {
                 $grnNum = $grn ? $grn->grn_number : $grnId;
-                $this->logActivity('GRN Deleted', 'Inventory', "GRN '{$grnNum}' deleted and stock reversed.", $grnId, $oldValues, null);
-                header("Location: " . APP_URL . "/grn?success=GRN deleted and Inventory Stock reversed successfully"); exit;
+                $this->logActivity('GRN Deleted', 'Inventory', "GRN draft '{$grnNum}' deleted.", $grnId, $oldValues, null);
+                header("Location: " . APP_URL . "/grn?success=" . urlencode("GRN draft deleted successfully.")); exit;
             }
         }
 

@@ -65,8 +65,13 @@ class GRN {
         try {
             $this->db->beginTransaction();
 
-            $this->db->query("INSERT INTO goods_receipt_notes (grn_number, receipt_number, po_id, vendor_id, grn_date, notes, created_by, is_approved) 
-                              VALUES (:num, :receipt, :pid, :vid, :gdate, :notes, :uid, 0)");
+            $grandTotal = 0;
+            foreach ($items as $item) {
+                $grandTotal += floatval($item['qty']) * floatval($item['price']);
+            }
+
+            $this->db->query("INSERT INTO goods_receipt_notes (grn_number, receipt_number, po_id, vendor_id, grn_date, notes, created_by, is_approved, total_amount) 
+                              VALUES (:num, :receipt, :pid, :vid, :gdate, :notes, :uid, 0, :total)");
             $this->db->bind(':num', $grnData['grn_number']);
             $this->db->bind(':receipt', $grnData['receipt_number'] ?? null);
             $this->db->bind(':pid', $grnData['po_id']);
@@ -74,6 +79,7 @@ class GRN {
             $this->db->bind(':gdate', $grnData['grn_date']);
             $this->db->bind(':notes', $grnData['notes']);
             $this->db->bind(':uid', $userId);
+            $this->db->bind(':total', $grandTotal);
             $this->db->execute();
             $grnId = $this->db->lastInsertId();
 
@@ -136,14 +142,20 @@ class GRN {
             $this->db->bind(':id', $grnId);
             $this->db->execute();
 
+            $grandTotal = 0;
+            foreach ($items as $item) {
+                $grandTotal += floatval($item['qty']) * floatval($item['price']);
+            }
+
             // Update master GRN record
             $this->db->query("UPDATE goods_receipt_notes 
-                              SET vendor_id = :vid, receipt_number = :receipt, grn_date = :gdate, notes = :notes 
+                              SET vendor_id = :vid, receipt_number = :receipt, grn_date = :gdate, notes = :notes, total_amount = :total 
                               WHERE id = :id");
             $this->db->bind(':vid', $grnData['vendor_id']);
             $this->db->bind(':receipt', $grnData['receipt_number'] ?? null);
             $this->db->bind(':gdate', $grnData['grn_date']);
             $this->db->bind(':notes', $grnData['notes']);
+            $this->db->bind(':total', $grandTotal);
             $this->db->bind(':id', $grnId);
             $this->db->execute();
 
@@ -181,41 +193,53 @@ class GRN {
 
             $items = $this->getGRNItems($grnId);
 
-            require_once '../app/Models/FIFO.php';
+            require_once __DIR__ . '/FIFO.php';
             $fifo = new FIFO();
 
             foreach ($items as $item) {
                 // 1. Record FIFO stock receipt batch
                 $fifo->recordReceipt($item->item_id, $item->item_variation_option_id, $grnId, $item->quantity, $item->unit_cost);
 
-                // 2. Update Master Item Stock and Cost
+                // 2. Update Master Item Stock, Cost, and Selling/Wholesale Prices
                 $this->db->query("
                     UPDATE items 
                     SET quantity_on_hand = COALESCE(quantity_on_hand, 0) + :qty, 
-                        cost_price = :cost
+                        cost_price = :cost,
+                        price = CASE WHEN :sprice > 0.001 THEN :sprice ELSE price END,
+                        wholesale_price = CASE WHEN :wprice > 0.001 THEN :wprice ELSE wholesale_price END,
+                        retail_margin = CASE WHEN :sprice > 0.001 THEN :rmargin ELSE retail_margin END,
+                        wholesale_margin = CASE WHEN :wprice > 0.001 THEN :wmargin ELSE wholesale_margin END
                     WHERE id = :iid
                 ");
                 $this->db->bind(':qty', $item->quantity);
                 $this->db->bind(':cost', $item->unit_cost);
+                $this->db->bind(':sprice', floatval($item->selling_price ?? 0));
+                $this->db->bind(':wprice', floatval($item->wholesale_price ?? 0));
+                $this->db->bind(':rmargin', floatval($item->retail_margin ?? 0));
+                $this->db->bind(':wmargin', floatval($item->wholesale_margin ?? 0));
                 $this->db->bind(':iid', $item->item_id);
                 $this->db->execute();
 
-                // 3. Update Specific Variation Stock, Cost and Selling Price (If applicable)
+                // 3. Update Specific Variation Stock, Cost, and Selling/Wholesale Prices (If applicable)
                 if ($item->item_variation_option_id) {
                     $this->db->query("
                         UPDATE item_variation_options 
                         SET quantity_on_hand = COALESCE(quantity_on_hand, 0) + :qty, 
-                            cost = :cost 
+                            cost = :cost,
+                            price = CASE WHEN :sprice > 0.001 THEN :sprice ELSE price END,
+                            wholesale_price = CASE WHEN :wprice > 0.001 THEN :wprice ELSE wholesale_price END
                         WHERE id = :vid
                     ");
                     $this->db->bind(':qty', $item->quantity);
                     $this->db->bind(':cost', $item->unit_cost);
+                    $this->db->bind(':sprice', floatval($item->selling_price ?? 0));
+                    $this->db->bind(':wprice', floatval($item->wholesale_price ?? 0));
                     $this->db->bind(':vid', $item->item_variation_option_id);
                     $this->db->execute();
                 }
 
                 // 3.5 Log Stock Movement in Ledger
-                require_once '../app/Models/StockLedger.php';
+                require_once __DIR__ . '/StockLedger.php';
                 $ledger = new StockLedger();
                 $this->db->query("SELECT warehouse_id FROM items WHERE id = :id");
                 $this->db->bind(':id', $item->item_id);
@@ -224,16 +248,124 @@ class GRN {
                 $ledger->logMovement($item->item_id, $item->item_variation_option_id, $item->quantity, 0, 'GRN', $grn->grn_number, $whId, $userId, 'GRN Approved Stock Receipt', $item->unit_cost);
             }
 
-            // 4. Update PO Status if linked
+            // 4. Record Double-Entry Accounting Journal Entry
+            $grandTotal = 0;
+            foreach ($items as $item) {
+                $grandTotal += floatval($item->quantity) * floatval($item->unit_cost);
+            }
+
+            if ($grandTotal > 0.001) {
+                // Check if period is closed/locked
+                $this->db->query("SELECT COUNT(*) as cnt FROM financial_years WHERE :entry_date BETWEEN start_date AND end_date");
+                $this->db->bind(':entry_date', $grn->grn_date);
+                $res = $this->db->single();
+                if ($res && $res->cnt > 0) {
+                    throw new Exception('Accounting Error: The period containing date ' . $grn->grn_date . ' is closed and locked.');
+                }
+
+                // Resolve accounts
+                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '1300' OR account_name LIKE '%Inventory Asset%' OR account_name LIKE '%Stock%' LIMIT 1");
+                $invAccRow = $this->db->single();
+                $inventoryAccountId = $invAccRow ? $invAccRow->id : null;
+
+                $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '2000' OR account_name LIKE '%Accounts Payable%' OR account_name LIKE '%Creditor%' LIMIT 1");
+                $apAccRow = $this->db->single();
+                $apAccountId = $apAccRow ? $apAccRow->id : null;
+
+                if ($inventoryAccountId && $apAccountId) {
+                    $reference = 'GRN-' . $grn->grn_number;
+                    $description = "GRN Approved Stock Receipt - Ref: " . $grn->grn_number;
+                    
+                    // Insert master journal entry
+                    $this->db->query("INSERT INTO journal_entries (entry_date, reference, description, created_by, status, is_manual) 
+                                      VALUES (:entry_date, :reference, :description, :created_by, 'Posted', 0)");
+                    $this->db->bind(':entry_date', $grn->grn_date);
+                    $this->db->bind(':reference', $reference);
+                    $this->db->bind(':description', $description);
+                    $this->db->bind(':created_by', $userId);
+                    $this->db->execute();
+                    $journalEntryId = $this->db->lastInsertId();
+
+                    // 1. DEBIT: Inventory Asset
+                    $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit, description) 
+                                      VALUES (:journal_id, :account_id, :debit, 0, :desc)");
+                    $this->db->bind(':journal_id', $journalEntryId);
+                    $this->db->bind(':account_id', $inventoryAccountId);
+                    $this->db->bind(':debit', $grandTotal);
+                    $this->db->bind(':desc', "Stock receipt for GRN #" . $grn->grn_number);
+                    $this->db->execute();
+                    $this->db->updateAccountBalance($inventoryAccountId, $grandTotal, 0);
+
+                    // 2. CREDIT: Accounts Payable
+                    $this->db->query("INSERT INTO transactions (journal_entry_id, account_id, debit, credit, description) 
+                                      VALUES (:journal_id, :account_id, 0, :credit, :desc)");
+                    $this->db->bind(':journal_id', $journalEntryId);
+                    $this->db->bind(':account_id', $apAccountId);
+                    $this->db->bind(':credit', $grandTotal);
+                    $this->db->bind(':desc', "Liability recorded for GRN #" . $grn->grn_number);
+                    $this->db->execute();
+                    $this->db->updateAccountBalance($apAccountId, 0, $grandTotal);
+                } else {
+                    throw new Exception("Accounting Configuration Error: Inventory Asset (1300) or Accounts Payable (2000) account not found in Chart of Accounts.");
+                }
+            }
+
+            // 5. Update PO Status if linked (supporting Partial Receipts & Back-orders)
             if (!empty($grn->po_id)) {
-                $this->db->query("UPDATE purchase_orders SET status = 'Received' WHERE id = :id");
+                // Fetch PO items & ordered quantities
+                $this->db->query("SELECT item_id, item_variation_option_id, SUM(quantity) as qty 
+                                  FROM purchase_order_items 
+                                  WHERE po_id = :id 
+                                  GROUP BY item_id, COALESCE(item_variation_option_id, 0)");
+                $this->db->bind(':id', $grn->po_id);
+                $poItems = $this->db->resultSet() ?: [];
+
+                // Fetch total received quantities including this GRN
+                $this->db->query("SELECT item_id, item_variation_option_id, SUM(quantity) as qty 
+                                  FROM grn_items 
+                                  WHERE grn_id IN (SELECT id FROM goods_receipt_notes WHERE po_id = :id AND (is_approved = 1 OR id = :curr_id)) 
+                                  GROUP BY item_id, COALESCE(item_variation_option_id, 0)");
+                $this->db->bind(':id', $grn->po_id);
+                $this->db->bind(':curr_id', $grnId);
+                $grnItems = $this->db->resultSet() ?: [];
+
+                $receivedMap = [];
+                foreach ($grnItems as $gItem) {
+                    $key = $gItem->item_id . '_' . intval($gItem->item_variation_option_id);
+                    $receivedMap[$key] = floatval($gItem->qty);
+                }
+
+                $fullyReceived = true;
+                $anyReceived = false;
+                foreach ($poItems as $pItem) {
+                    $key = $pItem->item_id . '_' . intval($pItem->item_variation_option_id);
+                    $receivedQty = isset($receivedMap[$key]) ? $receivedMap[$key] : 0.0;
+                    
+                    if ($receivedQty < floatval($pItem->qty) - 0.001) {
+                        $fullyReceived = false;
+                    }
+                    if ($receivedQty > 0.001) {
+                        $anyReceived = true;
+                    }
+                }
+
+                $newPoStatus = 'Sent';
+                if ($fullyReceived) {
+                    $newPoStatus = 'Received';
+                } elseif ($anyReceived) {
+                    $newPoStatus = 'Partially Received';
+                }
+
+                $this->db->query("UPDATE purchase_orders SET status = :status WHERE id = :id");
+                $this->db->bind(':status', $newPoStatus);
                 $this->db->bind(':id', $grn->po_id);
                 $this->db->execute();
             }
 
-            // 5. Mark GRN as approved
-            $this->db->query("UPDATE goods_receipt_notes SET is_approved = 1, approved_by = :uid, approved_at = NOW() WHERE id = :id");
+            // 6. Mark GRN as approved and save total_amount
+            $this->db->query("UPDATE goods_receipt_notes SET is_approved = 1, approved_by = :uid, approved_at = NOW(), total_amount = :total WHERE id = :id");
             $this->db->bind(':uid', $userId);
+            $this->db->bind(':total', $grandTotal);
             $this->db->bind(':id', $grnId);
             $this->db->execute();
 

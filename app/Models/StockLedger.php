@@ -135,8 +135,9 @@ class StockLedger {
                                      || (strpos($remarks, 'Free Issue Stock Reverted') !== false);
 
                 if ($type === 'GRN') {
-                    $debitAccId = $inventoryAccId;
-                    $creditAccId = $apAccId;
+                    // GRN journal entries are posted as a single aggregated document directly on GRN approval in GRN.php model
+                    $debitAccId = null;
+                    $creditAccId = null;
                 } elseif (in_array($type, ['Purchase Return', 'Supplier Return'])) {
                     $debitAccId = $apAccId;
                     $creditAccId = $inventoryAccId;
