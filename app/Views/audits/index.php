@@ -847,13 +847,95 @@ $stats = $data['stats'] ?? [
             return '<span class="value-none">null</span>';
         }
         
-        const isObject = typeof val === 'object';
-        const str = isObject ? JSON.stringify(val, null, 2) : String(val);
-        const escaped = escapeHtml(str);
-        
+        let parsed = null;
+        let isJson = false;
+        if (typeof val === 'string' && (val.trim().startsWith('{') || val.trim().startsWith('['))) {
+            try {
+                parsed = JSON.parse(val);
+                isJson = true;
+            } catch(e) {}
+        } else if (typeof val === 'object') {
+            parsed = val;
+            isJson = true;
+        }
+
         let spanClass = '';
         if (status === 'added') spanClass = 'value-added';
         else if (status === 'removed') spanClass = 'value-removed';
+
+        if (isJson && parsed !== null) {
+            // Check if it is an array of objects
+            if (Array.isArray(parsed)) {
+                if (parsed.length === 0) {
+                    return `<span class="value-none ${spanClass}">Empty List []</span>`;
+                }
+
+                let uniqueKeys = new Set();
+                parsed.forEach(item => {
+                    if (item && typeof item === 'object') {
+                        Object.keys(item).forEach(k => uniqueKeys.add(k));
+                    }
+                });
+
+                let tableHtml = `<div class="diff-json-table-wrapper ${spanClass}" style="margin-top: 4px; overflow-x: auto; max-width: 100%; border: 0.5px solid var(--c-separator); border-radius: 6px; background: var(--c-surface2);">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: left;">
+                        <thead>
+                            <tr style="background: rgba(0,0,0,0.03); border-bottom: 0.5px solid var(--c-separator);">`;
+                
+                const preferredOrder = ['sku', 'attribute', 'name', 'value_name', 'price', 'wholesale_price', 'cost', 'cost_price', 'qty', 'quantity_on_hand'];
+                let orderedKeys = preferredOrder.filter(k => uniqueKeys.has(k));
+                uniqueKeys.forEach(k => {
+                    if (!orderedKeys.includes(k) && k !== 'id') {
+                        orderedKeys.push(k);
+                    }
+                });
+
+                orderedKeys.forEach(k => {
+                    let label = k.replace(/_/g, ' ');
+                    label = label.charAt(0).toUpperCase() + label.slice(1);
+                    tableHtml += `<th style="padding: 6px 8px; font-weight: 700; border-right: 0.5px solid var(--c-separator);">${label}</th>`;
+                });
+                tableHtml += `</tr></thead><tbody>`;
+
+                parsed.forEach((item, idx) => {
+                    tableHtml += `<tr style="border-bottom: 0.5px solid var(--c-separator); ${idx % 2 === 1 ? 'background: rgba(0,0,0,0.01);' : ''}">`;
+                    orderedKeys.forEach(k => {
+                        let cellVal = item[k];
+                        if (cellVal === undefined || cellVal === null) {
+                            cellVal = '-';
+                        } else if (typeof cellVal === 'object') {
+                            cellVal = JSON.stringify(cellVal);
+                        } else if (k === 'price' || k === 'wholesale_price' || k === 'cost' || k === 'cost_price') {
+                            cellVal = 'Rs ' + parseFloat(cellVal).toFixed(2);
+                        }
+                        tableHtml += `<td style="padding: 6px 8px; border-right: 0.5px solid var(--c-separator);">${escapeHtml(cellVal)}</td>`;
+                    });
+                    tableHtml += `</tr>`;
+                });
+                tableHtml += `</tbody></table></div>`;
+                return tableHtml;
+            } else {
+                // It is a simple object
+                let objHtml = `<div class="diff-json-obj ${spanClass}" style="margin-top: 4px; display: flex; flex-direction: column; gap: 4px; background: var(--c-surface2); border: 0.5px solid var(--c-separator); border-radius: 6px; padding: 8px;">`;
+                for (let k in parsed) {
+                    let label = k.replace(/_/g, ' ');
+                    label = label.charAt(0).toUpperCase() + label.slice(1);
+                    let cellVal = parsed[k];
+                    if (cellVal === undefined || cellVal === null) {
+                        cellVal = 'null';
+                    } else if (typeof cellVal === 'object') {
+                        cellVal = JSON.stringify(cellVal);
+                    }
+                    objHtml += `<div style="font-size: 11px;"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(cellVal)}</div>`;
+                }
+                objHtml += `</div>`;
+                return objHtml;
+            }
+        }
+
+        const isObject = typeof val === 'object';
+        const str = isObject ? JSON.stringify(val, null, 2) : String(val);
+        const escaped = escapeHtml(str);
         
         if (isObject) {
             return `<pre class="${spanClass}">${escaped}</pre>`;
