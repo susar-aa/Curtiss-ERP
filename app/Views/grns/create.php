@@ -1197,7 +1197,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
             const isPreferred = isDirectVendor || (supplierInfo && supplierInfo.is_primary);
 
             let applicableCost = m.cost;
-            if (supplierInfo && supplierInfo.last_cost_price > 0) {
+            if ((!m.var_opt_id || m.var_opt_id === 0 || m.var_opt_id === '0') && supplierInfo && supplierInfo.last_cost_price > 0) {
                 applicableCost = supplierInfo.last_cost_price;
             }
 
@@ -1580,7 +1580,7 @@ $actionUrl = APP_URL . '/grn/' . ($isEdit ? "edit/{$data['grn']->id}" : "create"
                 const mapKey = `${m.item_id}_${selectedVendorId}`;
                 const supplierInfo = itemSupplierMap[mapKey];
                 let cost = m.cost;
-                if (supplierInfo && supplierInfo.last_cost_price > 0) {
+                if ((!m.var_opt_id || m.var_opt_id === 0 || m.var_opt_id === '0') && supplierInfo && supplierInfo.last_cost_price > 0) {
                     cost = supplierInfo.last_cost_price;
                 }
 
