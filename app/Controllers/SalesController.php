@@ -1435,7 +1435,11 @@ class SalesController extends Controller {
             $this->db->commit();
 
             // Log activity
-            $this->logActivity('Convert Invoice to SO', 'Billing', "Converted Invoice {$inv->invoice_number} to Sales Order {$orderNumber} (Stock added back to Inventory).", $orderId, null, null);
+            $oldValues = [
+                'invoice' => $inv,
+                'items' => $items
+            ];
+            $this->logActivity('Convert Invoice to SO', 'Billing', "Converted Invoice {$inv->invoice_number} (ID: {$inv->id}) for customer {$inv->customer_name} totaling Rs: " . number_format($grandTotal, 2) . " to Sales Order {$orderNumber} (Stock added back to Inventory).", $orderId, $oldValues, null);
 
             $_SESSION['flash_success'] = "Invoice {$inv->invoice_number} successfully converted to Sales Order {$orderNumber}! Inventory stock has been restocked.";
             header('Location: ' . APP_URL . '/salesorder/show/' . $orderId);
