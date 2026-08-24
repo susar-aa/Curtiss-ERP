@@ -20,7 +20,7 @@ class Invoice {
                           FROM invoices i 
                           JOIN customers c ON i.customer_id = c.id 
                           LEFT JOIN tax_rates t ON i.tax_rate_id = t.id
-                          WHERE i.id = :id OR i.invoice_number = :id");
+                          WHERE i.id = :id");
         $this->db->bind(':id', $id);
         return $this->db->single();
     }
@@ -28,7 +28,7 @@ class Invoice {
     public function getInvoiceItems($id) {
         $this->db->query("SELECT ii.* FROM invoice_items ii 
                           JOIN invoices i ON ii.invoice_id = i.id 
-                          WHERE i.id = :id OR i.invoice_number = :id");
+                          WHERE i.id = :id");
         $this->db->bind(':id', $id);
         return $this->db->resultSet() ?: [];
     }

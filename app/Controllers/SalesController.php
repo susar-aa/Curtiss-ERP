@@ -360,6 +360,29 @@ class SalesController extends Controller {
 
             // Route-assigned sales orders MUST be stored in invoices table with stock_status = 'reserved'
             $isRouteSalesOrder = ($type === 'sales_order' && ($repRouteId || $isInvoiceTable));
+
+            // Ensure invoice/order number is strictly unique at save time for new records
+            if ($editingId === 0) {
+                if ($type === 'sales_order' && !$isRouteSalesOrder) {
+                    $this->db->query("SELECT id FROM sales_orders WHERE order_number = :num");
+                    $this->db->bind(':num', $invoiceNumber);
+                    if ($this->db->single()) {
+                        $this->db->query("SELECT id FROM sales_orders ORDER BY id DESC LIMIT 1");
+                        $lastRow = $this->db->single();
+                        $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+                        $invoiceNumber = str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
+                    }
+                } else {
+                    $this->db->query("SELECT id FROM invoices WHERE invoice_number = :num");
+                    $this->db->bind(':num', $invoiceNumber);
+                    if ($this->db->single()) {
+                        $this->db->query("SELECT id FROM invoices ORDER BY id DESC LIMIT 1");
+                        $lastRow = $this->db->single();
+                        $nextId = $lastRow ? ($lastRow->id + 1) : 1;
+                        $invoiceNumber = str_pad((string)$nextId, 5, '0', STR_PAD_LEFT);
+                    }
+                }
+            }
             
             $itemSelections = $_POST['item_selection'] ?? [];
             $qtys = $_POST['qty'] ?? [];
