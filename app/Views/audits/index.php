@@ -828,10 +828,10 @@ $stats = $data['stats'] ?? [
 
     let currentLogData = { oldVal: null, newVal: null, desc: '' };
 
-    function escapeHtml(text) {
-        if (!text) return '';
-        return text
-            .toString()
+    function auditEscapeHtml(text) {
+        if (text === undefined || text === null) return '';
+        const str = typeof text === 'string' ? text : String(text);
+        return str
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -908,7 +908,7 @@ $stats = $data['stats'] ?? [
                         } else if (k === 'price' || k === 'wholesale_price' || k === 'cost' || k === 'cost_price') {
                             cellVal = 'Rs ' + parseFloat(cellVal).toFixed(2);
                         }
-                        tableHtml += `<td style="padding: 6px 8px; border-right: 0.5px solid var(--c-separator);">${escapeHtml(cellVal)}</td>`;
+                        tableHtml += `<td style="padding: 6px 8px; border-right: 0.5px solid var(--c-separator);">${auditEscapeHtml(cellVal)}</td>`;
                     });
                     tableHtml += `</tr>`;
                 });
@@ -926,7 +926,7 @@ $stats = $data['stats'] ?? [
                     } else if (typeof cellVal === 'object') {
                         cellVal = JSON.stringify(cellVal);
                     }
-                    objHtml += `<div style="font-size: 11px;"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(cellVal)}</div>`;
+                    objHtml += `<div style="font-size: 11px;"><strong>${auditEscapeHtml(label)}:</strong> ${auditEscapeHtml(cellVal)}</div>`;
                 }
                 objHtml += `</div>`;
                 return objHtml;
@@ -935,7 +935,7 @@ $stats = $data['stats'] ?? [
 
         const isObject = typeof val === 'object';
         const str = isObject ? JSON.stringify(val, null, 2) : String(val);
-        const escaped = escapeHtml(str);
+        const escaped = auditEscapeHtml(str);
         
         if (isObject) {
             return `<pre class="${spanClass}">${escaped}</pre>`;
@@ -1009,7 +1009,7 @@ $stats = $data['stats'] ?? [
 
             html += `
                 <div class="diff-row ${rowClass}">
-                    <div class="diff-key">${escapeHtml(key)}</div>
+                    <div class="diff-key">${auditEscapeHtml(key)}</div>
                     <div class="diff-val">${oldHtml}</div>
                     <div class="diff-val">${newHtml}</div>
                 </div>
