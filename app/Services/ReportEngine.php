@@ -816,6 +816,33 @@ class ReportEngine {
                 'category' => 'finance',
                 'custom_render' => true
             ],
+            'petty_cash_history' => [
+                'title' => 'Petty Cash History',
+                'category' => 'finance',
+                'filters' => ['date_range', 'status'],
+                'date_column' => 'pct.transaction_date',
+                'columns' => [
+                    'transaction_date' => ['label' => 'Date', 'type' => 'date', 'sortable' => true],
+                    'type' => ['label' => 'Type', 'type' => 'badge'],
+                    'reference' => ['label' => 'Reference', 'type' => 'text'],
+                    'description' => ['label' => 'Description', 'type' => 'text'],
+                    'paid_to' => ['label' => 'Paid To', 'type' => 'text'],
+                    'amount_in' => ['label' => 'Cash In', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
+                    'amount_out' => ['label' => 'Cash Out', 'type' => 'currency', 'align' => 'right', 'total' => 'sum'],
+                    'status' => ['label' => 'Status', 'type' => 'badge']
+                ],
+                'sql' => "SELECT pct.transaction_date, 
+                                 CONCAT(UPPER(SUBSTRING(pct.type, 1, 1)), SUBSTRING(pct.type, 2)) as type, 
+                                 pct.reference, 
+                                 pct.description, 
+                                 pct.paid_to, 
+                                 CASE WHEN pct.type IN ('allocation', 'reimbursement') THEN pct.amount ELSE 0 END as amount_in,
+                                 CASE WHEN pct.type = 'expense' THEN pct.amount ELSE 0 END as amount_out,
+                                 pct.status, 
+                                 pct.id
+                          FROM petty_cash_transactions pct
+                          WHERE 1=1 /*WHERE_CLAUSE*/"
+            ],
 
             // 7. Collection Reports
             'credit_collection' => [
