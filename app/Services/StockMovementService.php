@@ -15,9 +15,10 @@ class StockMovementService {
      * Group demands, lock rows in deterministic order, and verify sufficient stock.
      * 
      * @param array $demands Array of ['item_id' => int, 'variation_option_id' => int|null, 'quantity' => float]
+     * @param bool $allowNegativeInventory If true, bypasses the strict stock check
      * @throws Exception If stock is insufficient.
      */
-    public function lockAndVerifyAvailability(array $demands) {
+    public function lockAndVerifyAvailability(array $demands, bool $allowNegativeInventory = false) {
         if (empty($demands)) {
             return;
         }
@@ -82,7 +83,7 @@ class StockMovementService {
             foreach ($aggregatedDemands as $agg) {
                 if (!$agg['var_id']) {
                     $available = $itemStock[$agg['item_id']] ?? 0;
-                    if ($available < $agg['total_qty']) {
+                    if (!$allowNegativeInventory && $available < $agg['total_qty']) {
                         throw new Exception("Insufficient stock for Product ID {$agg['item_id']}. Requested: {$agg['total_qty']}, Available: {$available}");
                     }
                 }
@@ -108,7 +109,7 @@ class StockMovementService {
             foreach ($aggregatedDemands as $agg) {
                 if ($agg['var_id']) {
                     $available = $varStock[$agg['var_id']] ?? 0;
-                    if ($available < $agg['total_qty']) {
+                    if (!$allowNegativeInventory && $available < $agg['total_qty']) {
                         throw new Exception("Insufficient stock for Product Variation ID {$agg['var_id']}. Requested: {$agg['total_qty']}, Available: {$available}");
                     }
                 }

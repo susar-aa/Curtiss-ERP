@@ -33,7 +33,7 @@ class Invoice {
         return $this->db->resultSet() ?: [];
     }
 
-    public function createInvoiceWithAccounting($invoiceData, $items, $arAccountId, $revenueAccountId, $userId, $taxData = null) {
+    public function createInvoiceWithAccounting($invoiceData, $items, $arAccountId, $revenueAccountId, $userId, $taxData = null, $allowNegativeInventory = false) {
         try {
             $this->db->beginTransaction();
 
@@ -50,7 +50,7 @@ class Invoice {
                     'quantity' => $item['quantity']
                 ];
             }
-            $stockService->lockAndVerifyAvailability($stockDemands);
+            $stockService->lockAndVerifyAvailability($stockDemands, $allowNegativeInventory);
             // End Stock Verification
 
             $stockStatus = $invoiceData['stock_status'] ?? 'deducted';

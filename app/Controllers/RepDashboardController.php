@@ -766,12 +766,11 @@ class RepDashboardController extends Controller {
             'routes' => [],
             'invoices' => [],
             'payments' => [],
-            'unproductive_visits' => []
+            'unproductive_visits' => [],
+            'errors' => []
         ];
 
-        try {
-            $this->db->beginTransaction();
-            // 1. Process Customers
+        // 1. Process Customers
             if (isset($payload['customers']) && is_array($payload['customers'])) {
                 $processCustomerUpdate = function($c, $serverId) {
                     $existingCust = $this->customerModel->getCustomerById($serverId);
@@ -890,6 +889,8 @@ class RepDashboardController extends Controller {
 
                 foreach ($payload['customers'] as $c) {
                     $localId = intval($c['local_id']);
+                    try {
+                        $this->db->beginTransaction();
                     $serverId = isset($c['server_id']) ? intval($c['server_id']) : 0;
                     
                     $existsOnServer = false;
@@ -960,6 +961,15 @@ class RepDashboardController extends Controller {
                         'local_id' => $localId,
                         'server_id' => intval($serverId)
                     ];
+                        $this->db->commit();
+                    } catch (Exception $e) {
+                        $this->db->rollBack();
+                        $mappings['errors'][] = [
+                            'local_id' => $localId,
+                            'type' => 'customer',
+                            'error' => 'Customer Sync Failed: ' . $e->getMessage()
+                        ];
+                    }
                 }
             }
 
@@ -967,6 +977,8 @@ class RepDashboardController extends Controller {
             if (isset($payload['routes']) && is_array($payload['routes'])) {
                 foreach ($payload['routes'] as $r) {
                     $localId = intval($r['local_id']);
+                    try {
+                        $this->db->beginTransaction();
                     
                     // Check if a route with the same UUID or user_id, route_name and start_time already exists to prevent duplicate
                     $existingRoute = null;
@@ -1060,6 +1072,15 @@ class RepDashboardController extends Controller {
                         'local_id' => $localId,
                         'server_id' => intval($serverId)
                     ];
+                        $this->db->commit();
+                    } catch (Exception $e) {
+                        $this->db->rollBack();
+                        $mappings['errors'][] = [
+                            'local_id' => $localId,
+                            'type' => 'route',
+                            'error' => 'Route Sync Failed: ' . $e->getMessage()
+                        ];
+                    }
                 }
             }
 
@@ -1167,17 +1188,20 @@ class RepDashboardController extends Controller {
             if (isset($payload['invoices']) && is_array($payload['invoices'])) {
                 foreach ($payload['invoices'] as $inv) {
                     $localId = intval($inv['local_id']);
-                    $custServerId = $getCustomerServerId(intval($inv['customer_id']));
+                    $maxRetries = 3;
+                    for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                        try {
+                        $this->db->beginTransaction();
                     
-                    // Validate customer ID on the server, fallback if not found
-                    $this->db->query("SELECT id FROM customers WHERE id = :id");
-                    $this->db->bind(':id', $custServerId);
-                    $custRow = $this->db->single();
-                    if (!$custRow) {
-                        $this->db->query("SELECT id FROM customers LIMIT 1");
-                        $firstCust = $this->db->single();
-                        $custServerId = $firstCust ? intval($firstCust->id) : 1;
-                    }
+                        $custServerId = $getCustomerServerId(intval($inv['customer_id']));
+                        
+                        // Validate customer ID on the server, fallback if not found
+                        $this->db->query("SELECT id FROM customers WHERE id = :id");
+                        $this->db->bind(':id', $custServerId);
+                        $custRow = $this->db->single();
+                        if (!$custRow) {
+                            throw new Exception("Customer ID {$custServerId} not found on server. Cannot process invoice.");
+                        }
                     
                     $localRouteId = intval($inv['local_route_id'] ?? 0);
                     $serverRouteIdFromApp = intval($inv['server_route_id'] ?? 0);
@@ -1243,6 +1267,7 @@ class RepDashboardController extends Controller {
                         // allowing any mutation. This is the final firewall against overwrites.
                         if (isset($existingInv->created_by) && intval($existingInv->created_by) !== intval($userId)) {
                             $this->logActivity('Sync Collision Blocked', 'Billing', "BLOCKED: User {$userId} attempted to update Invoice {$existingInv->invoice_number} (ID:{$existingInv->id}) owned by User {$existingInv->created_by}.", $existingInv->id);
+                            $this->db->rollBack();
                             continue; // Skip this invoice entirely — it belongs to another rep
                         }
 
@@ -1369,6 +1394,7 @@ class RepDashboardController extends Controller {
                                     'remapped' => $isRemapped,
                                     'new_invoice_number' => $isRemapped ? $invNo : null
                                 ];
+                                $this->db->commit();
                                 continue;
                             } else {
                                 $err = isset($_SESSION['invoice_error']) ? $_SESSION['invoice_error'] : 'Unknown edit error';
@@ -1386,6 +1412,7 @@ class RepDashboardController extends Controller {
                                 'remapped' => $isRemapped,
                                 'new_invoice_number' => $isRemapped ? $existingInv->invoice_number : null
                             ];
+                            $this->db->commit();
                             continue;
                         }
                     }
@@ -1474,7 +1501,9 @@ class RepDashboardController extends Controller {
                         $itemsPayload,
                         $arAccountId,
                         $revenueAccountId,
-                        $userId
+                        $userId,
+                        null,
+                        true // allowNegativeInventory
                     );
 
                     if ($invoiceId) {
@@ -1519,12 +1548,32 @@ class RepDashboardController extends Controller {
                     } else {
                         $err = isset($_SESSION['invoice_error']) ? $_SESSION['invoice_error'] : 'Unknown error during creation';
                         unset($_SESSION['invoice_error']);
-                        $mappings['errors'][] = [
-                            'local_id' => $localId,
-                            'type' => 'invoice',
-                            'invoice_number' => $invNo,
-                            'error' => "Stock Conflict / Creation Failed: " . $err
-                        ];
+                        throw new Exception("Stock Conflict / Creation Failed: " . $err);
+                    }
+                        
+                        $this->db->commit();
+                            break; // Success, break out of retry loop
+                        } catch (Exception $e) {
+                            $this->db->rollBack();
+                            
+                            // Handle Duplicate Invoice Collision (PDOException 23000)
+                            if ($e instanceof PDOException && $e->getCode() == '23000' && $attempt < $maxRetries) {
+                                $msg = strtolower($e->getMessage());
+                                if (strpos($msg, 'invoice_number') !== false || strpos($msg, 'duplicate entry') !== false) {
+                                    $inv['invoice_number'] = $inv['invoice_number'] . '-' . rand(100, 999);
+                                    $this->logActivity('Sync Collision Avoided', 'Billing', "Retrying invoice creation with new number {$inv['invoice_number']} after constraint violation.");
+                                    continue;
+                                }
+                            }
+                            
+                            $mappings['errors'][] = [
+                                'local_id' => $localId,
+                                'type' => 'invoice',
+                                'invoice_number' => $inv['invoice_number'] ?? 'Unknown',
+                                'error' => 'Invoice Sync Failed: ' . $e->getMessage()
+                            ];
+                            break; // Unrecoverable error, break out of retry loop
+                        }
                     }
                 }
             }
@@ -1533,17 +1582,18 @@ class RepDashboardController extends Controller {
             if (isset($payload['payments']) && is_array($payload['payments'])) {
                 foreach ($payload['payments'] as $p) {
                     $localId = isset($p['local_id']) ? intval($p['local_id']) : 0;
-                    $custServerId = $getCustomerServerId(intval($p['customer_id']));
-                    
-                    // Validate customer ID on the server, fallback if not found
-                    $this->db->query("SELECT id FROM customers WHERE id = :id");
-                    $this->db->bind(':id', $custServerId);
-                    $custRow = $this->db->single();
-                    if (!$custRow) {
-                        $this->db->query("SELECT id FROM customers LIMIT 1");
-                        $firstCust = $this->db->single();
-                        $custServerId = $firstCust ? intval($firstCust->id) : 1;
-                    }
+                    try {
+                        $this->db->beginTransaction();
+                        
+                        $custServerId = $getCustomerServerId(intval($p['customer_id']));
+                        
+                        // Validate customer ID on the server, fallback if not found
+                        $this->db->query("SELECT id FROM customers WHERE id = :id");
+                        $this->db->bind(':id', $custServerId);
+                        $custRow = $this->db->single();
+                        if (!$custRow) {
+                            throw new Exception("Customer ID {$custServerId} not found on server. Cannot process payment.");
+                        }
 
                     $localRouteId = intval($p['local_route_id'] ?? 0);
                     $serverRouteIdFromApp = intval($p['server_route_id'] ?? 0);
@@ -1605,6 +1655,15 @@ class RepDashboardController extends Controller {
                         'server_id' => $serverId,
                         'uuid' => $paymentUuid
                     ];
+                        $this->db->commit();
+                    } catch (Exception $e) {
+                        $this->db->rollBack();
+                        $mappings['errors'][] = [
+                            'local_id' => $localId,
+                            'type' => 'payment',
+                            'error' => 'Payment Sync Failed: ' . $e->getMessage()
+                        ];
+                    }
                 }
             }
 
@@ -1614,8 +1673,11 @@ class RepDashboardController extends Controller {
                 foreach ($payload['unproductive_visits'] as $uv) {
                     $uuid = $uv['uuid'] ?? null;
                     if (empty($uuid)) continue;
+                    
+                    try {
+                        $this->db->beginTransaction();
 
-                    $custServerId = $getCustomerServerId(intval($uv['customer_id']));
+                        $custServerId = $getCustomerServerId(intval($uv['customer_id']));
                     $localRouteId = intval($uv['local_route_id'] ?? 0);
                     $serverRouteIdFromApp = intval($uv['server_route_id'] ?? 0);
                     $visitTime = $uv['visit_time'] ?? date('Y-m-d H:i:s');
@@ -1638,24 +1700,23 @@ class RepDashboardController extends Controller {
                         'uuid' => $uuid,
                         'server_id' => $insertId
                     ];
+                        $this->db->commit();
+                    } catch (Exception $e) {
+                        $this->db->rollBack();
+                        $mappings['errors'][] = [
+                            'uuid' => $uuid,
+                            'type' => 'unproductive_visit',
+                            'error' => 'Unproductive Visit Sync Failed: ' . $e->getMessage()
+                        ];
+                    }
                 }
             }
 
-            $this->db->commit();
             echo json_encode([
                 'success' => true,
                 'mappings' => $mappings
             ]);
             exit;
-
-        } catch (Exception $e) {
-            $this->db->rollBack();
-            echo json_encode([
-                'success' => false,
-                'message' => 'Sync push processing exception: ' . $e->getMessage()
-            ]);
-            exit;
-        }
     }
 
     public function sync_verify() {
