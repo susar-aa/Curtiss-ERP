@@ -1,1 +1,1 @@
-ammatahudu chanadaree, sadde withry badu nane chandare
+ammatahudu chandaree, sadde withry badu nane chandare
