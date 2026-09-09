@@ -87,7 +87,8 @@ class RepRouteService {
                     $db->bind(':id', $soId);
                     $db->execute();
                 } else {
-                    throw new Exception("Failed to convert Sales Order to Invoice.");
+                    $errorDetail = isset($_SESSION['invoice_error']) ? $_SESSION['invoice_error'] : 'Unknown error';
+                    throw new Exception("Failed to convert Sales Order to Invoice. Details: " . $errorDetail);
                 }
                 
             } else {
