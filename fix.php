@@ -1,1 +1,0 @@
-ammatahudu chandaree, sadde withry badu nane
